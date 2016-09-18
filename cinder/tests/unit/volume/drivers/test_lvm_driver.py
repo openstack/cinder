@@ -46,7 +46,7 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
                    'id': 'test1'}
 
     @mock.patch.object(os.path, 'exists', return_value=True)
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')
     def test_delete_volume_invalid_parameter(self, _mock_create_export,
                                              mock_exists):
         self.configuration.volume_clear = 'zero'
@@ -59,7 +59,7 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
                           self.FAKE_VOLUME)
 
     @mock.patch.object(os.path, 'exists', return_value=False)
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')
     def test_delete_volume_bad_path(self, _mock_create_export, mock_exists):
         self.configuration.volume_clear = 'zero'
         self.configuration.volume_clear_size = 0
@@ -74,7 +74,7 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
 
     @mock.patch.object(volutils, 'clear_volume')
     @mock.patch.object(volutils, 'copy_volume')
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')
     def test_delete_volume_thinlvm_snap(self, _mock_create_export,
                                         mock_copy, mock_clear):
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',

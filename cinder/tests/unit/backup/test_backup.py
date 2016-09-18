@@ -205,11 +205,11 @@ class BaseBackupTest(test.TestCase):
 class BackupTestCase(BaseBackupTest):
     """Test Case for backups."""
 
-    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'set_initialized')
-    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'do_setup')
-    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'check_for_setup_error')
     @mock.patch('cinder.context.get_admin_context')
     def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,
@@ -675,7 +675,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertEqual(vol_size, backup['size'])
 
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_snapshot')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_snapshot')
     def test_create_temp_snapshot(self, mock_create_snapshot):
         volume_manager = importutils.import_object(CONF.volume_manager)
         volume_manager.driver.set_initialized()
@@ -692,7 +692,8 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual('available', temp_snap['status'])
         self.assertEqual('fake_provider_id', temp_snap['provider_id'])
 
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_cloned_volume')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver,
+                       'create_cloned_volume')
     def test_create_temp_cloned_volume(self, mock_create_cloned_volume):
         volume_manager = importutils.import_object(CONF.volume_manager)
         volume_manager.driver.set_initialized()
@@ -709,7 +710,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual('available', temp_vol['status'])
         self.assertEqual('fake_provider_id', temp_vol['provider_id'])
 
-    @mock.patch.object(fake_driver.FakeISCSIDriver,
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver,
                        'create_volume_from_snapshot')
     def test_create_temp_volume_from_snapshot(self, mock_create_vol_from_snap):
         volume_manager = importutils.import_object(CONF.volume_manager)

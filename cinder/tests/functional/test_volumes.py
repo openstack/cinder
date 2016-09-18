@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.tests import fake_driver
 from cinder.tests.functional import functional_helpers
 
 
@@ -23,12 +22,11 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
     def setUp(self):
         super(VolumesTest, self).setUp()
         self.api.create_type(self._vol_type_name)
-        fake_driver.LoggingVolumeDriver.clear_logs()
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
         f['volume_driver'] = \
-            'cinder.tests.fake_driver.LoggingVolumeDriver'
+            'cinder.tests.fake_driver.FakeLoggingVolumeDriver'
         f['default_volume_type'] = self._vol_type_name
         return f
 
@@ -74,18 +72,6 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
 
         # Should be gone
         self.assertFalse(found_volume)
-
-        # Exactly one volume should have been created and deleted
-        for action_type in ['create_volume', 'delete_volume']:
-            actions = fake_driver.LoggingVolumeDriver.logs_like(
-                action_type, id=created_volume_id)
-
-            self.assertEqual(1, len(actions))
-            action = actions[0]
-            self.assertEqual(created_volume_id, action['id'])
-            self.assertEqual('nova', action['availability_zone'])
-            if action_type == 'create_volume':
-                self.assertEqual(1, action['size'])
 
     def test_create_volume_with_metadata(self):
         """Creates a volume with metadata."""

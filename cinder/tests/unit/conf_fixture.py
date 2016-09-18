@@ -34,7 +34,7 @@ def_vol_type = 'fake_vol_type'
 def set_defaults(conf):
     conf.set_default('default_volume_type', def_vol_type)
     conf.set_default('volume_driver',
-                     'cinder.tests.fake_driver.FakeISCSIDriver')
+                     'cinder.tests.fake_driver.FakeLoggingVolumeDriver')
     conf.set_default('iscsi_helper', 'fake')
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('connection', 'sqlite://', group='database')
