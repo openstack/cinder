@@ -48,6 +48,10 @@ def define_tables(meta):
         Column('availability_zone', String(255)),
         Column('disabled_reason', String(255)),
         Column('modified_at', DateTime(timezone=False)),
+        Column('rpc_current_version', String(36)),
+        Column('rpc_available_version', String(36)),
+        Column('object_current_version', String(36)),
+        Column('object_available_version', String(36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -68,6 +72,7 @@ def define_tables(meta):
         Column('volume_type_id', String(255)),
         Column('status', String(255)),
         Column('cgsnapshot_id', String(36)),
+        Column('source_cgid', String(36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -128,6 +133,7 @@ def define_tables(meta):
                ForeignKey('consistencygroups.id')),
         Column('provider_id', String(255)),
         Column('multiattach', Boolean),
+        Column('previous_status', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -176,6 +182,7 @@ def define_tables(meta):
         Column('cgsnapshot_id', String(36),
                ForeignKey('cgsnapshots.id')),
         Column('provider_id', String(255)),
+        Column('provider_auth', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -283,6 +290,7 @@ def define_tables(meta):
         Column('project_id', String(255)),
         Column('resource', String(255), nullable=False),
         Column('hard_limit', Integer),
+        Column('allocated', Integer, default=0),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -396,6 +404,11 @@ def define_tables(meta):
         Column('size', Integer()),
         Column('object_count', Integer()),
         Column('parent_id', String(36)),
+        Column('temp_volume_id', String(36)),
+        Column('temp_snapshot_id', String(36)),
+        Column('num_dependent_backups', Integer, default=0),
+        Column('snapshot_id', String(36)),
+        Column('data_timestamp', DateTime),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -475,6 +488,19 @@ def define_tables(meta):
         mysql_charset='utf8'
     )
 
+    image_volume_cache = Table(
+        'image_volume_cache_entries', meta,
+        Column('image_updated_at', DateTime(timezone=False)),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('host', String(255), index=True, nullable=False),
+        Column('image_id', String(36), index=True, nullable=False),
+        Column('volume_id', String(36), nullable=False),
+        Column('size', Integer, nullable=False),
+        Column('last_used', DateTime, nullable=False),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
+    )
+
     return [consistencygroups,
             cgsnapshots,
             volumes,
@@ -497,7 +523,8 @@ def define_tables(meta):
             transfers,
             encryption,
             volume_admin_metadata,
-            initiator_data]
+            initiator_data,
+            image_volume_cache]
 
 
 def upgrade(migrate_engine):
@@ -535,7 +562,8 @@ def upgrade(migrate_engine):
                   "transfers",
                   "encryption",
                   "volume_admin_metadata",
-                  "driver_initiator_data"]
+                  "driver_initiator_data",
+                  "image_volume_cache_entries"]
 
         migrate_engine.execute("SET foreign_key_checks = 0")
         for table in tables:
@@ -571,4 +599,9 @@ def upgrade(migrate_engine):
                  'class_name': CLASS_NAME,
                  'resource': 'consistencygroups',
                  'hard_limit': CONF.quota_consistencygroups,
+                 'deleted': False, })
+    qci.execute({'created_at': CREATED_AT,
+                 'class_name': CLASS_NAME,
+                 'resource': 'per_volume_gigabytes',
+                 'hard_limit': -1,
                  'deleted': False, })
