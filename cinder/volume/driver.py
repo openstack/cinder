@@ -1914,59 +1914,27 @@ class BaseVD(object):
         """
         raise NotImplementedError()
 
+    def extend_volume(self, volume, new_size):
+        msg = _("Extend volume not implemented")
+        raise NotImplementedError(msg)
 
-@six.add_metaclass(abc.ABCMeta)
+    def accept_transfer(self, context, volume, new_user, new_project):
+        pass
+
+
 class LocalVD(object):
-    @abc.abstractmethod
-    def local_path(self, volume):
-        return
+    """This class has been deprecated and should not be inherited."""
+    pass
 
 
-@six.add_metaclass(abc.ABCMeta)
 class SnapshotVD(object):
-    @abc.abstractmethod
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        return
-
-    @abc.abstractmethod
-    def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        return
-
-    @abc.abstractmethod
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot.
-
-        If volume_type extra specs includes 'replication: <is> True'
-        the driver needs to create a volume replica (secondary),
-        and setup replication between the newly created volume and
-        the secondary volume.
-        """
-        return
+    """This class has been deprecated and should not be inherited."""
+    pass
 
 
-@six.add_metaclass(abc.ABCMeta)
 class ConsistencyGroupVD(object):
-    @abc.abstractmethod
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a cgsnapshot."""
-        return
-
-    @abc.abstractmethod
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot."""
-        return
-
-    @abc.abstractmethod
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        return
-
-    @abc.abstractmethod
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
-        return
+    """This class has been deprecated and should not be inherited."""
+    pass
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -2017,18 +1985,14 @@ class MigrateVD(object):
         return (False, None)
 
 
-@six.add_metaclass(abc.ABCMeta)
 class ExtendVD(object):
-    @abc.abstractmethod
-    def extend_volume(self, volume, new_size):
-        return
+    """This class has been deprecated and should not be inherited."""
+    pass
 
 
-@six.add_metaclass(abc.ABCMeta)
 class TransferVD(object):
-    def accept_transfer(self, context, volume, new_user, new_project):
-        """Accept the transfer of a volume for a new user/project."""
-        pass
+    """This class has been deprecated and should not be inherited."""
+    pass
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -2320,10 +2284,6 @@ class ReplicaVD(object):
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
                    ExtendVD, CloneableImageVD, ManageableSnapshotsVD,
                    SnapshotVD, ReplicaVD, LocalVD, MigrateVD, BaseVD):
-    """This class will be deprecated soon.
-
-    Please use the abstract classes above for new drivers.
-    """
     def check_for_setup_error(self):
         raise NotImplementedError()
 
@@ -2331,6 +2291,14 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
         raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+        """
+
         raise NotImplementedError()
 
     def create_replica_test_volume(self, volume, src_vref):
@@ -2340,9 +2308,11 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
         raise NotImplementedError()
 
     def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
         raise NotImplementedError()
 
     def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
         raise NotImplementedError()
 
     def local_path(self, volume):
@@ -2652,6 +2622,9 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
 
     def migrate_volume(self, context, volume, host):
         return (False, None)
+
+    def accept_transfer(self, context, volume, new_user, new_project):
+        pass
 
 
 class ProxyVD(object):
