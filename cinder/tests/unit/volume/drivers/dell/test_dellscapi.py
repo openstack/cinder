@@ -3543,8 +3543,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        '_find_active_controller',
                        return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_find_controller_port',
-                       return_value=ISCSI_CTRLR_PORT)
+                       '_find_controller_port')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_domains',
                        return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS)
@@ -3564,6 +3563,59 @@ class DellSCSanAPITestCase(test.TestCase):
                                                  mock_open_connection,
                                                  mock_init):
         # Test case where there are multiple portals
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
+        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domains.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        expected = {'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe44'],
+                    'target_lun': 1,
+                    'target_luns': [1, 1, 1, 1],
+                    'target_portal': u'192.168.0.25:3260',
+                    'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260',
+                                       u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260']}
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_domains',
+                       return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_multi_portals_duplicates(
+            self,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_domains,
+            mock_find_ctrl_port,
+            mock_find_active_controller,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # Test case where there are multiple portals and
+        mock_find_ctrl_port.return_value = {
+            'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'}
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domains.called)
@@ -3575,16 +3627,12 @@ class DellSCSanAPITestCase(test.TestCase):
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
-                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
-                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                          u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
                     'target_lun': 1,
-                    'target_luns': [1, 1, 1, 1],
+                    'target_luns': [1, 1],
                     'target_portal': u'192.168.0.25:3260',
-                    'target_portals': [u'192.168.0.21:3260',
-                                       u'192.168.0.25:3260',
-                                       u'192.168.0.21:3260',
-                                       u'192.168.0.25:3260']}
+                    'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3709,8 +3757,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        '_find_active_controller',
                        return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_find_controller_port',
-                       return_value=ISCSI_CTRLR_PORT)
+                       '_find_controller_port')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS_MULTI_PORTAL)
@@ -3730,6 +3777,9 @@ class DellSCSanAPITestCase(test.TestCase):
             mock_close_connection,
             mock_open_connection,
             mock_init):
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
         # Test case where there are multiple portals
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
@@ -3737,13 +3787,13 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_active_controller.called)
         self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_controller_port_iscsi_config.called)
-        # Since we're feeding the same info back multiple times the information
-        # will be duped.
+        # We're feeding the same info back multiple times the information
+        # will be scrubbed to a single item.
         expected = {'target_discovered': False,
                     'target_iqn':
-                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
                     'target_iqns':
-                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
                          u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
                     'target_lun': 1,
                     'target_luns': [1, 1],
