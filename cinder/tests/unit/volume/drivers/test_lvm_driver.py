@@ -906,7 +906,7 @@ class LVMISCSITestCase(test_volume.DriverTestCase):
             vol = {}
             vol['size'] = 0
             vol_ref = db.volume_create(self.context, vol)
-            self.volume.create_volume(self.context, vol_ref['id'])
+            self.volume.create_volume(self.context, vol_ref)
             vol_ref = db.volume_get(self.context, vol_ref['id'])
 
             # each volume has a different mountpoint
