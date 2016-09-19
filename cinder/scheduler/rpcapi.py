@@ -112,9 +112,8 @@ class SchedulerAPI(rpc.RPCAPI):
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None, volume=None):
-        request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
-                    'request_spec': request_spec_p,
+                    'request_spec': request_spec,
                     'filter_properties': filter_properties, 'volume': volume}
         version = self._compat_ver('3.0', '2.2', '2.0')
         if version in ('2.2', '2.0'):
