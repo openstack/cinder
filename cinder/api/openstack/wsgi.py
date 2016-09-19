@@ -1165,12 +1165,9 @@ class Resource(wsgi.Application):
         if hasattr(response, 'headers'):
             for hdr, val in response.headers.items():
                 # Headers must be utf-8 strings
-                try:
-                    # python 2.x
-                    response.headers[hdr] = val.encode('utf-8')
-                except Exception:
-                    # python 3.x
-                    response.headers[hdr] = six.text_type(val)
+                val = utils.convert_str(val)
+
+                response.headers[hdr] = val
 
             if (not request.api_version_request.is_null() and
                not self._is_legacy_endpoint(request)):

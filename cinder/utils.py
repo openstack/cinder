@@ -836,7 +836,7 @@ def convert_str(text):
     * convert to Unicode on Python 3: decode bytes from UTF-8
     """
     if six.PY2:
-        return encodeutils.safe_encode(text)
+        return encodeutils.to_utf8(text)
     else:
         if isinstance(text, bytes):
             return text.decode('utf-8')
