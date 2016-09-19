@@ -196,6 +196,45 @@ Request Example
 
 
 
+Detach volume from a server
+===========================
+
+.. rest_method::  POST /v2/{tenant_id}/volumes/{volume_id}/action
+
+Detaches a volume from a server. Specify the ``os-detach`` action in the request body.
+
+Preconditions
+
+- Volume status must be ``in-use``.
+
+Normal response codes: 202,
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - attachment_id: attachment_id
+   - os-detach: os-detach
+   - tenant_id: tenant_id
+   - volume_id_1: volume_id
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-detach-request.json
+   :language: javascript
+
+
+
+
+
+
+
+
+
+
 Unmanage volume
 ===============
 
