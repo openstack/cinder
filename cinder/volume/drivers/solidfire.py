@@ -175,6 +175,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                         'xMaxClonesPerVolumeExceeded',
                         'xMaxSnapshotsPerNodeExceeded',
                         'xMaxClonesPerNodeExceeded',
+                        'xSliceNotRegistered',
                         'xNotReadyForIO']
 
     def __init__(self, *args, **kwargs):
