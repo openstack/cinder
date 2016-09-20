@@ -91,9 +91,6 @@ class SynoISCSIDriverTestCase(test.TestCase):
         self.driver = synology_iscsi.SynoISCSIDriver(configuration=self.conf)
         self.driver.common = common.SynoCommon(self.conf, 'iscsi')
 
-    def tearDown(self):
-        super(SynoISCSIDriverTestCase, self).tearDown()
-
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
         config.use_chap_auth = False

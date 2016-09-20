@@ -533,9 +533,6 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.assertEqual(self.configuration.zfssa_lun_logbias,
                          ret.get('logbias'))
 
-    def tearDown(self):
-        super(TestZFSSAISCSIDriver, self).tearDown()
-
     def fake_safe_get(self, value):
         try:
             val = getattr(self.configuration, value)

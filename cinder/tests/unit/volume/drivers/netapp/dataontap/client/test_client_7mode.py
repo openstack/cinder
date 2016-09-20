@@ -61,9 +61,6 @@ class NetApp7modeClientTestCase(test.TestCase):
         self.connection = self.client.connection
         self.fake_lun = six.text_type(uuid.uuid4())
 
-    def tearDown(self):
-        super(NetApp7modeClientTestCase, self).tearDown()
-
     def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">

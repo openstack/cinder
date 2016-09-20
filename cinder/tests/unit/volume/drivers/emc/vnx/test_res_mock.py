@@ -20,12 +20,6 @@ from cinder.volume.drivers.emc.vnx import utils
 
 
 class TestResMock(test.TestCase):
-    def setUp(self):
-        super(TestResMock, self).setUp()
-
-    def tearDown(self):
-        super(TestResMock, self).tearDown()
-
     def test_load_cinder_resource(self):
         cinder_res = res_mock.CinderResourceMock('mocked_cinder.yaml')
 

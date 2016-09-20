@@ -21,9 +21,6 @@ from cinder.tests.unit.scheduler import fakes
 
 
 class GoodnessWeigherTestCase(test.TestCase):
-    def setUp(self):
-        super(GoodnessWeigherTestCase, self).setUp()
-
     def test_goodness_weigher_with_no_goodness_function(self):
         weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {

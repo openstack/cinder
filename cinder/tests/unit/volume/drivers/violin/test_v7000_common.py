@@ -394,9 +394,6 @@ class V7000CommonTestCase(test.TestCase):
         self.driver.device_id = 'ata-VIOLIN_MEMORY_ARRAY_23109R00000022'
         self.stats = {}
 
-    def tearDown(self):
-        super(V7000CommonTestCase, self).tearDown()
-
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
         config.volume_backend_name = 'v7000_common'

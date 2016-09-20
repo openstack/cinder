@@ -511,9 +511,6 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
 
 @ddt.ddt
 class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
-    def setUp(self):
-        super(PureBaseVolumeDriverTestCase, self).setUp()
-
     def _setup_mocks_for_replication(self):
         # Mock config values
         self.mock_config.pure_replica_interval_default = (

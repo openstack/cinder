@@ -224,9 +224,6 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
         self.mock_utils = mock.Mock()
         self.driver.driver_utils = self.mock_utils
 
-    def tearDown(self):
-        super(TestFSSISCSIDriver, self).tearDown()
-
     def test_initialized_should_set_fss_info(self):
         self.assertEqual(self.driver.proxy.fss_host,
                          self.driver.configuration.san_ip)
@@ -525,9 +522,6 @@ class TestRESTProxy(test.TestCase):
         self.proxy.FSS = self.FSS_MOCK
         self.FSS_MOCK._fss_request.return_value = API_RESPONSE
         self.stubs.Set(time, 'sleep', Fake_sleep)
-
-    def tearDown(self):
-        super(TestRESTProxy, self).tearDown()
 
     def test_do_setup(self):
         self.proxy.do_setup()

@@ -222,9 +222,6 @@ class V7000FCPDriverTestCase(test.TestCase):
         self.stats = {}
         self.driver.set_initialized()
 
-    def tearDown(self):
-        super(V7000FCPDriverTestCase, self).tearDown()
-
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)
         config.volume_backend_name = 'v7000_fcp'

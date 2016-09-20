@@ -171,9 +171,6 @@ class SynoSessionTestCase(test.TestCase):
                                       self.device_id)
         self.session.__class__.__del__ = lambda x: x
 
-    def tearDown(self):
-        super(SynoSessionTestCase, self).tearDown()
-
     def test_query(self):
         out = {
             'maxVersion': 3,
@@ -349,9 +346,6 @@ class SynoCommonTestCase(test.TestCase):
         self.common.driver_type = 'iscsi'
         self.common.volume_backend_name = 'DiskStation'
         self.common.iscsi_port = 3260
-
-    def tearDown(self):
-        super(SynoCommonTestCase, self).tearDown()
 
     def setup_configuration(self):
         config = mock.Mock(spec=conf.Configuration)

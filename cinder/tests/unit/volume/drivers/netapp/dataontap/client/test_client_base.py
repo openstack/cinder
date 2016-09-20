@@ -54,9 +54,6 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
         self.mock_send_request = self.mock_object(self.client, 'send_request')
 
-    def tearDown(self):
-        super(NetAppBaseClientTestCase, self).tearDown()
-
     def test_get_ontapi_version(self):
         version_response = netapp_api.NaElement(
             etree.XML("""<results status="passed">

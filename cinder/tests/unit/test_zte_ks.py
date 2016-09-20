@@ -355,9 +355,6 @@ class ZteISCSIDriverTestCase(ZteBaseDriverTestCase, test.TestCase):
         self.driver = FakeZteISCSIDriver(configuration=self.configuration)
         self.driver.do_setup({})
 
-    def tearDown(self):
-        super(ZteISCSIDriverTestCase, self).tearDown()
-
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats(True)
         self.assertEqual("ZTE", stats["vendor_name"])

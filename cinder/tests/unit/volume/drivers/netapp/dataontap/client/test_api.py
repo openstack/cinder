@@ -245,9 +245,6 @@ class NetAppApiServerTests(test.TestCase):
 class NetAppApiElementTransTests(test.TestCase):
     """Test case for NetApp API element translations."""
 
-    def setUp(self):
-        super(NetAppApiElementTransTests, self).setUp()
-
     def test_translate_struct_dict_unique_key(self):
         """Tests if dict gets properly converted to NaElements."""
         root = netapp_api.NaElement('root')

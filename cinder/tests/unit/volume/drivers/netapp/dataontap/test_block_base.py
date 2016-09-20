@@ -59,9 +59,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client = self.library.zapi_client
         self.mock_request = mock.Mock()
 
-    def tearDown(self):
-        super(NetAppBlockStorageLibraryTestCase, self).tearDown()
-
     def get_config_base(self):
         return na_fakes.create_configuration()
 

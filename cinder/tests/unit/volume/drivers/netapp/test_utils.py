@@ -541,9 +541,6 @@ class OpenStackInfoTestCase(test.TestCase):
     DEB_RLS = 'upstream_version-debian_revision'
     DEB_VENDOR = 'debian_revision'
 
-    def setUp(self):
-        super(OpenStackInfoTestCase, self).setUp()
-
     def test_openstack_info_init(self):
         info = na_utils.OpenStackInfo()
 
@@ -817,9 +814,6 @@ class FeaturesTestCase(test.TestCase):
 
 @ddt.ddt
 class BitSetTestCase(test.TestCase):
-
-    def setUp(self):
-        super(BitSetTestCase, self).setUp()
 
     def test_default(self):
         self.assertEqual(na_utils.BitSet(0), na_utils.BitSet())
