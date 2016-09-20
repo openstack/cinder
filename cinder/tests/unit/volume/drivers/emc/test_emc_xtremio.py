@@ -24,7 +24,7 @@ from cinder import test
 from cinder.tests.unit.consistencygroup import fake_consistencygroup as fake_cg
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
-from cinder.tests.unit import fake_volume
+from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.volume.drivers.emc import xtremio
 
 
@@ -240,6 +240,7 @@ class D(dict):
 
 
 class CommonData(object):
+    context = {'user': 'admin', }
     connector = {'ip': '10.0.0.2',
                  'initiator': 'iqn.1993-08.org.debian:01:222',
                  'wwpns': ["123456789012345", "123456789054321"],
@@ -247,18 +248,19 @@ class CommonData(object):
                  'host': 'fakehost',
                  }
 
-    test_volume = {'name': 'vol1',
-                   'size': 1,
-                   'volume_name': 'vol1',
-                   'id': '192eb39b-6c2f-420c-bae3-3cfd117f0001',
-                   'provider_auth': None,
-                   'project_id': 'project',
-                   'display_name': 'vol1',
-                   'display_description': 'test volume',
-                   'volume_type_id': None,
-                   'consistencygroup_id':
-                   '192eb39b-6c2f-420c-bae3-3cfd117f0345',
-                   }
+    test_volume = fake_volume_obj(context,
+                                  name = 'vol1',
+                                  size = 1,
+                                  volume_name = 'vol1',
+                                  id = '192eb39b-6c2f-420c-bae3-3cfd117f0001',
+                                  provider_auth = None,
+                                  project_id = 'project',
+                                  display_name = 'vol1',
+                                  display_description = 'test volume',
+                                  volume_type_id = None,
+                                  consistencygroup_id =
+                                  '192eb39b-6c2f-420c-bae3-3cfd117f0345',
+                                  )
     test_snapshot = D()
     test_snapshot.update({'name': 'snapshot1',
                           'size': 1,
@@ -298,7 +300,6 @@ class CommonData(object):
                   'name': 'unmanaged1',
                   'size': 3,
                   }
-    context = {'user': 'admin', }
     group = {'id': '192eb39b-6c2f-420c-bae3-3cfd117f0345',
              'name': 'cg1',
              'status': 'OK',
@@ -881,7 +882,7 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
                     'index': 1}
         xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
         cg_obj = fake_cg.fake_consistencyobject_obj(d.context)
-        new_vol1 = fake_volume.fake_volume_obj(d.context)
+        new_vol1 = fake_volume_obj(d.context)
         snapshot1 = (fake_snapshot
                      .fake_snapshot_obj
                      (d.context, volume_id=d.test_volume['id']))
@@ -913,12 +914,12 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
                     'index': 1}
         xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
         cg_obj = fake_cg.fake_consistencyobject_obj(d.context)
-        new_vol1 = fake_volume.fake_volume_obj(d.context)
+        new_vol1 = fake_volume_obj(d.context)
         new_cg_obj = fake_cg.fake_consistencyobject_obj(
             d.context, id=fake.CONSISTENCY_GROUP2_ID)
         snapset2_name = new_cg_obj.id
         new_vol1.id = '192eb39b-6c2f-420c-bae3-3cfd117f0001'
-        new_vol2 = fake_volume.fake_volume_obj(d.context)
+        new_vol2 = fake_volume_obj(d.context)
         snapset2 = {'vol-list': [xms_data['volumes'][2]['vol-id']],
                     'name': snapset2_name,
                     'index': 1}

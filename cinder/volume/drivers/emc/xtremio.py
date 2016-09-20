@@ -457,9 +457,9 @@ class XtremIOVolumeDriver(san.SanDriver):
     def delete_volume(self, volume):
         """Deletes a volume."""
         try:
-            self.client.req('volumes', 'DELETE', name=volume['id'])
+            self.client.req('volumes', 'DELETE', name=volume.name_id)
         except exception.NotFound:
-            LOG.info(_LI("volume %s doesn't exist"), volume['id'])
+            LOG.info(_LI("volume %s doesn't exist"), volume.name_id)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
