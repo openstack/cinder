@@ -1,4 +1,4 @@
 ---
 features:
   - Added support for scaling QoS in the ScaleIO driver.
-    The new QoS keys are maxIOPSperGB and maxBWSperGB.
+    The new QoS keys are ``maxIOPSperGB`` and ``maxBWSperGB``.

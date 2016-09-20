@@ -12,4 +12,4 @@ upgrade:
 deprecations:
   - All barbican and keymgr config options in Cinder are
     now deprecated. All of these options are moved to
-    the key_manager section for the Castellan library.
+    the ``key_manager`` section for the Castellan library.
