@@ -68,9 +68,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         }
         self.mock_object(block_base.NetAppBlockStorageLibrary, 'delete_volume')
 
-    def tearDown(self):
-        super(NetAppBlockStorageCmodeLibraryTestCase, self).tearDown()
-
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
         config.netapp_storage_protocol = 'iscsi'

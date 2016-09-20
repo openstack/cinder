@@ -61,9 +61,6 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         # Deprecated option
         self.library.configuration.netapp_volume_list = None
 
-    def tearDown(self):
-        super(NetAppBlockStorage7modeLibraryTestCase, self).tearDown()
-
     def get_config_7mode(self):
         config = na_fakes.create_configuration_7mode()
         config.netapp_storage_protocol = 'iscsi'

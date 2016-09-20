@@ -2020,9 +2020,6 @@ class InfortrendCLITestCase(test.TestCase):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
         self.cli_data = InfortrendCLITestData()
 
-    def setUp(self):
-        super(InfortrendCLITestCase, self).setUp()
-
     def _cli_set(self, cli, fake_result):
         cli_conf = {
             'path': '',

@@ -66,9 +66,6 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.fake_lun = six.text_type(uuid.uuid4())
         self.mock_send_request = self.mock_object(self.client, 'send_request')
 
-    def tearDown(self):
-        super(NetAppCmodeClientTestCase, self).tearDown()
-
     def _mock_api_error(self, code='fake'):
         return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
 

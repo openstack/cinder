@@ -39,9 +39,6 @@ class SchedulerRpcAPITestCase(test.TestCase):
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.volume_id = fake_constants.VOLUME_ID
 
-    def tearDown(self):
-        super(SchedulerRpcAPITestCase, self).tearDown()
-
     def _test_scheduler_api(self, method, rpc_method,
                             fanout=False, **kwargs):
         ctxt = self.context
