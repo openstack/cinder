@@ -1262,7 +1262,7 @@ class SheepdogDriverTestCase(test.TestCase):
         cloned_vol = self.test_data.TEST_CLONED_VOLUME
 
         self.driver.create_cloned_volume(cloned_vol, src_vol)
-        snapshot_name = src_vol.name + '-temp-snapshot'
+        snapshot_name = 'tmp-snap-%s' % src_vol.name
         fake_create_snapshot.assert_called_once_with(src_vol.name,
                                                      snapshot_name)
         fake_clone.assert_called_once_with(src_vol.name, snapshot_name,
@@ -1279,7 +1279,7 @@ class SheepdogDriverTestCase(test.TestCase):
                                           fake_clone, fake_create_snapshot):
         src_vol = self.test_data.TEST_VOLUME
         cloned_vol = self.test_data.TEST_CLONED_VOLUME
-        snapshot_name = src_vol.name + '-temp-snapshot'
+        snapshot_name = 'tmp-snap-%s' % src_vol.name
 
         fake_clone.side_effect = exception.SheepdogCmdError(
             cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
