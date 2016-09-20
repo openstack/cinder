@@ -88,7 +88,7 @@ def error_out(resource, reason=None, status='error'):
     except Exception:
         # Don't let this cause further exceptions.
         LOG.exception(_LE("Failed setting %(object_type)s %(object_id)s to "
-                          " %(status) status."),
+                          " %(status)s status."),
                       {'object_type': resource.obj_name(),
                        'object_id': resource.id,
                        'status': status})
