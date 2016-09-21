@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev11\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev23\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-19 17:46+0000\n"
+"POT-Creation-Date: 2016-09-21 00:15+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-19 12:23+0000\n"
+"PO-Revision-Date: 2016-09-20 11:44+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1847,6 +1847,9 @@ msgstr "コントローラー構成サービスが %(storageSystemName)s に見�
 msgid "Controller IP '%(host)s' could not be resolved: %(e)s."
 msgstr "コントローラー IP「%(host)s」を解決できませんでした: %(e)s。"
 
+msgid "Controller IP is missing for ZTE driver."
+msgstr "ZTE ドライバーのコントローラー IP がありません。"
+
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "%(f1)s に変換されましたが、現在の形式は %(f2)s です"
@@ -2073,6 +2076,11 @@ msgstr "ボリューム作成のエラー。理由 %s。"
 msgid "Create volume failed."
 msgstr "ボリュームの作成に失敗しました。"
 
+#, python-format
+msgid "Create volume failed. Volume name: %(name)s. Return code: %(ret)s."
+msgstr ""
+"ボリュームの作成に失敗しました。ボリューム名: %(name)s 戻りコード: %(ret)s"
+
 msgid "Creating a consistency group from a source is not currently supported."
 msgstr "ソースからの整合性グループの作成は現在サポートされません。"
 
@@ -2278,6 +2286,16 @@ msgstr "スナップショット削除のエラー。"
 #, python-format
 msgid "Delete snapshot of volume not supported in state: %s."
 msgstr "状態 %s でのボリュームのスナップショット削除はサポートされていません。"
+
+#, python-format
+msgid "Delete volume failed. Clone name: %(name)s. Return code: %(ret)s."
+msgstr ""
+"ボリュームの削除に失敗しました。クローン名: %(name)s 戻りコード: %(ret)s"
+
+#, python-format
+msgid "Delete volume failed. Volume name: %(name)s.Return code: %(ret)s."
+msgstr ""
+"ボリュームの削除に失敗しました。ボリューム名: %(name)s 戻りコード: %(ret)s"
 
 #, python-format
 msgid ""
@@ -4240,6 +4258,10 @@ msgstr "ユーザー %s のログインに失敗しました。"
 
 msgid "Failed to login with all rest URLs."
 msgstr "すべての rest URL のログインに失敗しました。"
+
+#, python-format
+msgid "Failed to login. Return code: %(ret)s."
+msgstr "ログインが失敗しました。戻りコード: %(ret)s"
 
 #, python-format
 msgid ""
@@ -6656,6 +6678,9 @@ msgstr "マウントされた共有が見つかりません"
 #, python-format
 msgid "No node found in I/O group %(gid)s for volume %(vol)s."
 msgstr "ボリューム %(vol)s の入出力グループ %(gid)s でノードが見つかりません。"
+
+msgid "No pool available."
+msgstr "利用可能なプールがありません。"
 
 msgid ""
 "No pools are available for provisioning volumes. Ensure that the "
@@ -9577,6 +9602,12 @@ msgstr ""
 
 msgid "User ID"
 msgstr "ユーザー ID"
+
+msgid "User Name is missing for ZTE driver."
+msgstr "ZTE ドライバー用のユーザー名 がありません。"
+
+msgid "User Password is missing for ZTE driver."
+msgstr "ZTE ドライバー用のユーザーパスワード がありません。"
 
 msgid "User does not have admin privileges"
 msgstr "ユーザーに管理者特権がありません。"
