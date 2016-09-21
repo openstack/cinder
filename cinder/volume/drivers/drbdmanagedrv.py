@@ -537,7 +537,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         # the volume might be defined but not exist on any server. Oh my.
         res = self.call_or_reconnect(self.odm.auto_deploy,
                                      d_res_name, self.drbdmanage_redundancy,
-                                     0, True)
+                                     0, False)
         self._check_result(res)
 
         okay = self._call_policy_plugin(self.plugin_resource,
