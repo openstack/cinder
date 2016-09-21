@@ -1603,7 +1603,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         pass
 
     @mock.patch.object(coordination.Coordinator, 'get_lock')
-    @mock.patch.object(cinder.volume.drivers.lvm.LVMVolumeDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'create_volume_from_snapshot')
     def test_create_volume_from_snapshot_check_locks(
             self, mock_lvm_create, mock_lock):

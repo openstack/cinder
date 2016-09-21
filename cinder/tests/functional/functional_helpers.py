@@ -59,6 +59,9 @@ def generate_new_element(items, prefix, numeric=False):
 
 
 class _FunctionalTestBase(test.TestCase):
+    osapi_version_major = '2'
+    osapi_version_minor = '0'
+
     def setUp(self):
         super(_FunctionalTestBase, self).setUp()
 
@@ -78,8 +81,10 @@ class _FunctionalTestBase(test.TestCase):
         self._start_api_service()
         self.addCleanup(self.osapi.stop)
 
+        api_version = self.osapi_version_major + '.' + self.osapi_version_minor
         self.api = client.TestOpenStackClient(fake.USER_ID,
-                                              fake.PROJECT_ID, self.auth_url)
+                                              fake.PROJECT_ID, self.auth_url,
+                                              api_version)
 
     def _update_project(self, new_project_id):
         self.api.update_project(new_project_id)
@@ -93,7 +98,8 @@ class _FunctionalTestBase(test.TestCase):
         self.osapi.start()
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
-        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
+        self.auth_url = 'http://%s:%s/v' % (self.osapi.host, self.osapi.port)
+        self.auth_url += self.osapi_version_major
 
     def _get_flags(self):
         """An opportunity to setup flags, before the services are started."""
@@ -164,6 +170,66 @@ class _FunctionalTestBase(test.TestCase):
                 if expected_end_status:
                     self.assertEqual(expected_end_status, vol_status)
                 return found_volume
+
+            time.sleep(1)
+            retries += 1
+
+    def _poll_group_while(self, group_id, continue_states,
+                          expected_end_status=None, max_retries=30):
+        """Poll (briefly) while the state is in continue_states.
+
+        Continues until the state changes from continue_states or max_retries
+        are hit. If expected_end_status is specified, we assert that the end
+        status of the group is expected_end_status.
+        """
+        retries = 0
+        while retries <= max_retries:
+            try:
+                found_grp = self.api.get_group(group_id)
+            except client.OpenStackApiException404:
+                return None
+            except client.OpenStackApiException:
+                # NOTE(xyang): Got OpenStackApiException(
+                # u'Unexpected status code',) sometimes, but
+                # it works if continue.
+                continue
+
+            self.assertEqual(group_id, found_grp['id'])
+            grp_status = found_grp['status']
+            if grp_status not in continue_states:
+                if expected_end_status:
+                    self.assertEqual(expected_end_status, grp_status)
+                return found_grp
+
+            time.sleep(1)
+            retries += 1
+
+    def _poll_group_snapshot_while(self, group_snapshot_id, continue_states,
+                                   expected_end_status=None, max_retries=30):
+        """Poll (briefly) while the state is in continue_states.
+
+        Continues until the state changes from continue_states or max_retries
+        are hit. If expected_end_status is specified, we assert that the end
+        status of the group_snapshot is expected_end_status.
+        """
+        retries = 0
+        while retries <= max_retries:
+            try:
+                found_grp_snap = self.api.get_group_snapshot(group_snapshot_id)
+            except client.OpenStackApiException404:
+                return None
+            except client.OpenStackApiException:
+                # NOTE(xyang): Got OpenStackApiException(
+                # u'Unexpected status code',) sometimes, but
+                # it works if continue.
+                continue
+
+            self.assertEqual(group_snapshot_id, found_grp_snap['id'])
+            grp_snap_status = found_grp_snap['status']
+            if grp_snap_status not in continue_states:
+                if expected_end_status:
+                    self.assertEqual(expected_end_status, grp_snap_status)
+                return found_grp_snap
 
             time.sleep(1)
             retries += 1

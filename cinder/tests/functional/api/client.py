@@ -63,7 +63,7 @@ class TestOpenStackClient(object):
 
     """
 
-    def __init__(self, auth_user, auth_key, auth_uri):
+    def __init__(self, auth_user, auth_key, auth_uri, api_version=None):
         super(TestOpenStackClient, self).__init__()
         self.auth_result = None
         self.auth_user = auth_user
@@ -71,6 +71,7 @@ class TestOpenStackClient(object):
         self.auth_uri = auth_uri
         # default project_id
         self.project_id = fake.PROJECT_ID
+        self.api_version = api_version
 
     def request(self, url, method='GET', body=None, headers=None,
                 ssl_verify=True, stream=False):
@@ -132,6 +133,9 @@ class TestOpenStackClient(object):
 
         headers = kwargs.setdefault('headers', {})
         headers['X-Auth-Token'] = auth_result['x-auth-token']
+
+        if self.api_version:
+            headers['OpenStack-API-Version'] = 'volume ' + self.api_version
 
         response = self.request(full_uri, **kwargs)
 
@@ -219,3 +223,50 @@ class TestOpenStackClient(object):
             type['extra_specs'] = extra_specs
 
         return self.api_post('/types', type)['volume_type']
+
+    def delete_type(self, type_id):
+        return self.api_delete('/types/%s' % type_id)
+
+    def create_group_type(self, type_name, grp_specs=None):
+        grp_type = {"group_type": {"name": type_name}}
+        if grp_specs:
+            grp_type['group_specs'] = grp_specs
+
+        return self.api_post('/group_types', grp_type)['group_type']
+
+    def delete_group_type(self, group_type_id):
+        return self.api_delete('/group_types/%s' % group_type_id)
+
+    def get_group(self, group_id):
+        return self.api_get('/groups/%s' % group_id)['group']
+
+    def get_groups(self, detail=True):
+        rel_url = '/groups/detail' if detail else '/groups'
+        return self.api_get(rel_url)['groups']
+
+    def post_group(self, group):
+        return self.api_post('/groups', group)['group']
+
+    def post_group_from_src(self, group):
+        return self.api_post('/groups/action', group)['group']
+
+    def delete_group(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
+
+    def put_group(self, group_id, group):
+        return self.api_put('/groups/%s' % group_id, group)['group']
+
+    def get_group_snapshot(self, group_snapshot_id):
+        return self.api_get('/group_snapshots/%s' % group_snapshot_id)[
+            'group_snapshot']
+
+    def get_group_snapshots(self, detail=True):
+        rel_url = '/group_snapshots/detail' if detail else '/group_snapshots'
+        return self.api_get(rel_url)['group_snapshots']
+
+    def post_group_snapshot(self, group_snapshot):
+        return self.api_post('/group_snapshots', group_snapshot)[
+            'group_snapshot']
+
+    def delete_group_snapshot(self, group_snapshot_id):
+        return self.api_delete('/group_snapshots/%s' % group_snapshot_id)

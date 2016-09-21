@@ -74,6 +74,9 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
     def create_cloned_volume(self, volume, src_vol):
         pass
 
+    def create_volume_from_snapshot(self, volume, snapshot):
+        pass
+
     def initialize_connection(self, volume, connector):
         # NOTE(thangp): There are several places in the core cinder code where
         # the volume passed through is a dict and not an oslo_versionedobject.
