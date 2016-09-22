@@ -76,7 +76,7 @@ def qemu_img_info(path, run_as_root=True):
 
 
 def get_qemu_img_version():
-    info = utils.execute('qemu-img', '--help', check_exit_code=False)[0]
+    info = utils.execute('qemu-img', '--version', check_exit_code=False)[0]
     pattern = r"qemu-img version ([0-9\.]*)"
     version = re.match(pattern, info)
     if not version:

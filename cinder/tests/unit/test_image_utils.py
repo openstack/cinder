@@ -79,7 +79,7 @@ class TestQemuImgInfo(test.TestCase):
         expected_version = [2, 0, 0]
         version = image_utils.get_qemu_img_version()
 
-        mock_exec.assert_called_once_with('qemu-img', '--help',
+        mock_exec.assert_called_once_with('qemu-img', '--version',
                                           check_exit_code=False)
         self.assertEqual(expected_version, version)
 
