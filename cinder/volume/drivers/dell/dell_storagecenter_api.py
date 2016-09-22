@@ -1091,20 +1091,26 @@ class StorageCenterApi(object):
     def _autofailback(self, lv):
         # if we have a working replication state.
         ret = False
-        if (lv['ReplicationState'] == 'Up' and
-           lv['failoverState'] == 'AutoFailedOver'):
+        LOG.debug('Attempting autofailback of %s', lv)
+        if (lv and lv['status'] == 'Up' and lv['replicationState'] == 'Up' and
+           lv['failoverState'] == 'Protected' and lv['secondaryStatus'] == 'Up'
+           and lv['primarySwapRoleState'] == 'NotSwapping'):
             ret = self.swap_roles_live_volume(lv)
         return ret
 
-    def _find_volume_primary(self, provider_id):
+    def _find_volume_primary(self, provider_id, name):
         # if there is no live volume then we return our provider_id.
         primary_id = provider_id
-        lv, swapped = self.get_live_volume(provider_id)
-        # if we swapped see if we can autofailback. Unless the admin
-        # failed us over, that is.
-        if swapped and not self.failed_over:
+        lv = self.get_live_volume(provider_id, name)
+        LOG.info(_LI('Volume %(provider)s at primary %(primary)s.'),
+                 {'provider': provider_id, 'primary': primary_id})
+        # If we have a live volume and are swapped and are not failed over
+        # at least give failback a shot.
+        if lv and self.is_swapped(provider_id, lv) and not self.failed_over:
             if self._autofailback(lv):
-                ls, swapped = self.get_live_volume(provider_id)
+                lv = self.get_live_volume(provider_id)
+                LOG.info(_LI('After failback %s'), lv)
+
         if lv:
             primary_id = lv['primaryVolume']['instanceId']
         return primary_id
@@ -1127,7 +1133,7 @@ class StorageCenterApi(object):
         scvolume = None
         if islivevol:
             # Just get the primary from the sc live vol.
-            primary_id = self._find_volume_primary(provider_id)
+            primary_id = self._find_volume_primary(provider_id, name)
             scvolume = self.get_volume(primary_id)
         elif self._use_provider_id(provider_id):
             # just get our volume
@@ -2747,7 +2753,7 @@ class StorageCenterApi(object):
         if replication:
             payload = {}
             payload['DeleteDestinationVolume'] = deletedestvolume
-            payload['RecycleDestinationVolume'] = False
+            payload['RecycleDestinationVolume'] = deletedestvolume
             payload['DeleteRestorePoint'] = True
             r = self.client.delete('StorageCenter/ScReplication/%s' %
                                    self._get_id(replication), payload=payload,
@@ -3067,24 +3073,73 @@ class StorageCenterApi(object):
                                 progress)
         return None, None
 
-    def get_live_volume(self, primaryid):
+    def is_swapped(self, provider_id, sclivevolume):
+        if (sclivevolume.get('primaryVolume') and
+           sclivevolume['primaryVolume']['instanceId'] != provider_id):
+            return True
+        return False
+
+    def is_failed_over(self, provider_id, sclivevolume):
+        # either the secondary is active or the secondary is now our primary.
+        if (sclivevolume.get('secondaryRole') == 'Activated' or
+           self.is_swapped(provider_id, sclivevolume)):
+            return True
+        return False
+
+    def _sc_live_volumes(self, ssn):
+        if ssn:
+            r = self.client.get('StorageCenter/StorageCenter/%s/LiveVolumeList'
+                                % ssn)
+            if self._check_result(r):
+                return self._get_json(r)
+        return []
+
+    def _get_live_volumes(self):
+        # Work around for a FW bug. Instead of grabbing the entire list at
+        # once we have to Trundle through each SC's list.
+        lvs = []
+        pf = self._get_payload_filter()
+        pf.append('connected', True)
+        r = self.client.post('StorageCenter/StorageCenter/GetList',
+                             pf.payload)
+        if self._check_result(r):
+            # Should return [] if nothing there.
+            # Just in case do the or.
+            scs = self._get_json(r) or []
+            for sc in scs:
+                lvs += self._sc_live_volumes(self._get_id(sc))
+        return lvs
+
+    def get_live_volume(self, primaryid, name=None):
         """Get's the live ScLiveVolume object for the vol with primaryid.
 
         :param primaryid: InstanceId of the primary volume.
-        :return: ScLiveVolume object or None, swapped True/False.
+        :parma name: Volume name associated with this live volume.
+        :return: ScLiveVolume object or None
         """
+        sclivevol = None
         if primaryid:
-            r = self.client.get('StorageCenter/ScLiveVolume')
-            if self._check_result(r):
-                lvs = self._get_json(r)
+            # Try from our primary SSN. This would be the authoritay on the
+            # Live Volume in question.
+            lvs = self._sc_live_volumes(primaryid.split('.')[0])
+            # No, grab them all and see if we are on the secondary.
+            if not lvs:
+                lvs = self._get_live_volumes()
+            if lvs:
+                # Look for our primaryid.
                 for lv in lvs:
-                    if (lv.get('primaryVolume') and
-                       lv['primaryVolume']['instanceId'] == primaryid):
-                        return lv, False
-                    if (lv.get('secondaryVolume') and
-                       lv['secondaryVolume']['instanceId'] == primaryid):
-                        return lv, True
-        return None, False
+                    if ((lv.get('primaryVolume') and
+                        lv['primaryVolume']['instanceId'] == primaryid) or
+                        (lv.get('secondaryVolume') and
+                         lv['secondaryVolume']['instanceId'] == primaryid)):
+                        sclivevol = lv
+                        break
+                    # Sometimes the lv object returns without a secondary
+                    # volume. Make sure we find this by name if we have to.
+                    if (name and sclivevol is None and
+                       lv['instanceName'].endswith(name)):
+                        sclivevol = lv
+        return sclivevol
 
     def _get_hbas(self, serverid):
         # Helper to get the hba's of a given server.
@@ -3184,6 +3239,7 @@ class StorageCenterApi(object):
         payload['ConvertToReplication'] = False
         payload['DeleteSecondaryVolume'] = deletesecondaryvolume
         payload['RecycleSecondaryVolume'] = deletesecondaryvolume
+        payload['DeleteRestorePoint'] = deletesecondaryvolume
         r = self.client.delete('StorageCenter/ScLiveVolume/%s' %
                                self._get_id(sclivevolume), payload, True)
         if self._check_result(r):

@@ -362,8 +362,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             ssnstrings = self._split_driver_data(replication_driver_data)
             if ssnstrings:
                 ssn = int(ssnstrings[0])
-                sclivevolume, swapped = api.get_live_volume(
-                    volume.get('provider_id'))
+                sclivevolume = api.get_live_volume(volume.get('provider_id'))
                 # Have we found the live volume?
                 if (sclivevolume and
                    sclivevolume.get('secondaryScSerialNumber') == ssn and
@@ -682,12 +681,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         with self._client.open_connection() as api:
-            storageusage = api.get_storage_usage()
-            if not storageusage:
-                msg = _('Unable to retrieve volume stats.')
-                raise exception.VolumeBackendAPIException(message=msg)
-
-            # all of this is basically static for now
+            # Static stats.
             data = {}
             data['volume_backend_name'] = self.backend_name
             data['vendor_name'] = 'Dell'
@@ -696,12 +690,6 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             data['reserved_percentage'] = 0
             data['consistencygroup_support'] = True
             data['thin_provisioning_support'] = True
-            totalcapacity = storageusage.get('availableSpace')
-            totalcapacitygb = self._bytes_to_gb(totalcapacity)
-            data['total_capacity_gb'] = totalcapacitygb
-            freespace = storageusage.get('freeSpace')
-            freespacegb = self._bytes_to_gb(freespace)
-            data['free_capacity_gb'] = freespacegb
             data['QoS_support'] = False
             data['replication_enabled'] = self.replication_enabled
             if self.replication_enabled:
@@ -714,6 +702,22 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     if target_device_id:
                         replication_targets.append(target_device_id)
                 data['replication_targets'] = replication_targets
+
+            # Get our capacity.
+            storageusage = api.get_storage_usage()
+            if storageusage:
+                # Get actual stats.
+                totalcapacity = storageusage.get('availableSpace')
+                totalcapacitygb = self._bytes_to_gb(totalcapacity)
+                data['total_capacity_gb'] = totalcapacitygb
+                freespace = storageusage.get('freeSpace')
+                freespacegb = self._bytes_to_gb(freespace)
+                data['free_capacity_gb'] = freespacegb
+            else:
+                # Soldier on. Just return 0 for this iteration.
+                LOG.error(_LE('Unable to retrieve volume stats.'))
+                data['total_capacity_gb'] = 0
+                data['free_capacity_gb'] = 0
 
             self._stats = data
             LOG.debug('Total cap %(total)s Free cap %(free)s',
@@ -1390,7 +1394,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :return: model_update dict
         """
         model_update = {}
-        sclivevolume, swapped = api.get_live_volume(provider_id)
+        # We do not search by name. Only failback if we have a complete
+        # LV object.
+        sclivevolume = api.get_live_volume(provider_id)
+        # TODO(tswanson): Check swapped state first.
         if sclivevolume and api.swap_roles_live_volume(sclivevolume):
             LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
             model_update = {
@@ -1489,8 +1496,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
     def _failover_live_volume(self, api, id, provider_id):
         model_update = {}
-        sclivevolume, swapped = api.get_live_volume(provider_id)
+        # Search for volume by id if we have to.
+        sclivevolume = api.get_live_volume(provider_id, id)
         if sclivevolume:
+            swapped = api.is_swapped(provider_id, sclivevolume)
             # If we aren't swapped try it. If fail error out.
             if not swapped and not api.swap_roles_live_volume(sclivevolume):
                 LOG.info(_LI('Failure swapping roles  %s'), id)
@@ -1498,7 +1507,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 return model_update
 
             LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
-            sclivevolume, swapped = api.get_live_volume(provider_id)
+            sclivevolume = api.get_live_volume(provider_id)
             model_update = {
                 'replication_status':
                     fields.ReplicationStatus.FAILED_OVER,
