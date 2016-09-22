@@ -412,9 +412,16 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Gets the connection info for specified account and volume."""
         cluster_info = self._get_cluster_info()
         if self.configuration.sf_svip is None:
-            iscsi_portal = cluster_info['clusterInfo']['svip'] + ':3260'
+            iscsi_portal = cluster_info['clusterInfo']['svip']
         else:
             iscsi_portal = self.configuration.sf_svip
+
+        # NOTE(jdg): some systems get irritated if there's no
+        # port indicated, and we don't enforce it on the config
+        # option so add the default here if it's missing
+        if ':' not in iscsi_portal:
+            iscsi_portal += ':3260'
+
         chap_secret = sfaccount['targetSecret']
 
         found_volume = False
