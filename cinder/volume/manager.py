@@ -4524,7 +4524,7 @@ class _VolumeV3Proxy(object):
     def get_manageable_snapshots(self, ctxt, marker, limit, offset, sort_keys,
                                  sort_dirs):
         return self.manager.get_manageable_snapshots(
-            self, ctxt, marker, limit, offset, sort_keys, sort_dirs)
+            ctxt, marker, limit, offset, sort_keys, sort_dirs)
 
     def get_capabilities(self, context, discover):
         return self.manager.get_capabilities(context, discover)
