@@ -31,8 +31,10 @@ from cinder import test  # For the flags
 from cinder.tests.functional.api import client
 from cinder.tests.unit import fake_constants as fake
 
-
 CONF = cfg.CONF
+VOLUME = 'VOLUME'
+GROUP = 'GROUP'
+GROUP_SNAPSHOT = 'GROUP_SNAPSHOT'
 
 
 def generate_random_alphanumeric(length):
@@ -149,87 +151,57 @@ class _FunctionalTestBase(test.TestCase):
         server['name'] = server_name
         return server
 
-    def _poll_volume_while(self, volume_id, continue_states,
-                           expected_end_status=None, max_retries=5):
+    def _poll_resource_while(self, res_id, continue_states, res_type=VOLUME,
+                             expected_end_status=None, max_retries=5):
         """Poll (briefly) while the state is in continue_states.
 
         Continues until the state changes from continue_states or max_retries
         are hit. If expected_end_status is specified, we assert that the end
-        status of the volume is expected_end_status.
+        status of the resource is expected_end_status.
         """
         retries = 0
         while retries <= max_retries:
             try:
-                found_volume = self.api.get_volume(volume_id)
+                if res_type == VOLUME:
+                    found_res = self.api.get_volume(res_id)
+                elif res_type == GROUP:
+                    found_res = self.api.get_group(res_id)
+                elif res_type == GROUP_SNAPSHOT:
+                    found_res = self.api.get_group_snapshot(res_id)
+                else:
+                    return None
             except client.OpenStackApiException404:
                 return None
+            except client.OpenStackApiException:
+                # NOTE(xyang): Got OpenStackApiException(
+                # u'Unexpected status code',) sometimes, but
+                # it works if continue.
+                continue
 
-            self.assertEqual(volume_id, found_volume['id'])
-            vol_status = found_volume['status']
-            if vol_status not in continue_states:
+            self.assertEqual(res_id, found_res['id'])
+            res_status = found_res['status']
+            if res_status not in continue_states:
                 if expected_end_status:
-                    self.assertEqual(expected_end_status, vol_status)
-                return found_volume
+                    self.assertEqual(expected_end_status, res_status)
+                return found_res
 
             time.sleep(1)
             retries += 1
+
+    def _poll_volume_while(self, volume_id, continue_states,
+                           expected_end_status=None, max_retries=5):
+        return self._poll_resource_while(volume_id, continue_states,
+                                         VOLUME, expected_end_status,
+                                         max_retries)
 
     def _poll_group_while(self, group_id, continue_states,
                           expected_end_status=None, max_retries=30):
-        """Poll (briefly) while the state is in continue_states.
-
-        Continues until the state changes from continue_states or max_retries
-        are hit. If expected_end_status is specified, we assert that the end
-        status of the group is expected_end_status.
-        """
-        retries = 0
-        while retries <= max_retries:
-            try:
-                found_grp = self.api.get_group(group_id)
-            except client.OpenStackApiException404:
-                return None
-            except client.OpenStackApiException:
-                # NOTE(xyang): Got OpenStackApiException(
-                # u'Unexpected status code',) sometimes, but
-                # it works if continue.
-                continue
-
-            self.assertEqual(group_id, found_grp['id'])
-            grp_status = found_grp['status']
-            if grp_status not in continue_states:
-                if expected_end_status:
-                    self.assertEqual(expected_end_status, grp_status)
-                return found_grp
-
-            time.sleep(1)
-            retries += 1
+        return self._poll_resource_while(group_id, continue_states,
+                                         GROUP, expected_end_status,
+                                         max_retries)
 
     def _poll_group_snapshot_while(self, group_snapshot_id, continue_states,
                                    expected_end_status=None, max_retries=30):
-        """Poll (briefly) while the state is in continue_states.
-
-        Continues until the state changes from continue_states or max_retries
-        are hit. If expected_end_status is specified, we assert that the end
-        status of the group_snapshot is expected_end_status.
-        """
-        retries = 0
-        while retries <= max_retries:
-            try:
-                found_grp_snap = self.api.get_group_snapshot(group_snapshot_id)
-            except client.OpenStackApiException404:
-                return None
-            except client.OpenStackApiException:
-                # NOTE(xyang): Got OpenStackApiException(
-                # u'Unexpected status code',) sometimes, but
-                # it works if continue.
-                continue
-
-            self.assertEqual(group_snapshot_id, found_grp_snap['id'])
-            grp_snap_status = found_grp_snap['status']
-            if grp_snap_status not in continue_states:
-                if expected_end_status:
-                    self.assertEqual(expected_end_status, grp_snap_status)
-                return found_grp_snap
-
-            time.sleep(1)
-            retries += 1
+        return self._poll_resource_while(group_snapshot_id, continue_states,
+                                         GROUP_SNAPSHOT, expected_end_status,
+                                         max_retries)
