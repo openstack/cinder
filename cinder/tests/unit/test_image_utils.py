@@ -628,7 +628,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -672,7 +672,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -720,7 +720,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -772,7 +772,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -818,7 +818,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -861,7 +861,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -904,7 +904,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -951,7 +951,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -999,7 +999,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1047,7 +1047,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1112,7 +1112,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1159,18 +1159,6 @@ class TestFetchToVolumeFormat(test.TestCase):
 
 
 class TestXenserverUtils(test.TestCase):
-    @mock.patch('cinder.image.image_utils.is_xenserver_format')
-    def test_is_xenserver_image(self, mock_format):
-        ctxt = mock.sentinel.context
-        image_service = mock.Mock()
-        image_id = mock.sentinel.image_id
-
-        output = image_utils.is_xenserver_image(ctxt, image_service, image_id)
-
-        image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_format.assert_called_once_with(image_service.show.return_value)
-        self.assertEqual(mock_format.return_value, output)
-
     def test_is_xenserver_format(self):
         image_meta1 = {'disk_format': 'vhd', 'container_format': 'ovf'}
         self.assertTrue(image_utils.is_xenserver_format(image_meta1))

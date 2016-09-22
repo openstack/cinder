@@ -293,7 +293,7 @@ def fetch_to_volume_format(context, image_service,
         else:
             fetch(context, image_service, image_id, tmp, user_id, project_id)
 
-        if is_xenserver_image(context, image_service, image_id):
+        if is_xenserver_format(image_meta):
             replace_xenserver_image_with_coalesced_vhd(tmp)
 
         if not qemu_img:
@@ -426,11 +426,6 @@ def check_virtual_size(virtual_size, volume_size, image_id):
         raise exception.ImageUnacceptable(image_id=image_id,
                                           reason=reason)
     return virtual_size
-
-
-def is_xenserver_image(context, image_service, image_id):
-    image_meta = image_service.show(context, image_id)
-    return is_xenserver_format(image_meta)
 
 
 def is_xenserver_format(image_meta):
