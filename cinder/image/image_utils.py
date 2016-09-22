@@ -54,6 +54,9 @@ image_helper_opts = [cfg.StrOpt('image_conversion_dir',
 CONF = cfg.CONF
 CONF.register_opts(image_helper_opts)
 
+QEMU_IMG_LIMITS = processutils.ProcessLimits(
+    cpu_time=2,
+    address_space=1 * units.Gi)
 
 # NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
 # vdi, vmdk, vhd and vhdx disk-formats but glance doesn't support qed
@@ -71,7 +74,8 @@ def qemu_img_info(path, run_as_root=True):
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]
-    out, _err = utils.execute(*cmd, run_as_root=run_as_root)
+    out, _err = utils.execute(*cmd, run_as_root=run_as_root,
+                              prlimit=QEMU_IMG_LIMITS)
     return imageutils.QemuImgInfo(out)
 
 

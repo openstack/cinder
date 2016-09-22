@@ -38,7 +38,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=True)
+                                          'info', test_path, run_as_root=True,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
@@ -51,7 +52,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path, run_as_root=False)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=False)
+                                          'info', test_path, run_as_root=False,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('cinder.image.image_utils.os')
@@ -66,7 +68,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_called_once_with('qemu-img', 'info', test_path,
-                                          run_as_root=True)
+                                          run_as_root=True,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('cinder.utils.execute')
