@@ -16,6 +16,7 @@ import ddt
 import iso8601
 
 import mock
+import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import api_version_request as api_version
@@ -358,3 +359,15 @@ class VolumeApiTest(test.TestCase):
         create.assert_called_once_with(self.controller.volume_api, context,
                                        vol['size'], stubs.DEFAULT_VOL_NAME,
                                        stubs.DEFAULT_VOL_DESCRIPTION, **kwargs)
+
+    @ddt.data({'s': 'ea895e29-8485-4930-bbb8-c5616a309c0e'},
+              ['ea895e29-8485-4930-bbb8-c5616a309c0e'],
+              42)
+    def test_volume_creation_fails_with_invalid_snapshot_type(self, value):
+        snapshot_id = value
+        vol = self._vol_in_request_body(snapshot_id=snapshot_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        # Raise 400 when snapshot has not uuid type.
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
+                          req, body)

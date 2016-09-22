@@ -16,6 +16,7 @@
 import datetime
 import iso8601
 
+import ddt
 import mock
 from oslo_config import cfg
 import webob
@@ -39,6 +40,7 @@ NS = '{http://docs.openstack.org/api/openstack-block-storage/1.0/content}'
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
@@ -855,6 +857,19 @@ class VolumeApiTest(test.TestCase):
             context, sort_dirs=['desc'], viewable_admin_meta=True,
             sort_keys=['created_at'], limit=None, filters={'id': 'd+'},
             marker=None)
+
+    @ddt.data({'s': 'ea895e29-8485-4930-bbb8-c5616a309c0e'},
+              ['ea895e29-8485-4930-bbb8-c5616a309c0e'],
+              42)
+    def test_volume_creation_fails_with_invalid_snapshot_type(self, value):
+        snapshot_id = value
+        vol = {"size": 1,
+               "snapshot_id": snapshot_id}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        # Raise 400 when snapshot has not uuid type.
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
+                          req, body)
 
 
 class VolumesUnprocessableEntityTestCase(test.TestCase):

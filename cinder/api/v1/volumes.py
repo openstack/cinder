@@ -233,6 +233,9 @@ class VolumeController(wsgi.Controller):
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
+            if not uuidutils.is_uuid_like(snapshot_id):
+                msg = _("Snapshot ID must be in UUID form.")
+                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                               snapshot_id)

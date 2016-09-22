@@ -14,6 +14,7 @@
 """The volumes V3 api."""
 
 from oslo_log import log as logging
+from oslo_utils import uuidutils
 from webob import exc
 
 from cinder.api import common
@@ -160,6 +161,9 @@ class VolumeController(volumes_v2.VolumeController):
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
+            if not uuidutils.is_uuid_like(snapshot_id):
+                msg = _("Snapshot ID must be in UUID form.")
+                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                               snapshot_id)

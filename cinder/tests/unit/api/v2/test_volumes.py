@@ -272,6 +272,18 @@ class VolumeApiTest(test.TestCase):
         get_snapshot.assert_called_once_with(self.controller.volume_api,
                                              context, snapshot_id)
 
+    @ddt.data({'s': 'ea895e29-8485-4930-bbb8-c5616a309c0e'},
+              ['ea895e29-8485-4930-bbb8-c5616a309c0e'],
+              42)
+    def test_volume_creation_fails_with_invalid_snapshot_type(self, value):
+        snapshot_id = value
+        vol = self._vol_in_request_body(snapshot_id=snapshot_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 400 when snapshot has not uuid type.
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
+                          req, body)
+
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
                        autospec=True)
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
