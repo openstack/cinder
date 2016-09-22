@@ -1,0 +1,2 @@
+Fixes:
+  - Bug 1562167 - NexentaStor5 NFS missing extend method.
