@@ -551,7 +551,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
         mock_stat.assert_called_once_with(path)
         mock_isblk.assert_called_once_with(mock_stat.return_value.st_mode)
         mock_ischr.assert_called_once_with(mock_stat.return_value.st_mode)
-        self.assertIs(None, output)
+        self.assertIsNone(output)
 
 
 class MonkeyPatchTestCase(test.TestCase):

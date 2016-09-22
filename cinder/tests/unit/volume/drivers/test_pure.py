@@ -2186,7 +2186,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         bad_host = {"name": "bad-host", "iqn": ["wrong-iqn"]}
         self.array.list_hosts.return_value = [bad_host]
         real_result = self.driver._get_host(self.array, ISCSI_CONNECTOR)
-        self.assertIs(None, real_result)
+        self.assertIsNone(real_result)
         self.array.list_hosts.return_value.append(good_host)
         real_result = self.driver._get_host(self.array, ISCSI_CONNECTOR)
         self.assertEqual(good_host, real_result)
@@ -2501,7 +2501,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         bad_host = {"name": "bad-host", "wwn": ["wrong-wwn"]}
         self.array.list_hosts.return_value = [bad_host]
         actual_result = self.driver._get_host(self.array, FC_CONNECTOR)
-        self.assertIs(None, actual_result)
+        self.assertIsNone(actual_result)
         self.array.list_hosts.return_value.append(good_host)
         actual_result = self.driver._get_host(self.array, FC_CONNECTOR)
         self.assertEqual(good_host, actual_result)
