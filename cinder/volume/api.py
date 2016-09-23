@@ -488,6 +488,13 @@ class API(base.Base):
     def get(self, context, volume_id, viewable_admin_meta=False):
         volume = objects.Volume.get_by_id(context, volume_id)
 
+        try:
+            check_policy(context, 'get', volume)
+        except exception.PolicyNotAuthorized:
+            # raise VolumeNotFound to avoid providing info about
+            # the existence of an unauthorized volume id
+            raise exception.VolumeNotFound(volume_id=volume_id)
+
         if viewable_admin_meta:
             ctxt = context.elevated()
             admin_metadata = self.db.volume_admin_metadata_get(ctxt,
@@ -495,12 +502,6 @@ class API(base.Base):
             volume.admin_metadata = admin_metadata
             volume.obj_reset_changes()
 
-        try:
-            check_policy(context, 'get', volume)
-        except exception.PolicyNotAuthorized:
-            # raise VolumeNotFound instead to make sure Cinder behaves
-            # as it used to
-            raise exception.VolumeNotFound(volume_id=volume_id)
         LOG.info(_LI("Volume info retrieved successfully."), resource=volume)
         return volume
 
