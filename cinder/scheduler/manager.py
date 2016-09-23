@@ -411,7 +411,7 @@ class _SchedulerV3Proxy(object):
         # optional keyword argument to positional argument).
         return self.manager.migrate_volume_to_host(
             context, None, volume.id, host, force_host_copy, request_spec,
-            filter_propterties=filter_properties, volume=volume)
+            filter_properties=filter_properties, volume=volume)
 
     def retype(self, context, volume, request_spec, filter_properties=None):
         # NOTE(dulek): Second argument here is `topic` which is unused. We're
