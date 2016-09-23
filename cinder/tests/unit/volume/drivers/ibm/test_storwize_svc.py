@@ -2912,8 +2912,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.driver._helpers.check_fcmapping_interval = 0
-        self.mock_gr_sleep = mock.patch.object(
-            storwize_svc_common.StorwizeSVCCommonDriver, "DEFAULT_GR_SLEEP", 0)
+        self.mock_object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                         'DEFAULT_GR_SLEEP', 0)
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:
