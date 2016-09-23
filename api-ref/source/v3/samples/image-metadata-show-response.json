@@ -1,0 +1,33 @@
+{
+    "volume": {
+        "status": "creating",
+        "user_id": "eae1472b5fc5496998a3d06550929e7e",
+        "attachments": [],
+        "links": [
+            {
+                "href": "http://10.0.2.15:8776/v3/87c8522052ca4eed98bc672b4c1a3ddb/volumes/23cf872b-c781-4cd4-847d-5f2ec8cbd91c",
+                "rel": "self"
+            },
+            {
+                "href": "http://10.0.2.15:8776/87c8522052ca4eed98bc672b4c1a3ddb/volumes/23cf872b-c781-4cd4-847d-5f2ec8cbd91c",
+                "rel": "bookmark"
+            }
+        ],
+        "availability_zone": "az2",
+        "bootable": "false",
+        "encrypted": "false",
+        "created_at": "2014-07-18T00:12:54.000000",
+        "description": "Volume imported from existingLV",
+        "os-vol-tenant-attr:tenant_id": "87c8522052ca4eed98bc672b4c1a3ddb",
+        "volume_type": null,
+        "name": "New Volume",
+        "source_volid": null,
+        "snapshot_id": null,
+        "metadata": {
+            "key2": "value2",
+            "key1": "value1"
+        },
+        "id": "23cf872b-c781-4cd4-847d-5f2ec8cbd91c",
+        "size": 0
+    }
+}

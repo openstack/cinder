@@ -1,8 +1,8 @@
 :tocdepth: 2
 
-====================
-Block Storage API V2
-====================
+================================
+Block Storage API V2 (SUPPORTED)
+================================
 
 .. rest_expand_all::
 

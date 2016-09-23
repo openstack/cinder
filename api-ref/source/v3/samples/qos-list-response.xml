@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<qos_specs>
+    <qos_spec consumer="back-end"
+        id="0388d6c6-d5d4-42a3-b289-95205c50dd15"
+        name="reliability-spec">
+        <specs>
+            <availability>100</availability>
+            <numberOfFailures>0</numberOfFailures>
+        </specs>
+    </qos_spec>
+    <qos_spec consumer="back-end"
+        id="ecfc6e2e-7117-44a4-8eec-f84d04f531a8"
+        name="performance-spec">
+        <specs>
+            <delay>0</delay>
+            <throughput>100</throughput>
+        </specs>
+    </qos_spec>
+</qos_specs>

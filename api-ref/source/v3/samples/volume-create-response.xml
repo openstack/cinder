@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<volume xmlns:atom="http://www.w3.org/2005/Atom"
+    xmlns="http://docs.openstack.org/volume/api/v1" status="creating"
+    name="vol-001" availability_zone="nova" bootable="false"
+    created_at="2014-02-21 20:18:33.122452"
+    description="Another volume." volume_type="None"
+    snapshot_id="None" source_volid="None"
+    id="83960a54-8dad-4fd8-bc41-33c71e098e04" size="2">
+    <attachments/>
+    <metadata/>
+</volume>

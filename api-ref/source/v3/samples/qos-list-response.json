@@ -1,0 +1,22 @@
+{
+    "qos_specs": [
+        {
+            "specs": {
+                "availability": "100",
+                "numberOfFailures": "0"
+            },
+            "consumer": "back-end",
+            "name": "reliability-spec",
+            "id": "0388d6c6-d5d4-42a3-b289-95205c50dd15"
+        },
+        {
+            "specs": {
+                "delay": "0",
+                "throughput": "100"
+            },
+            "consumer": "back-end",
+            "name": "performance-spec",
+            "id": "ecfc6e2e-7117-44a4-8eec-f84d04f531a8"
+        }
+    ]
+}

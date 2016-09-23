@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qos_specs>
+    <qos_spec consumer="back-end" id="e1f84cf3-6b1e-4f25-8130-3244f69ec7c1" name="performance-spec">
+        <specs>
+            <delay>0</delay>
+            <throughput>100</throughput>
+        </specs>
+    </qos_spec>
+</qos_specs>
