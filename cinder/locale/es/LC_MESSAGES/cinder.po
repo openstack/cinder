@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev43\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-14 04:25+0000\n"
+"POT-Creation-Date: 2016-09-23 04:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3623,11 +3623,6 @@ msgstr "No se ha podido obtener información de réplica."
 
 msgid "Failed to get show fcns database info."
 msgstr "No se ha podido obtener información de base de datos fcns."
-
-msgid "Failed to get size of existing volume: %(vol). Volume Manage failed."
-msgstr ""
-"No se ha podido obtener el tamaño del volumen existente: %(vol). Ha fallafo "
-"la acción de gestionar volumen."
 
 #, python-format
 msgid "Failed to get size of volume %s"
@@ -8012,9 +8007,6 @@ msgstr "No se puede renombrar el volumen %(existing)s a %(newname)s"
 #, python-format
 msgid "Unable to retrieve snapshot group with id of %s."
 msgstr "No se ha podido recuperar el grupo de instantáneas con el id %s."
-
-msgid "Unable to retrieve volume stats."
-msgstr "No e ha podido recuperar las estadísticas del volumen. "
 
 #, python-format
 msgid ""
