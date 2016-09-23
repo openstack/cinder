@@ -713,7 +713,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                 size = int(math.ceil(float(
                     utils.get_file_size(local_vol_path)) / units.Gi))
         except (OSError, ValueError):
-            err_msg = (_("Failed to get size of existing volume: %(vol). "
+            err_msg = (_("Failed to get size of existing volume: %(vol)s. "
                          "Volume Manage failed."), {'vol': existing_vol_name})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
