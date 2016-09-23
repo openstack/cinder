@@ -1608,7 +1608,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         host = mock.sentinel.host
         vops.get_host.return_value = host
 
-        volume = {'name': 'vol-1', 'id': 1}
+        volume = self._create_volume_dict()
         conn_info = self._driver.initialize_connection(volume, connector)
 
         relocate_backing.assert_called_once_with(volume, backing, host)
@@ -1635,7 +1635,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         backing = mock.Mock(value=mock.sentinel.backing_value)
         create_backing.return_value = backing
 
-        volume = {'name': 'vol-1', 'id': 1}
+        volume = self._create_volume_dict()
         conn_info = self._driver.initialize_connection(volume, connector)
 
         create_backing.assert_called_once_with(volume, host)
@@ -1643,8 +1643,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         self.assertEqual('vmdk', conn_info['driver_volume_type'])
         self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
+        self.assertEqual(volume['id'], conn_info['data']['volume_id'])
+        self.assertEqual(volume['name'], conn_info['data']['name'])
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_relocate_backing')

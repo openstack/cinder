@@ -536,9 +536,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 # Create backing
                 backing = self._create_backing(volume)
 
-        # Set volume's moref value and name
+        # Set volume ID and backing moref value and name.
         connection_info['data'] = {'volume': backing.value,
-                                   'volume_id': volume['id']}
+                                   'volume_id': volume['id'],
+                                   'name': volume['name']}
 
         LOG.info(_LI("Returning connection_info: %(info)s for volume: "
                      "%(volume)s with connector: %(connector)s."),
