@@ -247,6 +247,7 @@ class CohoDriverTest(test.TestCase):
             [mock.call(ADDR, self.configuration.coho_rpc_port),
              mock.call().create_volume_from_snapshot(
                 SNAPSHOT['name'], os.path.join(PATH, VOLUME['name'])),
+             mock.call(ADDR, self.configuration.coho_rpc_port),
              mock.call().set_qos_policy(os.path.join(PATH, VOLUME['name']),
                                         QOS)])
 
@@ -412,7 +413,6 @@ class CohoDriverTest(test.TestCase):
              mock.call().unpack_uint()])
         mock_socket.assert_has_calls(
             [mock.call(socket.AF_INET, socket.SOCK_STREAM),
-             mock.call().bind(('', 0)),
              mock.call().connect((ADDR, RPC_PORT))])
         mock_init_call.assert_has_calls(
             [mock.call(coho.COHO1_CREATE_VOLUME_FROM_SNAPSHOT,
@@ -464,7 +464,6 @@ class CohoDriverTest(test.TestCase):
         self.assertTrue(mock_recvrecord.called)
         mock_socket.assert_has_calls(
             [mock.call(socket.AF_INET, socket.SOCK_STREAM),
-             mock.call().bind(('', 0)),
              mock.call().connect((ADDR, RPC_PORT))])
 
     def test_rpc_client_error_in_receive_fragment(self):
@@ -481,7 +480,6 @@ class CohoDriverTest(test.TestCase):
         self.assertTrue(mock_sendrcd.called)
         mock_socket.assert_has_calls(
             [mock.call(socket.AF_INET, socket.SOCK_STREAM),
-             mock.call().bind(('', 0)),
              mock.call().connect((ADDR, RPC_PORT)),
              mock.call().recv(4)])
 
