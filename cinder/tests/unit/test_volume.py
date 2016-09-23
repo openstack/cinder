@@ -5034,8 +5034,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         self.expected_status = 'error'
 
         with mock.patch.object(self.volume.driver, 'migrate_volume'), \
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume') as \
-                mock_create_volume, \
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'create_volume') as mock_create_volume, \
                 mock.patch.object(self.volume, '_clean_temporary_volume') as \
                 clean_temporary_volume:
 
@@ -5062,8 +5062,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         CONF.set_override("migration_create_volume_timeout_secs", 2)
 
         with mock.patch.object(self.volume.driver, 'migrate_volume'), \
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume') as \
-                mock_create_volume, \
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'create_volume') as mock_create_volume, \
                 mock.patch.object(self.volume, '_clean_temporary_volume') as \
                 clean_temporary_volume, \
                 mock.patch.object(time, 'sleep'):
@@ -5199,10 +5199,10 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                                                migration_status=target_status)
         with mock.patch.object(self.volume, 'detach_volume') as \
                 mock_detach_volume,\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume') as \
-                mock_delete_volume, \
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'attach_volume') as \
-                mock_attach_volume,\
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'delete_volume') as mock_delete_volume,\
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'attach_volume') as mock_attach_volume,\
                 mock.patch.object(volume_rpcapi.VolumeAPI,
                                   'update_migrated_volume'),\
                 mock.patch.object(self.volume.driver, 'attach_volume'):
