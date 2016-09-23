@@ -32,17 +32,12 @@ class CinderTempestPlugin(plugins.TempestPlugin):
 
     def register_opts(self, conf):
         config.register_opt_group(
-            conf, project_config.service_available_group,
-            project_config.ServiceAvailableGroup)
-        config.register_opt_group(
-            conf, project_config.cinder_group,
-            project_config.CinderGroup
+            conf, config.volume_feature_group,
+            project_config.cinder_option
         )
 
     def get_opt_lists(self):
         return [
-            (project_config.service_available_group.name,
-             project_config.ServiceAvailableGroup),
-            (project_config.cinder_group.name,
-             project_config.CinderGroup),
+            (config.volume_feature_group.name,
+             project_config.cinder_option),
         ]
