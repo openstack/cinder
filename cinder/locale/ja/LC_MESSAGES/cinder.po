@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev57\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev58\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-23 20:20+0000\n"
+"POT-Creation-Date: 2016-09-24 22:20+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-23 02:00+0000\n"
+"PO-Revision-Date: 2016-09-24 11:46+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -2967,6 +2967,10 @@ msgstr ""
 "%(rc)lu。  エラー: %(error)s。"
 
 #, python-format
+msgid "Error adding volume %(vol)s to %(sg)s. %(error)s."
+msgstr " %(sg)s へのボリューム %(vol)s の追加エラー。%(error)s。"
+
+#, python-format
 msgid "Error adding volume to composite volume. Error is: %(error)s."
 msgstr "複合ボリュームへのボリュームの追加エラー。エラー: %(error)s。"
 
@@ -3225,6 +3229,10 @@ msgstr "グループ %s を更新中にエラーが発生しました。"
 msgid "Error promoting secondary volume to primary"
 msgstr ""
 "2 次ボリュームの 1 次ボリュームへのプロモート中にエラーが発生しました。"
+
+#, python-format
+msgid "Error removing volume %(vol)s from %(sg)s. %(error)s."
+msgstr "%(sg)s からのボリューム %(vol)s の削除エラー。%(error)s。"
 
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
@@ -4305,6 +4313,16 @@ msgid ""
 msgstr ""
 "変更されたサイズ %(size)s が浮動小数点数ではなかったため、既存ボリューム "
 "%(name)s の管理に失敗しました。"
+
+#, python-format
+msgid ""
+"Failed to manage existing volume because the pool %(pool)s of the volume "
+"type chosen does not match the file system %(fs_label)s passed in the volume "
+"reference."
+msgstr ""
+"選択されたボリューム種別のプール %(pool)s が、ボリューム参照で渡されたファイ"
+"ルシステム %(fs_label)s と一致しないため、既存のボリュームの管理に失敗しまし"
+"た。"
 
 #, python-format
 msgid ""
