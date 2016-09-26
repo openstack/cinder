@@ -3938,6 +3938,34 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                          volumes_model_update)
 
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'find_group_sync_rg_by_target',
+        return_value="")
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_consistency_group',
+        return_value=(None, EMCVMAXCommonData.test_CG))
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_create_consistencygroup_from_source_cg(
+            self, _mock_volume_type, _mock_storage, _mock_cg, _mock_rg):
+        volumes = [self.data.test_source_volume]
+        model_update, volumes_model_update = (
+            self.driver.create_consistencygroup_from_src(
+                self.data.test_ctxt, self.data.test_CG, volumes,
+                source_cg=self.data.test_CG, source_vols=volumes))
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+                         model_update)
+        self.assertEqual([{'status': 'available', 'id': '2'}],
+                         volumes_model_update)
+
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_update_pool_stats',
         return_value={1, 2, 3, 4, 5})
