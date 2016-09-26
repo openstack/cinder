@@ -1,0 +1,5 @@
+---
+upgrade:
+  - The GlusterFS volume driver, which was deprecated
+    in the Newton release, has been removed.
+

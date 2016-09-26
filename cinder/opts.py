@@ -92,7 +92,6 @@ from cinder.volume.drivers.fujitsu import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternusdxcommon
 from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
-from cinder.volume.drivers import glusterfs as cinder_volume_drivers_glusterfs
 from cinder.volume.drivers import hgst as cinder_volume_drivers_hgst
 from cinder.volume.drivers.hitachi import hbsd_common as \
     cinder_volume_drivers_hitachi_hbsdcommon
@@ -274,7 +273,6 @@ def list_opts():
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
-                cinder_volume_drivers_glusterfs.volume_opts,
                 cinder_volume_drivers_hgst.hgst_opts,
                 cinder_volume_drivers_hitachi_hbsdcommon.volume_opts,
                 cinder_volume_drivers_hitachi_hbsdfc.volume_opts,
