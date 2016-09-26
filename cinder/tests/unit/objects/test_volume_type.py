@@ -17,6 +17,7 @@ from oslo_utils import timeutils
 import pytz
 import six
 
+from cinder.db.sqlalchemy import models
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
@@ -28,6 +29,26 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
     def test_get_by_id(self, volume_type_get):
         db_volume_type = fake_volume.fake_db_volume_type()
+        volume_type_get.return_value = db_volume_type
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   fake.VOLUME_TYPE_ID)
+        self._compare(self, db_volume_type, volume_type)
+
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    def test_get_by_id_with_projects(self, volume_type_get):
+        projects = [models.VolumeTypeProjects(project_id=fake.PROJECT_ID),
+                    models.VolumeTypeProjects(project_id=fake.PROJECT2_ID)]
+        db_volume_type = fake_volume.fake_db_volume_type(projects=projects)
+        volume_type_get.return_value = db_volume_type
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   fake.VOLUME_TYPE_ID)
+        db_volume_type['projects'] = [p.project_id for p in projects]
+        self._compare(self, db_volume_type, volume_type)
+
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    def test_get_by_id_with_string_projects(self, volume_type_get):
+        projects = [fake.PROJECT_ID, fake.PROJECT2_ID]
+        db_volume_type = fake_volume.fake_db_volume_type(projects=projects)
         volume_type_get.return_value = db_volume_type
         volume_type = objects.VolumeType.get_by_id(self.context,
                                                    fake.VOLUME_TYPE_ID)

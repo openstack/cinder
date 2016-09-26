@@ -51,7 +51,7 @@ def fake_db_get_vol_type(vol_type_number=1):
             'description': 'desc',
             'deleted': False,
             'is_public': True,
-            'projects': None,
+            'projects': [],
             'extra_specs': None}
 
 

@@ -14,6 +14,7 @@
 
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
+import six
 
 from cinder import db
 from cinder import exception
@@ -84,7 +85,13 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
             elif specs and isinstance(specs, dict):
                 type.extra_specs = specs
         if 'projects' in expected_attrs:
-            type.projects = db_type.get('projects', [])
+            # NOTE(geguileo): Until projects stops being a polymorphic value we
+            # have to do a conversion here for VolumeTypeProjects ORM instance
+            # lists.
+            projects = db_type.get('projects', [])
+            if projects and not isinstance(projects[0], six.string_types):
+                projects = [p.project_id for p in projects]
+            type.projects = projects
         if 'qos_specs' in expected_attrs:
             qos_specs = objects.QualityOfServiceSpecs(context)
             qos_specs._from_db_object(context, qos_specs, db_type['qos_specs'])
