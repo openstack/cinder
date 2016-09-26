@@ -23,16 +23,20 @@ from cinder.volume import configuration as conf
 
 class BrickLvmTestCase(test.TestCase):
     def setUp(self):
-        self.configuration = mock.Mock(conf.Configuration)
+        if not hasattr(self, 'configuration'):
+            self.configuration = mock.Mock(conf.Configuration)
+            self.configuration.lvm_suppress_fd_warnings = False
         self.configuration.volume_group_name = 'fake-vg'
         super(BrickLvmTestCase, self).setUp()
 
         self.mock_object(processutils, 'execute', self.fake_execute)
-        self.vg = brick.LVM(self.configuration.volume_group_name,
-                            'sudo',
-                            False, None,
-                            'default',
-                            self.fake_execute)
+        self.vg = brick.LVM(
+            self.configuration.volume_group_name,
+            'sudo',
+            False, None,
+            'default',
+            self.fake_execute,
+            suppress_fd_warn=self.configuration.lvm_suppress_fd_warnings)
 
     def failed_fake_execute(obj, *cmd, **kwargs):
         return ("\n", "fake-error")
@@ -48,24 +52,28 @@ class BrickLvmTestCase(test.TestCase):
         return ("  LVM version:     2.02.100(2)-RHEL6 (2013-09-12)\n", "")
 
     def fake_execute(obj, *cmd, **kwargs):  # noqa
+        if obj.configuration.lvm_suppress_fd_warnings:
+            _lvm_prefix = 'env, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=1, '
+        else:
+            _lvm_prefix = 'env, LC_ALL=C, '
+
         cmd_string = ', '.join(cmd)
         data = "\n"
-
-        if ('env, LC_ALL=C, vgs, --noheadings, --unit=g, -o, name' ==
+        if (_lvm_prefix + 'vgs, --noheadings, --unit=g, -o, name' ==
                 cmd_string):
             data = "  fake-vg\n"
             data += "  some-other-vg\n"
-        elif ('env, LC_ALL=C, vgs, --noheadings, -o, name, fake-vg' ==
+        elif (_lvm_prefix + 'vgs, --noheadings, -o, name, fake-vg' ==
                 cmd_string):
             data = "  fake-vg\n"
-        elif 'env, LC_ALL=C, vgs, --version' in cmd_string:
+        elif _lvm_prefix + 'vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
-        elif ('env, LC_ALL=C, vgs, --noheadings, -o, uuid, fake-vg' in
-              cmd_string):
+        elif(_lvm_prefix + 'vgs, --noheadings, -o, uuid, fake-vg' in
+             cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
-        elif 'env, LC_ALL=C, vgs, --noheadings, --unit=g, ' \
-             '-o, name,size,free,lv_count,uuid, ' \
-             '--separator, :, --nosuffix' in cmd_string:
+        elif(_lvm_prefix + 'vgs, --noheadings, --unit=g, '
+             '-o, name,size,free,lv_count,uuid, '
+             '--separator, :, --nosuffix' in cmd_string):
             data = ("  test-prov-cap-vg-unit:10.00:10.00:0:"
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z4\n")
             if 'test-prov-cap-vg-unit' in cmd_string:
@@ -82,17 +90,17 @@ class BrickLvmTestCase(test.TestCase):
                     "lWyauW-dKpG-Rz7E-xtKY-jeju-QsYU-SLG7Z2\n"
             data += "  fake-vg-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
-        elif ('env, LC_ALL=C, lvs, --noheadings, '
+        elif (_lvm_prefix + 'lvs, --noheadings, '
               '--unit=g, -o, vg_name,name,size, --nosuffix, '
               'fake-vg/lv-nothere' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="One or more specified logical volume(s) not found.")
-        elif ('env, LC_ALL=C, lvs, --noheadings, '
+        elif (_lvm_prefix + 'lvs, --noheadings, '
               '--unit=g, -o, vg_name,name,size, --nosuffix, '
               'fake-vg/lv-newerror' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="Failed to find logical volume \"fake-vg/lv-newerror\"")
-        elif ('env, LC_ALL=C, lvs, --noheadings, '
+        elif (_lvm_prefix + 'lvs, --noheadings, '
               '--unit=g, -o, vg_name,name,size' in cmd_string):
             if 'fake-unknown' in cmd_string:
                 raise processutils.ProcessExecutionError(
@@ -111,7 +119,7 @@ class BrickLvmTestCase(test.TestCase):
             else:
                 data = "  fake-vg fake-1 1.00g\n"
                 data += "  fake-vg fake-2 1.00g\n"
-        elif ('env, LC_ALL=C, lvdisplay, --noheading, -C, -o, Attr' in
+        elif (_lvm_prefix + 'lvdisplay, --noheading, -C, -o, Attr' in
               cmd_string):
             if 'test-volumes' in cmd_string:
                 data = '  wi-a-'
@@ -121,19 +129,19 @@ class BrickLvmTestCase(test.TestCase):
                 data = '  -wi-ao---'
             else:
                 data = '  owi-a-'
-        elif ('env, LC_ALL=C, lvdisplay, --noheading, -C, -o, Origin' in
+        elif (_lvm_prefix + 'lvdisplay, --noheading, -C, -o, Origin' in
               cmd_string):
             if 'snapshot' in cmd_string:
                 data = '  fake-volume-1'
             else:
                 data = '       '
-        elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string:
+        elif _lvm_prefix + 'pvs, --noheadings' in cmd_string:
             data = "  fake-vg|/dev/sda|10.00|1.00\n"
             data += "  fake-vg|/dev/sdb|10.00|1.00\n"
             data += "  fake-vg|/dev/sdc|10.00|8.99\n"
             data += "  fake-vg-2|/dev/sdd|10.00|9.99\n"
-        elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g' \
-             ', -o, size,data_percent, --separator, :' in cmd_string:
+        elif _lvm_prefix + 'lvs, --noheadings, --unit=g' \
+                ', -o, size,data_percent, --separator, :' in cmd_string:
             if 'test-prov-cap-pool' in cmd_string:
                 data = "  9.5:20\n"
             else:
@@ -389,3 +397,10 @@ class BrickLvmTestCase(test.TestCase):
             self.vg.create_volume('test', '1G')
             self.assertRaises(exception.VolumeNotDeactivated,
                               self.vg.deactivate_lv, 'test')
+
+
+class BrickLvmTestCaseIgnoreFDWarnings(BrickLvmTestCase):
+    def setUp(self):
+        self.configuration = mock.Mock(conf.Configuration)
+        self.configuration.lvm_suppress_fd_warnings = True
+        super(BrickLvmTestCaseIgnoreFDWarnings, self).setUp()

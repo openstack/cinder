@@ -69,7 +69,11 @@ volume_opts = [
                  help='max_over_subscription_ratio setting for the LVM '
                       'driver.  If set, this takes precedence over the '
                       'general max_over_subscription_ratio option.  If '
-                      'None, the general option is used.')
+                      'None, the general option is used.'),
+    cfg.BoolOpt('lvm_suppress_fd_warnings',
+                default=False,
+                help='Suppress leaked file descriptor warnings in LVM '
+                     'commands.')
 ]
 
 CONF = cfg.CONF
@@ -287,11 +291,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 lvm_conf_file = None
 
             try:
-                self.vg = lvm.LVM(self.configuration.volume_group,
-                                  root_helper,
-                                  lvm_type=self.configuration.lvm_type,
-                                  executor=self._execute,
-                                  lvm_conf=lvm_conf_file)
+                self.vg = lvm.LVM(
+                    self.configuration.volume_group,
+                    root_helper,
+                    lvm_type=self.configuration.lvm_type,
+                    executor=self._execute,
+                    lvm_conf=lvm_conf_file,
+                    suppress_fd_warn=(
+                        self.configuration.lvm_suppress_fd_warnings))
 
             except exception.VolumeGroupNotFound:
                 message = (_("Volume Group %s does not exist") %
