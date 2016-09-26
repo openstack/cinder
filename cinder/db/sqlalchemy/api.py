@@ -2991,8 +2991,8 @@ def _volume_type_get_query(context, session=None, read_deleted='no',
                         read_deleted=read_deleted).\
         options(joinedload('extra_specs'))
 
-    if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+    for expected in expected_fields:
+        query = query.options(joinedload(expected))
 
     if not context.is_admin:
         the_filter = [models.VolumeTypes.is_public == true()]
@@ -3353,6 +3353,9 @@ def _volume_type_get(context, id, session=None, inactive=False,
 
     if 'projects' in expected_fields:
         vtype['projects'] = [p['project_id'] for p in result['projects']]
+
+    if 'qos_specs' in expected_fields:
+        vtype['qos_specs'] = result.qos_specs
 
     return vtype
 
