@@ -482,9 +482,6 @@ def check_timeutils_isotime(logical_line):
 def no_test_log(logical_line, filename, noqa):
     if "cinder/tests" not in filename or noqa:
         return
-    # Skip the "integrated" tests for now
-    if "cinder/tests/unit/integrated" in filename:
-        return
     msg = "C309: Unit tests should not perform logging."
     if logging_instance.match(logical_line):
         yield (0, msg)
