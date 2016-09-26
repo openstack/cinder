@@ -96,59 +96,68 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
 
         with self._client.open_connection() as api:
             try:
-                # Find our server.
-                scserver = api.find_server(initiator_name)
-                # No? Create it.
-                if scserver is None:
-                    scserver = api.create_server(
-                        [initiator_name], self.configuration.dell_server_os)
-                # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name, provider_id)
+                # Find the volume on the storage center. Note that if this
+                # is live volume and we are swapped this will be the back
+                # half of the live volume.
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
+                if scvolume:
+                    # Get the SSN it is on.
+                    ssn = scvolume['instanceId'].split('.')[0]
+                    # Find our server.
+                    scserver = api.find_server(initiator_name, ssn)
+                    # No? Create it.
+                    if scserver is None:
+                        scserver = api.create_server(
+                            [initiator_name],
+                            self.configuration.dell_server_os, ssn)
 
-                # if we have a server and a volume lets bring them together.
-                if scserver is not None and scvolume is not None:
-                    mapping = api.map_volume(scvolume, scserver)
-                    if mapping is not None:
-                        # Since we just mapped our volume we had best update
-                        # our sc volume object.
-                        scvolume = api.get_volume(provider_id)
-                        # Our return.
-                        iscsiprops = {}
+                    # if we have a server and a volume lets bring them
+                    # together.
+                    if scserver is not None:
+                        mapping = api.map_volume(scvolume, scserver)
+                        if mapping is not None:
+                            # Since we just mapped our volume we had best
+                            # update our sc volume object.
+                            scvolume = api.get_volume(scvolume['instanceId'])
+                            # Our return.
+                            iscsiprops = {}
 
-                        # Three cases that should all be satisfied with the
-                        # same return of Target_Portal and Target_Portals.
-                        # 1. Nova is calling us so we need to return the
-                        #    Target_Portal stuff.  It should ignore the
-                        #    Target_Portals stuff.
-                        # 2. OS brick is calling us in multipath mode so we
-                        #    want to return Target_Portals.  It will ignore
-                        #    the Target_Portal stuff.
-                        # 3. OS brick is calling us in single path mode so
-                        #    we want to return Target_Portal and
-                        #    Target_Portals as alternates.
-                        iscsiprops = api.find_iscsi_properties(scvolume)
+                            # Three cases that should all be satisfied with the
+                            # same return of Target_Portal and Target_Portals.
+                            # 1. Nova is calling us so we need to return the
+                            #    Target_Portal stuff.  It should ignore the
+                            #    Target_Portals stuff.
+                            # 2. OS brick is calling us in multipath mode so we
+                            #    want to return Target_Portals.  It will ignore
+                            #    the Target_Portal stuff.
+                            # 3. OS brick is calling us in single path mode so
+                            #    we want to return Target_Portal and
+                            #    Target_Portals as alternates.
+                            iscsiprops = api.find_iscsi_properties(scvolume)
 
-                        # If this is a live volume we need to map up our
-                        # secondary volume.
-                        if islivevol:
-                            sclivevolume, swapped = api.get_live_volume(
-                                provider_id)
-                            # Only map if we are not swapped.
-                            if sclivevolume and not swapped:
-                                secondaryprops = self.initialize_secondary(
-                                    api, sclivevolume, initiator_name)
-                                # Combine with iscsiprops
-                                iscsiprops['target_iqns'] += (
-                                    secondaryprops['target_iqns'])
-                                iscsiprops['target_portals'] += (
-                                    secondaryprops['target_portals'])
-                                iscsiprops['target_luns'] += (
-                                    secondaryprops['target_luns'])
+                            # If this is a live volume we need to map up our
+                            # secondary volume. Note that if we have failed
+                            # over we do not wish to do this.
+                            if islivevol:
+                                sclivevolume = api.get_live_volume(provider_id)
+                                # Only map if we are not failed over.
+                                if (sclivevolume and not
+                                    api.is_failed_over(provider_id,
+                                                       sclivevolume)):
+                                    secondaryprops = self.initialize_secondary(
+                                        api, sclivevolume, initiator_name)
+                                    # Combine with iscsiprops
+                                    iscsiprops['target_iqns'] += (
+                                        secondaryprops['target_iqns'])
+                                    iscsiprops['target_portals'] += (
+                                        secondaryprops['target_portals'])
+                                    iscsiprops['target_luns'] += (
+                                        secondaryprops['target_luns'])
 
-                        # Return our iscsi properties.
-                        iscsiprops['discard'] = True
-                        return {'driver_volume_type': 'iscsi',
-                                'data': iscsiprops}
+                            # Return our iscsi properties.
+                            iscsiprops['discard'] = True
+                            return {'driver_volume_type': 'iscsi',
+                                    'data': iscsiprops}
             # Re-raise any backend exception.
             except exception.VolumeBackendAPIException:
                 with excutils.save_and_reraise_exception():
@@ -214,23 +223,31 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                    'initiator': initiator_name})
         with self._client.open_connection() as api:
             try:
-                scserver = api.find_server(initiator_name)
-                # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name, provider_id)
+                # Find the volume on the storage center. Note that if this
+                # is live volume and we are swapped this will be the back
+                # half of the live volume.
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
+                if scvolume:
+                    # Get the SSN it is on.
+                    ssn = scvolume['instanceId'].split('.')[0]
+                    # Find our server.
+                    scserver = api.find_server(initiator_name, ssn)
 
-                # Unmap our secondary if it isn't swapped.
-                if islivevol:
-                    sclivevolume, swapped = api.get_live_volume(provider_id)
-                    if sclivevolume and not swapped:
-                        self.terminate_secondary(api, sclivevolume,
-                                                 initiator_name)
+                    # Unmap our secondary if not failed over..
+                    if islivevol:
+                        sclivevolume = api.get_live_volume(provider_id)
+                        if (sclivevolume and not
+                            api.is_failed_over(provider_id,
+                                               sclivevolume)):
+                            self.terminate_secondary(api, sclivevolume,
+                                                     initiator_name)
 
-                # If we have a server and a volume lets pull them apart.
-                if (scserver is not None and
-                        scvolume is not None and
-                        api.unmap_volume(scvolume, scserver) is True):
-                    LOG.debug('Connection terminated')
-                    return
+                    # If we have a server and a volume lets pull them apart.
+                    if (scserver is not None and
+                            scvolume is not None and
+                            api.unmap_volume(scvolume, scserver) is True):
+                        LOG.debug('Connection terminated')
+                        return
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to terminate connection '
