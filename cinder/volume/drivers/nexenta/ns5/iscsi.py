@@ -73,6 +73,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.iscsi_target_portal_port = (
             self.configuration.nexenta_iscsi_target_portal_port)
 
+        self.deleted_volumes = set()
+
     @property
     def backend_name(self):
         backend_name = None
@@ -213,11 +215,56 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         self.nef.post(url, data)
 
+    def _should_destroy_later(self, e):
+        return 'Failed to destroy snapshot' in e.args[0] or (
+            'must be destroyed first' in e.args[0])
+
+    def _collect_garbage(self, name):
+        pool = self.storage_pool
+        group = self.volume_group
+        # clear name of pool and volume group if exists
+        name = name.split('/{}/'.format(group))[-1]
+        if name and name in self.deleted_volumes:
+            if '@' in name: #  it's a snapshot:
+                parent, snap = name.split('@')
+                url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
+                       'volumes/%(volume)s/snapshots/%(snap)s') % {
+                    'pool': pool,
+                    'group': group,
+                    'volume': parent,
+                    'snap': snap
+                }
+                try:
+                    self.nef.delete(url)
+                except exception.NexentaException as exc:
+                    LOG.debug(_('Error occured while trying to delete a '
+                              'snapshot: {}').format(exc))
+                    return
+            else:
+                url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
+                       '/volumes/%(name)s') % {
+                    'pool': pool,
+                    'group': group,
+                    'name': name
+                }
+                field = 'originalSnapshot'
+                parent = self.nef.get('{}?fields={}'.format(
+                    url, field)).get(field)
+                try:
+                    self.nef.delete(url)
+                except exception.NexentaException as exc:
+                    LOG.debug(_('Error occured while trying to delete a '
+                              'volume: {}').format(exc))
+                    return
+            self.deleted_volumes.remove(name)
+            self._collect_garbage(parent)
+
     def delete_volume(self, volume):
         """Destroy a zfs volume on appliance.
 
         :param volume: volume reference
         """
+
         pool, group, name = self._get_volume_path(volume).split('/')
         url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
                '/volumes/%(name)s') % {
@@ -225,13 +272,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'group': group,
             'name': name
         }
+        field = 'originalSnapshot'
+        origin = self.nef.get('{}?fields={}'.format(url, field)).get(field)
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            # We assume that volume is gone
-            LOG.warning(_LW('Got error trying to delete volume %(volume)s,'
-                            ' assuming it is already gone: %(exc)s'),
-                        {'volume': volume, 'exc': exc})
+            if self._should_destroy_later(exc):
+                self.deleted_volumes.add(volume['name'])
+                LOG.debug('Failed to destroy volume. Will do it later.')
+                return
+            else:
+                raise
+        self._collect_garbage(origin)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -289,12 +341,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'EBUSY' in exc.args[0]:
-                LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies'),
-                    snapshot['name'])
+            if self._should_destroy_later(exc):
+                self.deleted_volumes.add(
+                    '@'.join((volume, snapshot['name'])))
+                LOG.debug('Failed to destroy snapshot. Will do it later.')
+                return
             else:
-                LOG.warning(exc)
+                raise
+        self._collect_garbage(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -315,14 +369,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         targetPath = self._get_volume_path(volume)
         self.nef.post(url, {'targetPath': targetPath})
-        url = ('storage/pools/%(pool)s/volumeGroups/'
-               '%(group)s/volumes/%(name)s/promote') % {
-            'pool': pool,
-            'group': group,
-            'name': volume['name'],
-        }
-        self.nef.post(url)
-
         if (('size' in volume) and (
                 volume['size'] > snapshot['volume_size'])):
             self.extend_volume(volume, volume['size'])
@@ -339,11 +385,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'name': self._get_clone_snapshot_name(volume)}
         LOG.debug('Creating temp snapshot of the original volume: '
                   '%s@%s', snapshot['volume_name'], snapshot['name'])
-        # We don't delete this snapshot, because this snapshot will be origin
-        # of new volume. This snapshot will be automatically promoted by NEF
-        # when user will delete origin volume. But when cloned volume deleted
-        # we check its origin property and delete source snapshot if needed.
         self.create_snapshot(snapshot)
+        self.deleted_volumes.add(
+            '@'.join((src_vref['name'], snapshot['name'])))
         try:
             self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:

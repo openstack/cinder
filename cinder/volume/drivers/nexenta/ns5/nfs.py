@@ -189,6 +189,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 [fs, volume['name']])})
             raise
 
+    def _should_destroy_later(self, e):
+        return 'Failed to destroy snapshot' in e.args[0] or (
+            'must be destroyed first' in e.args[0])
+
     def _collect_garbage(self, name):
         pool, fs = self._get_share_datasets(self.share)
         # clear name of pool and parent FS if exists
@@ -205,8 +209,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug('Error occured while trying to delete a '
-                              'snapshot: {}'.format(exc))
+                    LOG.debug(_('Error occured while trying to delete a '
+                              'snapshot: {}').format(exc))
                     return
             else:
                 url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
@@ -218,10 +222,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 parent = self.nef.get('{}?fields={}'.format(
                     url, field)).get(field)
                 try:
-                    self.nef.delete(url)
+                    self.nef.delete(url + '?force=true')
                 except exception.NexentaException as exc:
-                    LOG.debug('Error occured while trying to delete a '
-                              'volume: {}'.format(exc))
+                    LOG.debug(_('Error occured while trying to delete a '
+                              'volume: {}').format(exc))
                     return
             self.deleted_volumes.remove(name)
             self._collect_garbage(parent)
@@ -242,10 +246,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'Failed to destroy snapshot' in exc.args[0] or (
-                        'must be destroyed first' in exc.args[0]):
+            if self._should_destroy_later(exc):
                 self.deleted_volumes.add(volume['name'])
-                LOG.debug('Snapshot has dependencies')
+                LOG.debug('Failed to destroy volume. Will do it later.')
                 return
             else:
                 raise
@@ -305,13 +308,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'Failed to destroy snapshot' in exc.args[0] or (
-                        'must be destroyed first' in exc.args[0]):
-                LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies'),
-                    snapshot['name'])
+            if self._should_destroy_later(exc):
                 self.deleted_volumes.add(
                     '@'.join((volume['name'], snapshot['name'])))
+                LOG.debug('Failed to destroy snapshot. Will do it later.')
                 return
             else:
                 raise
