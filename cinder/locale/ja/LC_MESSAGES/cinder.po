@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev61\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev72\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-26 03:03+0000\n"
+"POT-Creation-Date: 2016-09-26 22:23+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-25 01:03+0000\n"
+"PO-Revision-Date: 2016-09-26 12:44+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -4347,6 +4347,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Failed to manage existing volume because the pool of the volume type chosen "
+"(%(pool)s) does not match the pool of the host %(pool_host)s"
+msgstr ""
+"選択されたボリューム種別のプール (%(pool)s) がホストのプール %(pool_host)s と"
+"一致しないため、既存のボリュームの管理に失敗しました。"
+
+#, python-format
+msgid ""
 "Failed to manage existing volume due to I/O group mismatch. The I/O group of "
 "the volume to be managed is %(vdisk_iogrp)s. I/O groupof the chosen type is "
 "%(opt_iogrp)s."
@@ -4399,6 +4407,14 @@ msgid ""
 msgstr ""
 "管理対象となるボリュームは thin ですが、選択されたボリューム種別は thick であ"
 "ることが原因で、既存のボリュームの管理に失敗しました。"
+
+#, python-format
+msgid ""
+"Failed to manage existing volume/snapshot %(name)s, because of error in "
+"getting its size."
+msgstr ""
+"サイズ取得エラーのため、既存ボリューム/スナップショット %(name)s の管理に失敗"
+"しました。"
 
 #, python-format
 msgid "Failed to manage volume %s."
