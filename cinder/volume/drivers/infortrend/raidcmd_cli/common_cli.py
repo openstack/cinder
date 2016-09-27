@@ -27,7 +27,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
+from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
@@ -156,9 +156,10 @@ class InfortrendCommon(object):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
+        1.0.2 - Support GS Series
     """
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -329,10 +330,12 @@ class InfortrendCommon(object):
                         int(lun) in self.map_dict[slot_key][ch]):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
-    def _check_initiator_has_lun_map(self, initiator_wwns, map_info):
-        for initiator in initiator_wwns:
+    def _check_initiator_has_lun_map(self, initiator_info, map_info):
+        if not isinstance(initiator_info, list):
+            initiator_info = (initiator_info,)
+        for initiator_name in initiator_info:
             for entry in map_info:
-                if initiator.lower() == entry['Host-ID'].lower():
+                if initiator_name.lower() == entry['Host-ID'].lower():
                     return True
         return False
 
@@ -341,12 +344,12 @@ class InfortrendCommon(object):
             self, channel_info, controller='slot_a', multipath=False):
 
         if self.protocol == 'iSCSI':
-            check_channel_type = 'NETWORK'
+            check_channel_type = ('NETWORK', 'LAN')
         else:
-            check_channel_type = 'FIBRE'
+            check_channel_type = ('FIBRE', 'Fibre')
 
         for entry in channel_info:
-            if entry['Type'] == check_channel_type:
+            if entry['Type'] in check_channel_type:
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
 
@@ -1584,19 +1587,24 @@ class InfortrendCommon(object):
             part_id = self._get_part_id(volume_id)
 
         self._execute('DeleteMap', 'part', part_id, '-y')
-
-        if self.protocol == 'iSCSI':
-            self._execute(
-                'DeleteIQN', self._truncate_host_name(connector['initiator']))
         map_info = self._update_map_info(multipath)
 
-        if self.protocol == 'FC' and self.fc_lookup_service:
+        if self.protocol == 'iSCSI':
+            initiator_iqn = self._truncate_host_name(connector['initiator'])
+            lun_map_exist = self._check_initiator_has_lun_map(
+                initiator_iqn, map_info)
+
+            if not lun_map_exist:
+                self._execute('DeleteIQN', initiator_iqn)
+
+        elif self.protocol == 'FC':
+            conn_info = {'driver_volume_type': 'fibre_channel',
+                         'data': {}}
             lun_map_exist = self._check_initiator_has_lun_map(
                 connector['wwpns'], map_info)
 
             if not lun_map_exist:
-                conn_info = {'driver_volume_type': 'fibre_channel',
-                             'data': {}}
+
                 wwpn_list, wwpn_channel_info = self._get_wwpn_list()
                 init_target_map, target_wwpns = (
                     self._build_initiator_target_map(connector, wwpn_list)

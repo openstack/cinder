@@ -132,8 +132,8 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvcfc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli as \
-    cinder_volume_drivers_infortrend_eonstor_ds_cli_commoncli
+from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \
+    cinder_volume_drivers_infortrend_raidcmd_cli_commoncli
 from cinder.volume.drivers.kaminario import kaminario_common as \
     cinder_volume_drivers_kaminario_kaminariocommon
 from cinder.volume.drivers.lenovo import lenovo_common as \
@@ -203,6 +203,10 @@ def list_opts():
                 cinder_backup_driver.service_opts,
                 [cinder_cmd_volume.cluster_opt],
                 cinder_volume_drivers_hitachi_hnasutils.drivers_common_opts,
+                cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
+                infortrend_esds_opts,
+                cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
+                infortrend_esds_extra_opts,
                 cinder_api_common.api_common_opts,
                 cinder_backup_drivers_ceph.service_opts,
                 cinder_volume_drivers_smbfs.volume_opts,
@@ -303,10 +307,6 @@ def list_opts():
                 cinder_backup_drivers_google.gcsbackup_service_opts,
                 [cinder_api_middleware_auth.use_forwarded_for_opt],
                 cinder_volume_drivers_hitachi_hbsdcommon.volume_opts,
-                cinder_volume_drivers_infortrend_eonstor_ds_cli_commoncli.
-                infortrend_esds_opts,
-                cinder_volume_drivers_infortrend_eonstor_ds_cli_commoncli.
-                infortrend_esds_extra_opts,
                 cinder_volume_drivers_hitachi_hnasiscsi.iSCSI_OPTS,
                 cinder_volume_drivers_rbd.RBD_OPTS,
                 cinder_volume_drivers_tintri.tintri_opts,
