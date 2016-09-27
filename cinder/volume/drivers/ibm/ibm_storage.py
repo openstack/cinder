@@ -13,10 +13,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-#
-# Authors:
-#   Erik Zaadi <erikz@il.ibm.com>
-#   Avishay Traeger <avishay@il.ibm.com>
 
 """
 IBM Storage driver is a unified Volume driver for IBM XIV, Spectrum Accelerate,
