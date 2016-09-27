@@ -12,6 +12,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+"""
+:mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
+=====================================================================
+
+.. automodule:: nexenta.volume
+"""
 
 from oslo_log import log as logging
 from oslo_utils import units
@@ -20,7 +26,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
-from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -30,7 +35,6 @@ VERSION = '1.0.0'
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
@@ -39,9 +43,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """
 
     VERSION = VERSION
-
-    # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Nexenta_CI"
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -83,12 +84,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def do_setup(self, context):
         if self.nef_protocol == 'auto':
-            protocol, auto = 'http', True
+            protocol = 'http'
         else:
-            protocol, auto = self.nef_protocol, False
+            protocol = self.nef_protocol
         self.nef = jsonrpc.NexentaJSONProxy(
             protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password, auto=auto)
+            self.nef_password)
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
             'name': self.volume_group,

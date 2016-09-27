@@ -85,12 +85,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def do_setup(self, context):
         if self.nef_protocol == 'auto':
-            protocol, auto = 'http', True
+            protocol = 'http'
         else:
-            protocol, auto = self.nef_protocol, False
+            protocol = self.nef_protocol
         self.nef = jsonrpc.NexentaJSONProxy(
             protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password, auto=auto)
+            self.nef_password)
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
@@ -99,14 +99,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         pool_name, fs = self._get_share_datasets(self.share)
         url = 'storage/pools/%s' % (pool_name)
-        if not self.nef.get(url):
-            raise LookupError(_("Pool %s does not exist in Nexenta "
-                                "Store appliance") % pool_name)
-        url = 'storage/pools/%s/filesystems/%s' % (
-            pool_name, fs)
-        if not self.nef.get(url):
-            raise LookupError(_("filesystem %s does not exist in "
-                                "Nexenta Store appliance") % fs)
+        self.nef.get(url)
+        url = 'storage/pools/%s/filesystems/%s' % (pool_name, fs)
+        self.nef.get(url)
 
         path = '/'.join([pool_name, fs])
         shared = False
