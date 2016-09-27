@@ -85,7 +85,7 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties_list': filter_properties_list,
         }
 
-        return cctxt.cast(ctxt, 'create_consistencygroup', **msg_args)
+        cctxt.cast(ctxt, 'create_consistencygroup', **msg_args)
 
     def create_group(self, ctxt, group, group_spec=None,
                      request_spec_list=None, group_filter_properties=None,
@@ -101,7 +101,7 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties_list': filter_properties_list,
         }
 
-        return cctxt.cast(ctxt, 'create_group', **msg_args)
+        cctxt.cast(ctxt, 'create_group', **msg_args)
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
                       request_spec=None, filter_properties=None):
