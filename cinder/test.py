@@ -20,7 +20,6 @@ Allows overriding of CONF for use of fakes, and some black magic for
 inline callbacks.
 
 """
-
 import copy
 import logging
 import os
@@ -33,6 +32,7 @@ from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
 from oslo_messaging import conffixture as messaging_conffixture
+from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslotest import moxstubout
@@ -40,6 +40,7 @@ import six
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
+from cinder import context
 from cinder import coordination
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
@@ -50,6 +51,7 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.volume import utils
 
 
 CONF = cfg.CONF
@@ -335,10 +337,8 @@ class ModelsObjectComparatorMixin(object):
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
-        if isinstance(obj, dict):
-            items = obj.items()
-        else:
-            items = obj.iteritems()
+        obj = jsonutils.to_primitive(obj)  # Convert to dict first.
+        items = obj.items()
         return {k: v for k, v in items
                 if k not in ignored_keys}
 
@@ -371,3 +371,91 @@ class ModelsObjectComparatorMixin(object):
 
         for primitive in primitives2:
             self.assertIn(primitive, primitives1)
+
+
+class RPCAPITestCase(TestCase, ModelsObjectComparatorMixin):
+    def setUp(self):
+        super(RPCAPITestCase, self).setUp()
+        self.context = context.get_admin_context()
+        self.rpcapi = None
+        self.base_version = '2.0'
+
+    def _test_rpc_api(self, method, rpc_method, server=None, fanout=False,
+                      version=None, expected_method=None,
+                      expected_kwargs_diff=None, retval=None,
+                      expected_retval=None, **kwargs):
+        """Runs a test against RPC API method.
+
+        :param method: Name of RPC API method.
+        :param rpc_method: Expected RPC message type (cast or call).
+        :param server: Expected hostname.
+        :param fanout: True if expected call/cast should be fanout.
+        :param version: Expected autocalculated RPC API version.
+        :param epected_method: Expected RPC method name.
+        :param expected_kwargs_diff: Map of expected changes between keyword
+                                     arguments passed into the method and sent
+                                     over RPC.
+        :param retval: Value returned by RPC call/cast.
+        :param expected_retval: Expected RPC API response (if different than
+                                retval).
+        :param kwargs: Parameters passed into the RPC API method.
+        """
+
+        rpcapi = self.rpcapi()
+        expected_kwargs_diff = expected_kwargs_diff or {}
+        version = version or self.base_version
+        topic = None
+        if server is not None:
+            backend = utils.extract_host(server)
+            server = utils.extract_host(server, 'host')
+            topic = 'cinder-volume.%s' % backend
+
+        if expected_method is None:
+            expected_method = method
+
+        if expected_retval is None:
+            expected_retval = retval
+
+        target = {
+            "server": server,
+            "fanout": fanout,
+            "version": version,
+            "topic": topic,
+        }
+
+        # Initially we expect that we'll pass same arguments to RPC API method
+        # and RPC call/cast...
+        expected_msg = copy.deepcopy(kwargs)
+        # ... but here we're taking exceptions into account.
+        expected_msg.update(expected_kwargs_diff)
+
+        def _fake_prepare_method(*args, **kwds):
+            # This is checking if target will be properly created.
+            for kwd in kwds:
+                self.assertEqual(target[kwd], kwds[kwd])
+            return rpcapi.client
+
+        def _fake_rpc_method(*args, **kwargs):
+            # This checks if positional arguments passed to RPC method match.
+            self.assertEqual((self.context, expected_method), args)
+
+            # This checks if keyword arguments passed to RPC method match.
+            for kwarg, value in kwargs.items():
+                # Getting possible changes into account.
+                if isinstance(value, objects_base.CinderObject):
+                    # We need to compare objects differently.
+                    self._assertEqualObjects(expected_msg[kwarg], value)
+                else:
+                    self.assertEqual(expected_msg[kwarg], value)
+
+            # Returning fake value we're supposed to return.
+            if retval:
+                return retval
+
+        # Enable mocks that will check everything and run RPC method.
+        with mock.patch.object(rpcapi.client, "prepare",
+                               side_effect=_fake_prepare_method):
+            with mock.patch.object(rpcapi.client, rpc_method,
+                                   side_effect=_fake_rpc_method):
+                real_retval = getattr(rpcapi, method)(self.context, **kwargs)
+                self.assertEqual(expected_retval, real_retval)
