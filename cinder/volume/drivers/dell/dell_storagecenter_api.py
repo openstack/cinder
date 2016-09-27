@@ -132,17 +132,27 @@ class HttpClient(object):
                 'https://')[1].split('/', 1)[1]
         except IndexError:
             url = asyncTask.get('returnValue')
+        except AttributeError:
+            LOG.debug('_get_async_url: Atttribute Error. (%r)', asyncTask)
+            url = 'api/rest/ApiConnection/AsyncTask/'
+
+        # Blank URL
+        if not url:
+            LOG.debug('_get_async_url: No URL. (%r)', asyncTask)
+            url = 'api/rest/ApiConnection/AsyncTask/'
+
         # Check for incomplete url error case.
         if url.endswith('/'):
             # Try to fix.
             id = asyncTask.get('instanceId')
             if id:
                 # We have an id so note the error and add the id.
-                LOG.debug('_get_async_url: url format error. (%s)', asyncTask)
+                LOG.debug('_get_async_url: url format error. (%r)', asyncTask)
                 url = url + id
             else:
                 # No hope.
-                LOG.error(_LE('_get_async_url: Bogus return url %s'), url)
+                LOG.error(_LE('_get_async_url: Bogus return async task %r'),
+                          asyncTask)
                 raise exception.VolumeBackendAPIException(
                     message=_('_get_async_url: Invalid URL.'))
         return url
@@ -181,6 +191,8 @@ class HttpClient(object):
                          'method %(method)s result')
                        % {'obj': objectTypeName, 'method': methodname})
                 raise exception.VolumeBackendAPIException(message=msg)
+        # Shouldn't really be able to get here.
+        LOG.debug('_wait_for_async_complete: Error asyncTask: %r', asyncTask)
         return None
 
     def _rest_ret(self, rest_response, async):
