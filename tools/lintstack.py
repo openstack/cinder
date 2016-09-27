@@ -59,11 +59,16 @@ ignore_messages = [
     # during runtime.
     "Class 'ConsistencyGroup' has no '__table__' member",
     "Class 'Cgsnapshot' has no '__table__' member",
+    "Class 'Group' has no '__table__' member",
+    "Class 'GroupSnapshot' has no '__table__' member",
 
     # NOTE(xyang): this error message is for code [E1120] when checking if
     # there are already 'groups' entries in 'quota_classes' `in DB migration
     # (078_add_groups_and_group_volume_type_mapping_table).
     "No value passed for parameter 'functions' in function call",
+
+    # NOTE(dulek): This one is related to objects.
+    "No value passed for parameter 'id' in function call",
 ]
 
 # Note(maoy):  We ignore cinder.tests for now due to high false
@@ -77,40 +82,10 @@ ignore_modules = ["cinder/tests/"]
 # non-existent member of an object, but should be ignored because the object
 # member is created dynamically.
 objects_ignore_codes = ["E0213", "E1101", "E1102"]
-# Note(thangp): The error messages are for codes [E1120, E1101] appearing in
-# the cinder code base using objects. E1120 is an error code related no value
-# passed for a parameter in function call, but should be ignored because it is
-# reporting false positives. E1101 is error code related to accessing a
-# non-existent member of an object, but should be ignored because the object
-# member is created dynamically.
-objects_ignore_messages = [
-    "No value passed for parameter 'id' in function call",
-    "Module 'cinder.objects' has no 'Backup' member",
-    "Module 'cinder.objects' has no 'BackupImport' member",
-    "Module 'cinder.objects' has no 'BackupList' member",
-    "Module 'cinder.objects' has no 'CGSnapshot' member",
-    "Module 'cinder.objects' has no 'CGSnapshotList' member",
-    "Module 'cinder.objects' has no 'ConsistencyGroup' member",
-    "Module 'cinder.objects' has no 'ConsistencyGroupList' member",
-    "Module 'cinder.objects' has no 'QualityOfServiceSpecs' member",
-    "Module 'cinder.objects' has no 'QualityOfServiceSpecsList' member",
-    "Module 'cinder.objects' has no 'RequestSpec' member",
-    "Module 'cinder.objects' has no 'Service' member",
-    "Module 'cinder.objects' has no 'ServiceList' member",
-    "Module 'cinder.objects' has no 'Snapshot' member",
-    "Module 'cinder.objects' has no 'SnapshotList' member",
-    "Module 'cinder.objects' has no 'Volume' member",
-    "Module 'cinder.objects' has no 'VolumeList' member",
-    "Module 'cinder.objects' has no 'VolumeProperties' member",
-    "Module 'cinder.objects' has no 'VolumeType' member",
-    "Module 'cinder.objects' has no 'VolumeTypeList' member",
-    "Module 'cinder.objects' has no 'Group' member",
-    "Module 'cinder.objects' has no 'GroupList' member",
-    "Module 'cinder.objects' has no 'GroupSnapshot' member",
-    "Module 'cinder.objects' has no 'GroupSnapshotList' member",
-    "Class 'Group' has no '__table__' member",
-    "Class 'GroupSnapshot' has no '__table__' member",
-]
+# NOTE(dulek): We're ignoring messages related to non-existent objects in
+# cinder.objects namespace. This is because this namespace is populated when
+# registering the objects, and pylint is unable to detect that.
+objects_ignore_regexp = "Module 'cinder.objects' has no '.*' member"
 objects_ignore_modules = ["cinder/objects/"]
 
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
@@ -165,8 +140,9 @@ class LintOutput(object):
             return True
         if any(self.filename.startswith(name) for name in ignore_modules):
             return True
-        if any(msg in self.message for msg in
-               (ignore_messages + objects_ignore_messages)):
+        if any(msg in self.message for msg in ignore_messages):
+            return True
+        if re.match(objects_ignore_regexp, self.message):
             return True
         if (self.code in objects_ignore_codes and
             any(self.filename.startswith(name)
