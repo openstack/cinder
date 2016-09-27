@@ -74,6 +74,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
 
+        self.deleted_volumes = set()
+
     @property
     def backend_name(self):
         backend_name = None
@@ -187,45 +189,67 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 [fs, volume['name']])})
             raise
 
+    def _collect_garbage(self, name):
+        pool, fs = self._get_share_datasets(self.share)
+        # clear name of pool and parent FS if exists
+        name = name.split('/{}/'.format(fs))[-1]
+        if name and name in self.deleted_volumes:
+            if '@' in name: #  it's a snapshot:
+                parent, snap = name.split('@')
+                url = ('storage/pools/%(pool)s/'
+                       'filesystems/%(fs)s/snapshots/%(snap)s') % {
+                    'pool': pool,
+                    'fs': '%2F'.join([fs, parent]),
+                    'snap': snap
+                }
+                try:
+                    self.nef.delete(url)
+                except exception.NexentaException as exc:
+                    LOG.debug('Error occured while trying to delete a '
+                              'snapshot: {}'.format(exc))
+                    return
+            else:
+                url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
+                    'pool': pool,
+                    'fs': '%2F'.join([fs, name])
+                }
+                # Check if there is parent snapshot
+                field = 'originalSnapshot'
+                parent = self.nef.get('{}?fields={}'.format(
+                    url, field)).get(field)
+                try:
+                    self.nef.delete(url)
+                except exception.NexentaException as exc:
+                    LOG.debug('Error occured while trying to delete a '
+                              'volume: {}'.format(exc))
+                    return
+            self.deleted_volumes.remove(name)
+            self._collect_garbage(parent)
+
     def delete_volume(self, volume):
         """Deletes a logical volume.
 
         :param volume: volume reference
         """
         pool, fs = self._get_share_datasets(self.share)
-        url = ('storage/pools/%(pool)s/filesystems/%(fs)s') % {
+        url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
             'pool': pool,
             'fs': '%2F'.join([fs, volume['name']])
         }
-        origin = self.nef.get(url).get('originalSnapshot')
-        url = ('storage/pools/%(pool)s/filesystems/'
-               '%(fs)s?snapshots=true') % {
-            'pool': pool,
-            'fs': '%2F'.join([fs, volume['name']])
-        }
+        # Check if there is parent snapshot
+        field = 'originalSnapshot'
+        origin = self.nef.get('{}?fields={}'.format(url, field)).get(field)
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'Failed to destroy snapshot' in exc.args[0]:
-                LOG.debug('Snapshot has dependent clones, skipping')
+            if 'Failed to destroy snapshot' in exc.args[0] or (
+                        'must be destroyed first' in exc.args[0]):
+                self.deleted_volumes.add(volume['name'])
+                LOG.debug('Snapshot has dependencies')
+                return
             else:
                 raise
-        try:
-            if origin and self._is_clone_snapshot_name(origin):
-                path, snap = origin.split('@')
-                pool, fs = path.split('/', 1)
-                snap_url = ('storage/pools/%(pool)s/'
-                            'filesystems/%(fs)s/snapshots/%(snap)s') % {
-                    'pool': pool,
-                    'fs': fs,
-                    'snap': snap
-                }
-                self.nef.delete(snap_url)
-        except exception.NexentaException as exc:
-            if 'does not exist' in exc.args[0]:
-                LOG.debug(
-                    'Volume %s does not exist on appliance', '/'.join(
-                        [pool, fs]))
+        self._collect_garbage(origin)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -281,10 +305,17 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'EBUSY' is exc:
+            if 'Failed to destroy snapshot' in exc.args[0] or (
+                        'must be destroyed first' in exc.args[0]):
                 LOG.warning(_LW(
                     'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
+                self.deleted_volumes.add(
+                    '@'.join((volume['name'], snapshot['name'])))
+                return
+            else:
+                raise
+        self._collect_garbage(volume['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -306,9 +337,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         path = '/'.join([pool, fs, volume['name']])
         data = {'targetPath': path}
         self.nef.post(url, data)
-        path = '%2F'.join([pool, fs, volume['name']])
-        url = 'storage/filesystems/%s/promote' % path
-        self.nef.post(url)
 
         try:
             self._share_folder(fs, volume['name'])
@@ -345,6 +373,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     'volume_size': src_vref['size'],
                     'name': self._get_clone_snapshot_name(volume)}
         self.create_snapshot(snapshot)
+        self.deleted_volumes.add(
+            '@'.join((src_vref['name'], snapshot['name'])))
         try:
             return self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
@@ -356,7 +386,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
-        self.delete_snapshot(snapshot)
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
@@ -379,7 +408,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     def _share_folder(self, path, filesystem):
         """Share NFS filesystem on NexentaStor Appliance.
 
-        :param nef: nef object
         :param path: path to parent filesystem
         :param filesystem: filesystem that needs to be shared
         """
