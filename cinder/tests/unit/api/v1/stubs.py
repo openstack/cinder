@@ -204,4 +204,5 @@ def stub_volume_type_get(context, id, *args, **kwargs):
             'created_at': None,
             'deleted_at': None,
             'updated_at': None,
+            'qos_specs_id': fake.QOS_SPEC_ID,
             'deleted': False}

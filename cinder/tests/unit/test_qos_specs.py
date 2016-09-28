@@ -52,6 +52,7 @@ def fake_db_get_vol_type(vol_type_number=1):
             'deleted': False,
             'is_public': True,
             'projects': [],
+            'qos_specs_id': fake.QOS_SPEC_ID,
             'extra_specs': None}
 
 
