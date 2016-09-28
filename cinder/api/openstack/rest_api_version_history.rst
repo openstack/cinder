@@ -222,3 +222,8 @@ user documentation.
 3.21
 ----
   Show provider_id in detailed view of a volume for admin.
+
+3.22
+----
+  Added support to filter snapshot list based on metadata of snapshot.
+

@@ -2774,11 +2774,38 @@ def _snaps_get_query(context, session=None, project_only=False):
 
 def _process_snaps_filters(query, filters):
     if filters:
-        # Ensure that filters' keys exist on the model
-        if not is_valid_model_filters(models.Snapshot, filters,
-                                      exclude_list=('host', 'cluster_name')):
-            return None
         filters = filters.copy()
+
+        exclude_list = ('host', 'cluster_name')
+
+        # Ensure that filters' keys exist on the model or is metadata
+        for key in filters.keys():
+            # Ensure if filtering based on metadata filter is queried
+            # then the filters value is a dictionary
+            if key == 'metadata':
+                if not isinstance(filters[key], dict):
+                    LOG.debug("Metadata filter value is not valid dictionary")
+                    return None
+                continue
+
+            if key in exclude_list:
+                continue
+
+            # for keys in filter other than metadata and exclude_list
+            # ensure that the keys are in Snapshot modelt
+            try:
+                column_attr = getattr(models.Snapshot, key)
+                prop = getattr(column_attr, 'property')
+                if isinstance(prop, RelationshipProperty):
+                    LOG.debug(
+                        "'%s' key is not valid, it maps to a relationship.",
+                        key)
+                    return None
+            except AttributeError:
+                LOG.debug("'%s' filter key is not valid.", key)
+                return None
+
+        # filter handling for host and cluster name
         host = filters.pop('host', None)
         cluster = filters.pop('cluster_name', None)
         if host or cluster:
@@ -2788,7 +2815,21 @@ def _process_snaps_filters(query, filters):
             query = query.filter(_filter_host(vol_field.host, host))
         if cluster:
             query = query.filter(_filter_host(vol_field.cluster_name, cluster))
-        query = query.filter_by(**filters)
+
+        filters_dict = {}
+        LOG.debug("Building query based on filter")
+        for key, value in filters.items():
+            if key == 'metadata':
+                col_attr = getattr(models.Snapshot, 'snapshot_metadata')
+                for k, v in value.items():
+                    query = query.filter(col_attr.any(key=k, value=v))
+            else:
+                filters_dict[key] = value
+
+        # Apply exact matches
+        if filters_dict:
+            query = query.filter_by(**filters_dict)
+
     return query
 
 
