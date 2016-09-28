@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev72\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev74\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-26 22:23+0000\n"
+"POT-Creation-Date: 2016-09-27 19:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-26 12:44+0000\n"
+"PO-Revision-Date: 2016-09-27 03:06+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -8847,6 +8847,11 @@ msgstr ""
 
 msgid "This request was rate-limited."
 msgstr "このリクエストは一定時間内の実行回数に制限があります。"
+
+#, python-format
+msgid "This snapshot %(snap)s doesn't belong to the volume parent %(vol)s."
+msgstr ""
+"このスナップショット  %(snap)s は親ボリューム  %(vol)s に属していません。"
 
 #, python-format
 msgid ""
