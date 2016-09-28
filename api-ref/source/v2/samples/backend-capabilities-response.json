@@ -8,6 +8,7 @@
     "display_name": "Capabilities of Cinder LVM driver",
     "description": "These are volume type options provided by Cinder LVM driver, blah, blah.",
     "visibility": "public",
+    "replication_targets": [],
     "properties": {
         "compression": {
             "title": "Compression",
