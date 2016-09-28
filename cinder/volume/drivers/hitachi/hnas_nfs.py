@@ -569,6 +569,16 @@ class HNASNFSDriver(nfs.NfsDriver):
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
         pool_from_host = utils.extract_host(volume.host, level='pool')
+
+        if (pool_from_vol_type == 'default' and
+                'default' not in self.config['services']):
+            msg = (_("Failed to manage existing volume because the chosen "
+                     "volume type does not have a service_label configured in "
+                     "its extra-specs and there is no pool configured with "
+                     "hnas_svcX_volume_type as 'default' in cinder.conf."))
+            LOG.error(msg)
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
         pool = self.config['services'][pool_from_vol_type]['hdp']
         if pool != nfs_share:
             msg = (_("Failed to manage existing volume because the pool of "
