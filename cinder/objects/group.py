@@ -20,8 +20,6 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from oslo_versionedobjects import fields
 
-OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
-
 
 @base.CinderObjectRegistry.register
 class Group(base.CinderPersistentObject, base.CinderObject,
@@ -30,6 +28,8 @@ class Group(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added group_snapshots, group_snapshot_id, and
     #              source_group_id
     VERSION = '1.1'
+
+    OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
 
     fields = {
         'id': fields.UUIDField(),
@@ -58,7 +58,7 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         if expected_attrs is None:
             expected_attrs = []
         for name, field in group.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in Group.OPTIONAL_FIELDS:
                 continue
             value = db_group.get(name)
             setattr(group, name, value)
@@ -115,7 +115,7 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         self._from_db_object(self._context, self, db_groups)
 
     def obj_load_attr(self, attrname):
-        if attrname not in OPTIONAL_FIELDS:
+        if attrname not in Group.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
