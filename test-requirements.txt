@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 # Install bounded pep8/pyflakes first, then let flake8 install
-hacking<0.11,>=0.10.0
+hacking>=0.11.0,<0.12 # Apache-2.0
 
 anyjson>=0.3.3 # BSD
 coverage>=3.6 # Apache-2.0
