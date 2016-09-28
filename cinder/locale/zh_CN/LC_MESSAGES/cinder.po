@@ -13,17 +13,18 @@
 # Yu Zhang, 2014
 # 颜海峰 <yanheven@gmail.com>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Eric Lei <1165970798@qq.com>, 2016. #zanata
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev169\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev18\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-15 21:14+0000\n"
+"POT-Creation-Date: 2016-09-27 22:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-18 05:48+0000\n"
-"Last-Translator: howard lee <howard@mail.ustc.edu.cn>\n"
+"PO-Revision-Date: 2016-09-28 06:21+0000\n"
+"Last-Translator: Eric Lei <1165970798@qq.com>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -162,6 +163,10 @@ msgid ""
 msgstr ""
 "%(msg_type)s：创建 NetworkPortal：请确保 IP %(ip)s 上的端口 %(port)d未被另一"
 "项服务使用。"
+
+#, python-format
+msgid "%(name)s cannot be all spaces."
+msgstr "%(name)s不能是所有空间"
 
 #, python-format
 msgid "%(new_size)s < current size %(size)s"
@@ -1146,6 +1151,13 @@ msgstr ""
 "无法删除高速缓存卷：%(cachevol_name)s。在 %(updated_at)s 对其进行了更新，它当"
 "前具有 %(numclones)s 卷实例。"
 
+#, python-format
+msgid ""
+"Cannot delete consistency group %(id)s. %(reason)s, and it cannot be the "
+"source for an ongoing CG or CG Snapshot creation."
+msgstr ""
+"无法删除一致性组%(id)s，%(reason)s，它不能作为创建运行CG或者CG快照的源。"
+
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "无法删除加密规范。卷类型在使用中。"
 
@@ -1346,6 +1358,13 @@ msgstr ""
 "无法更新一致性组 %(group_id)s，因为未提供任何有效名称、描述、add_volumes 或 "
 "remove_volumes。"
 
+#, python-format
+msgid ""
+"Cannot update consistency group %s, status must be available, and it cannot "
+"be the source for an ongoing CG or CG Snapshot creation."
+msgstr ""
+"不能更新一致性组%s,状态必须可获得，它不能作为创建运行CG或者CG快照的源。"
+
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "无法更新加密规范。卷类型在使用中。"
 
@@ -1372,6 +1391,12 @@ msgstr "无法验证对象 %(instanceName)s 的存在。"
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "找不到 Cg 快照 %(cgsnapshot_id)s。"
+
+msgid ""
+"CgSnapshot status must be available or error, and no CG can be currently "
+"using it as source for its creation."
+msgstr ""
+"一致性组快照状态必须是可获得的或错误，目前没有一致性组可以被用作创建它的源。"
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cg 快照为空。将不创建任何一致性组。"
@@ -1728,6 +1753,10 @@ msgid "Could not start consistency group snapshot %s."
 msgstr "无法启动一致性组快照 %s。"
 
 #, python-format
+msgid "Couldn't find ORM model for Persistent Versioned Object %s."
+msgstr "无法为持久版本对象%s找到ORM模型。"
+
+#, python-format
 msgid "Couldn't remove cluster %s because it doesn't exist."
 msgstr "无法删除集群 %s，因为它不存在。"
 
@@ -2054,6 +2083,9 @@ msgstr "禁用的原因包含无效字符或太长"
 #, python-format
 msgid "Domain with name %s wasn't found."
 msgstr "找不到名称为 %s 的域。"
+
+msgid "Down Hosts"
+msgstr "关闭主机"
 
 #, python-format
 msgid ""
@@ -4621,6 +4653,15 @@ msgstr "Cg 快照无效：%(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "一致性组无效：%(reason)s"
 
+#, python-format
+msgid ""
+"Invalid ConsistencyGroup: Cannot delete consistency group %(id)s. "
+"%(reason)s, and it cannot be the source for an ongoing CG or CG Snapshot "
+"creation."
+msgstr ""
+"无效的一致性组：不能删除一致性组%(id)s.%(reason)s，它不能作为创建运行CG或者CG"
+"快照的源。"
+
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "一致性组无效：没有任何主机用于创建一致性组"
 
@@ -6864,6 +6905,13 @@ msgstr "找不到存储系统 %(array)s。"
 
 #, python-format
 msgid ""
+"Successfully renamed %(num_vols)s volumes and %(num_cgs)s consistency groups "
+"from cluster %(current)s to %(new)s"
+msgstr ""
+"成功重命名%(num_vols)s卷和 %(num_cgs)s一致性组从集群%(current)s到%(new)s"
+
+#, python-format
+msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
 "for one or more of the following projects: '%(child_ids)s'"
@@ -7987,6 +8035,12 @@ msgstr "无法识别支持格式：%s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "无法识别的 read_deleted 取值”%s“"
+
+#, python-format
+msgid ""
+"Unrecoverable Error: Versioned Objects in DB are capped to unknown version "
+"%(version)s."
+msgstr "不可恢复错误：数据库中的版本对象被未知版本%(version)s覆盖。"
 
 #, python-format
 msgid "Unset gcs options: %s"
