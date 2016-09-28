@@ -419,6 +419,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.context, size=1, host=CONF.host)
         vol1 = tests_utils.create_volume(
             self.context, size=1, host=CONF.host)
+        vol2 = tests_utils.create_volume(
+            self.context, size=1, host=CONF.host, status='creating')
         snap0 = tests_utils.create_snapshot(self.context, vol0.id)
         snap1 = tests_utils.create_snapshot(self.context, vol1.id)
         # Return values for update_provider_info
@@ -434,11 +436,14 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             vol0.id)
         vol1_obj = objects.Volume.get_by_id(context.get_admin_context(),
                                             vol1.id)
+        vol2_obj = objects.Volume.get_by_id(context.get_admin_context(),
+                                            vol2.id)
         snap0_obj = objects.Snapshot.get_by_id(self.context, snap0.id)
         snap1_obj = objects.Snapshot.get_by_id(self.context, snap1.id)
         # Check updated provider ids
         self.assertEqual('1 2 xxxx', vol0_obj.provider_id)
         self.assertEqual('3 4 yyyy', vol1_obj.provider_id)
+        self.assertIsNone(vol2_obj.provider_id)
         self.assertEqual('5 6 xxxx', snap0_obj.provider_id)
         self.assertEqual('7 8 yyyy', snap1_obj.provider_id)
         # Clean up
