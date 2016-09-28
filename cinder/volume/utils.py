@@ -645,7 +645,8 @@ def extract_host(host, level='backend', default_pool_name=False):
                               string.  default_pool_name=True will return
                               DEFAULT_POOL_NAME, otherwise we return None.
                               Default value of this parameter is False.
-    :return: expected level of information
+    :return: expected information, string or None
+    :raises: exception.InvalidVolume
 
     For example:
         host = 'HostA@BackendB#PoolC'
@@ -662,6 +663,11 @@ def extract_host(host, level='backend', default_pool_name=False):
         ret = extract_host(host, 'pool', True)
         # ret is '_pool0'
     """
+
+    if host is None:
+        msg = _LE("volume is not assigned to a host")
+        raise exception.InvalidVolume(reason=msg)
+
     if level == 'host':
         # make sure pool is not included
         hst = host.split('#')[0]
