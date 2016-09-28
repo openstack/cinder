@@ -559,18 +559,6 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host='fake_host',
                               version='3.0')
 
-    def test_promote_replica(self):
-        self._test_volume_api('promote_replica',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              version='3.0')
-
-    def test_reenable_replica(self):
-        self._test_volume_api('reenable_replication',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              version='3.0')
-
     def test_freeze_host(self):
         self._test_volume_api('freeze_host', rpc_method='call',
                               host='fake_host', version='3.0')

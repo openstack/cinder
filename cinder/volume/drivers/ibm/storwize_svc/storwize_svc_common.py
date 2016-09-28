@@ -1858,7 +1858,7 @@ class CLIResponse(object):
 class StorwizeSVCCommonDriver(san.SanDriver,
                               driver.ManageableVD,
                               driver.ExtendVD, driver.SnapshotVD,
-                              driver.MigrateVD, driver.ReplicaVD,
+                              driver.MigrateVD,
                               driver.ConsistencyGroupVD,
                               driver.CloneableImageVD,
                               driver.TransferVD):

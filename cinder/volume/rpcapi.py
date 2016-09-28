@@ -110,9 +110,12 @@ class VolumeAPI(rpc.RPCAPI):
         the version_cap being set to 2.6.
 
         3.0  - Drop 2.x compatibility
+        3.1  - Remove promote_replica and reenable_replication. This is
+               non-backward compatible, but the user-facing API was removed
+               back in Mitaka when introducing cheesecake replication.
     """
 
-    RPC_API_VERSION = '3.0'
+    RPC_API_VERSION = '3.1'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
 
@@ -338,16 +341,6 @@ class VolumeAPI(rpc.RPCAPI):
             msg_args.pop('volume')
         cctxt = self._get_cctxt(volume.host, version)
         cctxt.cast(ctxt, 'manage_existing', **msg_args)
-
-    def promote_replica(self, ctxt, volume):
-        version = self._compat_ver('3.0', '2.0')
-        cctxt = self._get_cctxt(volume['host'], version)
-        cctxt.cast(ctxt, 'promote_replica', volume_id=volume['id'])
-
-    def reenable_replication(self, ctxt, volume):
-        version = self._compat_ver('3.0', '2.0')
-        cctxt = self._get_cctxt(volume['host'], version)
-        cctxt.cast(ctxt, 'reenable_replication', volume_id=volume['id'])
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):

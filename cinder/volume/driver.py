@@ -2187,103 +2187,9 @@ class ManageableSnapshotsVD(object):
         pass
 
 
-# TODO(jdg): Remove this after the V2.1 code merges
-@six.add_metaclass(abc.ABCMeta)
-class ReplicaVD(object):
-    @abc.abstractmethod
-    def reenable_replication(self, context, volume):
-        """Re-enable replication between the replica and primary volume.
-
-        This is used to re-enable/fix the replication between primary
-        and secondary. One use is as part of the fail-back process, when
-        you re-synchorize your old primary with the promoted volume
-        (the old replica).
-        Returns model_update for the volume to reflect the actions of the
-        driver.
-
-        The driver is expected to update the following entries:
-        - 'replication_status'
-        - 'replication_extended_status'
-        - 'replication_driver_data'
-
-        Possible 'replication_status' values (in model_update) are:
-        - 'error' - replication in error state
-        - 'copying' - replication copying data to secondary (inconsistent)
-        - 'active' - replication copying data to secondary (consistent)
-        - 'active-stopped' - replication data copy on hold (consistent)
-        - 'inactive' - replication data copy on hold (inconsistent)
-
-        Values in 'replication_extended_status' and 'replication_driver_data'
-        are managed by the driver.
-
-        :param context: Context
-        :param volume: A dictionary describing the volume
-        """
-        return
-
-    def get_replication_status(self, context, volume):
-        """Query the actual volume replication status from the driver.
-
-        Returns model_update for the volume.
-        The driver is expected to update the following entries:
-        - 'replication_status'
-        - 'replication_extended_status'
-        - 'replication_driver_data'
-
-        Possible 'replication_status' values (in model_update) are:
-        - 'error' - replication in error state
-        - 'copying' - replication copying data to secondary (inconsistent)
-        - 'active' - replication copying data to secondary (consistent)
-        - 'active-stopped' - replication data copy on hold (consistent)
-        - 'inactive' - replication data copy on hold (inconsistent)
-
-        Values in 'replication_extended_status' and 'replication_driver_data'
-        are managed by the driver.
-
-        :param context: Context
-        :param volume: A dictionary describing the volume
-        """
-        return None
-
-    @abc.abstractmethod
-    def promote_replica(self, context, volume):
-        """Promote the replica to be the primary volume.
-
-        Following this command, replication between the volumes at
-        the storage level should be stopped, the replica should be
-        available to be attached, and the replication status should
-        be in status 'inactive'.
-
-        Returns model_update for the volume.
-        The driver is expected to update the following entries:
-        - 'replication_status'
-        - 'replication_extended_status'
-        - 'replication_driver_data'
-
-        Possible 'replication_status' values (in model_update) are:
-        - 'error' - replication in error state
-        - 'inactive' - replication data copy on hold (inconsistent)
-
-        Values in 'replication_extended_status' and 'replication_driver_data'
-        are managed by the driver.
-
-        :param context: Context
-        :param volume: A dictionary describing the volume
-        """
-        return
-
-    @abc.abstractmethod
-    def create_replica_test_volume(self, volume, src_vref):
-        """Creates a test replica clone of the specified replicated volume.
-
-        Create a clone of the replicated (secondary) volume.
-        """
-        return
-
-
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
                    ExtendVD, CloneableImageVD, ManageableSnapshotsVD,
-                   SnapshotVD, ReplicaVD, LocalVD, MigrateVD, BaseVD):
+                   SnapshotVD, LocalVD, MigrateVD, BaseVD):
     def check_for_setup_error(self):
         raise NotImplementedError()
 
@@ -2359,14 +2265,6 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
 
     def retype(self, context, volume, new_type, diff, host):
         return False, None
-
-    def reenable_replication(self, context, volume):
-        msg = _("sync_replica not implemented.")
-        raise NotImplementedError(msg)
-
-    def promote_replica(self, context, volume):
-        msg = _("promote_replica not implemented.")
-        raise NotImplementedError(msg)
 
     # #######  Interface methods for DataPath (Connector) ########
     def ensure_export(self, context, volume):

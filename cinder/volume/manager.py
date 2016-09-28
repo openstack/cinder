@@ -2446,87 +2446,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   "to driver error."))
         return driver_entries
 
-    def promote_replica(self, ctxt, volume_id):
-        """Promote volume replica secondary to be the primary volume."""
-        volume = self.db.volume_get(ctxt, volume_id)
-        model_update = None
-
-        try:
-            utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Promote volume replica failed."),
-                              resource=volume)
-
-        try:
-            model_update = self.driver.promote_replica(ctxt, volume)
-        except exception.CinderException:
-            err_msg = (_('Error promoting secondary volume to primary'))
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-        try:
-            if model_update:
-                volume = self.db.volume_update(ctxt,
-                                               volume_id,
-                                               model_update)
-        except exception.CinderException:
-            err_msg = (_("Failed updating model"
-                         " with driver provided model %(model)s") %
-                       {'model': model_update})
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-        LOG.info(_LI("Promote volume replica completed successfully."),
-                 resource=volume)
-
-    def reenable_replication(self, ctxt, volume_id):
-        """Re-enable replication of secondary volume with primary volumes."""
-        volume = self.db.volume_get(ctxt, volume_id)
-        model_update = None
-
-        try:
-            utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Sync volume replica failed."),
-                              resource=volume)
-
-        try:
-            model_update = self.driver.reenable_replication(ctxt, volume)
-        except exception.CinderException:
-            err_msg = (_("Synchronizing secondary volume to primary failed."))
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-        try:
-            if model_update:
-                volume = self.db.volume_update(ctxt,
-                                               volume_id,
-                                               model_update)
-        except exception.CinderException:
-            err_msg = (_("Failed updating model"
-                         " with driver provided model %(model)s") %
-                       {'model': model_update})
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-    def _update_replication_relationship_status(self, ctxt):
-        # Only want volumes that do not have a 'disabled' replication status
-        filters = {'replication_status': ['active', 'copying', 'error',
-                                          'active-stopped', 'inactive']}
-        volumes = self.db.volume_get_all_by_host(ctxt, self.host,
-                                                 filters=filters)
-        for vol in volumes:
-            model_update = None
-            try:
-                model_update = self.driver.get_replication_status(
-                    ctxt, vol)
-                if model_update:
-                    self.db.volume_update(ctxt, vol['id'], model_update)
-            except Exception:
-                LOG.exception(_LE("Get replication status for volume failed."),
-                              resource=vol)
-
     def create_consistencygroup(self, context, group):
         """Creates the consistency group."""
         return self._create_group(context, group, False)
@@ -4352,7 +4271,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 # TODO(dulek): This goes away immediately in Ocata and is just present in
 # Newton so that we can receive v2.x and v3.0 messages.
 class _VolumeV3Proxy(object):
-    target = messaging.Target(version='3.0')
+    target = messaging.Target(version='3.1')
 
     def __init__(self, manager):
         self.manager = manager
