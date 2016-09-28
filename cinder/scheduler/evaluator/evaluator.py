@@ -47,10 +47,10 @@ class EvalConstant(object):
                 result = _vars[which_dict][entry]
             except KeyError as e:
                 raise exception.EvaluatorParseException(
-                    _("KeyError: %s") % six.text_type(e))
+                    _("KeyError: %s") % e)
             except TypeError as e:
                 raise exception.EvaluatorParseException(
-                    _("TypeError: %s") % six.text_type(e))
+                    _("TypeError: %s") % e)
 
         try:
             result = int(result)
@@ -59,7 +59,7 @@ class EvalConstant(object):
                 result = float(result)
             except ValueError as e:
                 raise exception.EvaluatorParseException(
-                    _("ValueError: %s") % six.text_type(e))
+                    _("ValueError: %s") % e)
 
         return result
 
@@ -105,7 +105,7 @@ class EvalMultOp(object):
                     prod /= float(val.eval())
             except ZeroDivisionError as e:
                 raise exception.EvaluatorParseException(
-                    _("ZeroDivisionError: %s") % six.text_type(e))
+                    _("ZeroDivisionError: %s") % e)
         return prod
 
 
@@ -292,6 +292,6 @@ def evaluate(expression, **kwargs):
         result = _parser.parseString(expression, parseAll=True)[0]
     except pyparsing.ParseException as e:
         raise exception.EvaluatorParseException(
-            _("ParseException: %s") % six.text_type(e))
+            _("ParseException: %s") % e)
 
     return result.eval()
