@@ -390,8 +390,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # NOTE(JDG): Make sure returned item is in this hosts volumes
                 update = (
                     [updt for updt in updates if updt['id'] ==
-                        volume['id']][0])
+                        volume['id']])
                 if update:
+                    update = update[0]
                     self.db.volume_update(
                         ctxt,
                         update['id'],
@@ -437,7 +438,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.driver.init_capabilities()
 
         volumes = objects.VolumeList.get_all_by_host(ctxt, self.host)
-        snapshots = self.db.snapshot_get_by_host(ctxt, self.host)
+        snapshots = objects.SnapshotList.get_by_host(ctxt, self.host)
         self._sync_provider_info(ctxt, volumes, snapshots)
         # FIXME volume count for exporting is wrong
 
