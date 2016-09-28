@@ -192,7 +192,7 @@ global_opts = [
     cfg.StrOpt('os_privileged_user_tenant',
                help='Tenant name associated with the OpenStack privileged '
                     'account.'),
-    cfg.StrOpt('os_privileged_user_auth_url',
+    cfg.URIOpt('os_privileged_user_auth_url',
                help='Auth URL associated with the OpenStack privileged '
                     'account.'),
 ]

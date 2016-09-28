@@ -64,7 +64,7 @@ if hpelefthandclient:
     from hpelefthandclient import exceptions as hpeexceptions
 
 hpelefthand_opts = [
-    cfg.StrOpt('hpelefthand_api_url',
+    cfg.URIOpt('hpelefthand_api_url',
                default=None,
                help="HPE LeftHand WSAPI Server Url like "
                     "https://<LeftHand ip>:8081/lhos",

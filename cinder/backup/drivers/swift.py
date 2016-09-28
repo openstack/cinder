@@ -61,9 +61,9 @@ from cinder import interface
 LOG = logging.getLogger(__name__)
 
 swiftbackup_service_opts = [
-    cfg.StrOpt('backup_swift_url',
+    cfg.URIOpt('backup_swift_url',
                help='The URL of the Swift endpoint'),
-    cfg.StrOpt('backup_swift_auth_url',
+    cfg.URIOpt('backup_swift_auth_url',
                help='The URL of the Keystone endpoint'),
     cfg.StrOpt('swift_catalog_info',
                default='object-store:swift:publicURL',
