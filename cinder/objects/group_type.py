@@ -21,14 +21,13 @@ from cinder.objects import base
 from cinder.volume import group_types
 
 
-OPTIONAL_FIELDS = ['group_specs', 'projects']
-
-
 @base.CinderObjectRegistry.register
 class GroupType(base.CinderPersistentObject, base.CinderObject,
                 base.CinderObjectDictCompat, base.CinderComparableObject):
     # Version 1.0: Initial version
     VERSION = '1.0'
+
+    OPTIONAL_FIELDS = ['group_specs', 'projects']
 
     fields = {
         'id': fields.UUIDField(),
@@ -43,12 +42,12 @@ class GroupType(base.CinderPersistentObject, base.CinderObject,
     def _get_expected_attrs(cls, context):
         return 'group_specs', 'projects'
 
-    @staticmethod
-    def _from_db_object(context, type, db_type, expected_attrs=None):
+    @classmethod
+    def _from_db_object(cls, context, type, db_type, expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
         for name, field in type.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_type[name]
             if isinstance(field, fields.IntegerField):
