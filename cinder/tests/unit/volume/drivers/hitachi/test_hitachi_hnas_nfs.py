@@ -131,6 +131,32 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.driver = nfs.HNASNFSDriver(configuration=self.configuration)
 
+    def test_check_pool_and_share_no_default_configured(self):
+        nfs_shares = '172.24.49.21:/fs-cinder'
+
+        self.mock_object(hnas_utils, 'get_pool',
+                         mock.Mock(return_value='default'))
+
+        self.driver.config['services'] = {
+            'silver': {
+                'hdp': 'fs3',
+                'iscsi_ip': '172.17.39.133',
+                'iscsi_port': '3260',
+                'port': '22',
+                'volume_type': 'silver',
+                'label': 'svc_1',
+                'evs': '2',
+                'tgt': {
+                    'alias': 'iscsi-test',
+                    'secret': 'itEpgB5gPefGhW2'
+                }
+            }
+        }
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver._check_pool_and_share, self.volume,
+                          nfs_shares)
+
     def test_check_pool_and_share_mismatch_exception(self):
         # passing a share that does not exists in config should raise an
         # exception

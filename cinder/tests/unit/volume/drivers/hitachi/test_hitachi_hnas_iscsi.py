@@ -73,7 +73,8 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         self.volume_type = fake_volume.fake_volume_type_obj(
             None,
-            **{'name': 'silver'}
+            **{'name': 'silver',
+               'id': fake.VOLUME_TYPE_ID}
         )
 
         self.parsed_xml = {
@@ -230,6 +231,32 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.mock_object(hnas_utils, 'get_pool',
                          mock.Mock(return_value='default'))
         self.driver._check_pool_and_fs(self.volume, 'fs2')
+
+    def test_check_pool_and_fs_no_default_configured(self):
+        self.volume.volume_type = self.volume_type
+
+        self.mock_object(hnas_utils, 'get_pool',
+                         mock.Mock(return_value='default'))
+
+        self.driver.config['services'] = {
+            'silver': {
+                'hdp': 'fs3',
+                'iscsi_ip': '172.17.39.133',
+                'iscsi_port': '3260',
+                'port': '22',
+                'volume_type': 'silver',
+                'label': 'svc_1',
+                'evs': '2',
+                'tgt': {
+                    'alias': 'iscsi-test',
+                    'secret': 'itEpgB5gPefGhW2'
+                }
+            }
+        }
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver._check_pool_and_fs, self.volume,
+                          'fs-cinder')
 
     def test_check_pool_and_fs_mismatch(self):
         self.mock_object(hnas_utils, 'get_pool',

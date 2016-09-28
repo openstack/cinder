@@ -342,6 +342,18 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
         pool_from_host = utils.extract_host(volume.host, level='pool')
+
+        if (pool_from_vol_type == 'default' and
+                'default' not in self.config['services']):
+            msg = (_("Failed to manage existing volume %(volume)s because the "
+                     "chosen volume type %(vol_type)s does not have a "
+                     "service_label configured in its extra-specs and there "
+                     "is no pool configured with hnas_svcX_volume_type as "
+                     "'default' in cinder.conf.") %
+                   {'volume': volume.id, 'vol_type': volume.volume_type['id']})
+            LOG.error(msg)
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
         pool = self.config['services'][pool_from_vol_type]['hdp']
         if pool != fs_label:
             msg = (_("Failed to manage existing volume because the "
