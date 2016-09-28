@@ -19,13 +19,13 @@ from cinder import objects
 from cinder.objects import base
 from oslo_versionedobjects import fields
 
-OPTIONAL_FIELDS = ['group', 'snapshots']
-
 
 @base.CinderObjectRegistry.register
 class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
                     base.CinderObjectDictCompat):
     VERSION = '1.0'
+
+    OPTIONAL_FIELDS = ['group', 'snapshots']
 
     fields = {
         'id': fields.UUIDField(),
@@ -40,12 +40,12 @@ class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
     }
 
-    @staticmethod
-    def _from_db_object(context, group_snapshot, db_group_snapshots,
+    @classmethod
+    def _from_db_object(cls, context, group_snapshot, db_group_snapshots,
                         expected_attrs=None):
         expected_attrs = expected_attrs or []
         for name, field in group_snapshot.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_group_snapshots.get(name)
             setattr(group_snapshot, name, value)
@@ -81,7 +81,7 @@ class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
         self._from_db_object(self._context, self, db_group_snapshots)
 
     def obj_load_attr(self, attrname):
-        if attrname not in OPTIONAL_FIELDS:
+        if attrname not in self.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
