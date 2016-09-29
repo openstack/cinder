@@ -38,17 +38,6 @@ from cinder.volume.drivers.vmware import vmdk
 from cinder.volume.drivers.vmware import volumeops
 
 
-class FakeObject(object):
-    def __init__(self):
-        self._fields = {}
-
-    def __setitem__(self, key, value):
-        self._fields[key] = value
-
-    def __getitem__(self, item):
-        return self._fields[item]
-
-
 # TODO(vbala) Split test methods handling multiple cases into multiple methods,
 # each handling a specific case.
 @ddt.ddt
