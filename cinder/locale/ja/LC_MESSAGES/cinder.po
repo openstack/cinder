@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev74\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-27 19:36+0000\n"
+"POT-Creation-Date: 2016-09-28 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-27 03:06+0000\n"
+"PO-Revision-Date: 2016-09-28 02:02+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -3230,10 +3230,6 @@ msgstr "整合性グループ %s を更新中にエラーが発生しました�
 msgid "Error occurred when updating group %s."
 msgstr "グループ %s を更新中にエラーが発生しました。"
 
-msgid "Error promoting secondary volume to primary"
-msgstr ""
-"2 次ボリュームの 1 次ボリュームへのプロモート中にエラーが発生しました。"
-
 #, python-format
 msgid "Error removing volume %(vol)s from %(sg)s. %(error)s."
 msgstr "%(sg)s からのボリューム %(vol)s の削除エラー。%(error)s。"
@@ -4296,6 +4292,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Failed to manage existing snapshot %(name)s, because rename operation "
+"failed: Error msg: %(msg)s."
+msgstr ""
+"名前変更操作が失敗したため、既存スナップショット %(name)s の管理に失敗しまし"
+"た: エラーメッセージ: %(msg)s。"
+
+#, python-format
+msgid ""
 "Failed to manage existing volume %(name)s, because of error in getting "
 "volume size."
 msgstr ""
@@ -4645,11 +4649,6 @@ msgstr "ボリュームのタイプを変更中にクォータの使用量を更
 
 msgid "Failed to update snapshot."
 msgstr "スナップショットの更新に失敗しました。"
-
-#, python-format
-msgid "Failed updating model with driver provided model %(model)s"
-msgstr ""
-"ドライバーで指定されたモデル %(model)s によるモデルの更新に失敗しました。"
 
 #, python-format
 msgid ""
@@ -7447,12 +7446,6 @@ msgstr ""
 "レプリケーションが設定されていますが、 VNX にMirrorView/S イネーブラーがイン"
 "ストールされていません。"
 
-msgid "Replication is not enabled"
-msgstr "複製が有効になっていません"
-
-msgid "Replication is not enabled for volume"
-msgstr "ボリュームの複製が有効になっていません"
-
 msgid "Replication not allowed yet."
 msgstr "まだレプリケーションを行うことはできません。"
 
@@ -7469,22 +7462,6 @@ msgid ""
 msgstr ""
 "レプリケーションセットアップ失敗: ライブボリュームが有効になっていますが、1つ"
 "以上のレプリケーションターゲットがこのバックエンド用に指定されています。"
-
-#, python-format
-msgid ""
-"Replication status for volume must be active or active-stopped, but current "
-"status is: %s"
-msgstr ""
-"ボリュームの複製の状態は「アクティブ」または「アクティブ - 停止」でなければな"
-"りませんが、現在の状態は %s です。"
-
-#, python-format
-msgid ""
-"Replication status for volume must be inactive, active-stopped, or error, "
-"but current status is: %s"
-msgstr ""
-"ボリュームの複製の状態は「非アクティブ」、「アクティブ - 停止」、または「エ"
-"ラー」でなければなりませんが、現在の状態は %s です。"
 
 msgid "Request body and URI mismatch"
 msgstr "要求本体と URI の不一致"
@@ -8190,9 +8167,6 @@ msgstr "ペア切り替えのエラー。"
 
 msgid "Sync pair error."
 msgstr "ペア同期のエラー。"
-
-msgid "Synchronizing secondary volume to primary failed."
-msgstr "2 次ボリュームの 1 次ボリュームへの同期に失敗しました。"
 
 #, python-format
 msgid "Synology driver authentication failed: %(reason)s."
@@ -10263,11 +10237,6 @@ msgid "Volume size must multiple of 1 GB."
 msgstr "ボリュームサイズは 1 GB の倍数である必要があります"
 
 #, python-format
-msgid "Volume status for volume must be available, but current status is: %s"
-msgstr ""
-"ボリュームの状態は「使用可能」でなければなりませんが、現在の状態は %s です。"
-
-#, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
 "スナップショットに関しては、ボリュームの状態が「使用可能」または「使用中」で"
@@ -11633,9 +11602,6 @@ msgstr "プール [%s] は書き込み不可です。"
 msgid "progress must be an integer percentage"
 msgstr "進行状況は整数のパーセンテージでなければなりません。"
 
-msgid "promote_replica not implemented."
-msgstr "promote_replica が実装されていません。"
-
 msgid "provider must be defined"
 msgstr "プロバイダーを定義する必要があります"
 
@@ -11807,9 +11773,6 @@ msgstr "sudo が失敗しました。何も起こらなかったものとして�
 
 msgid "sync_hypermetro error."
 msgstr "sync_hypermetro エラー。"
-
-msgid "sync_replica not implemented."
-msgstr "sync_replica が実装されていません。"
 
 #, python-format
 msgid "target=%(target)s, lun=%(lun)s"

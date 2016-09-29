@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev43\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-23 04:43+0000\n"
+"POT-Creation-Date: 2016-09-28 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2535,9 +2535,6 @@ msgstr "cg 스냅샷 %s을(를) 삭제하는 중에 오류가 발생했습니다
 msgid "Error occurred when updating consistency group %s."
 msgstr "일관성 그룹 %s을(를) 업데이트하는 중에 오류가 발생했습니다. "
 
-msgid "Error promoting secondary volume to primary"
-msgstr "2차 볼륨을 1차로 승격시키는 중 오류 발생"
-
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "볼륨 %(vol)s 이름 변경 중 오류 발생: %(err)s."
@@ -3707,10 +3704,6 @@ msgstr "볼륨을 다시 입력하는 동안 할당량 사용을 업데이트하
 
 msgid "Failed to update snapshot."
 msgstr "스냅샷을 업데이트하는 데 실패했습니다."
-
-#, python-format
-msgid "Failed updating model with driver provided model %(model)s"
-msgstr "모델을 드라이버 제공 모델 %(model)s(으)로 업데이트하지 못함"
 
 #, python-format
 msgid ""
@@ -5921,30 +5914,8 @@ msgstr "%(storageSystemName)s에서 복제 서비스 기능을 찾을 수 없습
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "%(storageSystemName)s에서 복제 서비스를 찾을 수 없습니다. "
 
-msgid "Replication is not enabled"
-msgstr "복제가 사용되지 않음"
-
-msgid "Replication is not enabled for volume"
-msgstr "볼륨에 복제가 사용되지 않음"
-
 msgid "Replication not allowed yet."
 msgstr "복제가 아직 허용되지 않습니다."
-
-#, python-format
-msgid ""
-"Replication status for volume must be active or active-stopped, but current "
-"status is: %s"
-msgstr ""
-"볼륨에 대한 복제 상태가 활성 또는 활성-중지됨이어야 하지만 현재 상태가 %s입니"
-"다."
-
-#, python-format
-msgid ""
-"Replication status for volume must be inactive, active-stopped, or error, "
-"but current status is: %s"
-msgstr ""
-"볼륨에 대한 복제 상태가 비활성, 활성-중지됨 또는 오류이어야 하지만 현재 상태"
-"가 %s입니다."
 
 msgid "Request body and URI mismatch"
 msgstr "요청 본문 및 URI 불일치"
@@ -6462,9 +6433,6 @@ msgstr "쌍 전환 오류."
 
 msgid "Sync pair error."
 msgstr "쌍 동기화 오류."
-
-msgid "Synchronizing secondary volume to primary failed."
-msgstr "2차 볼륨을 1차 볼륨과 동기화하지 못했습니다. "
 
 #, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
@@ -8096,10 +8064,6 @@ msgid "Volume size must multiple of 1 GB."
 msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 
 #, python-format
-msgid "Volume status for volume must be available, but current status is: %s"
-msgstr "볼륨의 볼륨 상태가 사용 가능이어야 하지만 현재 상태가 %s입니다."
-
-#, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
 "볼륨 상태가 스냅샷에 대해 \"사용 가능\" 또는 \"사용 중\"이어야 합니다(%s임)"
@@ -9219,9 +9183,6 @@ msgstr "open_access_enabled가 해제되지 않았습니다. "
 msgid "progress must be an integer percentage"
 msgstr "진행상태는 정수 백분율이어야 함"
 
-msgid "promote_replica not implemented."
-msgstr "promote_replica가 구현되지 않았습니다."
-
 msgid "provider must be defined"
 msgstr "제공자를 정의해야 함 "
 
@@ -9359,9 +9320,6 @@ msgstr "sudo에 실패, 무시하고 계속합니다. "
 
 msgid "sync_hypermetro error."
 msgstr "sync_hypermetro 오류."
-
-msgid "sync_replica not implemented."
-msgstr "sync_replica가 구현되지 않았습니다."
 
 #, python-format
 msgid ""

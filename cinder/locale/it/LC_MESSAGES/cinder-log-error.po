@@ -9,9 +9,9 @@
 # Remo Mattei <remo@rm.ht>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:25+0000\n"
+"POT-Creation-Date: 2016-09-28 22:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2185,9 +2185,6 @@ msgstr "Errore di richiamo migrazione LUN."
 msgid "Get method error."
 msgstr "Errore di richiamo metodo. "
 
-msgid "Get replication status for volume failed."
-msgstr "Richiamo dello stato delle replica per il volume non riuscito. "
-
 #, python-format
 msgid "Host PUT failed (%s)."
 msgstr "Comando PUT dell'host non riuscito (%s)."
@@ -2475,9 +2472,6 @@ msgstr ""
 msgid "Problem cleaning up backup %(bkup)s."
 msgstr "Problema durante la ripulitura del backup %(bkup)s."
 
-msgid "Promote volume replica failed."
-msgstr "Promozione della replica del volume non riuscita."
-
 #, python-format
 msgid ""
 "Purity host %(host_name)s is managed by Cinder but CHAP credentials could "
@@ -2689,9 +2683,6 @@ msgstr "Profilo di memoria %s non trovato."
 #, python-format
 msgid "Storage profile: %s cannot be found in vCenter."
 msgstr "Profilo di archiviazione: %s non trovato in vCenter."
-
-msgid "Sync volume replica failed."
-msgstr "Replica del volume di sincronizzazione non riuscita."
 
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."

@@ -9,9 +9,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:25+0000\n"
+"POT-Creation-Date: 2016-09-28 22:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1879,9 +1879,6 @@ msgstr "Chyba při získávání přesunu LUN."
 msgid "Get method error."
 msgstr "Chyba získávání metody."
 
-msgid "Get replication status for volume failed."
-msgstr "Získání stavu replikace svazku selhalo."
-
 #, python-format
 msgid "Host PUT failed (%s)."
 msgstr "PUT hostitele selhal (%s)."
@@ -2137,9 +2134,6 @@ msgstr ""
 msgid "Problem cleaning up backup %(bkup)s."
 msgstr "Při čištění zálohy %(bkup)s se vyskytl problém."
 
-msgid "Promote volume replica failed."
-msgstr "Povýšení repliky svazku selhalo."
-
 #, python-format
 msgid ""
 "Purity host %(host_name)s is managed by Cinder but CHAP credentials could "
@@ -2319,9 +2313,6 @@ msgstr "Profil úložiště %s nebyl nalezen."
 #, python-format
 msgid "Storage profile: %s cannot be found in vCenter."
 msgstr "Profil úložiště: %s nenalezen ve vCenter."
-
-msgid "Sync volume replica failed."
-msgstr "Synchronizace repliky svazku selhala."
 
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."

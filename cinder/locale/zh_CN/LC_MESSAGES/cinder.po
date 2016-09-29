@@ -16,9 +16,9 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev43\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-23 04:43+0000\n"
+"POT-Creation-Date: 2016-09-28 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2750,9 +2750,6 @@ msgstr "更新一致性组 %s 时发生了错误。"
 msgid "Error occurred when updating group %s."
 msgstr "更新组 %s 时发生了错误。"
 
-msgid "Error promoting secondary volume to primary"
-msgstr "将辅助卷升级为主卷时出错"
-
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名卷 %(vol)s 时出错：%(err)s。"
@@ -3882,10 +3879,6 @@ msgstr "对卷进行转型时，更新配额使用率失败"
 
 msgid "Failed to update snapshot."
 msgstr "无法更新快照。"
-
-#, python-format
-msgid "Failed updating model with driver provided model %(model)s"
-msgstr "使用驱动程序提供的模型 %(model)s 更新模型失败"
 
 #, python-format
 msgid ""
@@ -6273,26 +6266,8 @@ msgstr "在 %(storageSystemName)s 上找不到复制服务功能。"
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到复制服务。"
 
-msgid "Replication is not enabled"
-msgstr "未启用复制"
-
-msgid "Replication is not enabled for volume"
-msgstr "未对卷启用复制"
-
 msgid "Replication not allowed yet."
 msgstr "尚不允许复制。"
-
-#, python-format
-msgid ""
-"Replication status for volume must be active or active-stopped, but current "
-"status is: %s"
-msgstr "卷的复制状态必须为“活动”或“活动 - 已停止”，但当前状态为：%s"
-
-#, python-format
-msgid ""
-"Replication status for volume must be inactive, active-stopped, or error, "
-"but current status is: %s"
-msgstr "卷的复制状态必须为“不活动”、“活动 - 已停止”或“错误”，但当前状态为：%s"
 
 msgid "Request body and URI mismatch"
 msgstr "请求主体和URI不匹配"
@@ -6883,9 +6858,6 @@ msgstr "切换对时出错。"
 
 msgid "Sync pair error."
 msgstr "同步对时出错。"
-
-msgid "Synchronizing secondary volume to primary failed."
-msgstr "使辅助卷与主卷同步失败。"
 
 #, python-format
 msgid "Synology driver authentication failed: %(reason)s."
@@ -8597,10 +8569,6 @@ msgid "Volume size must multiple of 1 GB."
 msgstr "卷大小必须是 1 GB 的倍数。"
 
 #, python-format
-msgid "Volume status for volume must be available, but current status is: %s"
-msgstr "卷状态必须为“可用”，但当前状态为 %s"
-
-#, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr "对于快照，卷状态必须为“available”或“in-use”。（卷状态现在为 %s）"
 
@@ -9843,9 +9811,6 @@ msgstr "open_access_enabled 未关闭。"
 msgid "progress must be an integer percentage"
 msgstr "进度必须为整数百分比"
 
-msgid "promote_replica not implemented."
-msgstr "未实现 promote_replica。"
-
 msgid "provider must be defined"
 msgstr "必须定义提供程序"
 
@@ -9988,9 +9953,6 @@ msgstr "sudo 发生故障，在继续运行，如同没有发生任何情况一�
 
 msgid "sync_hypermetro error."
 msgstr "sync_hypermetro 错误。"
-
-msgid "sync_replica not implemented."
-msgstr "未实现 sync_replica。"
 
 #, python-format
 msgid "target=%(target)s, lun=%(lun)s"
