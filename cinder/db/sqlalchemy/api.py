@@ -4696,6 +4696,21 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
     return _backup_get_all(context, filters)
 
 
+@require_context
+def backup_get_active_by_window(context, begin, end=None, project_id=None):
+    """Return backups that were active during window."""
+
+    query = model_query(context, models.Backup, read_deleted="yes")
+    query = query.filter(or_(models.Backup.deleted_at == None,  # noqa
+                             models.Backup.deleted_at > begin))
+    if end:
+        query = query.filter(models.Backup.created_at < end)
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    return query.all()
+
+
 @handle_db_data_error
 @require_context
 def backup_create(context, values):

@@ -1155,6 +1155,14 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
                                          filters=filters)
 
 
+def backup_get_active_by_window(context, begin, end=None, project_id=None):
+    """Get all the backups inside the window.
+
+    Specifying a project_id will filter for a certain project.
+    """
+    return IMPL.backup_get_active_by_window(context, begin, end, project_id)
+
+
 def backup_update(context, backup_id, values):
     """Set the given properties on a backup and update it.
 
