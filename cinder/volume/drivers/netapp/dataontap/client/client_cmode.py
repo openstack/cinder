@@ -91,6 +91,7 @@ class Client(client_base.Client):
             raise exception.NetAppDriverException(msg)
 
     def set_vserver(self, vserver):
+        self.vserver = vserver
         self.connection.set_vserver(vserver)
 
     def send_iter_request(self, api_name, api_args=None, enable_tunneling=True,
@@ -138,6 +139,68 @@ class Client(client_base.Client):
             six.text_type(num_records))
         result.get_child_by_name('next-tag').set_content('')
         return result
+
+    def list_vservers(self, vserver_type='data'):
+        """Get the names of vservers present, optionally filtered by type."""
+        query = {
+            'vserver-info': {
+                'vserver-type': vserver_type,
+            }
+        } if vserver_type else None
+
+        api_args = {
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                },
+            },
+        }
+        if query:
+            api_args['query'] = query
+
+        result = self.send_iter_request('vserver-get-iter', api_args,
+                                        enable_tunneling=False)
+        vserver_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        return [vserver_info.get_child_content('vserver-name')
+                for vserver_info in vserver_info_list.get_children()]
+
+    def _get_ems_log_destination_vserver(self):
+        """Returns the best vserver destination for EMS messages."""
+        major, minor = self.get_ontapi_version(cached=True)
+
+        if (major > 1) or (major == 1 and minor > 15):
+            # Prefer admin Vserver (requires cluster credentials).
+            admin_vservers = self.list_vservers(vserver_type='admin')
+            if admin_vservers:
+                return admin_vservers[0]
+
+            # Fall back to data Vserver.
+            data_vservers = self.list_vservers(vserver_type='data')
+            if data_vservers:
+                return data_vservers[0]
+
+        # If older API version, or no other Vservers found, use node Vserver.
+        node_vservers = self.list_vservers(vserver_type='node')
+        if node_vservers:
+            return node_vservers[0]
+
+        raise exception.NotFound("No Vserver found to receive EMS messages.")
+
+    def send_ems_log_message(self, message_dict):
+        """Sends a message to the Data ONTAP EMS log."""
+
+        # NOTE(cknight): Cannot use deepcopy on the connection context
+        node_client = copy.copy(self)
+        node_client.connection = copy.copy(self.connection)
+        node_client.connection.set_timeout(25)
+
+        try:
+            node_client.set_vserver(self._get_ems_log_destination_vserver())
+            node_client.send_request('ems-autosupport-log', message_dict)
+            LOG.debug('EMS executed successfully.')
+        except netapp_api.NaApiError as e:
+            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""

@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import math
 import time
 
@@ -52,6 +53,21 @@ class Client(client_base.Client):
 
         ontapi_1_20 = ontapi_version >= (1, 20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_20)
+
+    def send_ems_log_message(self, message_dict):
+        """Sends a message to the Data ONTAP EMS log."""
+
+        # NOTE(cknight): Cannot use deepcopy on the connection context
+        node_client = copy.copy(self)
+        node_client.connection = copy.copy(self.connection)
+        node_client.connection.set_timeout(25)
+
+        try:
+            node_client.connection.set_vfiler(None)
+            node_client.send_request('ems-autosupport-log', message_dict)
+            LOG.debug('EMS executed successfully.')
+        except netapp_api.NaApiError as e:
+            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""

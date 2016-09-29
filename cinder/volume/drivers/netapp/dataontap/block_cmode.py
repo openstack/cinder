@@ -37,7 +37,7 @@ from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
-from cinder.volume.drivers.netapp.dataontap.utils import utils as cmode_utils
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -69,7 +69,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         na_utils.check_flags(self.REQUIRED_CMODE_FLAGS, self.configuration)
 
         # cDOT API client
-        self.zapi_client = cmode_utils.get_client_for_backend(
+        self.zapi_client = dot_utils.get_client_for_backend(
             self.failed_over_backend_name or self.backend_name)
         self.vserver = self.zapi_client.vserver
 
@@ -85,7 +85,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
     def _update_zapi_client(self, backend_name):
         """Set cDOT API client for the specified config backend stanza name."""
 
-        self.zapi_client = cmode_utils.get_client_for_backend(backend_name)
+        self.zapi_client = dot_utils.get_client_for_backend(backend_name)
         self.vserver = self.zapi_client.vserver
         self.ssc_library._update_for_failover(self.zapi_client,
                                               self._get_flexvol_to_pool_map())
@@ -153,6 +153,18 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             self.ensure_snapmirrors(
                 self.configuration, self.backend_name,
                 self.ssc_library.get_ssc_flexvol_names())
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+
+        base_ems_message = dot_utils.build_ems_log_message_0(
+            self.driver_name, self.app_version, self.driver_mode)
+        self.zapi_client.send_ems_log_message(base_ems_message)
+
+        pool_ems_message = dot_utils.build_ems_log_message_1(
+            self.driver_name, self.app_version, self.vserver,
+            self.ssc_library.get_ssc_flexvol_names(), [])
+        self.zapi_client.send_ems_log_message(pool_ems_message)
 
     def _create_lun(self, volume_name, lun_name, size,
                     metadata, qos_policy_group_name=None):
@@ -247,7 +259,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         # Used for service state report
         data['replication_enabled'] = self.replication_enabled
 
-        self.zapi_client.provide_ems(self, self.driver_name, self.app_version)
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):

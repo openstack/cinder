@@ -26,6 +26,7 @@ from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -230,6 +231,34 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
 
         self.driver._add_looping_tasks()
         mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_handle_ems_logging(self):
+
+        volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            self.driver, '_get_backing_flexvol_names',
+            mock.Mock(return_value=volume_list))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            mock.Mock(return_value='fake_base_ems_log_message'))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            mock.Mock(return_value='fake_pool_ems_log_message'))
+        mock_send_ems_log_message = self.mock_object(
+            self.driver.zapi_client, 'send_ems_log_message')
+
+        self.driver._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version,
+            self.driver.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version, None,
+            volume_list, [])
 
     def test_get_backing_flexvol_names(self):
 

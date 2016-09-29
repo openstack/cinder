@@ -212,6 +212,138 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           self.client.send_iter_request,
                           'storage-disk-get-iter')
 
+    def test_list_vservers(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VSERVER_DATA_LIST_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers()
+
+        vserver_get_iter_args = {
+            'query': {
+                'vserver-info': {
+                    'vserver-type': 'data'
+                }
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None
+                }
+            }
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('vserver-get-iter', vserver_get_iter_args,
+                      enable_tunneling=False)])
+        self.assertListEqual([fake_client.VSERVER_NAME], result)
+
+    def test_list_vservers_node_type(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VSERVER_DATA_LIST_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers(vserver_type='node')
+
+        vserver_get_iter_args = {
+            'query': {
+                'vserver-info': {
+                    'vserver-type': 'node'
+                }
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None
+                }
+            }
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('vserver-get-iter', vserver_get_iter_args,
+                      enable_tunneling=False)])
+        self.assertListEqual([fake_client.VSERVER_NAME], result)
+
+    def test_list_vservers_not_found(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers(vserver_type='data')
+
+        self.assertListEqual([], result)
+
+    @ddt.data((1, 21), (1, 100), (2, 0))
+    def test_get_ems_log_destination_vserver(self, ontapi_version):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=ontapi_version))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(return_value=[fake_client.ADMIN_VSERVER_NAME]))
+
+        result = self.client._get_ems_log_destination_vserver()
+
+        mock_list_vservers.assert_called_once_with(vserver_type='admin')
+        self.assertEqual(fake_client.ADMIN_VSERVER_NAME, result)
+
+    def test_get_ems_log_destination_vserver_legacy(self):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=(1, 15)))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(return_value=[fake_client.NODE_VSERVER_NAME]))
+
+        result = self.client._get_ems_log_destination_vserver()
+
+        mock_list_vservers.assert_called_once_with(vserver_type='node')
+        self.assertEqual(fake_client.NODE_VSERVER_NAME, result)
+
+    def test_get_ems_log_destination_no_cluster_creds(self):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=(1, 21)))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(side_effect=[[], [fake_client.VSERVER_NAME]]))
+
+        result = self.client._get_ems_log_destination_vserver()
+
+        mock_list_vservers.assert_has_calls([
+            mock.call(vserver_type='admin'),
+            mock.call(vserver_type='data')])
+        self.assertEqual(fake_client.VSERVER_NAME, result)
+
+    def test_get_ems_log_destination_vserver_not_found(self):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=(1, 21)))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NotFound,
+                          self.client._get_ems_log_destination_vserver)
+
+        mock_list_vservers.assert_has_calls([
+            mock.call(vserver_type='admin'),
+            mock.call(vserver_type='data'),
+            mock.call(vserver_type='node')])
+
     def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">

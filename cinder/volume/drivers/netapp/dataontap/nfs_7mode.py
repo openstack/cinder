@@ -33,6 +33,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
@@ -51,6 +52,8 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetApp7modeNfsDriver, self).__init__(*args, **kwargs)
+        self.driver_name = 'NetApp_NFS_7mode_direct'
+        self.driver_mode = '7mode'
         self.configuration.append_config_values(na_opts.netapp_7mode_opts)
 
     def do_setup(self, context):
@@ -87,6 +90,18 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         """Add tasks that need to be executed at a fixed interval."""
         super(NetApp7modeNfsDriver, self)._add_looping_tasks()
 
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+
+        base_ems_message = dot_utils.build_ems_log_message_0(
+            self.driver_name, self.app_version, self.driver_mode)
+        self.zapi_client.send_ems_log_message(base_ems_message)
+
+        pool_ems_message = dot_utils.build_ems_log_message_1(
+            self.driver_name, self.app_version, None,
+            self._get_backing_flexvol_names(), [])
+        self.zapi_client.send_ems_log_message(pool_ems_message)
+
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None,
                                        is_snapshot=False,
@@ -108,9 +123,8 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
 
         LOG.debug('Updating volume stats')
         data = {}
-        netapp_backend = 'NetApp_NFS_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or netapp_backend
+        data['volume_backend_name'] = backend_name or self.driver_name
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
@@ -120,8 +134,6 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         data['sparse_copy_volume'] = True
 
         self._spawn_clean_cache_job()
-        self.zapi_client.provide_ems(self, netapp_backend, self._app_version,
-                                     server_type="7mode")
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):

@@ -16,6 +16,9 @@ This module contains common utilities to be used by one or more
 NetApp FAS drivers to achieve the desired functionality.
 """
 
+import json
+import socket
+
 from oslo_config import cfg
 from oslo_log import log
 
@@ -72,3 +75,45 @@ def get_client_for_backend(backend_name, vserver_name=None):
         trace=utils.TRACE_API)
 
     return client
+
+
+def _build_base_ems_log_message(driver_name, app_version):
+
+    ems_log = {
+        'computer-name': socket.gethostname() or 'Cinder_node',
+        'event-source': 'Cinder driver %s' % driver_name,
+        'app-version': app_version,
+        'category': 'provisioning',
+        'log-level': '5',
+        'auto-support': 'false',
+    }
+    return ems_log
+
+
+def build_ems_log_message_0(driver_name, app_version, driver_mode):
+    """Construct EMS Autosupport log message with deployment info."""
+
+    dest = 'cluster node' if driver_mode == 'cluster' else '7 mode controller'
+
+    ems_log = _build_base_ems_log_message(driver_name, app_version)
+    ems_log['event-id'] = '0'
+    ems_log['event-description'] = 'OpenStack Cinder connected to %s' % dest
+    return ems_log
+
+
+def build_ems_log_message_1(driver_name, app_version, vserver,
+                            flexvol_pools, aggregate_pools):
+    """Construct EMS Autosupport log message with storage pool info."""
+
+    message = {
+        'pools': {
+            'vserver': vserver,
+            'aggregates': aggregate_pools,
+            'flexvols': flexvol_pools,
+        },
+    }
+
+    ems_log = _build_base_ems_log_message(driver_name, app_version)
+    ems_log['event-id'] = '1'
+    ems_log['event-description'] = json.dumps(message)
+    return ems_log

@@ -15,13 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
-import socket
 import sys
 
 from oslo_log import log as logging
 from oslo_utils import excutils
-from oslo_utils import timeutils
 
 import six
 
@@ -312,95 +309,6 @@ class Client(object):
                 }
         else:
             raise exception.NotFound(_('Counter %s not found') % counter_name)
-
-    def provide_ems(self, requester, netapp_backend, app_version,
-                    server_type="cluster"):
-        """Provide ems with volume stats for the requester.
-
-        :param server_type: cluster or 7mode.
-        """
-        def _create_ems(netapp_backend, app_version, server_type):
-            """Create ems API request."""
-            ems_log = netapp_api.NaElement('ems-autosupport-log')
-            host = socket.getfqdn() or 'Cinder_node'
-            if server_type == "cluster":
-                dest = "cluster node"
-            else:
-                dest = "7 mode controller"
-            ems_log.add_new_child('computer-name', host)
-            ems_log.add_new_child('event-id', '0')
-            ems_log.add_new_child('event-source',
-                                  'Cinder driver %s' % netapp_backend)
-            ems_log.add_new_child('app-version', app_version)
-            ems_log.add_new_child('category', 'provisioning')
-            ems_log.add_new_child('event-description',
-                                  'OpenStack Cinder connected to %s' % dest)
-            ems_log.add_new_child('log-level', '6')
-            ems_log.add_new_child('auto-support', 'false')
-            return ems_log
-
-        def _create_vs_get():
-            """Create vs_get API request."""
-            vs_get = netapp_api.NaElement('vserver-get-iter')
-            vs_get.add_new_child('max-records', '1')
-            query = netapp_api.NaElement('query')
-            query.add_node_with_children('vserver-info',
-                                         **{'vserver-type': 'node'})
-            vs_get.add_child_elem(query)
-            desired = netapp_api.NaElement('desired-attributes')
-            desired.add_node_with_children(
-                'vserver-info', **{'vserver-name': '', 'vserver-type': ''})
-            vs_get.add_child_elem(desired)
-            return vs_get
-
-        def _get_cluster_node(na_server):
-            """Get the cluster node for ems."""
-            na_server.set_vserver(None)
-            vs_get = _create_vs_get()
-            res = na_server.invoke_successfully(vs_get)
-            if (res.get_child_content('num-records') and
-               int(res.get_child_content('num-records')) > 0):
-                attr_list = res.get_child_by_name('attributes-list')
-                vs_info = attr_list.get_child_by_name('vserver-info')
-                vs_name = vs_info.get_child_content('vserver-name')
-                return vs_name
-            return None
-
-        do_ems = True
-        if hasattr(requester, 'last_ems'):
-            sec_limit = 3559
-            if not (timeutils.is_older_than(requester.last_ems, sec_limit)):
-                do_ems = False
-        if do_ems:
-            na_server = copy.copy(self.connection)
-            na_server.set_timeout(25)
-            ems = _create_ems(netapp_backend, app_version, server_type)
-            try:
-                if server_type == "cluster":
-                    api_version = na_server.get_api_version()
-                    if api_version:
-                        major, minor = api_version
-                    else:
-                        raise netapp_api.NaApiError(
-                            code='Not found',
-                            message='No API version found')
-                    if major == 1 and minor > 15:
-                        node = getattr(requester, 'vserver', None)
-                    else:
-                        node = _get_cluster_node(na_server)
-                    if node is None:
-                        raise netapp_api.NaApiError(
-                            code='Not found',
-                            message='No vserver found')
-                    na_server.set_vserver(node)
-                else:
-                    na_server.set_vfiler(None)
-                na_server.invoke_successfully(ems, True)
-                LOG.debug("ems executed successfully.")
-            except netapp_api.NaApiError as e:
-                LOG.warning(_LW("Failed to invoke ems. Message : %s"), e)
-            finally:
-                requester.last_ems = timeutils.utcnow()
 
     def delete_snapshot(self, volume_name, snapshot_name):
         """Deletes a volume snapshot."""

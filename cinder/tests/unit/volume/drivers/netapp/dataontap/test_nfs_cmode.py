@@ -36,7 +36,7 @@ from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
-from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume import utils as volume_utils
@@ -111,7 +111,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup(self, mock_check_flags, mock_super_do_setup):
         self.mock_object(
-            config_utils, 'get_backend_configuration',
+            dot_utils, 'get_backend_configuration',
             mock.Mock(return_value=self.get_config_cmode()))
         self.driver.do_setup(mock.Mock())
 
@@ -428,6 +428,34 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 fake_ssc.SSC.keys())
         else:
             self.assertFalse(ensure_mirrors.called)
+
+    def test_handle_ems_logging(self):
+
+        volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            self.driver, '_get_backing_flexvol_names',
+            mock.Mock(return_value=volume_list))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            mock.Mock(return_value='fake_base_ems_log_message'))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            mock.Mock(return_value='fake_pool_ems_log_message'))
+        mock_send_ems_log_message = self.mock_object(
+            self.driver.zapi_client, 'send_ems_log_message')
+
+        self.driver._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version,
+            self.driver.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version,
+            self.driver.vserver, volume_list, [])
 
     def test_delete_volume(self):
         fake_provider_location = 'fake_provider_location'
