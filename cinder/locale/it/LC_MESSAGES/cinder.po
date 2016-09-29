@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev43\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-23 04:43+0000\n"
+"POT-Creation-Date: 2016-09-28 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2666,9 +2666,6 @@ msgid "Error occurred when updating consistency group %s."
 msgstr ""
 "Si è verificato un errore durante l'aggiornamento del gruppo di coerenza %s."
 
-msgid "Error promoting secondary volume to primary"
-msgstr "Errore quando si promuove il volume secondario in primario"
-
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Errore durante la ridenominazione del volume %(vol)s: %(err)s."
@@ -3906,11 +3903,6 @@ msgstr ""
 
 msgid "Failed to update snapshot."
 msgstr "Impossibile aggiornare l'istantanea."
-
-#, python-format
-msgid "Failed updating model with driver provided model %(model)s"
-msgstr ""
-"Impossibile aggiornare il modello con il modello driver fornito %(model)s"
 
 #, python-format
 msgid ""
@@ -6243,30 +6235,8 @@ msgstr "Funzione del servizio di replica non trovata in %(storageSystemName)s."
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "Replication Service non trovato in %(storageSystemName)s."
 
-msgid "Replication is not enabled"
-msgstr "La replica non è abilitata"
-
-msgid "Replication is not enabled for volume"
-msgstr "La replica non è abilitata per il volume"
-
 msgid "Replication not allowed yet."
 msgstr "Replica non ancora consentita."
-
-#, python-format
-msgid ""
-"Replication status for volume must be active or active-stopped, but current "
-"status is: %s"
-msgstr ""
-"Lo stato della replica per il volume deve essere attivo o attivo-arrestato, "
-"ma lo stato corrente è:  %s"
-
-#, python-format
-msgid ""
-"Replication status for volume must be inactive, active-stopped, or error, "
-"but current status is: %s"
-msgstr ""
-"Lo stato della replica deve essere inattivo, attivo-arrestato o errore, ma "
-"lo stato corrente è: %s"
 
 msgid "Request body and URI mismatch"
 msgstr "Il corpo della richiesta e l'URI non corrispondono"
@@ -6804,9 +6774,6 @@ msgstr "Errore di passaggio alla coppia."
 
 msgid "Sync pair error."
 msgstr "Errore di sincronizzazione della coppia."
-
-msgid "Synchronizing secondary volume to primary failed."
-msgstr "Sincronizzazione volume secondario con il primario non riuscita."
 
 #, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
@@ -8524,11 +8491,6 @@ msgid "Volume size must multiple of 1 GB."
 msgstr "La dimensione del volume deve essere un multiplo di 1 GB. "
 
 #, python-format
-msgid "Volume status for volume must be available, but current status is: %s"
-msgstr ""
-"Lo stato del volume deve essere disponibile, ma lo stato corrente è: %s"
-
-#, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
 "Lo stato del volume deve essere \"available\" o \"in-use\" per l'istantanea. "
@@ -9680,9 +9642,6 @@ msgstr "open_access_enabled non è disattivo."
 msgid "progress must be an integer percentage"
 msgstr "l'avanzamento deve essere una percentuale a numero intero"
 
-msgid "promote_replica not implemented."
-msgstr "promote_replica non implementata."
-
 msgid "provider must be defined"
 msgstr "il provider deve essere definito"
 
@@ -9821,9 +9780,6 @@ msgstr "sudo non riuscito, proseguire come se nulla fosse successo"
 
 msgid "sync_hypermetro error."
 msgstr "Errore sync_hypermetro."
-
-msgid "sync_replica not implemented."
-msgstr "sync_replica non implementata."
 
 #, python-format
 msgid ""

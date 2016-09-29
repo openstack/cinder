@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:24+0000\n"
+"POT-Creation-Date: 2016-09-28 22:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1200,9 +1200,6 @@ msgstr "hedef wwpn %(wwpn)s kullanmayı tercih et"
 #, python-format
 msgid "Profile %s has been deleted."
 msgstr "%s profili silindi."
-
-msgid "Promote volume replica completed successfully."
-msgstr "Mantıksal sürücü kopyasının terfisi başarıyla tamamlandı."
 
 #, python-format
 msgid "Protection domain name: %(domain_name)s."

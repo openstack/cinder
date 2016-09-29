@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-14 04:25+0000\n"
+"POT-Creation-Date: 2016-09-28 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2245,9 +2245,6 @@ msgstr "Při mazání snímku skupiny jednotnosti %s nastala chyba."
 msgid "Error occurred when updating consistency group %s."
 msgstr "Při aktualizaci skupiny jednotnosti %s nastala chyba."
 
-msgid "Error promoting secondary volume to primary"
-msgstr "Chyba při propagování druhotného svazku na hlavní"
-
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Chyba při přejmenování svazku %(vol)s: %(err)s."
@@ -3185,10 +3182,6 @@ msgstr ""
 
 msgid "Failed to update quota usage while retyping volume."
 msgstr "Nelze aktualizovat využití kvóty při přetypování svazku."
-
-#, python-format
-msgid "Failed updating model with driver provided model %(model)s"
-msgstr "Nelze aktualizovat model s ovladačem poskytnutým modelem %(model)s"
 
 #, python-format
 msgid ""
@@ -5164,28 +5157,6 @@ msgstr "Schopnost služby replikace nebyla nalezena v %(storageSystemName)s."
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "Služba replikace nebyla nalezena v %(storageSystemName)s."
 
-msgid "Replication is not enabled"
-msgstr "Replikace není povolena"
-
-msgid "Replication is not enabled for volume"
-msgstr "Replikace není povolena pro tento svazek"
-
-#, python-format
-msgid ""
-"Replication status for volume must be active or active-stopped, but current "
-"status is: %s"
-msgstr ""
-"Stav replikace pro svazek musí být aktivní, nebo aktivní-zastavený, ale "
-"současný stav je: %s"
-
-#, python-format
-msgid ""
-"Replication status for volume must be inactive, active-stopped, or error, "
-"but current status is: %s"
-msgstr ""
-"Stav replikace pro svazek musí být neaktivní, aktivní-zastavený, nebo "
-"chybný, ale současný stav je: %s"
-
 msgid "Request body and URI mismatch"
 msgstr "Neshoda s tělem požadavku a URI"
 
@@ -5606,9 +5577,6 @@ msgstr "Systém úložiště nebyl nalezen pro zásobu %(poolNameInStr)s."
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "Systém úložiště %(array)s nebyl nalezen."
-
-msgid "Synchronizing secondary volume to primary failed."
-msgstr "Synchronizace druhotného svazku na hlavní selhala."
 
 #, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
@@ -6948,10 +6916,6 @@ msgid "Volume size must multiple of 1 GB."
 msgstr "Velikost svazku musí být násobkem 1GB."
 
 #, python-format
-msgid "Volume status for volume must be available, but current status is: %s"
-msgstr "Stav svazku musí být dostupný, ale současný stav je: %s"
-
-#, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
 "Stav svazku musí být pro vytvoření snímku \"available\" nebo \"in-use\". "
@@ -7644,9 +7608,6 @@ msgstr "open_access_enabled není vypnuto."
 msgid "progress must be an integer percentage"
 msgstr "postup musí být procento vyjádřené celým číslem"
 
-msgid "promote_replica not implemented."
-msgstr "promote_replica není zavedeno."
-
 msgid "provider must be defined"
 msgstr "poskytovatel musí být zadán"
 
@@ -7765,9 +7726,6 @@ msgstr "sudo selhalo, pokračuje se, jako by se nic nestalo"
 
 msgid "sync_hypermetro error."
 msgstr "Chyba při synchronizaci hypermetra."
-
-msgid "sync_replica not implemented."
-msgstr "sync_replica není zavedeno."
 
 #, python-format
 msgid ""
