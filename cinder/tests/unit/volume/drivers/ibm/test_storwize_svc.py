@@ -1084,14 +1084,14 @@ port_speed!N/A
     def _cmd_mkvdiskhostmap(self, **kwargs):
         mapping_info = {}
         mapping_info['id'] = self._find_unused_id(self._mappings_list)
-
         if 'host' not in kwargs:
             return self._errors['CMMVC5707E']
         mapping_info['host'] = kwargs['host'].strip('\'\"')
 
-        if 'scsi' not in kwargs:
-            return self._errors['CMMVC5707E']
-        mapping_info['lun'] = kwargs['scsi'].strip('\'\"')
+        if 'scsi' in kwargs:
+            mapping_info['lun'] = kwargs['scsi'].strip('\'\"')
+        else:
+            mapping_info['lun'] = mapping_info['id']
 
         if 'obj' not in kwargs:
             return self._errors['CMMVC5707E']
@@ -1112,7 +1112,7 @@ port_speed!N/A
                 return self._errors['CMMVC5879E']
 
         for v in self._mappings_list.values():
-            if (v['lun'] == mapping_info['lun']) and ('force' not in kwargs):
+            if (v['vol'] == mapping_info['vol']) and ('force' not in kwargs):
                 return self._errors['CMMVC6071E']
 
         self._mappings_list[mapping_info['id']] = mapping_info
@@ -1169,7 +1169,7 @@ port_speed!N/A
     # List information about vdisk->host mappings
     def _cmd_lsvdiskhostmap(self, **kwargs):
         mappings_found = 0
-        vdisk_name = kwargs['obj']
+        vdisk_name = kwargs['obj'].strip('\'\"')
 
         if vdisk_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
@@ -1183,7 +1183,7 @@ port_speed!N/A
                 mappings_found += 1
                 volume = self._volumes_list[mapping['vol']]
                 host = self._hosts_list[mapping['host']]
-                rows.append([volume['id'], volume['name'], host['id'],
+                rows.append([volume['id'], mapping['lun'], host['id'],
                             host['host_name'], volume['uid'],
                             volume['IO_group_id'], volume['IO_group_name']])
 
@@ -5191,23 +5191,42 @@ class StorwizeHelpersTestCase(test.TestCase):
 class StorwizeSSHTestCase(test.TestCase):
     def setUp(self):
         super(StorwizeSSHTestCase, self).setUp()
-        self.storwize_ssh = storwize_svc_common.StorwizeSSH(None)
+        self.fake_driver = StorwizeSVCISCSIFakeDriver(
+            configuration=conf.Configuration(None))
+        sim = StorwizeSVCManagementSimulator(['openstack'])
+        self.fake_driver.set_fake_storage(sim)
+        self.storwize_ssh = storwize_svc_common.StorwizeSSH(
+            self.fake_driver._run_ssh)
 
     def test_mkvdiskhostmap(self):
         # mkvdiskhostmap should not be returning anything
+        self.fake_driver.fake_storage._volumes_list['9999'] = {
+            'name': ' 9999', 'id': '0', 'uid': '0',
+            'IO_group_id': '0', 'IO_group_name': 'fakepool'}
+        self.fake_driver.fake_storage._hosts_list['HOST1'] = {
+            'name': 'HOST1', 'id': '0', 'host_name': 'HOST1'}
+        self.fake_driver.fake_storage._hosts_list['HOST2'] = {
+            'name': 'HOST2', 'id': '1', 'host_name': 'HOST2'}
+        self.fake_driver.fake_storage._hosts_list['HOST3'] = {
+            'name': 'HOST3', 'id': '2', 'host_name': 'HOST3'}
+
+        ret = self.storwize_ssh.mkvdiskhostmap('HOST1', '9999', '511', False)
+        self.assertEqual('511', ret)
+
+        ret = self.storwize_ssh.mkvdiskhostmap('HOST2', '9999', '512', True)
+        self.assertEqual('512', ret)
+
+        ret = self.storwize_ssh.mkvdiskhostmap('HOST3', '9999', None, True)
+        self.assertIsNotNone(ret)
+
         with mock.patch.object(
                 storwize_svc_common.StorwizeSSH,
                 'run_ssh_check_created') as run_ssh_check_created:
-            run_ssh_check_created.return_value = None
-            ret = self.storwize_ssh.mkvdiskhostmap('HOST1', 9999, 511, False)
-            self.assertIsNone(ret)
-            ret = self.storwize_ssh.mkvdiskhostmap('HOST2', 9999, 511, True)
-            self.assertIsNone(ret)
             ex = exception.VolumeBackendAPIException(data='CMMVC6071E')
             run_ssh_check_created.side_effect = ex
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.storwize_ssh.mkvdiskhostmap,
-                              'HOST3', 9999, 511, True)
+                              'HOST3', '9999', 511, True)
 
 
 class StorwizeSVCReplicationMirrorTestCase(test.TestCase):

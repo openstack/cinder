@@ -254,12 +254,26 @@ class StorwizeSSH(object):
 
         If vdisk already mapped and multihostmap is True, use the force flag.
         """
-        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host,
-                   '-scsi', lun, '"%s"' % vdisk]
+        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host, vdisk]
+
+        if lun:
+            ssh_cmd.insert(ssh_cmd.index(vdisk), '-scsi')
+            ssh_cmd.insert(ssh_cmd.index(vdisk), lun)
+
         if multihostmap:
             ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
         try:
             self.run_ssh_check_created(ssh_cmd)
+            result_lun = self.get_vdiskhostmapid(vdisk, host)
+            if result_lun is None or (lun and lun != result_lun):
+                msg = (_('mkvdiskhostmap error:\n command: %(cmd)s\n '
+                       'lun: %(lun)s\n result_lun: %(result_lun)s') %
+                       {'cmd': ssh_cmd,
+                        'lun': lun,
+                        'result_lun': result_lun})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+            return result_lun
         except Exception as ex:
             if (not multihostmap and hasattr(ex, 'message') and
                     'CMMVC6071E' in ex.message):
@@ -346,6 +360,14 @@ class StorwizeSSH(object):
     def lshostvdiskmap(self, host):
         ssh_cmd = ['svcinfo', 'lshostvdiskmap', '-delim', '!', '"%s"' % host]
         return self.run_ssh_info(ssh_cmd, with_header=True)
+
+    def get_vdiskhostmapid(self, vdisk, host):
+        resp = self.lsvdiskhostmap(vdisk)
+        for mapping_info in resp:
+            if mapping_info['host_name'] == host:
+                lun_id = mapping_info['SCSI_id']
+                return lun_id
+        return None
 
     def rmhost(self, host):
         ssh_cmd = ['svctask', 'rmhost', '"%s"' % host]
@@ -853,26 +875,10 @@ class StorwizeHelpers(object):
                   {'volume_name': volume_name, 'host_name': host_name})
 
         # Check if this volume is already mapped to this host
-        mapped = False
-        luns_used = []
-        result_lun = '-1'
-        resp = self.ssh.lshostvdiskmap(host_name)
-        for mapping_info in resp:
-            luns_used.append(int(mapping_info['SCSI_id']))
-            if mapping_info['vdisk_name'] == volume_name:
-                mapped = True
-                result_lun = mapping_info['SCSI_id']
-
-        if not mapped:
-            # Find unused lun
-            luns_used.sort()
-            result_lun = str(len(luns_used))
-            for index, n in enumerate(luns_used):
-                if n > index:
-                    result_lun = str(index)
-                    break
-            self.ssh.mkvdiskhostmap(host_name, volume_name, result_lun,
-                                    multihostmap)
+        result_lun = self.ssh.get_vdiskhostmapid(volume_name, host_name)
+        if result_lun is None:
+            result_lun = self.ssh.mkvdiskhostmap(host_name, volume_name, None,
+                                                 multihostmap)
 
         LOG.debug('Leave: map_vol_to_host: LUN %(result_lun)s, volume '
                   '%(volume_name)s, host %(host_name)s.',
