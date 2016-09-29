@@ -8102,6 +8102,71 @@ class EMCVMAXMaskingTest(test.TestCase):
                     extraSpecs)
                 self.assertFalse(verify)
 
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_check_adding_volume_to_storage_group",
+        return_value=None)
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_validate_masking_view",
+        return_value=("mv_instance", "sg_instance", None))
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_get_and_remove_from_storage_group_v3")
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_check_if_rollback_action_for_masking_required')
+    def test_get_or_create_masking_view_and_map_lun(self, check_rb, rm_sg,
+                                                    validate_mv, check_sg):
+        common = self.driver.common
+        common.conn = self.fake_ecom_connection()
+        masking = common.masking
+        connector = self.data.connector
+        extraSpecs = self.data.extra_specs
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                common.conn, self.data.storage_system))
+        defaultStorageGroupInstanceName = (
+            {'CreationClassName': 'CIM_DeviceMaskingGroup',
+             'ElementName': 'OS-SRP_1-Bronze-DSS-SG'})
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+        with mock.patch.object(common, '_find_lun',
+                               return_value=volumeInstance):
+            maskingViewDict = common._populate_masking_dict(
+                self.data.test_volume_v3, connector, extraSpecs)
+        maskingViewDict['isLiveMigration'] = False
+        rollbackDict = {}
+        rollbackDict['controllerConfigService'] = controllerConfigService
+        rollbackDict['defaultStorageGroupInstanceName'] = (
+            defaultStorageGroupInstanceName)
+        rollbackDict['volumeInstance'] = volumeInstance
+        rollbackDict['volumeName'] = self.data.test_volume_v3['name']
+        rollbackDict['fastPolicyName'] = None
+        rollbackDict['isV3'] = True
+        rollbackDict['extraSpecs'] = extraSpecs
+        rollbackDict['sgGroupName'] = 'OS-fakehost-SRP_1-Bronze-DSS-I-SG'
+        rollbackDict['igGroupName'] = self.data.initiatorgroup_name
+        rollbackDict['pgGroupName'] = self.data.port_group
+        rollbackDict['connector'] = self.data.connector
+        # path 1: masking view creation or retrieval is successful
+        with mock.patch.object(masking, "_get_port_group_name_from_mv",
+                               return_value=(self.data.port_group, None)):
+            deviceDict = masking.get_or_create_masking_view_and_map_lun(
+                common.conn, maskingViewDict, extraSpecs)
+            (masking._check_if_rollback_action_for_masking_required.
+             assert_not_called())
+            self.assertEqual(rollbackDict, deviceDict)
+        # path 2: masking view creation or retrieval is unsuccessful
+        with mock.patch.object(masking, "_get_port_group_name_from_mv",
+                               return_value=(None, "error_message")):
+            rollbackDict['storageSystemName'] = self.data.storage_system
+            rollbackDict['slo'] = u'Bronze'
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              masking.get_or_create_masking_view_and_map_lun,
+                              common.conn, maskingViewDict, extraSpecs)
+
 
 class EMCVMAXFCTest(test.TestCase):
     def setUp(self):

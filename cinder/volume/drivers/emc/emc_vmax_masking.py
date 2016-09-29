@@ -132,10 +132,13 @@ class EMCVMAXMasking(object):
                 {'maskingViewName': maskingViewDict['maskingViewName']})
             errorMessage = e
 
-        rollbackDict['pgGroupName'], errorMessage = (
+        rollbackDict['pgGroupName'], pg_errorMessage = (
             self._get_port_group_name_from_mv(
                 conn, maskingViewDict['maskingViewName'],
                 maskingViewDict['storageSystemName']))
+
+        if pg_errorMessage:
+            errorMessage = pg_errorMessage
 
         if not errorMessage:
             # Only after the masking view has been validated, add the
