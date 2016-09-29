@@ -1193,16 +1193,8 @@ class RestClient(object):
                 free_capacity_gb=capacity['free_capacity'],
                 reserved_percentage=self.configuration.safe_get(
                     'reserved_percentage'),
-                QoS_support=True,
                 max_over_subscription_ratio=self.configuration.safe_get(
                     'max_over_subscription_ratio'),
-                thin_provisioning_support=True,
-                thick_provisioning_support=True,
-                smarttier=True,
-                smartcache=True,
-                smartpartition=True,
-                hypermetro=True,
-                consistencygroup_support=True,
             ))
             if disk_type:
                 pool['disk_type'] = disk_type
@@ -2340,3 +2332,13 @@ class RestClient(object):
         if data is not None:
             return data.get('ISADD2HOSTGROUP') == 'true'
         return False
+
+    def _get_object_count(self, obj_name):
+        url = "/" + obj_name + "/count"
+        result = self.call(url, None, "GET")
+
+        if result['error']['code'] != 0:
+            raise
+
+        if result.get("data"):
+            return result.get("data").get("COUNT")

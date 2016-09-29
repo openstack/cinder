@@ -94,8 +94,16 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self.configuration.append_config_values(huawei_opts)
         self.huawei_conf = huawei_conf.HuaweiConf(self.configuration)
+        self.support_func = None
         self.metro_flag = False
         self.replica = None
+
+    def check_func_support(self, obj_name):
+        try:
+            self.client._get_object_count(obj_name)
+            return True
+        except Exception:
+            return False
 
     def get_local_and_remote_dev_conf(self):
         self.loc_dev_conf = self.huawei_conf.get_local_device()
@@ -161,7 +169,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """Get volume status and reload huawei config file."""
         self.huawei_conf.update_config_value()
         stats = self.client.update_volume_stats()
-        stats = self.update_hypermetro_capability(stats)
+        stats = self.update_support_capability(stats)
 
         if self.replica:
             stats = self.replica.update_replica_capability(stats)
@@ -171,15 +179,29 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return stats
 
-    def update_hypermetro_capability(self, stats):
-        if self.metro_flag:
-            version = self.client.find_array_version()
-            rmt_version = self.rmt_client.find_array_version()
-            if (version >= constants.ARRAY_VERSION
-                    and rmt_version >= constants.ARRAY_VERSION):
-                for pool in stats['pools']:
-                    pool['hypermetro'] = True
-                    pool['consistencygroup_support'] = True
+    def update_support_capability(self, stats):
+        for pool in stats['pools']:
+            pool['smartpartition'] = (
+                self.check_func_support("SMARTCACHEPARTITION"))
+            pool['smartcache'] = self.check_func_support("smartcachepool")
+            pool['QoS_support'] = self.check_func_support("ioclass")
+            pool['splitmirror'] = self.check_func_support("splitmirror")
+            pool['luncopy'] = self.check_func_support("luncopy")
+            pool['thick_provisioning_support'] = True
+            pool['thin_provisioning_support'] = True
+            pool['smarttier'] = True
+
+            if self.configuration.san_product == "Dorado":
+                pool['smarttier'] = False
+                pool['thick_provisioning_support'] = False
+
+            if self.metro_flag:
+                pool['hypermetro'] = self.check_func_support("HyperMetroPair")
+                pool['consistencygroup_support'] = (
+                    self.check_func_support("HyperMetro_ConsistentGroup"))
+
+            # Asign the support function to global paramenter.
+            self.support_func = pool
 
         return stats
 
@@ -335,8 +357,13 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         try:
             qos = smartx.SmartQos.get_qos_by_volume_type(volume_type)
             if qos:
-                smart_qos = smartx.SmartQos(self.client)
-                smart_qos.add(qos, lun_id)
+                if not self.support_func.get('QoS_support'):
+                    msg = (_("Can't support qos on the array"))
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                else:
+                    smart_qos = smartx.SmartQos(self.client)
+                    smart_qos.add(qos, lun_id)
 
             smartpartition = smartx.SmartPartition(self.client)
             smartpartition.add(opts, lun_id)
@@ -425,10 +452,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         if not lun_id:
             return
 
-        qos_id = self.client.get_qosid_by_lunid(lun_id)
-        if qos_id:
-            smart_qos = smartx.SmartQos(self.client)
-            smart_qos.remove(qos_id, lun_id)
+        if self.support_func.get('QoS_support'):
+            qos_id = self.client.get_qosid_by_lunid(lun_id)
+            if qos_id:
+                smart_qos = smartx.SmartQos(self.client)
+                smart_qos.remove(qos_id, lun_id)
 
         metadata = huawei_utils.get_volume_metadata(volume)
         if 'hypermetro_id' in metadata:
@@ -461,10 +489,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             return
 
         if self.client.check_lun_exist(lun_id, lun_wwn):
-            qos_id = self.client.get_qosid_by_lunid(lun_id)
-            if qos_id:
-                smart_qos = smartx.SmartQos(self.client)
-                smart_qos.remove(qos_id, lun_id)
+            if self.support_func.get('QoS_support'):
+                qos_id = self.client.get_qosid_by_lunid(lun_id)
+                if qos_id:
+                    smart_qos = smartx.SmartQos(self.client)
+                    smart_qos.remove(qos_id, lun_id)
 
             self.client.delete_lun(lun_id)
 
@@ -654,6 +683,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'READCACHEPOLICY': lun_info['READCACHEPOLICY'],
             'WRITECACHEPOLICY': lun_info['WRITECACHEPOLICY'],
             'OWNINGCONTROLLER': lun_info['OWNINGCONTROLLER'], }
+
+        for item in lun_params.keys():
+            if lun_params.get(item) == '--':
+                del lun_params[item]
 
         lun_info = self.client.create_lun(lun_params)
         lun_id = lun_info['ID']
@@ -1025,12 +1058,47 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return lun_opts
 
+    def _check_capability_support(self, new_opts, new_type):
+        new_cache_name = new_opts['cachename']
+        if new_cache_name:
+            if not self.support_func.get('smartcache'):
+                msg = (_(
+                    "Can't support cache on the array, cache name is: "
+                    "%(name)s.") % {'name': new_cache_name})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        new_partition_name = new_opts['partitionname']
+        if new_partition_name:
+            if not self.support_func.get('smartpartition'):
+                msg = (_(
+                    "Can't support partition on the array, partition name is: "
+                    "%(name)s.") % {'name': new_partition_name})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        if new_opts['policy']:
+            if (not self.support_func.get('smarttier')
+                    and new_opts['policy'] != '0'):
+                msg = (_("Can't support tier on the array."))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        new_qos = smartx.SmartQos.get_qos_by_volume_type(new_type)
+        if not self.support_func.get('QoS_support'):
+            if new_qos:
+                msg = (_("Can't support qos on the array."))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
     def _check_needed_changes(self, lun_id, old_opts, new_opts,
                               change_opts, new_type):
         new_cache_id = None
         new_cache_name = new_opts['cachename']
         if new_cache_name:
-            new_cache_id = self.client.get_cache_id_by_name(new_cache_name)
+            if self.support_func.get('smartcache'):
+                new_cache_id = self.client.get_cache_id_by_name(
+                    new_cache_name)
             if new_cache_id is None:
                 msg = (_(
                     "Can't find cache name on the array, cache name is: "
@@ -1041,8 +1109,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         new_partition_id = None
         new_partition_name = new_opts['partitionname']
         if new_partition_name:
-            new_partition_id = self.client.get_partition_id_by_name(
-                new_partition_name)
+            if self.support_func.get('smartpartition'):
+                new_partition_id = self.client.get_partition_id_by_name(
+                    new_partition_name)
             if new_partition_id is None:
                 msg = (_(
                     "Can't find partition name on the array, partition name "
@@ -1052,26 +1121,37 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         # smarttier
         if old_opts['policy'] != new_opts['policy']:
-            change_opts['policy'] = (old_opts['policy'], new_opts['policy'])
+            if not (old_opts['policy'] == '--'
+                    and new_opts['policy'] is None):
+                change_opts['policy'] = (old_opts['policy'],
+                                         new_opts['policy'])
 
         # smartcache
         old_cache_id = old_opts['cacheid']
+        if old_cache_id == '--':
+            old_cache_id = None
         if old_cache_id != new_cache_id:
             old_cache_name = None
-            if old_cache_id:
-                cache_info = self.client.get_cache_info_by_id(old_cache_id)
-                old_cache_name = cache_info['NAME']
+            if self.support_func.get('smartcache'):
+                if old_cache_id:
+                    cache_info = self.client.get_cache_info_by_id(
+                        old_cache_id)
+                    old_cache_name = cache_info['NAME']
             change_opts['cacheid'] = ([old_cache_id, old_cache_name],
                                       [new_cache_id, new_cache_name])
 
         # smartpartition
         old_partition_id = old_opts['partitionid']
+        if old_partition_id == '--':
+            old_partition_id = None
         if old_partition_id != new_partition_id:
             old_partition_name = None
-            if old_partition_id:
-                partition_info = self.client.get_partition_info_by_id(
-                    old_partition_id)
-                old_partition_name = partition_info['NAME']
+            if self.support_func.get('smartpartition'):
+                if old_partition_id:
+                    partition_info = self.client.get_partition_info_by_id(
+                        old_partition_id)
+                    old_partition_name = partition_info['NAME']
+
             change_opts['partitionid'] = ([old_partition_id,
                                            old_partition_name],
                                           [new_partition_id,
@@ -1079,10 +1159,16 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         # smartqos
         new_qos = smartx.SmartQos.get_qos_by_volume_type(new_type)
-        old_qos_id = self.client.get_qosid_by_lunid(lun_id)
-        old_qos = self._get_qos_specs_from_array(old_qos_id)
-        if old_qos != new_qos:
-            change_opts['qos'] = ([old_qos_id, old_qos], new_qos)
+        if not self.support_func.get('QoS_support'):
+            if new_qos:
+                msg = (_("Can't support qos on the array."))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            old_qos_id = self.client.get_qosid_by_lunid(lun_id)
+            old_qos = self._get_qos_specs_from_array(old_qos_id)
+            if old_qos != new_qos:
+                change_opts['qos'] = ([old_qos_id, old_qos], new_qos)
 
         return change_opts
 
@@ -1235,44 +1321,47 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a HyperMetroPair.
-        try:
-            hypermetro_pairs = self.client.get_hypermetro_pairs()
-        except exception.VolumeBackendAPIException:
-            hypermetro_pairs = []
-            LOG.debug("Can't get hypermetro info, pass the check.")
+        if self.support_func.get('hypermetro'):
+            try:
+                hypermetro_pairs = self.client.get_hypermetro_pairs()
+            except exception.VolumeBackendAPIException:
+                hypermetro_pairs = []
+                LOG.debug("Can't get hypermetro info, pass the check.")
 
-        for pair in hypermetro_pairs:
-            if pair.get('LOCALOBJID') == lun_id:
-                msg = (_("Can't import LUN %s to Cinder. Already exists in a "
-                         "HyperMetroPair.") % lun_id)
-                raise exception.ManageExistingInvalidReference(
-                    existing_ref=external_ref, reason=msg)
+            for pair in hypermetro_pairs:
+                if pair.get('LOCALOBJID') == lun_id:
+                    msg = (_("Can't import LUN %s to Cinder. Already exists "
+                             "in a HyperMetroPair.") % lun_id)
+                    raise exception.ManageExistingInvalidReference(
+                        existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a SplitMirror.
-        try:
-            split_mirrors = self.client.get_split_mirrors()
-        except exception.VolumeBackendAPIException as ex:
-            if re.search('License is unavailable', ex.msg):
-                # Can't check whether the LUN has SplitMirror with it,
-                # just pass the check and log it.
-                split_mirrors = []
-                LOG.warning(_LW('No license for SplitMirror.'))
-            else:
-                msg = _("Failed to get SplitMirror.")
-                raise exception.VolumeBackendAPIException(data=msg)
-
-        for mirror in split_mirrors:
+        if self.support_func.get('splitmirror'):
             try:
-                target_luns = self.client.get_target_luns(mirror.get('ID'))
-            except exception.VolumeBackendAPIException:
-                msg = _("Failed to get target LUN of SplitMirror.")
-                raise exception.VolumeBackendAPIException(data=msg)
+                split_mirrors = self.client.get_split_mirrors()
+            except exception.VolumeBackendAPIException as ex:
+                if re.search('License is unavailable', ex.msg):
+                    # Can't check whether the LUN has SplitMirror with it,
+                    # just pass the check and log it.
+                    split_mirrors = []
+                    LOG.warning(_LW('No license for SplitMirror.'))
+                else:
+                    msg = _("Failed to get SplitMirror.")
+                    raise exception.VolumeBackendAPIException(data=msg)
 
-            if (mirror.get('PRILUNID') == lun_id) or (lun_id in target_luns):
-                msg = (_("Can't import LUN %s to Cinder. Already exists in a "
-                         "SplitMirror.") % lun_id)
-                raise exception.ManageExistingInvalidReference(
-                    existing_ref=external_ref, reason=msg)
+            for mirror in split_mirrors:
+                try:
+                    target_luns = self.client.get_target_luns(mirror.get('ID'))
+                except exception.VolumeBackendAPIException:
+                    msg = _("Failed to get target LUN of SplitMirror.")
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+                if ((mirror.get('PRILUNID') == lun_id)
+                        or (lun_id in target_luns)):
+                    msg = (_("Can't import LUN %s to Cinder. Already exists "
+                             "in a SplitMirror.") % lun_id)
+                    raise exception.ManageExistingInvalidReference(
+                        existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a migration task.
         try:
@@ -1296,12 +1385,13 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a LUN copy task.
-        lun_copy = lun_info.get('LUNCOPYIDS')
-        if lun_copy and lun_copy[1:-1]:
-            msg = (_("Can't import LUN %s to Cinder. Already exists in "
-                     "a LUN copy task.") % lun_id)
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=external_ref, reason=msg)
+        if self.support_func.get('luncopy'):
+            lun_copy = lun_info.get('LUNCOPYIDS')
+            if lun_copy and lun_copy[1:-1]:
+                msg = (_("Can't import LUN %s to Cinder. Already exists in "
+                         "a LUN copy task.") % lun_id)
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a remote replication task.
         rmt_replication = lun_info.get('REMOTEREPLICATIONIDS')
@@ -1355,8 +1445,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                          "LUN type mismatched.") % lun_id)
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
             if volume_type:
+                self._check_capability_support(new_opts, volume_type)
+
                 change_opts = {'policy': None, 'partitionid': None,
                                'cacheid': None, 'qos': None}
+
                 change_opts = self._check_needed_changes(lun_id, old_opts,
                                                          new_opts, change_opts,
                                                          volume_type)
