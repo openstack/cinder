@@ -70,6 +70,7 @@ import cinder.volume
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf
 from cinder.volume import driver
+from cinder.volume.flows.manager import create_volume as create_volume_manager
 from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
 import cinder.volume.targets.tgt
@@ -4900,6 +4901,79 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         self.assertFalse(migrate_volume_completion.called)
         update_server_volume.assert_called_with(self.context, fake_uuid,
                                                 volume['id'], fake_volume_id)
+
+    @mock.patch('cinder.objects.volume.Volume.save')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_volume')
+    @mock.patch('cinder.compute.API')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'migrate_volume_completion')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    def test_migrate_volume_generic_volume_from_snap(self, volume_get,
+                                                     migrate_volume_completion,
+                                                     nova_api, create_volume,
+                                                     save):
+        def fake_create_volume(*args, **kwargs):
+            context, volume, host, request_spec, filter_properties = args
+            fake_db = mock.Mock()
+            task = create_volume_manager.ExtractVolumeSpecTask(fake_db)
+            specs = task.execute(context, volume, {})
+            self.assertEqual('raw', specs['type'])
+
+        def fake_copy_volume_data_with_chk_param(*args, **kwargs):
+            context, src, dest = args
+            self.assertEqual(src['snapshot_id'], dest['snapshot_id'])
+
+        fake_db_new_volume = {'status': 'available', 'id': fake.VOLUME_ID}
+        fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        volume_get.return_value = fake_new_volume
+
+        volume_from_snap = tests_utils.create_volume(self.context, size=1,
+                                                     host=CONF.host)
+        volume_from_snap['snapshot_id'] = fake.SNAPSHOT_ID
+        create_volume.side_effect = fake_create_volume
+
+        with mock.patch.object(self.volume, '_copy_volume_data') as \
+                mock_copy_volume:
+            mock_copy_volume.side_effect = fake_copy_volume_data_with_chk_param
+            self.volume._migrate_volume_generic(self.context, volume_from_snap,
+                                                host_obj, None)
+
+    @mock.patch('cinder.objects.volume.Volume.save')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_volume')
+    @mock.patch('cinder.compute.API')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'migrate_volume_completion')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    def test_migrate_volume_generic_for_clone(self, volume_get,
+                                              migrate_volume_completion,
+                                              nova_api, create_volume, save):
+        def fake_create_volume(*args, **kwargs):
+            context, volume, host, request_spec, filter_properties = args
+            fake_db = mock.Mock()
+            task = create_volume_manager.ExtractVolumeSpecTask(fake_db)
+            specs = task.execute(context, volume, {})
+            self.assertEqual('raw', specs['type'])
+
+        def fake_copy_volume_data_with_chk_param(*args, **kwargs):
+            context, src, dest = args
+            self.assertEqual(src['source_volid'], dest['source_volid'])
+
+        fake_db_new_volume = {'status': 'available', 'id': fake.VOLUME_ID}
+        fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        volume_get.return_value = fake_new_volume
+
+        clone = tests_utils.create_volume(self.context, size=1,
+                                          host=CONF.host)
+        clone['source_volid'] = fake.VOLUME2_ID
+        create_volume.side_effect = fake_create_volume
+
+        with mock.patch.object(self.volume, '_copy_volume_data') as \
+                mock_copy_volume:
+            mock_copy_volume.side_effect = fake_copy_volume_data_with_chk_param
+            self.volume._migrate_volume_generic(self.context, clone,
+                                                host_obj, None)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'update_migrated_volume')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume')
