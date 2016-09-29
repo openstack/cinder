@@ -43,7 +43,7 @@ class WindowsSmbFsTestCase(test.TestCase):
                                      _FAKE_VOLUME_NAME + '.vhdx')
 
     @mock.patch.object(smbfs, 'utilsfactory')
-    @mock.patch.object(smbfs, 'remotefs')
+    @mock.patch.object(smbfs, 'remotefs_brick')
     def setUp(self, mock_remotefs, mock_utilsfactory):
         super(WindowsSmbFsTestCase, self).setUp()
 
