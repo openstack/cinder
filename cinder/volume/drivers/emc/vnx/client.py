@@ -81,6 +81,9 @@ class Client(object):
     def __init__(self, ip, username, password, scope,
                  naviseccli, sec_file):
         self.naviseccli = naviseccli
+        if not storops:
+            msg = _('storops Python library is not installed.')
+            raise exception.VolumeBackendAPIException(message=msg)
         self.vnx = storops.VNXSystem(ip=ip,
                                      username=username,
                                      password=password,
