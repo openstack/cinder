@@ -169,7 +169,7 @@ class SchedulerManager(manager.Manager):
 
         try:
             flow_engine = create_volume.get_flow(context,
-                                                 db, self.driver,
+                                                 self.driver,
                                                  request_spec,
                                                  filter_properties,
                                                  volume,

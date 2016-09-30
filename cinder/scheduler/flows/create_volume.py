@@ -38,13 +38,11 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
 
     default_provides = set(['request_spec'])
 
-    def __init__(self, db_api, **kwargs):
+    def __init__(self, **kwargs):
         super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
-        self.db_api = db_api
 
-    def _populate_request_spec(self, volume, snapshot_id,
-                               image_id):
+    def _populate_request_spec(self, volume, snapshot_id, image_id):
         # Create the full request spec using the volume object.
         #
         # NOTE(dulek): At this point, a volume can be deleted before it gets
@@ -88,10 +86,9 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
     """
     FAILURE_TOPIC = "scheduler.create_volume"
 
-    def __init__(self, db_api, driver_api, **kwargs):
+    def __init__(self, driver_api, **kwargs):
         super(ScheduleCreateVolumeTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
-        self.db_api = db_api
         self.driver_api = driver_api
         self.message_api = message_api.API()
 
@@ -144,7 +141,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                     common.error_out(volume, reason=e)
 
 
-def get_flow(context, db_api, driver_api, request_spec=None,
+def get_flow(context, driver_api, request_spec=None,
              filter_properties=None,
              volume=None, snapshot_id=None, image_id=None):
 
@@ -171,12 +168,11 @@ def get_flow(context, db_api, driver_api, request_spec=None,
 
     # This will extract and clean the spec from the starting values.
     scheduler_flow.add(ExtractSchedulerSpecTask(
-        db_api,
         rebind={'request_spec': 'raw_request_spec'}))
 
     # This will activate the desired scheduler driver (and handle any
     # driver related failures appropriately).
-    scheduler_flow.add(ScheduleCreateVolumeTask(db_api, driver_api))
+    scheduler_flow.add(ScheduleCreateVolumeTask(driver_api))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(scheduler_flow, store=create_what)
