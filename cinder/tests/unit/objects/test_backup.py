@@ -213,7 +213,7 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.backup_get_all_by_host',
                 return_value=[fake_backup])
-    def test_get_all_for_volume(self, get_all_by_host):
+    def test_get_all_by_host(self, get_all_by_host):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
 
         backups = objects.BackupList.get_all_by_host(self.context,
@@ -226,4 +226,14 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
         search_opts = {'all_tenants': 1}
         backups = objects.BackupList.get_all(self.context, search_opts)
         self.assertEqual(1, len(backups))
+        TestBackup._compare(self, fake_backup, backups[0])
+
+    @mock.patch('cinder.db.backup_get_all_by_volume',
+                return_value=[fake_backup])
+    def test_get_all_by_volume(self, get_all_by_volume):
+        backups = objects.BackupList.get_all_by_volume(self.context,
+                                                       fake.VOLUME_ID)
+        self.assertEqual(1, len(backups))
+        get_all_by_volume.assert_called_once_with(self.context,
+                                                  fake.VOLUME_ID, None)
         TestBackup._compare(self, fake_backup, backups[0])
