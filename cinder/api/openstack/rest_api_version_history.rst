@@ -184,9 +184,10 @@ user documentation.
   Added create/delete/update/list/show APIs for generic volume groups.
 
 3.14
+----
   Added group snapshots and create group from src APIs.
----
 
-3.15
+3.15 (Maximum in Newton)
+------------------------
   Added injecting the response's `Etag` header to avoid the lost update
   problem with volume metadata.
