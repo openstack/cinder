@@ -700,7 +700,7 @@ class EMCVMAXFast(object):
         :returns: int  -- real physical capacity in GB of all pools
             available to be used
         :returns: int -- (Provisioned capacity-EMCSubscribedCapacity) in GB
-            is the the capacity that has been provisioned
+            is the capacity that has been provisioned
         :returns: int -- the maximum oversubscription ration
         """
         policyInstanceName = self.get_tier_policy_by_name(
