@@ -209,6 +209,22 @@ class TestReplicationDeviceList(test.TestCase):
         self.assertEqual('global', device.storage_vnx_authentication_type)
         self.assertEqual('/home/stack/', device.storage_vnx_security_file_dir)
 
+    def test_device_no_backend_id(self):
+        device = {'san_ip': '192.168.1.2'}
+        config = FakeConfiguration()
+        config.replication_device = [device]
+        self.assertRaises(
+            exception.InvalidInput,
+            common.ReplicationDeviceList, config)
+
+    def test_device_no_secfile(self):
+        device = {'backend_id': 'test_id',
+                  'san_ip': '192.168.1.2'}
+        config = FakeConfiguration()
+        config.replication_device = [device]
+        rep_list = common.ReplicationDeviceList(config)
+        self.assertIsNone(rep_list[0].storage_vnx_security_file_dir)
+
     def test_get_device_not_found(self):
         devices_list = common.ReplicationDeviceList(self.configuration)
         device = devices_list.get_device('array_id_not_existed')
