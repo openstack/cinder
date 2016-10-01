@@ -139,14 +139,6 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver',
-    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000ISCSIDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver',
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
-    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000FCDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
     'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
     'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
@@ -155,14 +147,6 @@ MAPPING = {
     'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
     'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver':
     'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver':
-    'cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver',
-    'cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver':
-    'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver':
-    'cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_xp_fc.HPXPFCDriver':
-    'cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver',
     'cinder.volume.drivers.ibm.xiv_ds8k':
     'cinder.volume.drivers.ibm.ibm_storage',
 }
