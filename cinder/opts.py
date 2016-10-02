@@ -29,7 +29,6 @@ from cinder.backup.drivers import posix as cinder_backup_drivers_posix
 from cinder.backup.drivers import swift as cinder_backup_drivers_swift
 from cinder.backup.drivers import tsm as cinder_backup_drivers_tsm
 from cinder.backup import manager as cinder_backup_manager
-from cinder.cmd import all as cinder_cmd_all
 from cinder.cmd import volume as cinder_cmd_volume
 from cinder.common import config as cinder_common_config
 import cinder.compute
@@ -225,7 +224,7 @@ def list_opts():
                 cinder_volume_drivers_netapp_options.netapp_replication_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi.
                 storwize_svc_iscsi_opts,
-                cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
+                cinder_compute_nova.nova_opts,
                 cinder_volume_drivers_coprhd_scaleio.scaleio_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
@@ -335,7 +334,7 @@ def list_opts():
                 cinder_volume_drivers_hgst.hgst_opts,
                 cinder_message_api.messages_opts,
                 cinder_image_imageutils.image_helper_opts,
-                cinder_compute_nova.nova_opts,
+                cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
                 cinder_volume_drivers_ibm_flashsystemfc.flashsystem_fc_opts,
                 cinder_volume_drivers_prophetstor_options.DPL_OPTS,
                 cinder_volume_drivers_hpe_hpexpopts.FC_VOLUME_OPTS,
@@ -380,6 +379,5 @@ def list_opts():
         ('BACKEND',
             itertools.chain(
                 [cinder_cmd_volume.host_opt],
-                [cinder_cmd_all.volume_cmd.host_opt],
             )),
     ]
