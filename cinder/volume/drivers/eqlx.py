@@ -25,7 +25,6 @@ import greenlet
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import versionutils
 from oslo_utils import excutils
 from six.moves import range
 
@@ -43,36 +42,10 @@ eqlx_opts = [
                default='group-0',
                help='Group name to use for creating volumes. Defaults to '
                     '"group-0".'),
-    cfg.IntOpt('eqlx_cli_timeout',
-               default=30,
-               help='Timeout for the Group Manager cli command execution. '
-                    'Default is 30. Note that this option is deprecated '
-                    'in favour of "ssh_conn_timeout" as '
-                    'specified in cinder/volume/drivers/san/san.py '
-                    'and will be removed in M release.'),
     cfg.IntOpt('eqlx_cli_max_retries',
                min=0,
                default=5,
                help='Maximum retry count for reconnection. Default is 5.'),
-    cfg.BoolOpt('eqlx_use_chap',
-                default=False,
-                help='Use CHAP authentication for targets. Note that this '
-                     'option is deprecated in favour of "use_chap_auth" as '
-                     'specified in cinder/volume/driver.py and will be '
-                     'removed in next release.'),
-    cfg.StrOpt('eqlx_chap_login',
-               default='admin',
-               help='Existing CHAP account name. Note that this '
-                    'option is deprecated in favour of "chap_username" as '
-                    'specified in cinder/volume/driver.py and will be '
-                    'removed in next release.'),
-    cfg.StrOpt('eqlx_chap_password',
-               default='password',
-               help='Password for specified CHAP account name. Note that this '
-                    'option is deprecated in favour of "chap_password" as '
-                    'specified in cinder/volume/driver.py and will be '
-                    'removed in the next release',
-               secret=True),
     cfg.StrOpt('eqlx_pool',
                default='default',
                help='Pool in which volumes will be created. Defaults '
@@ -158,10 +131,12 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         1.1.0 - Misc fixes
         1.2.0 - Deprecated eqlx_cli_timeout infavor of ssh_conn_timeout
         1.3.0 - Added support for manage/unmanage volume
+        1.4.0 - Removed deprecated options eqlx_cli_timeout, eqlx_use_chap,
+                eqlx_chap_login, and eqlx_chap_password.
 
     """
 
-    VERSION = "1.3.0"
+    VERSION = "1.4.0"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -171,28 +146,6 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         self.configuration.append_config_values(eqlx_opts)
         self._group_ip = None
         self.sshpool = None
-
-        if self.configuration.eqlx_use_chap is True:
-            LOG.warning(_LW(
-                'Configuration options eqlx_use_chap, '
-                'eqlx_chap_login and eqlx_chap_password are deprecated. Use '
-                'use_chap_auth, chap_username and chap_password '
-                'respectively for the same.'))
-
-            self.configuration.use_chap_auth = (
-                self.configuration.eqlx_use_chap)
-            self.configuration.chap_username = (
-                self.configuration.eqlx_chap_login)
-            self.configuration.chap_password = (
-                self.configuration.eqlx_chap_password)
-
-        if self.configuration.eqlx_cli_timeout:
-            msg = _LW('Configuration option eqlx_cli_timeout '
-                      'is deprecated and will be removed in M release. '
-                      'Use ssh_conn_timeout instead.')
-            self.configuration.ssh_conn_timeout = (
-                self.configuration.eqlx_cli_timeout)
-            versionutils.report_deprecated_feature(LOG, msg)
 
     def _get_output(self, chan):
         out = ''
