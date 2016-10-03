@@ -119,7 +119,7 @@ class Manager(base.Base, PeriodicTasks):
     def is_working(self):
         """Method indicating if service is working correctly.
 
-        This method is supposed to be overriden by subclasses and return if
+        This method is supposed to be overridden by subclasses and return if
         manager is working correctly.
         """
         return True
