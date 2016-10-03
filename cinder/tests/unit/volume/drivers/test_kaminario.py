@@ -130,6 +130,7 @@ class TestKaminarioISCSI(test.TestCase):
         self.vol.volume_type.extra_specs = {'foo': None}
         self.snap = fake_snapshot.fake_snapshot_obj(self.context)
         self.snap.volume = self.vol
+        self.patch('eventlet.sleep')
 
     def _setup_config(self):
         self.conf = mock.Mock(spec=configuration.Configuration)
