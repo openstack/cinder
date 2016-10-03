@@ -443,8 +443,7 @@ class HackingTestCase(test.TestCase):
         (1, 'LOG.debug', "cinder/tests/fake.py", False),
         (0, 'LOG.info.assert_called_once_with', "cinder/tests/fake.py", False),
         (0, 'some.LOG.error.call', "cinder/tests/fake.py", False),
-        (0, 'LOG.warning', "cinder/tests/unit/fake.py", True),
-        (0, 'LOG.warning', "cinder/tests/unit/integrated/fake.py", False))
+        (0, 'LOG.warning', "cinder/tests/unit/fake.py", True))
     def test_no_test_log(self, first, second, third, fourth):
         self.assertEqual(first, len(list(checks.no_test_log(
             "%s('arg')" % second, third, fourth))))
