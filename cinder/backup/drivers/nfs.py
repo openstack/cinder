@@ -53,7 +53,7 @@ class NFSBackupDriver(posix.PosixBackupDriver):
         self._check_configuration()
         self.backup_mount_point_base = CONF.backup_mount_point_base
         self.backup_share = CONF.backup_share
-        self.mount_options = CONF.backup_mount_options or {}
+        self.mount_options = CONF.backup_mount_options
         backup_path = self._init_backup_repo_path()
         LOG.debug("Using NFS backup repository: %s", backup_path)
         super(NFSBackupDriver, self).__init__(context,
