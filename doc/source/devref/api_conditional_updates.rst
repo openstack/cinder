@@ -34,7 +34,7 @@ And finally make the RPC call:
        self.volume_rpcapi.extend_volume(context, volume, new_size,
                                         reservations)
 
-The problem is that that this code would allow races, as other request could
+The problem is that this code would allow races, as other request could
 have already changed the volume status between us getting the value and
 updating the DB.
 
