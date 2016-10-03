@@ -98,12 +98,12 @@ class FakeTegileService(object):
         elif method is 'getVolumeSizeinGB':
             return 25
         elif method is 'getISCSIMappingForVolume':
-            return {'target_lun': '27',
+            return {'target_lun': 27,
                     'target_iqn': 'iqn.2012-02.com.tegile:openstack-cobalt',
                     'target_portal': '10.68.103.106:3260'
                     }
         elif method is 'getFCPortsForVolume':
-            return {'target_lun': '12',
+            return {'target_lun': 12,
                     'initiator_target_map':
                         '{"21000024ff59bb6e":["21000024ff578701",],'
                         '"21000024ff59bb6f":["21000024ff578700",],}',
@@ -363,7 +363,7 @@ class TegileISCSIDriverTestCase(test.TestCase):
                           'auth_username': 'fake',
                           'target_iqn': 'iqn.2012-02.'
                                         'com.tegile:openstack-cobalt',
-                          'target_lun': '27',
+                          'target_lun': 27,
                           'target_portal': '10.68.103.106:3260',
                           'volume_id': (
                               'a24c2ee8-525a-4406-8ccd-8d38688f8e9e',)},
@@ -395,7 +395,7 @@ class TegileFCDriverTestCase(test.TestCase):
                                                ['21000024ff578700']
                                        },
                                        'target_discovered': False,
-                                       'target_lun': '12',
+                                       'target_lun': 12,
                                        'target_wwn':
                                            ['21000024ff578700',
                                             '21000024ff578701']},
