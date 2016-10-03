@@ -328,7 +328,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         url = 'san/lunMappings?volume={}&fields=id'.format(
             volume_path.replace('/', '%2F')
         )
-        data = self.nef.get(url).get('data')
+        data = self.nef.get(url)['data']
         if data:
             url = 'san/lunMappings/%s' % data[0]['id']
             try:
@@ -449,7 +449,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
                 # Get the name of just created target
                 data = self.nef.get(url + '?fields=name&alias={}'.format(
-                    tg_name))
+                    tg_name))['data']
                 LOG.debug('DATA: {}'.format(data))
                 target_name = data[0]['name']
 
