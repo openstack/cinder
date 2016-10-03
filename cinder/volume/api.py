@@ -26,6 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
+from oslo_utils import versionutils
 import six
 
 from cinder.api import common
@@ -1704,70 +1705,137 @@ class API(base.Base):
                                                            offset, sort_keys,
                                                            sort_dirs)
 
+    def _get_cluster_and_services_for_replication(self, ctxt, host,
+                                                  cluster_name):
+        services = objects.ServiceList.get_all(
+            ctxt, filters={'host': host, 'cluster_name': cluster_name,
+                           'binary': constants.VOLUME_BINARY})
+
+        if not services:
+            msg = _('No service found with ') + (
+                'host=%(host)s' if host else 'cluster=%(cluster_name)s')
+            raise exception.ServiceNotFound(msg, host=host,
+                                            cluster_name=cluster_name)
+
+        cluster = services[0].cluster
+        # Check that the host or cluster we received only results in 1 host or
+        # hosts from the same cluster.
+        if cluster_name:
+            check_attribute = 'cluster_name'
+            expected = cluster.name
+        else:
+            check_attribute = 'host'
+            expected = services[0].host
+        if any(getattr(s, check_attribute) != expected for s in services):
+            msg = _('Services from different clusters found.')
+            raise exception.InvalidParameterValue(msg)
+
+        # If we received host parameter but host belongs to a cluster we have
+        # to change all the services in the cluster, not just one host
+        if host and cluster:
+            services = cluster.services
+
+        return cluster, services
+
+    def _replication_db_change(self, ctxt, field, expected_value, new_value,
+                               host, cluster_name, check_up=False):
+        def _error_msg(service):
+            expected = utils.build_or_str(six.text_type(expected_value))
+            up_msg = 'and must be up ' if check_up else ''
+            msg = (_('%(field)s in %(service)s must be %(expected)s '
+                     '%(up_msg)sto failover.')
+                   % {'field': field, 'service': service,
+                      'expected': expected, 'up_msg': up_msg})
+            LOG.error(msg)
+            return msg
+
+        cluster, services = self._get_cluster_and_services_for_replication(
+            ctxt, host, cluster_name)
+
+        expect = {field: expected_value}
+        change = {field: new_value}
+
+        if cluster:
+            old_value = getattr(cluster, field)
+            if ((check_up and not cluster.is_up)
+                    or not cluster.conditional_update(change, expect)):
+                msg = _error_msg(cluster.name)
+                raise exception.InvalidInput(reason=msg)
+
+        changed = []
+        not_changed = []
+        for service in services:
+            if ((not check_up or service.is_up)
+                    and service.conditional_update(change, expect)):
+                changed.append(service)
+            else:
+                not_changed.append(service)
+
+        # If there were some services that couldn't be changed we should at
+        # least log the error.
+        if not_changed:
+            msg = _error_msg([s.host for s in not_changed])
+            # If we couldn't change any of the services
+            if not changed:
+                # Undo the cluster change
+                if cluster:
+                    setattr(cluster, field, old_value)
+                    cluster.save()
+                raise exception.InvalidInput(
+                    reason=_('No service could be changed: %s') % msg)
+            LOG.warning(_LW('Some services could not be changed: %s'), msg)
+
+        return cluster, services
+
     # FIXME(jdg): Move these Cheesecake methods (freeze, thaw and failover)
     # to a services API because that's what they are
-    def failover_host(self,
-                      ctxt,
-                      host,
-                      secondary_id=None):
-
+    def failover(self, ctxt, host, cluster_name, secondary_id=None):
         check_policy(ctxt, 'failover_host')
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
-        svc_host = volume_utils.extract_host(host, 'backend')
 
-        service = objects.Service.get_by_args(
-            ctxt, svc_host, constants.VOLUME_BINARY)
-        expected = {'replication_status': [fields.ReplicationStatus.ENABLED,
-                    fields.ReplicationStatus.FAILED_OVER]}
-        result = service.conditional_update(
-            {'replication_status': fields.ReplicationStatus.FAILING_OVER},
-            expected)
-        if not result:
-            expected_status = utils.build_or_str(
-                expected['replication_status'])
-            msg = (_('Host replication_status must be %s to failover.')
-                   % expected_status)
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-        self.volume_rpcapi.failover_host(ctxt, host, secondary_id)
+        # TODO(geguileo): In P - Remove this version check
+        rpc_version = self.volume_rpcapi.determine_rpc_version_cap()
+        rpc_version = versionutils.convert_version_to_tuple(rpc_version)
+        if cluster_name and rpc_version < (3, 5):
+            msg = _('replication operations with cluster field')
+            raise exception.UnavailableDuringUpgrade(action=msg)
 
-    def freeze_host(self, ctxt, host):
+        rep_fields = fields.ReplicationStatus
+        expected_values = [rep_fields.ENABLED, rep_fields.FAILED_OVER]
+        new_value = rep_fields.FAILING_OVER
 
+        cluster, services = self._replication_db_change(
+            ctxt, 'replication_status', expected_values, new_value, host,
+            cluster_name, check_up=True)
+
+        self.volume_rpcapi.failover(ctxt, services[0], secondary_id)
+
+    def freeze_host(self, ctxt, host, cluster_name):
         check_policy(ctxt, 'freeze_host')
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
-        svc_host = volume_utils.extract_host(host, 'backend')
 
-        service = objects.Service.get_by_args(
-            ctxt, svc_host, constants.VOLUME_BINARY)
-        expected = {'frozen': False}
-        result = service.conditional_update(
-            {'frozen': True}, expected)
-        if not result:
-            msg = _('Host is already Frozen.')
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
+        expected = False
+        new_value = True
+        cluster, services = self._replication_db_change(
+            ctxt, 'frozen', expected, new_value, host, cluster_name,
+            check_up=False)
 
         # Should we set service status to disabled to keep
         # scheduler calls from being sent? Just use existing
         # `cinder service-disable reason=freeze`
-        self.volume_rpcapi.freeze_host(ctxt, host)
+        self.volume_rpcapi.freeze_host(ctxt, services[0])
 
-    def thaw_host(self, ctxt, host):
-
+    def thaw_host(self, ctxt, host, cluster_name):
         check_policy(ctxt, 'thaw_host')
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
-        svc_host = volume_utils.extract_host(host, 'backend')
 
-        service = objects.Service.get_by_args(
-            ctxt, svc_host, constants.VOLUME_BINARY)
-        expected = {'frozen': True}
-        result = service.conditional_update(
-            {'frozen': False}, expected)
-        if not result:
-            msg = _('Host is NOT Frozen.')
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-        if not self.volume_rpcapi.thaw_host(ctxt, host):
+        expected = True
+        new_value = False
+        cluster, services = self._replication_db_change(
+            ctxt, 'frozen', expected, new_value, host, cluster_name,
+            check_up=False)
+
+        if not self.volume_rpcapi.thaw_host(ctxt, services[0]):
             return "Backend reported error during thaw_host operation."
 
     def check_volume_filters(self, filters, strict=False):

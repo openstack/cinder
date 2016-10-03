@@ -31,7 +31,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         self.host = 'host@backend#pool'
         self.manager = manager.VolumeManager(host=self.host)
 
-    @mock.patch('cinder.objects.VolumeList.get_all_by_host')
+    @mock.patch('cinder.objects.VolumeList.get_all')
     @mock.patch('cinder.volume.driver.BaseVD.failover_host',
                 side_effect=exception.InvalidReplicationTarget(''))
     @ddt.data(('backend2', 'default', fields.ReplicationStatus.FAILED_OVER),
@@ -55,7 +55,8 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
             replication_status=fields.ReplicationStatus.FAILING_OVER)
 
         self.manager.failover_host(self.context, new_backend)
-        mock_getall.assert_called_once_with(self.context, self.host)
+        mock_getall.assert_called_once_with(self.context,
+                                            filters={'host': self.host})
         mock_failover.assert_called_once_with(self.context,
                                               mock_getall.return_value,
                                               secondary_id=new_backend)

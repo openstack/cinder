@@ -268,3 +268,15 @@ user documentation.
 3.25
 ----
   Add ``volumes`` field to group list/detail and group show.
+
+3.26
+----
+  - New ``failover`` action equivalent to ``failover_host``, but accepting
+    ``cluster`` parameter as well as the ``host`` cluster that
+    ``failover_host`` accepts.
+
+  - ``freeze`` and ``thaw`` actions accept ``cluster`` parameter.
+
+  - Cluster listing accepts ``replication_status``, ``frozen`` and
+    ``active_backend_id`` as filters, and returns additional fields for each
+    cluster: ``replication_status``, ``frozen``, ``active_backend_id``.

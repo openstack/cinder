@@ -44,6 +44,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
 from cinder.objects import base as objects_base
+from cinder.objects import fields
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
@@ -187,7 +188,7 @@ class Service(service.Service):
             if self.added_to_cluster:
                 # We pass copy service's disable status in the cluster if we
                 # have to create it.
-                self._ensure_cluster_exists(ctxt, service_ref.disabled)
+                self._ensure_cluster_exists(ctxt, service_ref)
                 service_ref.cluster_name = cluster
             service_ref.save()
             Service.service_id = service_ref.id
@@ -272,7 +273,9 @@ class Service(service.Service):
                          '%(version)s)'),
                      {'topic': self.topic, 'version': version_string,
                       'cluster': self.cluster})
-            target = messaging.Target(topic=self.topic, server=self.cluster)
+            target = messaging.Target(
+                topic='%s.%s' % (self.topic, self.cluster),
+                server=vol_utils.extract_host(self.cluster, 'host'))
             serializer = objects_base.CinderObjectSerializer(obj_version_cap)
             self.cluster_rpcserver = rpc.get_server(target, endpoints,
                                                     serializer)
@@ -316,17 +319,34 @@ class Service(service.Service):
                      'new_down_time': new_down_time})
                 CONF.set_override('service_down_time', new_down_time)
 
-    def _ensure_cluster_exists(self, context, disabled=None):
+    def _ensure_cluster_exists(self, context, service):
         if self.cluster:
             try:
-                objects.Cluster.get_by_id(context, None, name=self.cluster,
-                                          binary=self.binary)
+                cluster = objects.Cluster.get_by_id(context, None,
+                                                    name=self.cluster,
+                                                    binary=self.binary)
+                # If the cluster already exists, then the service replication
+                # fields must match those of the cluster unless the service
+                # is in error status.
+                error_states = (fields.ReplicationStatus.ERROR,
+                                fields.ReplicationStatus.FAILOVER_ERROR)
+                if service.replication_status not in error_states:
+                    for attr in ('replication_status', 'active_backend_id',
+                                 'frozen'):
+                        if getattr(service, attr) != getattr(cluster, attr):
+                            setattr(service, attr, getattr(cluster, attr))
+
             except exception.ClusterNotFound:
-                cluster = objects.Cluster(context=context, name=self.cluster,
-                                          binary=self.binary)
-                # If disabled has been specified overwrite default value
-                if disabled is not None:
-                    cluster.disabled = disabled
+                # Since the cluster didn't exist, we copy replication fields
+                # from the service.
+                cluster = objects.Cluster(
+                    context=context,
+                    name=self.cluster,
+                    binary=self.binary,
+                    disabled=service.disabled,
+                    replication_status=service.replication_status,
+                    active_backend_id=service.active_backend_id,
+                    frozen=service.frozen)
                 try:
                     cluster.create()
 
@@ -355,7 +375,10 @@ class Service(service.Service):
         Service.service_id = service_ref.id
         # TODO(geguileo): In O unconditionally ensure that the cluster exists
         if not self.is_upgrading_to_n:
-            self._ensure_cluster_exists(context)
+            self._ensure_cluster_exists(context, service_ref)
+            # If we have updated the service_ref with replication data from
+            # the cluster it will be saved.
+            service_ref.save()
 
     def __getattr__(self, key):
         manager = self.__dict__.get('manager', None)

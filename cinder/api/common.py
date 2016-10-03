@@ -372,8 +372,23 @@ class ViewBuilder(object):
         return urllib.parse.urlunsplit(url_parts).rstrip('/')
 
 
-def get_cluster_host(req, params, cluster_version):
-    if req.api_version_request.matches(cluster_version):
+def get_cluster_host(req, params, cluster_version=None):
+    """Get cluster and host from the parameters.
+
+    This method checks the presence of cluster and host parameters and returns
+    them depending on the cluster_version.
+
+    If cluster_version is False we will never return the cluster_name and we
+    will require the presence of the host parameter.
+
+    If cluster_version is None we will always check for the presence of the
+    cluster parameter, and if cluster_version is a string with a version we
+    will only check for the presence of the parameter if the version of the
+    request is not less than  it.  In both cases we will require one and only
+    one parameter, host or cluster.
+    """
+    if (cluster_version is not False and
+            req.api_version_request.matches(cluster_version)):
         cluster_name = params.get('cluster')
         msg = _('One and only one of cluster and host must be set.')
     else:

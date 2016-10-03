@@ -20,6 +20,7 @@ from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob.exc
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
@@ -110,20 +111,23 @@ class ServiceController(wsgi.Controller):
 
         return True
 
-    def _freeze(self, context, host):
-        return self.volume_api.freeze_host(context, host)
+    def _freeze(self, context, req, body):
+        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        return self.volume_api.freeze_host(context, host, cluster_name)
 
-    def _thaw(self, context, host):
-        return self.volume_api.thaw_host(context, host)
+    def _thaw(self, context, req, body):
+        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        return self.volume_api.thaw_host(context, host, cluster_name)
 
-    def _failover(self, context, host, backend_id=None):
-        return self.volume_api.failover_host(context, host, backend_id)
-
-    def _get_host(self, body):
-        try:
-            return body['host']
-        except (TypeError, KeyError):
-            raise exception.MissingRequired(element='host')
+    def _failover(self, context, req, body, clustered):
+        # We set version to None to always get the cluster name from the body,
+        # to False when we don't want to get it, and '3.26' when we only want
+        # it if the requested version is 3.26 or higher.
+        version = '3.26' if clustered else False
+        cluster_name, host = common.get_cluster_host(req, body, version)
+        self.volume_api.failover(context, host, cluster_name,
+                                 body.get('backend_id'))
+        return webob.Response(status_int=202)
 
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.
@@ -148,20 +152,17 @@ class ServiceController(wsgi.Controller):
             disabled = True
             status = "disabled"
         elif id == "freeze":
-            return self._freeze(context, self._get_host(body))
+            return self._freeze(context, req, body)
         elif id == "thaw":
-            return self._thaw(context, self._get_host(body))
+            return self._thaw(context, req, body)
         elif id == "failover_host":
-            self._failover(
-                context,
-                self._get_host(body),
-                body.get('backend_id', None)
-            )
-            return webob.Response(status_int=202)
+            return self._failover(context, req, body, False)
+        elif req.api_version_request.matches('3.26') and id == 'failover':
+            return self._failover(context, req, body, True)
         else:
             raise exception.InvalidInput(reason=_("Unknown action"))
 
-        host = self._get_host(body)
+        host = common.get_cluster_host(req, body, False)[1]
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:
