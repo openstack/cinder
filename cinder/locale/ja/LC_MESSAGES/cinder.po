@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev131\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev146\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-30 21:35+0000\n"
+"POT-Creation-Date: 2016-10-03 20:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-01 03:56+0000\n"
+"PO-Revision-Date: 2016-10-03 02:05+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -481,6 +481,9 @@ msgstr "ホストへの FC ポート追加のエラー。"
 
 msgid "Add fc initiator to array error."
 msgstr "アレイへの FC イニシエーター追加のエラー。"
+
+msgid "Add hypermetro to metrogroup error."
+msgstr "metrogroup への hypermetro  追加エラー。"
 
 msgid "Add initiator to array error."
 msgstr "アレイへのイニシエーター追加のエラー。"
@@ -2302,6 +2305,9 @@ msgstr "ホストグループ削除のエラー。"
 
 msgid "Delete hostgroup from mapping view error."
 msgstr "マッピングビューからのホストグループ削除のエラー。"
+
+msgid "Delete hypermetro from metrogroup error."
+msgstr "metrogroup からの hypermetro  削除エラー。"
 
 msgid "Delete hypermetro group error."
 msgstr "hypermetro グループ削除エラー。"
@@ -6911,6 +6917,10 @@ msgid "No vdev sizemb in given data."
 msgstr "与えられたデータに vdev sizemb 情報がありません。"
 
 #, python-format
+msgid "No vdisk with the ID specified by ref %s."
+msgstr "参照 %s によって指定された ID を持つ vdisk がありません。"
+
+#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "参照 %s によって指定された UID を持つ vdisk がありません。"
 
@@ -9352,6 +9362,9 @@ msgstr "ストレージグループの名前を取得できません。"
 msgid "Unable to get the replication relationship for volume %s."
 msgstr "ボリューム %s のレプリケーション関係を取得できません。"
 
+msgid "Unable to import 'krest' python module."
+msgstr "'krest' python モジュールをインポートできません。"
+
 #, python-format
 msgid ""
 "Unable to import volume %(deviceId)s to cinder. It is the source volume of "
@@ -11321,6 +11334,16 @@ msgstr ""
 "create_volume_from_snapshot: ボリュームサイズが、スナップショットベースボ"
 "リュームと異なります。"
 
+#, python-format
+msgid ""
+"create_volume_from_snapshot: snapshot %(snapshot_name)s size is "
+"%(snapshot_size)dGB and doesn't fit in target volume %(volume_name)s of size "
+"%(volume_size)dGB."
+msgstr ""
+"create_volume_from_snapshot: スナップショット %(snapshot_name)s のサイズは "
+"%(snapshot_size)dGB で、ターゲットボリューム %(volume_name)s のサイズ "
+"%(volume_size)dGB に適合しません。"
+
 msgid "data not found"
 msgstr "データが見つかりません。"
 
@@ -11683,6 +11706,18 @@ msgstr ""
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s."
 msgstr ""
 "ボリューム %(vol)s 上で mkfs が失敗しました。エラーメッセージ: %(err)s。"
+
+#, python-format
+msgid ""
+"mkvdiskhostmap error:\n"
+" command: %(cmd)s\n"
+" lun: %(lun)s\n"
+" result_lun: %(result_lun)s"
+msgstr ""
+"mkvdiskhostmap エラー:\n"
+" コマンド: %(cmd)s\n"
+" lun: %(lun)s\n"
+" result_lun: %(result_lun)s"
 
 msgid "mock"
 msgstr "モック"
