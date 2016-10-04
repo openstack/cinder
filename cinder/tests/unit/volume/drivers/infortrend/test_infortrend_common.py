@@ -22,7 +22,7 @@ from cinder import test
 from cinder.tests.unit import utils
 from cinder.tests.unit.volume.drivers.infortrend import test_infortrend_cli
 from cinder.volume import configuration
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
+from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
 
 SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')
@@ -416,6 +416,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         mock_commands = {
             'DeleteMap': SUCCEED,
             'ShowMap': self.cli_data.get_test_show_map(),
+            'ShowWWN': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -424,6 +425,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         expect_cli_cmd = [
             mock.call('DeleteMap', 'part', test_partition_id, '-y'),
             mock.call('ShowMap'),
+            mock.call('ShowWWN'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -496,9 +498,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('DeleteMap', 'part', test_partition_id, '-y'),
             mock.call('ShowMap'),
         ]
+        expect_conn_info = {'driver_volume_type': 'fibre_channel',
+                            'data': {}}
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertIsNone(conn_info)
+        self.assertEqual(expect_conn_info, conn_info)
 
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):
@@ -1505,8 +1509,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'DeleteMap': SUCCEED,
-            'DeleteIQN': SUCCEED,
             'ShowMap': self.cli_data.get_test_show_map(),
+            'DeleteIQN': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1514,8 +1518,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('DeleteMap', 'part', test_partition_id, '-y'),
-            mock.call('DeleteIQN', test_connector['initiator'][-16:]),
             mock.call('ShowMap'),
+            mock.call('DeleteIQN', test_connector['initiator'][-16:]),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
