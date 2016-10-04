@@ -26,7 +26,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.1'
+VERSION = '1.3.1'
 LOG = logging.getLogger(__name__)
 
 
@@ -52,6 +52,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 destroy snapshot on migration destination.
         1.3.0 - Added retype method.
         1.3.0.1 - Target creation refactor.
+        1.3.1 - Added cleanup for abandoned snapshots and volumes
     """
 
     VERSION = VERSION
@@ -88,6 +89,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
         self.iscsi_target_portal_port = (
             self.configuration.nexenta_iscsi_target_portal_port)
+
+        self.deleted_volumes = set()
 
     @property
     def backend_name(self):
@@ -247,18 +250,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                              'seems it was already deleted.'), volume_name)
                 return
             if 'zvol has children' in exc.args[0]:
+                self.deleted_volumes.add(volume['name'])
                 LOG.info(_LI('Volume %s will be deleted later.'), volume_name)
                 return
             raise
         origin = props.get('origin')
-        if origin and self._is_clone_snapshot_name(origin):
-            volume, snapshot = origin.split('@')
-            volume = volume.lstrip('%s/' % self.configuration.nexenta_volume)
-            try:
-                self.delete_snapshot({'volume_name': volume, 'name': snapshot})
-            except exception.NexentaException as exc:
-                LOG.warning(_LW('Cannot delete snapshot %(origin)s: %(exc)s'),
-                            {'origin': origin, 'exc': exc})
+        self._collect_garbage(origin)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -278,6 +275,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
+            self.deleted_volumes.add(
+                '@'.join((src_vref['name'], snapshot['name'])))
         except exception.NexentaException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE(
@@ -501,19 +500,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             if "does not exist" in exc.args[0]:
                 LOG.info(_LI('Snapshot %s does not exist, it seems it was '
                              'already deleted.'), snapshot_name)
+                return
             elif "snapshot has dependent clones" in exc.args[0]:
+                self.deleted_volumes.add('@'.join(
+                    (snapshot['volume_name'], snapshot['name'])))
                 LOG.info(_LI('Snapshot %s has dependent clones, will be '
                              'deleted later.'), snapshot_name)
+                return
             else:
                 raise
-        ctxt = context.get_admin_context()
-        try:
-            self.db.volume_get(ctxt, snapshot['volume_name'])
-        except exception.VolumeNotFound:
-            LOG.info(_LI('Origin volume %s appears to be removed, try to '
-                         'remove it from backend if it is there.'))
-            if self.nms.volume.object_exists(volume_name):
-                self.nms.zvol.destroy(volume_name, '')
+        self._collect_garbage(snapshot['volume_name'])
 
     def local_path(self, volume):
         """Return local path to existing local volume.
@@ -689,3 +685,36 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             'iscsi_target_portal_port': self.iscsi_target_portal_port,
             'nms_url': self.nms.url
         }
+
+    def _collect_garbage(self, name):
+        # clear name of pool and volume group if exists
+        if name:
+            name = name.split('{}/'.format(
+                self.configuration.nexenta_volume))[-1]
+            if name in self.deleted_volumes:
+                object_to_destroy = self._get_zvol_name(name)
+                if '@' in name: #  it's a snapshot:
+                    parent, snap = name.split('@')
+                    try:
+                        self.nms.snapshot.destroy(object_to_destroy, '')
+                    except exception.NexentaException as exc:
+                        LOG.debug(_('Error occured while trying to delete a '
+                                  'snapshot: {}').format(exc))
+                        return
+                else:
+
+                    try:
+                        props = self.nms.zvol.get_child_props(object_to_destroy,
+                                                              'origin') or {}
+                    except exception.NexentaException as exc:
+                        props = {}
+                    parent = (props['origin'] if 'origin' in props and
+                                                 props['origin'] else '')
+                    try:
+                        self.nms.zvol.destroy(object_to_destroy, '')
+                    except exception.NexentaException as exc:
+                        LOG.debug(_('Error occured while trying to delete a '
+                                  'volume: {}').format(exc))
+                        return
+                self.deleted_volumes.remove(name)
+                self._collect_garbage(parent)

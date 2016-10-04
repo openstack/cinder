@@ -181,8 +181,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.deleted_volumes.add(volume['name'])
                 LOG.debug('Failed to destroy volume. Will do it later.')
                 return
-            else:
-                raise
+            raise
         self._collect_garbage(origin)
 
     def extend_volume(self, volume, new_size):
@@ -285,10 +284,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         LOG.debug('Creating temp snapshot of the original volume: '
                   '%s@%s', snapshot['volume_name'], snapshot['name'])
         self.create_snapshot(snapshot)
-        self.deleted_volumes.add(
-            '@'.join((src_vref['name'], snapshot['name'])))
         try:
             self.create_volume_from_snapshot(volume, snapshot)
+            self.deleted_volumes.add(
+                '@'.join((src_vref['name'], snapshot['name'])))
         except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
                           '%s'), '@'.join(
