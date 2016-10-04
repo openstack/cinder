@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 
@@ -55,6 +56,7 @@ CONF.register_opts(driver_opts)
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class IBMStorageDriver(san.SanDriver,
                        driver.ManageableVD,
                        driver.ExtendVD,
