@@ -48,10 +48,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.ssh_conn_timeout = 30
         self.configuration.eqlx_pool = 'non-default'
         self.configuration.eqlx_group_name = 'group-0'
-        self.configuration.eqlx_cli_timeout = 30
         self.configuration.eqlx_cli_max_retries = 5
 
-        self.configuration.eqlx_use_chap = False
         self.configuration.use_chap_auth = True
         self.configuration.chap_username = 'admin'
         self.configuration.chap_password = 'password'
