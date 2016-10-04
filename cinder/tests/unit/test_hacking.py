@@ -320,16 +320,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
             "from oslo_log import bar"))))
 
-    def test_no_contextlib_nested(self):
-        self.assertEqual(1, len(list(checks.check_no_contextlib_nested(
-            "with contextlib.nested("))))
-        self.assertEqual(1, len(list(checks.check_no_contextlib_nested(
-            "  with nested("))))
-        self.assertEqual(0, len(list(checks.check_no_contextlib_nested(
-            "with my.nested("))))
-        self.assertEqual(0, len(list(checks.check_no_contextlib_nested(
-            "with foo as bar"))))
-
     def test_check_datetime_now(self):
         self.assertEqual(1, len(list(checks.check_datetime_now(
             "datetime.now", False))))
