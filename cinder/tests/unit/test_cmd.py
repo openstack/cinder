@@ -562,6 +562,31 @@ class TestCinderManageCmd(test.TestCase):
         backup_update.assert_called_once_with(ctxt, fake.BACKUP_ID,
                                               {'host': 'fake_host2'})
 
+    @mock.patch('cinder.db.consistencygroup_update')
+    @mock.patch('cinder.db.consistencygroup_get_all')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_update_consisgroup_host(self, get_admin_context,
+                                     consisgroup_get_all,
+                                     consisgroup_update):
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
+        get_admin_context.return_value = ctxt
+        consisgroup = {'id': fake.CONSISTENCY_GROUP_ID,
+                       'user_id': fake.USER_ID,
+                       'project_id': fake.PROJECT_ID,
+                       'host': 'fake-host',
+                       'status': fields.ConsistencyGroupStatus.AVAILABLE
+                       }
+        consisgroup_get_all.return_value = [consisgroup]
+        consisgrup_cmds = cinder_manage.ConsistencyGroupCommands()
+        consisgrup_cmds.update_cg_host('fake_host', 'fake_host2')
+
+        get_admin_context.assert_called_once_with()
+        consisgroup_get_all.assert_called_once_with(
+            ctxt, filters={'host': 'fake_host'}, limit=None, marker=None,
+            offset=None, sort_dirs=None, sort_keys=None)
+        consisgroup_update.assert_called_once_with(
+            ctxt, fake.CONSISTENCY_GROUP_ID, {'host': 'fake_host2'})
+
     @mock.patch('cinder.utils.service_is_up')
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
