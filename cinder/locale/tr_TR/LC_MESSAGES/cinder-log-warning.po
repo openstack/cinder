@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-30 03:17+0000\n"
+"POT-Creation-Date: 2016-10-05 02:09+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -112,15 +112,6 @@ msgid ""
 msgstr ""
 "V3 üzerinde kopya başarısız. Hedef mantıksal sürücü temizleniyor. Kopya "
 "ismi: %(cloneName)s "
-
-msgid ""
-"Configuration options eqlx_use_chap, eqlx_chap_login and eqlx_chap_password "
-"are deprecated. Use use_chap_auth, chap_username and chap_password "
-"respectively for the same."
-msgstr ""
-"Yapılandırma seçenekleri eqlx_use_chap, eqlx_chap_login ve "
-"eqlx_chap_password artık kullanılmıyor. Aynıları için sırayla chap_auth, "
-"chap_username ve chap_password kullanın."
 
 #, python-format
 msgid "Could not create target because it already exists for volume: %s"

@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev146\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-03 20:46+0000\n"
+"POT-Creation-Date: 2016-10-05 02:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-03 02:05+0000\n"
+"PO-Revision-Date: 2016-10-04 01:20+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -6063,6 +6063,13 @@ msgstr ""
 "CloudByte のボリューム [%s] 削除に関するレスポンスにジョブ ID が見つかりませ"
 "ん。"
 
+msgid "K2 rest api version search failed."
+msgstr "K2 REST API バージョンの検索に失敗しました。"
+
+#, python-format
+msgid "K2 rest api version should be >= %s."
+msgstr "K2 REST API バージョンは %s 以上でなければいけません。"
+
 #, python-format
 msgid "Kaminario retryable exception: %(reason)s"
 msgstr "再試行可能な Kaminario 例外: %(reason)s"
@@ -8077,6 +8084,10 @@ msgstr ""
 "%(err)s"
 
 #, python-format
+msgid "Snapshot: %s search failed in K2."
+msgstr "K2 でスナップショット %s の検索に失敗しました。"
+
+#, python-format
 msgid ""
 "Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
@@ -9235,6 +9246,9 @@ msgstr "バックエンドから接続情報を取り出すことができませ
 #, python-format
 msgid "Unable to fetch connection information from backend: %(err)s"
 msgstr "バックエンドから接続情報を取り出すことができません: %(err)s"
+
+msgid "Unable to find K2peer in source K2:"
+msgstr "ソース K2 内で K2peer が見つかりません。"
 
 #, python-format
 msgid "Unable to find Purity ref with name=%s"
@@ -11821,6 +11835,10 @@ msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr ""
 "read_deleted には 'no', 'yes', 'only' のいずれかのみを指定できます。%r は指定"
 "できません"
+
+#, python-format
+msgid "replication_device %s is not set."
+msgstr "replication_device %s が設定されていません。"
 
 #, python-format
 msgid "replication_failover failed. %s not found."
