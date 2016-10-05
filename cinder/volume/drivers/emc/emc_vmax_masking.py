@@ -278,6 +278,9 @@ class EMCVMAXMasking(object):
         storageSystemName = maskingViewDict['storageSystemName']
         maskingViewName = maskingViewDict['maskingViewName']
         pgGroupName = maskingViewDict['pgGroupName']
+        LOG.info(_LI("Returning random Port Group: "
+                     "%(portGroupName)s."),
+                 {'portGroupName': pgGroupName})
 
         storageGroupInstanceName, errorMessage = (
             self._check_storage_group(
@@ -736,8 +739,8 @@ class EMCVMAXMasking(object):
                     "has recently been deleted."),
                     {'maskingViewName': maskingViewName})
             else:
-                LOG.info(_LI(
-                    "Found existing masking view: %(maskingViewName)s."),
+                LOG.debug(
+                    "Found existing masking view: %(maskingViewName)s.",
                     {'maskingViewName': maskingViewName})
 
         return foundMaskingViewInstanceName
