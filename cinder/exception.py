@@ -444,6 +444,11 @@ class WorkerExists(Duplicate):
     message = _("Worker for %(type)s %(id)s already exists.")
 
 
+class CleanableInUse(Invalid):
+    message = _('%(type)s with id %(id)s is already being cleaned up or '
+                'another host has taken over it.')
+
+
 class ClusterNotFound(NotFound):
     message = _('Cluster %(id)s could not be found.')
 
