@@ -1833,6 +1833,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         """Test _clone_backing with clone type - linked."""
         clone = mock.sentinel.clone
         volume_ops.clone_backing.return_value = clone
+        self._driver._vc_version = ver.LooseVersion('5.5')
 
         fake_size = 3
         fake_volume = {'volume_type_id': None, 'name': 'fake_name',
@@ -1873,6 +1874,24 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                     volumeops.LINKED_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
         self.assertFalse(extend_backing.called)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_clone_backing_linked_vc60(self, vops):
+        self._driver._vc_version = ver.LooseVersion('6.0')
+
+        volume = self._create_volume_dict()
+        snapshot_ref = mock.sentinel.snapshot_moref
+        backing = mock.sentinel.backing
+        self._driver._clone_backing(
+            volume, backing, snapshot_ref, volumeops.LINKED_CLONE_TYPE,
+            volume['size'])
+
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+        vops.clone_backing.assert_called_once_with(
+            volume['name'], backing, snapshot_ref, volumeops.LINKED_CLONE_TYPE,
+            None, host=None, resource_pool=None, extra_config=extra_config,
+            folder=None)
+        vops.update_backing_disk_uuid.assert_not_called()
 
     @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
