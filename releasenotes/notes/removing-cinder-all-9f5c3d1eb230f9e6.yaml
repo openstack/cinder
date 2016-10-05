@@ -1,0 +1,4 @@
+---
+upgrade:
+  - Removing cinder-all binary. Instead use the individual binaries like
+    cinder-api, cinder-backup, cinder-volume, cinder-scheduler.
