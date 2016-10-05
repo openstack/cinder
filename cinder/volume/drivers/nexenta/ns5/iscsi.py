@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
-=====================================================================
-
-.. automodule:: nexenta.volume
-"""
 
 from oslo_log import log as logging
 from oslo_utils import units
@@ -26,25 +20,33 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 import uuid
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 LOG = logging.getLogger(__name__)
 TARGET_GROUP_PREFIX = 'cinder-tg-'
 
 
+@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+        1.1.0 - Added HTTPS support.
+                Added use of sessions for REST calls.
+                Added abandoned volumes and snapshots cleanup.
         1.0.0 - Initial driver version.
     """
 
     VERSION = VERSION
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nexenta_CI"
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -524,7 +526,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occured while trying to delete a '
+                    LOG.debug(_('Error occurred while trying to delete a '
                               'snapshot: {}').format(exc))
                     return
             else:
@@ -540,7 +542,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occured while trying to delete a '
+                    LOG.debug(_('Error occurred while trying to delete a '
                               'volume: {}').format(exc))
                     return
             self.deleted_volumes.remove(name)

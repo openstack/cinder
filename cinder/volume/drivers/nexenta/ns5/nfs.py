@@ -29,7 +29,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -38,6 +38,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+        1.2.0 - Added HTTPS support.
+                Added use of sessions for REST calls.
+                Added abandoned volumes and snapshots cleanup.
         1.1.0 - Support for extend volume.
         1.0.0 - Initial driver version.
     """

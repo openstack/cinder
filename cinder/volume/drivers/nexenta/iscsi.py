@@ -52,7 +52,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 destroy snapshot on migration destination.
         1.3.0 - Added retype method.
         1.3.0.1 - Target creation refactor.
-        1.3.1 - Added cleanup for abandoned snapshots and volumes
+        1.3.1 - Added abandoned volumes and snapshots cleanup.
     """
 
     VERSION = VERSION
@@ -698,7 +698,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     try:
                         self.nms.snapshot.destroy(object_to_destroy, '')
                     except exception.NexentaException as exc:
-                        LOG.debug(_('Error occured while trying to delete a '
+                        LOG.debug(_('Error occurred while trying to delete a '
                                   'snapshot: {}').format(exc))
                         return
                 else:
@@ -713,7 +713,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     try:
                         self.nms.zvol.destroy(object_to_destroy, '')
                     except exception.NexentaException as exc:
-                        LOG.debug(_('Error occured while trying to delete a '
+                        LOG.debug(_('Error occurred while trying to delete a '
                                   'volume: {}').format(exc))
                         return
                 self.deleted_volumes.remove(name)
