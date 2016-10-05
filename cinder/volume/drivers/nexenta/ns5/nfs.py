@@ -201,7 +201,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         # clear name of pool and parent FS if exists
         name = name.split('/{}/'.format(fs))[-1]
         if name and name in self.deleted_volumes:
-            if '@' in name: #  it's a snapshot:
+            if '@' in name:  # it's a snapshot:
                 parent, snap = name.split('@')
                 url = ('storage/pools/%(pool)s/'
                        'filesystems/%(fs)s/snapshots/%(snap)s') % {
@@ -212,8 +212,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occured while trying to delete a '
-                              'snapshot: {}').format(exc))
+                    LOG.debug('Error occured while trying to delete a '
+                              'snapshot: {}'.format(exc))
                     return
             else:
                 url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
@@ -227,8 +227,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url + '?force=true')
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occured while trying to delete a '
-                              'volume: {}').format(exc))
+                    LOG.debug('Error occured while trying to delete a '
+                              'volume: {}'.format(exc))
                     return
             self.deleted_volumes.remove(name)
             self._collect_garbage(parent)

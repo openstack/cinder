@@ -334,7 +334,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             url = 'san/lunMappings/%s' % data[0]['id']
             try:
                 self.nef.delete(url)
-            except exception.NexentaException, e:
+            except exception.NexentaException as e:
                 if e.kwargs['message']['code'] == 'STMF-NOT-FOUND':
                     LOG.debug('NS5 bug, skipping')
                 else:
@@ -361,8 +361,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
 
-        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s' \
-              '?fields=bytesAvailable,bytesUsed' % {
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
+               '?fields=bytesAvailable,bytesUsed') % {
             'pool': self.storage_pool,
             'group': self.volume_group,
         }
@@ -469,7 +469,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 self.nef.post(url, data)
                 self.volumes[tg_name].add(volume_path)
-            except exception.NexentaException, e:
+            except exception.NexentaException as e:
                 if 'No such target group' in e.args[0]:
                     self._create_target_group(tg_name, target_name)
                     self._fill_volumes(tg_name)
@@ -514,7 +514,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         # clear name of pool and volume group if exists
         name = name.split('/{}/'.format(group))[-1]
         if name and name in self.deleted_volumes:
-            if '@' in name: #  it's a snapshot:
+            if '@' in name:  # it's a snapshot:
                 parent, snap = name.split('@')
                 url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                        'volumes/%(volume)s/snapshots/%(snap)s') % {
@@ -526,8 +526,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occurred while trying to delete a '
-                              'snapshot: {}').format(exc))
+                    LOG.debug('Error occurred while trying to delete a '
+                              'snapshot: {}'.format(exc))
                     return
             else:
                 url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
@@ -542,8 +542,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 try:
                     self.nef.delete(url)
                 except exception.NexentaException as exc:
-                    LOG.debug(_('Error occurred while trying to delete a '
-                              'volume: {}').format(exc))
+                    LOG.debug('Error occurred while trying to delete a '
+                              'volume: {}'.format(exc))
                     return
             self.deleted_volumes.remove(name)
             self._collect_garbage(parent)

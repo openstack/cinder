@@ -17,7 +17,6 @@ import six
 from oslo_log import log as logging
 from oslo_utils import excutils
 
-from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
@@ -693,19 +692,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 self.configuration.nexenta_volume))[-1]
             if name in self.deleted_volumes:
                 object_to_destroy = self._get_zvol_name(name)
-                if '@' in name: #  it's a snapshot:
+                if '@' in name:  # it's a snapshot:
                     parent, snap = name.split('@')
                     try:
                         self.nms.snapshot.destroy(object_to_destroy, '')
                     except exception.NexentaException as exc:
-                        LOG.debug(_('Error occurred while trying to delete a '
-                                  'snapshot: {}').format(exc))
+                        LOG.debug('Error occurred while trying to delete a '
+                                  'snapshot: {}'.format(exc))
                         return
                 else:
 
                     try:
-                        props = self.nms.zvol.get_child_props(object_to_destroy,
-                                                              'origin') or {}
+                        props = self.nms.zvol.get_child_props(
+                            object_to_destroy, 'origin') or {}
                     except exception.NexentaException as exc:
                         props = {}
                     parent = (props['origin'] if 'origin' in props and
@@ -713,8 +712,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     try:
                         self.nms.zvol.destroy(object_to_destroy, '')
                     except exception.NexentaException as exc:
-                        LOG.debug(_('Error occurred while trying to delete a '
-                                  'volume: {}').format(exc))
+                        LOG.debug('Error occurred while trying to delete a '
+                                  'volume: {}'.format(exc))
                         return
                 self.deleted_volumes.remove(name)
                 self._collect_garbage(parent)
