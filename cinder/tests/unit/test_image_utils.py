@@ -15,6 +15,7 @@
 #    under the License.
 """Unit tests for image utils."""
 
+import errno
 import math
 
 import mock
@@ -24,6 +25,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests import fixtures
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import throttling
 
@@ -274,6 +276,30 @@ class TestFetch(test.TestCase):
             .assert_called_once_with())
         (mock_fileutils.remove_path_on_error.return_value.__exit__
             .assert_called_once_with(None, None, None))
+
+    def test_fetch_enospc(self):
+        stdlog = self.useFixture(fixtures.StandardLogging())
+
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        e = IOError()
+        e.errno = errno.ENOSPC
+        image_service.download.side_effect = e
+        image_id = mock.sentinel.image_id
+        path = '/test_path'
+        _user_id = mock.sentinel._user_id
+        _project_id = mock.sentinel._project_id
+
+        with mock.patch('cinder.image.image_utils.open',
+                        new=mock.mock_open(), create=True):
+            self.assertRaises(IOError,
+                              image_utils.fetch,
+                              context, image_service, image_id, path,
+                              _user_id, _project_id)
+        error_message = ('No space left in image_conversion_dir path '
+                         '(/) while fetching image %s.' % image_id)
+
+        self.assertTrue(error_message in stdlog.logger.output)
 
 
 class TestVerifyImage(test.TestCase):

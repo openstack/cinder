@@ -25,6 +25,7 @@ we should look at maybe pushing this up to Oslo
 
 
 import contextlib
+import errno
 import math
 import os
 import re
@@ -33,13 +34,14 @@ import tempfile
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
@@ -187,7 +189,18 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     start_time = timeutils.utcnow()
     with fileutils.remove_path_on_error(path):
         with open(path, "wb") as image_file:
-            image_service.download(context, image_id, image_file)
+            try:
+                image_service.download(context, image_id, image_file)
+            except IOError as e:
+                with excutils.save_and_reraise_exception():
+                    if e.errno == errno.ENOSPC:
+                        # TODO(eharney): Fire an async error message for this
+                        LOG.error(_LE("No space left in image_conversion_dir "
+                                      "path (%(path)s) while fetching "
+                                      "image %(image)s."),
+                                  {'path': os.path.dirname(path),
+                                   'image': image_id})
+
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
