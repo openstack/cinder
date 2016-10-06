@@ -1153,7 +1153,6 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.assertIsNotNone(volume.get('encryption_key_id', None))
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
-        self.assertIsNotNone(volume['encryption_key_id'])
 
         volume['host'] = 'fake_host'
         volume['status'] = 'available'
@@ -5900,7 +5899,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def test_copy_volume_to_image_with_image_volume_qcow2(self):
         self.image_meta['disk_format'] = 'qcow2'
         image = self._test_copy_volume_to_image_with_image_volume()
-        self.assertIsNone(image.get('locations'))
+        self.assertNotIn('locations', image)
 
     @mock.patch.object(vol_manager.VolumeManager, 'delete_volume')
     @mock.patch.object(fake_image._FakeImageService, 'add_location',
@@ -5908,7 +5907,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def test_copy_volume_to_image_with_image_volume_failure(
             self, mock_add_location, mock_delete):
         image = self._test_copy_volume_to_image_with_image_volume()
-        self.assertIsNone(image.get('locations'))
+        self.assertNotIn('locations', image)
         self.assertTrue(mock_delete.called)
 
 
