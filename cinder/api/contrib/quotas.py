@@ -199,9 +199,8 @@ class QuotaSetsController(wsgi.Controller):
 
         :param req: request
         :param id: target project id that needs to be updated
-        :param body: key, value pair that that will be
-                     applied to the resources if the update
-                     succeeds
+        :param body: key, value pair that will be applied to
+                     the resources if the update succeeds
         """
         context = req.environ['cinder.context']
         authorize_update(context)
