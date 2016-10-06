@@ -87,7 +87,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         self.replication_enabled = True if self.backends else False
         self.is_direct_connect = False
         self.active_backend_id = kwargs.get('active_backend_id', None)
-        self.failed_over = (self.active_backend_id is not None)
+        self.failed_over = True if self.active_backend_id else False
+        LOG.info(_LI('Loading %(name)s: Failover state is %(state)r'),
+                 {'name': self.backend_name,
+                  'state': self.failed_over})
         self.storage_protocol = 'iSCSI'
         self.failback_timeout = 30
 
