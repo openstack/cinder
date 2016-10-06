@@ -140,24 +140,22 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             self.context,
             consistencygroup_id=group.id,
             **self.volume_params)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
 
         volume2 = tests_utils.create_volume(
             self.context,
             consistencygroup_id=None,
             **self.volume_params)
-        volume_id2 = volume2['id']
-        self.volume.create_volume(self.context, volume_id2)
+        self.volume.create_volume(self.context, volume2)
 
         fake_update_cg.return_value = (
             {'status': fields.ConsistencyGroupStatus.AVAILABLE},
-            [{'id': volume_id2, 'status': 'available'}],
-            [{'id': volume_id, 'status': 'available'}])
+            [{'id': volume2.id, 'status': 'available'}],
+            [{'id': volume.id, 'status': 'available'}])
 
         self.volume.update_consistencygroup(self.context, group,
-                                            add_volumes=volume_id2,
-                                            remove_volumes=volume_id)
+                                            add_volumes=volume2.id,
+                                            remove_volumes=volume.id)
         cg = objects.ConsistencyGroup.get_by_id(self.context, group.id)
         expected = {
             'status': fields.ConsistencyGroupStatus.AVAILABLE,
@@ -180,9 +178,9 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
         cgvolumes = db.volume_get_all_by_group(self.context, group.id)
         cgvol_ids = [cgvol['id'] for cgvol in cgvolumes]
         # Verify volume is removed.
-        self.assertNotIn(volume_id, cgvol_ids)
+        self.assertNotIn(volume.id, cgvol_ids)
         # Verify volume is added.
-        self.assertIn(volume_id2, cgvol_ids)
+        self.assertIn(volume2.id, cgvol_ids)
 
         self.volume_params['status'] = 'wrong-status'
         volume3 = tests_utils.create_volume(
@@ -261,7 +259,7 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             consistencygroup_id=group2.id,
             snapshot_id=snapshot_id,
             **self.volume_params)
-        self.volume.create_volume(self.context, volume2.id, volume=volume2)
+        self.volume.create_volume(self.context, volume2)
         self.volume.create_consistencygroup_from_src(
             self.context, group2, cgsnapshot=cgsnapshot)
         cg2 = objects.ConsistencyGroup.get_by_id(self.context, group2.id)
@@ -328,7 +326,7 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             consistencygroup_id=group3.id,
             source_volid=volume_id,
             **self.volume_params)
-        self.volume.create_volume(self.context, volume3.id, volume=volume3)
+        self.volume.create_volume(self.context, volume3)
         self.volume.create_consistencygroup_from_src(
             self.context, group3, source_cg=group)
 
@@ -487,14 +485,13 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             self.context,
             consistencygroup_id=group.id,
             **self.volume_params)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
 
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end']))
 
-        cgsnapshot_returns = self._create_cgsnapshot(group.id, [volume_id])
+        cgsnapshot_returns = self._create_cgsnapshot(group.id, [volume.id])
         cgsnapshot = cgsnapshot_returns[0]
         self.volume.create_cgsnapshot(self.context, cgsnapshot)
         self.assertEqual(cgsnapshot.id,
@@ -564,7 +561,7 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             status='creating',
             size=1)
         self.volume.host = 'host1@backend1'
-        self.volume.create_volume(self.context, volume.id, volume=volume)
+        self.volume.create_volume(self.context, volume)
 
         self.volume.delete_consistencygroup(self.context, group)
         cg = objects.ConsistencyGroup.get_by_id(
@@ -599,7 +596,7 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             status='creating',
             size=1)
         self.volume.host = 'host1@backend2'
-        self.volume.create_volume(self.context, volume.id, volume=volume)
+        self.volume.create_volume(self.context, volume)
 
         self.assertRaises(exception.InvalidVolume,
                           self.volume.delete_consistencygroup,
@@ -656,8 +653,7 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
             self.context,
             consistencygroup_id=group.id,
             **self.volume_params)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
         # Create a bootable volume
         bootable_vol_params = {'status': 'creating', 'host': CONF.host,
                                'size': 1, 'bootable': True}
@@ -665,10 +661,9 @@ class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
                                                  consistencygroup_id=group.id,
                                                  **bootable_vol_params)
         # Create a common volume
-        bootable_vol_id = bootable_vol['id']
-        self.volume.create_volume(self.context, bootable_vol_id)
+        self.volume.create_volume(self.context, bootable_vol)
 
-        volume_ids = [volume_id, bootable_vol_id]
+        volume_ids = [volume.id, bootable_vol.id]
         cgsnapshot_returns = self._create_cgsnapshot(group.id, volume_ids)
         cgsnapshot = cgsnapshot_returns[0]
         self.volume.create_cgsnapshot(self.context, cgsnapshot)

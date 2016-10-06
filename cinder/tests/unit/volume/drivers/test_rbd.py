@@ -1204,17 +1204,14 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
         try:
             if not clone_error:
-                self.volume.create_volume(self.context,
-                                          volume.id,
-                                          request_spec={'image_id': image_id},
-                                          volume=volume)
+                self.volume.create_volume(self.context, volume,
+                                          request_spec={'image_id': image_id})
             else:
                 self.assertRaises(exception.CinderException,
                                   self.volume.create_volume,
                                   self.context,
-                                  volume.id,
-                                  request_spec={'image_id': image_id},
-                                  volume=volume)
+                                  volume,
+                                  request_spec={'image_id': image_id})
 
             volume = objects.Volume.get_by_id(self.context, volume.id)
             self.assertEqual(expected_status, volume.status)

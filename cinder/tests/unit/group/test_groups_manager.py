@@ -163,8 +163,7 @@ class GroupManagerTestCase(test.TestCase):
             volume_type_id=fake.VOLUME_TYPE_ID,
             status='available',
             host=group.host)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
 
         volume2 = tests_utils.create_volume(
             self.context,
@@ -172,17 +171,16 @@ class GroupManagerTestCase(test.TestCase):
             volume_type_id=fake.VOLUME_TYPE_ID,
             status='available',
             host=group.host)
-        volume_id2 = volume2['id']
-        self.volume.create_volume(self.context, volume_id2)
+        self.volume.create_volume(self.context, volume)
 
         fake_update_grp.return_value = (
             {'status': fields.GroupStatus.AVAILABLE},
-            [{'id': volume_id2, 'status': 'available'}],
-            [{'id': volume_id, 'status': 'available'}])
+            [{'id': volume2.id, 'status': 'available'}],
+            [{'id': volume.id, 'status': 'available'}])
 
         self.volume.update_group(self.context, group,
-                                 add_volumes=volume_id2,
-                                 remove_volumes=volume_id)
+                                 add_volumes=volume2.id,
+                                 remove_volumes=volume.id)
         grp = objects.Group.get_by_id(self.context, group.id)
         expected = {
             'status': fields.GroupStatus.AVAILABLE,
@@ -206,9 +204,9 @@ class GroupManagerTestCase(test.TestCase):
         grpvolumes = db.volume_get_all_by_generic_group(self.context, group.id)
         grpvol_ids = [grpvol['id'] for grpvol in grpvolumes]
         # Verify volume is removed.
-        self.assertNotIn(volume_id, grpvol_ids)
+        self.assertNotIn(volume.id, grpvol_ids)
         # Verify volume is added.
-        self.assertIn(volume_id2, grpvol_ids)
+        self.assertIn(volume2.id, grpvol_ids)
 
         volume3 = tests_utils.create_volume(
             self.context,
@@ -296,7 +294,7 @@ class GroupManagerTestCase(test.TestCase):
             status='available',
             host=group2.host,
             volume_type_id=fake.VOLUME_TYPE_ID)
-        self.volume.create_volume(self.context, volume2.id, volume=volume2)
+        self.volume.create_volume(self.context, volume2)
         self.volume.create_group_from_src(
             self.context, group2, group_snapshot=group_snapshot)
         grp2 = objects.Group.get_by_id(self.context, group2.id)
@@ -368,7 +366,7 @@ class GroupManagerTestCase(test.TestCase):
             status='available',
             host=group3.host,
             volume_type_id=fake.VOLUME_TYPE_ID)
-        self.volume.create_volume(self.context, volume3.id, volume=volume3)
+        self.volume.create_volume(self.context, volume3)
         self.volume.create_group_from_src(
             self.context, group3, source_group=group)
 
@@ -530,15 +528,14 @@ class GroupManagerTestCase(test.TestCase):
             group_id=group.id,
             host=group.host,
             volume_type_id=fake.VOLUME_TYPE_ID)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
 
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end']))
 
         group_snapshot_returns = self._create_group_snapshot(group.id,
-                                                             [volume_id])
+                                                             [volume.id])
         group_snapshot = group_snapshot_returns[0]
         self.volume.create_group_snapshot(self.context, group_snapshot)
         self.assertEqual(group_snapshot.id,
@@ -608,7 +605,7 @@ class GroupManagerTestCase(test.TestCase):
             volume_type_id=fake.VOLUME_TYPE_ID,
             size=1)
         self.volume.host = 'host1@backend1'
-        self.volume.create_volume(self.context, volume.id, volume=volume)
+        self.volume.create_volume(self.context, volume)
 
         self.volume.delete_group(self.context, group)
         grp = objects.Group.get_by_id(
@@ -643,7 +640,7 @@ class GroupManagerTestCase(test.TestCase):
             volume_type_id=fake.VOLUME_TYPE_ID,
             size=1)
         self.volume.host = 'host1@backend2'
-        self.volume.create_volume(self.context, volume.id, volume=volume)
+        self.volume.create_volume(self.context, volume)
 
         self.assertRaises(exception.InvalidVolume,
                           self.volume.delete_group,
@@ -706,8 +703,7 @@ class GroupManagerTestCase(test.TestCase):
             group_id=group.id,
             host=group.host,
             volume_type_id=fake.VOLUME_TYPE_ID)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume)
         # Create a bootable volume
         bootable_vol_params = {'status': 'creating', 'host': CONF.host,
                                'size': 1, 'bootable': True}
@@ -715,10 +711,9 @@ class GroupManagerTestCase(test.TestCase):
                                                  group_id=group.id,
                                                  **bootable_vol_params)
         # Create a common volume
-        bootable_vol_id = bootable_vol['id']
-        self.volume.create_volume(self.context, bootable_vol_id)
+        self.volume.create_volume(self.context, bootable_vol)
 
-        volume_ids = [volume_id, bootable_vol_id]
+        volume_ids = [volume.id, bootable_vol.id]
         group_snapshot_returns = self._create_group_snapshot(group.id,
                                                              volume_ids)
         group_snapshot = group_snapshot_returns[0]
