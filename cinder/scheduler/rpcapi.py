@@ -23,7 +23,7 @@ from cinder import rpc
 
 
 class SchedulerAPI(rpc.RPCAPI):
-    """Client side of the scheduler rpc API.
+    """Client side of the scheduler RPC API.
 
     API version history:
 
@@ -64,10 +64,9 @@ class SchedulerAPI(rpc.RPCAPI):
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
 
-    def create_consistencygroup(self, ctxt, topic, group,
-                                request_spec_list=None,
+    def create_consistencygroup(self, ctxt, group, request_spec_list=None,
                                 filter_properties_list=None):
-        version = self._compat_ver('3.0', '2.0')
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
@@ -79,17 +78,12 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties_list': filter_properties_list,
         }
 
-        if version == '2.0':
-            msg_args['topic'] = topic
-
         return cctxt.cast(ctxt, 'create_consistencygroup', **msg_args)
 
-    def create_group(self, ctxt, topic, group,
-                     group_spec=None,
-                     request_spec_list=None,
-                     group_filter_properties=None,
+    def create_group(self, ctxt, group, group_spec=None,
+                     request_spec_list=None, group_filter_properties=None,
                      filter_properties_list=None):
-        version = self._compat_ver('3.0', '2.3')
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
@@ -104,90 +98,55 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties_list': filter_properties_list,
         }
 
-        if version == '2.3':
-            msg_args['topic'] = topic
-
         return cctxt.cast(ctxt, 'create_group', **msg_args)
 
-    def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
-                      image_id=None, request_spec=None,
-                      filter_properties=None, volume=None):
+    def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
+                      request_spec=None, filter_properties=None):
         msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = self._compat_ver('3.0', '2.2', '2.0')
-        if version in ('2.2', '2.0'):
-            msg_args['volume_id'] = volume.id
-            msg_args['topic'] = topic
-        if version == '2.0':
-            # Send request_spec as dict
-            msg_args['request_spec'] = jsonutils.to_primitive(request_spec)
-            # NOTE(dulek): This is to keep supporting Mitaka's scheduler which
-            # expects a dictionary when creating a typeless volume.
-            if msg_args['request_spec'].get('volume_type') is None:
-                msg_args['request_spec']['volume_type'] = {}
-
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'create_volume', **msg_args)
 
-    def migrate_volume_to_host(self, ctxt, topic, volume_id, host,
-                               force_host_copy=False, request_spec=None,
-                               filter_properties=None, volume=None):
+    def migrate_volume_to_host(self, ctxt, volume, host, force_host_copy=False,
+                               request_spec=None, filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'host': host, 'force_host_copy': force_host_copy,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = self._compat_ver('3.0', '2.0')
-
-        if version == '2.0':
-            msg_args['volume_id'] = volume.id
-            msg_args['topic'] = topic
-
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'migrate_volume_to_host', **msg_args)
 
-    def retype(self, ctxt, topic, volume_id, request_spec=None,
-               filter_properties=None, volume=None):
-
+    def retype(self, ctxt, volume, request_spec=None, filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = self._compat_ver('3.0', '2.0')
-
-        if version == '2.0':
-            msg_args['volume_id'] = volume.id
-            msg_args['topic'] = topic
-
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'retype', **msg_args)
 
-    def manage_existing(self, ctxt, topic, volume_id,
-                        request_spec=None, filter_properties=None,
-                        volume=None):
+    def manage_existing(self, ctxt, volume, request_spec=None,
+                        filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {
             'request_spec': request_spec_p,
             'filter_properties': filter_properties, 'volume': volume,
         }
-        version = self._compat_ver('3.0', '2.1', '2.0')
-        if version in ('2.1', '2.0'):
-            msg_args['volume_id'] = volume.id
-            msg_args['topic'] = topic
-        if version == '2.0':
-            msg_args.pop('volume')
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
-        version = self._compat_ver('3.0', '2.0')
+        version = '3.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.call(ctxt, 'get_pools',
                           filters=filters)
 
-    def update_service_capabilities(self, ctxt,
-                                    service_name, host,
+    def update_service_capabilities(self, ctxt, service_name, host,
                                     capabilities):
-        version = self._compat_ver('3.0', '2.0')
+        version = '3.0'
         cctxt = self.client.prepare(fanout=True, version=version)
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,

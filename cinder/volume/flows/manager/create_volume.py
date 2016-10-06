@@ -20,7 +20,6 @@ import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
-from cinder.common import constants
 from cinder import context as cinder_context
 from cinder import exception
 from cinder import flow_utils
@@ -144,10 +143,8 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             # Stringify to avoid circular ref problem in json serialization
             retry_info['exc'] = traceback.format_exception(*cause.exc_info)
 
-        return create_volume(context, constants.VOLUME_TOPIC, volume.id,
-                             request_spec=request_spec,
-                             filter_properties=filter_properties,
-                             volume=volume)
+        return create_volume(context, volume, request_spec=request_spec,
+                             filter_properties=filter_properties)
 
     def _post_reschedule(self, volume):
         """Actions that happen after the rescheduling attempt occur here."""

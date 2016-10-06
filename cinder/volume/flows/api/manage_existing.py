@@ -16,7 +16,6 @@ import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
-from cinder.common import constants
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
@@ -108,10 +107,8 @@ class ManageCastTask(flow_utils.CinderTask):
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
-        self.scheduler_rpcapi.manage_existing(context, constants.VOLUME_TOPIC,
-                                              volume.id,
-                                              request_spec=request_spec,
-                                              volume=volume)
+        self.scheduler_rpcapi.manage_existing(context, volume,
+                                              request_spec=request_spec)
 
     def revert(self, context, result, flow_failures, volume, **kwargs):
         # Restore the source volume status and set the volume to error status.

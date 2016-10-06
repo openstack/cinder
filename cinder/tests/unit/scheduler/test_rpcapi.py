@@ -19,7 +19,6 @@ Unit Tests for cinder.scheduler.rpcapi
 
 import copy
 
-import ddt
 import mock
 
 from cinder import context
@@ -29,13 +28,10 @@ from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_volume
 
 
-@ddt.ddt
 class SchedulerRpcAPITestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerRpcAPITestCase, self).setUp()
-        self.patch('oslo_messaging.RPCClient.can_send_version',
-                   return_value=True)
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.volume_id = fake_constants.VOLUME_ID
 
@@ -89,12 +85,9 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  fanout=True,
                                  version='3.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_volume(self, can_send_version):
+    def test_create_volume(self):
         self._test_scheduler_api('create_volume',
                                  rpc_method='cast',
-                                 topic='topic',
-                                 volume_id=self.volume_id,
                                  snapshot_id='snapshot_id',
                                  image_id='image_id',
                                  request_spec='fake_request_spec',
@@ -102,29 +95,10 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  volume=fake_volume.fake_volume_obj(
                                      self.context),
                                  version='3.0')
-        can_send_version.assert_has_calls([mock.call('3.0')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_create_volume_serialization(self, can_send_version):
-        self._test_scheduler_api('create_volume',
-                                 rpc_method='cast',
-                                 topic='topic',
-                                 volume_id=self.volume_id,
-                                 snapshot_id='snapshot_id',
-                                 image_id='image_id',
-                                 request_spec={'volume_type': {}},
-                                 filter_properties='filter_properties',
-                                 volume=fake_volume.fake_volume_obj(
-                                     self.context),
-                                 version='2.0')
-        can_send_version.assert_has_calls([mock.call('3.0'), mock.call('2.2')])
 
     def test_migrate_volume_to_host(self):
         self._test_scheduler_api('migrate_volume_to_host',
                                  rpc_method='cast',
-                                 topic='topic',
-                                 volume_id=self.volume_id,
                                  host='host',
                                  force_host_copy=True,
                                  request_spec='fake_request_spec',
@@ -136,28 +110,20 @@ class SchedulerRpcAPITestCase(test.TestCase):
     def test_retype(self):
         self._test_scheduler_api('retype',
                                  rpc_method='cast',
-                                 topic='topic',
-                                 volume_id=self.volume_id,
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume=fake_volume.fake_volume_obj(
                                      self.context),
                                  version='3.0')
 
-    @ddt.data('2.0', '2.1')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_manage_existing(self, version, can_send_version):
-        can_send_version.side_effect = lambda x: x == version
+    def test_manage_existing(self):
         self._test_scheduler_api('manage_existing',
                                  rpc_method='cast',
-                                 topic='topic',
-                                 volume_id=self.volume_id,
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume=fake_volume.fake_volume_obj(
                                      self.context),
-                                 version=version)
-        can_send_version.assert_has_calls([mock.call('3.0'), mock.call('2.1')])
+                                 version='3.0')
 
     def test_get_pools(self):
         self._test_scheduler_api('get_pools',
@@ -168,7 +134,6 @@ class SchedulerRpcAPITestCase(test.TestCase):
     def test_create_group(self):
         self._test_scheduler_api('create_group',
                                  rpc_method='cast',
-                                 topic='topic',
                                  group='group',
                                  group_spec='group_spec_p',
                                  request_spec_list=['fake_request_spec_list'],
