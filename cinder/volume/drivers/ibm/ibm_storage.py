@@ -72,6 +72,8 @@ class IBMStorageDriver(san.SanDriver,
     systems.
     """
 
+    VERSION = "1.8.0"
+
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_XIV-DS8K_CI"
 
