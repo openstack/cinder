@@ -54,11 +54,11 @@ config_from_cinder_conf = {
     'services': {
         'default': {
             'label': u'svc_0',
-            'volume_type': 'default',
+            'pool_name': 'default',
             'hdp': 'easy-stack'},
         'FS-CinderDev1': {
             'label': u'svc_1',
-            'volume_type': 'FS-CinderDev1',
+            'pool_name': 'FS-CinderDev1',
             'hdp': 'silver'}},
     'password': 'supervisor'}
 
@@ -137,9 +137,9 @@ parsed_xml = {'username': 'supervisor', 'password': 'supervisor',
               'cluster_admin_ip0': None,
               'ssh_private_key': '/home/ubuntu/.ssh/id_rsa',
               'services': {
-                  'default': {'hdp': 'easy-stack', 'volume_type': 'default',
+                  'default': {'hdp': 'easy-stack', 'pool_name': 'default',
                               'label': 'svc_0'},
-                  'silver': {'hdp': 'FS-CinderDev1', 'volume_type': 'silver',
+                  'silver': {'hdp': 'FS-CinderDev1', 'pool_name': 'silver',
                              'label': 'svc_1'}},
               'mgmt_ip0': '172.24.44.15'}
 
@@ -165,10 +165,10 @@ class HNASUtilsTest(test.TestCase):
         self.override_config('hnas_username', 'supervisor')
         self.override_config('hnas_password', 'supervisor')
         self.override_config('hnas_mgmt_ip0', '172.24.44.15')
-        self.override_config('hnas_svc0_volume_type', 'default')
+        self.override_config('hnas_svc0_pool_name', 'default')
         self.override_config('hnas_svc0_hdp', 'easy-stack')
         self.override_config('hnas_svc0_iscsi_ip', '172.24.49.21')
-        self.override_config('hnas_svc1_volume_type', 'FS-CinderDev1')
+        self.override_config('hnas_svc1_pool_name', 'FS-CinderDev1')
         self.override_config('hnas_svc1_hdp', 'silver')
         self.override_config('hnas_svc1_iscsi_ip', '172.24.49.32')
 
@@ -318,7 +318,7 @@ class HNASUtilsTest(test.TestCase):
         self.assertIsNone(out)
 
     @ddt.data('hnas_username', 'hnas_password',
-              'hnas_mgmt_ip0', 'hnas_svc0_iscsi_ip', 'hnas_svc0_volume_type',
+              'hnas_mgmt_ip0', 'hnas_svc0_iscsi_ip', 'hnas_svc0_pool_name',
               'hnas_svc0_hdp', )
     def test_init_invalid_conf_parameters(self, attr_name):
         self.override_config(attr_name, None)

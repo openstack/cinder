@@ -90,7 +90,7 @@ class HNASiSCSIDriverTest(test.TestCase):
                     'iscsi_ip': '172.17.39.132',
                     'iscsi_port': '3260',
                     'port': '22',
-                    'volume_type': 'default',
+                    'pool_name': 'default',
                     'label': 'svc_0',
                     'evs': '1',
                     'tgt': {
@@ -103,7 +103,7 @@ class HNASiSCSIDriverTest(test.TestCase):
                     'iscsi_ip': '172.17.39.133',
                     'iscsi_port': '3260',
                     'port': '22',
-                    'volume_type': 'silver',
+                    'pool_name': 'silver',
                     'label': 'svc_1',
                     'evs': '2',
                     'tgt': {

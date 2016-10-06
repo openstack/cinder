@@ -60,20 +60,24 @@ drivers_common_opts = [
                default=None,
                help='The IP of the HNAS cluster admin. '
                     'Required only for HNAS multi-cluster setups.'),
-    cfg.StrOpt('hnas_svc0_volume_type',
-               help='Service 0 volume type'),
+    cfg.StrOpt('hnas_svc0_pool_name',
+               help='Service 0 pool name',
+               deprecated_name='hnas_svc0_volume_type'),
     cfg.StrOpt('hnas_svc0_hdp',
                help='Service 0 HDP'),
-    cfg.StrOpt('hnas_svc1_volume_type',
-               help='Service 1 volume type'),
+    cfg.StrOpt('hnas_svc1_pool_name',
+               help='Service 1 pool name',
+               deprecated_name='hnas_svc1_volume_type'),
     cfg.StrOpt('hnas_svc1_hdp',
                help='Service 1 HDP'),
-    cfg.StrOpt('hnas_svc2_volume_type',
-               help='Service 2 volume type'),
+    cfg.StrOpt('hnas_svc2_pool_name',
+               help='Service 2 pool name',
+               deprecated_name='hnas_svc2_volume_type'),
     cfg.StrOpt('hnas_svc2_hdp',
                help='Service 2 HDP'),
-    cfg.StrOpt('hnas_svc3_volume_type',
-               help='Service 3 volume type'),
+    cfg.StrOpt('hnas_svc3_pool_name',
+               help='Service 3 pool name:',
+               deprecated_name='hnas_svc3_volume_type'),
     cfg.StrOpt('hnas_svc3_hdp',
                help='Service 3 HDP')
 ]
@@ -82,11 +86,11 @@ CONF = cfg.CONF
 CONF.register_opts(drivers_common_opts)
 
 
-def _check_conf_params(config, vol_type, dv_type, idx):
+def _check_conf_params(config, pool_name, dv_type, idx):
     """Validates if the configuration on cinder.conf is complete.
 
     :param config: Dictionary with the driver configurations
-    :param vol_type: The volume type of the current pool
+    :param pool_name: The name of the current pool
     :param dv_type: The type of the driver (NFS or iSCSI)
     :param idx: Index of the current pool
     """
@@ -113,7 +117,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
         LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
-    if config['services'][vol_type]['hdp'] is None:
+    if config['services'][pool_name]['hdp'] is None:
         msg = (_("The config parameter hnas_svc%(idx)s_hdp is "
                  "not set in the cinder.conf. Note that you need to "
                  "have at least one pool configured.") %
@@ -121,9 +125,9 @@ def _check_conf_params(config, vol_type, dv_type, idx):
         LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
-    if config['services'][vol_type]['volume_type'] is None:
+    if config['services'][pool_name]['pool_name'] is None:
         msg = (_("The config parameter "
-                 "hnas_svc%(idx)s_volume_type is not set "
+                 "hnas_svc%(idx)s_pool_name is not set "
                  "in the cinder.conf. Note that you need to "
                  "have at least one pool configured.") %
                {'idx': idx})
@@ -131,7 +135,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
         raise exception.InvalidParameterValue(err=msg)
 
     if (dv_type == 'iscsi' and
-            config['services'][vol_type]['iscsi_ip'] is None):
+            config['services'][pool_name]['iscsi_ip'] is None):
         msg = (_("The config parameter "
                  "hnas_svc%(idx)s_iscsi_ip is not set "
                  "in the cinder.conf. Note that you need to "
@@ -241,7 +245,11 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
         # none optional
         for arg in svc_params:
             service[arg] = _xml_read(root, svc + '/' + arg, 'check')
-        config['services'][service['volume_type']] = service
+
+        # Backward compatibility with volume_type
+        service.setdefault('pool_name', service.pop('volume_type', None))
+
+        config['services'][service['pool_name']] = service
         config['fs'][service['hdp']] = service['hdp']
 
     # at least one service required!
@@ -312,28 +320,28 @@ def read_cinder_conf(config_opts, dv_type):
     # It's possible to have up to 4 pools configured.
     for i in range(0, 4):
         idx = six.text_type(i)
-        svc_vol_type = (config_opts.safe_get(
-            'hnas_svc%(idx)s_volume_type' % {'idx': idx}))
+        svc_pool_name = (config_opts.safe_get(
+            'hnas_svc%(idx)s_pool_name' % {'idx': idx}))
 
         svc_hdp = (config_opts.safe_get(
             'hnas_svc%(idx)s_hdp' % {'idx': idx}))
 
         # It's mandatory to have at least 1 pool configured (svc_0)
-        if (idx == '0' or svc_vol_type is not None or
+        if (idx == '0' or svc_pool_name is not None or
                 svc_hdp is not None):
-            config['services'][svc_vol_type] = {}
+            config['services'][svc_pool_name] = {}
             config['fs'][svc_hdp] = svc_hdp
-            config['services'][svc_vol_type]['hdp'] = svc_hdp
-            config['services'][svc_vol_type]['volume_type'] = svc_vol_type
+            config['services'][svc_pool_name]['hdp'] = svc_hdp
+            config['services'][svc_pool_name]['pool_name'] = svc_pool_name
 
             if dv_type == 'iscsi':
                 svc_ip = (config_opts.safe_get(
                     'hnas_svc%(idx)s_iscsi_ip' % {'idx': idx}))
-                config['services'][svc_vol_type]['iscsi_ip'] = svc_ip
+                config['services'][svc_pool_name]['iscsi_ip'] = svc_ip
 
-            config['services'][svc_vol_type]['label'] = (
+            config['services'][svc_pool_name]['label'] = (
                 'svc_%(idx)s' % {'idx': idx})
             # Checking to ensure that the pools configurations are complete
-            _check_conf_params(config, svc_vol_type, dv_type, idx)
+            _check_conf_params(config, svc_pool_name, dv_type, idx)
 
     return config

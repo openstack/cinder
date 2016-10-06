@@ -1,0 +1,4 @@
+---
+deprecations:
+  - Deprecated the configuration option ``hnas_svcX_volume_type``. Use option
+    ``hnas_svcX_pool_name`` to indicate the name of the services (pools).
