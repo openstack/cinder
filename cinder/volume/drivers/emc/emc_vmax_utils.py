@@ -2108,10 +2108,6 @@ class EMCVMAXUtils(object):
         portgroupname = (
             portgroupnames[random.randint(0, len(portgroupnames) - 1)])
 
-        LOG.info(_LI("Returning random Port Group: "
-                     "%(portGroupName)s."),
-                 {'portGroupName': portgroupname})
-
         return portgroupname
 
     @staticmethod
