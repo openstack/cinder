@@ -526,7 +526,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
         connection_data = dict()
         connection_data['target_portal'] = target_portal
         connection_data['target_iqn'] = target_iqn
-        connection_data['target_lun'] = target_lun
+        connection_data['target_lun'] = int(target_lun)
         connection_data['target_discovered'] = False,
         connection_data['volume_id'] = volume['id'],
         connection_data['discard'] = False
@@ -570,7 +570,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
             params=params)
         target_portal = mapping_info['target_portal']
         target_iqn = mapping_info['target_iqn']
-        target_lun = mapping_info['target_lun']
+        target_lun = int(mapping_info['target_lun'])
 
         provider_location = '%s %s %s' % (target_portal,
                                           target_iqn,
@@ -623,7 +623,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
             'data': {
                 'encrypted': False,
                 'target_discovered': False,
-                'target_lun': target_info['target_lun'],
+                'target_lun': int(target_info['target_lun']),
                 'target_wwn': ast.literal_eval(target_info['target_wwn']),
                 'initiator_target_map': ast.literal_eval(initiator_target_map)
             }
