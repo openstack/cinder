@@ -249,8 +249,16 @@ class NetAppBlockStorageLibrary(object):
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, lun_name, size, metadata))
 
+        model_update = self._get_volume_model_update(volume)
+
+        return model_update
+
     def _setup_qos_for_volume(self, volume, extra_specs):
         return None
+
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
+        raise NotImplementedError
 
     def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
         return
@@ -348,6 +356,8 @@ class NetAppBlockStorageLibrary(object):
                             _LE("Resizing %s failed. Cleaning volume."),
                             destination_volume['id'])
                         self.delete_volume(destination_volume)
+
+            return self._get_volume_model_update(destination_volume)
 
         except Exception:
             LOG.exception(_LE("Exception cloning volume %(name)s from source "
@@ -694,6 +704,7 @@ class NetAppBlockStorageLibrary(object):
             self.zapi_client.move_lun(path, new_path)
             lun = self._get_existing_vol_with_manage_ref(
                 {'source-name': new_path})
+
         if qos_policy_group_name is not None:
             self.zapi_client.set_lun_qos_policy_group(new_path,
                                                       qos_policy_group_name)
@@ -702,6 +713,8 @@ class NetAppBlockStorageLibrary(object):
                      " %(path)s and uuid %(uuid)s."),
                  {'path': lun.get_metadata_property('Path'),
                   'uuid': lun.get_metadata_property('UUID')})
+
+        return self._get_volume_model_update(volume)
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
@@ -1118,6 +1131,7 @@ class NetAppBlockStorageLibrary(object):
                  interpreted by the manager as a successful operation.
         """
         LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
+        volume_model_updates = []
 
         if cgsnapshot:
             vols = zip(volumes, snapshots)
@@ -1127,7 +1141,11 @@ class NetAppBlockStorageLibrary(object):
                     'name': snapshot['name'],
                     'size': snapshot['volume_size'],
                 }
-                self._clone_source_to_destination(source, volume)
+                volume_model_update = self._clone_source_to_destination(
+                    source, volume)
+                if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)
 
         else:
             vols = zip(volumes, source_vols)
@@ -1135,9 +1153,13 @@ class NetAppBlockStorageLibrary(object):
             for volume, old_src_vref in vols:
                 src_lun = self._get_lun_from_table(old_src_vref['name'])
                 source = {'name': src_lun.name, 'size': old_src_vref['size']}
-                self._clone_source_to_destination(source, volume)
+                volume_model_update = self._clone_source_to_destination(
+                    source, volume)
+                if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)
 
-        return None, None
+        return None, volume_model_updates
 
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""

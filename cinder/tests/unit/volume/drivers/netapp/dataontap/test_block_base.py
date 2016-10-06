@@ -31,9 +31,12 @@ from oslo_log import versionutils
 from oslo_utils import units
 import six
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _LW
+from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
@@ -58,6 +61,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.zapi_client = mock.Mock()
         self.zapi_client = self.library.zapi_client
         self.mock_request = mock.Mock()
+        self.ctxt = context.RequestContext('fake', 'fake', auth_token=True)
 
     def get_config_base(self):
         return na_fakes.create_configuration()
@@ -127,14 +131,17 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_lun_handle')
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
 
         self.library.create_volume(fake.VOLUME)
 
         self.library._create_lun.assert_called_once_with(
             fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
             fake.LUN_METADATA, None)
-        self.assertEqual(0, self.library.
-                         _mark_qos_policy_group_for_deletion.call_count)
+        self.library._get_volume_model_update.assert_called_once_with(
+            fake.VOLUME)
+        self.assertEqual(
+            0, self.library. _mark_qos_policy_group_for_deletion.call_count)
         self.assertEqual(0, block_base.LOG.error.call_count)
 
     def test_create_volume_no_pool(self):
@@ -553,6 +560,72 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
             {'ref': 'ref'})
 
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_manage_existing_lun_name_matches(self, model_update):
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        existing_ref = {'source-name': 'fake_path'}
+        mock_lun = block_base.NetAppLun(
+            volume['name'], volume['name'], '3',
+            {'UUID': 'fake_uuid', 'Path': 'p'})
+        self.mock_object(self.library, '_get_existing_vol_with_manage_ref',
+                         mock.Mock(return_value=mock_lun))
+
+        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
+            return_value=fake.EXTRA_SPECS))
+        self.mock_object(self.library, '_check_volume_type_for_lun',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_setup_qos_for_volume')
+        self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_get_volume_model_update',
+                         mock.Mock(return_value=model_update))
+        mock_info_log = self.mock_object(block_base.LOG, 'info')
+
+        actual_update = self.library.manage_existing(volume, existing_ref)
+
+        self.assertEqual(model_update, actual_update)
+        self.assertEqual(2, mock_info_log.call_count)
+        self.library._add_lun_to_table.assert_called_once_with(mock_lun)
+
+    @ddt.data(None, 'fake_qos_policy_group_name')
+    def test_manage_existing_rename_lun(self, qos_policy_group_name):
+        expected_update = (
+            {'replication_status': fields.ReplicationStatus.ENABLED})
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        existing_ref = {'source-name': 'fake_path'}
+        mock_lun = block_base.NetAppLun(
+            'lun0', 'lun0', '3', {'UUID': 'fake_uuid', 'Path': fake.LUN_PATH})
+        self.mock_object(self.library, '_get_existing_vol_with_manage_ref',
+                         mock.Mock(return_value=mock_lun))
+
+        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
+            return_value=fake.EXTRA_SPECS))
+        self.mock_object(self.library, '_check_volume_type_for_lun',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_setup_qos_for_volume')
+        self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
+                         mock.Mock(return_value=qos_policy_group_name))
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_get_volume_model_update',
+                         mock.Mock(return_value=expected_update))
+        self.mock_object(self.zapi_client, 'set_lun_qos_policy_group')
+        mock_info_log = self.mock_object(block_base.LOG, 'info')
+
+        actual_update = self.library.manage_existing(volume, existing_ref)
+
+        expected_new_path = '/vol/vol0/%s' % volume['name']
+        self.assertEqual(expected_update, actual_update)
+        self.assertEqual(1, mock_info_log.call_count)
+        self.library._add_lun_to_table.assert_called_once_with(mock_lun)
+        if qos_policy_group_name:
+            (self.zapi_client.set_lun_qos_policy_group.
+             assert_called_once_with(expected_new_path, qos_policy_group_name))
+        else:
+            self.assertFalse(
+                self.zapi_client.set_lun_qos_policy_group.called)
+
     @mock.patch.object(block_base.LOG, 'info')
     def test_unmanage(self, log):
         mock_lun = block_base.NetAppLun('handle', 'name', '1',
@@ -842,11 +915,14 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_extend_volume')
         self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update',
+                         mock.Mock(return_value={'key': 'value'}))
         self.library.lun_space_reservation = 'false'
 
-        self.library._clone_source_to_destination(fake.CLONE_SOURCE,
-                                                  fake.CLONE_DESTINATION)
+        retval = self.library._clone_source_to_destination(
+            fake.CLONE_SOURCE, fake.CLONE_DESTINATION)
 
+        self.assertEqual({'key': 'value'}, retval)
         na_utils.get_volume_extra_specs.assert_called_once_with(
             fake.CLONE_DESTINATION)
         self.library._setup_qos_for_volume.assert_called_once_with(
@@ -1430,6 +1506,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._create_lun.assert_called_once_with(
             fake.POOL_NAME, fake.CG_VOLUME_NAME, volume_size_in_bytes,
             fake.CG_LUN_METADATA, None)
+        self.library._get_volume_model_update.assert_called_once_with(
+            fake.CG_VOLUME)
         self.assertEqual(0, self.library.
                          _mark_qos_policy_group_for_deletion.call_count)
         self.assertEqual(0, block_base.LOG.error.call_count)
@@ -1446,6 +1524,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_lun_handle')
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
 
     def test_create_consistency_group(self):
         model_update = self.library.create_consistencygroup(
@@ -1479,12 +1558,15 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual('deleted', model_update['status'])
         self.assertEqual('deleted', volumes[0]['status'])
 
-    def test_create_consistencygroup_from_src_cg_snapshot(self):
-
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_consistencygroup_from_src_cg_snapshot(self,
+                                                          volume_model_update):
         mock_clone_source_to_destination = self.mock_object(
-            self.library, '_clone_source_to_destination')
+            self.library, '_clone_source_to_destination', mock.Mock(
+                return_value=volume_model_update))
 
-        self.library.create_consistencygroup_from_src(
+        actual_return_value = self.library.create_consistencygroup_from_src(
             fake.CONSISTENCY_GROUP, [fake.VOLUME], cgsnapshot=fake.CG_SNAPSHOT,
             snapshots=[fake.CG_VOLUME_SNAPSHOT])
 
@@ -1494,19 +1576,25 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         }
         mock_clone_source_to_destination.assert_called_once_with(
             clone_source_to_destination_args, fake.VOLUME)
+        if volume_model_update:
+            volume_model_update['id'] = fake.VOLUME['id']
+        expected_return_value = ((None, [volume_model_update])
+                                 if volume_model_update else (None, []))
+        self.assertEqual(expected_return_value, actual_return_value)
 
-    def test_create_consistencygroup_from_src_cg(self):
-        class fake_lun_name(object):
-            pass
-        fake_lun_name_instance = fake_lun_name()
-        fake_lun_name_instance.name = fake.SOURCE_CG_VOLUME['name']
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_consistencygroup_from_src_cg(self, volume_model_update):
+        lun_name = fake.SOURCE_CG_VOLUME['name']
+        mock_lun = block_base.NetAppLun(
+            lun_name, lun_name, '3', {'UUID': 'fake_uuid'})
         self.mock_object(self.library, '_get_lun_from_table', mock.Mock(
-            return_value=fake_lun_name_instance)
-        )
+            return_value=mock_lun))
         mock_clone_source_to_destination = self.mock_object(
-            self.library, '_clone_source_to_destination')
+            self.library, '_clone_source_to_destination',
+            mock.Mock(return_value=volume_model_update))
 
-        self.library.create_consistencygroup_from_src(
+        actual_return_value = self.library.create_consistencygroup_from_src(
             fake.CONSISTENCY_GROUP, [fake.VOLUME],
             source_cg=fake.SOURCE_CONSISTENCY_GROUP,
             source_vols=[fake.SOURCE_CG_VOLUME])
@@ -1515,8 +1603,13 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             'name': fake.SOURCE_CG_VOLUME['name'],
             'size': fake.SOURCE_CG_VOLUME['size'],
         }
+        if volume_model_update:
+            volume_model_update['id'] = fake.VOLUME['id']
+        expected_return_value = ((None, [volume_model_update])
+                                 if volume_model_update else (None, []))
         mock_clone_source_to_destination.assert_called_once_with(
             clone_source_to_destination_args, fake.VOLUME)
+        self.assertEqual(expected_return_value, actual_return_value)
 
     def test_add_looping_tasks(self):
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')

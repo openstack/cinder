@@ -126,6 +126,9 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         """Add tasks that need to be executed at a fixed interval."""
         super(NetAppBlockStorage7modeLibrary, self)._add_looping_tasks()
 
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
+
     def _create_lun(self, volume_name, lun_name, size,
                     metadata, qos_policy_group_name=None):
         """Creates a LUN, handling Data ONTAP differences as needed."""
