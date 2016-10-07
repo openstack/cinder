@@ -28,13 +28,14 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
+from zfs_garbage_collector import ZFSGarbageCollectorMixIn
 
 VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
+class NexentaNfsDriver(nfs.NfsDriver, ZFSGarbageCollectorMixIn):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
@@ -54,6 +55,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def __init__(self, *args, **kwargs):
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
+        ZFSGarbageCollectorMixIn.__init__(self)
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_CONNECTION_OPTS)
@@ -76,8 +78,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
-
-        self.deleted_volumes = set()
 
     @property
     def backend_name(self):
@@ -192,47 +192,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 [fs, volume['name']])})
             raise
 
-    def _should_destroy_later(self, e):
-        return 'Failed to destroy snapshot' in e.args[0] or (
-            'must be destroyed first' in e.args[0])
-
-    def _collect_garbage(self, name):
-        pool, fs = self._get_share_datasets(self.share)
-        # clear name of pool and parent FS if exists
-        name = name.split('/{}/'.format(fs))[-1]
-        if name and name in self.deleted_volumes:
-            if '@' in name:  # it's a snapshot:
-                parent, snap = name.split('@')
-                url = ('storage/pools/%(pool)s/'
-                       'filesystems/%(fs)s/snapshots/%(snap)s') % {
-                    'pool': pool,
-                    'fs': '%2F'.join([fs, parent]),
-                    'snap': snap
-                }
-                try:
-                    self.nef.delete(url)
-                except exception.NexentaException as exc:
-                    LOG.debug('Error occured while trying to delete a '
-                              'snapshot: {}'.format(exc))
-                    return
-            else:
-                url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
-                    'pool': pool,
-                    'fs': '%2F'.join([fs, name])
-                }
-                # Check if there is parent snapshot
-                field = 'originalSnapshot'
-                parent = self.nef.get('{}?fields={}'.format(
-                    url, field)).get(field)
-                try:
-                    self.nef.delete(url + '?force=true')
-                except exception.NexentaException as exc:
-                    LOG.debug('Error occured while trying to delete a '
-                              'volume: {}'.format(exc))
-                    return
-            self.deleted_volumes.remove(name)
-            self._collect_garbage(parent)
-
     def delete_volume(self, volume):
         """Deletes a logical volume.
 
@@ -243,19 +202,15 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'pool': pool,
             'fs': '%2F'.join([fs, volume['name']])
         }
-        # Check if there is parent snapshot
         field = 'originalSnapshot'
         origin = self.nef.get('{}?fields={}'.format(url, field)).get(field)
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if self._should_destroy_later(exc):
-                self.deleted_volumes.add(volume['name'])
-                LOG.debug('Failed to destroy volume. Will do it later.')
-                return
-            else:
-                raise
-        self._collect_garbage(origin)
+            vol_path = '/'.join((self.share, volume['name']))
+            self.destroy_later_or_raise(exc, vol_path)
+            return
+        self.collect_zfs_garbage(origin)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -308,17 +263,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'fs': '%2F'.join([fs, volume['name']]),
             'snap': snapshot['name']
         }
+        volume_path = '/'.join((self.share, volume['name']))
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if self._should_destroy_later(exc):
-                self.deleted_volumes.add(
-                    '@'.join((volume['name'], snapshot['name'])))
-                LOG.debug('Failed to destroy snapshot. Will do it later.')
-                return
-            else:
-                raise
-        self._collect_garbage(volume['name'])
+            self.destroy_later_or_raise(
+                exc, '@'.join((volume_path, snapshot['name'])))
+            return
+        self.collect_zfs_garbage(volume_path)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -376,10 +328,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     'volume_size': src_vref['size'],
                     'name': self._get_clone_snapshot_name(volume)}
         self.create_snapshot(snapshot)
-        self.deleted_volumes.add(
-            '@'.join((src_vref['name'], snapshot['name'])))
         try:
-            return self.create_volume_from_snapshot(volume, snapshot)
+            pl = self.create_volume_from_snapshot(volume, snapshot)
+            self.mark_as_garbage('{}/{}@{}'.format(
+                self.share, src_vref['name'], snapshot['name']))
+            return pl
         except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
                           '%(volume_name)s@%(name)s'), snapshot)
@@ -511,3 +464,25 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'volume_backend_name': self.backend_name,
             'nfs_mount_point_base': self.nfs_mount_point_base
         }
+
+    def get_delete_snapshot_url(self, zfs_object):
+        pool, fs, name = zfs_object.split('/')
+        vol, snap = name.split('@')
+        url = ('storage/pools/%(pool)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s') % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, vol]),
+            'snap': snap
+        }
+        return url
+
+    def get_original_snapshot_url(self, zfs_object):
+        pool, fs, name = zfs_object.split('/')
+        url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, name])
+        }
+        return url
+
+    def get_delete_volume_url(self, zfs_object):
+        return self.get_original_snapshot_url(zfs_object) + '?force=true'
