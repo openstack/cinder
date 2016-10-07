@@ -113,6 +113,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             self.cfg.nexenta_blocksize, self.cfg.nexenta_sparse)
 
     def test_delete_volume(self):
+        self.drv._collect_garbage = lambda vol: vol
         self.nms_mock.zvol.get_child_props.return_value = (
             {'origin': 'cinder/volume0@snapshot'})
         self.drv.delete_volume(self.TEST_VOLUME_REF)
@@ -128,14 +129,6 @@ class TestNexentaISCSIDriver(test.TestCase):
 
         self.nms_mock.zvol.get_child_props.assert_called_with(
             'cinder/volume1', 'origin')
-        self.nms_mock.zvol.get_child_props.return_value = (
-            {'origin': 'cinder/volume0@cinder-clone-snapshot-1'})
-        self.nms_mock.zvol.destroy.assert_called_with('cinder/volume1', '')
-
-        self.drv.delete_volume(self.TEST_VOLUME_REF)
-        self.nms_mock.snapshot.destroy.assert_called_with(
-            'cinder/volume0@cinder-clone-snapshot-1', '')
-        self.nms_mock.volume.object_exists.assert_called_with('cinder/volume0')
 
     def test_create_cloned_volume(self):
         vol = self.TEST_VOLUME_REF2
@@ -152,6 +145,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             'cinder/%s' % vol['name'])
 
     def test_migrate_volume(self):
+        self.drv._collect_garbage = lambda vol: vol
         volume = self.TEST_VOLUME_REF
         host = {
             'capabilities': {
@@ -197,7 +191,6 @@ class TestNexentaISCSIDriver(test.TestCase):
                 'volume': volume['name'],
                 'snapshot': snapshot['name']
             }, '')
-        self.nms_mock.volume.object_exists.assert_called_with(volume_name)
 
     def test_create_snapshot(self):
         self.drv.create_snapshot(self.TEST_SNAPSHOT_REF)
@@ -215,11 +208,10 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_delete_snapshot(self):
         self._create_volume_db_entry()
+        self.drv._collect_garbage = lambda vol: vol
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
         self.nms_mock.snapshot.destroy.assert_called_with(
             'cinder/volume1@snapshot1', '')
-        self.nms_mock.volume.object_exists.assert_called_with(
-            'cinder/volume1')
 
         # Check that exception not raised if snapshot does not exist
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
@@ -227,8 +219,6 @@ class TestNexentaISCSIDriver(test.TestCase):
             exception.NexentaException('does not exist'))
         self.nms_mock.snapshot.destroy.assert_called_with(
             'cinder/volume1@snapshot1', '')
-        self.nms_mock.volume.object_exists.assert_called_with(
-            'cinder/volume1')
 
     def _mock_all_export_methods(self, fail=False):
         self.assertTrue(self.nms_mock.stmf.list_targets.called)
@@ -296,6 +286,24 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertEqual(5368709120.0, stats['free_capacity_gb'])
         self.assertEqual(20, stats['reserved_percentage'])
         self.assertFalse(stats['QoS_support'])
+
+    def test_collect_garbage__snapshot(self):
+        name = 'v1@s1'
+        self.drv.deleted_volumes = [name]
+        self.nms_mock.zvol.get_child_props.return_value = None
+        self.drv._collect_garbage(name)
+        self.nms_mock.snapshot.destroy.assert_called_with(
+            '{}/{}'.format(self.cfg.nexenta_volume, name), '')
+        self.assertNotIn(name, self.drv.deleted_volumes)
+
+    def test_collect_garbage__volume(self):
+        name = 'v1'
+        self.drv.deleted_volumes = [name]
+        self.nms_mock.zvol.get_child_props.return_value = None
+        self.drv._collect_garbage(name)
+        self.nms_mock.zvol.destroy.assert_called_with(
+            '{}/{}'.format(self.cfg.nexenta_volume, name), '')
+        self.assertNotIn(name, self.drv.deleted_volumes)
 
     def _create_volume_db_entry(self):
         vol = {
