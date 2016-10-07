@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev178\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-06 03:18+0000\n"
+"POT-Creation-Date: 2016-10-07 03:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-05 11:58+0000\n"
+"PO-Revision-Date: 2016-10-06 12:11+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -2007,10 +2007,6 @@ msgstr "システム名を取得できませんでした。"
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr ""
 "paste アプリケーション '%(name)s' を %(path)s からロードできませんでした。"
-
-#, python-format
-msgid "Could not read %s. Re-running with sudo"
-msgstr "%s を読み取ることができませんでした。sudo で再実行します"
 
 #, python-format
 msgid ""
@@ -6970,6 +6966,9 @@ msgstr "クラスター  %(current)s にはボリュームも整合性グルー�
 msgid "No weighed hosts available"
 msgstr "重み付けを設定したホストが存在しません"
 
+msgid "No wwpns found in host connector."
+msgstr "ホストコネクターで wwpn が見つかりませんでした。"
+
 msgid "None numeric BWS QoS limitation"
 msgstr "BWS QoS 制限の数値がありません。"
 
@@ -7166,9 +7165,6 @@ msgstr "パラメーター %s には、少なくとも1つのボリューム を
 #, python-format
 msgid "Please provide valid format volume: lun for parameter %s"
 msgstr "パラメーター %s に、正しい形式で ボリューム: lun を指定してください。"
-
-msgid "Please re-run cinder-manage as root."
-msgstr "cinder-manage を root として再実行してください。"
 
 msgid "Please specify a name for QoS specs."
 msgstr "QoS 仕様の名前を指定してください。"
@@ -9316,6 +9312,12 @@ msgstr "FSS vid が %s のボリュームが見つかりませんでした。"
 msgid "Unable to find volume: %s from K2."
 msgstr "K2でボリューム %s が見つかりません。"
 
+msgid "Unable to get FC target wwpns from K2."
+msgstr "K2 から FC ターゲット wwpn を取得できませんでした。"
+
+msgid "Unable to get ISCSI IP address from K2."
+msgstr "K2 から iSCSI IP アドレスを取得できませんでした。"
+
 #, python-format
 msgid "Unable to get a block device for file '%s'"
 msgstr "ファイル '%s' のブロックデバイスを取得できません。"
@@ -9375,6 +9377,9 @@ msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
 msgstr ""
 "ハードウェア ID %(hardwareIdInstance)s のターゲットエンドポイントを取得できま"
 "せん。"
+
+msgid "Unable to get target iqn from K2."
+msgstr "K2 から ターゲット iqn を取得できませんでした。"
 
 msgid "Unable to get the name of the masking view."
 msgstr "マスキングビューの名前を取得できません。"
@@ -11983,9 +11988,6 @@ msgstr "stop_hypermetro エラー。"
 
 msgid "storops Python library is not installed."
 msgstr "strops Python ライブラリーがインストールされていません。"
-
-msgid "sudo failed, continuing as if nothing happened"
-msgstr "sudo が失敗しました。何も起こらなかったものとして続行します"
 
 msgid "sync hypermetro group error."
 msgstr "hypermetro グループ同期エラー。"

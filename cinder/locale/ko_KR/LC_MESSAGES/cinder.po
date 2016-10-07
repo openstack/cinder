@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-28 22:35+0000\n"
+"POT-Creation-Date: 2016-10-07 03:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1489,10 +1489,6 @@ msgstr "시스템 이름을 가져올 수 없습니다. "
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr "%(path)s에서 페이스트 앱 '%(name)s'을(를) 로드할 수 없음"
-
-#, python-format
-msgid "Could not read %s. Re-running with sudo"
-msgstr "%s을(를) 읽을 수 없음. sudo로 다시 실행합니다. "
 
 #, python-format
 msgid ""
@@ -5588,9 +5584,6 @@ msgstr "미리 %(pool_list)s 풀을 작성하십시오! "
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "미리 풀 %(pool)s에서 %(tier_levels)s 티어를 작성하십시오! "
 
-msgid "Please re-run cinder-manage as root."
-msgstr "루트로 cinder-manage를 다시 실행하십시오."
-
 msgid "Please specify a name for QoS specs."
 msgstr "QoS 스펙에 대한 이름을 지정하십시오. "
 
@@ -9314,9 +9307,6 @@ msgstr "상태가 사용 가능해야 함"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro 오류."
-
-msgid "sudo failed, continuing as if nothing happened"
-msgstr "sudo에 실패, 무시하고 계속합니다. "
 
 msgid "sync_hypermetro error."
 msgstr "sync_hypermetro 오류."

@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-28 22:35+0000\n"
+"POT-Creation-Date: 2016-10-07 03:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1557,10 +1557,6 @@ msgstr "Impossibile ottenere il nome sistema."
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr "Impossibile caricare l'app paste '%(name)s' in %(path)s"
-
-#, python-format
-msgid "Could not read %s. Re-running with sudo"
-msgstr "Impossibile leggere %s. Eseguire di nuovo con sudo"
 
 #, python-format
 msgid ""
@@ -5896,9 +5892,6 @@ msgstr "Creare il pool %(pool_list)s in anticipo. "
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "Creare il livello %(tier_levels)s nel pool %(pool)s in anticipo. "
 
-msgid "Please re-run cinder-manage as root."
-msgstr "Eseguire nuovamente cinder-manage come root."
-
 msgid "Please specify a name for QoS specs."
 msgstr "Specificare un nome per le specifiche (specs) QoS."
 
@@ -9774,9 +9767,6 @@ msgstr "lo stato deve essere available"
 
 msgid "stop_hypermetro error."
 msgstr "Errore stop_hypermetro."
-
-msgid "sudo failed, continuing as if nothing happened"
-msgstr "sudo non riuscito, proseguire come se nulla fosse successo"
 
 msgid "sync_hypermetro error."
 msgstr "Errore sync_hypermetro."

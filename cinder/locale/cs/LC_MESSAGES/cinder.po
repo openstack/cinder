@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-28 22:35+0000\n"
+"POT-Creation-Date: 2016-10-07 03:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1321,10 +1321,6 @@ msgstr "Nelze získat název systému."
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr "Nelze načíst aplikaci vložení '%(name)s' z %(path)s"
-
-#, python-format
-msgid "Could not read %s. Re-running with sudo"
-msgstr "Nelze přečíst %s. Znovu prováděno pomocí sudo"
 
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
@@ -4893,9 +4889,6 @@ msgstr "Prosím předem vytvořte zásobu %(pool_list)s!"
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "Prosím předem vytvořte vrstvu %(tier_levels)s v zásobě %(pool)s!"
 
-msgid "Please re-run cinder-manage as root."
-msgstr "Prosím spusťte znovu cinder-manage jako root."
-
 msgid "Please specify a name for QoS specs."
 msgstr "Prosím zadejte název pro specifikaci QoS."
 
@@ -7720,9 +7713,6 @@ msgstr "stav musí být dostupný"
 
 msgid "stop_hypermetro error."
 msgstr "Chyba při zastavování hypermetra."
-
-msgid "sudo failed, continuing as if nothing happened"
-msgstr "sudo selhalo, pokračuje se, jako by se nic nestalo"
 
 msgid "sync_hypermetro error."
 msgstr "Chyba při synchronizaci hypermetra."

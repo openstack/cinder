@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev95\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-28 22:35+0000\n"
+"POT-Creation-Date: 2016-10-07 03:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1076,10 +1076,6 @@ msgstr "Sistem ismi alınamadı."
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr "%(path)s den yapıştırma uygulaması '%(name)s' yüklenemedi"
-
-#, python-format
-msgid "Could not read %s. Re-running with sudo"
-msgstr "%s okunamadı. sudo ile yeniden çalıştırılıyor"
 
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
@@ -4005,9 +4001,6 @@ msgstr "Lütfen %(pool_list)s havuzunu önceden oluşturun!"
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "Lütfen önceden %(pool)s havuzunda %(tier_levels)s aşamasını oluşturun!"
 
-msgid "Please re-run cinder-manage as root."
-msgstr "Lütfen cinder-manage'i root olarak yeniden çalıştırın."
-
 msgid "Please specify a name for QoS specs."
 msgstr "Lütfen QoS özellikleri için bir ad belirtin."
 
@@ -6402,9 +6395,6 @@ msgstr "kaynak mantıksal sürücü kimliği:%s çoğaltılmamıştır"
 
 msgid "status must be available"
 msgstr "durum kullanılabilir olmalıdır"
-
-msgid "sudo failed, continuing as if nothing happened"
-msgstr "sudo başarısız oldu, hiçbir şey olmamış gibi devam ediliyor"
 
 #, python-format
 msgid ""
