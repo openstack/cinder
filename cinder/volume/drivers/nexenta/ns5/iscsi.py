@@ -112,7 +112,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
             else:
                 raise
 
-        url = 'san/iscsi/targets?fields=alias,name'
+        url = 'san/iscsi/targets?fields=alias,name&limit=50000'
         for target in self.nef.get(url)['data']:
             tg_name = target['alias']
             if tg_name.startswith(TARGET_GROUP_PREFIX):
@@ -392,9 +392,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
         return 'cinder-clone-snapshot-%(id)s' % volume
 
     def _fill_volumes(self, tg_name):
-        url = 'san/lunMappings?targetGroup={}&fields=volume'.format(
-            tg_name
-        )
+        url = ('san/lunMappings?targetGroup={}&fields=volume'
+               '&limit=50000').format(tg_name)
         self.volumes[tg_name] = {
             mapping['volume'] for mapping in self.nef.get(url)['data']}
 
