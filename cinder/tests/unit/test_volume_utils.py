@@ -166,6 +166,52 @@ class NotifyUsageTestCase(test.TestCase):
         }
         self.assertDictMatch(expected_snapshot, usage_info)
 
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_usage_from_deleted_snapshot(self, volume_get_by_id):
+        raw_volume = {
+            'id': fake.VOLUME_ID,
+            'availability_zone': 'nova',
+            'deleted': 1
+        }
+        ctxt = context.get_admin_context()
+        volume_obj = fake_volume.fake_volume_obj(ctxt, **raw_volume)
+        volume_get_by_id.side_effect = exception.VolumeNotFound(
+            volume_id=fake.VOLUME_ID)
+
+        raw_snapshot = {
+            'project_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
+            'volume': volume_obj,
+            'volume_id': fake.VOLUME_ID,
+            'volume_size': 1,
+            'id': fake.SNAPSHOT_ID,
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': fields.SnapshotStatus.ERROR,
+            'deleted': '',
+            'snapshot_metadata': [{'key': 'fake_snap_meta_key',
+                                   'value': 'fake_snap_meta_value'}],
+            'expected_attrs': ['metadata'],
+        }
+
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctxt, **raw_snapshot)
+        usage_info = volume_utils._usage_from_snapshot(snapshot_obj)
+        expected_snapshot = {
+            'tenant_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
+            'availability_zone': '',
+            'volume_id': fake.VOLUME_ID,
+            'volume_size': 1,
+            'snapshot_id': fake.SNAPSHOT_ID,
+            'display_name': '11',
+            'created_at': 'DONTCARE',
+            'status': fields.SnapshotStatus.ERROR,
+            'deleted': '',
+            'metadata': six.text_type({'fake_snap_meta_key':
+                                      u'fake_snap_meta_value'}),
+        }
+        self.assertDictMatch(expected_snapshot, usage_info)
+
     @mock.patch('cinder.db.volume_glance_metadata_get')
     @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
     def test_usage_from_volume(self, mock_attachment, mock_image_metadata):
