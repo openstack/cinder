@@ -1754,6 +1754,72 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
                       extra_usage_info=local_extra_info_delete)
         ])
 
+    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.db.backup_get_active_by_window')
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.db.volume_get_active_by_window')
+    @mock.patch('cinder.utils.last_completed_audit_period')
+    @mock.patch('cinder.rpc.init')
+    @mock.patch('cinder.version.version_string')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_main_send_backup_error(self, get_admin_context,
+                                    version_string, rpc_init,
+                                    last_completed_audit_period,
+                                    volume_get_active_by_window,
+                                    notify_about_volume_usage,
+                                    backup_get_active_by_window,
+                                    notify_about_backup_usage):
+        CONF.set_override('send_actions', True)
+        CONF.set_override('start_time', '2014-01-01 01:00:00')
+        CONF.set_override('end_time', '2014-02-02 02:00:00')
+        begin = datetime.datetime(2014, 1, 1, 1, 0)
+        end = datetime.datetime(2014, 2, 2, 2, 0)
+        ctxt = context.RequestContext('fake-user', 'fake-project')
+        get_admin_context.return_value = ctxt
+        last_completed_audit_period.return_value = (begin, end)
+        backup1_created = datetime.datetime(2014, 1, 1, 2, 0)
+        backup1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
+        backup1 = mock.MagicMock(id=fake.BACKUP_ID,
+                                 project_id=fake.PROJECT_ID,
+                                 created_at=backup1_created,
+                                 deleted_at=backup1_deleted)
+        volume_get_active_by_window.return_value = []
+        backup_get_active_by_window.return_value = [backup1]
+        extra_info = {
+            'audit_period_beginning': str(begin),
+            'audit_period_ending': str(end),
+        }
+        local_extra_info_create = {
+            'audit_period_beginning': str(backup1.created_at),
+            'audit_period_ending': str(backup1.created_at),
+        }
+        local_extra_info_delete = {
+            'audit_period_beginning': str(backup1.deleted_at),
+            'audit_period_ending': str(backup1.deleted_at),
+        }
+
+        notify_about_backup_usage.side_effect = Exception()
+
+        volume_usage_audit.main()
+
+        get_admin_context.assert_called_once_with()
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+        rpc_init.assert_called_once_with(CONF)
+        last_completed_audit_period.assert_called_once_with()
+        volume_get_active_by_window.assert_called_once_with(ctxt, begin, end)
+        self.assertFalse(notify_about_volume_usage.called)
+        notify_about_backup_usage.assert_any_call(ctxt, backup1, 'exists',
+                                                  extra_info)
+        notify_about_backup_usage.assert_any_call(
+            ctxt, backup1, 'create.start',
+            extra_usage_info=local_extra_info_create)
+        notify_about_backup_usage.assert_any_call(
+            ctxt, backup1, 'delete.start',
+            extra_usage_info=local_extra_info_delete)
+
+    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.db.backup_get_active_by_window')
     @mock.patch('cinder.volume.utils.notify_about_snapshot_usage')
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_active_by_window')
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
@@ -1767,7 +1833,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     def test_main(self, get_admin_context, log_setup, get_logger,
                   version_string, rpc_init, last_completed_audit_period,
                   volume_get_active_by_window, notify_about_volume_usage,
-                  snapshot_get_active_by_window, notify_about_snapshot_usage):
+                  snapshot_get_active_by_window, notify_about_snapshot_usage,
+                  backup_get_active_by_window, notify_about_backup_usage):
         CONF.set_override('send_actions', True)
         CONF.set_override('start_time', '2014-01-01 01:00:00')
         CONF.set_override('end_time', '2014-02-02 02:00:00')
@@ -1812,6 +1879,22 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
             'audit_period_ending': str(snapshot1.deleted_at),
         }
 
+        backup1_created = datetime.datetime(2014, 1, 1, 2, 0)
+        backup1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
+        backup1 = mock.MagicMock(id=fake.BACKUP_ID,
+                                 project_id=fake.PROJECT_ID,
+                                 created_at=backup1_created,
+                                 deleted_at=backup1_deleted)
+        backup_get_active_by_window.return_value = [backup1]
+        extra_info_backup_create = {
+            'audit_period_beginning': str(backup1.created_at),
+            'audit_period_ending': str(backup1.created_at),
+        }
+        extra_info_backup_delete = {
+            'audit_period_beginning': str(backup1.deleted_at),
+            'audit_period_ending': str(backup1.deleted_at),
+        }
+
         volume_usage_audit.main()
 
         get_admin_context.assert_called_once_with()
@@ -1844,4 +1927,16 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
                       extra_usage_info=extra_info_snapshot_delete),
             mock.call(ctxt, snapshot1, 'delete.end',
                       extra_usage_info=extra_info_snapshot_delete)
+        ])
+
+        notify_about_backup_usage.assert_has_calls([
+            mock.call(ctxt, backup1, 'exists', extra_info),
+            mock.call(ctxt, backup1, 'create.start',
+                      extra_usage_info=extra_info_backup_create),
+            mock.call(ctxt, backup1, 'create.end',
+                      extra_usage_info=extra_info_backup_create),
+            mock.call(ctxt, backup1, 'delete.start',
+                      extra_usage_info=extra_info_backup_delete),
+            mock.call(ctxt, backup1, 'delete.end',
+                      extra_usage_info=extra_info_backup_delete)
         ])

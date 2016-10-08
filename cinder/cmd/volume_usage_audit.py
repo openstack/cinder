@@ -246,4 +246,75 @@ def main():
                 LOG.exception(_LE("Delete snapshot notification failed: %s"),
                               exc_msg, resource=snapshot_ref)
 
+    backups = db.backup_get_active_by_window(admin_context,
+                                             begin, end)
+
+    LOG.debug("Found %d backups", len(backups))
+    for backup_ref in backups:
+        try:
+            LOG.debug("Send notification for <backup_id: %(backup_id)s> "
+                      "<project_id %(project_id)s> <%(extra_info)s>",
+                      {'backup_id': backup_ref.id,
+                       'project_id': backup_ref.project_id,
+                       'extra_info': extra_info})
+            cinder.volume.utils.notify_about_backup_usage(admin_context,
+                                                          backup_ref,
+                                                          'exists',
+                                                          extra_info)
+        except Exception as exc_msg:
+            LOG.error(_LE("Exists backups notification failed: %s"),
+                      exc_msg)
+
+        if (CONF.send_actions and
+                backup_ref.created_at > begin and
+                backup_ref.created_at < end):
+            try:
+                local_extra_info = {
+                    'audit_period_beginning': str(backup_ref.created_at),
+                    'audit_period_ending': str(backup_ref.created_at),
+                }
+                LOG.debug("Send create notification for "
+                          "<backup_id: %(backup_id)s> "
+                          "<project_id %(project_id)s> <%(extra_info)s>",
+                          {'backup_id': backup_ref.id,
+                           'project_id': backup_ref.project_id,
+                           'extra_info': local_extra_info})
+                cinder.volume.utils.notify_about_backup_usage(
+                    admin_context,
+                    backup_ref,
+                    'create.start', extra_usage_info=local_extra_info)
+                cinder.volume.utils.notify_about_backup_usage(
+                    admin_context,
+                    backup_ref,
+                    'create.end', extra_usage_info=local_extra_info)
+            except Exception as exc_msg:
+                LOG.error(_LE("Create backup notification failed: %s"),
+                          exc_msg)
+
+        if (CONF.send_actions and backup_ref.deleted_at and
+                backup_ref.deleted_at > begin and
+                backup_ref.deleted_at < end):
+            try:
+                local_extra_info = {
+                    'audit_period_beginning': str(backup_ref.deleted_at),
+                    'audit_period_ending': str(backup_ref.deleted_at),
+                }
+                LOG.debug("Send delete notification for "
+                          "<backup_id: %(backup_id)s> "
+                          "<project_id %(project_id)s> <%(extra_info)s>",
+                          {'backup_id': backup_ref.id,
+                           'project_id': backup_ref.project_id,
+                           'extra_info': local_extra_info})
+                cinder.volume.utils.notify_about_backup_usage(
+                    admin_context,
+                    backup_ref,
+                    'delete.start', extra_usage_info=local_extra_info)
+                cinder.volume.utils.notify_about_backup_usage(
+                    admin_context,
+                    backup_ref,
+                    'delete.end', extra_usage_info=local_extra_info)
+            except Exception as exc_msg:
+                LOG.error(_LE("Delete backup notification failed: %s"),
+                          exc_msg)
+
     LOG.debug("Volume usage audit completed")

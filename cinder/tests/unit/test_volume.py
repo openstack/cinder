@@ -5924,7 +5924,6 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
             },
-
             {
                 'id': fake.VOLUME2_ID,
                 'host': 'devstack',
@@ -5998,6 +5997,48 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             }
         ]
 
+        self.db_back_attrs = [
+            {
+                'id': fake.BACKUP_ID,
+                'host': 'devstack',
+                'project_id': fake.PROJECT_ID,
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': 1,
+                'status': 'deleted',
+                'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1)
+            },
+            {
+                'id': fake.BACKUP2_ID,
+                'host': 'devstack',
+                'project_id': fake.PROJECT_ID,
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': 1,
+                'status': 'deleted',
+                'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1)
+            },
+            {
+                'id': fake.BACKUP3_ID,
+                'host': 'devstack',
+                'project_id': fake.PROJECT_ID,
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': 1,
+                'status': 'deleted',
+                'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1)
+            },
+            {
+                'id': fake.BACKUP4_ID,
+                'host': 'devstack',
+                'project_id': fake.PROJECT_ID,
+                'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+            },
+            {
+                'id': fake.BACKUP5_ID,
+                'host': 'devstack',
+                'project_id': fake.PROJECT_ID,
+                'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+            },
+        ]
+
     def test_volume_get_active_by_window(self):
         # Find all all volumes valid within a timeframe window.
 
@@ -6068,6 +6109,38 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
         self.assertEqual(fake.VOLUME_ID, snapshots[1].volume_id)
         self.assertEqual(snap4.id, snapshots[2].id)
         self.assertEqual(fake.VOLUME_ID, snapshots[2].volume_id)
+
+    def test_backup_get_active_by_window(self):
+        # Find all backups valid within a timeframe window.
+        db.volume_create(self.context, {'id': fake.VOLUME_ID})
+        for i in range(5):
+            self.db_back_attrs[i]['volume_id'] = fake.VOLUME_ID
+
+        # Not in window
+        db.backup_create(self.ctx, self.db_back_attrs[0])
+
+        # In - deleted in window
+        db.backup_create(self.ctx, self.db_back_attrs[1])
+
+        # In - deleted after window
+        db.backup_create(self.ctx, self.db_back_attrs[2])
+
+        # In - created in window
+        db.backup_create(self.ctx, self.db_back_attrs[3])
+
+        # Not of window
+        db.backup_create(self.ctx, self.db_back_attrs[4])
+
+        backups = db.backup_get_active_by_window(
+            self.context,
+            datetime.datetime(1, 3, 1, 1, 1, 1),
+            datetime.datetime(1, 4, 1, 1, 1, 1),
+            project_id=fake.PROJECT_ID
+        )
+        self.assertEqual(3, len(backups))
+        self.assertEqual(fake.BACKUP2_ID, backups[0].id)
+        self.assertEqual(fake.BACKUP3_ID, backups[1].id)
+        self.assertEqual(fake.BACKUP4_ID, backups[2].id)
 
 
 class DriverTestCase(test.TestCase):
