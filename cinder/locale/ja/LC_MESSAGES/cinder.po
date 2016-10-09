@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev207\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev208\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-08 05:29+0000\n"
+"POT-Creation-Date: 2016-10-08 12:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-07 12:59+0000\n"
+"PO-Revision-Date: 2016-10-08 12:17+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -2007,6 +2007,10 @@ msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
 msgstr ""
 "ボリューム %(vol)s で一意のスナップショット %(snap)s を見つけることができませ"
 "んでした。"
+
+#, python-format
+msgid "Could not find unique volume %(vol)s."
+msgstr "ユニークボリューム %(vol)s が見つかりません。"
 
 msgid "Could not get system name."
 msgstr "システム名を取得できませんでした。"
@@ -4564,6 +4568,10 @@ msgstr ""
 "%(reason)s)"
 
 #, python-format
+msgid "Failed to read configuration file(s): %s"
+msgstr "設定ファイルの読み込みに失敗しました: %s "
+
+#, python-format
 msgid ""
 "Failed to recognize JSON payload:\n"
 "[%s]"
@@ -6398,6 +6406,10 @@ msgstr ""
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
 msgstr ""
 "Fibre Channel の SAN 構成パラメーターの fc_fabric_names が欠落しています"
+
+#, python-format
+msgid "Missing attributes list for API %s."
+msgstr "API %s の属性リストがありません。"
 
 msgid "Missing authentication option (passw or private key file)."
 msgstr "認証オプションがありません (パスワードまたは秘密鍵ファイル)"
