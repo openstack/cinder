@@ -88,6 +88,8 @@ class Database(fixtures.Fixture):
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
+    POLICY_PATH = 'cinder/tests/unit/policy.json'
+
     def _get_joined_notifier(self, *args, **kwargs):
         # We create a new fake notifier but we join the notifications with
         # the default notifier
@@ -205,7 +207,7 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/unit/policy.json'),
+                                 self.POLICY_PATH),
                              group='oslo_policy')
 
         self._disable_osprofiler()
