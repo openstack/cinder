@@ -515,9 +515,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                  mock_open_connection,
                                  mock_init):
         backends = self.driver.backends
-        vol = {'id': fake.VOLUME_ID}
+        vol = {'id': fake.VOLUME_ID,
+               'provider_id': '101.101'}
         mock_api = mock.MagicMock()
-        sclivevol = {'instanceId': '101.101',
+        sclivevol = {'instanceId': '101.102',
                      'secondaryVolume': {'instanceId': '102.101',
                                          'instanceName': fake.VOLUME_ID},
                      'secondaryScSerialNumber': 102,
@@ -525,23 +526,34 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_api.get_live_volume = mock.MagicMock(return_value=sclivevol)
         # No replication driver data.
         ret = self.driver._delete_live_volume(mock_api, vol)
+        self.assertFalse(mock_api.get_live_volume.called)
         self.assertFalse(ret)
         # Bogus rdd
-        vol = {'id': fake.VOLUME_ID, 'replication_driver_data': ''}
+        vol = {'id': fake.VOLUME_ID,
+               'provider_id': '101.101',
+               'replication_driver_data': ''}
         ret = self.driver._delete_live_volume(mock_api, vol)
+        self.assertFalse(mock_api.get_live_volume.called)
         self.assertFalse(ret)
         # Valid delete.
         mock_api.delete_live_volume = mock.MagicMock(return_value=True)
-        vol = {'id': fake.VOLUME_ID, 'replication_driver_data': '102'}
+        vol = {'id': fake.VOLUME_ID,
+               'provider_id': '101.101',
+               'replication_driver_data': '102'}
         ret = self.driver._delete_live_volume(mock_api, vol)
+        mock_api.get_live_volume.assert_called_with('101.101', fake.VOLUME_ID)
         self.assertTrue(ret)
         # Wrong ssn.
-        vol = {'id': fake.VOLUME_ID, 'replication_driver_data': '103'}
+        vol = {'id': fake.VOLUME_ID,
+               'provider_id': '101.101',
+               'replication_driver_data': '103'}
         ret = self.driver._delete_live_volume(mock_api, vol)
+        mock_api.get_live_volume.assert_called_with('101.101', fake.VOLUME_ID)
         self.assertFalse(ret)
         # No live volume found.
         mock_api.get_live_volume.return_value = None
         ret = self.driver._delete_live_volume(mock_api, vol)
+        mock_api.get_live_volume.assert_called_with('101.101', fake.VOLUME_ID)
         self.assertFalse(ret)
 
         self.driver.backends = backends

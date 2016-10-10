@@ -3133,7 +3133,7 @@ class StorageCenterApi(object):
         """Get's the live ScLiveVolume object for the vol with primaryid.
 
         :param primaryid: InstanceId of the primary volume.
-        :parma name: Volume name associated with this live volume.
+        :param name: Volume name associated with this live volume.
         :return: ScLiveVolume object or None
         """
         sclivevol = None
@@ -3158,6 +3158,7 @@ class StorageCenterApi(object):
                     if (name and sclivevol is None and
                        lv['instanceName'].endswith(name)):
                         sclivevol = lv
+        LOG.debug('get_live_volume: %r', sclivevol)
         return sclivevol
 
     def _get_hbas(self, serverid):

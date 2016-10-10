@@ -365,7 +365,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             ssnstrings = self._split_driver_data(replication_driver_data)
             if ssnstrings:
                 ssn = int(ssnstrings[0])
-                sclivevolume = api.get_live_volume(volume.get('provider_id'))
+                sclivevolume = api.get_live_volume(volume.get('provider_id'),
+                                                   volume.get('id'))
                 # Have we found the live volume?
                 if (sclivevolume and
                    sclivevolume.get('secondaryScSerialNumber') == ssn and
