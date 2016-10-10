@@ -668,7 +668,7 @@ def extract_host(host, level='backend', default_pool_name=False):
     """
 
     if host is None:
-        msg = _LE("volume is not assigned to a host")
+        msg = _("volume is not assigned to a host")
         raise exception.InvalidVolume(reason=msg)
 
     if level == 'host':
