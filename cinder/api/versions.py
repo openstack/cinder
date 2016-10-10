@@ -53,10 +53,10 @@ _MEDIA_TYPES = [{
 _KNOWN_VERSIONS = {
     "v1.0": {
         "id": "v1.0",
-        "status": "SUPPORTED",
+        "status": "DEPRECATED",
         "version": "",
         "min_version": "",
-        "updated": "2014-06-28T12:20:21Z",
+        "updated": "2016-05-02T20:25:19Z",
         "links": _LINKS,
         "media-types": _MEDIA_TYPES,
     },
