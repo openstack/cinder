@@ -336,22 +336,42 @@ def volume_attachment_update(context, attachment_id, values):
     return IMPL.volume_attachment_update(context, attachment_id, values)
 
 
-def volume_attachment_get(context, attachment_id, session=None):
-    return IMPL.volume_attachment_get(context, attachment_id, session)
+def volume_attachment_get(context, attachment_id):
+    return IMPL.volume_attachment_get(context, attachment_id)
 
 
-def volume_attachment_get_all_by_volume_id(context, volume_id):
-    return IMPL.volume_attachment_get_all_by_volume_id(context, volume_id)
+def volume_attachment_get_all_by_volume_id(context, volume_id,
+                                           session=None):
+    return IMPL.volume_attachment_get_all_by_volume_id(context,
+                                                       volume_id,
+                                                       session)
 
 
-def volume_attachment_get_all_by_host(context, host):
+def volume_attachment_get_all_by_host(context, host, filters=None):
+    # FIXME(jdg): Not using filters
     return IMPL.volume_attachment_get_all_by_host(context, host)
 
 
 def volume_attachment_get_all_by_instance_uuid(context,
-                                               instance_uuid):
+                                               instance_uuid, filters=None):
+    # FIXME(jdg): Not using filters
     return IMPL.volume_attachment_get_all_by_instance_uuid(context,
                                                            instance_uuid)
+
+
+def volume_attachment_get_all(context, filters=None, marker=None, limit=None,
+                              offset=None, sort_keys=None, sort_dirs=None):
+    return IMPL.volume_attachment_get_all(context, filters, marker, limit,
+                                          offset, sort_keys, sort_dirs)
+
+
+def volume_attachment_get_all_by_project(context, project_id, filters=None,
+                                         marker=None, limit=None, offset=None,
+                                         sort_keys=None, sort_dirs=None):
+    return IMPL.volume_attachment_get_all_by_project(context, project_id,
+                                                     filters, marker, limit,
+                                                     offset, sort_keys,
+                                                     sort_dirs)
 
 
 def volume_update_status_based_on_attachment(context, volume_id):

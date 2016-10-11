@@ -81,6 +81,7 @@ def fake_db_volume_attachment(**updates):
     db_volume_attachment = {
         'id': fake.ATTACHMENT_ID,
         'volume_id': fake.VOLUME_ID,
+        'volume': fake_db_volume(),
     }
 
     for name, field in objects.VolumeAttachment.fields.items():
