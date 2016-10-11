@@ -1745,7 +1745,7 @@ test_terminate_connection_cleanup_remove_sg:
   sg:
     _properties: *sg_base_prop
     _methods:
-      remove:
+      delete:
       disconnect_host:
       get_alu_hlu_map: {}
 
@@ -1758,7 +1758,7 @@ test_terminate_connection_cleanup_deregister:
   sg:
     _properties: *sg_base_prop
     _methods:
-      remove:
+      delete:
       disconnect_host:
       get_alu_hlu_map: {}
   vnx:
