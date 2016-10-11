@@ -2566,3 +2566,23 @@ class EMCVMAXUtils(object):
         sgInstanceName = self.find_storage_masking_group(
             conn, controllerConfigService, storageGroupName)
         return storageGroupName, controllerConfigService, sgInstanceName
+
+    def check_ig_instance_name(
+            self, conn, initiatorGroupInstanceName):
+        """Check if a given Initiator Group Instance Name has been deleted.
+
+        :param conn: the ecom connection
+        :param initiatorGroupInstanceName: the given IG instance name
+        :return: foundinitiatorGroupInstanceName or None if deleted
+        """
+        foundinitiatorGroupInstanceName = self.get_existing_instance(
+            conn, initiatorGroupInstanceName)
+        if foundinitiatorGroupInstanceName is not None:
+            LOG.debug("Found initiator group name: "
+                      "%(igName)s.",
+                      {'igName': foundinitiatorGroupInstanceName})
+        else:
+            LOG.debug("Could not find initiator group name: "
+                      "%(igName)s.",
+                      {'igName': foundinitiatorGroupInstanceName})
+        return foundinitiatorGroupInstanceName
