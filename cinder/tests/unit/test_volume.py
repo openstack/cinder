@@ -5225,7 +5225,7 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                                                       old_volume.id,
                                                       attachment_id)
                 attachments = db.volume_attachment_get_all_by_instance_uuid(
-                    self.context, old_volume.id, instance_uuid)
+                    self.context, instance_uuid)
                 self.assertIsNotNone(attachments)
                 self.assertEqual(attached_host,
                                  attachments[0]['attached_host'])

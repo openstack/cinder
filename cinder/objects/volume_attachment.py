@@ -61,7 +61,9 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
 
 @base.CinderObjectRegistry.register
 class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
-    VERSION = '1.0'
+    # Versoin 1.0: Iniitial version
+    # Version 1.1: Remove volume_id in get_by_host|instance
+    VERSION = '1.1'
 
     fields = {
         'objects': fields.ListOfObjectsField('VolumeAttachment'),
@@ -77,16 +79,15 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
                                   attachments)
 
     @classmethod
-    def get_all_by_host(cls, context, volume_id, host):
+    def get_all_by_host(cls, context, host):
         attachments = db.volume_attachment_get_all_by_host(context,
-                                                           volume_id,
                                                            host)
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)
 
     @classmethod
-    def get_all_by_instance_uuid(cls, context, volume_id, instance_uuid):
+    def get_all_by_instance_uuid(cls, context, instance_uuid):
         attachments = db.volume_attachment_get_all_by_instance_uuid(
-            context, volume_id, instance_uuid)
+            context, instance_uuid)
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)
