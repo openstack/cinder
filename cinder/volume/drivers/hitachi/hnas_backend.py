@@ -835,15 +835,20 @@ class HNASSSHBackend(object):
         LOG.debug("create_target: alias: %(alias)s  fs_label: %(fs_label)s",
                   {'alias': tgt_alias, 'fs_label': fs_label})
 
-    def _get_file_handler(self, volume_path, _evs_id, fs_label):
-        out, err = self._run_cmd("console-context", "--evs", _evs_id,
-                                 'file-clone-stat', '-f', fs_label,
-                                 volume_path)
+    def _get_file_handler(self, volume_path, _evs_id, fs_label,
+                          raise_except):
 
-        if "File is not a clone" in out:
-            msg = (_("%s is not a clone!"), volume_path)
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=volume_path, reason=msg)
+        try:
+            out, err = self._run_cmd("console-context", "--evs", _evs_id,
+                                     'file-clone-stat', '-f', fs_label,
+                                     volume_path)
+        except putils.ProcessExecutionError as e:
+            if 'File is not a clone' in e.stderr and raise_except:
+                msg = (_("%s is not a clone!") % volume_path)
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=volume_path, reason=msg)
+            else:
+                return
 
         lines = out.split('\n')
         filehandle_list = []
@@ -858,25 +863,57 @@ class HNASSSHBackend(object):
 
         return filehandle_list
 
-    def check_snapshot_parent(self, volume_path, snap_name, fs_label):
+    def get_cloned_file_relatives(self, file_path, fs_label,
+                                  raise_except=False):
+        """Gets the files related to a clone
+
+        :param file_path: path of the cloned file
+        :param fs_label: filesystem of the cloned file
+        :param raise_except: If True exception will be raised for files that
+        aren't clones. If False, only an error message is logged.
+        :returns: list with names of the related files
+        """
+        relatives = []
+
         _evs_id = self.get_evs(fs_label)
 
-        file_handler_list = self._get_file_handler(volume_path, _evs_id,
-                                                   fs_label)
+        file_handler_list = self._get_file_handler(file_path, _evs_id,
+                                                   fs_label, raise_except)
 
-        for file_handler in file_handler_list:
-            out, err = self._run_cmd("console-context", "--evs", _evs_id,
-                                     'file-clone-stat-snapshot-file',
-                                     '-f', fs_label, file_handler)
+        if file_handler_list:
+            for file_handler in file_handler_list:
+                out, err = self._run_cmd('console-context', '--evs', _evs_id,
+                                         'file-clone-stat-snapshot-file', '-f',
+                                         fs_label, file_handler)
 
-            lines = out.split('\n')
+                results = out.split('\n')
 
-            for line in lines:
-                if snap_name in line:
-                    LOG.debug("Snapshot %(snap)s found in children list from "
-                              "%(vol)s!", {'snap': snap_name,
-                                           'vol': volume_path})
-                    return True
+                for value in results:
+                    if 'Clone:' in value and file_path not in value:
+                        relative = value.split(':')[1]
+                        relatives.append(relative)
+        else:
+            LOG.debug("File %(path)s is not a clone.", {
+                'path': file_path})
+
+        return relatives
+
+    def check_snapshot_parent(self, volume_path, snap_name, fs_label):
+        """Check if a volume is the snapshot source
+
+        :param volume_path: path of the volume
+        :param snap_name: name of the snapshot
+        :param fs_label: filesystem label
+        :return: True if the volume is the snapshot's source or False otherwise
+        """
+        lines = self.get_cloned_file_relatives(volume_path, fs_label, True)
+
+        for line in lines:
+            if snap_name in line:
+                LOG.debug("Snapshot %(snap)s found in children list from "
+                          "%(vol)s!", {'snap': snap_name,
+                                       'vol': volume_path})
+                return True
 
         LOG.debug("Snapshot %(snap)s was not found in children list from "
                   "%(vol)s, probably it is not the parent!",
@@ -884,6 +921,12 @@ class HNASSSHBackend(object):
         return False
 
     def get_export_path(self, export, fs_label):
+        """Gets the path of an export on HNAS
+
+        :param export: the export's name
+        :param fs_label: the filesystem name
+        :returns: string of the export's path
+        """
         evs_id = self.get_evs(fs_label)
         out, err = self._run_cmd("console-context", "--evs", evs_id,
                                  'nfs-export', 'list', export)
