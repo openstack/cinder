@@ -486,7 +486,7 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     default_provides = set(['volume_properties', 'volume_id', 'volume'])
 
-    def __init__(self, db):
+    def __init__(self):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
@@ -495,7 +495,6 @@ class EntryCreateTask(flow_utils.CinderTask):
                     'group_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
-        self.db = db
 
     def execute(self, context, optional_args, **kwargs):
         """Creates a database entry for the given inputs and returns details.
@@ -824,7 +823,7 @@ def get_flow(db_api, image_service_api, availability_zones, create_what,
                 'availability_zone': 'raw_availability_zone',
                 'volume_type': 'raw_volume_type'}))
     api_flow.add(QuotaReserveTask(),
-                 EntryCreateTask(db_api),
+                 EntryCreateTask(),
                  QuotaCommitTask())
 
     if scheduler_rpcapi and volume_rpcapi:
