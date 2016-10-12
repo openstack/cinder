@@ -224,6 +224,17 @@ class VolumeManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
 
+    @mock.patch('cinder.objects.Service.get_by_args')
+    def test_manage_volume_service_not_found_on_host(self, mock_service):
+        """Test correct failure when host having no volume service on it."""
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref'}}
+        mock_service.side_effect = exception.ServiceNotFound(
+            service_id='cinder-volume',
+            host='host_ok')
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int)
+
     def test_manage_volume_missing_ref(self):
         """Test correct failure when the ref is not specified."""
         body = {'volume': {'host': 'host_ok'}}
@@ -297,7 +308,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': fake.WILL_NOT_BE_FOUND_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int)
+        self.assertEqual(400, res.status_int)
 
     def test_manage_volume_bad_volume_type_by_name(self):
         """Test failure on nonexistent volume type specified by name."""
@@ -305,7 +316,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': 'bad_fakevt'}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int)
+        self.assertEqual(400, res.status_int)
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-volume-manage API call."""
