@@ -167,9 +167,12 @@ class Service(base.CinderPersistentObject, base.CinderObject,
                 # NOTE(dulek) None in *_current_version means that this
                 # service is in Liberty version, which we now don't provide
                 # backward compatibility to.
-                msg = _('One of the services is in Liberty version. We do not '
-                        'provide backward compatibility with Liberty now, you '
-                        'need to upgrade to Mitaka first.')
+                msg = _('Service %s is in Liberty version. We do not provide '
+                        'backward compatibility with Liberty now, so you '
+                        'need to upgrade it, release by release if live '
+                        'upgrade is required. After upgrade you may need to '
+                        'remove any stale service records via '
+                        '"cinder-manage service remove".') % s.binary
                 raise exception.ServiceTooOld(msg)
             ver = versionutils.convert_version_to_int(ver_str)
             if min_ver is None or ver < min_ver:
