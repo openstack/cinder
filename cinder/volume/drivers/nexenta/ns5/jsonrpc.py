@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
+from oslo_serialization import jsonutils
 from requests.cookies import extract_cookies_to_jar
 from requests.packages.urllib3 import exceptions
 
@@ -37,7 +38,15 @@ def check_error(response):
     code = response.status_code
     if code not in (200, 201, 202):
         reason = response.reason
-        content = response.json() if response.content else None
+        body = response.content
+        try:
+            content = jsonutils.loads(body) if body else None
+        except ValueError:
+            raise exception.VolumeBackendAPIException(
+                data=_(
+                    'Could not parse response: %(code)s %(reason)s '
+                    '%(content)s') % {
+                        'code': code, 'reason': reason, 'content': body})
         if content and 'code' in content:
             raise exception.NexentaException(content)
         raise exception.VolumeBackendAPIException(
@@ -72,13 +81,7 @@ class RESTCaller(object):
         LOG.debug('Sending JSON data: %s, method: %s, data: %s',
                   url, self.__method, data)
 
-        func = getattr(self.__proxy.session, self.__method)
-        if func:
-            response = func(url, **kwargs)
-        else:
-            raise exception.VolumeDriverException(
-                message=_('Unsupported method: %s') % self.__method)
-
+        response = getattr(self.__proxy.session, self.__method)(url, **kwargs)
         check_error(response)
         content = json.loads(response.content) if response.content else None
         LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
@@ -157,7 +160,7 @@ class HTTPSAuth(requests.auth.AuthBase):
         check_error(response)
         response.close()
         if response.content:
-            content = response.json()
+            content = jsonutils.loads(response.content)
             token = content['token']
             del content['token']
             LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
@@ -173,17 +176,18 @@ class HTTPSAuth(requests.auth.AuthBase):
 
 class NexentaJSONProxy(object):
 
-    def __init__(self, scheme, host, port, user, password):
-        self.scheme = scheme.lower()
-        self.host = host
-        self.port = port
-
+    def __init__(self, host, port, user, password, use_https):
         self.session = requests.Session()
-        if scheme == 'http':
-            self.session.auth = (user, password)
-        else:
-            self.session.auth = HTTPSAuth(self.url, user, password)
         self.session.headers.update({'Content-Type': 'application/json'})
+        self.host = host
+        if use_https:
+            self.scheme = 'https'
+            self.port = port if port else 8443
+            self.session.auth = HTTPSAuth(self.url, user, password)
+        else:
+            self.scheme = 'http'
+            self.port = port if port else 8080
+            self.session.auth = (user, password)
 
     @property
     def url(self):

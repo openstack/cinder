@@ -74,8 +74,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nfs_mount_attempts = 3
         self.cfg.nas_mount_options = 'vers=4'
         self.cfg.reserved_percentage = 20
-        self.cfg.nexenta_rest_protocol = 'http'
-        self.cfg.nexenta_rest_port = 8080
+        self.cfg.nexenta_use_https = False
+        self.cfg.nexenta_rest_port = 0
         self.cfg.nexenta_user = 'user'
         self.cfg.nexenta_password = 'pass'
         self.cfg.max_over_subscription_ratio = 20.0
@@ -134,12 +134,14 @@ class TestNexentaNfsDriver(test.TestCase):
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._ensure_share_mounted')
-    def test_delete_volume(self, ensure):
+    @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
+           'NexentaNfsDriver.collect_zfs_garbage')
+    def test_delete_volume(self, ensure, collect):
         self._create_volume_db_entry()
         self.nef_mock.get.return_value = {}
         self.drv.delete_volume(self.TEST_VOLUME)
         self.nef_mock.delete.assert_called_with(
-            'storage/pools/pool/filesystems/share%2Fvolume-1?snapshots=true')
+            'storage/pools/pool/filesystems/share%2Fvolume-1')
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
@@ -148,7 +150,9 @@ class TestNexentaNfsDriver(test.TestCase):
         data = {'name': self.TEST_SNAPSHOT['name']}
         self.nef_mock.post.assert_called_with(url, data)
 
-    def test_delete_snapshot(self):
+    @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
+           'NexentaNfsDriver.collect_zfs_garbage')
+    def test_delete_snapshot(self, collect):
         self._create_volume_db_entry()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT)
         url = ('storage/pools/pool/filesystems/share%2Fvolume-1/'
@@ -164,11 +168,17 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver._share_folder')
     def test_create_volume_from_snapshot(self, share, path, extend):
         self._create_volume_db_entry()
-        url = ('storage/filesystems/pool%2Fshare%2Fvolume-2/promote')
-
+        url = ('storage/pools/%(pool)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
+            'pool': 'pool',
+            'fs': '%2F'.join(['share', 'volume-1']),
+            'snap': self.TEST_SNAPSHOT['name']
+        }
+        path = '/'.join(['pool/share', self.TEST_VOLUME2['name']])
+        data = {'targetPath': path}
         self.drv.create_volume_from_snapshot(
             self.TEST_VOLUME2, self.TEST_SNAPSHOT)
-        self.nef_mock.post.assert_called_with(url)
+        self.nef_mock.post.assert_called_with(url, data)
 
         # make sure the volume get extended!
         extend.assert_called_once_with(self.TEST_VOLUME2, 2)

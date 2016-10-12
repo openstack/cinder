@@ -23,9 +23,9 @@ from cinder.i18n import _, _LI, _LE, _LW
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
+from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
-from zfs_garbage_collector import ZFSGarbageCollectorMixIn
 import uuid
 
 VERSION = '1.1.0'
@@ -34,7 +34,8 @@ TARGET_GROUP_PREFIX = 'cinder-tg-'
 
 
 @interface.volumedriver
-class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylint: disable=R0921
+class NexentaISCSIDriver(driver.ISCSIDriver,
+                         zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
@@ -51,7 +52,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
-        ZFSGarbageCollectorMixIn.__init__(self)
+        zfs_garbage_collector.ZFSGarbageCollectorMixIn.__init__(self)
         self.nef = None
         # mapping of targets and groups. Groups are the keys
         self.targets = {}
@@ -66,7 +67,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
                 options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
-        self.nef_protocol = self.configuration.nexenta_rest_protocol
+        self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -91,13 +92,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
         return backend_name
 
     def do_setup(self, context):
-        if self.nef_protocol == 'auto':
-            protocol = 'http'
-        else:
-            protocol = self.nef_protocol
         self.nef = jsonrpc.NexentaJSONProxy(
-            protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password)
+            self.nef_host, self.nef_port, self.nef_user,
+            self.nef_password, self.use_https)
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
             'name': self.volume_group,
@@ -112,6 +109,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
             else:
                 raise
 
+        self._fetch_volumes()
+
+    def _fetch_volumes(self):
         url = 'san/iscsi/targets?fields=alias,name&limit=50000'
         for target in self.nef.get(url)['data']:
             tg_name = target['alias']
@@ -405,13 +405,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
         volume_path = self._get_volume_path(volume)
 
         # Find out whether the volume is exported
-        url = 'san/lunMappings?volume={}&fields=lun'.format(
+        vol_map_url = 'san/lunMappings?volume={}&fields=lun'.format(
             volume_path.replace('/', '%2F'))
-        data = self.nef.get(url).get('data')
+        data = self.nef.get(vol_map_url).get('data')
         if data:
             model_update = {}
         else:
-            #############
             # Choose the best target group among existing ones
             tg_name = None
             for tg in self.volumes.keys():
@@ -436,7 +435,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
                 # Get the name of just created target
                 data = self.nef.get(url + '?fields=name&alias={}'.format(
                     tg_name))['data']
-                LOG.debug('DATA: {}'.format(data))
                 target_name = data[0]['name']
 
                 self._create_target_group(tg_name, target_name)
@@ -463,8 +461,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver, ZFSGarbageCollectorMixIn):  # pylin
                     raise
 
             # Get LUN of just created volume
-            url = 'san/lunMappings?volume=%s' % volume_path.replace('/', '%2F')
-            data = self.nef.get(url + '&fields=lun').get('data')
+            data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {

@@ -25,17 +25,18 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
+from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
-from zfs_garbage_collector import ZFSGarbageCollectorMixIn
 
 VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class NexentaNfsDriver(nfs.NfsDriver, ZFSGarbageCollectorMixIn):  # pylint: disable=R0921
+class NexentaNfsDriver(nfs.NfsDriver,
+                       zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
@@ -55,7 +56,7 @@ class NexentaNfsDriver(nfs.NfsDriver, ZFSGarbageCollectorMixIn):  # pylint: disa
 
     def __init__(self, *args, **kwargs):
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
-        ZFSGarbageCollectorMixIn.__init__(self)
+        zfs_garbage_collector.ZFSGarbageCollectorMixIn.__init__(self)
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_CONNECTION_OPTS)
@@ -72,7 +73,7 @@ class NexentaNfsDriver(nfs.NfsDriver, ZFSGarbageCollectorMixIn):  # pylint: disa
             self.configuration.nexenta_dataset_description)
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
-        self.nef_protocol = self.configuration.nexenta_rest_protocol
+        self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
@@ -89,13 +90,9 @@ class NexentaNfsDriver(nfs.NfsDriver, ZFSGarbageCollectorMixIn):  # pylint: disa
         return backend_name
 
     def do_setup(self, context):
-        if self.nef_protocol == 'auto':
-            protocol = 'http'
-        else:
-            protocol = self.nef_protocol
         self.nef = jsonrpc.NexentaJSONProxy(
-            protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password)
+            self.nef_host, self.nef_port, self.nef_user,
+            self.nef_password, self.use_https)
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
