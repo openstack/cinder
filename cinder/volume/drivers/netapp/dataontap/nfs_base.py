@@ -632,10 +632,15 @@ class NetAppNfsDriver(driver.ManageableVD,
         else:
             return False
 
-    def _discover_file_till_timeout(self, path, timeout=45):
+    def _discover_file_till_timeout(self, path, timeout=75):
         """Checks if file size at path is equal to size."""
         # Sometimes nfs takes time to discover file
         # Retrying in case any unexpected situation occurs
+        #
+        # The NFS client by default has a 60 second maximum
+        # cache time before it refreshes directory information.
+        # (See man 5 nfs acdirmax.)  Allow 75 seconds for
+        # retries to ensure that this cache has refreshed.
         retry_seconds = timeout
         sleep_interval = 2
         while True:
