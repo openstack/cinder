@@ -1086,6 +1086,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(clusters.c.frozen.type,
                               self.BOOL_TYPE)
 
+    def _check_089(self, engine, data):
+        """Test adding cluster_name to image volume cache table."""
+        image_cache = db_utils.get_table(engine, 'image_volume_cache_entries')
+        self.assertIsInstance(image_cache.c.cluster_name.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

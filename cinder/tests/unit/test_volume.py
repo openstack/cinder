@@ -427,7 +427,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.objects.volume.VolumeList.include_in_cluster')
     @mock.patch('cinder.objects.consistencygroup.ConsistencyGroupList.'
                 'include_in_cluster')
-    def test_init_host_added_to_cluster(self, cg_include_mock,
+    @mock.patch('cinder.db.image_volume_cache_include_in_cluster')
+    def test_init_host_added_to_cluster(self, image_cache_include_mock,
+                                        cg_include_mock,
                                         vol_include_mock, vol_get_all_mock,
                                         snap_get_all_mock):
         cluster = str(mock.sentinel.cluster)
@@ -439,6 +441,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                  host=self.volume.host)
         cg_include_mock.assert_called_once_with(mock.ANY, cluster,
                                                 host=self.volume.host)
+        image_cache_include_mock.assert_called_once_with(mock.ANY, cluster,
+                                                         host=self.volume.host)
         vol_get_all_mock.assert_called_once_with(
             mock.ANY, filters={'cluster_name': cluster})
         snap_get_all_mock.assert_called_once_with(
@@ -7121,6 +7125,7 @@ class ImageVolumeCacheTestCase(base.BaseVolumeTestCase):
         volume_params = {
             'status': 'creating',
             'host': 'some_host',
+            'cluster_name': 'some_cluster',
             'size': 1
         }
         volume_api = cinder.volume.api.API()
@@ -7130,6 +7135,7 @@ class ImageVolumeCacheTestCase(base.BaseVolumeTestCase):
         image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
         db.image_volume_cache_create(self.context,
                                      volume['host'],
+                                     volume_params['cluster_name'],
                                      image_id,
                                      datetime.datetime.utcnow(),
                                      volume['id'],
