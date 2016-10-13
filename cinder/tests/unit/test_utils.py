@@ -129,20 +129,6 @@ class GenericUtilsTestCase(test.TestCase):
         hostname = "<}\x1fh\x10e\x08l\x02l\x05o\x12!{>"
         self.assertEqual("hello", utils.sanitize_hostname(hostname))
 
-    def test_is_valid_boolstr(self):
-        self.assertTrue(utils.is_valid_boolstr(True))
-        self.assertTrue(utils.is_valid_boolstr('trUe'))
-        self.assertTrue(utils.is_valid_boolstr(False))
-        self.assertTrue(utils.is_valid_boolstr('faLse'))
-        self.assertTrue(utils.is_valid_boolstr('yeS'))
-        self.assertTrue(utils.is_valid_boolstr('nO'))
-        self.assertTrue(utils.is_valid_boolstr('y'))
-        self.assertTrue(utils.is_valid_boolstr('N'))
-        self.assertTrue(utils.is_valid_boolstr(1))
-        self.assertTrue(utils.is_valid_boolstr('1'))
-        self.assertTrue(utils.is_valid_boolstr(0))
-        self.assertTrue(utils.is_valid_boolstr('0'))
-
     @mock.patch('os.path.join', side_effect=lambda x, y: '/'.join((x, y)))
     def test_make_dev_path(self, mock_join):
         self.assertEqual('/dev/xvda', utils.make_dev_path('xvda'))

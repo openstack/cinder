@@ -39,7 +39,6 @@ from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
-from cinder import utils
 import cinder.volume
 from cinder.volume import utils as volume_utils
 
@@ -123,7 +122,7 @@ class API(base.Base):
         search_opts = search_opts or {}
 
         all_tenants = search_opts.pop('all_tenants', '0')
-        if not utils.is_valid_boolstr(all_tenants):
+        if not strutils.is_valid_boolstr(all_tenants):
             msg = _("all_tenants must be a boolean, got '%s'.") % all_tenants
             raise exception.InvalidParameterValue(err=msg)
 

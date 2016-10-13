@@ -268,12 +268,6 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
-def is_valid_boolstr(val):
-    """Check if the provided string is a valid bool string or not."""
-    val = str(val).lower()
-    return val in ('true', 'false', 'yes', 'no', 'y', 'n', '1', '0')
-
-
 def is_none_string(val):
     """Check if a string represents a None value."""
     if not isinstance(val, six.string_types):
@@ -609,7 +603,7 @@ def _get_disk_of_partition(devpath, st=None):
 
 def get_bool_param(param_string, params):
     param = params.get(param_string, False)
-    if not is_valid_boolstr(param):
+    if not strutils.is_valid_boolstr(param):
         msg = _('Value %(param)s for %(param_string)s is not a '
                 'boolean.') % {'param': param, 'param_string': param_string}
         raise exception.InvalidParameterValue(err=msg)
