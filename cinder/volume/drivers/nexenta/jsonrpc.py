@@ -12,14 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.jsonrpc` -- Nexenta-specific JSON RPC client
-=====================================================================
-
-.. automodule:: nexenta.jsonrpc
-"""
-
-import socket
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -29,7 +21,7 @@ from cinder import exception
 from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
-socket.setdefaulttimeout(100)
+TIMEOUT = 60
 
 
 class NexentaJSONProxy(object):
@@ -37,7 +29,13 @@ class NexentaJSONProxy(object):
     retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
     def __init__(self, scheme, host, port, path, user, password, auto=False,
-                 obj=None, method=None):
+                 obj=None, method=None, session=None):
+        if session:
+            self.session = session
+        else:
+            self.session = requests.Session()
+            self.session.auth = (user, password)
+            self.session.headers.update({'Content-Type': 'application/json'})
         self.scheme = scheme.lower()
         self.host = host
         self.port = port
@@ -57,7 +55,7 @@ class NexentaJSONProxy(object):
             obj, method = '%s.%s' % (self.obj, self.method), name
         return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
                                 self.user, self.password, self.auto, obj,
-                                method)
+                                method, self.session)
 
     @property
     def url(self):
@@ -76,15 +74,10 @@ class NexentaJSONProxy(object):
             'method': self.method,
             'params': args
         })
-        auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic %s' % auth
-        }
+
         LOG.debug('Sending JSON data: %s', data)
-        req = requests.post(self.url, data=data, headers=headers)
-        response = req.json()
-        req.close()
+        r = self.session.post(self.url, data=data, timeout=TIMEOUT)
+        response = r.json()
 
         LOG.debug('Got response: %s', response)
         if response.get('error') is not None:

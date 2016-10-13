@@ -20,7 +20,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -35,9 +35,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     Version history:
         1.0.0 - Initial driver version.
         1.0.1 - Moved opts to options.py.
+        1.0.2 - Added HA support.
     """
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
@@ -65,6 +66,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.iscsi_target_port = (self.configuration.
                                   nexenta_iscsi_target_portal_port)
         self.target_vip = None
+        self.ha_vip = None
 
     @property
     def backend_name(self):
@@ -76,6 +78,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         return backend_name
 
     def do_setup(self, context):
+        def get_ip(host):
+            hm = host[0 if len(host) == 1 else 1]['ip'].split('/', 1)
+            return {
+                'ip': hm[0],
+                'mask': hm[1] if len(hm) > 1 else '32'
+            }
+
         if self.restapi_protocol == 'auto':
             protocol, auto = 'http', True
         else:
@@ -91,22 +100,35 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             data_keys = rsp['data'][list(rsp['data'].keys())[0]]
             self.target_name = data_keys.split('\n', 1)[0].split(' ')[2]
 
+            target_vip = self.configuration.safe_get(
+                'nexenta_client_address')
             rsp = self.restapi.get('service/' + self.iscsi_service)
             if 'X-VIPS' in rsp['data']:
                 vips = json.loads(rsp['data']['X-VIPS'])
-                if len(vips[0]) == 1:
-                    self.target_vip = vips[0][0]['ip'].split('/', 1)[0]
+                vips = [get_ip(host) for host in vips]
+                if target_vip:
+                    found = False
+                    for host in vips:
+                        if target_vip == host['ip']:
+                            self.ha_vip = '/'.join((host['ip'], host['mask']))
+                            found = True
+                            break
+                    if not found:
+                        raise exception.VolumeBackendAPIException(
+                            _("nexenta_client_address doesn't match any VIPs "
+                              "provided by service: {}".format(
+                                ", ".join([host['ip'] for host in vips]))))
                 else:
-                    self.target_vip = vips[0][1]['ip'].split('/', 1)[0]
-            else:
-                self.target_vip = self.configuration.safe_get(
-                    'nexenta_client_address')
-                if not self.target_vip:
-                    LOG.error(_LE('No VIP configured for service %s'),
-                              self.iscsi_service)
-                    raise exception.VolumeBackendAPIException(
-                        _('No service VIP configured and '
-                          'no nexenta_client_address'))
+                    if len(vips) == 1:
+                        target_vip = vips[0]['ip']
+                        self.ha_vip = '/'.join((vips[0]['ip'], vips[0]['mask']))
+            if not target_vip:
+                LOG.error(_LE('No VIP configured for service %s'),
+                          self.iscsi_service)
+                raise exception.VolumeBackendAPIException(
+                    _('No service VIP configured and '
+                      'no nexenta_client_address'))
+            self.target_vip = target_vip
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error verifying iSCSI service %(serv)s on '
@@ -147,13 +169,17 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         }
 
     def create_volume(self, volume):
+        LOG.warning(volume['name'])
+        data = {
+            'objectPath': self.bucket_path + '/' + volume['name'],
+            'volSizeMB': int(volume['size']) * units.Ki,
+            'blockSize': self.blocksize,
+            'chunkSize': self.chunksize
+        }
+        if self.ha_vip:
+            data['vip'] = self.ha_vip
         try:
-            self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
-                'objectPath': self.bucket_path + '/' + volume['name'],
-                'volSizeMB': int(volume['size']) * units.Ki,
-                'blockSize': self.blocksize,
-                'chunkSize': self.chunksize
-            })
+            self.restapi.post('service/' + self.iscsi_service + '/iscsi', data)
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating volume'))
@@ -164,8 +190,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
         except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error deleting volume'))
+            LOG.info(
+                _LI('Volume was already deleted from appliance, skipping'),
+                resource=volume)
 
     def extend_volume(self, volume, new_size):
         try:

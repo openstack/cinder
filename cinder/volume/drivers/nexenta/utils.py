@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.utils` -- Nexenta-specific utils functions.
-=========================================================
-
-.. automodule:: nexenta.utils
-"""
 
 import re
 import six
@@ -39,7 +33,7 @@ def str2size(s, scale=1024):
     if not s:
         return 0
 
-    if isinstance(s, int):
+    if isinstance(s, six.integer_types):
         return s
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)
@@ -85,9 +79,12 @@ def parse_nms_url(url):
         auto://admin:nexenta@192.168.1.1:2000/
 
     NMS URL parts:
-        auto                True if url starts with auto://, protocol will be
-                            automatically switched to https if http not
-                            supported;
+
+    .. code-block:: none
+
+        auto                True if url starts with auto://, protocol
+                            will be automatically switched to https
+                            if http not supported;
         scheme (auto)       connection protocol (http or https);
         user (admin)        NMS user;
         password (nexenta)  NMS password;
@@ -126,9 +123,12 @@ def parse_nef_url(url):
         auto://admin:nexenta@192.168.1.1:8080/
 
     NMS URL parts:
-        auto                True if url starts with auto://, protocol will be
-                            automatically switched to https if http not
-                            supported;
+
+    .. code-block:: none
+
+        auto                True if url starts with auto://, protocol
+                            will be automatically switched to https
+                            if http not supported;
         scheme (auto)       connection protocol (http or https);
         user (admin)        NMS user;
         password (nexenta)  NMS password;
