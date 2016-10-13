@@ -20,6 +20,7 @@ import random
 import threading
 import uuid
 
+import decorator
 import eventlet
 from eventlet import tpool
 import itertools
@@ -275,13 +276,12 @@ def synchronized(lock_name, blocking=True, coordinator=None):
     Available field names are: decorated function parameters and
     `f_name` as a decorated function name.
     """
-    def wrap(f):
-        @six.wraps(f)
-        def wrapped(*a, **k):
-            call_args = inspect.getcallargs(f, *a, **k)
-            call_args['f_name'] = f.__name__
-            lock = Lock(lock_name, call_args, coordinator)
-            with lock(blocking):
-                return f(*a, **k)
-        return wrapped
-    return wrap
+
+    @decorator.decorator
+    def _synchronized(f, *a, **k):
+        call_args = inspect.getcallargs(f, *a, **k)
+        call_args['f_name'] = f.__name__
+        lock = Lock(lock_name, call_args, coordinator)
+        with lock(blocking):
+            return f(*a, **k)
+    return _synchronized

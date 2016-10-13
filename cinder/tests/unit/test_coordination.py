@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+
 import mock
 import tooz.coordination
 import tooz.locking
@@ -134,3 +136,4 @@ class CoordinationTestCase(test.TestCase):
         bar.__getitem__.return_value = 8
         func(foo, bar)
         get_lock.assert_called_with('lock-func-7-8')
+        self.assertEqual(['foo', 'bar'], inspect.getargspec(func)[0])
