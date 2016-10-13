@@ -88,14 +88,10 @@ nas_opts = [
                      'where Cinder volumes are stored.')),
 ]
 
-old_vol_type_opts = [cfg.DeprecatedOpt('glusterfs_sparsed_volumes'),
-                     cfg.DeprecatedOpt('glusterfs_qcow2_volumes')]
-
 volume_opts = [
     cfg.StrOpt('nas_volume_prov_type',
                default='thin',
                choices=['thin', 'thick'],
-               deprecated_opts=old_vol_type_opts,
                help=('Provisioning type that will be used when '
                      'creating volumes.')),
 ]
