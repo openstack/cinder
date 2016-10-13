@@ -64,13 +64,14 @@ class TestNexentaJSONProxy(test.TestCase):
     def test_delete_volume__nexenta_error_on_delete(self):
         vol = 'pool/group/vol-1'
         self.gc.mark_as_garbage(vol)
-        self.nef_mock.delete.side_effect = exception.NexentaException
+        self.nef_mock.delete.side_effect = exception.NexentaException('Error')
         self.gc.collect_zfs_garbage(vol)
 
     def test_delete_volume__backend_error_on_delete(self):
         vol = 'pool/group/vol-1'
         self.gc.mark_as_garbage(vol)
-        self.nef_mock.delete.side_effect = exception.VolumeBackendAPIException
+        self.nef_mock.delete.side_effect = exception.VolumeBackendAPIException(
+            data='Error')
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.gc.collect_zfs_garbage, vol)
 
@@ -84,13 +85,14 @@ class TestNexentaJSONProxy(test.TestCase):
     def test_delete_snapshot__nexenta_error_on_delete(self):
         vol = 'pool/group/vol-1@snap-1'
         self.gc.mark_as_garbage(vol)
-        self.nef_mock.delete.side_effect = exception.NexentaException
+        self.nef_mock.delete.side_effect = exception.NexentaException('Error')
         self.gc.collect_zfs_garbage(vol)
 
     def test_delete_snapshot__backend_error_on_delete(self):
         vol = 'pool/group/vol-1@snap-1'
         self.gc.mark_as_garbage(vol)
-        self.nef_mock.delete.side_effect = exception.VolumeBackendAPIException
+        self.nef_mock.delete.side_effect = exception.VolumeBackendAPIException(
+            data='Error')
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.gc.collect_zfs_garbage, vol)
 
