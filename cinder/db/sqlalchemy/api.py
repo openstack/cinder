@@ -1721,12 +1721,11 @@ def volume_attachment_get_all_by_volume_id(context, volume_id, session=None):
 
 
 @require_context
-def volume_attachment_get_all_by_host(context, volume_id, host):
+def volume_attachment_get_all_by_host(context, host):
     session = get_session()
     with session.begin():
         result = model_query(context, models.VolumeAttachment,
                              session=session).\
-            filter_by(volume_id=volume_id).\
             filter_by(attached_host=host).\
             filter(models.VolumeAttachment.attach_status != 'detached').\
             all()
@@ -1735,13 +1734,11 @@ def volume_attachment_get_all_by_host(context, volume_id, host):
 
 @require_context
 def volume_attachment_get_all_by_instance_uuid(context,
-                                               volume_id,
                                                instance_uuid):
     session = get_session()
     with session.begin():
         result = model_query(context, models.VolumeAttachment,
                              session=session).\
-            filter_by(volume_id=volume_id).\
             filter_by(instance_uuid=instance_uuid).\
             filter(models.VolumeAttachment.attach_status != 'detached').\
             all()

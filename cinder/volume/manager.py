@@ -932,12 +932,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         if instance_uuid:
             attachments = \
                 self.db.volume_attachment_get_all_by_instance_uuid(
-                    context, volume_id, instance_uuid)
+                    context, instance_uuid)
         else:
             attachments = (
                 self.db.volume_attachment_get_all_by_host(
                     context,
-                    volume_id,
                     host_name_sanitized))
         if attachments:
             self.db.volume_update(context, volume_id,

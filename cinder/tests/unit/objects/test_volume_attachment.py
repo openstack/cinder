@@ -84,7 +84,7 @@ class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
         get_by_host.return_value = [db_attachment]
 
         attachments = objects.VolumeAttachmentList.get_all_by_host(
-            self.context, mock.sentinel.volume_id, mock.sentinel.host)
+            self.context, mock.sentinel.host)
         self.assertEqual(1, len(attachments))
         TestVolumeAttachment._compare(self, db_attachment, attachments[0])
 
@@ -94,6 +94,6 @@ class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
         get_by_instance_uuid.return_value = [db_attachment]
 
         attachments = objects.VolumeAttachmentList.get_all_by_instance_uuid(
-            self.context, mock.sentinel.volume_id, mock.sentinel.uuid)
+            self.context, mock.sentinel.uuid)
         self.assertEqual(1, len(attachments))
         TestVolumeAttachment._compare(self, db_attachment, attachments[0])
