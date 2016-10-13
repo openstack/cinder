@@ -290,6 +290,7 @@ class GroupAPITestCase(test.TestCase):
         name = "fake_name"
         description = "fake description"
         mock_group.id = fake.GROUP_ID
+        mock_group.group_type_id = fake.GROUP_TYPE_ID
         mock_group.volumes = []
         ret_group_snap = self.group_api.create_group_snapshot(
             self.ctxt, mock_group, name, description)
@@ -300,7 +301,8 @@ class GroupAPITestCase(test.TestCase):
                    'project_id': self.ctxt.project_id,
                    'status': "creating",
                    'name': name,
-                   'description': description}
+                   'description': description,
+                   'group_type_id': fake.GROUP_TYPE_ID}
         mock_group_snap.assert_called_once_with(self.ctxt, **options)
         ret_group_snap.create.assert_called_once_with()
         mock_create_in_db.assert_called_once_with(self.ctxt, [],
