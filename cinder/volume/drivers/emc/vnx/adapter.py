@@ -982,7 +982,7 @@ class CommonAdapter(object):
         try:
             LOG.info(_LI("Storage Group %s is empty."), sg.name)
             sg.disconnect_host(sg.name)
-            sg.remove()
+            sg.delete()
             if self.itor_auto_dereg:
                 self._deregister_initiator(host)
         except storops_ex.StoropsException:
