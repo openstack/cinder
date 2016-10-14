@@ -133,32 +133,6 @@ class VolumeOpsTestCase(test.TestCase):
         return mock.Mock(connectionState=connection_state,
                          inMaintenanceMode=in_maintenance)
 
-    def test_is_host_usable(self):
-        self.session.invoke_api.return_value = self._host_runtime_info()
-
-        self.assertTrue(self.vops.is_host_usable(mock.sentinel.host))
-        self.session.invoke_api.assert_called_once_with(
-            vim_util, 'get_object_property', self.session.vim,
-            mock.sentinel.host, 'runtime')
-
-    def test_is_host_usable_with_disconnected_host(self):
-        self.session.invoke_api.return_value = self._host_runtime_info(
-            connection_state='disconnected')
-
-        self.assertFalse(self.vops.is_host_usable(mock.sentinel.host))
-        self.session.invoke_api.assert_called_once_with(
-            vim_util, 'get_object_property', self.session.vim,
-            mock.sentinel.host, 'runtime')
-
-    def test_is_host_usable_with_host_in_maintenance(self):
-        self.session.invoke_api.return_value = self._host_runtime_info(
-            in_maintenance=True)
-
-        self.assertFalse(self.vops.is_host_usable(mock.sentinel.host))
-        self.session.invoke_api.assert_called_once_with(
-            vim_util, 'get_object_property', self.session.vim,
-            mock.sentinel.host, 'runtime')
-
     def test_get_hosts(self):
         hosts = mock.sentinel.hosts
         self.session.invoke_api.return_value = hosts

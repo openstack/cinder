@@ -2344,17 +2344,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         host_2 = mock.sentinel.host_2
         host_3 = mock.sentinel.host_3
         vops.get_cluster_hosts.side_effect = [[host_1, host_2], [host_3]]
-        # host_1 and host_3 are usable, host_2 is not usable
-        vops.is_host_usable.side_effect = [True, False, True]
 
         cls_1 = mock.sentinel.cls_1
         cls_2 = mock.sentinel.cls_2
-        self.assertEqual([host_1, host_3],
+        self.assertEqual([host_1, host_2, host_3],
                          self._driver._get_hosts([cls_1, cls_2]))
         exp_calls = [mock.call(cls_1), mock.call(cls_2)]
         self.assertEqual(exp_calls, vops.get_cluster_hosts.call_args_list)
-        exp_calls = [mock.call(host_1), mock.call(host_2), mock.call(host_3)]
-        self.assertEqual(exp_calls, vops.is_host_usable.call_args_list)
 
     @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
