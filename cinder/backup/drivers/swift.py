@@ -102,6 +102,7 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_user',
                help='Swift user name'),
     cfg.StrOpt('backup_swift_key',
+               secret=True,
                help='Swift key for authentication'),
     cfg.StrOpt('backup_swift_container',
                default='volumebackups',
