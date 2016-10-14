@@ -30,6 +30,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
@@ -400,6 +401,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             raise exception.VolumeBackendAPIException(data=msg)
         self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
         return qos_policy_group_info
+
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
+        if self.replication_enabled:
+            return {'replication_status': fields.ReplicationStatus.ENABLED}
 
     def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
         self.zapi_client.mark_qos_policy_group_for_deletion(
