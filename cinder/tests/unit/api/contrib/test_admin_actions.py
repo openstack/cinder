@@ -21,6 +21,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import admin_actions
+from cinder.backup import api as backup_api
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
 from cinder import context
@@ -105,39 +106,36 @@ class AdminActionsTest(BaseAdminTest):
         self.svc.stop()
         super(AdminActionsTest, self).tearDown()
 
-    def _issue_volume_reset(self, ctx, volume, updated_status):
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-            fake.PROJECT_ID, volume['id']))
+    def _issue_resource_reset(self, ctx, name, id, status):
+        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+            fake.PROJECT_ID, name, id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
+        req.body = jsonutils.dump_as_bytes({'os-reset_status': status})
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         return resp
+
+    def _issue_volume_reset(self, ctx, volume, updated_status):
+        return self._issue_resource_reset(ctx,
+                                          'volumes',
+                                          volume['id'],
+                                          updated_status)
 
     def _issue_snapshot_reset(self, ctx, snapshot, updated_status):
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
-            fake.PROJECT_ID, snapshot.id))
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
-        req.environ['cinder.context'] = ctx
-        resp = req.get_response(app())
-        return resp
+        return self._issue_resource_reset(ctx,
+                                          'snapshots',
+                                          snapshot.id,
+                                          updated_status)
 
     def _issue_backup_reset(self, ctx, backup, updated_status):
-        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
-            fake.PROJECT_ID, backup['id']))
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
-        req.environ['cinder.context'] = ctx
-        with mock.patch(
-                'cinder.backup.api.API._get_available_backup_service_host') \
-                as mock_get_backup_host:
-            mock_get_backup_host.return_value = 'testhost'
-            resp = req.get_response(app())
-            return resp
+        self.mock_object(backup_api.API,
+                         '_get_available_backup_service_host',
+                         mock.Mock(return_value='testhost'))
+        return self._issue_resource_reset(ctx,
+                                          'backups',
+                                          backup['id'],
+                                          updated_status)
 
     def test_valid_updates(self):
         vac = admin_actions.VolumeAdminController()
