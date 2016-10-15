@@ -13,17 +13,18 @@
 # Yu Zhang, 2014
 # 颜海峰 <yanheven@gmail.com>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Eric Lei <1165970798@qq.com>, 2016. #zanata
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0rc2.dev202\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev243\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-07 03:25+0000\n"
+"POT-Creation-Date: 2016-10-14 23:32+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-18 08:40+0000\n"
-"Last-Translator: howard lee <howard@mail.ustc.edu.cn>\n"
+"PO-Revision-Date: 2016-09-28 06:21+0000\n"
+"Last-Translator: Eric Lei <1165970798@qq.com>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -162,6 +163,10 @@ msgid ""
 msgstr ""
 "%(msg_type)s：创建 NetworkPortal：请确保 IP %(ip)s 上的端口 %(port)d未被另一"
 "项服务使用。"
+
+#, python-format
+msgid "%(name)s cannot be all spaces."
+msgstr "%(name)s不能是所有空间"
 
 #, python-format
 msgid "%(new_size)s < current size %(size)s"
@@ -1153,6 +1158,13 @@ msgstr ""
 "无法删除高速缓存卷：%(cachevol_name)s。在 %(updated_at)s 对其进行了更新，它当"
 "前具有 %(numclones)s 卷实例。"
 
+#, python-format
+msgid ""
+"Cannot delete consistency group %(id)s. %(reason)s, and it cannot be the "
+"source for an ongoing CG or CG Snapshot creation."
+msgstr ""
+"无法删除一致性组%(id)s，%(reason)s，它不能作为创建运行CG或者CG快照的源。"
+
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "无法删除加密规范。卷类型在使用中。"
 
@@ -1353,6 +1365,13 @@ msgstr ""
 "无法更新一致性组 %(group_id)s，因为未提供任何有效名称、描述、add_volumes 或 "
 "remove_volumes。"
 
+#, python-format
+msgid ""
+"Cannot update consistency group %s, status must be available, and it cannot "
+"be the source for an ongoing CG or CG Snapshot creation."
+msgstr ""
+"不能更新一致性组%s,状态必须可获得，它不能作为创建运行CG或者CG快照的源。"
+
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "无法更新加密规范。卷类型在使用中。"
 
@@ -1379,6 +1398,12 @@ msgstr "无法验证对象 %(instanceName)s 的存在。"
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "找不到 Cg 快照 %(cgsnapshot_id)s。"
+
+msgid ""
+"CgSnapshot status must be available or error, and no CG can be currently "
+"using it as source for its creation."
+msgstr ""
+"一致性组快照状态必须是可获得的或错误，目前没有一致性组可以被用作创建它的源。"
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cg 快照为空。将不创建任何一致性组。"
@@ -1731,6 +1756,10 @@ msgid "Could not start consistency group snapshot %s."
 msgstr "无法启动一致性组快照 %s。"
 
 #, python-format
+msgid "Couldn't find ORM model for Persistent Versioned Object %s."
+msgstr "无法为持久版本对象%s找到ORM模型。"
+
+#, python-format
 msgid "Couldn't remove cluster %s because it doesn't exist."
 msgstr "无法删除集群 %s，因为它不存在。"
 
@@ -2057,6 +2086,9 @@ msgstr "禁用的原因包含无效字符或太长"
 #, python-format
 msgid "Domain with name %s wasn't found."
 msgstr "找不到名称为 %s 的域。"
+
+msgid "Down Hosts"
+msgstr "关闭主机"
 
 #, python-format
 msgid ""
@@ -4477,6 +4509,10 @@ msgid "Host type %s not supported."
 msgstr "不支持主机类型 %s。"
 
 #, python-format
+msgid "Host with name: %s not found"
+msgstr "找不到名为 %s 的主机"
+
+#, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "找不到具有端口 %(ports)s 的主机。"
 
@@ -4623,6 +4659,15 @@ msgstr "Cg 快照无效：%(reason)s"
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "一致性组无效：%(reason)s"
+
+#, python-format
+msgid ""
+"Invalid ConsistencyGroup: Cannot delete consistency group %(id)s. "
+"%(reason)s, and it cannot be the source for an ongoing CG or CG Snapshot "
+"creation."
+msgstr ""
+"无效的一致性组：不能删除一致性组%(id)s.%(reason)s，它不能作为创建运行CG或者CG"
+"快照的源。"
 
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "一致性组无效：没有任何主机用于创建一致性组"
@@ -5942,6 +5987,10 @@ msgstr "请提前创建 %(pool_list)s 池！"
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "请提前在池 %(pool)s 中创建 %(tier_levels)s 层！"
 
+#, python-format
+msgid "Please provide at least one volume for parameter %s"
+msgstr "请为参数 %s 提供至少一个卷"
+
 msgid "Please specify a name for QoS specs."
 msgstr "请为 QoS 规范指定名称。"
 
@@ -6007,9 +6056,16 @@ msgstr "Cinder程序错误:%(reason)s"
 msgid "Project ID"
 msgstr "项目ID"
 
+msgid "Project name not specified"
+msgstr "未指定项目名称"
+
 #, python-format
 msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
 msgstr "未正确设置要用作嵌套配额的项目配额：%(reason)s。"
+
+#, python-format
+msgid "Project: %s not found"
+msgstr "找不到项目：%s"
 
 msgid "Protection Group not ready."
 msgstr "保护组未就绪。"
@@ -6839,6 +6895,13 @@ msgstr "找不到存储系统 %(array)s。"
 
 #, python-format
 msgid ""
+"Successfully renamed %(num_vols)s volumes and %(num_cgs)s consistency groups "
+"from cluster %(current)s to %(new)s"
+msgstr ""
+"成功重命名%(num_vols)s卷和 %(num_cgs)s一致性组从集群%(current)s到%(new)s"
+
+#, python-format
+msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
 "for one or more of the following projects: '%(child_ids)s'"
@@ -6890,6 +6953,10 @@ msgstr "任务在 %d 秒内没有完成，操作超时，CoprHD 中的任务将�
 #, python-format
 msgid "Task: %(task_id)s is failed with error: %(error_message)s"
 msgstr "任务 %(task_id)s 失败，错误信息为: %(error_message)s"
+
+#, python-format
+msgid "Tenant %s: not found"
+msgstr "找不到租户：%s"
 
 msgid "Terminate connection failed"
 msgstr "终止连接发生故障"
@@ -7434,6 +7501,9 @@ msgstr "此类型不能转换为 NaElement。"
 msgid "TypeError: %s"
 msgstr "TypeError：%s"
 
+msgid "URI should end with /tag"
+msgstr "URI 应该以 /tag 结尾"
+
 #, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s 同时位于“添加卷”和“移除卷”列表中。"
@@ -7954,6 +8024,12 @@ msgid "Unrecognized read_deleted value '%s'"
 msgstr "无法识别的 read_deleted 取值”%s“"
 
 #, python-format
+msgid ""
+"Unrecoverable Error: Versioned Objects in DB are capped to unknown version "
+"%(version)s."
+msgstr "不可恢复错误：数据库中的版本对象被未知版本%(version)s覆盖。"
+
+#, python-format
 msgid "Unset gcs options: %s"
 msgstr "取消设置 gcs 选项：%s"
 
@@ -8053,6 +8129,10 @@ msgstr "V3 回滚"
 
 msgid "VF is not enabled."
 msgstr "未启用 VF。"
+
+#, python-format
+msgid "VPool %(name)s ( %(vpooltype)s ) : not found"
+msgstr "找不到VPool：%(name)s ( %(vpooltype)s )  "
 
 #, python-format
 msgid "VV Set %s does not exist."
@@ -8248,6 +8328,10 @@ msgid ""
 msgstr ""
 "卷 %(volume_name)s: 更新失败\n"
 "%(err)s"
+
+#, python-format
+msgid "Volume %s : not found"
+msgstr "找不到卷：%s"
 
 #, python-format
 msgid "Volume %s could not be created from source volume."
@@ -8627,6 +8711,10 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "名为 %(volume_type_name)s 的卷类型没有找到。"
 
 #, python-format
+msgid "Volume%s: not found"
+msgstr "找不到卷%s"
+
+#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -8868,6 +8956,9 @@ msgid ""
 msgstr ""
 "_find_pool，eternus_pool：%(eternus_pool)s，EnumerateInstances，无法连接至 "
 "ETERNUS。"
+
+msgid "_get_async_url: Invalid URL."
+msgstr "_get_async_url: 无效的 URL."
 
 #, python-format
 msgid ""
@@ -9497,6 +9588,14 @@ msgstr ""
 "将对象写入 swift 时出错，swift %(etag)s 中对象的 MD5 与发送至 swift %(md5)s "
 "的对象的 MD5 不同"
 
+#, python-format
+msgid ""
+"error: Incorrect value of new size: %(new_size_in_gb)s GB\n"
+"New size must be greater than current size: %(current_size)s GB"
+msgstr ""
+"错误: 新大小的值不正确: %(new_size_in_gb)s GB\n"
+"新大小必须大于当前大小: %(current_size)s GB"
+
 msgid "error: task list is empty, no task response found"
 msgstr "错误：任务列表为空，找不到任何任务响应"
 
@@ -9906,6 +10005,10 @@ msgid "serve() can only be called once"
 msgstr "serve() 只能调用一次"
 
 #, python-format
+msgid "snapshot with the name: %s Not Found"
+msgstr "找不到名称为 %s 的快照"
+
+#, python-format
 msgid "snapshot-%s"
 msgstr "快照 - %s"
 
@@ -9992,6 +10095,10 @@ msgstr "以下压缩算法不受支持：%s"
 
 msgid "valid iqn needed for show_target"
 msgstr "show_target 需要有效 iqn"
+
+#, python-format
+msgid "varray %s: not found"
+msgstr "找不到varray：%s"
 
 #, python-format
 msgid "vdisk %s is not defined."
