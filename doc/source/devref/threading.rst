@@ -28,17 +28,22 @@ in the long-running code path. The sleep call will trigger a context switch
 if there are pending threads, and using an argument of 0 will avoid introducing
 delays in the case that there is only a single green thread::
 
-        from eventlet import greenthread
-        ...
-        greenthread.sleep(0)
+    from eventlet import greenthread
+    ...
+    greenthread.sleep(0)
 
+In current code, time.sleep(0）does the same thing as greenthread.sleep(0) if
+time module is patched through eventlet.monkey_patch(). To be explicit, we recommend
+contributors use ``greenthread.sleep()`` instead of ``time.sleep()``.
 
 MySQL access and eventlet
 -------------------------
-Queries to the MySQL database will block the main thread of a service. This is
-because OpenStack services use an external C library for accessing the MySQL
-database. Since eventlet cannot use monkey-patching to intercept blocking
-calls in a C library, the resulting database query blocks the thread.
+There are some MySQL DB API drivers for oslo.db, like `PyMySQL`_, MySQL-python
+etc. PyMySQL is the default MySQL DB API driver for oslo.db, and it works well with
+eventlet. MySQL-python uses an external C library for accessing the MySQL database.
+Since eventlet cannot use monkey-patching to intercept blocking calls in a C library,
+queries to the MySQL database using libraries like MySQL-python will block the main
+thread of a service.
 
 The Diablo release contained a thread-pooling implementation that did not
 block, but this implementation resulted in a `bug`_ and was removed.
@@ -49,3 +54,4 @@ a discussion of the `impact on performance`_.
 .. _bug: https://bugs.launchpad.net/cinder/+bug/838581
 .. _mailing list thread: https://lists.launchpad.net/openstack/msg08118.html
 .. _impact on performance: https://lists.launchpad.net/openstack/msg08217.html
+.. _PyMySQL: https://wiki.openstack.org/wiki/PyMySQL_evaluation
