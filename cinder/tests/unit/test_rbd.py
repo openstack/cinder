@@ -201,6 +201,14 @@ class RBDTestCase(test.TestCase):
         client.__exit__.assert_called_once_with(None, None, None)
 
     @common_mocks
+    def test_create_encrypted_volume(self):
+        self.volume_a.encryption_key_id = \
+            '00000000-0000-0000-0000-000000000000'
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_volume,
+                          self.volume_a)
+
+    @common_mocks
     def test_manage_existing_get_size(self):
         with mock.patch.object(self.driver.rbd.Image(), 'size') as \
                 mock_rbd_image_size:

@@ -532,6 +532,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
     def create_volume(self, volume):
         """Creates a logical volume."""
+
+        if volume.encryption_key_id:
+            message = _("Encryption is not yet supported.")
+            raise exception.VolumeDriverException(message=message)
+
         size = int(volume.size) * units.Gi
 
         LOG.debug("creating volume '%s'", volume.name)
