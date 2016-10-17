@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed an issue where the NetApp cDOT NFS driver failed to clone new
+    volumes from the image cache.
