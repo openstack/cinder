@@ -403,6 +403,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                 LOG.info(_LI('Cloning from cache to destination %s'), dst)
                 self._clone_backing_file_for_volume(src, dst, volume_id=None,
                                                     share=share)
+                src_path = '%s/%s' % (dir, src)
+                os.utime(src_path, None)
         _do_clone()
 
     @utils.synchronized('clean_cache')

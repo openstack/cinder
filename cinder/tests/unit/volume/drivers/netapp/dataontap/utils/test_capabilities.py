@@ -91,6 +91,12 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.assertEqual(fake.SSC, result)
         self.assertIsNot(fake.SSC, result)
 
+    def test_get_ssc_flexvol_names(self):
+
+        result = self.ssc_library.get_ssc_flexvol_names()
+
+        self.assertItemsEqual(fake.SSC_VOLUMES, result)
+
     def test_get_ssc_for_flexvol(self):
 
         result = self.ssc_library.get_ssc_for_flexvol(fake.SSC_VOLUMES[0])
@@ -350,11 +356,97 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'netapp_mirrored': 'true',
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'FCAL',
+            'non_ssc_key': 'fake_value',
         }
 
         result = self.ssc_library.get_matching_flexvols_for_extra_specs(specs)
 
         self.assertEqual(['volume2'], result)
+
+    @ddt.data(
+        {
+            'flexvol_info': {
+                'netapp_dedup': 'true',
+            },
+            'extra_specs': {
+                'netapp_dedup': 'true',
+                'non_ssc_key': 'fake_value',
+            }
+        },
+        {
+            'flexvol_info': fake.SSC['volume1'],
+            'extra_specs': {
+                'netapp_disk_type': 'SSD',
+                'pool_name': 'volume1',
+            }
+        },
+        {
+            'flexvol_info': fake.SSC['volume2'],
+            'extra_specs': {
+                'netapp_disk_type': 'SSD',
+                'netapp_hybrid_aggregate': 'true',
+            }
+        }
+    )
+    @ddt.unpack
+    def test_flexvol_matches_extra_specs(self, flexvol_info, extra_specs):
+
+        result = self.ssc_library._flexvol_matches_extra_specs(flexvol_info,
+                                                               extra_specs)
+
+        self.assertTrue(result)
+
+    @ddt.data(
+        {
+            'flexvol_info': {
+                'netapp_dedup': 'true',
+            },
+            'extra_specs': {
+                'netapp_dedup': 'false',
+                'non_ssc_key': 'fake_value',
+            }
+        },
+        {
+            'flexvol_info': fake.SSC['volume2'],
+            'extra_specs': {
+                'netapp_disk_type': 'SSD',
+                'pool_name': 'volume1',
+            }
+        },
+        {
+            'flexvol_info': fake.SSC['volume2'],
+            'extra_specs': {
+                'netapp_disk_type': 'SATA',
+            }
+        }
+    )
+    @ddt.unpack
+    def test_flexvol_matches_extra_specs_no_match(self, flexvol_info,
+                                                  extra_specs):
+
+        result = self.ssc_library._flexvol_matches_extra_specs(flexvol_info,
+                                                               extra_specs)
+
+        self.assertFalse(result)
+
+    @ddt.data(('SSD', 'SSD'), ('SSD', ['SSD', 'FCAL']))
+    @ddt.unpack
+    def test_extra_spec_matches(self, extra_spec_value, ssc_flexvol_value):
+
+        result = self.ssc_library._extra_spec_matches(extra_spec_value,
+                                                      ssc_flexvol_value)
+
+        self.assertTrue(result)
+
+    @ddt.data(('SSD', 'FCAL'), ('SSD', ['FCAL']))
+    @ddt.unpack
+    def test_extra_spec_matches_no_match(self, extra_spec_value,
+                                         ssc_flexvol_value):
+
+        result = self.ssc_library._extra_spec_matches(extra_spec_value,
+                                                      ssc_flexvol_value)
+
+        self.assertFalse(result)
 
     def test_modify_extra_specs_for_comparison(self):
 

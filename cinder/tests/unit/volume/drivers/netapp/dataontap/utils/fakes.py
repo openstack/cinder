@@ -39,8 +39,8 @@ SSC = {
         'netapp_dedup': 'true',
         'netapp_mirrored': 'false',
         'netapp_raid_type': 'raid_dp',
-        'netapp_disk_type': 'SSD',
-        'netapp_hybrid_aggregate': False,
+        'netapp_disk_type': ['SSD'],
+        'netapp_hybrid_aggregate': 'false',
         'pool_name': 'volume1',
     },
     'volume2': {
@@ -52,8 +52,8 @@ SSC = {
         'netapp_dedup': 'true',
         'netapp_mirrored': 'true',
         'netapp_raid_type': 'raid_dp',
-        'netapp_disk_type': 'FCAL',
-        'netapp_hybrid_aggregate': True,
+        'netapp_disk_type': ['FCAL', 'SSD'],
+        'netapp_hybrid_aggregate': 'true',
         'pool_name': 'volume2',
     },
 }
@@ -95,14 +95,14 @@ SSC_MIRROR_INFO = {
 
 SSC_AGGREGATE_INFO = {
     'volume1': {
-        'netapp_disk_type': 'SSD',
+        'netapp_disk_type': ['SSD'],
         'netapp_raid_type': 'raid_dp',
-        'netapp_hybrid_aggregate': False,
+        'netapp_hybrid_aggregate': 'false',
     },
     'volume2': {
-        'netapp_disk_type': 'FCAL',
+        'netapp_disk_type': ['FCAL', 'SSD'],
         'netapp_raid_type': 'raid_dp',
-        'netapp_hybrid_aggregate': True,
+        'netapp_hybrid_aggregate': 'true',
     },
 }
 
