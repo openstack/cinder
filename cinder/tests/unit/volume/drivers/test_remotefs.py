@@ -466,3 +466,10 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             mock_copy_volume_from_snapshot.assert_called_once_with(
                 snap_ref, volume_ref, volume['size'])
             self.assertTrue(mock_delete_snapshot.called)
+
+    def test_create_regular_file(self):
+        self._driver._create_regular_file('/path', 1)
+        self._driver._execute.assert_called_once_with('dd', 'if=/dev/zero',
+                                                      'of=/path', 'bs=1M',
+                                                      'count=1024',
+                                                      run_as_root=True)
