@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Added config option ``vmware_connection_pool_size`` in the
+    VMware VMDK driver to specify the maximum number of connections
+    (to vCenter) in the http connection pool.

@@ -128,6 +128,9 @@ vmdk_opts = [
     cfg.MultiStrOpt('vmware_cluster_name',
                     help='Name of a vCenter compute cluster where volumes '
                          'should be created.'),
+    cfg.IntOpt('vmware_connection_pool_size',
+               default=10,
+               help='Maximum number of connections in http connection pool.'),
 ]
 
 CONF = cfg.CONF
@@ -219,9 +222,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 1.4.0 - support for volume retype
     # 1.5.0 - restrict volume placement to specific vCenter clusters
     # 1.6.0 - support for manage existing
-    VERSION = '1.6.0'
+    # 1.7.0 - new config option 'vmware_connection_pool_size'
+    VERSION = '1.7.0'
 
-    # ThirdaPartySystems wiki page
+    # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
 
     # Minimum supported vCenter version.
@@ -1813,6 +1817,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
             ca_file = self.configuration.vmware_ca_file
             insecure = self.configuration.vmware_insecure
+            pool_size = self.configuration.vmware_connection_pool_size
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
@@ -1820,7 +1825,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                  pbm_wsdl_loc=pbm_wsdl,
                                                  port=port,
                                                  cacert=ca_file,
-                                                 insecure=insecure)
+                                                 insecure=insecure,
+                                                 pool_size=pool_size)
         return self._session
 
     def _get_vc_version(self):
