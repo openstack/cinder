@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<volume
-    xmlns="http://docs.openstack.org/openstack-block-storage/2.0/content"
-    name="vol-001" description="Another volume."
-    size="2"/>

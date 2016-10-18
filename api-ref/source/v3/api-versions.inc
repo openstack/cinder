@@ -24,9 +24,3 @@ Response
 
 .. literalinclude:: ./samples/versions-response.json
    :language: javascript
-
-**Example List Api Versions: XML request**
-
-
-.. literalinclude:: ./samples/versions-response.xml
-   :language: javascript

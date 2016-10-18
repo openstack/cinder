@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<snapshot
-    xmlns="http://docs.openstack.org/openstack-block-storage/2.0/content"
-    name="snap-001" description="Daily backup"
-    volume_id="5aa119a8-d25b-45a7-8d1b-88e127885635" force="true"/>
