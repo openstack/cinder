@@ -513,7 +513,7 @@ def brick_get_encryptor(connection_info, *args, **kwargs):
     """Wrapper to get a brick encryptor object."""
 
     root_helper = get_root_helper()
-    key_manager = keymgr.API()
+    key_manager = keymgr.API(CONF)
     return encryptors.get_volume_encryptor(root_helper=root_helper,
                                            connection_info=connection_info,
                                            keymgr=key_manager,
