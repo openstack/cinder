@@ -175,11 +175,12 @@ class VolumeManageTest(test.TestCase):
                                      **kwargs)
 
         self.assertEqual(200, res.status_int)
-        get_cctxt_mock.assert_called_once_with(service.service_topic_queue)
+        get_cctxt_mock.assert_called_once_with(service.service_topic_queue,
+                                               version=('3.10', '3.0'))
         get_cctxt_mock.return_value.call.assert_called_once_with(
             mock.ANY, 'get_manageable_volumes', marker=None,
             limit=CONF.osapi_max_limit, offset=0, sort_keys=['reference'],
-            sort_dirs=['desc'])
+            sort_dirs=['desc'], want_objects=True)
         detail_view_mock.assert_called_once_with(mock.ANY, volumes,
                                                  len(volumes))
         get_service_mock.assert_called_once_with(

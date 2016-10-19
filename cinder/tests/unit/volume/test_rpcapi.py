@@ -346,6 +346,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
 
     def test_migrate_volume(self):
         class FakeBackend(object):
+
             def __init__(self):
                 self.host = 'fake_host'
                 self.cluster_name = 'cluster_name'
@@ -374,6 +375,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
 
     def test_retype(self):
         class FakeBackend(object):
+
             def __init__(self):
                 self.host = 'fake_host'
                 self.cluster_name = 'cluster_name'
@@ -588,3 +590,59 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                               self.context,
                               cleanup_request)
             can_send_mock.assert_called_once_with('3.7')
+
+    @ddt.data(('myhost', None, '3.10'), ('myhost', 'mycluster', '3.10'),
+              ('myhost', None, '3.0'))
+    @ddt.unpack
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_get_manageable_volumes(
+            self,
+            host,
+            cluster_name,
+            version,
+            can_send_version):
+        can_send_version.side_effect = lambda x: x == version
+        service = objects.Service(self.context, host=host,
+                                  cluster_name=cluster_name)
+        expected_kwargs_diff = {
+            'want_objects': True} if version == '3.10' else {}
+        self._test_rpc_api('get_manageable_volumes',
+                           rpc_method='call',
+                           service=service,
+                           server=cluster_name or host,
+                           marker=5,
+                           limit=20,
+                           offset=5,
+                           sort_keys='fake_keys',
+                           sort_dirs='fake_dirs',
+                           expected_kwargs_diff=expected_kwargs_diff,
+                           version=version)
+        can_send_version.assert_has_calls([mock.call('3.10')])
+
+    @ddt.data(('myhost', None, '3.10'), ('myhost', 'mycluster', '3.10'),
+              ('myhost', None, '3.0'))
+    @ddt.unpack
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_get_manageable_snapshots(
+            self,
+            host,
+            cluster_name,
+            version,
+            can_send_version):
+        can_send_version.side_effect = lambda x: x == version
+        service = objects.Service(self.context, host=host,
+                                  cluster_name=cluster_name)
+        expected_kwargs_diff = {
+            'want_objects': True} if version == '3.10' else {}
+        self._test_rpc_api('get_manageable_snapshots',
+                           rpc_method='call',
+                           service=service,
+                           server=cluster_name or host,
+                           marker=5,
+                           limit=20,
+                           offset=5,
+                           sort_keys='fake_keys',
+                           sort_dirs='fake_dirs',
+                           expected_kwargs_diff=expected_kwargs_diff,
+                           version=version)
+        can_send_version.assert_has_calls([mock.call('3.10')])
