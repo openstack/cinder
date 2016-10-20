@@ -752,8 +752,25 @@ class StorwizeHelpers(object):
             LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
             return host_name
 
+        def update_host_list(host, host_list):
+            idx = host_list.index(host)
+            del host_list[idx]
+            host_list.insert(0, host)
+
         # That didn't work, so try exhaustive search
         hosts_info = self.ssh.lshost()
+        host_list = list(hosts_info.select('name'))
+        # If we have a "real" connector, we might be able to find the
+        # the host entry with fewer queries if we move the host entries
+        # that contain the connector's host property value to the front
+        # of the list
+        if 'host' in connector:
+            # order host_list such that the host entries that
+            # contain the connector's host name are at the
+            # begining of the list
+            for host in host_list:
+                if re.search(connector['host'], host):
+                    update_host_list(host, host_list)
         # If we have a volume name we have a potential fast path
         # for finding the matching host for that volume.
         # Add the host_names that have mappings for our volume to the
@@ -761,15 +778,10 @@ class StorwizeHelpers(object):
         if volume_name:
             hosts_map_info = self.ssh.lsvdiskhostmap(volume_name)
             hosts_map_info_list = list(hosts_map_info.select('host_name'))
-            hosts_info_list = list(hosts_info.select('name'))
             # remove the fast path host names from the end of the list
-            # so they are only searched for once.
+            # and move to the front so they are only searched for once.
             for host in hosts_map_info_list:
-                idx = hosts_info_list.index(host)
-                del hosts_info_list[idx]
-            host_list = hosts_map_info_list + hosts_info_list
-        else:
-            host_list = list(hosts_info.select('name'))
+                update_host_list(host, host_list)
         found = False
         for name in host_list:
             try:
