@@ -1219,6 +1219,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def _check_lun_valid_for_manage(self, lun_info, external_ref):
         lun_id = lun_info.get('ID')
+        lun_name = lun_info.get('NAME')
 
         # Check whether the LUN is already in LUN group.
         if lun_info.get('ISADD2LUNGROUP') == 'true':
@@ -1312,9 +1313,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 existing_ref=external_ref, reason=msg)
 
         # Check whether the LUN exists in a LUN mirror.
-        if self.client.is_lun_in_mirror(lun_id):
+        if self.client.is_lun_in_mirror(lun_name):
             msg = (_("Can't import LUN %s to Cinder. Already exists in "
-                     "a LUN mirror.") % lun_id)
+                     "a LUN mirror.") % lun_name)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
 
