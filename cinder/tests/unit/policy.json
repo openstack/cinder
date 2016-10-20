@@ -132,6 +132,7 @@
     "group:get_group_snapshot": "",
     "group:get_all_group_snapshots": "",
     "group:reset_group_snapshot_status":"",
+    "group:reset_status":"",
 
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 

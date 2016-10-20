@@ -772,6 +772,20 @@ class API(base.Base):
                 sort_dirs=sort_dirs)
         return groups
 
+    def reset_status(self, context, group, status):
+        """Reset status of generic group"""
+
+        check_policy(context, 'reset_status')
+        if status not in c_fields.GroupStatus.ALL:
+            msg = _("Group status: %(status)s is invalid, valid status "
+                    "are: %(valid)s.") % {'status': status,
+                                          'valid': c_fields.GroupStatus.ALL}
+            raise exception.InvalidGroupStatus(reason=msg)
+        field = {'updated_at': timeutils.utcnow(),
+                 'status': status}
+        group.update(field)
+        group.save()
+
     def create_group_snapshot(self, context, group, name, description):
         options = {'group_id': group.id,
                    'user_id': context.user_id,

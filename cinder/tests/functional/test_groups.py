@@ -20,12 +20,15 @@ class GroupsTest(functional_helpers._FunctionalTestBase):
     _vol_type_name = 'functional_test_type'
     _grp_type_name = 'functional_grp_test_type'
     osapi_version_major = '3'
-    osapi_version_minor = '13'
+    osapi_version_minor = '20'
 
     def setUp(self):
         super(GroupsTest, self).setUp()
         self.volume_type = self.api.create_type(self._vol_type_name)
         self.group_type = self.api.create_group_type(self._grp_type_name)
+        self.group1 = self.api.post_group(
+            {'group': {'group_type': self.group_type['id'],
+             'volume_types': [self.volume_type['id']]}})
 
     def _get_flags(self):
         f = super(GroupsTest, self)._get_flags()
@@ -44,6 +47,17 @@ class GroupsTest(functional_helpers._FunctionalTestBase):
         """Simple check that listing groups works."""
         grps = self.api.get_groups()
         self.assertIsNotNone(grps)
+
+    def test_reset_group_status(self):
+        """Reset group status"""
+        found_group = self._poll_group_while(self.group1['id'],
+                                             ['creating'])
+        self.assertEqual('available', found_group['status'])
+        self.api.reset_group(self.group1['id'],
+                             {"reset_status": {"status": "error"}})
+
+        group = self.api.get_group(self.group1['id'])
+        self.assertEqual("error", group['status'])
 
     def test_create_and_delete_group(self):
         """Creates and deletes a group."""

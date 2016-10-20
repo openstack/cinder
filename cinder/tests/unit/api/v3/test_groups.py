@@ -824,6 +824,47 @@ class GroupsAPITestCase(test.TestCase):
                           self.controller.update,
                           req, self.group1.id, body)
 
+    @ddt.data(('3.11', 'fake_group_001',
+               fields.GroupStatus.AVAILABLE,
+               exception.VersionNotFoundForAPIMethod),
+              ('3.19', 'fake_group_001',
+               fields.GroupStatus.AVAILABLE,
+               exception.VersionNotFoundForAPIMethod),
+              ('3.20', 'fake_group_001',
+               fields.GroupStatus.AVAILABLE,
+               exception.GroupNotFound),
+              ('3.20', None,
+               'invalid_test_status',
+               webob.exc.HTTPBadRequest),
+              )
+    @ddt.unpack
+    def test_reset_group_status_illegal(self, version, group_id,
+                                        status, exceptions):
+        g_id = group_id or self.group2.id
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, g_id),
+                                      version=version)
+        body = {"reset_status": {
+            "status": status
+        }}
+        self.assertRaises(exceptions,
+                          self.controller.reset_status,
+                          req, g_id, body)
+
+    def test_reset_group_status(self):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group2.id),
+                                      version='3.20')
+        body = {"reset_status": {
+            "status": fields.GroupStatus.AVAILABLE
+        }}
+        response = self.controller.reset_status(req,
+                                                self.group2.id, body)
+
+        group = objects.Group.get_by_id(self.ctxt, self.group2.id)
+        self.assertEqual(202, response.status_int)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
+
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_group_from_src_snap(self, mock_validate):

@@ -127,6 +127,7 @@
     "group:get_group_snapshot": "rule:admin_or_owner",
     "group:get_all_group_snapshots": "rule:admin_or_owner",
     "group:reset_group_snapshot_status":"rule:admin_api",
+    "group:reset_status":"rule:admin_api",
 
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
     "message:delete": "rule:admin_or_owner",

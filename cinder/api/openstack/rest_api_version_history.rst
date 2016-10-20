@@ -214,3 +214,7 @@ user documentation.
 3.19
 ----
   Added reset status actions 'reset_status' to group snapshot.
+
+3.20
+----
+  Added reset status actions 'reset_status' to generic volume group.
