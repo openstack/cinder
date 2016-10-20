@@ -27,7 +27,6 @@ from six.moves import http_client
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 
-
 FSS_BATCH = 'batch'
 FSS_PHYSICALRESOURCE = 'physicalresource'
 FSS_PHYSICALADAPTER = 'physicaladapter'
@@ -56,7 +55,6 @@ FSS_AUTH = 'auth'
 FSS_LOGIN = 'login'
 FSS_SINGLE_TYPE = 'single'
 
-
 POST = 'POST'
 GET = 'GET'
 PUT = 'PUT'
@@ -77,17 +75,11 @@ LOG = logging.getLogger(__name__)
 class RESTProxy(object):
     def __init__(self, config):
         self.fss_host = config.san_ip
-        self.fss_username = config.san_login
-        self.fss_password = config.san_password
         self.fss_defined_pool = config.fss_pool
         if config.additional_retry_list:
             RETRY_LIST.append(config.additional_retry_list)
 
-        self.FSS = FSSRestCommon(
-            host=self.fss_host,
-            username=self.fss_username,
-            password=self.fss_password,
-            fss_debug=config.fss_debug)
+        self.FSS = FSSRestCommon(config)
         self.session_id = None
 
     # naming
@@ -127,7 +119,7 @@ class RESTProxy(object):
         poolinfo = {}
         try:
             output = self.list_pool_info()
-            if "storagepools" in output['data']:
+            if output and "storagepools" in output['data']:
                 for item in output['data']['storagepools']:
                     if item['name'].startswith(GROUP_PREFIX) and (
                             self.fss_defined_pool == item['id']):
@@ -359,6 +351,7 @@ class RESTProxy(object):
         volume_name = self._get_vol_name_from_snap(snapshot)
         snap_name = snapshot["display_name"]
         vid = self._get_fss_vid_from_name(volume_name, FSS_SINGLE_TYPE)
+
         if not vid:
             msg = _('vid is null. FSS failed to delete snapshot')
             raise exception.VolumeBackendAPIException(data=msg)
@@ -366,6 +359,7 @@ class RESTProxy(object):
             if ('metadata' in snapshot and 'fss_tm_comment' in
                snapshot['metadata']):
                 snap_name = snapshot['metadata']['fss_tm_comment']
+
         if len(snap_name) > 32:
             snap_name = self._encode_name(snapshot["id"])
 
@@ -404,6 +398,8 @@ class RESTProxy(object):
             if ('metadata' in snapshot) and ('fss_tm_comment'
                                              in snapshot['metadata']):
                 snap_name = snapshot['metadata']['fss_tm_comment']
+        if len(snap_name) > 32:
+            snap_name = self._encode_name(snapshot["id"])
 
         tm_info = self.FSS.get_timemark(vid)
         rawtimestamp = self._get_timestamp(tm_info, snap_name)
@@ -934,12 +930,12 @@ class RESTProxy(object):
 
 
 class FSSRestCommon(object):
-    def __init__(self, host, username, password, fss_debug):
-        self.hostip = host
-        self.username = username
-        self.password = password
+    def __init__(self, config):
+        self.hostip = config.san_ip
+        self.username = config.san_login
+        self.password = config.san_password
         self.session_id = None
-        self.fss_debug = fss_debug
+        self.fss_debug = config.fss_debug
 
     def _fss_request(self, method, path, data=None):
         json_data = None

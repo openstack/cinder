@@ -237,10 +237,6 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
     def test_initialized_should_set_fss_info(self):
         self.assertEqual(self.driver.proxy.fss_host,
                          self.driver.configuration.san_ip)
-        self.assertEqual(self.driver.proxy.fss_username,
-                         self.driver.configuration.san_login)
-        self.assertEqual(self.driver.proxy.fss_password,
-                         self.driver.configuration.san_password)
         self.assertEqual(self.driver.proxy.fss_defined_pool,
                          self.driver.configuration.fss_pool)
 
@@ -447,7 +443,7 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
         mock__check_multipath.retuen_value = True
 
         self.mock_config.use_multipath_for_image_xfer = True
-        self.mock_config.san_secondary_ip = SECONDARY_IP
+        self.mock_config.fss_san_secondary_ip = SECONDARY_IP
         multipath_connector = deepcopy(ISCSI_CONNECTOR)
         multipath_connector["multipath"] = True
         fss_hosts.append(SECONDARY_IP)
