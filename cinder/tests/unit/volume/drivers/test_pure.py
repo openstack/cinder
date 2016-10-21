@@ -2694,6 +2694,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'consistencygroup_support': True,
             'thin_provisioning_support': True,
             'multiattach': True,
+            'QoS_support': False,
             'total_capacity_gb': TOTAL_CAPACITY,
             'free_capacity_gb': TOTAL_CAPACITY - USED_SPACE,
             'reserved_percentage': reserved_percentage,

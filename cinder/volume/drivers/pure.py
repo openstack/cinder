@@ -556,6 +556,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         data['consistencygroup_support'] = True
         data['thin_provisioning_support'] = True
         data['multiattach'] = True
+        data['QoS_support'] = False
 
         # Add capacity info for scheduler
         data['total_capacity_gb'] = total_capacity
