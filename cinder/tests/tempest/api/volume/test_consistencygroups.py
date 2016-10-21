@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from tempest.api.volume import base
 from tempest.common import waiters
 from tempest import config
@@ -24,7 +23,6 @@ from tempest import test
 from cinder.tests.tempest import cinder_clients
 
 CONF = config.CONF
-LOG = logging.getLogger(__name__)
 
 
 class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
