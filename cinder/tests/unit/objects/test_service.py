@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import mock
 from oslo_utils import timeutils
 import pytz
@@ -176,6 +177,28 @@ class TestService(test_objects.BaseObjectsTestCase):
         self.assertEqual(cluster, service.cluster)
         cluster_get.assert_called_once_with(self.context, None,
                                             name='mycluster')
+
+    def test_service_is_up(self):
+        # NOTE(mdovgal): don't use @ddt.data with the real timestamp value
+        # for this test.
+        # When using ddt decorators ddt.data seems to have been calculated
+        # not at the time of test's execution but at the tests's beginning.
+        # And this one depends on utcnow func. So it won't be utcnow at the
+        # execution moment and the result will be unexpected.
+        down_time = 5
+        self.flags(service_down_time=down_time)
+
+        # test if service is up
+        service = fake_service.fake_service_obj(self.context)
+        self.assertTrue(service.is_up)
+
+        service.updated_at = timeutils.utcnow()
+        self.assertTrue(service.is_up)
+
+        # test is service is down now
+        past_time = timeutils.utcnow() - datetime.timedelta(seconds=64)
+        service.updated_at = past_time
+        self.assertFalse(service.is_up)
 
 
 class TestServiceList(test_objects.BaseObjectsTestCase):

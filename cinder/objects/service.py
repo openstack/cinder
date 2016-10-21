@@ -21,6 +21,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
+from cinder import utils
 
 
 @base.CinderObjectRegistry.register
@@ -189,6 +190,13 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     def get_minimum_obj_version(cls, context, binary=None):
         return cls._get_minimum_version('object_current_version', context,
                                         binary)
+
+    @property
+    def is_up(self):
+        """Check whether a service is up based on last heartbeat."""
+        last_heartbeat = self.updated_at or self.created_at
+        return (last_heartbeat and
+                last_heartbeat >= utils.service_expired_time(True))
 
 
 @base.CinderObjectRegistry.register

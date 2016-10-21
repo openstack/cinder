@@ -88,27 +88,27 @@ class TestCluster(test_objects.BaseObjectsTestCase):
     def test_is_up_no_last_hearbeat(self):
         cluster = fake_cluster.fake_cluster_ovo(self.context,
                                                 last_heartbeat=None)
-        self.assertFalse(cluster.is_up())
+        self.assertFalse(cluster.is_up)
 
     def test_is_up(self):
         cluster = fake_cluster.fake_cluster_ovo(
             self.context,
             last_heartbeat=timeutils.utcnow(with_timezone=True))
-        self.assertTrue(cluster.is_up())
+        self.assertTrue(cluster.is_up)
 
     def test_is_up_limit(self):
         limit_expired = (utils.service_expired_time(True) +
                          timeutils.datetime.timedelta(seconds=1))
         cluster = fake_cluster.fake_cluster_ovo(self.context,
                                                 last_heartbeat=limit_expired)
-        self.assertTrue(cluster.is_up())
+        self.assertTrue(cluster.is_up)
 
     def test_is_up_down(self):
         expired_time = (utils.service_expired_time(True) -
                         timeutils.datetime.timedelta(seconds=1))
         cluster = fake_cluster.fake_cluster_ovo(self.context,
                                                 last_heartbeat=expired_time)
-        self.assertFalse(cluster.is_up())
+        self.assertFalse(cluster.is_up)
 
 
 class TestClusterList(test_objects.BaseObjectsTestCase):

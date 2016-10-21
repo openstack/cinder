@@ -615,7 +615,8 @@ class TestCinderManageCmd(test.TestCase):
         consisgroup_update.assert_called_once_with(
             ctxt, fake.CONSISTENCY_GROUP_ID, {'host': 'fake_host2'})
 
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def _test_service_commands_list(self, service, get_admin_context,

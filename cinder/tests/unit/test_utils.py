@@ -214,33 +214,6 @@ class GenericUtilsTestCase(test.TestCase):
         mock_isfile.assert_called_once_with(tempfile)
         mock_unlink.assert_called_once_with(tempfile)
 
-    @mock.patch('oslo_utils.timeutils.utcnow')
-    def test_service_is_up(self, mock_utcnow):
-        fts_func = datetime.datetime.fromtimestamp
-        fake_now = 1000
-        down_time = 5
-
-        self.flags(service_down_time=down_time)
-        mock_utcnow.return_value = fts_func(fake_now)
-
-        # Up (equal)
-        service = {'updated_at': fts_func(fake_now - down_time),
-                   'created_at': fts_func(fake_now - down_time)}
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
-
-        # Up
-        service = {'updated_at': fts_func(fake_now - down_time + 1),
-                   'created_at': fts_func(fake_now - down_time + 1)}
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
-
-        # Down
-        service = {'updated_at': fts_func(fake_now - down_time - 1),
-                   'created_at': fts_func(fake_now - down_time - 1)}
-        result = utils.service_is_up(service)
-        self.assertFalse(result)
-
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
         self.assertIsNone(utils.check_ssh_injection(cmd_list))
