@@ -1079,6 +1079,10 @@ class InvalidGroupSnapshot(Invalid):
     message = _("Invalid GroupSnapshot: %(reason)s")
 
 
+class InvalidGroupSnapshotStatus(Invalid):
+    message = _("Invalid GroupSnapshot Status: %(reason)s")
+
+
 # Hitachi Block Storage Driver
 class HBSDError(VolumeDriverException):
     message = _("HBSD error occurs.")

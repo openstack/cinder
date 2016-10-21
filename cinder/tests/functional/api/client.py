@@ -270,3 +270,7 @@ class TestOpenStackClient(object):
 
     def delete_group_snapshot(self, group_snapshot_id):
         return self.api_delete('/group_snapshots/%s' % group_snapshot_id)
+
+    def reset_group_snapshot(self, group_snapshot_id, params):
+        return self.api_post('/group_snapshots/%s/action' % group_snapshot_id,
+                             params)

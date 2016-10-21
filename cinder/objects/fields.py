@@ -80,6 +80,23 @@ class GroupStatusField(BaseEnumField):
     AUTO_TYPE = GroupStatus()
 
 
+class GroupSnapshotStatus(BaseCinderEnum):
+    ERROR = 'error'
+    AVAILABLE = 'available'
+    CREATING = 'creating'
+    DELETING = 'deleting'
+    DELETED = 'deleted'
+    UPDATING = 'updating'
+    ERROR_DELETING = 'error_deleting'
+
+    ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
+           UPDATING, ERROR_DELETING)
+
+
+class GroupSnapshotStatusField(BaseEnumField):
+    AUTO_TYPE = GroupSnapshotStatus()
+
+
 class ReplicationStatus(BaseCinderEnum):
     ERROR = 'error'
     ENABLED = 'enabled'

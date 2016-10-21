@@ -844,3 +844,18 @@ class API(base.Base):
             group_snapshots = objects.GroupSnapshotList.get_all_by_project(
                 context.elevated(), context.project_id, search_opts)
         return group_snapshots
+
+    def reset_group_snapshot_status(self, context, gsnapshot, status):
+        """Reset status of group snapshot"""
+
+        check_policy(context, 'reset_group_snapshot_status')
+        if status not in c_fields.GroupSnapshotStatus.ALL:
+            msg = _("Group snapshot status: %(status)s is invalid, "
+                    "valid statuses are: "
+                    "%(valid)s.") % {'status': status,
+                                     'valid': c_fields.GroupSnapshotStatus.ALL}
+            raise exception.InvalidGroupSnapshotStatus(reason=msg)
+        field = {'updated_at': timeutils.utcnow(),
+                 'status': status}
+        gsnapshot.update(field)
+        gsnapshot.save()

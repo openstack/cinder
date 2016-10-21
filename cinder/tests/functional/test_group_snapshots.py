@@ -20,7 +20,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
     _vol_type_name = 'functional_test_type'
     _grp_type_name = 'functional_grp_test_type'
     osapi_version_major = '3'
-    osapi_version_minor = '14'
+    osapi_version_minor = '19'
 
     def setUp(self):
         super(GroupSnapshotsTest, self).setUp()
@@ -293,5 +293,56 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
 
         # Should be gone
         self.assertFalse(found_group_from_group)
+        self.assertFalse(found_volume)
+        self.assertFalse(found_group)
+
+    def test_reset_group_snapshot(self):
+        # Create group
+        group1 = self.api.post_group(
+            {'group': {'group_type': self.group_type['id'],
+                       'volume_types': [self.volume_type['id']]}})
+        self.assertTrue(group1['id'])
+        group_id = group1['id']
+        self._poll_group_while(group_id, ['creating'])
+
+        # Create volume
+        created_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'group_id': group_id,
+                        'volume_type': self.volume_type['id']}})
+        self.assertTrue(created_volume['id'])
+        created_volume_id = created_volume['id']
+        self._poll_volume_while(created_volume_id, ['creating'])
+
+        # Create group snapshot
+        group_snapshot1 = self.api.post_group_snapshot(
+            {'group_snapshot': {'group_id': group_id}})
+        self.assertTrue(group_snapshot1['id'])
+        group_snapshot_id = group_snapshot1['id']
+
+        self._poll_group_snapshot_while(group_snapshot_id, 'creating')
+
+        group_snapshot1 = self.api.get_group_snapshot(group_snapshot_id)
+        self.assertEqual("available", group_snapshot1['status'])
+
+        # reset group snapshot status
+        self.api.reset_group_snapshot(group_snapshot_id,
+                                      {"reset_status": {"status": "error"}})
+
+        group_snapshot1 = self.api.get_group_snapshot(group_snapshot_id)
+        self.assertEqual("error", group_snapshot1['status'])
+
+        # Delete group, volume and group snapshot
+        self.api.delete_group_snapshot(group_snapshot_id)
+        found_group_snapshot = self._poll_group_snapshot_while(
+            group_snapshot_id, ['deleting'])
+        self.api.delete_group(group_id,
+                              {'delete': {'delete-volumes': True}})
+
+        found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
+        found_group = self._poll_group_while(group_id, ['deleting'])
+
+        # Created resoueces should be gone
+        self.assertFalse(found_group_snapshot)
         self.assertFalse(found_volume)
         self.assertFalse(found_group)

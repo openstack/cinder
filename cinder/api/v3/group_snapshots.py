@@ -26,6 +26,7 @@ from cinder.api.v3.views import group_snapshots as group_snapshot_views
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _, _LI
+from cinder import rpc
 
 LOG = logging.getLogger(__name__)
 
@@ -140,6 +141,49 @@ class GroupSnapshotsController(wsgi.Controller):
         retval = self._view_builder.summary(req, new_group_snapshot)
 
         return retval
+
+    @wsgi.Controller.api_version('3.19')
+    @wsgi.action("reset_status")
+    def reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    def _reset_status(self, req, id, body):
+        """Reset status on group snapshots"""
+
+        context = req.environ['cinder.context']
+        try:
+            status = body['reset_status']['status'].lower()
+        except (TypeError, KeyError):
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'status'"))
+
+        LOG.debug("Updating group '%(id)s' with "
+                  "'%(update)s'", {'id': id,
+                                   'update': status})
+        try:
+            notifier = rpc.get_notifier('groupSnapshotStatusUpdate')
+            notifier.info(context, 'groupsnapshots.reset_status.start',
+                          {'id': id,
+                           'update': status})
+            gsnapshot = self.group_snapshot_api.get_group_snapshot(context, id)
+
+            self.group_snapshot_api.reset_group_snapshot_status(context,
+                                                                gsnapshot,
+                                                                status)
+            notifier.info(context, 'groupsnapshots.reset_status.end',
+                          {'id': id,
+                           'update': status})
+        except exception.GroupSnapshotNotFound as error:
+            # Not found exception will be handled at the wsgi level
+            notifier.error(context, 'groupsnapshots.reset_status',
+                           {'error_message': error.msg,
+                            'id': id})
+            raise
+        except exception.InvalidGroupSnapshotStatus as error:
+            notifier.error(context, 'groupsnapshots.reset_status',
+                           {'error_message': error.msg,
+                            'id': id})
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        return webob.Response(status_int=202)
 
 
 def create_resource():
