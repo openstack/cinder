@@ -81,7 +81,7 @@ class VolumeManageTest(test.TestCase):
     def test_manage_volume_previous_version(self):
         body = {'volume': {'host': 'host_ok', 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int, res)
+        self.assertEqual(400, res.status_int, res)
 
     def _get_resp_get(self, host, detailed, paging, version="3.8"):
         """Helper to execute a GET os-volume-manage API call."""
