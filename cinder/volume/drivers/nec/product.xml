@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ProductInfo>
+    <VendorName>NEC</VendorName>
+    <ProductMap>
+        <Product Name="iStorage M700">8192</Product>
+        <Product Name="iStorage A5000">8192</Product>
+        <Product Name="iStorage M500">4096</Product>
+        <Product Name="iStorage M300">4096</Product>
+        <Product Name="iStorage M10e">1024</Product>
+        <Product Name="iStorage M100">1024</Product>
+        <Product Name="M700 Disk Array">8192</Product>
+        <Product Name="A5000 Disk Array">8192</Product>
+        <Product Name="M300 Disk Array">4096</Product>
+        <Product Name="M500 Disk Array">4096</Product>
+        <Product Name="M10e Disk Array">1024</Product>
+        <Product Name="M100 Disk Array">1024</Product>
+        <Product Name="M5000">8192</Product>
+        <Product Name="M710">8192</Product>
+        <Product Name="M710F">8192</Product>
+        <Product Name="A3000/100">4096</Product>
+        <Product Name="M310">4096</Product>
+        <Product Name="M310F">4096</Product>
+        <Product Name="M510">4096</Product>
+        <Product Name="M11e">1024</Product>
+        <Product Name="M110">1024</Product>
+    </ProductMap>
+</ProductInfo>
