@@ -16,6 +16,7 @@
 import datetime
 import functools
 import os
+import sys
 import time
 
 import ddt
@@ -168,6 +169,7 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.read_file_as_root,
                           test_filepath)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('tempfile.NamedTemporaryFile')
     @mock.patch.object(os, 'open')
     @mock.patch.object(os, 'fdatasync')

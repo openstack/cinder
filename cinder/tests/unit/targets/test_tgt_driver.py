@@ -11,6 +11,7 @@
 #    under the License.
 
 import os
+import sys
 import time
 
 import mock
@@ -18,6 +19,7 @@ from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception
+from cinder import test
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import tgt
@@ -142,6 +144,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         self.assertEqual(expected,
                          self.target._get_target_and_lun(ctxt, self.testvol))
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target(self):
         with mock.patch('cinder.utils.execute', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
@@ -156,6 +159,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                     0,
                     self.fake_volumes_dir))
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_content(self):
 
         self.iscsi_target_flags = 'foo'
@@ -178,6 +182,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                     self.testvol_path,
                     chap_auth=('chap_foo', 'chap_bar')))
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_already_exists(self):
         def _fake_execute(*args, **kwargs):
             if 'update' in args:
@@ -331,6 +336,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         mock_execute.assert_has_calls(calls)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_export(self):
         expected_result = {'location': '10.9.8.7:3260,1 ' +
                            self.iscsi_target_prefix +
