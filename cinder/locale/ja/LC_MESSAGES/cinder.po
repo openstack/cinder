@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.1.dev3\n"
+"Project-Id-Version: cinder 9.0.1.dev15\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-10-11 20:03+0000\n"
+"POT-Creation-Date: 2016-10-19 18:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-11 03:43+0000\n"
+"PO-Revision-Date: 2016-10-23 12:18+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1914,6 +1914,10 @@ msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr ""
 "%(src_type)s %(src_id)s から %(vol_id)s にメタデータをコピーしています。"
 
+#, python-format
+msgid "Could not complete failover: %s"
+msgstr "フェイルオーバーが完了しませんでした: %s"
+
 msgid ""
 "Could not determine which Keystone endpoint to use. This can either be set "
 "in the service catalog or with the cinder.conf config option "
@@ -1980,6 +1984,10 @@ msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
 msgstr ""
 "ボリューム %(vol)s で一意のスナップショット %(snap)s を見つけることができませ"
 "んでした。"
+
+#, python-format
+msgid "Could not find unique volume %(vol)s."
+msgstr "ユニークボリューム %(vol)s が見つかりません。"
 
 msgid "Could not get system name."
 msgstr "システム名を取得できませんでした。"
@@ -3679,6 +3687,9 @@ msgstr ""
 "リソースロックを獲得できませんでした。(シリアル: %(serial)s、inst: %(inst)s、"
 "ret: %(ret)s、stderr: %(err)s)"
 
+msgid "Failed to add or update zoning configuration."
+msgstr "ゾーニング設定の追加または更新に失敗しました。"
+
 msgid "Failed to add the logical device."
 msgstr "論理デバイスを追加できませんでした。"
 
@@ -3845,6 +3856,9 @@ msgstr ""
 
 msgid "Failed to create iqn."
 msgstr "iqn の作成に失敗しました。"
+
+msgid "Failed to create iscsi target"
+msgstr "iSCSI ターゲットの作成に失敗しました。"
 
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
@@ -6117,6 +6131,9 @@ msgstr "指定された参照 %s を持つ LUN が見つかりません。"
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 番号がチャンネル ID: %(ch_id)s の境界を越えています。"
 
+msgid "LUN unexport failed"
+msgstr "LUN のアンエクスポートが失敗しました。"
+
 #, python-format
 msgid "Last %s cinder syslog entries:-"
 msgstr "最後の %s cinder syslog 項目:-"
@@ -6884,6 +6901,9 @@ msgstr "そのような QoS 仕様 %(specs_id)s は存在しません。"
 msgid "No suitable discovery ip found"
 msgstr "適切なディスカバリー ip が見つかりません。"
 
+msgid "No suitable host was found to failover."
+msgstr "フェイルオーバーに適したホストが見つかりませんでした。"
+
 #, python-format
 msgid "No support to restore backup version %s"
 msgstr "バックアップバージョン %s をリストアすることができません"
@@ -6965,6 +6985,9 @@ msgstr "重み付けを設定したホストが存在しません"
 
 msgid "No wwpns found in host connector."
 msgstr "ホストコネクターで wwpn が見つかりませんでした。"
+
+msgid "Non-getter API passed to API test method."
+msgstr "API テストメソッドに非ゲッター API が渡されました。"
 
 msgid "None numeric BWS QoS limitation"
 msgstr "BWS QoS 制限の数値がありません。"
@@ -7955,6 +7978,12 @@ msgid ""
 msgstr ""
 "指定されたイメージのサイズ %(image_size)s GB がボリュームサイズ "
 "%(volume_size)s GB を上回っています。"
+
+msgid "SnapMirror features require Data ONTAP 8.2 or later."
+msgstr "SnapMirror 機能を利用するには Data ONTAP 8.2 以上が必要です。"
+
+msgid "SnapMirror relationship is not quiesced."
+msgstr "SnapMirror relationship は静止されていません。"
 
 #, python-format
 msgid ""
@@ -9778,6 +9807,10 @@ msgstr ""
 "v6.4 以上が実行されていることを確認してください"
 
 #, python-format
+msgid "Unsupported method: %s"
+msgstr "サポートされないメソッド: %s"
+
+#, python-format
 msgid "Unsupported volume format %s"
 msgstr "ボリューム形式はサポートされていません: %s "
 
@@ -9842,6 +9875,9 @@ msgstr "ユーザーに管理者特権がありません。"
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "ユーザーは WebDAV 操作の実行が許可されていません。"
+
+msgid "User not permitted to query Data ONTAP volumes."
+msgstr "ユーザーには Data ONTAP ボリュームの照会が許可されていません。"
 
 msgid "UserName is not configured."
 msgstr "ユーザー名は設定されていません。"
@@ -10309,6 +10345,9 @@ msgstr "ボリュームは、このノードに対してローカルではあり
 
 msgid "Volume is not local to this node."
 msgstr "ボリュームがこのノードに対してローカルではありません。"
+
+msgid "Volume manage failed."
+msgstr "ボリュームの管理に失敗しました。"
 
 msgid ""
 "Volume manage identifier must contain either source-id or source-name "
@@ -11414,6 +11453,9 @@ msgstr ""
 msgid "data not found"
 msgstr "データが見つかりません。"
 
+msgid "delete host from group failed. "
+msgstr "グループからのホスト削除に失敗しました。"
+
 #, python-format
 msgid ""
 "delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
@@ -12008,6 +12050,9 @@ msgstr "hypermetro グループ停止エラー。"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro エラー。"
+
+msgid "storops Python library is not installed."
+msgstr "strops Python ライブラリーがインストールされていません。"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo が失敗しました。何も起こらなかったものとして続行します"
