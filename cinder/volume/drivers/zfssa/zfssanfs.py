@@ -113,15 +113,18 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             LOG.error(msg)
             raise exception.NfsException(msg)
 
-        package = 'mount.nfs'
-        try:
-            self._execute(package, check_exit_code=False, run_as_root=True)
-        except OSError as exc:
-            if exc.errno == errno.ENOENT:
-                msg = _('%s is not installed') % package
-                raise exception.NfsException(msg)
-            else:
-                raise
+        packages = ('mount.nfs', '/usr/sbin/mount')
+        for package in packages:
+            try:
+                self._execute(package, check_exit_code=False, run_as_root=True)
+                break
+            except OSError as exc:
+                if exc.errno != errno.ENOENT:
+                    raise
+                LOG.error(_LE('%s is not installed.'), package)
+        else:
+            msg = utils.build_or_str(packages, '%s needs to be installed.')
+            raise exception.NfsException(msg)
 
         lcfg = self.configuration
         LOG.info(_LI('Connecting to host: %s.'), lcfg.san_ip)
