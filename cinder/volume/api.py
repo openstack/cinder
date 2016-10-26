@@ -620,7 +620,9 @@ class API(base.Base):
 
         if not result:
             expected_status = utils.build_or_str(expected['status'])
-            msg = _('Volume status must be %s to reserve.') % expected_status
+            msg = _('Volume status must be %(expected)s to reserve, but the '
+                    'status is %(current)s.') % {'expected': expected_status,
+                                                 'current': volume.status}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
