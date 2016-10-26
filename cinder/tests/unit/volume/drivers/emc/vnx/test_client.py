@@ -370,8 +370,7 @@ class TestClient(test.TestCase):
         lun_2 = mocked['lun_2']
 
         def _get_lun(lun_id):
-            return list(filter(
-                lambda x: x.lun_id == lun_id, (lun_1, lun_2)))[0]
+            return [x for x in (lun_1, lun_2) if x.lun_id == lun_id][0]
 
         client.get_lun = _get_lun
         cg = mocked['cg']
@@ -385,8 +384,7 @@ class TestClient(test.TestCase):
         lun_2 = mocked['lun_2']
 
         def _get_lun(lun_id):
-            return list(filter(
-                lambda x: x.lun_id == lun_id, (lun_1, lun_2)))[0]
+            return [x for x in (lun_1, lun_2) if x.lun_id == lun_id][0]
 
         client.get_lun = _get_lun
         cg = mocked['cg']
@@ -399,7 +397,7 @@ class TestClient(test.TestCase):
         lun_1 = mocked['lun_1']
 
         def _get_lun(lun_id):
-            return list(filter(lambda x: x.lun_id == lun_id, (lun_1,)))[0]
+            return [x for x in (lun_1,) if x.lun_id == lun_id][0]
 
         client.get_lun = _get_lun
         cg = mocked['cg']

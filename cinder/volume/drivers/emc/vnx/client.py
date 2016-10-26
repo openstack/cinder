@@ -480,10 +480,8 @@ class Client(object):
         wwns = set()
         ports_with_all_info = self.vnx.get_fc_port()
         for po in ports:
-            online_list = list(
-                filter(lambda p: (p == po and p.link_status == 'Up'
-                                  and p.port_status == 'Online'),
-                       ports_with_all_info))
+            online_list = [p for p in ports_with_all_info if p == po and
+                           p.link_status == 'Up' and p.port_status == 'Online']
 
             wwns.update([p.wwn for p in online_list])
         return list(wwns)

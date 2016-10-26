@@ -2004,8 +2004,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             bitset.set(i)
         snapshots.append(snap)
 
-        filtered_snaps = list(filter(lambda x: x['pitGroupRef'] == snap[
-            'pitGroupRef'], snapshots))
+        filtered_snaps = [x for x in snapshots
+                          if x['pitGroupRef'] == snap['pitGroupRef']]
 
         self.mock_object(self.library, '_get_volume', mock.Mock(
             return_value=vol))
