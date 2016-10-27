@@ -451,7 +451,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         # we  don't filter these on operational state.
 
         return (super(NetAppBlockStorage7modeLibrary, self)
-                ._get_preferred_target_from_list(target_details_list))
+                ._get_preferred_target_from_list(target_details_list, filter))
 
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""

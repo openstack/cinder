@@ -119,6 +119,8 @@ class NetAppBlockStorageLibrary(object):
         self.reserved_percentage = self._get_reserved_percentage()
         self.loopingcalls = loopingcalls.LoopingCalls()
 
+        self.igroup_target_filters = self.configuration.igroup_target_filters.split(',')
+
     def _get_reserved_percentage(self):
         # If the legacy config option if it is set to the default
         # value, use the more general configuration option.
@@ -801,8 +803,12 @@ class NetAppBlockStorageLibrary(object):
                   "initiator %(initiator_name)s",
                   {'name': name, 'initiator_name': initiator_name})
 
+        # @solvire - added filters for igroup target exclusion
         preferred_target = self._get_preferred_target_from_list(
-            target_list)
+            target_list,
+            self.igroup_target_filters
+        )
+
         if preferred_target is None:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
@@ -846,8 +852,16 @@ class NetAppBlockStorageLibrary(object):
     def _get_preferred_target_from_list(self, target_details_list,
                                         filter=None):
         preferred_target = None
+
+        if target_filters is None:
+            LOG.info("Provided target_filters are None")
+            target_filters = []
+
         for target in target_details_list:
-            if filter and target['address'] not in filter:
+            # this should be exclusion not inclusion filter
+            # inclusion means every time you add a target you have to update the filter
+            # TODO this should respect CIDR notation probably
+            if target['address'] in target_filters:
                 continue
             if target.get('interface-enabled', 'true') == 'true':
                 preferred_target = target
