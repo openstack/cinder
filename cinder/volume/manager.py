@@ -317,7 +317,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def _sync_provider_info(self, ctxt, volumes, snapshots):
         # NOTE(jdg): For now this just updates provider_id, we can add more
-        # add more items to the update if theyr'e releveant but we need
+        # add more items to the update if they're relevant but we need
         # to be safe in what we allow and add a list of allowed keys
         # things that make sense are provider_*, replication_status etc
 
