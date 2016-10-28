@@ -13,6 +13,8 @@
 #    under the License.
 
 import copy
+
+import ddt
 import mock
 from oslo_utils import timeutils
 import pytz
@@ -47,6 +49,7 @@ fake_snapshot_obj = {
 }
 
 
+@ddt.ddt
 class TestSnapshot(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.get_by_id', return_value=fake_db_snapshot)
@@ -208,6 +211,18 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
             call_bool,
             mock.call(self.context,
                       fake.SNAPSHOT_ID)])
+
+    @ddt.data('1.1', '1.3')
+    def test_obj_make_compatible(self, version):
+        snapshot = objects.Snapshot(context=self.context)
+        snapshot.status = 'unmanaging'
+        primitive = snapshot.obj_to_primitive(version)
+        snapshot = objects.Snapshot.obj_from_primitive(primitive)
+        if version == '1.3':
+            status = fields.SnapshotStatus.UNMANAGING
+        else:
+            status = fields.SnapshotStatus.DELETING
+        self.assertEqual(status, snapshot.status)
 
 
 class TestSnapshotList(test_objects.BaseObjectsTestCase):

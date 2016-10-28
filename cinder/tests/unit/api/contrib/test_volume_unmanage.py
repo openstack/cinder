@@ -69,7 +69,7 @@ class VolumeUnmanageTest(test.TestCase):
 
         mock_rpcapi.assert_called_once_with(self.ctxt, mock.ANY, True, False)
         vol = objects.volume.Volume.get_by_id(self.ctxt, vol.id)
-        self.assertEqual('deleting', vol.status)
+        self.assertEqual('unmanaging', vol.status)
         db.volume_destroy(self.ctxt, vol.id)
 
     def test_unmanage_volume_bad_volume_id(self):

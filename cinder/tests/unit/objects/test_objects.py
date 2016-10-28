@@ -39,7 +39,7 @@ object_data = {
     'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
     'Service': '1.4-c7d011989d1718ca0496ccf640b42712',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'Snapshot': '1.2-d6a9d58f627bb2a5cf804b0dd7a12bc7',
+    'Snapshot': '1.3-69dfbe3244992478a0174cb512cd7f27',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Volume': '1.6-8a56256db74c0642dca1a30739d88074',
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
