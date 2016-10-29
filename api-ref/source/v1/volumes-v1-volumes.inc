@@ -72,7 +72,7 @@ Create volume (v1)
 
 Creates a volume.
 
-Error response codes:201,
+Normal response codes: 201,
 
 
 Request
@@ -222,7 +222,7 @@ Delete volume (v1)
 
 Deletes a volume.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
