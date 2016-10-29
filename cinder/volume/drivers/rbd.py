@@ -389,6 +389,20 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             ports.append(port)
         return hosts, ports
 
+    def _iterate_cb(self, offset, length, exists):
+        if exists:
+            self._total_usage += length
+
+    def _get_usage_info(self):
+        with RADOSClient(self) as client:
+            for t in self.RBDProxy().list(client.ioctx):
+                if t.startswith('volume'):
+                    # Only check for "volume" to allow some flexibility with
+                    # non-default volume_name_template settings.  Template
+                    # must start with "volume".
+                    with RBDVolumeProxy(self, t, read_only=True) as v:
+                        v.diff_iterate(0, v.size(), None, self._iterate_cb)
+
     def _update_volume_stats(self):
         stats = {
             'vendor_name': 'Open Source',
@@ -396,8 +410,14 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             'storage_protocol': 'ceph',
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
-            'reserved_percentage': 0,
+            'provisioned_capacity_gb': 0,
+            'reserved_percentage': (
+                self.configuration.safe_get('reserved_percentage')),
             'multiattach': False,
+            'thin_provisioning_support': True,
+            'max_over_subscription_ratio': (
+                self.configuration.safe_get('max_over_subscription_ratio'))
+
         }
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'RBD'
@@ -419,6 +439,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                         pool_stats['bytes_used']) / units.Gi
                     stats['total_capacity_gb'] = round(
                         (stats['free_capacity_gb'] + used_capacity_gb), 2)
+
+            self._total_usage = 0
+            self._get_usage_info()
+            total_usage_gb = math.ceil(float(self._total_usage) / units.Gi)
+            stats['provisioned_capacity_gb'] = total_usage_gb
         except self.rados.Error:
             # just log and return unknown capacities
             LOG.exception(_LE('error refreshing volume stats'))

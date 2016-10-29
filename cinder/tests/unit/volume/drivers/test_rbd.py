@@ -79,12 +79,13 @@ def common_mocks(f):
 
     def _common_inner_inner1(inst, *args, **kwargs):
         @mock.patch('retrying.Retrying', _FakeRetrying)
+        @mock.patch.object(driver.RBDDriver, '_get_usage_info')
         @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
         @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
         @mock.patch('cinder.backup.drivers.ceph.rbd')
         @mock.patch('cinder.backup.drivers.ceph.rados')
         def _common_inner_inner2(mock_rados, mock_rbd, mock_client,
-                                 mock_proxy):
+                                 mock_proxy, mock_usage_info):
             inst.mock_rbd = mock_rbd
             inst.mock_rados = mock_rados
             inst.mock_client = mock_client
@@ -821,7 +822,10 @@ class RBDTestCase(test.TestCase):
             storage_protocol='ceph',
             total_capacity_gb=28.44,
             free_capacity_gb=27.0,
-            reserved_percentage=0,
+            reserved_percentage='RBD',
+            thin_provisioning_support=True,
+            provisioned_capacity_gb=0.0,
+            max_over_subscription_ratio='RBD',
             multiattach=False)
 
         actual = self.driver.get_volume_stats(True)
@@ -847,8 +851,11 @@ class RBDTestCase(test.TestCase):
                         storage_protocol='ceph',
                         total_capacity_gb='unknown',
                         free_capacity_gb='unknown',
-                        reserved_percentage=0,
-                        multiattach=False)
+                        reserved_percentage='RBD',
+                        multiattach=False,
+                        provisioned_capacity_gb=0.0,
+                        max_over_subscription_ratio='RBD',
+                        thin_provisioning_support=True)
 
         actual = self.driver.get_volume_stats(True)
         client.cluster.mon_command.assert_called_once_with(
