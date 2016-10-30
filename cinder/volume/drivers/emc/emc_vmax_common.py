@@ -2522,21 +2522,13 @@ class EMCVMAXCommon(object):
                  {'group': group['id']})
 
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
-        volumeTypeId = group['volume_type_id'].replace(",", "")
-
         cgName = self.utils.truncate_string(group['id'], 8)
-
-        extraSpecs = self._initial_setup(None, volumeTypeId)
-
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
-
         self.conn = self._get_ecom_connection()
 
         # Find storage system.
         try:
-            replicationService = self.utils.find_replication_service(
-                self.conn, storageSystem)
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, group))
             self.provision.create_consistency_group(
                 self.conn, replicationService, cgName, extraSpecs)
         except Exception:
@@ -2564,17 +2556,12 @@ class EMCVMAXCommon(object):
         cgName = self.utils.truncate_string(group['id'], 8)
 
         modelUpdate = {}
-        modelUpdate['status'] = group['status']
-        volumeTypeId = group['volume_type_id'].replace(",", "")
-
-        extraSpecs = self._initial_setup(None, volumeTypeId)
-
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
+        if not self.conn:
+            self.conn = self._get_ecom_connection()
 
         try:
-            replicationService = self.utils.find_replication_service(
-                self.conn, storageSystem)
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, group))
 
             storageConfigservice = (
                 self.utils.find_storage_configuration_service(
@@ -2582,10 +2569,13 @@ class EMCVMAXCommon(object):
             cgInstanceName = self._find_consistency_group(
                 replicationService, cgName)
             if cgInstanceName is None:
-                exception_message = (_("Cannot find CG group %s.") %
-                                     cgName)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+                LOG.error(_LE("Cannot find CG group %(cgName)s."),
+                          {'cgName': cgName})
+                modelUpdate = {'status': fields.ConsistencyGroupStatus.DELETED}
+                volumes_model_update = self.utils.get_volume_model_updates(
+                    volumes, group.id,
+                    status='deleted')
+                return modelUpdate, volumes_model_update
 
             memberInstanceNames = self._get_members_of_replication_group(
                 cgInstanceName)
@@ -2597,9 +2587,9 @@ class EMCVMAXCommon(object):
 
             # Do a bulk delete, a lot faster than single deletes.
             if memberInstanceNames:
-                volumes, modelUpdate = self._do_bulk_delete(
+                volumes_model_update, modelUpdate = self._do_bulk_delete(
                     storageSystem, memberInstanceNames, storageConfigservice,
-                    volumes, modelUpdate, extraSpecs[ISV3], extraSpecs)
+                    volumes, group, extraSpecs[ISV3], extraSpecs)
 
         except Exception:
             exceptionMessage = (_(
@@ -2608,10 +2598,10 @@ class EMCVMAXCommon(object):
             LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        return modelUpdate, volumes
+        return modelUpdate, volumes_model_update
 
     def _do_bulk_delete(self, storageSystem, memberInstanceNames,
-                        storageConfigservice, volumes, modelUpdate, isV3,
+                        storageConfigservice, volumes, group, isV3,
                         extraSpecs):
         """Do a bulk delete.
 
@@ -2641,13 +2631,15 @@ class EMCVMAXCommon(object):
                 self.provision.delete_volume_from_pool(
                     self.conn, storageConfigservice,
                     memberInstanceNames, None, extraSpecs)
-            for volumeRef in volumes:
-                volumeRef['status'] = 'deleted'
+            modelUpdate = {'status': fields.ConsistencyGroupStatus.DELETED}
         except Exception:
-            for volumeRef in volumes:
-                volumeRef['status'] = 'error_deleting'
-                modelUpdate['status'] = 'error_deleting'
-        return volumes, modelUpdate
+            modelUpdate = {
+                'status': fields.ConsistencyGroupStatus.ERROR_DELETING}
+        finally:
+            volumes_model_update = self.utils.get_volume_model_updates(
+                volumes, group['id'], status=modelUpdate['status'])
+
+        return volumes_model_update, modelUpdate
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot.
@@ -2672,16 +2664,11 @@ class EMCVMAXCommon(object):
         cgName = self.utils.truncate_string(
             cgsnapshot['consistencygroup_id'], 8)
 
-        volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
-        extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
 
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
-
         try:
-            replicationService = self.utils.find_replication_service(
-                self.conn, storageSystem)
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, consistencyGroup))
 
             cgInstanceName = (
                 self._find_consistency_group(replicationService, cgName))
@@ -2807,14 +2794,12 @@ class EMCVMAXCommon(object):
              'cgId': cgsnapshot['consistencygroup_id']})
 
         model_update['status'] = cgsnapshot['status']
-        volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+
         self.conn = self._get_ecom_connection()
 
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
-
         try:
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, consistencyGroup))
             targetCgName = self.utils.truncate_string(cgsnapshot['id'], 8)
             model_update, snapshots = self._delete_cg_and_members(
                 storageSystem, targetCgName, model_update,
@@ -4300,14 +4285,8 @@ class EMCVMAXCommon(object):
                  {'group': group['id']})
 
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
-        volumeTypeId = group['volume_type_id'].replace(",", "")
-
         cg_name = self.utils.truncate_string(group['id'], 8)
 
-        extraSpecs = self._initial_setup(None, volumeTypeId)
-
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
         add_vols = [vol for vol in add_volumes] if add_volumes else []
         add_instance_names = self._get_volume_instance_names(add_vols)
         remove_vols = [vol for vol in remove_volumes] if remove_volumes else []
@@ -4315,8 +4294,8 @@ class EMCVMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         try:
-            replicationService = self.utils.find_replication_service(
-                self.conn, storageSystem)
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, group))
             cgInstanceName = (
                 self._find_consistency_group(replicationService, cg_name))
             if cgInstanceName is None:
@@ -4381,14 +4360,16 @@ class EMCVMAXCommon(object):
                   volumes_model_update is a list of dictionaries of volume
                   update
         """
+        if source_cg or source_vols:
+            LOG.debug("The VMAX driver does not support creating a "
+                      "consistency group from a consistency group in "
+                      "this version.")
+            raise NotImplementedError()
         LOG.debug("Enter EMCVMAXCommon::create_consistencygroup_from_src. "
                   "Group to be created: %(cgId)s, "
                   "Source snapshot: %(cgSnapshot)s.",
                   {'cgId': group['id'],
                    'cgSnapshot': cgsnapshot['consistencygroup_id']})
-
-        volumeTypeId = group['volume_type_id'].replace(",", "")
-        extraSpecs = self._initial_setup(None, volumeTypeId)
 
         self.create_consistencygroup(context, group)
         targetCgName = self.utils.truncate_string(group['id'], TRUNCATE_8)
@@ -4401,11 +4382,9 @@ class EMCVMAXCommon(object):
 
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
-        _poolInstanceName, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
         try:
-            replicationService = self.utils.find_replication_service(
-                self.conn, storageSystem)
+            replicationService, storageSystem, extraSpecs = (
+                self._get_consistency_group_utils(self.conn, group))
             if replicationService is None:
                 exceptionMessage = (_(
                     "Cannot find replication service on system %s.") %
@@ -4493,7 +4472,7 @@ class EMCVMAXCommon(object):
             LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
         volumes_model_update = self.utils.get_volume_model_updates(
-            context, volumes, group['id'], modelUpdate['status'])
+            volumes, group['id'], modelUpdate['status'])
 
         return modelUpdate, volumes_model_update
 
@@ -4602,3 +4581,40 @@ class EMCVMAXCommon(object):
                 endpoint['ip'] = ipaddress
 
         return endpoint
+
+    def _get_consistency_group_utils(self, conn, group):
+        """Standard utility for consistency group.
+
+        :param conn: ecom connection
+        :param group: the consistency group object to be created
+        :return: replicationService, storageSystem, extraSpecs
+        """
+        storageSystems = set()
+
+        volumeTypeIds = group.volume_type_id.split(",")
+
+        for volumeTypeId in volumeTypeIds:
+            if volumeTypeId:
+                extraSpecs = self._initial_setup(None, volumeTypeId)
+
+                __, storageSystem = (
+                    self._get_pool_and_storage_system(extraSpecs))
+                if storageSystem:
+                    storageSystems.add(storageSystem)
+
+        if len(storageSystems) != 1:
+            if not storageSystems:
+                msg = (_("Failed to get a single storage system "
+                         "associated with consistencygroup_id: %(groupid)s.")
+                       % {'groupid': group.id})
+            else:
+                msg = (_("There are multiple storage systems "
+                         "associated with consistencygroup_id: %(groupid)s.")
+                       % {'groupid': group.id})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        storageSystem = storageSystems.pop()
+        replicationService = self.utils.find_replication_service(
+            conn, storageSystem)
+
+        return replicationService, storageSystem, extraSpecs
