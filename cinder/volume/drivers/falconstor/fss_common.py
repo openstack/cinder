@@ -191,8 +191,7 @@ class FalconstorBaseDriver(san.SanDriver):
         try:
             self.proxy.delete_vdev(volume)
         except rest_proxy.FSSHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                ctxt.reraise = False
+            with excutils.save_and_reraise_exception(reraise=False):
                 LOG.warning(_LW("Volume deletion failed with message: %s"),
                             err.reason)
 
@@ -208,8 +207,7 @@ class FalconstorBaseDriver(san.SanDriver):
         try:
             self.proxy.delete_snapshot(snapshot)
         except rest_proxy.FSSHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                ctxt.reraise = False
+            with excutils.save_and_reraise_exception(reraise=False):
                 LOG.error(
                     _LE("Snapshot deletion failed with message: %s"),
                     err.reason)
@@ -226,8 +224,7 @@ class FalconstorBaseDriver(san.SanDriver):
                 extend_volume_name = self.proxy._get_fss_volume_name(volume)
                 self.proxy.extend_vdev(extend_volume_name, snap_size, vol_size)
             except rest_proxy.FSSHTTPError as err:
-                with excutils.save_and_reraise_exception() as ctxt:
-                    ctxt.reraise = False
+                with excutils.save_and_reraise_exception(reraise=False):
                     LOG.error(_LE(
                         "Resizing %(id)s failed with message: %(msg)s. "
                         "Cleaning volume."), {'id': volume["id"],
