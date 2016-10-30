@@ -61,18 +61,15 @@ class SchedulerAPI(rpc.RPCAPI):
     """
 
     RPC_API_VERSION = '3.0'
+    RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
 
     def create_consistencygroup(self, ctxt, group, request_spec_list=None,
                                 filter_properties_list=None):
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
-        request_spec_p_list = []
-        for request_spec in request_spec_list:
-            request_spec_p = jsonutils.to_primitive(request_spec)
-            request_spec_p_list.append(request_spec_p)
-
+        cctxt = self._get_cctxt()
+        request_spec_p_list = [jsonutils.to_primitive(rs)
+                               for rs in request_spec_list]
         msg_args = {
             'group': group, 'request_spec_list': request_spec_p_list,
             'filter_properties_list': filter_properties_list,
@@ -83,14 +80,10 @@ class SchedulerAPI(rpc.RPCAPI):
     def create_group(self, ctxt, group, group_spec=None,
                      request_spec_list=None, group_filter_properties=None,
                      filter_properties_list=None):
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
-        request_spec_p_list = []
-        for request_spec in request_spec_list:
-            request_spec_p = jsonutils.to_primitive(request_spec)
-            request_spec_p_list.append(request_spec_p)
+        cctxt = self._get_cctxt()
+        request_spec_p_list = [jsonutils.to_primitive(rs)
+                               for rs in request_spec_list]
         group_spec_p = jsonutils.to_primitive(group_spec)
-
         msg_args = {
             'group': group, 'group_spec': group_spec_p,
             'request_spec_list': request_spec_p_list,
@@ -102,52 +95,46 @@ class SchedulerAPI(rpc.RPCAPI):
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
                       request_spec=None, filter_properties=None):
+        cctxt = self._get_cctxt()
         msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     def migrate_volume_to_host(self, ctxt, volume, host, force_host_copy=False,
                                request_spec=None, filter_properties=None):
+        cctxt = self._get_cctxt()
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'host': host, 'force_host_copy': force_host_copy,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
+
         return cctxt.cast(ctxt, 'migrate_volume_to_host', **msg_args)
 
     def retype(self, ctxt, volume, request_spec=None, filter_properties=None):
+        cctxt = self._get_cctxt()
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, volume, request_spec=None,
                         filter_properties=None):
+        cctxt = self._get_cctxt()
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {
             'request_spec': request_spec_p,
             'filter_properties': filter_properties, 'volume': volume,
         }
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
-        version = '3.0'
-        cctxt = self.client.prepare(version=version)
-        return cctxt.call(ctxt, 'get_pools',
-                          filters=filters)
+        cctxt = self._get_cctxt()
+        return cctxt.call(ctxt, 'get_pools', filters=filters)
 
     def update_service_capabilities(self, ctxt, service_name, host,
                                     capabilities):
-        version = '3.0'
-        cctxt = self.client.prepare(fanout=True, version=version)
+        cctxt = self._get_cctxt(fanout=True)
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)

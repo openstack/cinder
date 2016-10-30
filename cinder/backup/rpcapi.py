@@ -48,32 +48,24 @@ class BackupAPI(rpc.RPCAPI):
     """
 
     RPC_API_VERSION = '2.0'
+    RPC_DEFAULT_VERSION = '2.0'
     TOPIC = constants.BACKUP_TOPIC
     BINARY = 'cinder-backup'
 
-    def _compat_ver(self, current, legacy):
-        if self.client.can_send_version(current):
-            return current
-        else:
-            return legacy
-
     def create_backup(self, ctxt, backup):
         LOG.debug("create_backup in rpcapi backup_id %s", backup.id)
-        version = '2.0'
-        cctxt = self.client.prepare(server=backup.host, version=version)
+        cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'create_backup', backup=backup)
 
     def restore_backup(self, ctxt, volume_host, backup, volume_id):
         LOG.debug("restore_backup in rpcapi backup_id %s", backup.id)
-        version = '2.0'
-        cctxt = self.client.prepare(server=volume_host, version=version)
+        cctxt = self._get_cctxt(server=volume_host)
         cctxt.cast(ctxt, 'restore_backup', backup=backup,
                    volume_id=volume_id)
 
     def delete_backup(self, ctxt, backup):
         LOG.debug("delete_backup  rpcapi backup_id %s", backup.id)
-        version = '2.0'
-        cctxt = self.client.prepare(server=backup.host, version=version)
+        cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'delete_backup', backup=backup)
 
     def export_record(self, ctxt, backup):
@@ -81,24 +73,15 @@ class BackupAPI(rpc.RPCAPI):
                   "on host %(host)s.",
                   {'id': backup.id,
                    'host': backup.host})
-        version = '2.0'
-        cctxt = self.client.prepare(server=backup.host, version=version)
+        cctxt = self._get_cctxt(server=backup.host)
         return cctxt.call(ctxt, 'export_record', backup=backup)
 
-    def import_record(self,
-                      ctxt,
-                      host,
-                      backup,
-                      backup_service,
-                      backup_url,
+    def import_record(self, ctxt, host, backup, backup_service, backup_url,
                       backup_hosts):
         LOG.debug("import_record rpcapi backup id %(id)s "
                   "on host %(host)s for backup_url %(url)s.",
-                  {'id': backup.id,
-                   'host': host,
-                   'url': backup_url})
-        version = '2.0'
-        cctxt = self.client.prepare(server=host, version=version)
+                  {'id': backup.id, 'host': host, 'url': backup_url})
+        cctxt = self._get_cctxt(server=host)
         cctxt.cast(ctxt, 'import_record',
                    backup=backup,
                    backup_service=backup_service,
@@ -108,15 +91,12 @@ class BackupAPI(rpc.RPCAPI):
     def reset_status(self, ctxt, backup, status):
         LOG.debug("reset_status in rpcapi backup_id %(id)s "
                   "on host %(host)s.",
-                  {'id': backup.id,
-                   'host': backup.host})
-        version = '2.0'
-        cctxt = self.client.prepare(server=backup.host, version=version)
+                  {'id': backup.id, 'host': backup.host})
+        cctxt = self._get_cctxt(server=backup.host)
         return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
 
     def check_support_to_force_delete(self, ctxt, host):
         LOG.debug("Check if backup driver supports force delete "
                   "on host %(host)s.", {'host': host})
-        version = '2.0'
-        cctxt = self.client.prepare(server=host, version=version)
+        cctxt = self._get_cctxt(server=host)
         return cctxt.call(ctxt, 'check_support_to_force_delete')

@@ -29,7 +29,6 @@ __all__ = [
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
-from oslo_serialization import jsonutils
 from oslo_utils import importutils
 profiler = importutils.try_import('osprofiler.profiler')
 
@@ -74,7 +73,7 @@ def init(conf):
         allowed_remote_exmods=exmods,
         aliases=TRANSPORT_ALIASES)
 
-    serializer = RequestContextSerializer(JsonPayloadSerializer())
+    serializer = RequestContextSerializer(messaging.JsonPayloadSerializer())
     NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
                                   serializer=serializer)
 
@@ -106,12 +105,6 @@ def clear_extra_exmods():
 
 def get_allowed_exmods():
     return ALLOWED_EXMODS + EXTRA_EXMODS
-
-
-class JsonPayloadSerializer(messaging.NoOpSerializer):
-    @staticmethod
-    def serialize_entity(context, entity):
-        return jsonutils.to_primitive(entity, convert_instances=True)
 
 
 class RequestContextSerializer(messaging.Serializer):
@@ -185,6 +178,7 @@ class RPCAPI(object):
     """Mixin class aggregating methods related to RPC API compatibility."""
 
     RPC_API_VERSION = '1.0'
+    RPC_DEFAULT_VERSION = '1.0'
     TOPIC = ''
     BINARY = ''
 
@@ -204,6 +198,20 @@ class RPCAPI(object):
             if self.client.can_send_version(version):
                 return version
         return versions[-1]
+
+    def _get_cctxt(self, host=None, version=None, **kwargs):
+        """Prepare client context
+
+        Version parameter accepts single version string or tuple of strings.
+        Compatible version can be obtained later using:
+            cctxt = _get_cctxt(...)
+            version = cctxt.target.version
+        """
+        if version is None:
+            version = self.RPC_DEFAULT_VERSION
+        if isinstance(version, tuple):
+            version = self._compat_ver(*version)
+        return self.client.prepare(version=version, **kwargs)
 
     @classmethod
     def determine_rpc_version_cap(cls):
