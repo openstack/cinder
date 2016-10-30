@@ -49,6 +49,7 @@ import subprocess
 import time
 
 import eventlet
+from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -712,11 +713,11 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.debug("Copying data from volume %s.", volume_id)
             dest_rbd = self.rbd.Image(client.ioctx, backup_name)
             try:
-                rbd_meta = rbd_driver.RBDImageMetadata(dest_rbd,
-                                                       backup.container,
-                                                       self._ceph_backup_user,
-                                                       self._ceph_backup_conf)
-                rbd_fd = rbd_driver.RBDImageIOWrapper(rbd_meta)
+                rbd_meta = linuxrbd.RBDImageMetadata(dest_rbd,
+                                                     backup.container,
+                                                     self._ceph_backup_user,
+                                                     self._ceph_backup_conf)
+                rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
                 self._transfer_data(src_volume, src_name, rbd_fd, backup_name,
                                     length)
             finally:
@@ -909,11 +910,11 @@ class CephBackupDriver(driver.BackupDriver):
             src_rbd = self.rbd.Image(client.ioctx, backup_name,
                                      snapshot=src_snap, read_only=True)
             try:
-                rbd_meta = rbd_driver.RBDImageMetadata(src_rbd,
-                                                       backup.container,
-                                                       self._ceph_backup_user,
-                                                       self._ceph_backup_conf)
-                rbd_fd = rbd_driver.RBDImageIOWrapper(rbd_meta)
+                rbd_meta = linuxrbd.RBDImageMetadata(src_rbd,
+                                                     backup.container,
+                                                     self._ceph_backup_user,
+                                                     self._ceph_backup_conf)
+                rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
                 self._transfer_data(rbd_fd, backup_name, dest_file, dest_name,
                                     length)
             finally:
