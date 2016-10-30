@@ -1526,7 +1526,7 @@ class EMCVMAXMasking(object):
         rc, job = conn.InvokeMethod(
             'CreateGroup', controllerConfigService, GroupName=igGroupName,
             Type=self.utils.get_num(INITIATORGROUPTYPE, '16'),
-            Members=[hardwareIdinstanceNames[0]])
+            Members=hardwareIdinstanceNames)
 
         if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
@@ -1543,30 +1543,6 @@ class EMCVMAXMasking(object):
                     data=exceptionMessage)
         foundInitiatorGroupInstanceName = self._find_new_initiator_group(
             conn, job)
-
-        numHardwareIDInstanceNames = len(hardwareIdinstanceNames)
-        if numHardwareIDInstanceNames > 1:
-            for j in range(1, numHardwareIDInstanceNames):
-                rc, job = conn.InvokeMethod(
-                    'AddMembers', controllerConfigService,
-                    MaskingGroup=foundInitiatorGroupInstanceName,
-                    Members=[hardwareIdinstanceNames[j]])
-
-                if rc != 0:
-                    rc, errordesc = (
-                        self.utils.wait_for_job_complete(conn, job,
-                                                         extraSpecs))
-                    if rc != 0:
-                        exceptionMessage = (_(
-                            "Error adding initiator to group : %(groupName)s. "
-                            "Return code: %(rc)lu.  Error: %(error)s.")
-                            % {'groupName': igGroupName,
-                               'rc': rc,
-                               'error': errordesc})
-                        LOG.error(exceptionMessage)
-                        raise exception.VolumeBackendAPIException(
-                            data=exceptionMessage)
-                j = j + 1
 
         return foundInitiatorGroupInstanceName
 
