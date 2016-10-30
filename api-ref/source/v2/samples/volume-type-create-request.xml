@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<volume_type xmlns="http://docs.openstack.org/volume/api/v1" xmlns:os-volume-type-access="http://docs.openstack.org/openstack-block-storage/2.0/ext/os-volume-type-access/api/v2.0" name="vol-type-001" description="volume type 0001" os-volume-type-access:is_public="true">
-        <extra_specs>
-            <extra_spec key="capabilities">gpu</extra_spec>
-        </extra_specs>
-</volume_type>

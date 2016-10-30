@@ -1,6 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<quota_set id="fake_tenant">
-  <gigabytes>5</gigabytes>
-  <snapshots>10</snapshots>
-  <volumes>20</volumes>
-</quota_set>

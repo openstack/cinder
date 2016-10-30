@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<volume_type
-    xmlns="http://docs.openstack.org/openstack-block-storage/2.0/content"
-    id="6685584b-1eac-4da6-b5c3-555430cf68ff" name="vol-type-001"
-    description="volume type 001" is_public="true">
-    <extra_specs>
-        <extra_spec key="capabilities">gpu</extra_spec>
-    </extra_specs>
-</volume_type>

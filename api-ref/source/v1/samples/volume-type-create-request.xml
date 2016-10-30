@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<volume_type xmlns="http://docs.openstack.org/volume/api/v1"
-        name="vol-type-001">
-        <extra_specs>
-            <extra_spec key="capabilities">gpu</extra_spec>
-        </extra_specs>
-</volume_type>
