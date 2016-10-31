@@ -114,12 +114,13 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         super(Snapshot, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
 
-    @staticmethod
-    def _from_db_object(context, snapshot, db_snapshot, expected_attrs=None):
+    @classmethod
+    def _from_db_object(cls, context, snapshot, db_snapshot,
+                        expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
         for name, field in snapshot.fields.items():
-            if name in Snapshot.OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_snapshot.get(name)
             if isinstance(field, fields.IntegerField):

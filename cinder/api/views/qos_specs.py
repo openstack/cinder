@@ -41,7 +41,7 @@ class ViewBuilder(common.ViewBuilder):
                 'id': qos_spec.id,
                 'name': qos_spec.name,
                 'consumer': qos_spec.consumer,
-                'specs': qos_spec.specs
+                'specs': qos_spec.specs,
             },
             'links': self._get_links(request,
                                      qos_spec.id),

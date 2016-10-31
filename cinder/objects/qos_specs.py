@@ -100,7 +100,7 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
         return changes
 
     def obj_load_attr(self, attrname):
-        if attrname not in QualityOfServiceSpecs.OPTIONAL_FIELDS:
+        if attrname not in self.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
@@ -112,13 +112,14 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
             self.volume_types = objects.VolumeTypeList.get_all_types_for_qos(
                 self._context, self.id)
 
-    @staticmethod
-    def _from_db_object(context, qos_spec, db_qos_spec, expected_attrs=None):
+    @classmethod
+    def _from_db_object(cls, context, qos_spec, db_qos_spec,
+                        expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
 
         for name, field in qos_spec.fields.items():
-            if name not in QualityOfServiceSpecs.OPTIONAL_FIELDS:
+            if name not in cls.OPTIONAL_FIELDS:
                 value = db_qos_spec.get(name)
                 # 'specs' could be null if only a consumer is given, so make
                 # it an empty dict instead of None
