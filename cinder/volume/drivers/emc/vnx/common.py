@@ -359,27 +359,29 @@ class ReplicationDevice(object):
 
     @property
     def backend_id(self):
-        return self.replication_device['backend_id']
+        return self.replication_device.get('backend_id')
 
     @property
     def san_ip(self):
-        return self.replication_device['san_ip']
+        return self.replication_device.get('san_ip')
 
     @property
     def san_login(self):
-        return self.replication_device['san_login']
+        return self.replication_device.get('san_login')
 
     @property
     def san_password(self):
-        return self.replication_device['san_password']
+        return self.replication_device.get('san_password')
 
     @property
     def storage_vnx_authentication_type(self):
-        return self.replication_device['storage_vnx_authentication_type']
+        return self.replication_device.get(
+            'storage_vnx_authentication_type',
+            'global')
 
     @property
     def storage_vnx_security_file_dir(self):
-        return self.replication_device['storage_vnx_security_file_dir']
+        return self.replication_device.get('storage_vnx_security_file_dir')
 
 
 class ReplicationDeviceList(list):
@@ -399,6 +401,10 @@ class ReplicationDeviceList(list):
         if self.configuration.replication_device:
             for replication_device in self.configuration.replication_device:
                 rd = ReplicationDevice(replication_device)
+                if not rd.backend_id or not rd.san_ip:
+                    msg = _('backend_id or san_ip cannot be empty for '
+                            'replication_device.')
+                    raise exception.InvalidInput(reason=msg)
                 self._device_map[rd.backend_id] = rd
                 self.list.append(rd)
         return self._device_map
