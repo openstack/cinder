@@ -132,9 +132,10 @@ class VolumeAPI(rpc.RPCAPI):
                terminate_connection_snapshot, and remove_export_snapshot.
         3.14 - Adds enable_replication, disable_replication,
                failover_replication, and list_replication_targets.
+        3.15 - Add revert_to_snapshot method
     """
 
-    RPC_API_VERSION = '3.14'
+    RPC_API_VERSION = '3.15'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -164,6 +165,13 @@ class VolumeAPI(rpc.RPCAPI):
                    filter_properties=filter_properties,
                    allow_reschedule=allow_reschedule,
                    volume=volume)
+
+    @rpc.assert_min_rpc_version('3.15')
+    def revert_to_snapshot(self, ctxt, volume, snapshot):
+        version = self._compat_ver('3.15')
+        cctxt = self._get_cctxt(volume.host, version)
+        cctxt.cast(ctxt, 'revert_to_snapshot', volume=volume,
+                   snapshot=snapshot)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
         volume.create_worker()

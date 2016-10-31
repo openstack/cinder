@@ -1199,7 +1199,7 @@ class BaseVD(object):
         temp_snap_ref.save()
         return temp_snap_ref
 
-    def _create_temp_volume(self, context, volume):
+    def _create_temp_volume(self, context, volume, volume_options=None):
         kwargs = {
             'size': volume.size,
             'display_name': 'backup-vol-%s' % volume.id,
@@ -1212,6 +1212,7 @@ class BaseVD(object):
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
         }
+        kwargs.update(volume_options or {})
         temp_vol_ref = objects.Volume(context=context, **kwargs)
         temp_vol_ref.create()
         return temp_vol_ref
@@ -1230,8 +1231,10 @@ class BaseVD(object):
         temp_vol_ref.save()
         return temp_vol_ref
 
-    def _create_temp_volume_from_snapshot(self, context, volume, snapshot):
-        temp_vol_ref = self._create_temp_volume(context, volume)
+    def _create_temp_volume_from_snapshot(self, context, volume, snapshot,
+                                          volume_options=None):
+        temp_vol_ref = self._create_temp_volume(context, volume,
+                                                volume_options=volume_options)
         try:
             model_update = self.create_volume_from_snapshot(temp_vol_ref,
                                                             snapshot)
@@ -2097,6 +2100,17 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
 
     def manage_existing(self, volume, existing_ref):
         msg = _("Manage existing volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot.
+
+        Note: the revert process should not change the volume's
+        current size, that means if the driver shrank
+        the volume during the process, it should extend the
+        volume internally.
+        """
+        msg = _("Revert volume to snapshot not implemented.")
         raise NotImplementedError(msg)
 
     def manage_existing_get_size(self, volume, existing_ref):

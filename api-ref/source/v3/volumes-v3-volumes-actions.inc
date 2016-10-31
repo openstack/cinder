@@ -62,7 +62,8 @@ Reset a volume's statuses
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
+Administrator only. Resets the status, attach status, revert to snapshot,
+and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
 Normal response codes: 202
 
@@ -86,9 +87,31 @@ Request Example
    :language: javascript
 
 
+Revert volume to snapshot
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
+Revert a volume to its latest snapshot, this API only support reverting a detached volume.
 
+Normal response codes: 202
+Error response codes: 400, 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id
+   - revert: revert
+   - snapshot_id: snapshot_id_4
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-revert-to-snapshot-request.json
+   :language: javascript
 
 
 Set image metadata for a volume

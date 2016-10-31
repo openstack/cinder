@@ -133,6 +133,7 @@ OBJ_VERSIONS.add('1.22', {'Snapshot': '1.4'})
 OBJ_VERSIONS.add('1.23', {'VolumeAttachment': '1.2'})
 OBJ_VERSIONS.add('1.24', {'LogLevel': '1.0', 'LogLevelList': '1.0'})
 OBJ_VERSIONS.add('1.25', {'Group': '1.2'})
+OBJ_VERSIONS.add('1.26', {'Snapshot': '1.5'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
@@ -308,6 +309,12 @@ class CinderPersistentObject(object):
         if expected_attrs:
             kargs = {'expected_attrs': expected_attrs}
         return cls._from_db_object(context, cls(context), orm_obj, **kargs)
+
+    def update_single_status_where(self, new_status,
+                                   expected_status, filters=()):
+        values = {'status': new_status}
+        expected_status = {'status': expected_status}
+        return self.conditional_update(values, expected_status, filters)
 
     def conditional_update(self, values, expected_values=None, filters=(),
                            save_all=False, session=None, reflect_changes=True,

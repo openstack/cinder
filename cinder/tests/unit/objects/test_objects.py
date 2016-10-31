@@ -45,7 +45,7 @@ object_data = {
     'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
     'Service': '1.4-a6727ccda6d4043f5e38e75c7c518c7f',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'Snapshot': '1.4-b7aa184837ccff570b8443bfd1773017',
+    'Snapshot': '1.5-ac1cdbd5b89588f6a8f44afdf6b8b201',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Volume': '1.6-7d3bc8577839d5725670d55e480fe95f',
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',

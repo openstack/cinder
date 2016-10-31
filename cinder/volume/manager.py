@@ -870,7 +870,155 @@ class VolumeManager(manager.CleanableManager,
             volume_ref.status = status
             volume_ref.save()
 
-    @objects.Snapshot.set_workers
+    def _revert_to_snapshot_generic(self, ctxt, volume, snapshot):
+        """Generic way to revert volume to a snapshot.
+
+        the framework will use the generic way to implement the revert
+        to snapshot feature:
+        1. create a temporary volume from snapshot
+        2. mount two volumes to host
+        3. copy data from temporary volume to original volume
+        4. detach and destroy temporary volume
+        """
+        temp_vol = None
+
+        try:
+            v_options = {'display_name': '[revert] temporary volume created '
+                                         'from snapshot %s' % snapshot.id}
+            ctxt = context.get_internal_tenant_context() or ctxt
+            temp_vol = self.driver._create_temp_volume_from_snapshot(
+                ctxt, volume, snapshot, volume_options=v_options)
+            self._copy_volume_data(ctxt, temp_vol, volume)
+            self.driver.delete_volume(temp_vol)
+            temp_vol.destroy()
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(
+                    "Failed to use snapshot %(snapshot)s to create "
+                    "a temporary volume and copy data to volume "
+                    " %(volume)s.",
+                    {'snapshot': snapshot.id,
+                     'volume': volume.id})
+                if temp_vol and temp_vol.status == 'available':
+                    self.driver.delete_volume(temp_vol)
+                    temp_vol.destroy()
+
+    def _revert_to_snapshot(self, context, volume, snapshot):
+        """Use driver or generic method to rollback volume."""
+
+        self._notify_about_volume_usage(context, volume, "revert.start")
+        self._notify_about_snapshot_usage(context, snapshot, "revert.start")
+        try:
+            self.driver.revert_to_snapshot(context, volume, snapshot)
+        except (NotImplementedError, AttributeError):
+            LOG.info("Driver's 'revert_to_snapshot' is not found. "
+                     "Try to use copy-snapshot-to-volume method.")
+            self._revert_to_snapshot_generic(context, volume, snapshot)
+        self._notify_about_volume_usage(context, volume, "revert.end")
+        self._notify_about_snapshot_usage(context, snapshot, "revert.end")
+
+    def _create_backup_snapshot(self, context, volume):
+        kwargs = {
+            'volume_id': volume.id,
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'status': fields.SnapshotStatus.CREATING,
+            'progress': '0%',
+            'volume_size': volume.size,
+            'display_name': '[revert] volume %s backup snapshot' % volume.id,
+            'display_description': 'This is only used for backup when '
+                                   'reverting. If the reverting process '
+                                   'failed, you can restore you data by '
+                                   'creating new volume with this snapshot.',
+            'volume_type_id': volume.volume_type_id,
+            'encryption_key_id': volume.encryption_key_id,
+            'metadata': {}
+        }
+        snapshot = objects.Snapshot(context=context, **kwargs)
+        snapshot.create()
+        self.create_snapshot(context, snapshot)
+        return snapshot
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to a snapshot.
+
+        The process of reverting to snapshot consists of several steps:
+        1.   create a snapshot for backup (in case of data loss)
+        2.1. use driver's specific logic to revert volume
+        2.2. try the generic way to revert volume if driver's method is missing
+        3.   delete the backup snapshot
+        """
+        backup_snapshot = None
+        try:
+            LOG.info("Start to perform revert to snapshot process.")
+            # Create a snapshot which can be used to restore the volume
+            # data by hand if revert process failed.
+            backup_snapshot = self._create_backup_snapshot(context, volume)
+            self._revert_to_snapshot(context, volume, snapshot)
+        except Exception as error:
+            with excutils.save_and_reraise_exception():
+                self._notify_about_volume_usage(context, volume,
+                                                "revert.end")
+                self._notify_about_snapshot_usage(context, snapshot,
+                                                  "revert.end")
+                msg = ('Volume %(v_id)s revert to '
+                       'snapshot %(s_id)s failed with %(error)s.')
+                msg_args = {'v_id': volume.id,
+                            's_id': snapshot.id,
+                            'error': six.text_type(error)}
+                v_res = volume.update_single_status_where(
+                    'error',
+                    'reverting')
+                if not v_res:
+                    msg_args = {"id": volume.id,
+                                "status": 'error'}
+                    msg += ("Failed to reset volume %(id)s "
+                            "status to %(status)s.") % msg_args
+
+                s_res = snapshot.update_single_status_where(
+                    fields.SnapshotStatus.AVAILABLE,
+                    fields.SnapshotStatus.RESTORING)
+                if not s_res:
+                    msg_args = {"id": snapshot.id,
+                                "status":
+                                    fields.SnapshotStatus.ERROR}
+                    msg += ("Failed to reset snapshot %(id)s "
+                            "status to %(status)s." % msg_args)
+                LOG.exception(msg, msg_args)
+
+        self._notify_about_volume_usage(context, volume,
+                                        "revert.end")
+        self._notify_about_snapshot_usage(context, snapshot,
+                                          "revert.end")
+        v_res = volume.update_single_status_where(
+            'available', 'reverting')
+        if not v_res:
+            msg_args = {"id": volume.id,
+                        "status": 'available'}
+            msg = _("Revert finished, but failed to reset "
+                    "volume %(id)s status to %(status)s, "
+                    "please manually reset it.") % msg_args
+            raise exception.BadResetResourceStatus(message=msg)
+
+        s_res = snapshot.update_single_status_where(
+            fields.SnapshotStatus.AVAILABLE,
+            fields.SnapshotStatus.RESTORING)
+        if not s_res:
+            msg_args = {"id": snapshot.id,
+                        "status":
+                            fields.SnapshotStatus.AVAILABLE}
+            msg = _("Revert finished, but failed to reset "
+                    "snapshot %(id)s status to %(status)s, "
+                    "please manually reset it.") % msg_args
+            raise exception.BadResetResourceStatus(message=msg)
+        if backup_snapshot:
+            self.delete_snapshot(context,
+                                 backup_snapshot, handle_quota=False)
+        msg = ('Volume %(v_id)s reverted to snapshot %(snap_id)s '
+               'successfully.')
+        msg_args = {'v_id': volume.id, 'snap_id': snapshot.id}
+        LOG.info(msg, msg_args)
+
     def create_snapshot(self, context, snapshot):
         """Creates and exports the snapshot."""
         context = context.elevated()
@@ -928,7 +1076,8 @@ class VolumeManager(manager.CleanableManager,
         return snapshot.id
 
     @coordination.synchronized('{snapshot.id}-{f_name}')
-    def delete_snapshot(self, context, snapshot, unmanage_only=False):
+    def delete_snapshot(self, context, snapshot,
+                        unmanage_only=False, handle_quota=True):
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot._context = context
@@ -964,21 +1113,23 @@ class VolumeManager(manager.CleanableManager,
                 snapshot.save()
 
         # Get reservations
+        reservations = None
         try:
-            if CONF.no_snapshot_gb_quota:
-                reserve_opts = {'snapshots': -1}
-            else:
-                reserve_opts = {
-                    'snapshots': -1,
-                    'gigabytes': -snapshot.volume_size,
-                }
-            volume_ref = self.db.volume_get(context, snapshot.volume_id)
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
-                                        volume_ref.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          **reserve_opts)
+            if handle_quota:
+                if CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'snapshots': -1}
+                else:
+                    reserve_opts = {
+                        'snapshots': -1,
+                        'gigabytes': -snapshot.volume_size,
+                    }
+                volume_ref = self.db.volume_get(context, snapshot.volume_id)
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.get('volume_type_id'))
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
         except Exception:
             reservations = None
             LOG.exception("Update snapshot usages failed.",

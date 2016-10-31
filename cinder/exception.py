@@ -402,6 +402,10 @@ class ServerNotFound(NotFound):
     message = _("Instance %(uuid)s could not be found.")
 
 
+class VolumeSnapshotNotFound(NotFound):
+    message = _("No snapshots found for volume %(volume_id)s.")
+
+
 class VolumeIsBusy(CinderException):
     message = _("deleting volume %(volume_name)s that has snapshot")
 
@@ -1197,6 +1201,10 @@ class ViolinResourceNotFound(NotFound):
 
 class BadHTTPResponseStatus(VolumeDriverException):
     message = _("Bad HTTP response status %(status)s")
+
+
+class BadResetResourceStatus(CinderException):
+    message = _("Bad reset resource status : %(message)s")
 
 
 # ZADARA STORAGE VPSA driver exception

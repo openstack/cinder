@@ -55,3 +55,16 @@ class VolumeSnapshotDriver(base.CinderInterface):
         :param snapshot: The snapshot from which to create the volume.
         :returns: A dict of database updates for the new volume.
         """
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot.
+
+        Note: the revert process should not change the volume's
+        current size, that means if the driver shrank
+        the volume during the process, it should extend the
+        volume internally.
+
+        :param context: the context of the caller.
+        :param volume: The volume to be reverted.
+        :param snapshot: The snapshot used for reverting.
+        """

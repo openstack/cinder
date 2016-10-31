@@ -740,14 +740,21 @@ class LVM(executor.Executor):
                       'udev settle.', name)
 
     def revert(self, snapshot_name):
-        """Revert an LV from snapshot.
+        """Revert an LV to snapshot.
 
         :param snapshot_name: Name of snapshot to revert
-
         """
-        self._execute('lvconvert', '--merge',
-                      snapshot_name, root_helper=self._root_helper,
-                      run_as_root=True)
+
+        cmd = ['lvconvert', '--merge', '%s/%s' % (self.vg_name, snapshot_name)]
+        try:
+            self._execute(*cmd, root_helper=self._root_helper,
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception('Error Revert Volume')
+            LOG.error('Cmd     :%s', err.cmd)
+            LOG.error('StdOut  :%s', err.stdout)
+            LOG.error('StdErr  :%s', err.stderr)
+            raise
 
     def lv_has_snapshot(self, name):
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',

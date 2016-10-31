@@ -150,6 +150,7 @@ def create_snapshot(ctxt,
     snap.user_id = ctxt.user_id or fake.USER_ID
     snap.project_id = ctxt.project_id or fake.PROJECT_ID
     snap.status = status
+    snap.metadata = {}
     snap.volume_size = vol['size']
     snap.display_name = display_name
     snap.display_description = display_description

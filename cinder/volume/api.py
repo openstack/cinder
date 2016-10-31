@@ -354,6 +354,26 @@ class API(base.Base):
             return vref
 
     @wrap_check_policy
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """revert a volume to a snapshot"""
+
+        v_res = volume.update_single_status_where(
+            'reverting', 'available')
+        if not v_res:
+            msg = _("Can't revert volume %s to its latest snapshot. "
+                    "Volume's status must be 'available'.") % volume.id
+            raise exception.InvalidVolume(reason=msg)
+        s_res = snapshot.update_single_status_where(
+            fields.SnapshotStatus.RESTORING,
+            fields.SnapshotStatus.AVAILABLE)
+        if not s_res:
+            msg = _("Can't revert volume %s to its latest snapshot. "
+                    "Snapshot's status must be 'available'.") % snapshot.id
+            raise exception.InvalidSnapshot(reason=msg)
+
+        self.volume_rpcapi.revert_to_snapshot(context, volume, snapshot)
+
+    @wrap_check_policy
     def delete(self, context, volume,
                force=False,
                unmanage_only=False,

@@ -42,6 +42,7 @@
     "volume:failover_host": "rule:admin_api",
     "volume:freeze_host": "rule:admin_api",
     "volume:thaw_host": "rule:admin_api",
+    "volume:revert_to_snapshot": "",
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:backup_admin_actions:reset_status": "rule:admin_api",

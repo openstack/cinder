@@ -510,6 +510,13 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         dest_volume.save()
         return dest_volume
 
+    def get_latest_snapshot(self):
+        """Get volume's latest snapshot"""
+        snapshot_db = db.snapshot_get_latest_for_volume(self._context, self.id)
+        snapshot = objects.Snapshot(self._context)
+        return snapshot._from_db_object(self._context,
+                                        snapshot, snapshot_db)
+
     @staticmethod
     def _is_cleanable(status, obj_version):
         # Before 1.6 we didn't have workers table, so cleanup wasn't supported.

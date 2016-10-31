@@ -334,3 +334,7 @@ user documentation.
 3.39
 ----
   Add ``project_id`` admin filters support to limits.
+
+3.40
+----
+  Add volume revert to its latest snapshot support.

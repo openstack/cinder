@@ -1697,6 +1697,12 @@ restore:
   in: body
   required: true
   type: object
+revert:
+  description: |
+    The ``revert`` action.
+  in: body
+  required: true
+  type: object
 safe_to_manage:
   description: |
     If the resource can be managed or not.
@@ -1773,6 +1779,13 @@ snapshot_id_3:
     The UUID of the source volume snapshot. The API
     creates a new volume snapshot with the same size as the source
     volume snapshot.
+  in: body
+  required: true
+  type: string
+snapshot_id_4:
+  description: |
+    The UUID of the snapshot. The API
+    reverts the volume with this snapshot.
   in: body
   required: true
   type: string

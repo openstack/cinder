@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import uuidutils
+import six
 from six.moves import http_client
 import webob
 from webob import exc
@@ -23,6 +24,7 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import volumes as volumes_v2
 from cinder.api.v3.views import volumes as volume_views_v3
+from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
 from cinder import objects
@@ -159,6 +161,37 @@ class VolumeController(volumes_v2.VolumeController):
 
         return view_builder_v3.quick_summary(num_vols, int(sum_size),
                                              all_distinct_metadata)
+
+    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.Controller.api_version('3.40')
+    @wsgi.action('revert')
+    def revert(self, req, id, body):
+        """revert a volume to a snapshot"""
+
+        context = req.environ['cinder.context']
+        self.assert_valid_body(body, 'revert')
+        snapshot_id = body['revert'].get('snapshot_id')
+        volume = self.volume_api.get_volume(context, id)
+        try:
+            l_snap = volume.get_latest_snapshot()
+        except exception.VolumeSnapshotNotFound:
+            msg = _("Volume %s doesn't have any snapshots.")
+            raise exc.HTTPBadRequest(explanation=msg % volume.id)
+        # Ensure volume and snapshot match.
+        if snapshot_id is None or snapshot_id != l_snap.id:
+            msg = _("Specified snapshot %(s_id)s is None or not "
+                    "the latest one of volume %(v_id)s.")
+            raise exc.HTTPBadRequest(explanation=msg % {'s_id': snapshot_id,
+                                                        'v_id': volume.id})
+        try:
+            msg = 'Reverting volume %(v_id)s to snapshot %(s_id)s.'
+            LOG.info(msg, {'v_id': volume.id,
+                           's_id': l_snap.id})
+            self.volume_api.revert_to_snapshot(context, volume, l_snap)
+        except (exception.InvalidVolume, exception.InvalidSnapshot) as e:
+            raise exc.HTTPConflict(explanation=six.text_type(e))
+        except exception.VolumeSizeExceedsAvailableQuota as e:
+            raise exc.HTTPForbidden(explanation=six.text_type(e))
 
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):

@@ -1758,6 +1758,142 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         db.volume_destroy(self.context, volume.id)
 
+    def test__revert_to_snapshot_generic_failed(self):
+        fake_volume = tests_utils.create_volume(self.context,
+                                                status='available')
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume.id)
+        with mock.patch.object(
+                self.volume.driver,
+                '_create_temp_volume_from_snapshot') as mock_temp, \
+                mock.patch.object(
+                    self.volume.driver,
+                    'delete_volume') as mock_driver_delete, \
+                mock.patch.object(
+                    self.volume, '_copy_volume_data') as mock_copy:
+            temp_volume = tests_utils.create_volume(self.context,
+                                                    status='available')
+            mock_copy.side_effect = [exception.VolumeDriverException('error')]
+            mock_temp.return_value = temp_volume
+
+            self.assertRaises(exception.VolumeDriverException,
+                              self.volume._revert_to_snapshot_generic,
+                              self.context, fake_volume, fake_snapshot)
+
+            mock_copy.assert_called_once_with(
+                self.context, temp_volume, fake_volume)
+            mock_driver_delete.assert_called_once_with(temp_volume)
+
+    def test__revert_to_snapshot_generic(self):
+        fake_volume = tests_utils.create_volume(self.context,
+                                                status='available')
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume.id)
+        with mock.patch.object(
+                self.volume.driver,
+                '_create_temp_volume_from_snapshot') as mock_temp,\
+            mock.patch.object(
+                self.volume.driver, 'delete_volume') as mock_driver_delete,\
+                mock.patch.object(
+                    self.volume, '_copy_volume_data') as mock_copy:
+                temp_volume = tests_utils.create_volume(self.context,
+                                                        status='available')
+                mock_temp.return_value = temp_volume
+                self.volume._revert_to_snapshot_generic(
+                    self.context, fake_volume, fake_snapshot)
+                mock_copy.assert_called_once_with(
+                    self.context, temp_volume, fake_volume)
+                mock_driver_delete.assert_called_once_with(temp_volume)
+
+    @ddt.data({'driver_error': True},
+              {'driver_error': False})
+    @ddt.unpack
+    def test__revert_to_snapshot(self, driver_error):
+        mock.patch.object(self.volume, '_notify_about_snapshot_usage')
+        with mock.patch.object(self.volume.driver,
+                               'revert_to_snapshot') as driver_revert, \
+            mock.patch.object(self.volume, '_notify_about_volume_usage'), \
+            mock.patch.object(self.volume, '_notify_about_snapshot_usage'),\
+            mock.patch.object(self.volume,
+                              '_revert_to_snapshot_generic') as generic_revert:
+            if driver_error:
+                driver_revert.side_effect = [NotImplementedError]
+            else:
+                driver_revert.return_value = None
+
+            self.volume._revert_to_snapshot(self.context, {}, {})
+
+            driver_revert.assert_called_once_with(self.context, {}, {})
+            if driver_error:
+                generic_revert.assert_called_once_with(self.context, {}, {})
+
+    @ddt.data(True, False)
+    def test_revert_to_snapshot(self, has_snapshot):
+        fake_volume = tests_utils.create_volume(self.context,
+                                                status='reverting',
+                                                project_id='123',
+                                                size=2)
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume['id'],
+                                                    status='restoring',
+                                                    volume_size=1)
+        with mock.patch.object(self.volume,
+                               '_revert_to_snapshot') as _revert,\
+            mock.patch.object(self.volume,
+                              '_create_backup_snapshot') as _create_snapshot,\
+            mock.patch.object(self.volume,
+                              'delete_snapshot') as _delete_snapshot:
+            _revert.return_value = None
+            if has_snapshot:
+                _create_snapshot.return_value = {'id': 'fake_snapshot'}
+            else:
+                _create_snapshot.return_value = None
+            self.volume.revert_to_snapshot(self.context, fake_volume,
+                                           fake_snapshot)
+            _revert.assert_called_once_with(self.context, fake_volume,
+                                            fake_snapshot)
+            _create_snapshot.assert_called_once_with(self.context, fake_volume)
+            if has_snapshot:
+                _delete_snapshot.assert_called_once_with(
+                    self.context, {'id': 'fake_snapshot'}, handle_quota=False)
+            else:
+                _delete_snapshot.assert_not_called()
+            fake_volume.refresh()
+            fake_snapshot.refresh()
+            self.assertEqual('available', fake_volume['status'])
+            self.assertEqual('available', fake_snapshot['status'])
+            self.assertEqual(2, fake_volume['size'])
+
+    def test_revert_to_snapshot_failed(self):
+        fake_volume = tests_utils.create_volume(self.context,
+                                                status='reverting',
+                                                project_id='123',
+                                                size=2)
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume['id'],
+                                                    status='restoring',
+                                                    volume_size=1)
+        with mock.patch.object(self.volume,
+                               '_revert_to_snapshot') as _revert, \
+            mock.patch.object(self.volume,
+                              '_create_backup_snapshot'), \
+            mock.patch.object(self.volume,
+                              'delete_snapshot') as _delete_snapshot:
+            _revert.side_effect = [exception.VolumeDriverException(
+                message='fake_message')]
+            self.assertRaises(exception.VolumeDriverException,
+                              self.volume.revert_to_snapshot,
+                              self.context, fake_volume,
+                              fake_snapshot)
+            _revert.assert_called_once_with(self.context, fake_volume,
+                                            fake_snapshot)
+            _delete_snapshot.assert_not_called()
+            fake_volume.refresh()
+            fake_snapshot.refresh()
+            self.assertEqual('error', fake_volume['status'])
+            self.assertEqual('available', fake_snapshot['status'])
+            self.assertEqual(2, fake_volume['size'])
+
     def test_cannot_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)

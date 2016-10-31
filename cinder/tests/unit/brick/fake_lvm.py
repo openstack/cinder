@@ -49,6 +49,9 @@ class FakeBrickLVM(object):
     def revert(self, snapshot_name):
         pass
 
+    def deactivate_lv(self, name):
+        pass
+
     def lv_has_snapshot(self, name):
         return False
 
