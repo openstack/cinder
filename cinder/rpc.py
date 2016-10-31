@@ -199,7 +199,7 @@ class RPCAPI(object):
                 return version
         return versions[-1]
 
-    def _get_cctxt(self, host=None, version=None, **kwargs):
+    def _get_cctxt(self, version=None, **kwargs):
         """Prepare client context
 
         Version parameter accepts single version string or tuple of strings.
