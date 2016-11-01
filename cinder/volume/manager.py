@@ -939,9 +939,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context,
                     host_name_sanitized))
         if attachments:
-            self.db.volume_update(context, volume_id,
-                                  {'status': 'in-use'})
-            return
+            # check if volume<->instance mapping is already tracked in DB
+            for attachment in attachments:
+                if attachment['volume_id'] == volume_id:
+                    self.db.volume_update(context, volume_id,
+                                          {'status': 'in-use'})
+                    return attachment
 
         self._notify_about_volume_usage(context, volume,
                                         "attach.start")
