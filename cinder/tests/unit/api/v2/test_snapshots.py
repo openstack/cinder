@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_config import cfg
 from six.moves.urllib import parse as urllib
@@ -76,6 +77,7 @@ def stub_snapshot_get_all(self, context, search_opts=None):
     return [param]
 
 
+@ddt.ddt
 class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super(SnapshotApiTest, self).setUp()
@@ -113,13 +115,14 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('updated_at', resp_dict['snapshot'])
         db.volume_destroy(self.ctx, volume.id)
 
-    def test_snapshot_create_force(self):
+    @ddt.data(True, 'y', 'true', 'trUE', 'yes', '1', 'on', 1, "1         ")
+    def test_snapshot_create_force(self, force_param):
         volume = utils.create_volume(self.ctx, status='in-use')
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
             "volume_id": volume.id,
-            "force": True,
+            "force": force_param,
             "name": snapshot_name,
             "description": snapshot_description
         }
@@ -134,11 +137,39 @@ class SnapshotApiTest(test.TestCase):
                          resp_dict['snapshot']['description'])
         self.assertIn('updated_at', resp_dict['snapshot'])
 
+        db.volume_destroy(self.ctx, volume.id)
+
+    @ddt.data(False, 'n', 'false', 'falSE', 'No', '0', 'off', 0)
+    def test_snapshot_create_force_failure(self, force_param):
+        volume = utils.create_volume(self.ctx, status='in-use')
+        snapshot_name = 'Snapshot Test Name'
+        snapshot_description = 'Snapshot Test Desc'
         snapshot = {
             "volume_id": volume.id,
-            "force": "**&&^^%%$$##@@",
-            "name": "Snapshot Test Name",
-            "description": "Snapshot Test Desc"
+            "force": force_param,
+            "name": snapshot_name,
+            "description": snapshot_description
+        }
+        body = dict(snapshot=snapshot)
+        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        self.assertRaises(exception.InvalidVolume,
+                          self.controller.create,
+                          req,
+                          body)
+
+        db.volume_destroy(self.ctx, volume.id)
+
+    @ddt.data("**&&^^%%$$##@@", '-1', 2, '01')
+    def test_snapshot_create_invalid_force_param(self, force_param):
+        volume = utils.create_volume(self.ctx, status='in-use')
+        snapshot_name = 'Snapshot Test Name'
+        snapshot_description = 'Snapshot Test Desc'
+
+        snapshot = {
+            "volume_id": volume.id,
+            "force": force_param,
+            "name": snapshot_name,
+            "description": snapshot_description
         }
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')

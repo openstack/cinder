@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 import webob
 
@@ -74,6 +75,7 @@ def stub_snapshot_get_all(self, context, search_opts=None):
     return [param]
 
 
+@ddt.ddt
 class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super(SnapshotApiTest, self).setUp()
@@ -101,13 +103,14 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot['display_description'],
                          resp_dict['snapshot']['display_description'])
 
-    def test_snapshot_create_force(self):
+    @ddt.data(True, 'y', 'true', 'trUE', 'yes', '1', 1)
+    def test_snapshot_create_force(self, force_param):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         snapshot = {"volume_id": fake.VOLUME_ID,
-                    "force": True,
+                    "force": force_param,
                     "display_name": "Snapshot Test Name",
                     "display_description": "Snapshot Test Desc"}
         body = dict(snapshot=snapshot)
@@ -120,6 +123,29 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot['display_description'],
                          resp_dict['snapshot']['display_description'])
 
+    @ddt.data(False, 'n', 'false', 'falSE', 'No', '0', 0)
+    def test_snapshot_create_force_failure(self, force_param):
+        self.stubs.Set(volume.api.API,
+                       "create_snapshot_force",
+                       stub_snapshot_create)
+        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        snapshot = {"volume_id": fake.VOLUME_ID,
+                    "force": force_param,
+                    "display_name": "Snapshot Test Name",
+                    "display_description": "Snapshot Test Desc"}
+        body = dict(snapshot=snapshot)
+        req = fakes.HTTPRequest.blank('/v1/snapshots')
+        self.assertRaises(exception.InvalidVolume,
+                          self.controller.create,
+                          req,
+                          body)
+
+    @ddt.data("**&&^^%%$$##@@", '-1', 2, '01', 'on', 'off', "1         ")
+    def test_snapshot_create_invalid_force_param(self, force_param):
+        self.stubs.Set(volume.api.API,
+                       "create_snapshot_force",
+                       stub_snapshot_create)
+        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         snapshot = {"volume_id": fake.SNAPSHOT_ID,
                     "force": "**&&^^%%$$##@@",
                     "display_name": "Snapshot Test Name",
