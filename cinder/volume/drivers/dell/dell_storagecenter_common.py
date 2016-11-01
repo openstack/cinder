@@ -442,7 +442,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """Create snapshot"""
         # our volume name is the volume id
         volume_name = snapshot.get('volume_id')
-        provider_id = snapshot.get('provider_id')
+        provider_id = snapshot.volume.get('provider_id')
         snapshot_id = snapshot.get('id')
         LOG.debug('Creating snapshot %(snap)s on volume %(vol)s',
                   {'snap': snapshot_id,
