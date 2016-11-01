@@ -80,6 +80,11 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         self.root_volume_name = self._get_root_volume_name()
         self.perf_library = perf_7mode.Performance7modeLibrary(
             self.zapi_client)
+        # This driver has been marked 'deprecated' in the Ocata release and
+        # can be removed in Queens.
+        msg = _("The 7-mode Data ONTAP driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
 
     def _do_partner_setup(self):
         partner_backend = self.configuration.netapp_partner_backend_name
