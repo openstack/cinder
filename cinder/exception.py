@@ -1073,7 +1073,7 @@ class InvalidGroupSnapshot(Invalid):
 
 
 # Hitachi Block Storage Driver
-class HBSDError(CinderException):
+class HBSDError(VolumeDriverException):
     message = _("HBSD error occurs.")
 
 
@@ -1184,53 +1184,53 @@ class ZadaraVolumeNotFound(VolumeDriverException):
 
 
 # ZFSSA NFS driver exception.
-class WebDAVClientError(CinderException):
+class WebDAVClientError(VolumeDriverException):
     message = _("The WebDAV request failed. Reason: %(msg)s, "
                 "Return code/reason: %(code)s, Source Volume: %(src)s, "
                 "Destination Volume: %(dst)s, Method: %(method)s.")
 
 
 # XtremIO Drivers
-class XtremIOAlreadyMappedError(CinderException):
+class XtremIOAlreadyMappedError(VolumeDriverException):
     message = _("Volume to Initiator Group mapping already exists")
 
 
-class XtremIOArrayBusy(CinderException):
+class XtremIOArrayBusy(VolumeDriverException):
     message = _("System is busy, retry operation.")
 
 
-class XtremIOSnapshotsLimitExceeded(CinderException):
+class XtremIOSnapshotsLimitExceeded(VolumeDriverException):
     message = _("Exceeded the limit of snapshots per volume")
 
 
 # Infortrend EonStor DS Driver
-class InfortrendCliException(CinderException):
+class InfortrendCliException(VolumeDriverException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
                 "(Return Code: %(rc)s) (Output: %(out)s)")
 
 
 # DOTHILL drivers
-class DotHillInvalidBackend(CinderException):
+class DotHillInvalidBackend(VolumeDriverException):
     message = _("Backend doesn't exist (%(backend)s)")
 
 
-class DotHillConnectionError(CinderException):
+class DotHillConnectionError(VolumeDriverException):
     message = _("%(message)s")
 
 
-class DotHillAuthenticationError(CinderException):
+class DotHillAuthenticationError(VolumeDriverException):
     message = _("%(message)s")
 
 
-class DotHillNotEnoughSpace(CinderException):
+class DotHillNotEnoughSpace(VolumeDriverException):
     message = _("Not enough space on backend (%(backend)s)")
 
 
-class DotHillRequestError(CinderException):
+class DotHillRequestError(VolumeDriverException):
     message = _("%(message)s")
 
 
-class DotHillNotTargetPortal(CinderException):
+class DotHillNotTargetPortal(VolumeDriverException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
 
 
@@ -1257,7 +1257,7 @@ class NotSupportedOperation(Invalid):
 
 
 # Hitachi HNAS drivers
-class HNASConnError(CinderException):
+class HNASConnError(VolumeDriverException):
     message = _("%(message)s")
 
 
@@ -1299,13 +1299,13 @@ class KaminarioRetryableException(VolumeDriverException):
 
 
 # Synology driver
-class SynoAPIHTTPError(CinderException):
+class SynoAPIHTTPError(VolumeDriverException):
     message = _("HTTP exit code: [%(code)s]")
 
 
-class SynoAuthError(CinderException):
+class SynoAuthError(VolumeDriverException):
     message = _("Synology driver authentication failed: %(reason)s.")
 
 
-class SynoLUNNotExist(CinderException):
+class SynoLUNNotExist(VolumeDriverException):
     message = _("LUN not found by UUID: %(uuid)s.")
