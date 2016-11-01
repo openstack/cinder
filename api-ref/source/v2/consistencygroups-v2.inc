@@ -61,7 +61,7 @@ Create consistency group
 
 Creates a consistency group.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -144,7 +144,7 @@ Create consistency group from source
 
 Creates a consistency group from source.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -175,7 +175,7 @@ Delete consistency group
 
 Deletes a consistency group.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -245,7 +245,7 @@ Update consistency group
 
 Updates a consistency group.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request

@@ -24,7 +24,7 @@ or source-name element, if possible.
 The API chooses the size of the volume by rounding up the size of
 the existing storage volume to the next gibibyte (GiB).
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request

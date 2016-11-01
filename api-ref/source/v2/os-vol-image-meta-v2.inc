@@ -20,7 +20,7 @@ may interpret the existing storage volume reference differently but
 should accept a reference structure containing either a ``source-
 volume-id`` or ``source-volume-name`` element, if possible.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request

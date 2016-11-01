@@ -14,7 +14,7 @@ Accept volume transfer
 
 Accepts a volume transfer.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -52,7 +52,7 @@ Create volume transfer
 
 Creates a volume transfer.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -169,7 +169,7 @@ Delete volume transfer
 
 Deletes a volume transfer.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request

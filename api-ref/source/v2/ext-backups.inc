@@ -148,7 +148,7 @@ Delete backup
 
 Deletes a backup.
 
-Error response codes:204,
+Normal response codes: 204,
 
 
 Request
@@ -170,7 +170,7 @@ Restores a Block Storage backup to an existing or new Block Storage volume.
 You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -206,7 +206,7 @@ Create backup
 
 Creates a Block Storage backup from a volume.
 
-Error response codes:202,
+Normal response codes: 202,
 
 Request
 -------
