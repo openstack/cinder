@@ -716,6 +716,11 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertEqual(pool,
                          volume_utils.extract_host(host, 'pool', True))
 
+    def test_extract_host_none_string(self):
+        self.assertRaises(exception.InvalidVolume,
+                          volume_utils.extract_host,
+                          None)
+
     def test_get_volume_rpc_host(self):
         host = 'Host@backend'
         # default level is 'backend'
