@@ -108,6 +108,7 @@ CG_SNAPSHOT = {
     'status': ''}
 
 SNAPSHOT_ID = "abcdabcd-1234-abcd-1234-abcdeffedcbb"
+ENCODED_SNAPSHOT_ID = "cinder-8W45SsgKTG2dnSUHoiQeuA"
 SNAPSHOT = {'name': "snapshot-" + SNAPSHOT_ID,
             'id': SNAPSHOT_ID,
             'volume_id': VOLUME_ID,
@@ -118,6 +119,15 @@ SNAPSHOT = {'name': "snapshot-" + SNAPSHOT_ID,
             'volume': VOLUME,
             'metadata': SNAPSHOT_METADATA,
             'status': ''}
+SNAPSHOT_LONG_NAME = {
+    'name': "SnapshotsActionsV1Test-Snapshot-" + SNAPSHOT_ID,
+    'id': SNAPSHOT_ID,
+    'volume_id': VOLUME_ID,
+    'volume_size': 2,
+    'display_name': 'SnapshotsActionsV1Test-Snapshot-901108447',
+    'volume': VOLUME,
+    'metadata': SNAPSHOT_METADATA,
+    'status': ''}
 
 INITIATOR_IQN = 'iqn.2015-08.org.falconstor:01:fss'
 TARGET_IQN = "iqn.2015-06.com.falconstor:freestor.fss-12345abc"
@@ -290,6 +300,14 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
         SNAPSHOT_METADATA["fss-tm-comment"] = snap_name
         result = self.driver.create_snapshot(SNAPSHOT)
         mock_create_snapshot.assert_called_once_with(SNAPSHOT)
+        self.assertEqual(result, {'metadata': SNAPSHOT_METADATA})
+
+    @mock.patch.object(proxy.RESTProxy, 'create_snapshot',
+                                        return_value=API_RESPONSE)
+    def test_create_snapshot_exceed_characters_len(self, mock_create_snapshot):
+        SNAPSHOT_METADATA["fss-tm-comment"] = ENCODED_SNAPSHOT_ID
+        result = self.driver.create_snapshot(SNAPSHOT_LONG_NAME)
+        mock_create_snapshot.assert_called_once_with(SNAPSHOT_LONG_NAME)
         self.assertEqual(result, {'metadata': SNAPSHOT_METADATA})
 
     @mock.patch.object(proxy.RESTProxy, 'delete_snapshot',

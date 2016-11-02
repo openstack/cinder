@@ -348,6 +348,9 @@ class RESTProxy(object):
         if not snap_name:
             snap_name = "snap-%s" % time.strftime('%Y%m%d%H%M%S')
 
+        if len(snap_name) > 32:
+            snap_name = self._encode_name(snapshot["id"])
+
         self.FSS.create_timemark(vid, snap_name)
         snap_metadata['fss_tm_comment'] = snap_name
         return snap_metadata
@@ -363,6 +366,8 @@ class RESTProxy(object):
             if ('metadata' in snapshot and 'fss_tm_comment' in
                snapshot['metadata']):
                 snap_name = snapshot['metadata']['fss_tm_comment']
+        if len(snap_name) > 32:
+            snap_name = self._encode_name(snapshot["id"])
 
         tm_info = self.FSS.get_timemark(vid)
         rawtimestamp = self._get_timestamp(tm_info, snap_name)
