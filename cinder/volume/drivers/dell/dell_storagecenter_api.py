@@ -673,6 +673,10 @@ class StorageCenterApi(object):
             try:
                 if provider_id.split('.')[0] == six.text_type(self.ssn):
                     ret = True
+                else:
+                    LOG.debug('_use_provider_id: provider_id '
+                              '%(pid)r not valid on %(ssn)r',
+                              {'pid': provider_id, 'ssn': self.ssn})
             except Exception:
                 LOG.error(_LE('_use_provider_id: provider_id %s is invalid!'),
                           provider_id)
@@ -839,11 +843,19 @@ class StorageCenterApi(object):
                 # This needs to be either a physical or virtual server.
                 # Outside of tempest tests this should not matter as we only
                 # "init" a volume to allow snapshotting of an empty volume.
-                if scserver.get('status', '').lower() != 'down':
+                if (scserver.get('status', 'down').lower() != 'down' and
+                   scserver.get('type', '').lower() == 'physical'):
                     # Map to actually create the volume
                     self.map_volume(scvolume, scserver)
                     # We have changed the volume so grab a new copy of it.
                     scvolume = self.get_volume(self._get_id(scvolume))
+                    if not scvolume.get('active', False):
+                        LOG.info(_LI('Failed to activate volume %(name)s, '
+                                     'operations such as snapshot and clone '
+                                     'may fail due to inactive volume. '
+                                     '(%(obj)r)'),
+                                 {'name': scvolume['name'],
+                                  'obj': scvolume})
                     self.unmap_volume(scvolume, scserver)
                     return
         # We didn't map/unmap the volume.  So no initialization done.
@@ -1142,6 +1154,9 @@ class StorageCenterApi(object):
         :return: sc volume object or None.
         :raises VolumeBackendAPIException: if unable to import.
         """
+        LOG.debug('find_volume: name:%(name)r provider_id:%(id)r islv:%(lv)r',
+                  {'name': name, 'id': provider_id,
+                   'lv': islivevol})
         scvolume = None
         if islivevol:
             # Just get the primary from the sc live vol.
