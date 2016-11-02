@@ -34,7 +34,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -460,8 +460,8 @@ class AdminActionsTest(BaseAdminTest):
     @mock.patch.object(db, 'volume_get')
     def test_force_delete_snapshot(self, volume_get, snapshot_get, get_by_id,
                                    delete_snapshot):
-        volume = stubs.stub_volume(fake.VOLUME_ID)
-        snapshot = stubs.stub_snapshot(fake.SNAPSHOT_ID)
+        volume = v2_fakes.create_fake_volume(fake.VOLUME_ID)
+        snapshot = v2_fakes.fake_snapshot(fake.SNAPSHOT_ID)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         volume_get.return_value = volume
         snapshot_get.return_value = snapshot

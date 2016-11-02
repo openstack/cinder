@@ -30,7 +30,7 @@ from cinder.image import glance
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils
@@ -752,7 +752,7 @@ class VolumeRetypeActionsTest(test.TestCase):
 
 
 def fake_volume_get(self, context, volume_id):
-    volume = stubs.stub_volume(volume_id)
+    volume = v2_fakes.create_fake_volume(volume_id)
     if volume_id == fake.VOLUME3_ID:
         volume['status'] = 'in-use'
     else:

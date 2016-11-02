@@ -48,14 +48,14 @@ class BaseLimitTestSuite(test.TestCase):
     def setUp(self):
         super(BaseLimitTestSuite, self).setUp()
         self.time = 0.0
-        self.stubs.Set(limits.Limit, "_get_time", self._get_time)
+        self.mock_object(limits.Limit, "_get_time", self._get_time)
         self.absolute_limits = {}
 
-        def stub_get_project_quotas(context, project_id, usages=True):
+        def fake_get_project_quotas(context, project_id, usages=True):
             return {k: dict(limit=v) for k, v in self.absolute_limits.items()}
 
-        self.stubs.Set(cinder.quota.QUOTAS, "get_project_quotas",
-                       stub_get_project_quotas)
+        self.mock_object(cinder.quota.QUOTAS, "get_project_quotas",
+                         fake_get_project_quotas)
 
     def _get_time(self):
         """Return the "time" according to this test suite."""

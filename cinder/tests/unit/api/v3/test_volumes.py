@@ -27,7 +27,7 @@ from cinder import exception
 from cinder.group import api as group_api
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
@@ -186,9 +186,9 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def _vol_in_request_body(self,
-                             size=stubs.DEFAULT_VOL_SIZE,
-                             name=stubs.DEFAULT_VOL_NAME,
-                             description=stubs.DEFAULT_VOL_DESCRIPTION,
+                             size=v2_fakes.DEFAULT_VOL_SIZE,
+                             name=v2_fakes.DEFAULT_VOL_NAME,
+                             description=v2_fakes.DEFAULT_VOL_DESCRIPTION,
                              availability_zone=DEFAULT_AZ,
                              snapshot_id=None,
                              source_volid=None,
@@ -219,17 +219,17 @@ class VolumeApiTest(test.TestCase):
 
     def _expected_vol_from_controller(
             self,
-            size=stubs.DEFAULT_VOL_SIZE,
+            size=v2_fakes.DEFAULT_VOL_SIZE,
             availability_zone=DEFAULT_AZ,
-            description=stubs.DEFAULT_VOL_DESCRIPTION,
-            name=stubs.DEFAULT_VOL_NAME,
+            description=v2_fakes.DEFAULT_VOL_DESCRIPTION,
+            name=v2_fakes.DEFAULT_VOL_NAME,
             consistencygroup_id=None,
             source_volid=None,
             snapshot_id=None,
             metadata=None,
             attachments=None,
-            volume_type=stubs.DEFAULT_VOL_TYPE,
-            status=stubs.DEFAULT_VOL_STATUS,
+            volume_type=v2_fakes.DEFAULT_VOL_TYPE,
+            status=v2_fakes.DEFAULT_VOL_STATUS,
             with_migration_status=False,
             group_id=None,
             req_version=None):
@@ -246,7 +246,7 @@ class VolumeApiTest(test.TestCase):
                    'updated_at': datetime.datetime(
                        1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
                    'description': description,
-                   'id': stubs.DEFAULT_VOL_ID,
+                   'id': v2_fakes.DEFAULT_VOL_ID,
                    'links':
                    [{'href': 'http://localhost/v3/%s/volumes/%s' % (
                              fake.PROJECT_ID, fake.VOLUME_ID),
@@ -302,11 +302,11 @@ class VolumeApiTest(test.TestCase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_volume_create(self, max_ver, mock_validate):
-        self.mock_object(volume_api.API, 'get', stubs.stub_volume_get)
+        self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
-                         stubs.stub_volume_api_create)
+                         v2_fakes.fake_volume_api_create)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         stubs.stub_volume_type_get)
+                         v2_fakes.fake_volume_type_get)
 
         vol = self._vol_in_request_body()
         body = {"volume": vol}
@@ -326,9 +326,9 @@ class VolumeApiTest(test.TestCase):
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_snapshot(self, max_ver, create, get_snapshot,
                                            volume_type_get, group_get):
-        create.side_effect = stubs.stub_volume_api_create
-        get_snapshot.side_effect = stubs.stub_snapshot_get
-        volume_type_get.side_effect = stubs.stub_volume_type_get
+        create.side_effect = v2_fakes.fake_volume_api_create
+        get_snapshot.side_effect = v2_fakes.fake_snapshot_get
+        volume_type_get.side_effect = v2_fakes.fake_volume_type_get
         fake_group = {
             'id': fake.GROUP_ID,
             'group_type_id': fake.GROUP_TYPE_ID,
@@ -353,12 +353,13 @@ class VolumeApiTest(test.TestCase):
                                              context, snapshot_id)
 
         kwargs = self._expected_volume_api_create_kwargs(
-            stubs.stub_snapshot(snapshot_id),
+            v2_fakes.fake_snapshot(snapshot_id),
             test_group=fake_group,
             req_version=req.api_version_request)
         create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], stubs.DEFAULT_VOL_NAME,
-                                       stubs.DEFAULT_VOL_DESCRIPTION, **kwargs)
+                                       vol['size'], v2_fakes.DEFAULT_VOL_NAME,
+                                       v2_fakes.DEFAULT_VOL_DESCRIPTION,
+                                       **kwargs)
 
     @ddt.data({'s': 'ea895e29-8485-4930-bbb8-c5616a309c0e'},
               ['ea895e29-8485-4930-bbb8-c5616a309c0e'],
