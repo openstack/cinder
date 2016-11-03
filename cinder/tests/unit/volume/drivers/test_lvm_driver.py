@@ -546,6 +546,7 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
                                                           False,
                                                           None,
                                                           'default')
+            mock_execute.return_value = ("mock_outs", "mock_errs")
             moved, model_update = \
                 self.volume.driver.migrate_volume(self.context, vol, host)
             self.assertTrue(moved)
@@ -594,6 +595,7 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
                                                   None,
                                                   'default')
             lvm_driver._sparse_copy_volume = True
+            mock_execute.return_value = ("mock_outs", "mock_errs")
             moved, model_update = \
                 lvm_driver.migrate_volume(self.context, vol, host)
             self.assertTrue(moved)
