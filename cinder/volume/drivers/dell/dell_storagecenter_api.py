@@ -255,18 +255,13 @@ class HttpClient(object):
     def delete(self, url, payload=None, async=False):
         LOG.debug('delete: %(url)s data: %(payload)s',
                   {'url': url, 'payload': payload})
+        named = {'headers': self._get_header(async), 'verify': self.verify}
         if payload:
-            return self._rest_ret(
-                self.session.delete(self.__formatUrl(url),
-                                    data=json.dumps(payload,
-                                                    ensure_ascii=False
-                                                    ).encode('utf-8'),
-                                    headers=self._get_header(async),
-                                    verify=self.verify), async)
+            named['data'] = json.dumps(
+                payload, ensure_ascii=False).encode('utf-8')
+
         return self._rest_ret(
-            self.session.delete(self.__formatUrl(url),
-                                headers=self._get_header(async),
-                                verify=self.verify), async)
+            self.session.delete(self.__formatUrl(url), **named), async)
 
 
 class StorageCenterApiHelper(object):
@@ -2919,9 +2914,6 @@ class StorageCenterApi(object):
                                  self._get_id(scvol), {}, True)
             return self._check_result(r)
         return False
-
-    def find_replication_dest(self, instance_id, destssn):
-        pass
 
     def break_replication(self, volumename, instance_id, destssn):
         """This just breaks the replication.
