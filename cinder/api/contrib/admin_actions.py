@@ -80,6 +80,15 @@ class AdminController(wsgi.Controller):
         action = '%s_admin_actions:%s' % (self.resource_name, action_name)
         extensions.extension_authorizer('volume', action)(context)
 
+    def _remove_worker(self, context, id):
+        # Remove the cleanup worker from the DB when we change a resource
+        # status since it renders useless the entry.
+        res = db.worker_destroy(context, resource_type=self.collection.title(),
+                                resource_id=id)
+        if res:
+            LOG.debug('Worker entry for %s with id %s has been deleted.',
+                      self.collection, id)
+
     @wsgi.action('os-reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
@@ -106,6 +115,7 @@ class AdminController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         self._update(context, id, update)
+        self._remove_worker(context, id)
         if update.get('attach_status') == 'detached':
             _clean_volume_attachment(context, id)
 

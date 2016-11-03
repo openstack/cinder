@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from functools import wraps
 import inspect
 
+import decorator
 from oslo_utils import versionutils
 
 from cinder import db
@@ -168,8 +168,7 @@ class CinderCleanableObject(base.CinderPersistentObject):
         to be added.
         """
         def _decorator(f):
-            @wraps(f)
-            def wrapper(*args, **kwargs):
+            def wrapper(f, *args, **kwargs):
                 if decorator_args:
                     call_args = inspect.getcallargs(f, *args, **kwargs)
                     candidates = [call_args[obj] for obj in decorator_args]
@@ -201,7 +200,7 @@ class CinderCleanableObject(base.CinderPersistentObject):
                             except Exception:
                                 pass
                 return result
-            return wrapper
+            return decorator.decorate(f, wrapper)
 
         # If we don't have optional decorator arguments the argument in
         # decorator_args is the function we have to decorate

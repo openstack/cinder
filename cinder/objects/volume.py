@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import cleanable
 
 
 CONF = cfg.CONF
@@ -48,7 +49,7 @@ class MetadataObject(dict):
 
 
 @base.CinderObjectRegistry.register
-class Volume(base.CinderPersistentObject, base.CinderObject,
+class Volume(cleanable.CinderCleanableObject, base.CinderObject,
              base.CinderObjectDictCompat, base.CinderComparableObject,
              base.ClusteredObject):
     # Version 1.0: Initial version
@@ -58,7 +59,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     # Version 1.3: Added finish_volume_migration()
     # Version 1.4: Added cluster fields
     # Version 1.5: Added group
-    VERSION = '1.5'
+    # Version 1.6: This object is now cleanable (adds rows to workers table)
+    VERSION = '1.6'
 
     OPTIONAL_FIELDS = ('metadata', 'admin_metadata', 'glance_metadata',
                        'volume_type', 'volume_attachment', 'consistencygroup',
@@ -364,6 +366,14 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                 self.admin_metadata = db.volume_admin_metadata_update(
                     self._context, self.id, metadata, True)
 
+            # When we are creating a volume and we change from 'creating'
+            # status to 'downloading' status we have to change the worker entry
+            # in the DB to reflect this change, otherwise the cleanup will
+            # not be performed as it will be mistaken for a volume that has
+            # been somehow changed (reset status, forced operation...)
+            if updates.get('status') == 'downloading':
+                self.set_worker()
+
             db.volume_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
@@ -486,6 +496,14 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         dest_volume.save()
         return dest_volume
 
+    @staticmethod
+    def _is_cleanable(status, obj_version):
+        # Before 1.6 we didn't have workers table, so cleanup wasn't supported.
+        # cleaning.
+        if obj_version and obj_version < 1.6:
+            return False
+        return status in ('creating', 'deleting', 'uploading', 'downloading')
+
 
 @base.CinderObjectRegistry.register
 class VolumeList(base.ObjectListBase, base.CinderObject):
@@ -523,8 +541,8 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         return expected_attrs
 
     @classmethod
-    def get_all(cls, context, marker, limit, sort_keys=None, sort_dirs=None,
-                filters=None, offset=None):
+    def get_all(cls, context, marker=None, limit=None, sort_keys=None,
+                sort_dirs=None, filters=None, offset=None):
         volumes = db.volume_get_all(context, marker, limit,
                                     sort_keys=sort_keys, sort_dirs=sort_dirs,
                                     filters=filters, offset=offset)

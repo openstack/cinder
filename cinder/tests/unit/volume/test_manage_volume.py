@@ -14,13 +14,12 @@
 
 import mock
 
-from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import fake_volume
-from cinder.tests.unit import test_volume
-
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
+from cinder.tests.unit import volume as base
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume import manager
 from cinder.volume import utils
@@ -29,7 +28,7 @@ FAKE_HOST_POOL = 'volPool'
 FAKE_HOST = 'hostname@backend'
 
 
-class ManageVolumeTestCase(test_volume.BaseVolumeTestCase):
+class ManageVolumeTestCase(base.BaseVolumeTestCase):
 
     def setUp(self):
         super(ManageVolumeTestCase, self).setUp()

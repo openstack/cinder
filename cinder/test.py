@@ -89,6 +89,7 @@ class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
     POLICY_PATH = 'cinder/tests/unit/policy.json'
+    MOCK_WORKER = True
 
     def _get_joined_notifier(self, *args, **kwargs):
         # We create a new fake notifier but we join the notifications with
@@ -109,6 +110,12 @@ class TestCase(testtools.TestCase):
         p = mock.patch('cinder.rpc.get_notifier',
                        side_effect=self._get_joined_notifier)
         p.start()
+
+        if self.MOCK_WORKER:
+            # Mock worker creation for all tests that don't care about it
+            clean_path = 'cinder.objects.cleanable.CinderCleanableObject.%s'
+            for method in ('create_worker', 'set_worker', 'unset_worker'):
+                self.patch(clean_path % method, return_value=None)
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)

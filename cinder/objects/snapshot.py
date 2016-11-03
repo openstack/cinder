@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import cleanable
 from cinder.objects import fields as c_fields
 
 
@@ -28,11 +29,12 @@ CONF = cfg.CONF
 
 
 @base.CinderObjectRegistry.register
-class Snapshot(base.CinderPersistentObject, base.CinderObject,
+class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
                base.CinderObjectDictCompat):
     # Version 1.0: Initial version
     # Version 1.1: Changed 'status' field to use SnapshotStatusField
-    VERSION = '1.1'
+    # Version 1.2: This object is now cleanable (adds rows to workers table)
+    VERSION = '1.2'
 
     # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They
     # are typically the relationship in the sqlalchemy object.
@@ -249,6 +251,13 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         return db.snapshot_data_get_for_project(context, project_id,
                                                 volume_type_id)
 
+    @staticmethod
+    def _is_cleanable(status, obj_version):
+        # Before 1.2 we didn't have workers table, so cleanup wasn't supported.
+        if obj_version and obj_version < 1.2:
+            return False
+        return status == 'creating'
+
 
 @base.CinderObjectRegistry.register
 class SnapshotList(base.ObjectListBase, base.CinderObject):
@@ -261,6 +270,11 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     @classmethod
     def get_all(cls, context, search_opts, marker=None, limit=None,
                 sort_keys=None, sort_dirs=None, offset=None):
+        """Get all snapshot given some search_opts (filters).
+
+        Special search options accepted are host and cluster_name, that refer
+        to the volume's fields.
+        """
         snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
                                         sort_keys, sort_dirs, offset)
         expected_attrs = Snapshot._get_expected_attrs(context)
