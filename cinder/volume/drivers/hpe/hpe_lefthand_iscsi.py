@@ -329,6 +329,14 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     def do_setup(self, context):
         """Set up LeftHand client."""
+        if not hpelefthandclient:
+            # Checks if client was successfully imported
+            ex_msg = (_("HPELeftHand client is not installed. Please"
+                        " install using 'pip install "
+                        "python-lefthandclient'."))
+            LOG.error(ex_msg)
+            raise exception.VolumeDriverException(ex_msg)
+
         if hpelefthandclient.version < MIN_CLIENT_VERSION:
             ex_msg = (_("Invalid hpelefthandclient version found ("
                         "%(found)s). Version %(minimum)s or greater "
