@@ -47,6 +47,12 @@ if __name__ == "__main__":
 
     opt_file.write("import itertools\n\n")
 
+    # NOTE(geguileo): We need to register all OVOs before importing any other
+    # cinder files, otherwise any decorator that uses cinder.objects.YYY will
+    # fail with exception AttributeError: 'module' object has no attribute
+    # 'YYY' when running tox -egenconfig
+    opt_file.write("from cinder import objects\nobjects.register_all()\n\n")
+
     targetdir = 'cinder'
 
     common_string = ('find ' + targetdir + ' -type f -name "*.py" !  '

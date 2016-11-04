@@ -14,6 +14,9 @@
 
 import itertools
 
+from cinder import objects
+objects.register_all()
+
 from cinder.api import common as cinder_api_common
 from cinder.api.middleware import auth as cinder_api_middleware_auth
 from cinder.api.middleware import sizelimit as cinder_api_middleware_sizelimit
