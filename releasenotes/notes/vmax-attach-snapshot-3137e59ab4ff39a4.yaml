@@ -1,0 +1,4 @@
+---
+features:
+  - Enable backup snapshot optimal path by implementing attach
+    and detach snapshot in the VMAX driver.
