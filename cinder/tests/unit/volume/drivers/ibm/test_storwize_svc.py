@@ -1033,6 +1033,9 @@ port_speed!N/A
             host_name = kwargs['obj'].strip('\'\"')
             if host_name not in self._hosts_list:
                 return self._errors['CMMVC5754E']
+            if (self._next_cmd_error['lshost'] == 'fail_fastpath' and
+                    host_name == 'DifferentHost'):
+                return self._errors['CMMVC5701E']
             host = self._hosts_list[host_name]
             rows = []
             rows.append(['id', host['id']])
@@ -2393,7 +2396,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         # We will force the missing_host error for the first host, but
         # then tolerate and find the second host on the slow path normally.
         if self.USESIM:
-            self.sim._cmd_mkhost(name='DifferentHost', hbawwpn='123456')
+            self.sim._cmd_mkhost(name='storwize-svc-test-9', hbawwpn='123456')
         helper.create_host(self._connector)
         # tell lshost to fail while calling get_host_from_connector
         if self.USESIM:
@@ -2426,6 +2429,56 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               helper.get_host_from_connector,
                               self._connector)
+
+    def test_storwize_get_host_from_connector_not_found(self):
+        self._connector.pop('initiator')
+        helper = self.fc_driver._helpers
+        # Create some hosts. The first is not related to the connector and
+        # we use the simulator for that. The second is for the connector.
+        # We will force the missing_host error for the first host, but
+        # then tolerate and find the second host on the slow path normally.
+        if self.USESIM:
+            self.sim._cmd_mkhost(name='storwize-svc-test-3', hbawwpn='1234567')
+            self.sim._cmd_mkhost(name='storwize-svc-test-2', hbawwpn='2345678')
+            self.sim._cmd_mkhost(name='storwize-svc-test-1', hbawwpn='3456789')
+            self.sim._cmd_mkhost(name='A-Different-host', hbawwpn='9345678')
+            self.sim._cmd_mkhost(name='B-Different-host', hbawwpn='8345678')
+            self.sim._cmd_mkhost(name='C-Different-host', hbawwpn='7345678')
+        # tell lshost to fail while calling get_host_from_connector
+        if self.USESIM:
+            # tell lsfabric to skip rows so that we skip past fast path
+            self.sim.error_injection('lsfabric', 'remove_rows')
+        # Run test
+        host_name = helper.get_host_from_connector(self._connector)
+
+        self.assertIsNone(host_name)
+
+    def test_storwize_get_host_from_connector_fast_path(self):
+        self._connector.pop('initiator')
+        helper = self.fc_driver._helpers
+        # Create two hosts. Our lshost will return the hosts in sorted
+        # Order. The extra host will be returned before the target
+        # host. If we get detailed lshost info on our host without
+        # gettting detailed info on the other host we used the fast path
+        if self.USESIM:
+            self.sim._cmd_mkhost(name='A-DifferentHost', hbawwpn='123456')
+        helper.create_host(self._connector)
+        # tell lshost to fail while calling get_host_from_connector
+        if self.USESIM:
+            # tell lshost to fail while called from get_host_from_connector
+            self.sim.error_injection('lshost', 'fail_fastpath')
+            # tell lsfabric to skip rows so that we skip past fast path
+            self.sim.error_injection('lsfabric', 'remove_rows')
+        # Run test
+        host_name = helper.get_host_from_connector(self._connector)
+
+        self.assertIsNotNone(host_name)
+        # Need to assert that lshost was actually called. The way
+        # we do that is check that the next simulator error for lshost
+        # has not been reset.
+        self.assertEqual(self.sim._next_cmd_error['lshost'], 'fail_fastpath',
+                         "lshost was not called in the simulator. The "
+                         "queued error still remains.")
 
     def test_storwize_initiator_multiple_wwpns_connected(self):
 
