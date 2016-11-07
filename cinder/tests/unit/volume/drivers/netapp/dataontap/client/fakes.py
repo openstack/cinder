@@ -834,6 +834,8 @@ SIS_GET_ITER_SSC_RESPONSE = etree.XML("""
       <sis-status-info>
         <is-compression-enabled>false</is-compression-enabled>
         <state>enabled</state>
+        <logical-data-size>211106232532992</logical-data-size>
+        <logical-data-limit>703687441776640</logical-data-limit>
       </sis-status-info>
     </attributes-list>
     <num-records>1</num-records>
@@ -843,7 +845,49 @@ SIS_GET_ITER_SSC_RESPONSE = etree.XML("""
 VOLUME_DEDUPE_INFO_SSC = {
     'compression': False,
     'dedupe': True,
+    'logical-data-size': 211106232532992,
+    'logical-data-limit': 703687441776640,
 }
+
+SIS_GET_ITER_SSC_NO_LOGICAL_DATA_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <sis-status-info>
+        <is-compression-enabled>false</is-compression-enabled>
+        <state>disabled</state>
+      </sis-status-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA = {
+    'compression': False,
+    'dedupe': False,
+    'logical-data-size': 0,
+    'logical-data-limit': 1,
+}
+
+CLONE_SPLIT_STATUS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <clone-split-info>
+      <unsplit-clone-count>1234</unsplit-clone-count>
+      <unsplit-size>316659348799488</unsplit-size>
+    </clone-split-info>
+  </results>
+""")
+
+VOLUME_CLONE_SPLIT_STATUS = {
+    'unsplit-size': 316659348799488,
+    'unsplit-clone-count': 1234,
+}
+
+CLONE_SPLIT_STATUS_NO_DATA_RESPONSE = etree.XML("""
+  <results status="passed">
+    <clone-split-info>
+    </clone-split-info>
+  </results>
+""")
 
 STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
   <results status="passed">

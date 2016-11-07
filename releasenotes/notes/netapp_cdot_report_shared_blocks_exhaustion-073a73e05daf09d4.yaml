@@ -1,0 +1,9 @@
+---
+features:
+  - The NetApp cDOT drivers report to the scheduler,
+    for each FlexVol pool, the fraction of the shared
+    block limit that has been consumed by dedupe and
+    cloning operations. This value, netapp_dedupe_used_percent,
+    may be used in the filter & goodness functions for better
+    placement of new Cinder volumes.
+

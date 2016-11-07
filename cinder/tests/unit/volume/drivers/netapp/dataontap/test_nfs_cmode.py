@@ -187,6 +187,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
                          mock.Mock(return_value=capacity))
+        self.mock_object(self.driver.zapi_client,
+                         'get_flexvol_dedupe_used_percent',
+                         mock.Mock(return_value=55.0))
 
         aggr_capacities = {
             'aggr1': {
@@ -214,6 +217,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'provisioned_capacity_gb': provisioned_capacity_gb,
+            'netapp_dedupe_used_percent': 55.0,
             'netapp_aggregate_used_percent': 45,
             'utilization': 30.0,
             'filter_function': 'filter',
