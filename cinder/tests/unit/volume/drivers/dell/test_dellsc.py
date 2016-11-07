@@ -21,6 +21,8 @@ from cinder import exception
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
 from cinder.volume import volume_types
@@ -1375,6 +1377,28 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
+    def _simple_volume(self, **kwargs):
+        updates = {'display_name': fake.VOLUME_NAME,
+                   'id': fake.VOLUME_ID,
+                   'provider_id': self.VOLUME[u'instanceId']}
+        updates.update(kwargs)
+
+        return fake_volume.fake_volume_obj(self._context, **updates)
+
+    def _simple_snapshot(self, **kwargs):
+        updates = {'id': fake.SNAPSHOT_ID,
+                   'display_name': fake.SNAPSHOT_NAME,
+                   'status': 'available',
+                   'provider_location': None,
+                   'volume_size': 1}
+
+        updates.update(kwargs)
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context, **updates)
+        volume = self._simple_volume()
+        snapshot.volume = volume
+
+        return snapshot
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
                        return_value=VOLUME)
@@ -1388,8 +1412,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                              mock_open_connection,
                              mock_init):
         provider_id = self.VOLUME[u'instanceId']
-        snapshot = {'volume_id': fake.VOLUME_ID,
-                    'id': fake.SNAPSHOT_ID}
+        snapshot = self._simple_snapshot()
         expected = {'status': 'available',
                     'provider_id': provider_id}
         ret = self.driver.create_snapshot(snapshot)
@@ -1407,8 +1430,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                        mock_close_connection,
                                        mock_open_connection,
                                        mock_init):
-        snapshot = {'volume_id': fake.VOLUME_ID,
-                    'id': fake.SNAPSHOT_ID}
+        snapshot = self._simple_snapshot()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot,
                           snapshot)
@@ -1425,8 +1447,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                      mock_close_connection,
                                      mock_open_connection,
                                      mock_init):
-        snapshot = {'volume_id': fake.VOLUME_ID,
-                    'id': fake.SNAPSHOT_ID}
+        snapshot = self._simple_snapshot()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot,
                           snapshot)
