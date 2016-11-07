@@ -1062,7 +1062,7 @@ class BackupCephTestCase(test.TestCase):
         self.assertFalse(mock_meta_backup.set.called)
 
     @common_mocks
-    def test_backup_metata_error(self):
+    def test_backup_metadata_error(self):
         """Ensure that delete() is called if the metadata backup fails.
 
         Also ensure that the exception is propagated to the caller.
