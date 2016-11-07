@@ -4034,8 +4034,11 @@ class VolumeManager(manager.CleanableManager,
         except exception.InvalidReplicationTarget:
             LOG.exception(_LE("Invalid replication target specified "
                               "for failover"))
-            # Preserve the replication_status
-            if secondary_backend_id == "default":
+            # Preserve the replication_status: Status should be failed over if
+            # we were failing back or if we were failing over from one
+            # secondary to another secondary. In both cases active_backend_id
+            # will be set.
+            if service.active_backend_id:
                 service.replication_status = (
                     fields.ReplicationStatus.FAILED_OVER)
             else:

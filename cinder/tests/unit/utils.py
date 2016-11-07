@@ -375,6 +375,16 @@ def create_qos(ctxt, testcase_instance=None, **kwargs):
     return qos
 
 
+def create_service(ctxt, binary='cinder-volume', host='host@backend',
+                   topic='topic', disabled=False, availability_zone='cinder',
+                   **kwargs):
+    kwargs.update(binary=binary, host=host, topic=topic, disabled=disabled,
+                  availability_zone=availability_zone)
+    svc = objects.Service(ctxt, **kwargs)
+    svc.create()
+    return svc
+
+
 class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
     def start(self, interval, **kwargs):
         kwargs['initial_delay'] = 0
