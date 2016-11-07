@@ -16,6 +16,7 @@
 
 import datetime
 
+import ddt
 from iso8601 import iso8601
 import mock
 import webob.exc
@@ -192,6 +193,7 @@ def fake_utcnow(with_timezone=False):
     return datetime.datetime(2012, 10, 29, 13, 42, 11, tzinfo=tzinfo)
 
 
+@ddt.ddt
 @mock.patch('cinder.db.service_get_all', fake_service_get_all)
 @mock.patch('cinder.db.service_get', fake_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
@@ -748,3 +750,45 @@ class ServicesTest(test.TestCase):
         self.assertTrue(self.controller._is_valid_as_reason(reason))
         reason = None
         self.assertFalse(self.controller._is_valid_as_reason(reason))
+
+    def test_services_failover_host(self):
+        url = '/v2/%s/os-services/failover_host' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
+        body = {'host': mock.sentinel.host,
+                'backend_id': mock.sentinel.backend_id}
+        with mock.patch.object(self.controller.volume_api, 'failover_host') \
+                as failover_mock:
+            res = self.controller.update(req, 'failover_host', body)
+        failover_mock.assert_called_once_with(req.environ['cinder.context'],
+                                              mock.sentinel.host,
+                                              mock.sentinel.backend_id)
+        self.assertEqual(202, res.status_code)
+
+    def test_services_freeze(self):
+        url = '/v2/%s/os-services/freeze' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
+        body = {'host': mock.sentinel.host}
+        with mock.patch.object(self.controller.volume_api, 'freeze_host') \
+                as freeze_mock:
+            res = self.controller.update(req, 'freeze', body)
+        freeze_mock.assert_called_once_with(req.environ['cinder.context'],
+                                            mock.sentinel.host)
+        self.assertEqual(freeze_mock.return_value, res)
+
+    def test_services_thaw(self):
+        url = '/v2/%s/os-services/thaw' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
+        body = {'host': mock.sentinel.host}
+        with mock.patch.object(self.controller.volume_api, 'thaw_host') \
+                as thaw_mock:
+            res = self.controller.update(req, 'thaw', body)
+        thaw_mock.assert_called_once_with(req.environ['cinder.context'],
+                                          mock.sentinel.host)
+        self.assertEqual(thaw_mock.return_value, res)
+
+    @ddt.data('freeze', 'thaw', 'failover_host')
+    def test_services_replication_calls_no_host(self, method):
+        url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
+        req = fakes.HTTPRequest.blank(url)
+        self.assertRaises(exception.MissingRequired,
+                          self.controller.update, req, method, {})

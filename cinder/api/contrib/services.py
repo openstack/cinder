@@ -119,6 +119,12 @@ class ServiceController(wsgi.Controller):
     def _failover(self, context, host, backend_id=None):
         return self.volume_api.failover_host(context, host, backend_id)
 
+    def _get_host(self, body):
+        try:
+            return body['host']
+        except (TypeError, KeyError):
+            raise exception.MissingRequired(element='host')
+
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.
 
@@ -142,23 +148,20 @@ class ServiceController(wsgi.Controller):
             disabled = True
             status = "disabled"
         elif id == "freeze":
-            return self._freeze(context, body['host'])
+            return self._freeze(context, self._get_host(body))
         elif id == "thaw":
-            return self._thaw(context, body['host'])
+            return self._thaw(context, self._get_host(body))
         elif id == "failover_host":
             self._failover(
                 context,
-                body['host'],
+                self._get_host(body),
                 body.get('backend_id', None)
             )
             return webob.Response(status_int=202)
         else:
             raise exception.InvalidInput(reason=_("Unknown action"))
 
-        try:
-            host = body['host']
-        except (TypeError, KeyError):
-            raise exception.MissingRequired(element='host')
+        host = self._get_host(body)
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:
