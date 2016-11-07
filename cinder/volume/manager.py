@@ -184,6 +184,8 @@ class VolumeManager(manager.CleanableManager,
 
     RPC_API_VERSION = volume_rpcapi.VolumeAPI.RPC_API_VERSION
 
+    FAILBACK_SENTINEL = 'default'
+
     target = messaging.Target(version=RPC_API_VERSION)
 
     # On cloning a volume, we shouldn't copy volume_type, consistencygroup
@@ -3660,7 +3662,7 @@ class VolumeManager(manager.CleanableManager,
 
         Instructs a replication capable/configured backend to failover
         to one of it's secondary replication targets. host=None is
-        an acceptable input, and leaves it to the driver to failover
+        an acceetable input, and leaves it to the driver to failover
         to the only configured target, or to choose a target on it's
         own. All of the hosts volumes will be passed on to the driver
         in order for it to determine the replicated volumes on the host,
@@ -3675,9 +3677,32 @@ class VolumeManager(manager.CleanableManager,
         svc_host = vol_utils.extract_host(self.host, 'backend')
         service = objects.Service.get_by_args(context, svc_host,
                                               constants.VOLUME_BINARY)
+
+        # TODO(geguileo): We should optimize these updates by doing them
+        # directly on the DB with just 3 queries, one to change the volumes
+        # another to change all the snapshots, and another to get replicated
+        # volumes.
+
+        # Change non replicated volumes and their snapshots to error if we are
+        # failing over, leave them as they are for failback
         volumes = self._get_my_volumes(context)
 
-        exception_encountered = True
+        replicated_vols = []
+        for volume in volumes:
+            if volume.replication_status not in (repl_status.DISABLED,
+                                                 repl_status.NOT_CAPABLE):
+                replicated_vols.append(volume)
+            elif secondary_backend_id != self.FAILBACK_SENTINEL:
+                volume.previous_status = volume.status
+                volume.status = 'error'
+                volume.replication_status = repl_status.NOT_CAPABLE
+                volume.save()
+
+                for snapshot in volume.snapshots:
+                    snapshot.status = 'error'
+                    snapshot.save()
+
+        volume_update_list = None
         try:
             # For non clustered we can call v2.1 failover_host, but for
             # clustered we call a/a failover method.  We know a/a method
@@ -3688,40 +3713,46 @@ class VolumeManager(manager.CleanableManager,
             # expected form of volume_update_list:
             # [{volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}},
             #  {volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}}]
+
             active_backend_id, volume_update_list = failover(
                 context,
-                volumes,
+                replicated_vols,
                 secondary_id=secondary_backend_id)
-            exception_encountered = False
-        except exception.UnableToFailOver:
-            LOG.exception("Failed to perform replication failover")
-            updates['replication_status'] = repl_status.FAILOVER_ERROR
-        except exception.InvalidReplicationTarget:
-            LOG.exception("Invalid replication target specified "
-                          "for failover")
-            # Preserve the replication_status: Status should be failed over if
-            # we were failing back or if we were failing over from one
-            # secondary to another secondary. In both cases active_backend_id
-            # will be set.
-            if service.active_backend_id:
-                updates['replication_status'] = repl_status.FAILED_OVER
-            else:
-                updates['replication_status'] = repl_status.ENABLED
-        except exception.VolumeDriverException:
+            try:
+                update_data = {u['volume_id']: u['updates']
+                               for u in volume_update_list}
+            except KeyError:
+                msg = "Update list, doesn't include volume_id"
+                raise exception.ProgrammingError(reason=msg)
+        except Exception as exc:
             # NOTE(jdg): Drivers need to be aware if they fail during
             # a failover sequence, we're expecting them to cleanup
             # and make sure the driver state is such that the original
             # backend is still set as primary as per driver memory
-            LOG.error("Driver reported error during "
-                      "replication failover.")
-            updates.update(disabled=True,
-                           replication_status=repl_status.FAILOVER_ERROR)
-        if exception_encountered:
-            LOG.error(
-                "Error encountered during failover on host: "
-                "%(host)s invalid target ID %(backend_id)s",
-                {'host': self.host, 'backend_id':
-                 secondary_backend_id})
+
+            # We don't want to log the exception trace invalid replication
+            # target
+            if isinstance(exc, exception.InvalidReplicationTarget):
+                log_method = LOG.error
+                # Preserve the replication_status: Status should be failed over
+                # if we were failing back or if we were failing over from one
+                # secondary to another secondary. In both cases
+                # active_backend_id will be set.
+                if service.active_backend_id:
+                    updates['replication_status'] = repl_status.FAILED_OVER
+                else:
+                    updates['replication_status'] = repl_status.ENABLED
+            else:
+                log_method = LOG.exception
+                updates.update(disabled=True,
+                               replication_status=repl_status.FAILOVER_ERROR)
+
+            log_method("Error encountered during failover on host: %(host)s "
+                       "to %(backend_id)s: %(error)s",
+                       {'host': self.host, 'backend_id': secondary_backend_id,
+                        'error': exc})
+            # We dump the update list for manual recovery
+            LOG.error('Failed update_list is: %s', volume_update_list)
             self.finish_failover(context, service, updates)
             return
 
@@ -3738,19 +3769,24 @@ class VolumeManager(manager.CleanableManager,
 
         self.finish_failover(context, service, updates)
 
-        for update in volume_update_list:
-            # Response must include an id key: {volume_id: <cinder-uuid>}
-            if not update.get('volume_id'):
-                raise exception.UnableToFailOver(
-                    reason=_("Update list, doesn't include volume_id"))
-            # Key things to consider (attaching failed-over volumes):
-            #  provider_location
-            #  provider_auth
-            #  provider_id
-            #  replication_status
-            vobj = objects.Volume.get_by_id(context, update['volume_id'])
-            vobj.update(update.get('updates', {}))
-            vobj.save()
+        for volume in replicated_vols:
+            update = update_data.get(volume.id, {})
+            if update.get('status', '') == 'error':
+                update['replication_status'] = repl_status.FAILOVER_ERROR
+            elif update.get('replication_status') in (None,
+                                                      repl_status.FAILED_OVER):
+                update['replication_status'] = updates['replication_status']
+
+            if update['replication_status'] == repl_status.FAILOVER_ERROR:
+                update.setdefault('status', 'error')
+                # Set all volume snapshots to error
+                for snapshot in volume.snapshots:
+                    snapshot.status = 'error'
+                    snapshot.save()
+            if 'status' in update:
+                update['previous_status'] = volume.status
+            volume.update(update)
+            volume.save()
 
         LOG.info("Failed over to replication target successfully.")
 

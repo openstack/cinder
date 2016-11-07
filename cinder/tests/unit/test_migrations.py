@@ -1176,6 +1176,68 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
 
         self.assertSetEqual(set(), non_indexed_foreign_keys)
 
+    def _pre_upgrade_101(self, engine):
+        """Add data to test the SQL migration."""
+        types_table = db_utils.get_table(engine, 'volume_types')
+        for i in range(1, 5):
+            types_table.insert().execute({'id': str(i)})
+
+        specs_table = db_utils.get_table(engine, 'volume_type_extra_specs')
+        specs = [
+            {'volume_type_id': '1', 'key': 'key', 'value': '<is> False'},
+            {'volume_type_id': '2', 'key': 'replication_enabled',
+             'value': '<is> False'},
+            {'volume_type_id': '3', 'key': 'replication_enabled',
+             'value': '<is> True', 'deleted': True},
+            {'volume_type_id': '3', 'key': 'key', 'value': '<is> True'},
+            {'volume_type_id': '4', 'key': 'replication_enabled',
+             'value': '<is> True'},
+            {'volume_type_id': '4', 'key': 'key', 'value': '<is> True'},
+        ]
+        for spec in specs:
+            specs_table.insert().execute(spec)
+
+        volumes_table = db_utils.get_table(engine, 'volumes')
+        volumes = [
+            {'id': '1', 'replication_status': 'disabled',
+             'volume_type_id': None},
+            {'id': '2', 'replication_status': 'disabled',
+             'volume_type_id': ''},
+            {'id': '3', 'replication_status': 'disabled',
+             'volume_type_id': '1'},
+            {'id': '4', 'replication_status': 'disabled',
+             'volume_type_id': '2'},
+            {'id': '5', 'replication_status': 'disabled',
+             'volume_type_id': '2'},
+            {'id': '6', 'replication_status': 'disabled',
+             'volume_type_id': '3'},
+            {'id': '7', 'replication_status': 'error', 'volume_type_id': '4'},
+            {'id': '8', 'deleted': True, 'replication_status': 'disabled',
+             'volume_type_id': '4'},
+            {'id': '9', 'replication_status': 'disabled', 'deleted': None,
+             'volume_type_id': '4'},
+            {'id': '10', 'replication_status': 'disabled', 'deleted': False,
+             'volume_type_id': '4'},
+        ]
+        for volume in volumes:
+            volumes_table.insert().execute(volume)
+
+        # Only the last volume should be changed to enabled
+        expected = {v['id']: v['replication_status'] for v in volumes}
+        expected['9'] = 'enabled'
+        expected['10'] = 'enabled'
+        return expected
+
+    def _check_101(self, engine, data):
+        # Get existing volumes after the migration
+        volumes_table = db_utils.get_table(engine, 'volumes')
+        volumes = volumes_table.select().execute()
+        # Check that the replication_status is the one we expect according to
+        # _pre_upgrade_098
+        for volume in volumes:
+            self.assertEqual(data[volume.id], volume.replication_status,
+                             'id %s' % volume.id)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

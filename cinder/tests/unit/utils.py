@@ -18,6 +18,7 @@ import socket
 import sys
 import uuid
 
+import mock
 from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import timeutils
@@ -38,6 +39,19 @@ def get_test_admin_context():
     return context.get_admin_context()
 
 
+def obj_attr_is_set(obj_class):
+    """Method to allow setting the ID on an OVO on creation."""
+    original_method = obj_class.obj_attr_is_set
+
+    def wrapped(self, attr):
+        if attr == 'id' and not hasattr(self, 'id_first_call'):
+            self.id_first_call = False
+            return False
+        else:
+            original_method(self, attr)
+    return wrapped
+
+
 def create_volume(ctxt,
                   host='test_host',
                   display_name='test_volume',
@@ -54,6 +68,7 @@ def create_volume(ctxt,
                   group_id=None,
                   previous_status=None,
                   testcase_instance=None,
+                  id=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -85,8 +100,14 @@ def create_volume(ctxt,
     if previous_status:
         vol['previous_status'] = previous_status
 
-    volume = objects.Volume(ctxt, **vol)
-    volume.create()
+    if id:
+        with mock.patch('cinder.objects.Volume.obj_attr_is_set',
+                        obj_attr_is_set(objects.Volume)):
+            volume = objects.Volume(ctxt, id=id, **vol)
+            volume.create()
+    else:
+        volume = objects.Volume(ctxt, **vol)
+        volume.create()
 
     # If we get a TestCase instance we add cleanup
     if testcase_instance:
@@ -118,6 +139,7 @@ def create_snapshot(ctxt,
                     cgsnapshot_id = None,
                     status=fields.SnapshotStatus.CREATING,
                     testcase_instance=None,
+                    id=None,
                     **kwargs):
     vol = db.volume_get(ctxt, volume_id)
     snap = objects.Snapshot(ctxt)
@@ -129,7 +151,15 @@ def create_snapshot(ctxt,
     snap.display_name = display_name
     snap.display_description = display_description
     snap.cgsnapshot_id = cgsnapshot_id
-    snap.create()
+
+    if id:
+        with mock.patch('cinder.objects.Snapshot.obj_attr_is_set',
+                        obj_attr_is_set(objects.Snapshot)):
+            snap.id = id
+            snap.create()
+    else:
+        snap.create()
+
     # We do the update after creating the snapshot in case we want to set
     # deleted field
     snap.update(kwargs)
