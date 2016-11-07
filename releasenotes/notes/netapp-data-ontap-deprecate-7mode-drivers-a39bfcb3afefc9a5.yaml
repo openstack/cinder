@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The 7-Mode Data ONTAP configuration of the NetApp Unified driver is
+    deprecated as of the Ocata release and will be removed in the Queens
+    release. Other configurations of the NetApp Unified driver, including
+    Clustered Data ONTAP and E-series, are unaffected.
