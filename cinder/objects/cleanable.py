@@ -159,6 +159,10 @@ class CinderCleanableObject(base.CinderPersistentObject):
                               service_id=self.worker.service_id)
             self.worker = None
 
+    # NOTE(geguileo): To be compatible with decorate v3.4.x and v4.0.x
+    decorate = staticmethod(getattr(decorator, 'decorate',
+                            lambda f, w: decorator.decorator(w, f)))
+
     @staticmethod
     def set_workers(*decorator_args):
         """Decorator that adds worker DB rows for cleanable versioned  objects.
@@ -200,7 +204,7 @@ class CinderCleanableObject(base.CinderPersistentObject):
                             except Exception:
                                 pass
                 return result
-            return decorator.decorate(f, wrapper)
+            return CinderCleanableObject.decorate(f, wrapper)
 
         # If we don't have optional decorator arguments the argument in
         # decorator_args is the function we have to decorate

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+
 import mock
 
 from cinder import context
@@ -285,3 +287,89 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
                         id=mock.sentinel.id)
         backup.unset_worker()
         self.assertFalse(destroy_mock.called)
+
+    @mock.patch('cinder.db.worker_update', autospec=True)
+    @mock.patch('cinder.db.worker_get', autospec=True)
+    def test_set_workers_no_arguments(self, mock_get, mock_update):
+        """Test set workers decorator without arguments."""
+        @Backup.set_workers
+        def my_function(arg1, arg2, kwarg1=None, kwarg2=True):
+            return arg1, arg2, kwarg1, kwarg2
+
+        # Decorator with no args must preserve the method's signature
+        self.assertEqual('my_function', my_function.__name__)
+        call_args = inspect.getcallargs(
+            my_function, mock.sentinel.arg1, mock.sentinel.arg2,
+            mock.sentinel.kwargs1, kwarg2=mock.sentinel.kwarg2)
+        expected = {'arg1': mock.sentinel.arg1,
+                    'arg2': mock.sentinel.arg2,
+                    'kwarg1': mock.sentinel.kwargs1,
+                    'kwarg2': mock.sentinel.kwarg2}
+        self.assertDictEqual(expected, call_args)
+
+        service.Service.service_id = mock.sentinel.service_id
+        mock_get.return_value.cleaning = False
+        backup = Backup(_context=self.context, status='cleanable',
+                        id=mock.sentinel.id)
+        backup2 = Backup(_context=self.context, status='non-cleanable',
+                         id=mock.sentinel.id2)
+
+        res = my_function(backup, backup2)
+        self.assertEqual((backup, backup2, None, True), res)
+
+        mock_get.assert_called_once_with(self.context, resource_type='Backup',
+                                         resource_id=mock.sentinel.id)
+        worker = mock_get.return_value
+        mock_update.assert_called_once_with(
+            self.context, worker.id,
+            filters={'service_id': worker.service_id,
+                     'status': worker.status,
+                     'updated_at': worker.updated_at},
+            service_id=mock.sentinel.service_id,
+            status='cleanable',
+            orm_worker=worker)
+        self.assertEqual(worker, backup.worker)
+
+    @mock.patch('cinder.db.worker_update', autospec=True)
+    @mock.patch('cinder.db.worker_get', autospec=True)
+    def test_set_workers_with_arguments(self, mock_get, mock_update):
+        """Test set workers decorator with an argument."""
+        @Backup.set_workers('arg2', 'kwarg1')
+        def my_function(arg1, arg2, kwarg1=None, kwarg2=True):
+            return arg1, arg2, kwarg1, kwarg2
+
+        # Decorator with args must preserve the method's signature
+        self.assertEqual('my_function', my_function.__name__)
+        call_args = inspect.getcallargs(
+            my_function, mock.sentinel.arg1, mock.sentinel.arg2,
+            mock.sentinel.kwargs1, kwarg2=mock.sentinel.kwarg2)
+        expected = {'arg1': mock.sentinel.arg1,
+                    'arg2': mock.sentinel.arg2,
+                    'kwarg1': mock.sentinel.kwargs1,
+                    'kwarg2': mock.sentinel.kwarg2}
+        self.assertDictEqual(expected, call_args)
+
+        service.Service.service_id = mock.sentinel.service_id
+        mock_get.return_value.cleaning = False
+        backup = Backup(_context=self.context, status='cleanable',
+                        id=mock.sentinel.id)
+        backup2 = Backup(_context=self.context, status='non-cleanable',
+                         id=mock.sentinel.id2)
+        backup3 = Backup(_context=self.context, status='cleanable',
+                         id=mock.sentinel.id3)
+
+        res = my_function(backup, backup2, backup3)
+        self.assertEqual((backup, backup2, backup3, True), res)
+
+        mock_get.assert_called_once_with(self.context, resource_type='Backup',
+                                         resource_id=mock.sentinel.id3)
+        worker = mock_get.return_value
+        mock_update.assert_called_once_with(
+            self.context, worker.id,
+            filters={'service_id': worker.service_id,
+                     'status': worker.status,
+                     'updated_at': worker.updated_at},
+            service_id=mock.sentinel.service_id,
+            status='cleanable',
+            orm_worker=worker)
+        self.assertEqual(worker, backup3.worker)
