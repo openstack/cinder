@@ -679,6 +679,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         if refresh:
             self._update_volume_stats()
 
+        # Take this opportunity to report our failover state.
+        if self.failed_over:
+            LOG.debug('%(source)s has been failed over to %(dest)s',
+                      {'source': self.backend_name,
+                       'dest': self.active_backend_id})
         return self._stats
 
     def _update_volume_stats(self):
