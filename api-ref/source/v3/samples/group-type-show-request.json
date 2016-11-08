@@ -1,0 +1,9 @@
+{
+    "group_type": {
+        "id": "289da7f8-6440-407c-9fb4-7db01ec49164",
+        "name": "grp-type-001",
+        "group_specs": {
+            "consistent_group_snapshot_enabled": "<is> False"
+        }
+    }
+}

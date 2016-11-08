@@ -1,0 +1,7 @@
+{
+    "group_type": {
+        "name": "grp-type-001",
+        "description": "group type 0001",
+        "is_public": true,
+    }
+}

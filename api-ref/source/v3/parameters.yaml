@@ -38,6 +38,24 @@ force_3:
   in: path
   required: false
   type: boolean
+group_id:
+  description: |
+    The ID of the group.
+  in: path
+  required: false
+  type: string
+group_snapshot_id:
+  description: |
+    The ID of the group snapshot.
+  in: path
+  required: false
+  type: string
+group_type_id:
+  description: |
+    The UUID for an existing group type.
+  in: path
+  required: false
+  type: string
 hostname:
   description: |
     The name of the host that hosts the storage back
@@ -227,7 +245,7 @@ absolute:
 add_volumes:
   description: |
     One or more volume UUIDs, separated by commas, to
-    add to the volume consistency group.
+    add to the volume group or consistency group.
   in: body
   required: false
   type: string
@@ -398,6 +416,13 @@ created_at_1:
   in: body
   required: true
   type: string
+delete-volumes:
+  description: |
+    If set to ``true``, allows deletion of a
+    group as well as all volumes in the group.
+  in: body
+  required: false
+  type: boolean
 description:
   description: |
     The backup description or null.
@@ -419,6 +444,24 @@ description_10:
 description_11:
   description: |
     The consistency group description.
+  in: body
+  required: false
+  type: string
+description_12:
+  description: |
+    The group type description.
+  in: body
+  required: false
+  type: string
+description_13:
+  description: |
+    The group description.
+  in: body
+  required: false
+  type: string
+description_14:
+  description: |
+    The group snapshot description.
   in: body
   required: false
   type: string
@@ -550,6 +593,37 @@ free_capacity:
   in: body
   required: true
   type: string
+group_id_1:
+  description: |
+    The ID of the group.
+  in: body
+  required: false
+  type: string
+group_snapshot_id_1:
+  description: |
+    The ID of the group snapshot.
+  in: body
+  required: false
+  type: string
+group_specs:
+  description: |
+    A set of key and value pairs that contains the
+    specifications for a group type.
+  in: body
+  required: false
+  type: object
+group_type:
+  description: |
+    A ``group_type`` object.
+  in: body
+  required: true
+  type: object
+group_types:
+  description: |
+    The list of group types.
+  in: body
+  required: true
+  type: array
 has_dependent_backups:
   description: |
     If this value is ``true``, the backup depends on
@@ -685,6 +759,12 @@ is_incremental:
 is_public:
   description:
     Volume type which is accessible to the public.
+  in: body
+  required: false
+  type: boolean
+is_public_1:
+  description:
+    Group type which is accessible to the public.
   in: body
   required: false
   type: boolean
@@ -925,6 +1005,24 @@ name_14:
 name_15:
   description: |
     The consistency group name.
+  in: body
+  required: false
+  type: string
+name_16:
+  description: |
+    The group type name.
+  in: body
+  required: false
+  type: string
+name_17:
+  description: |
+    The group name.
+  in: body
+  required: false
+  type: string
+name_18:
+  description: |
+    The group snapshot name.
   in: body
   required: false
   type: string
@@ -1200,7 +1298,7 @@ ref_1:
 remove_volumes:
   description: |
     One or more volume UUIDs, separated by commas, to
-    remove from the volume consistency group.
+    remove from the volume group or consistency group.
   in: body
   required: false
   type: string
@@ -1294,6 +1392,12 @@ snapshot_id_3:
 source_cgid:
   description: |
     The UUID of the source consistency group.
+  in: body
+  required: false
+  type: string
+source_group_id:
+  description: |
+    The UUID of the source group.
   in: body
   required: false
   type: string
