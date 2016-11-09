@@ -46,7 +46,7 @@ i18n.enable_lazy()
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder.db import api as session
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LE
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -109,15 +109,9 @@ def main():
                 launcher.launch_service(server)
                 service_started = True
     else:
-        LOG.warning(_LW('Configuration for cinder-volume does not specify '
-                        '"enabled_backends", using DEFAULT as backend. '
-                        'Support for DEFAULT section to configure drivers '
-                        'will be removed in the next release.'))
-        server = service.Service.create(binary='cinder-volume',
-                                        coordination=True,
-                                        cluster=CONF.cluster)
-        launcher.launch_service(server)
-        service_started = True
+        LOG.error(_LE('Configuration for cinder-volume does not specify '
+                      '"enabled_backends". Using DEFAULT section to configure '
+                      'drivers is not supported since Ocata.'))
 
     if not service_started:
         msg = _('No volume service(s) started successfully, terminating.')
