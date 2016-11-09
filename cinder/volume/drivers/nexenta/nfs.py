@@ -26,7 +26,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import interface
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
@@ -36,7 +35,6 @@ VERSION = '1.3.1'
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
 class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 

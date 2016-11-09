@@ -20,7 +20,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
-from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
@@ -33,7 +32,6 @@ LOG = logging.getLogger(__name__)
 TARGET_GROUP_PREFIX = 'cinder-tg-'
 
 
-@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver,
                          zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.

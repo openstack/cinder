@@ -19,7 +19,6 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -29,7 +28,6 @@ VERSION = '1.3.1'
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
