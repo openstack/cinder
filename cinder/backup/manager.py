@@ -78,14 +78,14 @@ CONF.import_opt('num_volume_device_scan_tries', 'cinder.volume.driver')
 QUOTAS = quota.QUOTAS
 
 
-class BackupManager(manager.SchedulerDependentManager):
+class BackupManager(manager.ThreadPoolManager):
     """Manages backup of block storage devices."""
 
     RPC_API_VERSION = backup_rpcapi.BackupAPI.RPC_API_VERSION
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self, service_name=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.service = importutils.import_module(self.driver_name)
         self.az = CONF.storage_availability_zone
         self.volume_managers = {}
@@ -99,8 +99,7 @@ class BackupManager(manager.SchedulerDependentManager):
             self._setup_volume_drivers()
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
-        super(BackupManager, self).__init__(service_name='backup',
-                                            *args, **kwargs)
+        super(BackupManager, self).__init__(*args, **kwargs)
 
     def _get_volume_backend(self, host=None, allow_null_host=False):
         if host is None:

@@ -291,7 +291,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertTrue(self.volume_mocks['detach_volume'].called)
 
     @mock.patch('cinder.objects.backup.BackupList.get_all_by_host')
-    @mock.patch('cinder.manager.SchedulerDependentManager._add_to_threadpool')
+    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
     def test_init_host_with_service_inithost_offload(self,
                                                      mock_add_threadpool,
                                                      mock_get_all_by_host):

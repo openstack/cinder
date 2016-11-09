@@ -85,7 +85,7 @@ class Manager(base.Base, PeriodicTasks):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self, host=None, db_driver=None, cluster=None):
+    def __init__(self, host=None, db_driver=None, cluster=None, **kwargs):
         if not host:
             host = CONF.host
         self.host = host
@@ -145,7 +145,16 @@ class Manager(base.Base, PeriodicTasks):
         rpc.LAST_RPC_VERSIONS = {}
 
 
-class SchedulerDependentManager(Manager):
+class ThreadPoolManager(Manager):
+    def __init__(self, *args, **kwargs):
+        self._tp = greenpool.GreenPool()
+        super(ThreadPoolManager, self).__init__(*args, **kwargs)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
+
+
+class SchedulerDependentManager(ThreadPoolManager):
     """Periodically send capability updates to the Scheduler services.
 
     Services that need to update the Scheduler of their capabilities
@@ -160,7 +169,6 @@ class SchedulerDependentManager(Manager):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
-        self._tp = greenpool.GreenPool()
         super(SchedulerDependentManager, self).__init__(host, db_driver,
                                                         cluster=cluster)
 
@@ -193,9 +201,6 @@ class SchedulerDependentManager(Manager):
                           "capabilities for host %(host)s. This is normal "
                           "during a live upgrade. Error: %(e)s")
                 LOG.warning(msg, {'host': self.host, 'e': e})
-
-    def _add_to_threadpool(self, func, *args, **kwargs):
-        self._tp.spawn_n(func, *args, **kwargs)
 
     def reset(self):
         super(SchedulerDependentManager, self).reset()
