@@ -254,3 +254,31 @@ Request Example
 
 .. literalinclude:: ./samples/group-update-request.json
    :language: javascript
+
+
+Reset group status
+~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/groups/{group_id}/action
+
+Resets the status for a group. Specify the ``reset_status`` action in the request body.
+
+Normal response codes: 202
+Error response codes: badRequest(400), itemNotFound(404)
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - reset_status: reset_status
+   - status: status
+   - project_id: project_id
+   - group_id: group_id
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/group-reset-status-request.json
+   :language: javascript
