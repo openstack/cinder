@@ -117,10 +117,10 @@ class VolumeAPI(rpc.RPCAPI):
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
 
-    def _get_cctxt(self, host=None, **kwargs):
+    def _get_cctxt(self, host=None, version=None, **kwargs):
         if host is not None:
             kwargs['server'] = utils.get_volume_rpc_host(host)
-        return super(VolumeAPI, self)._get_cctxt(**kwargs)
+        return super(VolumeAPI, self)._get_cctxt(version, **kwargs)
 
     def create_consistencygroup(self, ctxt, group, host):
         cctxt = self._get_cctxt(host)
