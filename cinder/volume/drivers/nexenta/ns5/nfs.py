@@ -23,7 +23,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import interface
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
 from cinder.volume.drivers.nexenta import options
@@ -34,7 +33,6 @@ VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
 class NexentaNfsDriver(nfs.NfsDriver,
                        zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.
@@ -74,7 +72,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
-        self.nef_host = self.configuration.nas_host
+        self.nef_host = self.configuration.nas_ip
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user

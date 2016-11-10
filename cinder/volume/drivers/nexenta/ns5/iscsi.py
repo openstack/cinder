@@ -20,7 +20,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
-from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
@@ -33,7 +32,6 @@ LOG = logging.getLogger(__name__)
 TARGET_GROUP_PREFIX = 'cinder-tg-'
 
 
-@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver,
                          zfs_garbage_collector.ZFSGarbageCollectorMixIn):
     """Executes volume driver commands on Nexenta Appliance.
@@ -104,7 +102,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         try:
             self.nef.post(url, data)
         except exception.NexentaException as e:
-            if 'EEXIST' in e.args[0]:
+            if 'EEXIST' in e.args[0]['code']:
                 LOG.debug('volumeGroup already exists, skipping')
             else:
                 raise
@@ -453,7 +451,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 self.nef.post(url, data)
                 self.volumes[tg_name].add(volume_path)
             except exception.NexentaException as e:
-                if 'No such target group' in e.args[0]:
+                if 'No such target group' in e.args[0]['message']:
                     self._create_target_group(tg_name, target_name)
                     self._fill_volumes(tg_name)
                     self.nef.post(url, data)
