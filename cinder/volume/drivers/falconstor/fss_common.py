@@ -28,7 +28,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.image import image_utils
 from cinder.volume.drivers.falconstor import rest_proxy
 from cinder.volume.drivers.san import san
 
@@ -390,14 +389,3 @@ class FalconstorBaseDriver(san.SanDriver):
     def unmanage(self, volume):
         """Remove Cinder management from FSS volume"""
         self.proxy.unmanage(volume)
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        with image_utils.temporary_file() as tmp:
-            image_utils.fetch_verify_image(context, image_service,
-                                           image_id, tmp)
-        image_utils.fetch_to_raw(context,
-                                 image_service,
-                                 image_id,
-                                 tmp,
-                                 self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
