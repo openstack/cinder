@@ -4003,3 +4003,20 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         ret = self.driver._get_qos(12345)
         self.assertEqual('cinderqos', ret)
         self.driver.backends = backends
+
+    def test_thaw_backend(self,
+                          mock_close_connection,
+                          mock_open_connection,
+                          mock_init):
+        self.driver.failed_over = False
+        ret = self.driver.thaw_backend(self._context)
+        self.assertTrue(ret)
+
+    def test_thaw_backend_failed_over(self,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        self.driver.failed_over = True
+        self.assertRaises(exception.Invalid,
+                          self.driver.thaw_backend,
+                          self._context)
