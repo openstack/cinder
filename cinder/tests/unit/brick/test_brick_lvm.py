@@ -140,6 +140,12 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-vg|/dev/sdb|10.00|1.00\n"
             data += "  fake-vg|/dev/sdc|10.00|8.99\n"
             data += "  fake-vg-2|/dev/sdd|10.00|9.99\n"
+            if '--ignoreskippedcluster' not in cmd_string:
+                raise processutils.ProcessExecutionError(
+                    stderr="Skipping clustered volume group",
+                    stdout=data,
+                    exit_code=5
+                )
         elif _lvm_prefix + 'lvs, --noheadings, --unit=g' \
                 ', -o, size,data_percent, --separator, :' in cmd_string:
             if 'test-prov-cap-pool' in cmd_string:
@@ -279,6 +285,21 @@ class BrickLvmTestCase(test.TestCase):
             self.assertFalse(self.vg.supports_lvchange_ignoreskipactivation)
 
         self.vg._supports_lvchange_ignoreskipactivation = None
+
+    def test_pvs_ignoreskippedcluster_support(self):
+        """Tests if lvm support ignoreskippedcluster option."""
+
+        self.vg._supports_pvs_ignoreskippedcluster = None
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_pretend_lvm_version):
+            self.assertTrue(self.vg.supports_pvs_ignoreskippedcluster)
+
+        self.vg._supports_pvs_ignoreskippedcluster = None
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_old_lvm_version):
+            self.assertFalse(self.vg.supports_pvs_ignoreskippedcluster)
+
+        self.vg._supports_pvs_ignoreskippedcluster = None
 
     def test_thin_pool_creation(self):
 
