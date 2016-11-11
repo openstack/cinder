@@ -22,3 +22,11 @@
    :platform: Unix
    :synopsis: Infrastructure-as-a-Service Cloud platform.
 """
+
+import os
+
+# Ensure compatibility issues are covered with pythondsn
+os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
+
+# Make sure eventlet is loaded
+import eventlet  # noqa
