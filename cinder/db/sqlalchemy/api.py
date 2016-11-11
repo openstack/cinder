@@ -2173,10 +2173,10 @@ def volume_update(context, volume_id, values):
                                           delete=True,
                                           session=session)
 
-        volume_ref = _volume_get(context, volume_id, session=session)
-        volume_ref.update(values)
-
-        return volume_ref
+        query = _volume_get_query(context, session, joined_load=False)
+        result = query.filter_by(id=volume_id).update(values)
+        if not result:
+            raise exception.VolumeNotFound(volume_id=volume_id)
 
 
 @handle_db_data_error

@@ -938,8 +938,8 @@ class BaseVD(object):
                 LOG.debug("Volume %s: creating export", volume['id'])
                 model_update = self.create_export(context, volume, properties)
                 if model_update:
-                    volume = self.db.volume_update(context, volume['id'],
-                                                   model_update)
+                    volume.update(model_update)
+                    volume.save()
             except exception.CinderException as ex:
                 if model_update:
                     LOG.exception(_LE("Failed updating model of volume "
