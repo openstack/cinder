@@ -474,9 +474,6 @@ class ServiceTestCase(test.TestCase):
 
 class TestWSGIService(test.TestCase):
 
-    def setUp(self):
-        super(TestWSGIService, self).setUp()
-
     @mock.patch('oslo_service.wsgi.Loader')
     def test_service_random_port(self, mock_loader):
         test_service = service.WSGIService("test_service")
