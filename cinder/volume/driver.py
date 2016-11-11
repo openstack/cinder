@@ -75,7 +75,7 @@ volume_opts = [
                      'running. Otherwise, it will fallback to single path.'),
     cfg.StrOpt('volume_clear',
                default='zero',
-               choices=['none', 'zero', 'shred'],
+               choices=['none', 'zero'],
                help='Method used to wipe old volumes'),
     cfg.IntOpt('volume_clear_size',
                default=0,
