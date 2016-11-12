@@ -149,6 +149,8 @@ MAPPING = {
     'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
     'cinder.volume.drivers.ibm.xiv_ds8k':
     'cinder.volume.drivers.ibm.ibm_storage',
+    'cinder.volume.drivers.emc.scaleio':
+    'cinder.volume.drivers.dell_emc.scaleio.driver',
 }
 
 

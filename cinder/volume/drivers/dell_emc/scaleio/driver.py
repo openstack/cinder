@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Driver for EMC ScaleIO based on ScaleIO remote CLI.
+Driver for Dell EMC ScaleIO based on ScaleIO remote CLI.
 """
 
 import base64
@@ -109,7 +109,7 @@ SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
 @interface.volumedriver
 class ScaleIODriver(driver.VolumeDriver):
-    """EMC ScaleIO Driver."""
+    """Dell EMC ScaleIO Driver."""
 
     VERSION = "2.0"
 
@@ -826,7 +826,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'scaleio'
-        stats['vendor_name'] = 'EMC'
+        stats['vendor_name'] = 'Dell EMC'
         stats['driver_version'] = self.VERSION
         stats['storage_protocol'] = 'scaleio'
         stats['reserved_percentage'] = 0
