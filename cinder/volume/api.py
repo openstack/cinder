@@ -771,6 +771,11 @@ class API(base.Base):
                               group_snapshot_id=None):
         check_policy(context, 'create_snapshot', volume)
 
+        if not volume.host:
+            msg = _("The snapshot cannot be created because volume has "
+                    "not been scheduled to any host.")
+            raise exception.InvalidVolume(reason=msg)
+
         if volume['status'] == 'maintenance':
             LOG.info(_LI('Unable to create the snapshot for volume, '
                          'because it is in maintenance.'), resource=volume)

@@ -108,7 +108,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
         snapshot = {"volume_id": fake.VOLUME_ID,
                     "force": force_param,
                     "display_name": "Snapshot Test Name",
@@ -128,7 +128,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
         snapshot = {"volume_id": fake.VOLUME_ID,
                     "force": force_param,
                     "display_name": "Snapshot Test Name",
@@ -145,7 +145,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
         snapshot = {"volume_id": fake.SNAPSHOT_ID,
                     "force": "**&&^^%%$$##@@",
                     "display_name": "Snapshot Test Name",

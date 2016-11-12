@@ -3097,6 +3097,19 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           'fake_description',
                           fake.CONSISTENCY_GROUP_ID)
 
+    def test_create_snapshot_failed_host_is_None(self):
+        """Test exception handling when create snapshot and host is None."""
+        test_volume = tests_utils.create_volume(
+            self.context,
+            host=None)
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create_snapshot,
+                          self.context,
+                          test_volume,
+                          'fake_name',
+                          'fake_description')
+
     def test_cannot_delete_volume_in_use(self):
         """Test volume can't be deleted in in-use status."""
         self._test_cannot_delete_volume('in-use')
