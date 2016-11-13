@@ -152,7 +152,11 @@ MAPPING = {
     'cinder.volume.drivers.emc.scaleio':
     'cinder.volume.drivers.dell_emc.scaleio.driver',
     'cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver':
-    'cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver'
+    'cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver',
+    'cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver':
+    'cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver',
+    'cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver':
+    'cinder.volume.drivers.dell_emc.xtremio.XtremIOFCDriver',
 }
 
 

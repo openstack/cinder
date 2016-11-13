@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Driver for EMC XtremIO Storage.
+Driver for Dell EMC XtremIO Storage.
 supported XtremIO version 2.4 and up
 
 .. code-block:: none
@@ -500,7 +500,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         free_physical = physical_space - used_physical_space
         actual_prov = int(sys["vol-size"]) / units.Mi
         self._stats = {'volume_backend_name': self.backend_name,
-                       'vendor_name': 'EMC',
+                       'vendor_name': 'Dell EMC',
                        'driver_version': self.VERSION,
                        'storage_protocol': self.protocol,
                        'total_capacity_gb': physical_space,
@@ -951,11 +951,11 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
 
 
 @interface.volumedriver
-class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
-                                driver.FibreChannelDriver):
+class XtremIOFCDriver(XtremIOVolumeDriver,
+                      driver.FibreChannelDriver):
 
     def __init__(self, *args, **kwargs):
-        super(XtremIOFibreChannelDriver, self).__init__(*args, **kwargs)
+        super(XtremIOFCDriver, self).__init__(*args, **kwargs)
         self.protocol = 'FC'
         self._targets = None
 
@@ -1030,7 +1030,7 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
 
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
-        (super(XtremIOFibreChannelDriver, self)
+        (super(XtremIOFCDriver, self)
          .terminate_connection(volume, connector, **kwargs))
         num_vols = (self.client
                     .num_of_mapped_volumes(self._get_ig_name(connector)))

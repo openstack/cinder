@@ -25,7 +25,7 @@ from cinder.tests.unit.consistencygroup import fake_consistencygroup as fake_cg
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.fake_volume import fake_volume_obj
-from cinder.volume.drivers.emc import xtremio
+from cinder.volume.drivers.dell_emc import xtremio
 
 
 typ2id = {'volumes': 'vol-id',
@@ -313,9 +313,9 @@ class CommonData(object):
     cgsnapshot.__getitem__ = cgsnap_getitem
 
 
-class BaseEMCXIODriverTestCase(test.TestCase):
+class BaseXtremIODriverTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
-        super(BaseEMCXIODriverTestCase, self).__init__(*args, **kwargs)
+        super(BaseXtremIODriverTestCase, self).__init__(*args, **kwargs)
         self.config = mock.Mock(san_login = '',
                                 san_password = '',
                                 san_ip = '',
@@ -332,7 +332,7 @@ class BaseEMCXIODriverTestCase(test.TestCase):
         self.config.safe_get = safe_get
 
     def setUp(self):
-        super(BaseEMCXIODriverTestCase, self).setUp()
+        super(BaseXtremIODriverTestCase, self).setUp()
         clean_xms_data()
 
         self.driver = xtremio.XtremIOISCSIDriver(configuration=self.config)
@@ -342,8 +342,8 @@ class BaseEMCXIODriverTestCase(test.TestCase):
         self.data = CommonData()
 
 
-@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
-class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
+@mock.patch('cinder.volume.drivers.dell_emc.xtremio.XtremIOClient.req')
+class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
     # ##### SetUp Check #####
     def test_check_for_setup_error(self, req):
         req.side_effect = xms_request
@@ -940,7 +940,7 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
 
 
 @mock.patch('requests.request')
-class EMCXIODriverTestCase(BaseEMCXIODriverTestCase):
+class XtremIODriverTestCase(BaseXtremIODriverTestCase):
     # ##### XMS Client #####
     @mock.patch.object(time, 'sleep', mock.Mock(return_value=0))
     def test_retry_request(self, req):
@@ -953,11 +953,11 @@ class EMCXIODriverTestCase(BaseEMCXIODriverTestCase):
         good_response = mock.MagicMock()
         good_response.status_code = 200
 
-        EMCXIODriverTestCase.req_count = 0
+        XtremIODriverTestCase.req_count = 0
 
         def busy_request(*args, **kwargs):
-            if EMCXIODriverTestCase.req_count < 1:
-                EMCXIODriverTestCase.req_count += 1
+            if XtremIODriverTestCase.req_count < 1:
+                XtremIODriverTestCase.req_count += 1
                 return busy_response
             return good_response
 
@@ -976,11 +976,11 @@ class EMCXIODriverTestCase(BaseEMCXIODriverTestCase):
         self.driver.client.req('volumes')
 
 
-@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
-class EMCXIODriverFibreChannelTestCase(BaseEMCXIODriverTestCase):
+@mock.patch('cinder.volume.drivers.dell_emc.xtremio.XtremIOClient.req')
+class XtremIODriverFCTestCase(BaseXtremIODriverTestCase):
     def setUp(self):
-        super(EMCXIODriverFibreChannelTestCase, self).setUp()
-        self.driver = xtremio.XtremIOFibreChannelDriver(
+        super(XtremIODriverFCTestCase, self).setUp()
+        self.driver = xtremio.XtremIOFCDriver(
             configuration=self.config)
 
 # ##### Connection FC#####
