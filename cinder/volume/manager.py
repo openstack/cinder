@@ -1262,7 +1262,7 @@ class VolumeManager(manager.CleanableManager,
         payload = {'volume_id': volume_id, 'image_id': image_meta['id']}
         image_service = None
         try:
-            volume = self.db.volume_get(context, volume_id)
+            volume = objects.Volume.get_by_id(context, volume_id)
 
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
