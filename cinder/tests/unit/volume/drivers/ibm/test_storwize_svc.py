@@ -573,47 +573,52 @@ port_speed!N/A
         else:
             ip_addr1 = '1.234.56.78'
             ip_addr2 = '1.234.56.79'
+            ip_addr3 = '1.234.56.80'
+            ip_addr4 = '1.234.56.81'
             gw = '1.234.56.1'
 
         rows = [None] * 17
         rows[0] = ['id', 'node_id', 'node_name', 'IP_address', 'mask',
                    'gateway', 'IP_address_6', 'prefix_6', 'gateway_6', 'MAC',
-                   'duplex', 'state', 'speed', 'failover']
+                   'duplex', 'state', 'speed', 'failover', 'link_state']
         rows[1] = ['1', '1', 'node1', ip_addr1, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:00', 'Full',
-                   'online', '1Gb/s', 'no']
+                   'online', '1Gb/s', 'no', 'active']
         rows[2] = ['1', '1', 'node1', '', '', '', '', '', '',
-                   '01:23:45:67:89:00', 'Full', 'online', '1Gb/s', 'yes']
-        rows[3] = ['2', '1', 'node1', '', '', '', '', '', '',
-                   '01:23:45:67:89:01', 'Full', 'unconfigured', '1Gb/s', 'no']
+                   '01:23:45:67:89:00', 'Full', 'online', '1Gb/s', 'yes', '']
+        rows[3] = ['2', '1', 'node1', ip_addr3, '255.255.255.0',
+                   gw, '', '', '', '01:23:45:67:89:01', 'Full',
+                   'configured', '1Gb/s', 'no', 'active']
         rows[4] = ['2', '1', 'node1', '', '', '', '', '', '',
-                   '01:23:45:67:89:01', 'Full', 'unconfigured', '1Gb/s', 'yes']
+                   '01:23:45:67:89:01', 'Full', 'unconfigured', '1Gb/s',
+                   'yes', 'inactive']
         rows[5] = ['3', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'no']
+                   'unconfigured', '', 'no', '']
         rows[6] = ['3', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'yes']
+                   'unconfigured', '', 'yes', '']
         rows[7] = ['4', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'no']
+                   'unconfigured', '', 'no', '']
         rows[8] = ['4', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'yes']
+                   'unconfigured', '', 'yes', '']
         rows[9] = ['1', '2', 'node2', ip_addr2, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:02', 'Full',
-                   'online', '1Gb/s', 'no']
+                   'online', '1Gb/s', 'no', '']
         rows[10] = ['1', '2', 'node2', '', '', '', '', '', '',
-                    '01:23:45:67:89:02', 'Full', 'online', '1Gb/s', 'yes']
-        rows[11] = ['2', '2', 'node2', '', '', '', '', '', '',
-                    '01:23:45:67:89:03', 'Full', 'unconfigured', '1Gb/s', 'no']
+                    '01:23:45:67:89:02', 'Full', 'online', '1Gb/s', 'yes', '']
+        rows[11] = ['2', '2', 'node2', ip_addr4, '255.255.255.0',
+                    gw, '', '', '', '01:23:45:67:89:03', 'Full',
+                    'configured', '1Gb/s', 'no', 'inactive']
         rows[12] = ['2', '2', 'node2', '', '', '', '', '', '',
                     '01:23:45:67:89:03', 'Full', 'unconfigured', '1Gb/s',
-                    'yes']
+                    'yes', '']
         rows[13] = ['3', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'no']
+                    'unconfigured', '', 'no', '']
         rows[14] = ['3', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'yes']
+                    'unconfigured', '', 'yes', '']
         rows[15] = ['4', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'no']
+                    'unconfigured', '', 'no', '']
         rows[16] = ['4', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'yes']
+                    'unconfigured', '', 'yes', '']
 
         if self._next_cmd_error['lsportip'] == 'header_mismatch':
             rows[0].pop(2)
@@ -1884,21 +1889,18 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
     def _generate_vol_info(self, vol_name, vol_id):
         pool = _get_test_pool()
-        rand_id = six.text_type(random.randint(10000, 99999))
+        prop = {'mdisk_grp_name': pool}
         if vol_name:
-            return {'name': 'snap_volume%s' % rand_id,
-                    'volume_name': vol_name,
-                    'id': rand_id,
-                    'volume_id': vol_id,
-                    'volume_size': 10,
-                    'mdisk_grp_name': pool}
+            prop.update(volume_name=vol_name,
+                        volume_id=vol_id,
+                        volume_size=10)
         else:
-            return {'name': 'test_volume%s' % rand_id,
-                    'size': 10,
-                    'id': rand_id,
-                    'volume_type_id': None,
-                    'mdisk_grp_name': pool,
-                    'host': 'openstack@svc#%s' % pool}
+            prop.update(size=10,
+                        volume_type_id=None,
+                        mdisk_grp_name=pool,
+                        host='openstack@svc#%s' % pool)
+        vol = testutils.create_volume(self.ctxt, **prop)
+        return vol
 
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.iscsi_driver._helpers.is_vdisk_defined(name)
@@ -2039,6 +2041,102 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         for conn in [connector, connector2]:
             host = self.iscsi_driver._helpers.get_host_from_connector(conn)
         self.assertIsNone(host)
+
+    def test_storwize_initialize_iscsi_connection_single_path(self):
+        # Test the return value for _get_iscsi_properties
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        # Expected single path host-volume map return value
+        exp_s_path = {'driver_volume_type': 'iscsi',
+                      'data': {'target_discovered': False,
+                               'target_iqn':
+                                   'iqn.1982-01.com.ibm:1234.sim.node1',
+                               'target_portal': '1.234.56.78:3260',
+                               'target_lun': 0,
+                               'auth_method': 'CHAP',
+                               'discovery_auth_method': 'CHAP'}}
+
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume_iSCSI['name'], True)
+
+        # Check case where no hosts exist
+        ret = self.iscsi_driver._helpers.get_host_from_connector(
+            connector)
+        self.assertIsNone(ret)
+
+        # Initialize connection to map volume to a host
+        ret = self.iscsi_driver.initialize_connection(
+            volume_iSCSI, connector)
+        self.assertEqual(exp_s_path['driver_volume_type'],
+                         ret['driver_volume_type'])
+
+        # Check the single path host-volume map return value
+        for k, v in exp_s_path['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        ret = self.iscsi_driver._helpers.get_host_from_connector(
+            connector)
+        self.assertIsNotNone(ret)
+
+    def test_storwize_initialize_iscsi_connection_multipath(self):
+        # Test the return value for _get_iscsi_properties
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                     'multipath': True}
+
+        # Expected multipath host-volume map return value
+        exp_m_path = {'driver_volume_type': 'iscsi',
+                      'data': {'target_discovered': False,
+                               'target_iqn':
+                                   'iqn.1982-01.com.ibm:1234.sim.node1',
+                               'target_portal': '1.234.56.78:3260',
+                               'target_lun': 0,
+                               'target_iqns': [
+                                   'iqn.1982-01.com.ibm:1234.sim.node1',
+                                   'iqn.1982-01.com.ibm:1234.sim.node1',
+                                   'iqn.1982-01.com.ibm:1234.sim.node2'],
+                               'target_portals':
+                                   ['1.234.56.78:3260',
+                                    '1.234.56.80:3260',
+                                    '1.234.56.79:3260'],
+                               'target_luns': [0, 0, 0],
+                               'auth_method': 'CHAP',
+                               'discovery_auth_method': 'CHAP'}}
+
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        # Check case where no hosts exist
+        ret = self.iscsi_driver._helpers.get_host_from_connector(
+            connector)
+        self.assertIsNone(ret)
+
+        # Initialize connection to map volume to a host
+        ret = self.iscsi_driver.initialize_connection(
+            volume_iSCSI, connector)
+        self.assertEqual(exp_m_path['driver_volume_type'],
+                         ret['driver_volume_type'])
+
+        # Check the multipath host-volume map return value
+        for k, v in exp_m_path['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        ret = self.iscsi_driver._helpers.get_host_from_connector(
+            connector)
+        self.assertIsNotNone(ret)
 
     def test_storwize_svc_iscsi_host_maps(self):
         # Create two volumes to be used in mappings
@@ -2329,21 +2427,18 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
     def _generate_vol_info(self, vol_name, vol_id):
         pool = _get_test_pool()
-        rand_id = six.text_type(random.randint(10000, 99999))
+        prop = {'mdisk_grp_name': pool}
         if vol_name:
-            return {'name': 'snap_volume%s' % rand_id,
-                    'volume_name': vol_name,
-                    'id': rand_id,
-                    'volume_id': vol_id,
-                    'volume_size': 10,
-                    'mdisk_grp_name': pool}
+            prop.update(volume_name=vol_name,
+                        volume_id=vol_id,
+                        volume_size=10)
         else:
-            return {'name': 'test_volume%s' % rand_id,
-                    'size': 10,
-                    'id': '%s' % rand_id,
-                    'volume_type_id': None,
-                    'mdisk_grp_name': pool,
-                    'host': 'openstack@svc#%s' % pool}
+            prop.update(size=10,
+                        volume_type_id=None,
+                        mdisk_grp_name=pool,
+                        host='openstack@svc#%s' % pool)
+        vol = testutils.create_volume(self.ctxt, **prop)
+        return vol
 
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.fc_driver._helpers.is_vdisk_defined(name)
@@ -3178,21 +3273,18 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def _generate_vol_info(self, vol_name, vol_id):
         pool = _get_test_pool()
-        rand_id = six.text_type(random.randint(10000, 99999))
+        prop = {'mdisk_grp_name': pool}
         if vol_name:
-            return {'name': 'snap_volume%s' % rand_id,
-                    'volume_name': vol_name,
-                    'id': rand_id,
-                    'volume_id': vol_id,
-                    'volume_size': 10,
-                    'mdisk_grp_name': pool}
+            prop.update(volume_name=vol_name,
+                        volume_id=vol_id,
+                        volume_size=10)
         else:
-            return {'name': 'test_volume%s' % rand_id,
-                    'size': 10,
-                    'id': '%s' % rand_id,
-                    'volume_type_id': None,
-                    'mdisk_grp_name': pool,
-                    'host': 'openstack@svc#%s' % pool}
+            prop.update(size=10,
+                        volume_type_id=None,
+                        mdisk_grp_name=pool,
+                        host='openstack@svc#%s' % pool)
+        vol = testutils.create_volume(self.ctxt, **prop)
+        return vol
 
     def _create_volume(self, **kwargs):
         pool = _get_test_pool()
@@ -3264,10 +3356,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         ctxt = testutils.get_test_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', opts)
         volume = self._generate_vol_info(None, None)
-        type_id = type_ref['id']
-        type_ref = volume_types.get_volume_type(ctxt, type_id)
-        volume['volume_type_id'] = type_id
-        volume['volume_type'] = type_ref
+        volume.volume_type_id = type_ref['id']
+        volume.volume_typ = objects.VolumeType.get_by_id(ctxt,
+                                                         type_ref['id'])
         self.driver.create_volume(volume)
 
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
@@ -3603,8 +3694,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_volume_name(self):
         # Create a volume with space in name
-        volume = self._generate_vol_info(None, None)
-        volume['name'] = 'volume_ space'
+        pool = _get_test_pool()
+        rand_id = six.text_type(random.randint(10000, 99999))
+        volume = {'name': 'volume_ space',
+                  'size': 10,
+                  'id': '%s' % rand_id,
+                  'volume_type_id': None,
+                  'mdisk_grp_name': pool,
+                  'host': 'openstack@svc#%s' % pool}
         self.driver.create_volume(volume)
         self.driver.ensure_export(None, volume)
 
@@ -3682,12 +3779,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
         rand_id = random.randint(10000, 99999)
-        pool = _get_test_pool()
-        volume1 = {'name': u'unicode1_volume%s' % rand_id,
-                   'size': 2,
-                   'id': 1,
-                   'volume_type_id': None,
-                   'host': 'openstack@svc#%s' % pool}
+        volume1 = self._generate_vol_info(None, None)
         self.driver.create_volume(volume1)
         self._assert_vol_exists(volume1['name'], True)
 
@@ -3839,10 +3931,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         ctxt = testutils.get_test_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', None)
         volume = self._generate_vol_info(None, None)
-        type_id = type_ref['id']
-        type_ref = volume_types.get_volume_type(ctxt, type_id)
-        volume['volume_type_id'] = type_id
-        volume['volume_type'] = type_ref
+        volume.volume_type_id = type_ref['id']
+        volume.volume_type = objects.VolumeType.get_by_id(ctxt,
+                                                          type_ref['id'])
         self.driver.create_volume(volume)
         self.assertEqual(volume['mdisk_grp_name'],
                          self.driver.get_pool(volume))
@@ -4071,10 +4162,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                       new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
-        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
         volume['volume_type'] = old_type
         volume['host'] = host['host']
-        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
 
         self.driver.create_volume(volume)
         self.driver.retype(ctxt, volume, new_type, diff, host)
@@ -4161,10 +4254,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                       new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
-        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
         volume['volume_type'] = old_type
         volume['host'] = host['host']
-        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
 
         self.driver.create_volume(volume)
         self.driver.retype(ctxt, volume, new_type, diff, host)
@@ -4196,10 +4291,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                       new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
-        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
         volume['volume_type'] = old_type
         volume['host'] = host['host']
-        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
 
         self.driver.create_volume(volume)
         self.driver.retype(ctxt, volume, new_type, diff, host)
@@ -4803,9 +4900,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             spec = {'capabilities:replication': '<is> False'}
             type_ref = volume_types.create(self.ctxt, "replication_2", spec)
 
-        replication_type = volume_types.get_volume_type(self.ctxt,
+        replication_type = objects.VolumeType.get_by_id(self.ctxt,
                                                         type_ref['id'])
-
         return replication_type
 
     def _create_consistency_group_volume_type(self):
