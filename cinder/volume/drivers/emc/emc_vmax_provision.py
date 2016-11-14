@@ -310,7 +310,7 @@ class EMCVMAXProvision(object):
                 if rc != 0:
                     exceptionMessage = (_(
                         "Error removing volume %(vol)s from %(sg)s. "
-                        "%(error)s.")
+                        "Error is: %(error)s.")
                         % {'vol': volumeName,
                            'sg': storageGroupInstance['ElementName'],
                            'error': errorDesc})

@@ -1452,6 +1452,11 @@ class EMCVMAXMasking(object):
             if foundInitiatorGroupFromMaskingView is not None:
                 maskingViewInstanceName = self._find_masking_view(
                     conn, maskingViewName, storageSystemName)
+                storageGroupInstanceName = (
+                    self._get_storage_group_from_masking_view(
+                        conn, maskingViewName, storageSystemName))
+                portGroupInstanceName = self._get_port_group_from_masking_view(
+                    conn, maskingViewName, storageSystemName)
                 if foundInitiatorGroupFromConnector is None:
                     storageHardwareIDInstanceNames = (
                         self._get_storage_hardware_id_instance_names(
@@ -1472,21 +1477,41 @@ class EMCVMAXMasking(object):
                                 {'storageSystemName': storageSystemName})
                             return False
 
+                    igFromMaskingViewInstance = conn.GetInstance(
+                        foundInitiatorGroupFromMaskingView, LocalOnly=False)
+                    # if the current foundInitiatorGroupFromMaskingView name
+                    # matches the igGroupName supplied for the new group, the
+                    # existing ig needs to be deleted before the new one with
+                    # the correct initiators can be created.
+                    if (igFromMaskingViewInstance['ElementName'] ==
+                            igGroupName):
+                        # Masking view needs to be deleted before IG
+                        # can be deleted.
+                        self._delete_masking_view(
+                            conn, controllerConfigService, maskingViewName,
+                            maskingViewInstanceName, extraSpecs)
+                        maskingViewInstanceName = None
+                        self._delete_initiators_from_initiator_group(
+                            conn, controllerConfigService,
+                            foundInitiatorGroupFromMaskingView,
+                            igGroupName)
+                        self._delete_initiator_group(
+                            conn, controllerConfigService,
+                            foundInitiatorGroupFromMaskingView,
+                            igGroupName, extraSpecs)
                     foundInitiatorGroupFromConnector = (
                         self._create_initiator_Group(
                             conn, controllerConfigService, igGroupName,
                             storageHardwareIDInstanceNames, extraSpecs))
-                storageGroupInstanceName = (
-                    self._get_storage_group_from_masking_view(
-                        conn, maskingViewName, storageSystemName))
-                portGroupInstanceName = self._get_port_group_from_masking_view(
-                    conn, maskingViewName, storageSystemName)
                 if (foundInitiatorGroupFromConnector is not None and
                         storageGroupInstanceName is not None and
                         portGroupInstanceName is not None):
-                    self._delete_masking_view(
-                        conn, controllerConfigService, maskingViewName,
-                        maskingViewInstanceName, extraSpecs)
+                    if maskingViewInstanceName:
+                        # Existing masking view needs to be deleted before
+                        # a new one can be created.
+                        self._delete_masking_view(
+                            conn, controllerConfigService, maskingViewName,
+                            maskingViewInstanceName, extraSpecs)
                     newMaskingViewInstanceName = (
                         self._get_masking_view_instance_name(
                             conn, controllerConfigService, maskingViewName,

@@ -8008,6 +8008,100 @@ class EMCVMAXMaskingTest(test.TestCase):
                               igGroupName, hardwareIdinstanceNames,
                               extraSpecs)
 
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_delete_initiators_from_initiator_group")
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_delete_initiator_group")
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        "_create_initiator_Group",
+        return_value=EMCVMAXCommonData.initiatorgroup_name)
+    # bug 1579934: duplicate IG name error from SMI-S
+    def test_verify_initiator_group_from_masking_view(
+            self, create_ig, delete_ig, delete_initiators):
+        utils = self.driver.common.utils
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        connector = self.data.connector
+        maskingViewName = self.data.lunmaskctrl_name
+        storageSystemName = self.data.storage_system
+        igGroupName = self.data.initiatorgroup_name
+        extraSpecs = self.data.extra_specs
+        initiatorNames = (
+            self.driver.common.masking._find_initiator_names(conn, connector))
+        storageHardwareIDInstanceNames = (
+            masking._get_storage_hardware_id_instance_names(
+                conn, initiatorNames, storageSystemName))
+        foundInitiatorGroupFromMaskingView = (
+            masking._get_initiator_group_from_masking_view(
+                conn, maskingViewName, storageSystemName))
+        # path 1: initiator group from masking view matches initiator
+        # group from connector
+        verify = masking._verify_initiator_group_from_masking_view(
+            conn, controllerConfigService, maskingViewName, connector,
+            storageSystemName, igGroupName, extraSpecs)
+        masking._create_initiator_Group.assert_not_called()
+        self.assertTrue(verify)
+        # path 2: initiator group from masking view does not match
+        # initiator group from connector
+        with mock.patch.object(
+                masking, "_find_initiator_masking_group",
+                return_value="not_a_match"):
+            # path 2a: initiator group from connector is not None
+            # - no new initiator group created
+            verify = masking._verify_initiator_group_from_masking_view(
+                conn, controllerConfigService, maskingViewName,
+                connector, storageSystemName, igGroupName,
+                extraSpecs)
+            self.assertTrue(verify)
+            masking._create_initiator_Group.assert_not_called()
+            # path 2b: initiator group from connector is None
+            # - new initiator group created
+            with mock.patch.object(
+                    masking, "_find_initiator_masking_group",
+                    return_value=None):
+                masking._verify_initiator_group_from_masking_view(
+                    conn, controllerConfigService, maskingViewName,
+                    connector, storageSystemName, igGroupName,
+                    extraSpecs)
+                (masking._create_initiator_Group.
+                 assert_called_once_with(conn, controllerConfigService,
+                                         igGroupName,
+                                         storageHardwareIDInstanceNames,
+                                         extraSpecs))
+                # path 2b(i) - the name of the initiator group from the
+                # masking view is the same as the provided igGroupName
+                # - existing ig must be deleted
+                (masking._delete_initiator_group.
+                 assert_called_once_with(conn, controllerConfigService,
+                                         foundInitiatorGroupFromMaskingView,
+                                         igGroupName, extraSpecs))
+                # path 2b(ii) - the name of the ig from the masking view
+                # is different - do not delete the existing ig
+                masking._delete_initiator_group.reset_mock()
+                with mock.patch.object(
+                        conn, "GetInstance",
+                        return_value={'ElementName': "different_name"}):
+                    masking._verify_initiator_group_from_masking_view(
+                        conn, controllerConfigService, maskingViewName,
+                        connector, storageSystemName, igGroupName,
+                        extraSpecs)
+                    masking._delete_initiator_group.assert_not_called()
+            # path 3 - the masking view cannot be verified
+            with mock.patch.object(
+                    masking, "_get_storage_group_from_masking_view",
+                    return_value=None):
+                verify = masking._verify_initiator_group_from_masking_view(
+                    conn, controllerConfigService, maskingViewName,
+                    connector, storageSystemName, igGroupName,
+                    extraSpecs)
+                self.assertFalse(verify)
+
 
 class EMCVMAXFCTest(test.TestCase):
     def setUp(self):
