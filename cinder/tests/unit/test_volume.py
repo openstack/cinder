@@ -5707,6 +5707,10 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
                               self.context,
                               self.volume_id,
                               self.image_meta)
+            # Make sure we are passing an OVO instance and not an ORM instance
+            # to the driver
+            self.assertIsInstance(driver_copy_mock.call_args[0][1],
+                                  objects.Volume)
             volume = db.volume_get(self.context, self.volume_id)
             self.assertEqual('available', volume['status'])
             # image shouldn't be deleted if it is not in queued state
