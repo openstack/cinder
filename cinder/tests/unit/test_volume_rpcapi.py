@@ -91,13 +91,13 @@ class VolumeRpcAPITestCase(test.TestCase):
         generic_group = tests_utils.create_group(
             self.context,
             availability_zone=CONF.storage_availability_zone,
-            group_type_id='group_type1',
+            group_type_id=fake.GROUP_TYPE_ID,
             host='fakehost@fakedrv#fakepool')
 
         group_snapshot = tests_utils.create_group_snapshot(
             self.context,
             group_id=generic_group.id,
-            group_type_id='group_type1')
+            group_type_id=fake.GROUP_TYPE_ID)
 
         cg = objects.ConsistencyGroup.get_by_id(self.context, cg.id)
         cg2 = objects.ConsistencyGroup.get_by_id(self.context, cg2.id)

@@ -830,17 +830,21 @@ class GroupsAPITestCase(test.TestCase):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         group = utils.create_group(self.ctxt,
-                                   group_type_id=fake.GROUP_TYPE_ID)
+                                   group_type_id=fake.GROUP_TYPE_ID,
+                                   volume_type_ids=[fake.VOLUME_TYPE_ID])
         volume = utils.create_volume(
             self.ctxt,
-            group_id=group.id)
+            group_id=group.id,
+            volume_type_id=fake.VOLUME_TYPE_ID)
         group_snapshot = utils.create_group_snapshot(
-            self.ctxt, group_id=group.id)
+            self.ctxt, group_id=group.id,
+            group_type_id=group.group_type_id)
         snapshot = utils.create_snapshot(
             self.ctxt,
             volume.id,
             group_snapshot_id=group_snapshot.id,
-            status=fields.SnapshotStatus.AVAILABLE)
+            status=fields.SnapshotStatus.AVAILABLE,
+            volume_type_id=volume.volume_type_id)
 
         test_grp_name = 'test grp'
         body = {"create-from-src": {"name": test_grp_name,
@@ -868,10 +872,12 @@ class GroupsAPITestCase(test.TestCase):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         source_grp = utils.create_group(self.ctxt,
-                                        group_type_id=fake.GROUP_TYPE_ID)
+                                        group_type_id=fake.GROUP_TYPE_ID,
+                                        volume_type_ids=[fake.VOLUME_TYPE_ID])
         volume = utils.create_volume(
             self.ctxt,
-            group_id=source_grp.id)
+            group_id=source_grp.id,
+            volume_type_id=fake.VOLUME_TYPE_ID)
 
         test_grp_name = 'test cg'
         body = {"create-from-src": {"name": test_grp_name,

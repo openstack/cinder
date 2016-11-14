@@ -260,7 +260,8 @@ def create_group_snapshot(ctxt,
         'status': status,
         'name': name,
         'description': description,
-        'group_id': group_id}
+        'group_id': group_id,
+        'group_type_id': group_type_id}
     values.update(kwargs)
 
     if recursive_create_if_needed and group_id:

@@ -98,11 +98,14 @@ class GroupSnapshotsAPITestCase(test.TestCase):
             group_id=group.id,
             volume_type_id=fake.VOLUME_TYPE_ID)['id']
         group_snapshot1 = utils.create_group_snapshot(
-            self.context, group_id=group.id)
+            self.context, group_id=group.id,
+            group_type_id=group.group_type_id)
         group_snapshot2 = utils.create_group_snapshot(
-            self.context, group_id=group.id)
+            self.context, group_id=group.id,
+            group_type_id=group.group_type_id)
         group_snapshot3 = utils.create_group_snapshot(
-            self.context, group_id=group.id)
+            self.context, group_id=group.id,
+            group_type_id=group.group_type_id)
 
         req = fakes.HTTPRequest.blank('/v3/%s/group_snapshots' %
                                       fake.PROJECT_ID,

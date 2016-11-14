@@ -44,10 +44,20 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, cgsnapshot):
         """Detailed view of a single cgsnapshot."""
+        try:
+            group_id = cgsnapshot.consistencygroup_id
+        except AttributeError:
+            try:
+                group_id = cgsnapshot.group_id
+            except AttributeError:
+                group_id = None
+        else:
+            group_id = None
+
         return {
             'cgsnapshot': {
                 'id': cgsnapshot.id,
-                'consistencygroup_id': cgsnapshot.consistencygroup_id,
+                'consistencygroup_id': group_id,
                 'status': cgsnapshot.status,
                 'created_at': cgsnapshot.created_at,
                 'name': cgsnapshot.name,

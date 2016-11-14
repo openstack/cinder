@@ -5502,6 +5502,8 @@ def group_create(context, values, group_snapshot_id=None,
             values.pop('group_type_id', None)
             values.pop('availability_zone', None)
             values.pop('host', None)
+            # NOTE(xyang): Save volume_type_ids to update later.
+            volume_type_ids = values.pop('volume_type_ids', [])
 
             sel = session.query(group_model.group_type_id,
                                 group_model.availability_zone,
@@ -5521,6 +5523,12 @@ def group_create(context, values, group_snapshot_id=None,
                         group_id=source_group_id)
                 raise exception.GroupSnapshotNotFound(
                     group_snapshot_id=group_snapshot_id)
+
+            for item in volume_type_ids:
+                mapping = models.GroupVolumeTypeMapping()
+                mapping['volume_type_id'] = item
+                mapping['group_id'] = values['id']
+                session.add(mapping)
         else:
             mappings = []
             for item in values.get('volume_type_ids') or []:
@@ -5528,7 +5536,6 @@ def group_create(context, values, group_snapshot_id=None,
                 mapping['volume_type_id'] = item
                 mapping['group_id'] = values['id']
                 mappings.append(mapping)
-
             values['volume_types'] = mappings
 
             group = group_model()

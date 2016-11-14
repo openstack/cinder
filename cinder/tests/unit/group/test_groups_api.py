@@ -493,28 +493,63 @@ class GroupAPITestCase(test.TestCase):
     @mock.patch('cinder.group.api.API._create_group_from_group_snapshot')
     @mock.patch('cinder.group.api.API._create_group_from_source_group')
     @mock.patch('cinder.group.api.API.update_quota')
-    @mock.patch('cinder.objects.Group')
+    @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
+    @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
     @mock.patch('cinder.group.api.check_policy')
-    def test_create_from_src(self, mock_policy, mock_group, mock_update_quota,
-                             mock_create_from_group, mock_create_from_snap):
+    def test_create_from_src(self, mock_policy, mock_snap_get_all,
+                             mock_group_snap_get, mock_update_quota,
+                             mock_create_from_group,
+                             mock_create_from_snap):
         name = "test_group"
         description = "this is a test group"
         grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
                                  volume_type_ids = [fake.VOLUME_TYPE_ID],
                                  availability_zone = 'nova',
                                  name = name, description = description,
-                                 status = fields.GroupStatus.CREATING,
-                                 group_snapshot_id = fake.GROUP_SNAPSHOT_ID,
-                                 source_group_id = fake.GROUP_ID)
-        mock_group.return_value = grp
+                                 status = fields.GroupStatus.AVAILABLE,)
 
-        ret_group = self.group_api.create_from_src(
-            self.ctxt, name, description,
-            group_snapshot_id = fake.GROUP_SNAPSHOT_ID,
-            source_group_id = None)
-        self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
-        mock_create_from_snap.assert_called_once_with(
-            self.ctxt, grp, fake.GROUP_SNAPSHOT_ID)
+        vol1 = utils.create_volume(
+            self.ctxt,
+            availability_zone = 'nova',
+            volume_type_id = fake.VOLUME_TYPE_ID,
+            group_id = grp.id)
+
+        snap = utils.create_snapshot(self.ctxt, vol1.id,
+                                     volume_type_id = fake.VOLUME_TYPE_ID,
+                                     status = fields.SnapshotStatus.AVAILABLE)
+        mock_snap_get_all.return_value = [snap]
+
+        grp_snap = utils.create_group_snapshot(
+            self.ctxt, grp.id,
+            group_type_id = fake.GROUP_TYPE_ID,
+            status = fields.GroupStatus.AVAILABLE)
+        mock_group_snap_get.return_value = grp_snap
+
+        grp2 = utils.create_group(self.ctxt,
+                                  group_type_id = fake.GROUP_TYPE_ID,
+                                  volume_type_ids = [fake.VOLUME_TYPE_ID],
+                                  availability_zone = 'nova',
+                                  name = name, description = description,
+                                  status = fields.GroupStatus.CREATING,
+                                  group_snapshot_id = grp_snap.id)
+
+        with mock.patch('cinder.objects.Group') as mock_group:
+            mock_group.return_value = grp2
+            with mock.patch('cinder.objects.group.Group.create'):
+                ret_group = self.group_api.create_from_src(
+                    self.ctxt, name, description,
+                    group_snapshot_id = grp_snap.id,
+                    source_group_id = None)
+                self.assertEqual(grp2.obj_to_primitive(),
+                                 ret_group.obj_to_primitive())
+                mock_create_from_snap.assert_called_once_with(
+                    self.ctxt, grp2, grp_snap.id)
+
+        snap.destroy()
+        grp_snap.destroy()
+        vol1.destroy()
+        grp.destroy()
+        grp2.destroy()
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     @mock.patch('cinder.objects.GroupSnapshot')

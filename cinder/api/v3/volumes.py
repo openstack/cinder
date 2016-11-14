@@ -194,10 +194,14 @@ class VolumeController(volumes_v2.VolumeController):
 
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
-            # Not found exception will be handled at the wsgi level
-            kwargs['consistencygroup'] = (
-                self.consistencygroup_api.get(context,
-                                              consistencygroup_id))
+            try:
+                kwargs['consistencygroup'] = (
+                    self.consistencygroup_api.get(context,
+                                                  consistencygroup_id))
+            except exception.ConsistencyGroupNotFound:
+                # Not found exception will be handled at the wsgi level
+                kwargs['group'] = self.group_api.get(
+                    context, consistencygroup_id)
         else:
             kwargs['consistencygroup'] = None
 

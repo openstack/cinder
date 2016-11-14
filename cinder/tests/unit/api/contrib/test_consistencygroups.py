@@ -110,7 +110,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('ConsistencyGroup %s could not be found.' %
+        self.assertEqual('Group %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
@@ -411,8 +411,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertTrue(mock_validate.called)
 
         group_id = res_dict['consistencygroup']['id']
-        cg = objects.ConsistencyGroup.get_by_id(self.ctxt,
-                                                group_id)
+        try:
+            cg = objects.ConsistencyGroup.get_by_id(self.ctxt,
+                                                    group_id)
+        except exception.ConsistencyGroupNotFound:
+            cg = objects.Group.get_by_id(self.ctxt,
+                                         group_id)
         cg.destroy()
 
     def test_create_consistencygroup_with_no_body(self):
@@ -524,7 +528,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('ConsistencyGroup %s could not be found.' %
+        self.assertEqual('Group %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 

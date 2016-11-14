@@ -27,6 +27,7 @@ from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _, _LI
 from cinder import rpc
+from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
 
@@ -42,6 +43,14 @@ class GroupSnapshotsController(wsgi.Controller):
         self.group_snapshot_api = group_api.API()
         super(GroupSnapshotsController, self).__init__()
 
+    def _check_default_cgsnapshot_type(self, group_type_id):
+        if group_types.is_default_cgsnapshot_type(group_type_id):
+            msg = (_("Group_type %(group_type)s is reserved for migrating "
+                     "CGs to groups. Migrated group snapshots can only be "
+                     "operated by CG snapshot APIs.")
+                   % {'group_type': group_type_id})
+            raise exc.HTTPBadRequest(explanation=msg)
+
     @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
     def show(self, req, id):
         """Return data about the given group_snapshot."""
@@ -51,6 +60,8 @@ class GroupSnapshotsController(wsgi.Controller):
         group_snapshot = self.group_snapshot_api.get_group_snapshot(
             context,
             group_snapshot_id=id)
+
+        self._check_default_cgsnapshot_type(group_snapshot.group_type_id)
 
         return self._view_builder.detail(req, group_snapshot)
 
@@ -66,6 +77,7 @@ class GroupSnapshotsController(wsgi.Controller):
             group_snapshot = self.group_snapshot_api.get_group_snapshot(
                 context,
                 group_snapshot_id=id)
+            self._check_default_cgsnapshot_type(group_snapshot.group_type_id)
             self.group_snapshot_api.delete_group_snapshot(context,
                                                           group_snapshot)
         except exception.InvalidGroupSnapshot as e:
@@ -102,7 +114,20 @@ class GroupSnapshotsController(wsgi.Controller):
         else:
             group_snapshots = self._view_builder.summary_list(req,
                                                               limited_list)
-        return group_snapshots
+
+        new_group_snapshots = []
+        for grp_snap in group_snapshots['group_snapshots']:
+            try:
+                # Only show group snapshots not migrated from CG snapshots
+                self._check_default_cgsnapshot_type(grp_snap['group_type_id'])
+                if not is_detail:
+                    grp_snap.pop('group_type_id', None)
+                new_group_snapshots.append(grp_snap)
+            except exc.HTTPBadRequest:
+                # Skip migrated group snapshot
+                pass
+
+        return {'group_snapshots': new_group_snapshots}
 
     @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
     @wsgi.response(202)
@@ -122,7 +147,7 @@ class GroupSnapshotsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
 
         group = self.group_snapshot_api.get(context, group_id)
-
+        self._check_default_cgsnapshot_type(group.group_type_id)
         name = group_snapshot.get('name', None)
         description = group_snapshot.get('description', None)
 

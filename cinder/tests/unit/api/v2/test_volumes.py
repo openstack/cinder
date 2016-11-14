@@ -384,7 +384,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when consistency group is not found.
-        self.assertRaises(exception.ConsistencyGroupNotFound,
+        self.assertRaises(exception.GroupNotFound,
                           self.controller.create, req, body)
 
         context = req.environ['cinder.context']

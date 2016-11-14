@@ -68,6 +68,8 @@ from cinder.message import api as message_api
 from cinder.message import defined_messages
 from cinder.message import resource_types
 from cinder import objects
+from cinder.objects import cgsnapshot
+from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder import quota
 from cinder import utils
@@ -76,6 +78,7 @@ from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume.flows.manager import manage_existing_snapshot
+from cinder.volume import group_types
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
@@ -2481,8 +2484,14 @@ class VolumeManager(manager.CleanableManager,
                     model_update = self.driver.create_group(context,
                                                             group)
                 except NotImplementedError:
-                    model_update = self._create_group_generic(context,
-                                                              group)
+                    cgsnap_type = group_types.get_default_cgsnapshot_type()
+                    if group.group_type_id != cgsnap_type['id']:
+                        model_update = self._create_group_generic(context,
+                                                                  group)
+                    else:
+                        cg, __ = self._convert_group_to_cg(group, [])
+                        model_update = self.driver.create_consistencygroup(
+                            context, cg)
             else:
                 model_update = self.driver.create_consistencygroup(context,
                                                                    group)
@@ -2752,10 +2761,30 @@ class VolumeManager(manager.CleanableManager,
                         context, group, volumes, group_snapshot,
                         sorted_snapshots, source_group, sorted_source_vols))
             except NotImplementedError:
-                model_update, volumes_model_update = (
-                    self._create_group_from_src_generic(
-                        context, group, volumes, group_snapshot,
-                        sorted_snapshots, source_group, sorted_source_vols))
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, volumes_model_update = (
+                        self._create_group_from_src_generic(
+                            context, group, volumes, group_snapshot,
+                            sorted_snapshots, source_group,
+                            sorted_source_vols))
+                else:
+                    cg, volumes = self._convert_group_to_cg(
+                        group, volumes)
+                    cgsnapshot, sorted_snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, sorted_snapshots))
+                    source_cg, sorted_source_vols = (
+                        self._convert_group_to_cg(source_group,
+                                                  sorted_source_vols))
+                    model_update, volumes_model_update = (
+                        self.driver.create_consistencygroup_from_src(
+                            context, cg, volumes, cgsnapshot,
+                            sorted_snapshots, source_cg, sorted_source_vols))
+                    self._remove_cgsnapshot_id_from_snapshots(sorted_snapshots)
+                    self._remove_consistencygroup_id_from_volumes(volumes)
+                    self._remove_consistencygroup_id_from_volumes(
+                        sorted_source_vols)
 
             if volumes_model_update:
                 for update in volumes_model_update:
@@ -3100,8 +3129,17 @@ class VolumeManager(manager.CleanableManager,
                 model_update, volumes_model_update = (
                     self.driver.delete_group(context, group, volumes))
             except NotImplementedError:
-                model_update, volumes_model_update = (
-                    self._delete_group_generic(context, group, volumes))
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, volumes_model_update = (
+                        self._delete_group_generic(context, group, volumes))
+                else:
+                    cg, volumes = self._convert_group_to_cg(
+                        group, volumes)
+                    model_update, volumes_model_update = (
+                        self.driver.delete_consistencygroup(context, cg,
+                                                            volumes))
+                    self._remove_consistencygroup_id_from_volumes(volumes)
 
             if volumes_model_update:
                 for update in volumes_model_update:
@@ -3189,6 +3227,38 @@ class VolumeManager(manager.CleanableManager,
                      "completed successfully."),
                  resource={'type': 'group',
                            'id': group.id})
+
+    def _convert_group_to_cg(self, group, volumes):
+        if not group:
+            return None, None
+        cg = consistencygroup.ConsistencyGroup()
+        cg.from_group(group)
+        for vol in volumes:
+            vol.consistencygroup_id = vol.group_id
+
+        return group, volumes
+
+    def _remove_consistencygroup_id_from_volumes(self, volumes):
+        if not volumes:
+            return
+        for vol in volumes:
+            vol.consistencygroup_id = None
+
+    def _convert_group_snapshot_to_cgsnapshot(self, group_snapshot, snapshots):
+        if not group_snapshot:
+            return None, None
+        cgsnap = cgsnapshot.CGSnapshot()
+        cgsnap.from_group_snapshot(group_snapshot)
+        for snap in snapshots:
+            snap.cgsnapshot_id = snap.group_snapshot_id
+
+        return cgsnap, snapshots
+
+    def _remove_cgsnapshot_id_from_snapshots(self, snapshots):
+        if not snapshots:
+            return
+        for snap in snapshots:
+            snap.cgsnapshot_id = None
 
     def _create_group_generic(self, context, group):
         """Creates a group."""
@@ -3437,11 +3507,23 @@ class VolumeManager(manager.CleanableManager,
                         add_volumes=add_volumes_ref,
                         remove_volumes=remove_volumes_ref))
             except NotImplementedError:
-                model_update, add_volumes_update, remove_volumes_update = (
-                    self._update_group_generic(
-                        context, group,
-                        add_volumes=add_volumes_ref,
-                        remove_volumes=remove_volumes_ref))
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, add_volumes_update, remove_volumes_update = (
+                        self._update_group_generic(
+                            context, group,
+                            add_volumes=add_volumes_ref,
+                            remove_volumes=remove_volumes_ref))
+                else:
+                    cg, remove_volumes_ref = self._convert_group_to_cg(
+                        group, remove_volumes_ref)
+                    model_update, add_volumes_update, remove_volumes_update = (
+                        self.driver.update_consistencygroup(
+                            context, group,
+                            add_volumes=add_volumes_ref,
+                            remove_volumes=remove_volumes_ref))
+                    self._remove_consistencygroup_id_from_volumes(
+                        remove_volumes_ref)
 
             if add_volumes_update:
                 self.db.volumes_update(context, add_volumes_update)
@@ -3643,10 +3725,19 @@ class VolumeManager(manager.CleanableManager,
                     self.driver.create_group_snapshot(context, group_snapshot,
                                                       snapshots))
             except NotImplementedError:
-                model_update, snapshots_model_update = (
-                    self._create_group_snapshot_generic(
-                        context, group_snapshot, snapshots))
-
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group_snapshot.group_type_id != cgsnap_type['id']:
+                    model_update, snapshots_model_update = (
+                        self._create_group_snapshot_generic(
+                            context, group_snapshot, snapshots))
+                else:
+                    cgsnapshot, snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, snapshots))
+                    model_update, snapshots_model_update = (
+                        self.driver.create_cgsnapshot(context, cgsnapshot,
+                                                      snapshots))
+                    self._remove_cgsnapshot_id_from_snapshots(snapshots)
             if snapshots_model_update:
                 for snap_model in snapshots_model_update:
                     # Update db for snapshot.
@@ -3898,9 +3989,19 @@ class VolumeManager(manager.CleanableManager,
                     self.driver.delete_group_snapshot(context, group_snapshot,
                                                       snapshots))
             except NotImplementedError:
-                model_update, snapshots_model_update = (
-                    self._delete_group_snapshot_generic(
-                        context, group_snapshot, snapshots))
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group_snapshot.group_type_id != cgsnap_type['id']:
+                    model_update, snapshots_model_update = (
+                        self._delete_group_snapshot_generic(
+                            context, group_snapshot, snapshots))
+                else:
+                    cgsnapshot, snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, snapshots))
+                    model_update, snapshots_model_update = (
+                        self.driver.delete_cgsnapshot(context, cgsnapshot,
+                                                      snapshots))
+                    self._remove_cgsnapshot_id_from_snapshots(snapshots)
 
             if snapshots_model_update:
                 for snap_model in snapshots_model_update:

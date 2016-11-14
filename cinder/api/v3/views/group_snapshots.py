@@ -38,7 +38,10 @@ class ViewBuilder(common.ViewBuilder):
         return {
             'group_snapshot': {
                 'id': group_snapshot.id,
-                'name': group_snapshot.name
+                'name': group_snapshot.name,
+                # NOTE(xyang): group_type_id is added for migrating CGs
+                # to generic volume groups
+                'group_type_id': group_snapshot.group_type_id,
             }
         }
 
@@ -48,6 +51,7 @@ class ViewBuilder(common.ViewBuilder):
             'group_snapshot': {
                 'id': group_snapshot.id,
                 'group_id': group_snapshot.group_id,
+                'group_type_id': group_snapshot.group_type_id,
                 'status': group_snapshot.status,
                 'created_at': group_snapshot.created_at,
                 'name': group_snapshot.name,

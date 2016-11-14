@@ -16,7 +16,9 @@
 import six
 
 from cinder.api import common
+from cinder import group as group_api
 from cinder.objects import fields
+from cinder.volume import group_types
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -92,6 +94,18 @@ class ViewBuilder(common.ViewBuilder):
         if request.environ['cinder.context'].is_admin:
             volume_ref['volume']['migration_status'] = (
                 volume.get('migration_status'))
+
+        # NOTE(xyang): Display group_id as consistencygroup_id in detailed
+        # view of the volume if group is converted from cg.
+        group_id = volume.get('group_id')
+        if group_id is not None:
+            # Not found exception will be handled at the wsgi level
+            ctxt = request.environ['cinder.context']
+            grp = group_api.API().get(ctxt, group_id)
+            cgsnap_type = group_types.get_default_cgsnapshot_type()
+            if grp.group_type_id == cgsnap_type['id']:
+                volume_ref['volume']['consistencygroup_id'] = group_id
+
         return volume_ref
 
     def _is_volume_encrypted(self, volume):

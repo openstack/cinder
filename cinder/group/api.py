@@ -190,6 +190,19 @@ class API(base.Base):
                         group_snapshot_id=None, source_group_id=None):
         check_policy(context, 'create')
 
+        # Populate group_type_id and volume_type_ids
+        group_type_id = None
+        volume_type_ids = []
+        if group_snapshot_id:
+            grp_snap = self.get_group_snapshot(context, group_snapshot_id)
+            group_type_id = grp_snap.group_type_id
+            grp_snap_src_grp = self.get(context, grp_snap.group_id)
+            volume_type_ids = [vt.id for vt in grp_snap_src_grp.volume_types]
+        elif source_group_id:
+            source_group = self.get(context, source_group_id)
+            group_type_id = source_group.group_type_id
+            volume_type_ids = [vt.id for vt in source_group.volume_types]
+
         kwargs = {
             'user_id': context.user_id,
             'project_id': context.project_id,
@@ -198,6 +211,8 @@ class API(base.Base):
             'description': description,
             'group_snapshot_id': group_snapshot_id,
             'source_group_id': source_group_id,
+            'group_type_id': group_type_id,
+            'volume_type_ids': volume_type_ids,
         }
 
         group = None

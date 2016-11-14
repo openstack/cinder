@@ -85,7 +85,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('CgSnapshot %s could not be found.' %
+        self.assertEqual('GroupSnapshot %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
@@ -410,7 +410,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('CgSnapshot %s could not be found.' %
+        self.assertEqual('GroupSnapshot %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 

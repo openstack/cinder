@@ -30,7 +30,8 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added cgsnapshots and volumes relationships
     # Version 1.2: Changed 'status' field to use ConsistencyGroupStatusField
     # Version 1.3: Added cluster fields
-    VERSION = '1.3'
+    # Version 1.4: Added from_group
+    VERSION = '1.4'
 
     OPTIONAL_FIELDS = ('cgsnapshots', 'volumes', 'cluster')
 
@@ -135,6 +136,23 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                                                           cg_snap_id,
                                                           cg_id)
         self._from_db_object(self._context, self, db_consistencygroups)
+
+    def from_group(self, group):
+        """Convert a generic volume group object to a cg object."""
+        self.id = group.id
+        self.user_id = group.user_id
+        self.project_id = group.project_id
+        self.cluster_name = group.cluster_name
+        self.host = group.host
+        self.availability_zone = group.availability_zone
+        self.name = group.name
+        self.description = group.description
+        self.volume_type_id = ""
+        for v_type in group.volume_types:
+            self.volume_type_id += v_type.id + ","
+        self.status = group.status
+        self.cgsnapshot_id = group.group_snapshot_id
+        self.source_cgid = group.source_group_id
 
     def obj_load_attr(self, attrname):
         if attrname not in self.OPTIONAL_FIELDS:

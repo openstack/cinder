@@ -157,6 +157,11 @@ def get_default_cgsnapshot_type():
     return grp_type
 
 
+def is_default_cgsnapshot_type(group_type_id):
+    cgsnap_type = get_default_cgsnapshot_type()
+    return group_type_id == cgsnap_type['id']
+
+
 def get_group_type_specs(group_type_id, key=False):
     group_type = get_group_type(context.get_admin_context(),
                                 group_type_id)
