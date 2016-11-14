@@ -372,3 +372,28 @@ class VolumeApiTest(test.TestCase):
         # Raise 400 when snapshot has not uuid type.
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           req, body)
+
+    @ddt.data({'admin': True, 'version': '3.21'},
+              {'admin': False, 'version': '3.21'},
+              {'admin': True, 'version': '3.20'},
+              {'admin': False, 'version': '3.20'})
+    @ddt.unpack
+    def test_volume_show_provider_id(self, admin, version):
+        self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_api_get)
+        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
+                         v2_fakes.fake_volume_type_get)
+
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID,
+                                      version=version)
+        if admin:
+            admin_ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                               True)
+            req.environ['cinder.context'] = admin_ctx
+        res_dict = self.controller.show(req, fake.VOLUME_ID)
+        req_version = req.api_version_request
+        # provider_id is in view if min version is greater than or equal to
+        # 3.21 for admin.
+        if req_version.matches("3.21", None) and admin:
+            self.assertIn('provider_id', res_dict['volume'])
+        else:
+            self.assertNotIn('provider_id', res_dict['volume'])
