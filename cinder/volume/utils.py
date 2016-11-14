@@ -152,10 +152,22 @@ def notify_about_backup_usage(context, backup, event_suffix,
 
 
 def _usage_from_snapshot(snapshot, **extra_usage_info):
+    try:
+        az = snapshot.volume['availability_zone']
+    except exception.VolumeNotFound:
+        # (zhiteng) Snapshot's source volume could have been deleted
+        # (which means snapshot has been deleted as well),
+        # lazy-loading volume would raise VolumeNotFound exception.
+        # In that case, not going any further by abusing low level
+        # DB API to fetch deleted volume but simply return empty
+        # string for snapshot's AZ info.
+        az = ''
+        LOG.debug("Source volume %s deleted", snapshot.volume_id)
+
     usage_info = {
         'tenant_id': snapshot.project_id,
         'user_id': snapshot.user_id,
-        'availability_zone': snapshot.volume['availability_zone'],
+        'availability_zone': az,
         'volume_id': snapshot.volume_id,
         'volume_size': snapshot.volume_size,
         'snapshot_id': snapshot.id,
