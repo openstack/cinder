@@ -742,7 +742,6 @@ class BackupManager(manager.SchedulerDependentManager):
                 'container',
                 'size',
                 'service_metadata',
-                'service',
                 'object_count',
                 'id'
             }
