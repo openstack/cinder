@@ -86,6 +86,7 @@ class VNXDriver(driver.TransferVD,
         self.protocol = self.configuration.storage_protocol.lower()
         self.active_backend_id = kwargs.get('active_backend_id', None)
         self.adapter = None
+        self._stats = {}
 
     def do_setup(self, context):
         if self.protocol == common.PROTOCOL_FC:
@@ -331,3 +332,49 @@ class VNXDriver(driver.TransferVD,
     def failover_host(self, context, volumes, secondary_id=None):
         """Fail-overs volumes from primary device to secondary."""
         return self.adapter.failover_host(context, volumes, secondary_id)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def create_group(self, context, group):
+        """Creates a group."""
+        return self.adapter.create_group(context, group)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
+        return self.adapter.delete_group(
+            context, group, volumes)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        return self.adapter.update_group(context, group,
+                                         add_volumes,
+                                         remove_volumes)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source."""
+        if group_snapshot:
+            return self.adapter.create_group_from_group_snapshot(
+                context, group, volumes, group_snapshot, snapshots)
+        elif source_group:
+            return self.adapter.create_cloned_group(
+                context, group, volumes, source_group, source_vols)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot."""
+        return self.adapter.create_group_snapshot(
+            context, group_snapshot, snapshots)
+
+    @utils.require_consistent_group_snapshot_enabled
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group_snapshot."""
+        return self.adapter.delete_group_snapshot(
+            context, group_snapshot, snapshots)
+
+    def is_consistent_group_snapshot_enabled(self):
+        return self._stats.get('consistent_group_snapshot_enabled')

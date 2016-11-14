@@ -150,6 +150,7 @@ mirror_base: &mirror_base
       _type: VNXMirrorImageState
       value: 'SYNCHRONIZED'
 
+
 ###########################################################
 # TestClient
 ###########################################################
@@ -1365,7 +1366,9 @@ test_delete_snapshot_adapter: *test_delete_snapshot
 
 test_create_cgsnapshot: *test_create_cg_snapshot
 
-test_delete_cgsnapshot:
+test_do_create_cgsnap: *test_create_cg_snapshot
+
+test_do_delete_cgsnap:
   cg_snap: &cg_snap_delete
     _methods:
       delete:
@@ -1373,7 +1376,7 @@ test_delete_cgsnapshot:
     _methods:
       get_snap: *cg_snap_delete
 
-test_create_cg_from_cgsnapshot:
+test_do_create_cg_from_cgsnap:
   snap: &copied_cg_snap
     _methods:
       copy:
@@ -1400,7 +1403,7 @@ test_create_cg_from_cgsnapshot:
       get_migration_session: *session_verify
       create_cg: *cg_for_create
 
-test_create_cloned_cg:
+test_do_clone_cg:
   vnx:
     _properties:
     _methods:
@@ -1773,6 +1776,8 @@ test_terminate_connection_cleanup_sg_is_not_empty:
 
 test_update_consistencygroup:
 
+test_do_update_cg:
+
 test_update_migrated_volume:
 
 test_update_migrated_volume_smp:
@@ -1784,6 +1789,26 @@ test_normalize_config_iscsi_initiators_none:
 test_normalize_config_iscsi_initiators_empty_str:
 
 test_normalize_config_iscsi_initiators_not_dict:
+
+test_create_group_snap:
+
+test_create_cgsnapshot:
+
+test_create_cloned_cg:
+
+test_create_cloned_group:
+
+test_create_cg_from_cgsnapshot:
+
+test_create_group_from_group_snapshot:
+
+test_create_cgsnapshot:
+
+test_create_group_snapshot:
+
+test_delete_group_snapshot:
+
+test_delete_cgsnapshot:
 
 
 ###########################################################

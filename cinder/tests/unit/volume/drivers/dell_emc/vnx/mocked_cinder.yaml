@@ -175,12 +175,12 @@ test_create_snapshot_adapter:
 test_delete_snapshot_adapter:
   snapshot: *snapshot_base
 
-test_create_cgsnapshot: &cg_snap_and_snaps
+test_do_create_cgsnap: &cg_snap_and_snaps
   cg_snap: *cg_snapshot_base
   snap1: *snapshot_base
   snap2: *snapshot_base
 
-test_delete_cgsnapshot: *cg_snap_and_snaps
+test_do_delete_cgsnap: *cg_snap_and_snaps
 
 test_manage_existing_lun_no_exist:
   volume: *volume_base
@@ -244,7 +244,7 @@ test_create_volume_from_snapshot_snapcopy:
 test_get_base_lun_name:
   volume: *volume_base
 
-test_create_cg_from_cgsnapshot:
+test_do_create_cg_from_cgsnap:
   vol1:
     _type: 'volume'
     _properties:
@@ -257,8 +257,6 @@ test_create_cg_from_cgsnapshot:
       <<: *volume_base_properties
       id:
         _uuid: volume2_id
-  cg: *cg_base
-  cg_snap: *cg_snapshot_base
   snap1:
     _type: 'snapshot'
     _properties:
@@ -272,21 +270,13 @@ test_create_cg_from_cgsnapshot:
       id:
         _uuid: snapshot2_id
 
-test_create_cloned_cg:
+test_do_clone_cg:
   vol1:
     _type: 'volume'
     _properties:
       <<: *volume_base_properties
       id:
         _uuid: consistency_group_id
-  cg: *cg_base
-  src_cg:
-    _type: 'cg'
-    _properties:
-      <<: *cg_base_properties
-      id:
-        _uuid: consistency_group2_id
-      name: 'src_cg_name'
 
   src_vol1:
     _type: 'volume'
@@ -322,7 +312,7 @@ test_remove_host_access_sg_absent:
 test_remove_host_access_volume_not_in_sg:
   volume: *volume_base
 
-test_update_consistencygroup:
+test_do_update_cg:
   cg: *cg_base
   volume_add:
     <<: *volume_base
@@ -421,13 +411,36 @@ test_update_migrated_volume_smp:
           <<: *provider_location_dict
           type: smp
 
+test_create_group_snap:
+
+test_create_cgsnapshot:
+
+test_create_cloned_cg:
+
+test_create_cloned_group:
+
+test_create_cg_from_cgsnapshot:
+
+test_create_group_from_group_snapshot:
+
+test_create_cgsnapshot:
+
+test_create_group_snapshot:
+
+test_delete_group_snapshot:
+
+test_delete_cgsnapshot:
 
 ###########################################################
 # TestUtils
 ###########################################################
 
 test_validate_cg_type:
-  cg: *cg_base_with_type
+  cg:
+    _properties:
+      id:
+        _uuid: GROUP_ID
+      volume_type_ids: ['type1']
 
 
 ###########################################################

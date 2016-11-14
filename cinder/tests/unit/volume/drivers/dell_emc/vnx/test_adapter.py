@@ -15,9 +15,12 @@
 import mock
 import re
 
+from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants
+from cinder.tests.unit import utils as test_utils
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as storops_ex
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
@@ -39,6 +42,7 @@ class TestCommonAdapter(test.TestCase):
         vnx_utils.init_ops(self.configuration)
         self.configuration.san_ip = '192.168.1.1'
         self.configuration.storage_vnx_authentication_type = 'global'
+        self.ctxt = context.get_admin_context()
 
     def tearDown(self):
         super(TestCommonAdapter, self).tearDown()
@@ -136,32 +140,124 @@ class TestCommonAdapter(test.TestCase):
         update = vnx_common.create_volume_from_snapshot(volume, snapshot)
         self.assertEqual('True', update['metadata']['snapcopy'])
 
+    @res_mock.patch_common_adapter
+    def test_create_cg_from_cgsnapshot(self, common, _):
+        common.do_create_cg_from_cgsnap = mock.Mock(
+            return_value='fake_return')
+        new_cg = test_utils.create_consistencygroup(
+            self.ctxt,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        cg_snapshot = test_utils.create_cgsnapshot(
+            self.ctxt,
+            fake_constants.CONSISTENCY_GROUP2_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        vol_new = test_utils.create_volume(self.ctxt)
+        ret = common.create_cg_from_cgsnapshot(
+            None, new_cg, [vol_new], cg_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common.do_create_cg_from_cgsnap.assert_called_once_with(
+            new_cg.id, new_cg.host, [vol_new], cg_snapshot.id, snaps)
+
+    @res_mock.patch_common_adapter
+    def test_create_group_from_group_snapshot(self, common, _):
+        common.do_create_cg_from_cgsnap = mock.Mock(
+            return_value='fake_return')
+        group = test_utils.create_group(
+            self.ctxt,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        group_snapshot = test_utils.create_group_snapshot(
+            self.ctxt,
+            fake_constants.CGSNAPSHOT_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        vol_new = test_utils.create_volume(self.ctxt)
+        ret = common.create_group_from_group_snapshot(
+            None, group, [vol_new], group_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common.do_create_cg_from_cgsnap.assert_called_once_with(
+            group.id, group.host, [vol_new], group_snapshot.id, snaps)
+
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
-    def test_create_cg_from_cgsnapshot(self, vnx_common, mocked,
-                                       cinder_input):
-        group = cinder_input['cg']
+    def test_do_create_cg_from_cgsnap(
+            self, vnx_common, mocked, cinder_input):
+        cg_id = fake_constants.CONSISTENCY_GROUP_ID
+        cg_host = 'host@backend#unit_test_pool'
         volumes = [cinder_input['vol1']]
-        cg_snap = cinder_input['cg_snap']
+        cgsnap_id = fake_constants.CGSNAPSHOT_ID
         snaps = [cinder_input['snap1']]
 
-        model_update, volume_updates = vnx_common.create_cg_from_cgsnapshot(
-            None, group, volumes, cg_snap, snaps)
+        model_update, volume_updates = (
+            vnx_common.do_create_cg_from_cgsnap(
+                cg_id, cg_host, volumes, cgsnap_id, snaps))
         self.assertIsNone(model_update)
         self.assertIsNotNone(
             re.findall('id^12',
                        volume_updates[0]['provider_location']))
 
+    @res_mock.patch_common_adapter
+    def test_create_cloned_cg(self, common, _):
+        common.do_clone_cg = mock.Mock(
+            return_value='fake_return')
+        group = test_utils.create_consistencygroup(
+            self.ctxt,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        src_group = test_utils.create_consistencygroup(
+            self.ctxt,
+            id=fake_constants.CONSISTENCY_GROUP2_ID,
+            host='host@backend#unit_test_pool2',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        src_vol = test_utils.create_volume(self.ctxt)
+        ret = common.create_cloned_group(
+            None, group, [vol], src_group, [src_vol])
+        self.assertEqual('fake_return', ret)
+        common.do_clone_cg.assert_called_once_with(
+            group.id, group.host, [vol], src_group.id, [src_vol])
+
+    @res_mock.patch_common_adapter
+    def test_create_cloned_group(self, common, _):
+        common.do_clone_cg = mock.Mock(
+            return_value='fake_return')
+        group = test_utils.create_group(
+            self.ctxt,
+            id=fake_constants.GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        src_group = test_utils.create_group(
+            self.ctxt,
+            id=fake_constants.GROUP2_ID,
+            host='host@backend#unit_test_pool2',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        src_vol = test_utils.create_volume(self.ctxt)
+        ret = common.create_cloned_group(
+            None, group, [vol], src_group, [src_vol])
+        self.assertEqual('fake_return', ret)
+        common.do_clone_cg.assert_called_once_with(
+            group.id, group.host, [vol], src_group.id, [src_vol])
+
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
-    def test_create_cloned_cg(self, vnx_common, mocked,
-                              cinder_input):
-        group = cinder_input['cg']
-        src_group = cinder_input['src_cg']
+    def test_do_clone_cg(self, vnx_common, _, cinder_input):
+        cg_id = fake_constants.CONSISTENCY_GROUP_ID
+        cg_host = 'host@backend#unit_test_pool'
         volumes = [cinder_input['vol1']]
+        src_cg_id = fake_constants.CONSISTENCY_GROUP2_ID
         src_volumes = [cinder_input['src_vol1']]
-        model_update, volume_updates = vnx_common.create_cloned_cg(
-            None, group, volumes, src_group, src_volumes)
+        model_update, volume_updates = vnx_common.do_clone_cg(
+            cg_id, cg_host, volumes, src_cg_id, src_volumes)
         self.assertIsNone(model_update)
         self.assertIsNotNone(
             re.findall('id^12',
@@ -474,24 +570,105 @@ class TestCommonAdapter(test.TestCase):
                                      mocked_input):
         common_adapter.delete_snapshot(mocked_input['snapshot'])
 
+    @res_mock.patch_common_adapter
+    def test_create_cgsnapshot(self, common_adapter, _):
+        common_adapter.do_create_cgsnap = mock.Mock(
+            return_value='fake_return')
+        cg_snapshot = test_utils.create_cgsnapshot(
+            self.ctxt,
+            fake_constants.CONSISTENCY_GROUP_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        ret = common_adapter.create_cgsnapshot(
+            None, cg_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common_adapter.do_create_cgsnap.assert_called_once_with(
+            cg_snapshot.consistencygroup_id,
+            cg_snapshot.id,
+            snaps)
+
+    @res_mock.patch_common_adapter
+    def test_create_group_snap(self, common_adapter, _):
+        common_adapter.do_create_cgsnap = mock.Mock(
+            return_value='fake_return')
+        group_snapshot = test_utils.create_group_snapshot(
+            self.ctxt,
+            fake_constants.GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        ret = common_adapter.create_group_snapshot(
+            None, group_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common_adapter.do_create_cgsnap.assert_called_once_with(
+            group_snapshot.group_id,
+            group_snapshot.id,
+            snaps)
+
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
-    def test_create_cgsnapshot(self, common_adapter, mocked, mocked_input):
-        cg_snap = mocked_input['cg_snap']
+    def test_do_create_cgsnap(self, common_adapter, _, mocked_input):
+        group_name = fake_constants.CONSISTENCY_GROUP_ID
+        snap_name = fake_constants.CGSNAPSHOT_ID
         snap1 = mocked_input['snap1']
         snap2 = mocked_input['snap2']
         model_update, snapshots_model_update = (
-            common_adapter.create_cgsnapshot(None, cg_snap, [snap1, snap2]))
+            common_adapter.do_create_cgsnap(group_name, snap_name,
+                                            [snap1, snap2]))
         self.assertEqual('available', model_update['status'])
         for update in snapshots_model_update:
             self.assertEqual(fields.SnapshotStatus.AVAILABLE, update['status'])
 
+    @res_mock.patch_common_adapter
+    def test_delete_group_snapshot(self, common_adapter, _):
+        common_adapter.do_delete_cgsnap = mock.Mock(
+            return_value='fake_return')
+        group_snapshot = test_utils.create_group_snapshot(
+            self.ctxt,
+            fake_constants.GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=fake_constants.VOLUME_TYPE_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        ret = common_adapter.delete_group_snapshot(
+            None, group_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common_adapter.do_delete_cgsnap.assert_called_once_with(
+            group_snapshot.group_id,
+            group_snapshot.id,
+            group_snapshot.status,
+            snaps)
+
+    @res_mock.patch_common_adapter
+    def test_delete_cgsnapshot(self, common_adapter, _):
+        common_adapter.do_delete_cgsnap = mock.Mock(
+            return_value='fake_return')
+        cg_snapshot = test_utils.create_cgsnapshot(
+            self.ctxt,
+            fake_constants.CONSISTENCY_GROUP_ID)
+        vol = test_utils.create_volume(self.ctxt)
+        snaps = [
+            test_utils.create_snapshot(self.ctxt, vol.id)]
+        ret = common_adapter.delete_cgsnapshot(None, cg_snapshot, snaps)
+        self.assertEqual('fake_return', ret)
+        common_adapter.do_delete_cgsnap.assert_called_once_with(
+            cg_snapshot.consistencygroup_id,
+            cg_snapshot.id,
+            cg_snapshot.status,
+            snaps)
+
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
-    def test_delete_cgsnapshot(self, common_adapter, mocked, mocked_input):
+    def test_do_delete_cgsnap(self, common_adapter, _, mocked_input):
+        group_name = fake_constants.CGSNAPSHOT_ID
+        snap_name = fake_constants.CGSNAPSHOT_ID
         model_update, snapshot_updates = (
-            common_adapter.delete_cgsnapshot(
-                None, mocked_input['cg_snap'],
+            common_adapter.do_delete_cgsnap(
+                group_name, snap_name, 'available',
                 [mocked_input['snap1'], mocked_input['snap2']]))
         self.assertEqual('deleted', model_update['status'])
         for snap in snapshot_updates:
@@ -792,15 +969,13 @@ class TestCommonAdapter(test.TestCase):
 
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
-    def test_update_consistencygroup(self, common_adapter, mocked_res,
-                                     mocked_input):
+    def test_do_update_cg(self, common_adapter, _, mocked_input):
         common_adapter.client.update_consistencygroup = mock.Mock()
         cg = mocked_input['cg']
         common_adapter.client.get_cg = mock.Mock(return_value=cg)
-
-        common_adapter.update_consistencygroup(None, cg,
-                                               [mocked_input['volume_add']],
-                                               [mocked_input['volume_remove']])
+        common_adapter.do_update_cg(cg.id,
+                                    [mocked_input['volume_add']],
+                                    [mocked_input['volume_remove']])
 
         common_adapter.client.update_consistencygroup.assert_called_once_with(
             cg, [1], [2])
