@@ -1,0 +1,16 @@
+---
+issues:
+  - With the Dell SC Cinder Driver if a volume is retyped
+    to a new storage profile all volumes created via
+    snapshots from this volume will also change to the
+    new storage profile.
+  - With the Dell SC Cinder Driver retyping from one
+    replication type to another type (ex. regular
+    replication to live volume replication) is not
+    supported.
+fixes:
+  - With the Dell SC Cinder Driver retyping to or from a
+    replicated type should now work.
+  - With the Dell SC Cinder Driver retype failed to
+    return a tuple if it had to return an update to the
+    volume state.

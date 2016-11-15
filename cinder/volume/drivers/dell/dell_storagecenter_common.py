@@ -169,12 +169,12 @@ class DellCommonDriver(driver.ManageableVD,
             if profile:
                 api.update_cg_volumes(profile, [volume])
 
-    def _get_replication_specs(self, obj):
+    def _get_replication_specs(self, specs):
         """Checks if we can do replication.
 
         Need the extra spec set and we have to be talking to EM.
 
-        :param obj: Cinder Volume or snapshot object.
+        :param specs: Cinder Volume or snapshot extra specs.
         :return: rinfo dict.
         """
         rinfo = {'enabled': False, 'sync': False,
@@ -182,7 +182,6 @@ class DellCommonDriver(driver.ManageableVD,
                  'autofailover': False}
         # Repl does not work with direct connect.
         if not self.is_direct_connect:
-            specs = self._get_volume_extra_specs(obj)
             if (not self.failed_over and
                specs.get('replication_enabled') == '<is> True'):
                 rinfo['enabled'] = True
@@ -215,22 +214,26 @@ class DellCommonDriver(driver.ManageableVD,
         return rinfo
 
     def _is_live_vol(self, obj):
-        rspecs = self._get_replication_specs(obj)
+        rspecs = self._get_replication_specs(self._get_volume_extra_specs(obj))
         return rspecs['enabled'] and rspecs['live']
 
-    def _create_replications(self, api, volume, scvolume):
+    def _create_replications(self, api, volume, scvolume, extra_specs=None):
         """Creates any appropriate replications for a given volume.
 
         :param api: Dell REST API object.
         :param volume: Cinder volume object.
         :param scvolume: Dell Storage Center Volume object.
+        :param extra_specs: Extra specs if we have them otherwise gets them
+                            from the volume.
         :return: model_update
         """
         # Replication V2
         # for now we assume we have an array named backends.
         replication_driver_data = None
         # Replicate if we are supposed to.
-        rspecs = self._get_replication_specs(volume)
+        if not extra_specs:
+            extra_specs = self._get_volume_extra_specs(volume)
+        rspecs = self._get_replication_specs(extra_specs)
         if rspecs['enabled']:
             for backend in self.backends:
                 targetdeviceid = backend['target_device_id']
@@ -421,7 +424,8 @@ class DellCommonDriver(driver.ManageableVD,
         LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                rspecs = self._get_replication_specs(volume)
+                rspecs = self._get_replication_specs(
+                    self._get_volume_extra_specs(volume))
                 if rspecs['enabled']:
                     if rspecs['live']:
                         self._delete_live_volume(api, volume)
@@ -1045,6 +1049,35 @@ class DellCommonDriver(driver.ManageableVD,
                 LOG.info(_LI('Retype was to same Storage Profile.'))
         return None, None
 
+    def _retype_replication(self, api, volume, scvolume, new_type, diff):
+        model_update = None
+        ret = True
+        # Replication.
+        current, requested = (
+            self._get_retype_spec(diff, volume.get('id'),
+                                  'replication_enabled',
+                                  'replication_enabled'))
+        # We only toggle at the repl level.
+        if current != requested:
+            # If we are changing to on...
+            if requested == '<is> True':
+                # We create our replication using our new type's extra specs.
+                model_update = self._create_replications(
+                    api, volume, scvolume,
+                    new_type.get('extra_specs'))
+            elif current == '<is> True':
+                # If we are killing replication we have to  see if we currently
+                # have live volume enabled or not.
+                if self._is_live_vol(volume):
+                    ret = self._delete_live_volume(api, volume)
+                else:
+                    self._delete_replications(api, volume)
+                model_update = {'replication_status':
+                                fields.ReplicationStatus.DISABLED,
+                                'replication_driver_data': ''}
+        # TODO(tswanson): Add support for changing replication options.
+        return ret, model_update
+
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
@@ -1057,6 +1090,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param host: A dictionary describing the host to migrate to, where
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities (Not Used).
+        :returns: Boolean or Boolean, model_update tuple.
         """
         LOG.info(_LI('retype: volume_name: %(name)s new_type: %(newtype)s '
                      'diff: %(diff)s host: %(host)s'),
@@ -1132,24 +1166,6 @@ class DellCommonDriver(driver.ManageableVD,
                                           'profile'))
                             return False
 
-                    # Replication_enabled.
-                    current, requested = (
-                        self._get_retype_spec(diff,
-                                              volume_name,
-                                              'replication_enabled',
-                                              'replication_enabled'))
-                    # if there is a change and it didn't work fast fail.
-                    if current != requested:
-                        if requested == '<is> True':
-                            model_update = self._create_replications(api,
-                                                                     volume,
-                                                                     scvolume)
-                        elif current == '<is> True':
-                            self._delete_replications(api, volume)
-                            model_update = {'replication_status':
-                                            fields.ReplicationStatus.DISABLED,
-                                            'replication_driver_data': ''}
-
                     # Active Replay
                     current, requested = (
                         self._get_retype_spec(diff, volume_name,
@@ -1162,12 +1178,18 @@ class DellCommonDriver(driver.ManageableVD,
                                       'replication:activereplay setting'))
                         return False
 
+                    # Deal with replication.
+                    ret, model_update = self._retype_replication(
+                        api, volume, scvolume, new_type, diff)
+                    if not ret:
+                        return False
+
                 except exception.VolumeBackendAPIException:
                     # We do nothing with this. We simply return failure.
                     return False
         # If we have something to send down...
         if model_update:
-            return model_update
+            return True, model_update
         return True
 
     def _parse_secondary(self, api, secondary):
@@ -1493,7 +1515,8 @@ class DellCommonDriver(driver.ManageableVD,
                 LOG.info(_LI('failback_volumes: starting volume: %s'), volume)
                 model_update = {}
                 if volume.get('replication_driver_data'):
-                    rspecs = self._get_replication_specs(volume)
+                    rspecs = self._get_replication_specs(
+                        self._get_volume_extra_specs(volume))
                     if rspecs['live']:
                         model_update = self._failback_live_volume(
                             api, volume['id'], volume['provider_id'])
@@ -1606,7 +1629,8 @@ class DellCommonDriver(driver.ManageableVD,
                     for volume in volumes:
                         model_update = {}
                         if volume.get('replication_driver_data'):
-                            rspecs = self._get_replication_specs(volume)
+                            rspecs = self._get_replication_specs(
+                                self._get_volume_extra_specs(volume))
                             if rspecs['live']:
                                 model_update = self._failover_live_volume(
                                     api, volume['id'],

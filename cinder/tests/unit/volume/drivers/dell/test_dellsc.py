@@ -2705,20 +2705,21 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                         mock_init):
 
         res = self.driver.retype(
-            None, {'id': fake.VOLUME_ID}, None,
+            None, {'id': fake.VOLUME_ID},
+            {'extra_specs': {'replication_enabled': [None, '<is> True']}},
             {'extra_specs': {'replication_enabled': [None, '<is> True']}},
             None)
         self.assertTrue(mock_create_replications.called)
         self.assertFalse(mock_delete_replications.called)
-        self.assertEqual({'replication_status': 'enabled',
-                          'replication_driver_data': '54321'}, res)
+        self.assertEqual((True, {'replication_status': 'enabled',
+                                 'replication_driver_data': '54321'}), res)
         res = self.driver.retype(
             None, {'id': fake.VOLUME_ID}, None,
             {'extra_specs': {'replication_enabled': ['<is> True', None]}},
             None)
         self.assertTrue(mock_delete_replications.called)
-        self.assertEqual({'replication_status': 'disabled',
-                          'replication_driver_data': ''}, res)
+        self.assertEqual((True, {'replication_status': 'disabled',
+                                 'replication_driver_data': ''}), res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'update_replicate_active_replay')
