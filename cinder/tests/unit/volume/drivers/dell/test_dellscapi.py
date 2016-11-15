@@ -7441,9 +7441,6 @@ class DellStorageCenterApiHelperTestCase(test.TestCase):
     Class to test the Storage Center API helper using Mock.
     """
 
-    def setUp(self):
-        super(DellStorageCenterApiHelperTestCase, self).setUp()
-
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'open_connection')
     def test_setup_connection(self,
