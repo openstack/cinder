@@ -38,7 +38,7 @@ from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import imageutils
 from cinder import utils
 from cinder.volume import throttling
@@ -54,9 +54,17 @@ image_helper_opts = [cfg.StrOpt('image_conversion_dir',
 CONF = cfg.CONF
 CONF.register_opts(image_helper_opts)
 
-QEMU_IMG_LIMITS = processutils.ProcessLimits(
-    cpu_time=2,
-    address_space=1 * units.Gi)
+QEMU_IMG_LIMITS = None
+
+try:
+    QEMU_IMG_LIMITS = processutils.ProcessLimits(
+        cpu_time=2,
+        address_space=1 * units.Gi)
+except Exception:
+    LOG.error(_LE('Use of process limits requires oslo.concurrency '
+                  'version >=2.6.1 but the installed version is '
+                  'older than that.  Please upgrade oslo.concurrency '
+                  'to address vulnerability CVE-2015-5162.'))
 
 
 def qemu_img_info(path, run_as_root=True):
@@ -64,8 +72,13 @@ def qemu_img_info(path, run_as_root=True):
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]
-    out, _err = utils.execute(*cmd, run_as_root=run_as_root,
-                              prlimit=QEMU_IMG_LIMITS)
+
+    if QEMU_IMG_LIMITS:
+        out, _err = utils.execute(*cmd, run_as_root=run_as_root,
+                                  prlimit=QEMU_IMG_LIMITS)
+    else:
+        out, _err = utils.execute(*cmd, run_as_root=run_as_root)
+
     return imageutils.QemuImgInfo(out)
 
 
