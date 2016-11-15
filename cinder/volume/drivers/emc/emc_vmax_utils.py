@@ -1260,13 +1260,12 @@ class EMCVMAXUtils(object):
         :returns: foundSyncInstanceName
         """
         foundSyncInstanceName = None
-        syncInstanceNames = conn.EnumerateInstanceNames(
-            'SE_StorageSynchronized_SV_SV')
+        syncInstanceNames = conn.ReferenceNames(
+            volumeInstance.path,
+            ResultClass='SE_StorageSynchronized_SV_SV')
         for syncInstanceName in syncInstanceNames:
             syncSvTarget = syncInstanceName['SyncedElement']
             syncSvSource = syncInstanceName['SystemElement']
-            if storageSystem != syncSvTarget['SystemName']:
-                continue
             if syncSvTarget['DeviceID'] == volumeInstance['DeviceID'] or (
                     syncSvSource['DeviceID'] == volumeInstance['DeviceID']):
                 # Check that it hasn't recently been deleted.
@@ -1902,65 +1901,10 @@ class EMCVMAXUtils(object):
 
         return kwargs
 
-    def _multi_pool_support(self, fileName):
-        """Multi pool support.
-
-        <EMC>
-        <EcomServers>
-            <EcomServer>
-                <EcomServerIp>10.108.246.202</EcomServerIp>
-                ...
-                <Arrays>
-                    <Array>
-                        <SerialNumber>000198700439</SerialNumber>
-                        ...
-                        <Pools>
-                            <Pool>
-                                <PoolName>FC_SLVR1</PoolName>
-                                ...
-                            </Pool>
-                        </Pools>
-                    </Array>
-                </Arrays>
-            </EcomServer>
-        </EcomServers>
-        </EMC>
-
-        :param fileName: the configuration file
-        :returns: list
-        """
-        myList = []
-        connargs = {}
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = minidom.parseString(data)
-        interval = self._process_tag(dom, 'Interval')
-        retries = self._process_tag(dom, 'Retries')
-        try:
-            ecomElements = dom.getElementsByTagName('EcomServer')
-            if ecomElements and len(ecomElements) > 0:
-                for ecomElement in ecomElements:
-                    connargs = self._get_connection_info(ecomElement)
-                    arrayElements = ecomElement.getElementsByTagName('Array')
-                    if arrayElements and len(arrayElements) > 0:
-                        for arrayElement in arrayElements:
-                            myList = self._get_pool_info(arrayElement,
-                                                         fileName, connargs,
-                                                         interval, retries,
-                                                         myList)
-                    else:
-                        LOG.error(_LE(
-                            "Please check your xml for format or syntax "
-                            "errors. Please see documentation for more "
-                            "details."))
-        except IndexError:
-            pass
-        return myList
-
     def _single_pool_support(self, fileName):
         """Single pool support.
 
+         VMAX2
         <EMC>
         <EcomServerIp>10.108.246.202</EcomServerIp>
         <EcomServerPort>5988</EcomServerPort>
@@ -1972,6 +1916,7 @@ class EMCVMAXUtils(object):
         <Array>000198700439</Array>
         <Pool>FC_SLVR1</Pool>
         </EMC>
+         VMAX3
 
         :param fileName: the configuration file
         :returns: list
@@ -2021,12 +1966,70 @@ class EMCVMAXUtils(object):
 
         :param fileName: the path and name of the file
         :returns: list
-        """
-        # Multi-pool support.
-        myList = self._multi_pool_support(fileName)
-        if len(myList) == 0:
-            myList = self._single_pool_support(fileName)
+        Sample VMAX2 XML file
+        <EMC>
+        <EcomServerIp>10.108.246.202</EcomServerIp>
+        <EcomServerPort>5988</EcomServerPort>
+        <EcomUserName>admin</EcomUserName>
+        <EcomPassword>#1Password</EcomPassword>
+        <PortGroups>
+            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+        </PortGroups>
+        <Array>000198700439</Array>
+        <Pool>FC_SLVR1</Pool>
+        </EMC>
 
+        Sample VMAX3 XML file
+        <EMC>
+        <EcomServerIp>10.108.246.202</EcomServerIp>
+        <EcomServerPort>5988</EcomServerPort>
+        <EcomUserName>admin</EcomUserName>
+        <EcomPassword>#1Password</EcomPassword>
+        <PortGroups>
+            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+        </PortGroups>
+        <Array>000198700439</Array>
+        <Pool>FC_SLVR1</Pool>
+        <ServiceLevel>Diamond</ServiceLevel> <--This is optional
+        <Workload>OLTP</Workload> <--This is optional
+        </EMC>
+        :param fileName: the configuration file
+        :returns: list
+        """
+        myList = []
+        kwargs = {}
+        connargs = {}
+        with open(fileName, 'r') as my_file:
+            data = my_file.read()
+        my_file.close()
+        dom = minidom.parseString(data)
+        try:
+            connargs = self._get_connection_info(dom)
+            interval = self._process_tag(dom, 'Interval')
+            retries = self._process_tag(dom, 'Retries')
+            portGroup = self._get_random_portgroup(dom)
+            serialNumber = self._process_tag(dom, 'Array')
+            if serialNumber is None:
+                LOG.error(_LE(
+                    "Array Serial Number must be in the file "
+                    "%(fileName)s."),
+                    {'fileName': fileName})
+            poolName = self._process_tag(dom, 'Pool')
+            if poolName is None:
+                LOG.error(_LE(
+                    "PoolName must be in the file "
+                    "%(fileName)s."),
+                    {'fileName': fileName})
+            kwargs = self._fill_record(
+                connargs, serialNumber, poolName, portGroup, dom)
+            if interval:
+                kwargs['Interval'] = interval
+            if retries:
+                kwargs['Retries'] = retries
+
+            myList.append(kwargs)
+        except IndexError:
+            pass
         return myList
 
     def extract_record(self, arrayInfo, pool):

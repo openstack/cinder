@@ -1,0 +1,5 @@
+---
+features:
+  - Storage assisted volume migration from one Pool/SLO/Workload combination
+    to another, on the same array, via retype, for the VMAX driver. Both
+    All Flash and Hybrid VMAX3 arrays are supported. VMAX2 is not supported.

@@ -78,6 +78,8 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               https://blueprints.launchpad.net/cinder/+spec/vmax-iscsi-multipath
         2.5.0 - Attach and detach snapshot (blueprint vmax-attach-snapshot)
               - MVs and SGs not reflecting correct protocol (bug #1640222)
+              - Storage assisted volume migration via retype
+                (bp vmax-volume-migration)
 
     """
 

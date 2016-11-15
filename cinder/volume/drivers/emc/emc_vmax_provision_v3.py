@@ -706,11 +706,13 @@ class EMCVMAXProvisionV3(object):
         :returns: remainingCapacityGb
         :returns: subscribedCapacityGb
         :returns: array_reserve_percent
+        :returns: wlpEnabled
         """
         totalCapacityGb = -1
         remainingCapacityGb = -1
         subscribedCapacityGb = -1
         array_reserve_percent = -1
+        wlpEnabled = False
         storageSystemInstanceName = self.utils.find_storageSystem(
             conn, arrayInfo['SerialNumber'])
 
@@ -756,6 +758,7 @@ class EMCVMAXProvisionV3(object):
                         storageSystemInstanceName['Name']))
                 if remainingSLOCapacityGb != -1:
                     remainingCapacityGb = remainingSLOCapacityGb
+                    wlpEnabled = True
                 else:
                     LOG.warning(_LW(
                         "Remaining capacity %(remainingCapacityGb)s "
@@ -765,7 +768,7 @@ class EMCVMAXProvisionV3(object):
                         {'remainingCapacityGb': remainingCapacityGb})
 
         return (totalCapacityGb, remainingCapacityGb, subscribedCapacityGb,
-                array_reserve_percent)
+                array_reserve_percent, wlpEnabled)
 
     def _get_remaining_slo_capacity_wlp(self, conn, srpPoolInstanceName,
                                         arrayInfo, systemName):
