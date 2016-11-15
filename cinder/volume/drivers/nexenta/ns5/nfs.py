@@ -72,7 +72,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
-        self.nef_host = self.configuration.nas_host
+        self.nef_host = self.configuration.nas_ip
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
