@@ -149,9 +149,9 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
         self.assertEqual([{"name": 'a', 'available': False}], list(azs))
         self.assertIsNone(self.volume_api.availability_zones_last_fetched)
 
-    def test_list_availability_zones_refetched(self):
-        timeutils.set_time_override()
-        self.addCleanup(timeutils.clear_time_override)
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_list_availability_zones_refetched(self, mock_utcnow):
+        mock_utcnow.return_value = datetime.datetime.utcnow()
         azs = self.volume_api.list_availability_zones(enable_cache=True)
         self.assertEqual([{"name": 'a', 'available': True}], list(azs))
         self.assertIsNotNone(self.volume_api.availability_zones_last_fetched)
@@ -161,7 +161,8 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
         self.assertEqual(1, self.get_all.call_count)
 
         # The default cache time is 3600, push past that...
-        timeutils.advance_time_seconds(3800)
+        mock_utcnow.return_value = (timeutils.utcnow() +
+                                    datetime.timedelta(0, 3800))
         self.get_all.return_value = [
             {
                 'availability_zone': 'a',
@@ -178,6 +179,7 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
         self.assertEqual(2, self.get_all.call_count)
         self.assertGreater(self.volume_api.availability_zones_last_fetched,
                            last_fetched)
+        mock_utcnow.assert_called_with()
 
     def test_list_availability_zones_enabled_service(self):
         def sort_func(obj):

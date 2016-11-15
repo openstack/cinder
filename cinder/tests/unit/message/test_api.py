@@ -42,10 +42,10 @@ class MessageApiTest(test.TestCase):
         self.ext_mgr.extensions = {}
         self.controller = messages.MessagesController(self.ext_mgr)
 
-    def test_create(self):
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create(self, mock_utcnow):
         CONF.set_override('message_ttl', 300)
-        timeutils.set_time_override()
-        self.addCleanup(timeutils.clear_time_override)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
         expected_expires_at = timeutils.utcnow() + datetime.timedelta(
             seconds=300)
         expected_message_record = {
@@ -64,6 +64,7 @@ class MessageApiTest(test.TestCase):
 
         self.message_api.db.message_create.assert_called_once_with(
             self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
 
     def test_create_swallows_exception(self):
         self.mock_object(self.message_api.db, 'create',
