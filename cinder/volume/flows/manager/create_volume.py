@@ -685,9 +685,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     cache_entry['volume_id']
                 )
                 return model_update, True
+        except NotImplementedError:
+            LOG.warning(_LW('Backend does not support creating image-volume '
+                            'clone. Image will be downloaded from Glance.'))
         except exception.CinderException as e:
             LOG.warning(_LW('Failed to create volume from image-volume cache, '
-                            'will fall back to default behavior. Error: '
+                            'image will be downloaded from Glance. Error: '
                             '%(exception)s'), {'exception': e})
         return None, False
 
