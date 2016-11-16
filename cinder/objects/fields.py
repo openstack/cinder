@@ -124,3 +124,18 @@ class QoSConsumerValues(BaseCinderEnum):
 
 class QoSConsumerField(BaseEnumField):
     AUTO_TYPE = QoSConsumerValues()
+
+
+class VolumeAttachStatus(BaseCinderEnum):
+    ATTACHED = 'attached'
+    ATTACHING = 'attaching'
+    DETACHED = 'detached'
+    ERROR_ATTACHING = 'error_attaching'
+    ERROR_DETACHING = 'error_detaching'
+
+    ALL = (ATTACHED, ATTACHING, DETACHED, ERROR_ATTACHING,
+           ERROR_DETACHING)
+
+
+class VolumeAttachStatusField(BaseEnumField):
+    AUTO_TYPE = VolumeAttachStatus()

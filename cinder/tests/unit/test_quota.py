@@ -82,7 +82,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         vol['volume_type_id'] = self.volume_type['id']
         vol['host'] = 'fake_host'
         vol['availability_zone'] = 'fake_zone'
-        vol['attach_status'] = 'detached'
+        vol['attach_status'] = fields.VolumeAttachStatus.DETACHED
         volume = objects.Volume(context=self.context, **vol)
         volume.create()
         return volume

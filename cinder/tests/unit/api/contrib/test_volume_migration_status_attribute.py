@@ -20,6 +20,7 @@ import webob
 
 from cinder import context
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -35,7 +36,7 @@ def fake_db_volume_get(*args, **kwargs):
         'size': 5,
         'availability_zone': 'somewhere',
         'created_at': timeutils.utcnow(),
-        'attach_status': 'detached',
+        'attach_status': fields.VolumeAttachStatus.DETACHED,
         'display_name': 'anothervolume',
         'display_description': 'Just another volume!',
         'volume_type_id': None,

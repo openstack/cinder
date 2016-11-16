@@ -25,6 +25,7 @@ from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields as c_fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_objects
@@ -193,7 +194,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
             'status': 'available',
             'availability_zone': 'az',
             'host': 'dummy',
-            'attach_status': 'no',
+            'attach_status': c_fields.VolumeAttachStatus.DETACHED,
         }
         volume = objects.Volume(context=self.context, **vol)
         volume.create()

@@ -29,6 +29,7 @@ from cinder import exception
 import cinder.image.glance
 from cinder.image import image_utils
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -1094,7 +1095,7 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
                      'size': 20,
                      'status': 'creating',
                      'availability_zone': 'fake_zone',
-                     'attach_status': 'detached',
+                     'attach_status': fields.VolumeAttachStatus.DETACHED,
                      'host': 'dummy'}
         volume = objects.Volume(context=self.context, **db_volume)
         volume.create()

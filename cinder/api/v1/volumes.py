@@ -25,6 +25,7 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LI
+from cinder.objects import fields
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
@@ -49,7 +50,8 @@ def _translate_attachment_summary_view(_context, vol):
     d = []
     attachments = vol.volume_attachment
     for attachment in attachments:
-        if attachment.get('attach_status') == 'attached':
+        if (attachment.get('attach_status') ==
+                fields.VolumeAttachStatus.ATTACHED):
             a = {'id': attachment.get('volume_id'),
                  'attachment_id': attachment.get('id'),
                  'volume_id': attachment.get('volume_id'),
@@ -95,7 +97,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
         d['multiattach'] = 'false'
 
     d['attachments'] = []
-    if vol['attach_status'] == 'attached':
+    if vol['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
         d['attachments'] = _translate_attachment_detail_view(context, vol)
 
     d['display_name'] = vol['display_name']

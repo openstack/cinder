@@ -21,6 +21,7 @@ import webob
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -43,7 +44,7 @@ def fake_db_volume_get(*args, **kwargs):
         'project_id': fake.PROJECT_ID,
         'migration_status': None,
         '_name_id': fake.VOLUME2_ID,
-        'attach_status': 'detached',
+        'attach_status': fields.VolumeAttachStatus.DETACHED,
     }
 
 

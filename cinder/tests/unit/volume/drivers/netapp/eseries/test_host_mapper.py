@@ -20,6 +20,7 @@ import mock
 import six
 
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.eseries \
     import fakes as eseries_fakes
@@ -36,7 +37,7 @@ def get_fake_volume():
         'provider_auth': 'provider a b', 'project_id': 'project',
         'display_name': None, 'display_description': 'lun1',
         'volume_type_id': None, 'migration_status': None, 'attach_status':
-        "detached", "status": "available"
+        fields.VolumeAttachStatus.DETACHED, "status": "available"
     }
 
 FAKE_MAPPINGS = [{u'lun': 1}]
@@ -280,7 +281,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_mapping_to_other_host['mapRef'] = \
             eseries_fakes.MULTIATTACH_HOST_GROUP['clusterRef']
         fake_volume = get_fake_volume()
-        fake_volume['attach_status'] = "attached"
+        fake_volume['attach_status'] = fields.VolumeAttachStatus.ATTACHED
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.map_volume_to_single_host,
@@ -300,7 +301,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_mapping_to_other_host['mapRef'] = \
             eseries_fakes.MULTIATTACH_HOST_GROUP['clusterRef']
         fake_volume = get_fake_volume()
-        fake_volume['attach_status'] = "attached"
+        fake_volume['attach_status'] = fields.VolumeAttachStatus.ATTACHED
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.map_volume_to_single_host,

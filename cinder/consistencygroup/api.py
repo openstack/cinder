@@ -370,7 +370,7 @@ class API(base.Base):
                     'user_id': context.user_id,
                     'project_id': context.project_id,
                     'status': 'creating',
-                    'attach_status': 'detached',
+                    'attach_status': c_fields.VolumeAttachStatus.DETACHED,
                     'encryption_key_id': request_spec.get('encryption_key_id',
                                                           None),
                     'display_description': request_spec.get('description',

@@ -20,6 +20,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
 from cinder import objects
+from cinder.objects import fields
 from cinder.volume.flows import common
 
 LOG = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'managing',
-            'attach_status': 'detached',
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),

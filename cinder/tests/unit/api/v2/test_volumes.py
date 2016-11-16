@@ -33,6 +33,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -1310,13 +1311,15 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_show_no_attachments(self):
         def fake_volume_get(self, context, volume_id, **kwargs):
-            vol = v2_fakes.create_fake_volume(volume_id,
-                                              attach_status='detached')
+            vol = v2_fakes.create_fake_volume(
+                volume_id, attach_status=
+                fields.VolumeAttachStatus.DETACHED)
             return fake_volume.fake_volume_obj(context, **vol)
 
         def fake_volume_admin_metadata_get(context, volume_id, **kwargs):
             return v2_fakes.fake_volume_admin_metadata_get(
-                context, volume_id, attach_status='detached')
+                context, volume_id, attach_status=
+                fields.VolumeAttachStatus.DETACHED)
 
         self.mock_object(volume_api.API, 'get', fake_volume_get)
         self.mock_object(db, 'volume_admin_metadata_get',

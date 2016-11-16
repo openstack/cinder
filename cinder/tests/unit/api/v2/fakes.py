@@ -47,7 +47,7 @@ def create_fake_volume(id, **kwargs):
         'availability_zone': DEFAULT_AZ,
         'status': DEFAULT_VOL_STATUS,
         'migration_status': None,
-        'attach_status': 'attached',
+        'attach_status': fields.VolumeAttachStatus.ATTACHED,
         'name': 'vol name',
         'display_name': DEFAULT_VOL_NAME,
         'display_description': DEFAULT_VOL_DESCRIPTION,
@@ -75,7 +75,7 @@ def create_fake_volume(id, **kwargs):
     volume.update(kwargs)
     if kwargs.get('volume_glance_metadata', None):
         volume['bootable'] = True
-    if kwargs.get('attach_status') == 'detached':
+    if kwargs.get('attach_status') == fields.VolumeAttachStatus.DETACHED:
         del volume['volume_admin_metadata'][0]
     return volume
 
@@ -257,7 +257,7 @@ def fake_volume_type_get(context, id, *args, **kwargs):
 
 def fake_volume_admin_metadata_get(context, volume_id, **kwargs):
     admin_meta = {'attached_mode': 'rw', 'readonly': 'False'}
-    if kwargs.get('attach_status') == 'detached':
+    if kwargs.get('attach_status') == fields.VolumeAttachStatus.DETACHED:
         del admin_meta['attached_mode']
 
     return admin_meta

@@ -127,7 +127,7 @@ class BaseBackupTest(test.TestCase):
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
-        vol['attach_status'] = 'detached'
+        vol['attach_status'] = fields.VolumeAttachStatus.DETACHED
         vol['availability_zone'] = '1'
         vol['previous_status'] = previous_status
         volume = objects.Volume(context=self.ctxt, **vol)
@@ -162,7 +162,7 @@ class BaseBackupTest(test.TestCase):
 
     def _create_volume_attach(self, volume_id):
         values = {'volume_id': volume_id,
-                  'attach_status': 'attached', }
+                  'attach_status': fields.VolumeAttachStatus.ATTACHED, }
         attachment = db.volume_attach(self.ctxt, values)
         db.volume_attached(self.ctxt, attachment['id'], None, 'testhost',
                            '/dev/vd0')

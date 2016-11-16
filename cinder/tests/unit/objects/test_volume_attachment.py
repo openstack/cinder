@@ -16,6 +16,7 @@ import mock
 import six
 
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
@@ -34,10 +35,11 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_attachment_update')
     def test_save(self, volume_attachment_update):
         attachment = fake_volume.fake_volume_attachment_obj(self.context)
-        attachment.attach_status = 'attaching'
+        attachment.attach_status = fields.VolumeAttachStatus.ATTACHING
         attachment.save()
         volume_attachment_update.assert_called_once_with(
-            self.context, attachment.id, {'attach_status': 'attaching'})
+            self.context, attachment.id,
+            {'attach_status': fields.VolumeAttachStatus.ATTACHING})
 
     @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
     def test_refresh(self, attachment_get):

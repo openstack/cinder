@@ -288,7 +288,7 @@ class DBAPIVolumeTestCase(BaseTest):
         instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         values = {'volume_id': volume['id'],
                   'instance_uuid': instance_uuid,
-                  'attach_status': 'attaching', }
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
         db.volume_attached(self.ctxt, attachment['id'],
                            instance_uuid, None, '/tmp')
@@ -296,7 +296,8 @@ class DBAPIVolumeTestCase(BaseTest):
         attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual('/tmp', attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         self.assertEqual(instance_uuid, attachment['instance_uuid'])
         self.assertIsNone(attachment['attached_host'])
 
@@ -305,7 +306,7 @@ class DBAPIVolumeTestCase(BaseTest):
         host_name = 'fake_host'
         values = {'volume_id': volume['id'],
                   'attached_host': host_name,
-                  'attach_status': 'attaching', }
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
         db.volume_attached(self.ctxt, attachment['id'],
                            None, host_name, '/tmp')
@@ -313,7 +314,8 @@ class DBAPIVolumeTestCase(BaseTest):
         attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual('/tmp', attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         self.assertIsNone(attachment['instance_uuid'])
         self.assertEqual(attachment['attached_host'], host_name)
 
@@ -355,7 +357,7 @@ class DBAPIVolumeTestCase(BaseTest):
         instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         values = {'volume_id': volume['id'],
                   'instance_uuid': instance_uuid,
-                  'attach_status': 'attaching', }
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
         db.volume_attached(self.ctxt, attachment['id'],
                            instance_uuid,
@@ -373,7 +375,7 @@ class DBAPIVolumeTestCase(BaseTest):
         host_name = 'fake_host'
         values = {'volume_id': volume['id'],
                   'attach_host': host_name,
-                  'attach_status': 'attaching', }
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
         db.volume_attached(self.ctxt, attachment['id'],
                            None, host_name, '/tmp')

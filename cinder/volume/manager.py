@@ -661,7 +661,7 @@ class VolumeManager(manager.CleanableManager,
         else:
             project_id = context.project_id
 
-        if volume['attach_status'] == "attached":
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume.id)
         if vol_utils.extract_host(volume.host) != self.host:
@@ -1055,9 +1055,10 @@ class VolumeManager(manager.CleanableManager,
                 # so set the status to available and move on.
                 LOG.info(_LI("Volume detach called, but volume not attached."),
                          resource=volume)
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'available',
-                                       'attach_status': 'detached'})
+                self.db.volume_update(
+                    context, volume_id, {
+                        'status': 'available',
+                        'attach_status': fields.VolumeAttachStatus.DETACHED})
                 return
 
         self._notify_about_volume_usage(context, volume, "detach.start")
@@ -1076,8 +1077,9 @@ class VolumeManager(manager.CleanableManager,
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
-                    context, attachment.get('id'),
-                    {'attach_status': 'error_detaching'})
+                    context, attachment.get('id'), {
+                        'attach_status':
+                            fields.VolumeAttachStatus.ERROR_DETACHING})
 
         # NOTE(jdg): We used to do an ensure export here to
         # catch upgrades while volumes were attached (E->F)
@@ -1159,7 +1161,8 @@ class VolumeManager(manager.CleanableManager,
             new_vol_values = {k: volume[k] for k in set(volume.keys()) -
                               self._VOLUME_CLONE_SKIP_PROPERTIES}
             new_vol_values['volume_type_id'] = volume_type_id
-            new_vol_values['attach_status'] = 'detached'
+            new_vol_values['attach_status'] = (
+                fields.VolumeAttachStatus.DETACHED)
             new_vol_values['status'] = 'creating'
             new_vol_values['project_id'] = ctx.project_id
             new_vol_values['display_name'] = 'image-%s' % image_meta['id']
@@ -1692,7 +1695,7 @@ class VolumeManager(manager.CleanableManager,
             context=ctxt,
             host=host['host'],
             status='creating',
-            attach_status='detached',
+            attach_status=fields.VolumeAttachStatus.DETACHED,
             migration_status='target:%s' % volume['id'],
             **new_vol_values
         )
@@ -2886,7 +2889,8 @@ class VolumeManager(manager.CleanableManager,
         volumes = self.db.volume_get_all_by_group(context, group.id)
 
         for volume_ref in volumes:
-            if volume_ref['attach_status'] == "attached":
+            if (volume_ref['attach_status'] ==
+                    fields.VolumeAttachStatus.ATTACHED):
                 # Volume is still attached, need to detach first
                 raise exception.VolumeAttached(volume_id=volume_ref['id'])
             # self.host is 'host@backend'

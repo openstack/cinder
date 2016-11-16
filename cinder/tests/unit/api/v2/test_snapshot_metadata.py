@@ -25,6 +25,7 @@ from cinder.api.v2 import snapshots
 from cinder import context
 import cinder.db
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -91,7 +92,7 @@ def fake_get(context, *args, **kwargs):
            'volume_type_id': None,
            'migration_status': None,
            'availability_zone': 'fake-zone',
-           'attach_status': 'detached',
+           'attach_status': fields.VolumeAttachStatus.DETACHED,
            'metadata': {}}
     return fake_volume.fake_volume_obj(context, **vol)
 
