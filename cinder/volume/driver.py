@@ -329,6 +329,12 @@ class BaseVD(object):
     # method since the manager will do the check after that.
     SUPPORTS_ACTIVE_ACTIVE = False
 
+    # If a driver hasn't maintained their CI system, this will get
+    # set to False, which prevents the driver from starting.
+    # Add enable_unsupported_driver = True in cinder.conf to get
+    # the unsupported driver started.
+    SUPPORTED = True
+
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = kwargs.get('db')
@@ -363,12 +369,6 @@ class BaseVD(object):
 
         # set True by manager after successful check_for_setup
         self._initialized = False
-
-        # If a driver hasn't maintained their CI system, this will get
-        # set to False, which prevents the driver from starting.
-        # Add enable_unsupported_driver = True inn cinder.conf to get
-        # the unsupported driver started.
-        self._supported = True
 
     def _driver_data_namespace(self):
         namespace = self.__class__.__name__
@@ -496,7 +496,7 @@ class BaseVD(object):
 
     @property
     def supported(self):
-        return self._supported
+        return self.SUPPORTED
 
     def set_throttle(self):
         bps_limit = ((self.configuration and

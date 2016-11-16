@@ -70,6 +70,10 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Scality_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Ocata release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(ScalityDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
@@ -84,10 +88,6 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
         # We want to use sparse file (ftruncated) without exposing this
         # as a config switch to customers.
         self.configuration.scality_sofs_sparsed_volumes = True
-
-        # TODO(smcginnis) Either remove this if CI requirements are met, or
-        # remove this driver in the Ocata release per normal deprecation
-        self._supported = False
 
     def check_for_setup_error(self):
         """Sanity checks before attempting to mount SOFS."""
