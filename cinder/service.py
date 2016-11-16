@@ -38,6 +38,7 @@ profiler_opts = importutils.try_import('osprofiler.opts')
 
 
 from cinder.backup import rpcapi as backup_rpcapi
+from cinder.common import constants
 from cinder import context
 from cinder import coordination
 from cinder import exception
@@ -48,6 +49,7 @@ from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as vol_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -213,6 +215,7 @@ class Service(service.Service):
 
         setup_profiler(binary, host)
         self.rpcserver = None
+        self.backend_rpcserver = None
         self.cluster_rpcserver = None
 
     # TODO(geguileo): Remove method in O since it will no longer be used.
@@ -241,15 +244,29 @@ class Service(service.Service):
         LOG.debug("Creating RPC server for service %s", self.topic)
 
         ctxt = context.get_admin_context()
-        target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
         endpoints.extend(self.manager.additional_endpoints)
         obj_version_cap = objects.Service.get_minimum_obj_version(ctxt)
         LOG.debug("Pinning object versions for RPC server serializer to %s",
                   obj_version_cap)
         serializer = objects_base.CinderObjectSerializer(obj_version_cap)
+
+        target = messaging.Target(topic=self.topic, server=self.host)
         self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
+
+        # NOTE(dulek): Kids, don't do that at home. We're relying here on
+        # oslo.messaging implementation details to keep backward compatibility
+        # with pre-Ocata services. This will not matter once we drop
+        # compatibility with them.
+        if self.topic == constants.VOLUME_TOPIC:
+            target = messaging.Target(
+                topic='%(topic)s.%(host)s' % {'topic': self.topic,
+                                              'host': self.host},
+                server=vol_utils.extract_host(self.host, 'host'))
+            self.backend_rpcserver = rpc.get_server(target, endpoints,
+                                                    serializer)
+            self.backend_rpcserver.start()
 
         # TODO(geguileo): In O - Remove the is_svc_upgrading_to_n part
         if self.cluster and not self.is_svc_upgrading_to_n(self.binary):
@@ -393,6 +410,8 @@ class Service(service.Service):
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
             self.rpcserver.stop()
+            if self.backend_rpcserver:
+                self.backend_rpcserver.stop()
             if self.cluster_rpcserver:
                 self.cluster_rpcserver.stop()
         except Exception:
@@ -422,6 +441,8 @@ class Service(service.Service):
                     pass
         if self.rpcserver:
             self.rpcserver.wait()
+        if self.backend_rpcserver:
+            self.backend_rpcserver.wait()
         if self.cluster_rpcserver:
             self.cluster_rpcserver.wait()
         super(Service, self).wait()

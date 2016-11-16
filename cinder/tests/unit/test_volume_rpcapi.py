@@ -117,6 +117,10 @@ class VolumeRpcAPITestCase(test.TestCase):
 
         self.addCleanup(self._cleanup)
 
+        self.can_send_version_mock = self.patch(
+            'oslo_messaging.RPCClient.can_send_version',
+            return_value=True)
+
     def _cleanup(self):
         self.fake_snapshot.destroy()
         self.fake_volume_obj.destroy()
@@ -203,8 +207,9 @@ class VolumeRpcAPITestCase(test.TestCase):
         elif 'cgsnapshot' in kwargs:
             host = kwargs['cgsnapshot'].consistencygroup.service_topic_queue
 
-        target['server'] = utils.extract_host(host)
-        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC, host)
+        target['server'] = utils.extract_host(host, 'host')
+        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC,
+                                     utils.extract_host(host))
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -276,8 +281,9 @@ class VolumeRpcAPITestCase(test.TestCase):
         elif 'group_snapshot' in kwargs:
             host = kwargs['group_snapshot'].service_topic_queue
 
-        target['server'] = utils.extract_host(host)
-        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC, host)
+        target['server'] = utils.extract_host(host, 'host')
+        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC,
+                                     utils.extract_host(host))
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -416,9 +422,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version='3.0')
 
     @ddt.data('3.0', '3.3')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_attach_volume_to_instance(self, version, can_send_version):
-        can_send_version.return_value = (version == '3.3')
+    def test_attach_volume_to_instance(self, version):
+        self.can_send_version_mock.return_value = (version == '3.3')
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -429,9 +434,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version=version)
 
     @ddt.data('3.0', '3.3')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_attach_volume_to_host(self, version, can_send_version):
-        can_send_version.return_value = (version == '3.3')
+    def test_attach_volume_to_host(self, version):
+        self.can_send_version_mock.return_value = (version == '3.3')
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -448,9 +452,8 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_src_cg.obj_reset_changes(['my_cluster'])
 
     @ddt.data('3.0', '3.3')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_attach_volume_to_cluster(self, version, can_send_version):
-        can_send_version.return_value = (version == '3.3')
+    def test_attach_volume_to_cluster(self, version):
+        self.can_send_version_mock.return_value = (version == '3.3')
         self._set_cluster()
         self._test_volume_api('attach_volume',
                               rpc_method='call',
@@ -462,9 +465,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version=version)
 
     @ddt.data('3.0', '3.4')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_detach_volume(self, version, can_send_version):
-        can_send_version.return_value = (version == '3.4')
+    def test_detach_volume(self, version):
+        self.can_send_version_mock.return_value = (version == '3.4')
         self._test_volume_api('detach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -472,9 +474,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version=version)
 
     @ddt.data('3.0', '3.4')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version')
-    def test_detach_volume_cluster(self, version, can_send_version):
-        can_send_version.return_value = (version == '3.4')
+    def test_detach_volume_cluster(self, version):
+        self.can_send_version_mock.return_value = (version == '3.4')
         self._set_cluster()
         self._test_volume_api('detach_volume',
                               rpc_method='call',
@@ -500,8 +501,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               connector='fake_connector',
                               version='3.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_initialize_connection_cluster(self, mock_can_send_version):
+    def test_initialize_connection_cluster(self):
         self._set_cluster()
         self._test_volume_api('initialize_connection',
                               rpc_method='call',
@@ -676,12 +676,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version='3.2')
 
     @ddt.data(None, 'mycluster')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
     @mock.patch('cinder.objects.backup.BackupDeviceInfo.from_primitive',
                 return_value={})
-    def test_get_backup_device_old(self, cluster_name, mock_from_primitive,
-                                   mock_can_send_version):
+    def test_get_backup_device_old(self, cluster_name, mock_from_primitive):
+        self.can_send_version_mock.return_value = False
         self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
