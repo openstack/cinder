@@ -17,6 +17,7 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -50,9 +51,17 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
+    SUPPORTED = False
 
     def __init__(self, *args, **kwargs):
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
+        # This driver has been marked as deprecated in the Ocata release, as
+        # per the standard OpenStack deprecation policy it can be removed in
+        # the Queens release.
+        msg = _("The block_device driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
+
         self.configuration.append_config_values(volume_opts)
         self.backend_name = \
             self.configuration.safe_get('volume_backend_name') or "BlockDev"
