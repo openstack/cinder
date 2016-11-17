@@ -15,6 +15,7 @@
 import datetime
 import uuid
 
+import ddt
 import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
@@ -42,6 +43,7 @@ from cinder.volume import rpcapi as volume_rpcapi
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class VolumeActionsTest(test.TestCase):
 
     _actions = ('os-reserve', 'os-unreserve')
@@ -412,61 +414,45 @@ class VolumeActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
         self.assertEqual(400, res.status_int)
 
-    def test_update_readonly_flag(self):
+    @ddt.data((True, 202), (False, 202), ('1', 202), ('0', 202), ('true', 202),
+              ('false', 202), ('tt', 400), (11, 400), (None, 400))
+    @ddt.unpack
+    def test_update_readonly_flag(self, readonly, return_code):
         def fake_update_readonly_flag(*args, **kwargs):
             return {}
         self.mock_object(volume.api.API, 'update_readonly_flag',
                          fake_update_readonly_flag)
 
-        def make_update_readonly_flag_test(self, readonly, return_code):
-            body = {"os-update_readonly_flag": {"readonly": readonly}}
-            if readonly is None:
-                body = {"os-update_readonly_flag": {}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                      (fake.PROJECT_ID, fake.VOLUME_ID))
-            req.method = "POST"
-            req.body = jsonutils.dump_as_bytes(body)
-            req.headers["content-type"] = "application/json"
-            res = req.get_response(fakes.wsgi_app(
-                fake_auth_context=self.context))
-            self.assertEqual(return_code, res.status_int)
+        body = {"os-update_readonly_flag": {"readonly": readonly}}
+        if readonly is None:
+            body = {"os-update_readonly_flag": {}}
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.context))
+        self.assertEqual(return_code, res.status_int)
 
-        make_update_readonly_flag_test(self, True, 202)
-        make_update_readonly_flag_test(self, False, 202)
-        make_update_readonly_flag_test(self, '1', 202)
-        make_update_readonly_flag_test(self, '0', 202)
-        make_update_readonly_flag_test(self, 'true', 202)
-        make_update_readonly_flag_test(self, 'false', 202)
-        make_update_readonly_flag_test(self, 'tt', 400)
-        make_update_readonly_flag_test(self, 11, 400)
-        make_update_readonly_flag_test(self, None, 400)
-
-    def test_set_bootable(self):
-
-        def make_set_bootable_test(self, bootable, return_code):
-            body = {"os-set_bootable": {"bootable": bootable}}
-            if bootable is None:
-                body = {"os-set_bootable": {}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                      (fake.PROJECT_ID, fake.VOLUME_ID))
-            req.method = "POST"
-            req.body = jsonutils.dump_as_bytes(body)
-            req.headers["content-type"] = "application/json"
-            res = req.get_response(fakes.wsgi_app(
-                fake_auth_context=self.context))
-            self.assertEqual(return_code, res.status_int)
-
-        make_set_bootable_test(self, True, 200)
-        make_set_bootable_test(self, False, 200)
-        make_set_bootable_test(self, '1', 200)
-        make_set_bootable_test(self, '0', 200)
-        make_set_bootable_test(self, 'true', 200)
-        make_set_bootable_test(self, 'false', 200)
-        make_set_bootable_test(self, 'tt', 400)
-        make_set_bootable_test(self, 11, 400)
-        make_set_bootable_test(self, None, 400)
+    @ddt.data((True, 200), (False, 200), ('1', 200), ('0', 200), ('true', 200),
+              ('false', 200), ('tt', 400), (11, 400), (None, 400))
+    @ddt.unpack
+    def test_set_bootable(self, bootable, return_code):
+        body = {"os-set_bootable": {"bootable": bootable}}
+        if bootable is None:
+            body = {"os-set_bootable": {}}
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.context))
+        self.assertEqual(return_code, res.status_int)
 
 
+@ddt.ddt
 class VolumeRetypeActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeRetypeActionsTest, self).setUp()
@@ -573,8 +559,75 @@ class VolumeRetypeActionsTest(test.TestCase):
         self.retype_mocks['reserve'].side_effect = exc
         self._retype_volume_exec(413, vol_type_new.id, vol.id)
 
-    def _retype_volume_qos(self, vol_status, consumer_pass, expected_status,
-                           same_qos=False, has_qos=True, has_type=True):
+    @ddt.data(('in-use', 'front-end', 400),
+              ('in-use', 'back-end', 202),
+              ('available', 'front-end', 202),
+              ('available', 'back-end', 202),
+              ('in-use', 'front-end', 202, True),
+              ('in-use', 'back-end', 202, True),
+              ('available', 'front-end', 202, True),
+              ('available', 'back-end', 202, True),
+              ('in-use', 'front-end', 400, False, False),
+              ('in-use', 'back-end', 202, False, False),
+              ('in-use', '', 202, True, False),
+              ('available', 'front-end', 202, False, False),
+              ('available', 'back-end', 202, False, False),
+              ('available', '', 202, True, False),
+              ('in-use', 'front-end', 400, False, False, False),
+              ('in-use', '', 202, True, False, False),
+              ('in-use', 'back-end', 202, False, False, False),
+              ('available', 'front-end', 202, False, False, False),
+              ('in-use', '', 202, True, False, False),
+              ('in-use', 'back-end', 202, False, False, False))
+    @ddt.unpack
+    def test_retype_volume_qos(self, vol_status, consumer_pass,
+                               expected_status, same_qos=False, has_qos=True,
+                               has_type=True):
+        """Test volume retype with QoS
+
+        This test conatins following test-cases:
+        1)  should fail if changing qos enforced by front-end for in-use volume
+        2)  should NOT fail for in-use if changing qos enforced by back-end
+        3)  should NOT fail if changing qos enforced by FE for available
+            volumes
+        4)  should NOT fail if changing qos enforced by back-end for available
+            volumes
+        5)  should NOT fail if changing qos enforced by front-end for in-use
+            volumes if the qos is the same
+        6)  should NOT fail if changing qos enforced by back-end for in-use
+            volumes if the qos is the same
+        7)  should NOT fail if changing qos enforced by front-end for available
+            volumes if the qos is the same
+        8)  should NOT fail if changing qos enforced by back-end for available
+            volumes if the qos is the same
+        9)  should fail if changing qos enforced by front-end on the new type
+            and volume originally had no qos and was in-use
+        10) should NOT fail if changing qos enforced by back-end on the
+            new type and volume originally had no qos and was in-use
+        11) should NOT fail if original and destinal types had no qos for
+            in-use volumes
+        12) should NOT fail if changing qos enforced by front-end on the
+            new type and volume originally had no qos and was available
+        13) should NOT fail if changing qos enforced by back-end on the
+            new type and volume originally had no qos and was available
+        14) should NOT fail if original and destinal types had no qos for
+            available volumes
+        15) should fail if changing volume had no type, was in-use and
+            destination type qos was enforced by front-end
+        16) should NOT fail if changing volume had no type, was in-use and
+            destination type had no qos
+            and volume originally had no type and was in-use
+        17) should NOT fail if changing volume had no type, was in-use and
+            destination type qos was enforced by back-end
+        18) should NOT fail if changing volume had no type, was in-use and
+            destination type qos was enforced by front-end
+        19) should NOT fail if changing volume had no type, was available and
+            destination type had no qos
+            and volume originally had no type and was in-use
+        20) should NOT fail if changing volume had no type, was available and
+            destination type qos was enforced by back-end
+        """
+
         admin_ctxt = context.get_admin_context()
         if has_qos:
             qos_old = utils.create_qos(admin_ctxt, self,
@@ -608,111 +661,15 @@ class VolumeRetypeActionsTest(test.TestCase):
 
         self._retype_volume_exec(expected_status, vol_type_new, vol.id)
 
-    def test_retype_volume_diff_qos_fe_in_use(self):
-        # should fail if changing qos enforced by front-end for in-use volume
-        self._retype_volume_qos('in-use', 'front-end', 400)
-
-    def test_retype_volume_diff_qos_be_in_use(self):
-        # should NOT fail for in-use if changing qos enforced by back-end
-        self._retype_volume_qos('in-use', 'back-end', 202)
-
-    def test_retype_volume_diff_qos_fe_available(self):
-        # should NOT fail if changing qos enforced by FE for available volumes
-        self._retype_volume_qos('available', 'front-end', 202)
-
-    def test_retype_volume_diff_qos_be_available(self):
-        # should NOT fail if changing qos enforced by back-end for available
-        # volumes
-        self._retype_volume_qos('available', 'back-end', 202)
-
-    def test_retype_volume_same_qos_fe_in_use(self):
-        # should NOT fail if changing qos enforced by front-end for in-use
-        # volumes if the qos is the same
-        self._retype_volume_qos('in-use', 'front-end', 202, True)
-
-    def test_retype_volume_same_qos_be_in_use(self):
-        # should NOT fail if changing qos enforced by back-end for in-use
-        # volumes if the qos is the same
-        self._retype_volume_qos('in-use', 'back-end', 202, True)
-
-    def test_retype_volume_same_qos_fe_available(self):
-        # should NOT fail if changing qos enforced by front-end for available
-        # volumes if the qos is the same
-        self._retype_volume_qos('available', 'front-end', 202, True)
-
-    def test_retype_volume_same_qos_be_available(self):
-        # should NOT fail if changing qos enforced by back-end for available
-        # volumes if the qos is the same
-        self._retype_volume_qos('available', 'back-end', 202, True)
-
-    def test_retype_volume_orig_no_qos_dest_fe_in_use(self):
-        # should fail if changing qos enforced by front-end on the new type
-        # and volume originally had no qos and was in-use
-        self._retype_volume_qos('in-use', 'front-end', 400, False, False)
-
-    def test_retype_volume_orig_no_qos_dest_be_in_use(self):
-        # should NOT fail if changing qos enforced by back-end on the new type
-        # and volume originally had no qos and was in-use
-        self._retype_volume_qos('in-use', 'back-end', 202, False, False)
-
-    def test_retype_volume_same_no_qos_in_use(self):
-        # should NOT fail if original and destinal types had no qos for in-use
-        # volumes
-        self._retype_volume_qos('in-use', '', 202, True, False)
-
-    def test_retype_volume_orig_no_qos_dest_fe_available(self):
-        # should NOT fail if changing qos enforced by front-end on the new type
-        # and volume originally had no qos and was available
-        self._retype_volume_qos('available', 'front-end', 202, False, False)
-
-    def test_retype_volume_orig_no_qos_dest_be_available(self):
-        # should NOT fail if changing qos enforced by back-end on the new type
-        # and volume originally had no qos and was available
-        self._retype_volume_qos('available', 'back-end', 202, False, False)
-
-    def test_retype_volume_same_no_qos_vailable(self):
-        # should NOT fail if original and destinal types had no qos for
-        # available volumes
-        self._retype_volume_qos('available', '', 202, True, False)
-
-    def test_retype_volume_orig_no_type_dest_fe_in_use(self):
-        # should fail if changing volume had no type, was in-use and
-        # destination type qos was enforced by front-end
-        self._retype_volume_qos('in-use', 'front-end', 400, False, False,
-                                False)
-
-    def test_retype_volume_orig_no_type_dest_no_qos_in_use(self):
-        # should NOT fail if changing volume had no type, was in-use and
-        # destination type had no qos
-        # and volume originally had no type and was in-use
-        self._retype_volume_qos('in-use', '', 202, True, False, False)
-
-    def test_retype_volume_orig_no_type_dest_be_in_use(self):
-        # should NOT fail if changing volume had no type, was in-use and
-        # destination type qos was enforced by back-end
-        self._retype_volume_qos('in-use', 'back-end', 202, False, False,
-                                False)
-
-    def test_retype_volume_orig_no_type_dest_fe_available(self):
-        # should NOT fail if changing volume had no type, was in-use and
-        # destination type qos was enforced by front-end
-        self._retype_volume_qos('available', 'front-end', 202, False, False,
-                                False)
-
-    def test_retype_volume_orig_no_type_dest_no_qos_available(self):
-        # should NOT fail if changing volume had no type, was available and
-        # destination type had no qos
-        # and volume originally had no type and was in-use
-        self._retype_volume_qos('in-use', '', 202, True, False, False)
-
-    def test_retype_volume_orig_no_type_dest_be_available(self):
-        # should NOT fail if changing volume had no type, was available and
-        # destination type qos was enforced by back-end
-        self._retype_volume_qos('in-use', 'back-end', 202, False, False,
-                                False)
-
-    def _retype_volume_encryption(self, vol_status, expected_status,
-                                  has_type=True, enc_orig=True, enc_dest=True):
+    @ddt.data(('available', 202, False, False, False),
+              ('available', 202, False, False),
+              ('available', 202, True, False, False),
+              ('available', 202, True, False),
+              ('available', 202))
+    @ddt.unpack
+    def test_retype_volume_encryption(self, vol_status, expected_status,
+                                      has_type=True,
+                                      enc_orig=True, enc_dest=True):
         enc_orig = None
         admin_ctxt = context.get_admin_context()
         if has_type:
@@ -734,21 +691,6 @@ class VolumeRetypeActionsTest(test.TestCase):
                                   testcase_instance=self)
 
         self._retype_volume_exec(expected_status, vol_type_new, vol.id)
-
-    def test_retype_volume_orig_no_type_dest_no_enc(self):
-        self._retype_volume_encryption('available', 202, False, False, False)
-
-    def test_retype_volume_orig_no_type_dest_enc(self):
-        self._retype_volume_encryption('available', 202, False, False)
-
-    def test_retype_volume_orig_type_no_enc_dest_no_enc(self):
-        self._retype_volume_encryption('available', 202, True, False, False)
-
-    def test_retype_volume_orig_type_no_enc_dest_enc(self):
-        self._retype_volume_encryption('available', 202, True, False)
-
-    def test_retype_volume_orig_type_enc_dest_enc(self):
-        self._retype_volume_encryption('available', 202)
 
 
 def fake_volume_get(self, context, volume_id):
