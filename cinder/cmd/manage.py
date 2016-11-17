@@ -208,6 +208,8 @@ class HostCommands(object):
 class DbCommands(object):
     """Class for managing the database."""
 
+    online_migrations = ()
+
     def __init__(self):
         pass
 
@@ -242,6 +244,55 @@ class DbCommands(object):
             print(_("Purge command failed, check cinder-manage "
                     "logs for more details."))
             sys.exit(1)
+
+    def _run_migration(self, ctxt, max_count, ignore_state):
+        ran = 0
+        for migration_meth in self.online_migrations:
+            count = max_count - ran
+            try:
+                found, done = migration_meth(ctxt, count, ignore_state)
+            except Exception:
+                print(_("Error attempting to run %(method)s") %
+                      {'method': migration_meth.__name__})
+                found = done = 0
+
+            if found:
+                print(_('%(total)i rows matched query %(meth)s, %(done)i '
+                        'migrated') % {'total': found,
+                                       'meth': migration_meth.__name__,
+                                       'done': done})
+            if max_count is not None:
+                ran += done
+                if ran >= max_count:
+                    break
+        return ran
+
+    @args('--max_count', metavar='<number>', dest='max_count', type=int,
+          help='Maximum number of objects to consider.')
+    @args('--ignore_state', action='store_true', dest='ignore_state',
+          help='Force records to migrate even if another operation is '
+               'performed on them. This may be dangerous, please refer to '
+               'release notes for more information.')
+    def online_data_migrations(self, max_count=None, ignore_state=False):
+        """Perform online data migrations for the release in batches."""
+        ctxt = context.get_admin_context()
+        if max_count is not None:
+            unlimited = False
+            if max_count < 1:
+                print(_('Must supply a positive value for max_number.'))
+                sys.exit(127)
+        else:
+            unlimited = True
+            max_count = 50
+            print(_('Running batches of %i until complete.') % max_count)
+
+        ran = None
+        while ran is None or ran != 0:
+            ran = self._run_migration(ctxt, max_count, ignore_state)
+            if not unlimited:
+                break
+
+        sys.exit(1 if ran else 0)
 
 
 class VersionCommands(object):
