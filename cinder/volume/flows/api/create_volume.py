@@ -458,9 +458,19 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
             if qos_specs['qos_specs']:
                 specs = qos_specs['qos_specs'].get('specs', {})
+
+            # Determine default replication status
+            extra_specs = volume_types.get_volume_type_extra_specs(
+                volume_type_id)
         if not specs:
             # to make sure we don't pass empty dict
             specs = None
+            extra_specs = None
+
+        if vol_utils.is_replicated_spec(extra_specs):
+            replication_status = fields.ReplicationStatus.ENABLED
+        else:
+            replication_status = fields.ReplicationStatus.DISABLED
 
         return {
             'size': size,
@@ -475,6 +485,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'consistencygroup_id': consistencygroup_id,
             'cgsnapshot_id': cgsnapshot_id,
             'group_id': group_id,
+            'replication_status': replication_status,
         }
 
 
@@ -516,7 +527,6 @@ class EntryCreateTask(flow_utils.CinderTask):
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
-            'replication_status': 'disabled',
             'multiattach': kwargs.pop('multiattach'),
         }
 

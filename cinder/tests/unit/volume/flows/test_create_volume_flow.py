@@ -48,6 +48,9 @@ class CreateVolumeFlowTestCase(test.TestCase):
         # Ensure that time.time() always returns more than the last time it was
         # called to avoid div by zero errors.
         self.counter = float(0)
+        self.get_extra_specs = self.patch(
+            'cinder.volume.volume_types.get_volume_type_extra_specs',
+            return_value={})
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.utils.extract_host')
@@ -100,6 +103,42 @@ class CreateVolumeFlowTestCase(test.TestCase):
         task._cast_create_volume(self.ctxt, spec, props)
         consistencygroup_get_by_id.assert_called_once_with(self.ctxt, 5)
         mock_extract_host.assert_called_once_with('host@backend#pool')
+
+    @ddt.data(('enabled', {'replication_enabled': '<is> True'}),
+              ('disabled', {'replication_enabled': '<is> False'}),
+              ('disabled', {}))
+    @ddt.unpack
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_encryption_key_id', mock.Mock())
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_extract_volume_request_replication_status(self,
+                                                       replication_status,
+                                                       extra_specs,
+                                                       fake_get_qos):
+        self.get_extra_specs.return_value = extra_specs
+        fake_image_service = fake_image.FakeImageService()
+        fake_key_manager = mock_key_manager.MockKeyManager()
+
+        task = create_volume.ExtractVolumeRequestTask(fake_image_service,
+                                                      {'nova'})
+
+        result = task.execute(self.ctxt,
+                              size=1,
+                              snapshot=None,
+                              image_id=None,
+                              source_volume=None,
+                              availability_zone='nova',
+                              volume_type={'id': fakes.VOLUME_TYPE_ID,
+                                           'size': 1},
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              source_replica=None,
+                              consistencygroup=None,
+                              cgsnapshot=None,
+                              group=None)
+        self.assertEqual(replication_status, result['replication_status'],
+                         extra_specs)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.flows.api.create_volume.'
@@ -199,7 +238,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -299,7 +339,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -355,7 +396,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
@@ -418,7 +460,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')
@@ -482,7 +525,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')
@@ -545,7 +589,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
-                           'group_id': None, }
+                           'group_id': None,
+                           'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.db.volume_type_get_by_name')

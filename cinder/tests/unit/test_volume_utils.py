@@ -21,6 +21,7 @@ import io
 import mock
 import six
 
+import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
@@ -688,6 +689,7 @@ class CopyVolumeTestCase(test.TestCase):
                                               1073741824, mock.ANY)
 
 
+@ddt.ddt
 class VolumeUtilsTestCase(test.TestCase):
     def test_null_safe_str(self):
         self.assertEqual('', volume_utils.null_safe_str(None))
@@ -1000,3 +1002,18 @@ class VolumeUtilsTestCase(test.TestCase):
         create_key.assert_called_once_with(ctxt,
                                            algorithm='aes',
                                            length=256)
+
+    @ddt.data('<is> True', '<is> true', '<is> yes')
+    def test_is_replicated_spec_true(self, enabled):
+        res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
+        self.assertTrue(res)
+
+    @ddt.data({}, None, {'key': 'value'})
+    def test_is_replicated_no_specs(self, extra_specs):
+        res = volume_utils.is_replicated_spec(extra_specs)
+        self.assertFalse(res)
+
+    @ddt.data('<is> False', '<is> false', '<is> f', 'baddata', 'bad data')
+    def test_is_replicated_spec_false(self, enabled):
+        res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
+        self.assertFalse(res)
