@@ -949,12 +949,11 @@ class BackupManager(manager.SchedulerDependentManager):
     def _detach_device(self, context, attach_info, device,
                        properties, is_snapshot=False, force=False):
         """Disconnect the volume or snapshot from the host. """
-        connector = attach_info['connector']
-        connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'])
-
-        rpcapi = self.volume_rpcapi
         if not is_snapshot:
+            connector = attach_info['connector']
+            connector.disconnect_volume(attach_info['conn']['data'],
+                                        attach_info['device'])
+            rpcapi = self.volume_rpcapi
             rpcapi.terminate_connection(context, device, properties,
                                         force=force)
             rpcapi.remove_export(context, device)
