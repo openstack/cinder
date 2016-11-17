@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The HBSD (Hitachi Block Storage Driver) volume drivers which supports
+    Hitachi Storages HUS100 and VSP family are deprecated. Support for HUS110
+    family will be no longer provided. Support on VSP will be provided as
+    hitachi.vsp_* drivers.

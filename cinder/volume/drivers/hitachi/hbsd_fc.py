@@ -21,11 +21,12 @@ import threading
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _LI, _LW
+from cinder.i18n import _, _LI, _LW
 from cinder import interface
 from cinder import utils
 import cinder.volume.driver
@@ -310,6 +311,9 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.context = context
         self.common = common.HBSDCommon(self.configuration, self,
                                         context, self.db)
+        msg = _("The HBSD FC driver is deprecated and "
+                "will be removed in P release.")
+        versionutils.report_deprecated_feature(LOG, msg)
 
         self.check_param()
 
