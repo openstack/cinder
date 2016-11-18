@@ -4504,9 +4504,27 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         mock_get_backup.assert_called_once_with(self.context, backup)
         mock_secure.assert_called_once_with()
-        expected_result = {'backup_device': vol,
-                           'secure_enabled': False,
+        expected_result = {'backup_device': vol, 'secure_enabled': False,
                            'is_snapshot': False}
+        self.assertEqual(expected_result, result)
+
+    @mock.patch.object(driver.BaseVD, 'get_backup_device')
+    @mock.patch.object(driver.BaseVD, 'secure_file_operations_enabled')
+    def test_get_backup_device_want_objects(self, mock_secure,
+                                            mock_get_backup):
+        vol = tests_utils.create_volume(self.context)
+        backup = tests_utils.create_backup(self.context, vol['id'])
+        mock_secure.return_value = False
+        mock_get_backup.return_value = (vol, False)
+        result = self.volume.get_backup_device(self.context,
+                                               backup, want_objects=True)
+
+        mock_get_backup.assert_called_once_with(self.context, backup)
+        mock_secure.assert_called_once_with()
+        expected_result = objects.BackupDeviceInfo.from_primitive(
+            {'backup_device': vol, 'secure_enabled': False,
+             'is_snapshot': False},
+            self.context)
         self.assertEqual(expected_result, result)
 
     def test_backup_use_temp_snapshot_config(self):

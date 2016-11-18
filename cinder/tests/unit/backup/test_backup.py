@@ -587,9 +587,13 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
-        mock_get_backup_device.return_value = {'backup_device': vol,
-                                               'secure_enabled': False,
-                                               'is_snapshot': False, }
+        backup_device_dict = {'backup_device': vol, 'secure_enabled': False,
+                              'is_snapshot': False, }
+        mock_get_backup_device.return_value = (
+            objects.BackupDeviceInfo.from_primitive(backup_device_dict,
+                                                    self.ctxt,
+                                                    ['admin_metadata',
+                                                     'metadata']))
         attach_info = {'device': {'path': '/dev/null'}}
         mock_detach_device = self.mock_object(self.backup_mgr,
                                               '_detach_device')
@@ -635,9 +639,11 @@ class BackupTestCase(BaseBackupTest):
         snap = self._create_snapshot_db_entry(volume_id = vol_id)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
-        mock_get_backup_device.return_value = {'backup_device': snap,
-                                               'secure_enabled': False,
-                                               'is_snapshot': True, }
+        mock_get_backup_device.return_value = (
+            objects.BackupDeviceInfo.from_primitive({
+                'backup_device': snap, 'secure_enabled': False,
+                'is_snapshot': True, },
+                self.ctxt, expected_attrs=['metadata']))
 
         # TODO(walter-boring) This is to account for the missing FakeConnector
         # in os-brick 1.6.0 and >

@@ -22,6 +22,7 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 from cinder.tests.unit import utils
@@ -42,6 +43,13 @@ fake_backup = {
     'data_timestamp': None,
     'restore_volume_id': None,
 }
+
+vol_props = {'status': 'available', 'size': 1}
+fake_vol = fake_volume.fake_db_volume(**vol_props)
+snap_props = {'status': fields.BackupStatus.AVAILABLE,
+              'volume_id': fake_vol['id'],
+              'expected_attrs': ['metadata']}
+fake_snap = fake_snapshot.fake_db_snapshot(**snap_props)
 
 
 class TestBackup(test_objects.BaseObjectsTestCase):
@@ -237,3 +245,124 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
         get_all_by_volume.assert_called_once_with(self.context,
                                                   fake.VOLUME_ID, None)
         TestBackup._compare(self, fake_backup, backups[0])
+
+
+class BackupDeviceInfoTestCase(test_objects.BaseObjectsTestCase):
+    def setUp(self):
+        super(BackupDeviceInfoTestCase, self).setUp()
+        self.vol_obj = fake_volume.fake_volume_obj(self.context, **vol_props)
+        self.snap_obj = fake_snapshot.fake_snapshot_obj(self.context,
+                                                        **snap_props)
+        self.backup_device_dict = {'secure_enabled': False,
+                                   'is_snapshot': False, }
+
+    @mock.patch('cinder.db.volume_get', return_value=fake_vol)
+    def test_from_primitive_with_volume(self, mock_fake_vol):
+        vol_obj = self.vol_obj
+        self.backup_device_dict['backup_device'] = vol_obj
+        backup_device_info = objects.BackupDeviceInfo.from_primitive(
+            self.backup_device_dict, self.context)
+        self.assertFalse(backup_device_info.is_snapshot)
+        self.assertEqual(self.backup_device_dict['secure_enabled'],
+                         backup_device_info.secure_enabled)
+        self.assertEqual(vol_obj, backup_device_info.volume)
+
+        self.backup_device_dict['backup_device'] = fake_vol
+        backup_device_info = objects.BackupDeviceInfo.from_primitive(
+            self.backup_device_dict, self.context)
+        vol_obj_from_db = objects.Volume._from_db_object(self.context,
+                                                         objects.Volume(),
+                                                         fake_vol)
+        self.assertEqual(vol_obj_from_db, backup_device_info.volume)
+
+    @mock.patch('cinder.db.snapshot_get', return_value=fake_snap)
+    def test_from_primitive_with_snapshot(self, mock_fake_snap):
+        snap_obj = self.snap_obj
+        self.backup_device_dict['is_snapshot'] = True
+        self.backup_device_dict['backup_device'] = snap_obj
+        backup_device_info = objects.BackupDeviceInfo.from_primitive(
+            self.backup_device_dict, self.context, expected_attrs=['metadata'])
+        self.assertTrue(backup_device_info.is_snapshot)
+        self.assertEqual(self.backup_device_dict['secure_enabled'],
+                         backup_device_info.secure_enabled)
+        self.assertEqual(snap_obj, backup_device_info.snapshot)
+
+        self.backup_device_dict['backup_device'] = fake_snap
+        backup_device_info = objects.BackupDeviceInfo.from_primitive(
+            self.backup_device_dict, self.context, expected_attrs=['metadata'])
+        self.assertEqual(snap_obj, backup_device_info.snapshot)
+
+    @mock.patch('cinder.db.volume_get', return_value=fake_vol)
+    def test_to_primitive_with_volume(self, mock_fake_vol):
+        vol_obj = self.vol_obj
+        self.backup_device_dict['backup_device'] = fake_vol
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.volume = vol_obj
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+
+        backup_device_ret_dict = backup_device_info.to_primitive(self.context)
+        self.assertEqual(self.backup_device_dict['secure_enabled'],
+                         backup_device_ret_dict['secure_enabled'])
+        self.assertFalse(backup_device_ret_dict['is_snapshot'])
+        self.assertEqual(self.backup_device_dict['backup_device'],
+                         backup_device_ret_dict['backup_device'])
+
+    @mock.patch('cinder.db.snapshot_get', return_value=fake_snap)
+    def test_to_primitive_with_snapshot(self, mock_fake_snap):
+        snap_obj = self.snap_obj
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.snapshot = snap_obj
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+
+        backup_device_ret_dict = backup_device_info.to_primitive(self.context)
+        self.assertEqual(self.backup_device_dict['secure_enabled'],
+                         backup_device_ret_dict['secure_enabled'])
+        self.assertTrue(backup_device_ret_dict['is_snapshot'])
+        # NOTE(sborkows): since volume in sqlalchemy snapshot is a sqlalchemy
+        # object too, to compare snapshots we need to convert their volumes to
+        # dicts.
+        snap_actual_dict = fake_snap
+        snap_ref_dict = backup_device_ret_dict['backup_device']
+        snap_actual_dict['volume'] = self.vol_obj.obj_to_primitive()
+        snap_ref_dict['volume'] = snap_ref_dict['volume']
+        self.assertEqual(snap_actual_dict, snap_ref_dict)
+
+    def test_is_snapshot_both_volume_and_snapshot_raises_error(self):
+        snap = self.snap_obj
+        vol = self.vol_obj
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.snapshot = snap
+        backup_device_info.volume = vol
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+        self.assertRaises(exception.ProgrammingError, getattr,
+                          backup_device_info, 'is_snapshot')
+
+    def test_is_snapshot_neither_volume_nor_snapshot_raises_error(self):
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+        self.assertRaises(exception.ProgrammingError, getattr,
+                          backup_device_info, 'is_snapshot')
+
+    def test_device_obj_with_volume(self):
+        vol = self.vol_obj
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.volume = vol
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+        backup_device_obj = backup_device_info.device_obj
+        self.assertIsInstance(backup_device_obj, objects.Volume)
+        self.assertEqual(vol, backup_device_obj)
+
+    def test_device_obj_with_snapshot(self):
+        snap = self.snap_obj
+        backup_device_info = objects.BackupDeviceInfo()
+        backup_device_info.snapshot = snap
+        backup_device_info.secure_enabled = (
+            self.backup_device_dict['secure_enabled'])
+        backup_device_obj = backup_device_info.device_obj
+        self.assertIsInstance(backup_device_obj, objects.Snapshot)
+        self.assertEqual(snap, backup_device_obj)

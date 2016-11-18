@@ -16,6 +16,7 @@
 Unit Tests for cinder.volume.rpcapi
 """
 import copy
+import mock
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -206,6 +207,7 @@ class VolumeRpcAPITestCase(test.TestCase):
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
+            kwargs.pop('want_objects', None)
             self.fake_kwargs = kwargs
             if expected_retval is not None:
                 return expected_retval
@@ -567,7 +569,21 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               version='3.0')
 
-    def test_get_backup_device(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_get_backup_device(self, mock_can_send_version):
+        self._test_volume_api('get_backup_device',
+                              rpc_method='call',
+                              backup=self.fake_backup_obj,
+                              volume=self.fake_volume_obj,
+                              version='3.2')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    @mock.patch('cinder.objects.backup.BackupDeviceInfo.from_primitive',
+                return_value={})
+    def test_get_backup_device_old(self, mock_from_primitive,
+                                   mock_can_send_version):
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
                               backup=self.fake_backup_obj,

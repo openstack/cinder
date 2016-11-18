@@ -24,6 +24,7 @@ from cinder import test
 # corresponding version bump in the affected objects.
 object_data = {
     'Backup': '1.4-c50f7a68bb4c400dd53dd219685b3992',
+    'BackupDeviceInfo': '1.0-74b3950676c690538f4bc6796bd0042e',
     'BackupImport': '1.4-c50f7a68bb4c400dd53dd219685b3992',
     'BackupList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'CleanupRequest': '1.0-e7c688b893e1d5537ccf65cc3eb10a28',

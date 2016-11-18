@@ -4196,14 +4196,18 @@ class VolumeManager(manager.CleanableManager,
         LOG.debug("Obtained capabilities list: %s.", capabilities)
         return capabilities
 
-    def get_backup_device(self, ctxt, backup):
+    def get_backup_device(self, ctxt, backup, want_objects=False):
         (backup_device, is_snapshot) = (
             self.driver.get_backup_device(ctxt, backup))
         secure_enabled = self.driver.secure_file_operations_enabled()
         backup_device_dict = {'backup_device': backup_device,
                               'secure_enabled': secure_enabled,
                               'is_snapshot': is_snapshot, }
-        return backup_device_dict
+        # TODO(sborkows): from_primitive method will be removed in O, so there
+        # is a need to clean here then.
+        return (objects.BackupDeviceInfo.from_primitive(backup_device_dict,
+                                                        ctxt)
+                if want_objects else backup_device_dict)
 
     def secure_file_operations_enabled(self, ctxt, volume):
         secure_enabled = self.driver.secure_file_operations_enabled()

@@ -14,6 +14,7 @@
 
 
 from cinder.common import constants
+from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.volume import utils
@@ -110,9 +111,11 @@ class VolumeAPI(rpc.RPCAPI):
         3.1  - Remove promote_replica and reenable_replication. This is
                non-backward compatible, but the user-facing API was removed
                back in Mitaka when introducing cheesecake replication.
+        3.2  - Adds support for sending objects over RPC in
+               get_backup_device().
     """
 
-    RPC_API_VERSION = '3.1'
+    RPC_API_VERSION = '3.2'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -293,9 +296,15 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
 
     def get_backup_device(self, ctxt, backup, volume):
-        cctxt = self._get_cctxt(volume.host)
-        backup_dict = cctxt.call(ctxt, 'get_backup_device', backup=backup)
-        return backup_dict
+        cctxt = self._get_cctxt(volume.host, ('3.2', '3.0'))
+        if cctxt.can_send_version('3.2'):
+            backup_obj = cctxt.call(ctxt, 'get_backup_device', backup=backup,
+                                    want_objects=True)
+        else:
+            backup_dict = cctxt.call(ctxt, 'get_backup_device', backup=backup)
+            backup_obj = objects.BackupDeviceInfo.from_primitive(backup_dict,
+                                                                 ctxt)
+        return backup_obj
 
     def secure_file_operations_enabled(self, ctxt, volume):
         cctxt = self._get_cctxt(volume.host)
