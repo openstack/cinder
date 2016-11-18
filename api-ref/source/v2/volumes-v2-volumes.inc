@@ -157,19 +157,19 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - size: size
-   - description: description
+   - description: description_9
    - imageRef: imageRef
    - multiattach: multiattach
    - availability_zone: availability_zone
    - source_volid: source_volid
-   - name: name
+   - name: name_13
    - volume: volume
-   - consistencygroup_id: consistencygroup_id
-   - volume_type: volume_type
+   - consistencygroup_id: consistencygroup_id_1
+   - volume_type: volume_type_2
    - snapshot_id: snapshot_id
    - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
    - source_replica: source_replica
-   - metadata: metadata
+   - metadata: metadata_2
    - tenant_id: tenant_id
 
 Request Example
