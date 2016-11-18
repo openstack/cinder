@@ -63,7 +63,7 @@ Reset a volume's statuses
 
 .. rest_method::  POST /v3/{tenant_id}/volumes/{volume_id}/action
 
-Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
+Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
 Error response codes:202,
 
