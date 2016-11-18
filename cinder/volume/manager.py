@@ -224,6 +224,13 @@ class VolumeManager(manager.CleanableManager,
             host=self.host,
             is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
+
+        if self.cluster and not self.driver.SUPPORTS_ACTIVE_ACTIVE:
+            msg = _LE('Active-Active configuration is not currently supported '
+                      'by driver %s.') % volume_driver
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
         self.message_api = message_api.API()
 
         if CONF.profiler.enabled and profiler is not None:

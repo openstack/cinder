@@ -322,6 +322,13 @@ class BaseVD(object):
     """
     VERSION = "N/A"
 
+    # NOTE(geguileo): By default we assume drivers don't support Active-Active
+    # configurations.  If driver supports it then they can set this class
+    # attribute on the driver, and if support depends on configuration options
+    # then they can set it at the instance level on the driver's __init__
+    # method since the manager will do the check after that.
+    SUPPORTS_ACTIVE_ACTIVE = False
+
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = kwargs.get('db')
