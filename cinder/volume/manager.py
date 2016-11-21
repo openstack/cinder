@@ -2351,6 +2351,7 @@ class VolumeManager(manager.CleanableManager,
                             'status': status_update['status']}
             if retype_model_update:
                 model_update.update(retype_model_update)
+            self._set_replication_status(diff, model_update)
             volume.update(model_update)
             volume.save()
 
@@ -2364,6 +2365,23 @@ class VolumeManager(manager.CleanableManager,
         self.publish_service_capabilities(context)
         LOG.info(_LI("Retype volume completed successfully."),
                  resource=volume)
+
+    @staticmethod
+    def _set_replication_status(diff, model_update):
+        """Update replication_status in model_update if it has changed."""
+        if not diff or model_update.get('replication_status'):
+            return
+
+        diff_specs = diff.get('extra_specs', {})
+        replication_diff = diff_specs.get('replication_enabled')
+
+        if replication_diff:
+            is_replicated = vol_utils.is_replicated_str(replication_diff[1])
+            if is_replicated:
+                replication_status = fields.ReplicationStatus.ENABLED
+            else:
+                replication_status = fields.ReplicationStatus.DISABLED
+            model_update['replication_status'] = replication_status
 
     def manage_existing(self, ctxt, volume, ref=None):
         vol_ref = self._run_manage_existing_flow_engine(
