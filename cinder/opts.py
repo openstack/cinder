@@ -74,6 +74,10 @@ from cinder.volume.drivers.coprhd import common as \
     cinder_volume_drivers_coprhd_common
 from cinder.volume.drivers.coprhd import scaleio as \
     cinder_volume_drivers_coprhd_scaleio
+from cinder.volume.drivers.datacore import driver as \
+    cinder_volume_drivers_datacore_driver
+from cinder.volume.drivers.datacore import iscsi as \
+    cinder_volume_drivers_datacore_iscsi
 from cinder.volume.drivers.datera import datera_iscsi as \
     cinder_volume_drivers_datera_dateraiscsi
 from cinder.volume.drivers.dell_emc import ps as \
@@ -245,6 +249,8 @@ def list_opts():
                 [cinder_volume_api.az_cache_time_opt],
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
+                cinder_volume_drivers_datacore_driver.datacore_opts,
+                cinder_volume_drivers_datacore_iscsi.datacore_iscsi_opts,
                 cinder_volume_drivers_inspur_instorage_instoragecommon.
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
