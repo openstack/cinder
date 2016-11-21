@@ -288,22 +288,20 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertFalse(stats['QoS_support'])
 
     def test_collect_garbage__snapshot(self):
-        name = 'v1@s1'
+        name = 'cinder/v1@s1'
         self.drv.deleted_volumes = [name]
         self.nms_mock.zvol.get_child_props.return_value = None
         self.drv._collect_garbage(name)
-        self.nms_mock.snapshot.destroy.assert_called_with(
-            '{}/{}'.format(self.cfg.nexenta_volume, name), '')
-        self.assertNotIn(name, self.drv.deleted_volumes)
+        self.nms_mock.snapshot.destroy.assert_called_with(name, '')
+        self.assertNotIn(name, self.drv._needless_objects)
 
     def test_collect_garbage__volume(self):
-        name = 'v1'
+        name = 'cinder/v1'
         self.drv.deleted_volumes = [name]
         self.nms_mock.zvol.get_child_props.return_value = None
         self.drv._collect_garbage(name)
-        self.nms_mock.zvol.destroy.assert_called_with(
-            '{}/{}'.format(self.cfg.nexenta_volume, name), '')
-        self.assertNotIn(name, self.drv.deleted_volumes)
+        self.nms_mock.zvol.destroy.assert_called_with(name, '')
+        self.assertNotIn(name, self.drv._needless_objects)
 
     def _create_volume_db_entry(self):
         vol = {
