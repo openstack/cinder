@@ -350,3 +350,17 @@ class VZStorageTestCase(test.TestCase):
         )
         self._vz_driver.delete_snapshot(self.snap)
         self.assertFalse(mock_delete_snapshot.called)
+
+    def test_extend_volume_ploop(self):
+        drv = self._vz_driver
+        drv.local_path = mock.Mock(
+            return_value=self._FAKE_VOLUME_PATH)
+        drv.get_volume_format = mock.Mock(
+            return_value=vzstorage.DISK_FORMAT_PLOOP)
+        drv._is_share_eligible = mock.Mock(
+            return_value=True)
+        drv.extend_volume(self.vol, 100)
+        drv._execute.assert_called_once_with(
+            'ploop', 'resize', '-s', '100G',
+            '%s/DiskDescriptor.xml' % self._FAKE_VOLUME_PATH,
+            run_as_root=True)
