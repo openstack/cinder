@@ -28,16 +28,18 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
+class NexentaNfsDriver(nfs.NfsDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
         1.0.0 - Initial driver version.
+        1.1.0 - Added HTTPS support.
+                Added use of sessions for REST calls.
     """
 
     driver_prefix = 'nexenta'
@@ -65,7 +67,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self.configuration.nexenta_dataset_description)
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
-        self.nef_protocol = self.configuration.nexenta_rest_protocol
+        self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
@@ -82,13 +84,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         return backend_name
 
     def do_setup(self, context):
-        if self.nef_protocol == 'auto':
-            protocol, auto = 'http', True
-        else:
-            protocol, auto = self.nef_protocol, False
         self.nef = jsonrpc.NexentaJSONProxy(
-            protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password, auto=auto)
+            self.nef_host, self.nef_port, self.nef_user,
+            self.nef_password, self.use_https)
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
@@ -97,14 +95,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         pool_name, fs = self._get_share_datasets(self.share)
         url = 'storage/pools/%s' % (pool_name)
-        if not self.nef.get(url):
-            raise LookupError(_("Pool %s does not exist in Nexenta "
-                                "Store appliance") % pool_name)
-        url = 'storage/pools/%s/filesystems/%s' % (
-            pool_name, fs)
-        if not self.nef.get(url):
-            raise LookupError(_("filesystem %s does not exist in "
-                                "Nexenta Store appliance") % fs)
+        self.nef.get(url)
+        url = 'storage/pools/%s/filesystems/%s' % (pool_name, fs)
+        self.nef.get(url)
 
         path = '/'.join([pool_name, fs])
         shared = False
@@ -285,9 +278,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         path = '/'.join([pool, fs, volume['name']])
         data = {'targetPath': path}
         self.nef.post(url, data)
-        path = '%2F'.join([pool, fs, volume['name']])
-        url = 'storage/filesystems/%s/promote' % path
-        self.nef.post(url)
 
         try:
             self._share_folder(fs, volume['name'])
