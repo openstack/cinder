@@ -143,7 +143,7 @@ class NestedQuotasTest(functional_helpers._FunctionalTestBase):
                         in quota.items() if key != 'per_volume_gigabytes'}
         return self.api.quota_set(project_id, type_updates)
 
-    def test_grandchild_soft_limit_propogates_up(self):
+    def test_grandchild_soft_limit_propagates_up(self):
         quota = {'volumes': -1, 'gigabytes': -1, 'per_volume_gigabytes': -1}
         self._update_quota_and_def_type(self.B.id, quota)
         self._update_quota_and_def_type(self.D.id, quota)
