@@ -289,7 +289,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_collect_garbage__snapshot(self):
         name = 'cinder/v1@s1'
-        self.drv.deleted_volumes = [name]
+        self.drv._mark_as_garbage(name)
         self.nms_mock.zvol.get_child_props.return_value = None
         self.drv._collect_garbage(name)
         self.nms_mock.snapshot.destroy.assert_called_with(name, '')
@@ -297,7 +297,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_collect_garbage__volume(self):
         name = 'cinder/v1'
-        self.drv.deleted_volumes = [name]
+        self.drv._mark_as_garbage(name)
         self.nms_mock.zvol.get_child_props.return_value = None
         self.drv._collect_garbage(name)
         self.nms_mock.zvol.destroy.assert_called_with(name, '')
