@@ -44,6 +44,8 @@ from cinder.volume.drivers.emc import emc_vmax_utils
 from cinder.volume import volume_types
 
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
+emc_vmax_utils.JOB_RETRIES = 0
+emc_vmax_utils.INTERVAL_10_SEC = 0
 
 
 class EMC_StorageVolume(dict):
@@ -3100,9 +3102,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         poolRec = self.driver.utils.extract_record(arrayInfo, pool)
         extraSpecs = self.driver.common._set_v2_extra_specs(extraSpecs,
                                                             poolRec)
-        self.assertEqual(60,
+        # Set JOB_RETRIES and INTERVAL_10_SEC to 0 to avoid timeout
+        self.assertEqual(0,
                          self.driver.utils._get_max_job_retries(extraSpecs))
-        self.assertEqual(10,
+        self.assertEqual(0,
                          self.driver.utils._get_interval_in_secs(extraSpecs))
 
     def test_interval_only(self):
@@ -3114,7 +3117,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         poolRec = self.driver.utils.extract_record(arrayInfo, pool)
         extraSpecs = self.driver.common._set_v2_extra_specs(extraSpecs,
                                                             poolRec)
-        self.assertEqual(60,
+        # Set JOB_RETRIES 0 to avoid timeout
+        self.assertEqual(0,
                          self.driver.utils._get_max_job_retries(extraSpecs))
         self.assertEqual(20,
                          self.driver.utils._get_interval_in_secs(extraSpecs))
@@ -3134,7 +3138,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                                                             poolRec)
         self.assertEqual(70,
                          self.driver.utils._get_max_job_retries(extraSpecs))
-        self.assertEqual(10,
+        # Set INTERVAL_10_SEC to 0 to avoid timeout
+        self.assertEqual(0,
                          self.driver.utils._get_interval_in_secs(extraSpecs))
 
         bExists = os.path.exists(file_name)
