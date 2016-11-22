@@ -36,6 +36,7 @@ except ImportError:
     hpeexceptions = None
 
 from oslo_log import log as logging
+from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -47,6 +48,9 @@ from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
+
+# EXISTENT_PATH error code returned from hpe3parclient
+EXISTENT_PATH = 73
 DEFAULT_ISCSI_PORT = 3260
 CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
@@ -119,10 +123,12 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.11 - _create_3par_iscsi_host() now accepts iscsi_iqn as list only.
                  Bug #1590180
         3.0.12 - Added entry point tracing
+        3.0.13 - Handling HTTP conflict 409, host WWN/iSCSI name already used
+                by another host, while creating 3PAR iSCSI Host. bug #1642945
 
     """
 
-    VERSION = "3.0.12"
+    VERSION = "3.0.13"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -528,9 +534,29 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             return host_found
         else:
             persona_id = int(persona_id)
-            common.client.createHost(hostname, iscsiNames=iscsi_iqn,
-                                     optional={'domain': domain,
-                                               'persona': persona_id})
+            try:
+                common.client.createHost(hostname, iscsiNames=iscsi_iqn,
+                                         optional={'domain': domain,
+                                                   'persona': persona_id})
+            except hpeexceptions.HTTPConflict as path_conflict:
+                msg = _LE("Create iSCSI host caught HTTP conflict code: %s")
+                with save_and_reraise_exception(reraise=False) as ctxt:
+                    if path_conflict.get_code() is EXISTENT_PATH:
+                        # Handle exception : EXISTENT_PATH - host WWN/iSCSI
+                        # name already used by another host
+                        hosts = common.client.queryHost(iqns=iscsi_iqn)
+                        if hosts and hosts['members'] and (
+                                'name' in hosts['members'][0]):
+                            hostname = hosts['members'][0]['name']
+                        else:
+                            # re-raise last caught exception
+                            ctxt.reraise = True
+                            LOG.exception(msg, path_conflict.get_code())
+                    else:
+                        # re-raise last caught exception
+                        # for other HTTP conflict
+                        ctxt.reraise = True
+                        LOG.exception(msg, path_conflict.get_code())
             return hostname
 
     def _modify_3par_iscsi_host(self, common, hostname, iscsi_iqn):
