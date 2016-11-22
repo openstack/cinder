@@ -122,7 +122,7 @@ def _fake_cg_snapshot_wrapper(*args, **kwargs):
 class EnumBuilder(object):
     def __init__(self, enum_dict):
         enum_dict = enum_dict[SYMBOL_ENUM]
-        for k, v in six.iteritems(enum_dict):
+        for k, v in enum_dict.items():
             self.klazz = k
             self.value = v
 
