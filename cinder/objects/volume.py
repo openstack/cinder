@@ -548,6 +548,9 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             list(volume_updates.keys()) +
             ['volume_attachment', 'admin_metadata'])
 
+    def is_replicated(self):
+        return self.volume_type and self.volume_type.is_replicated()
+
 
 @base.CinderObjectRegistry.register
 class VolumeList(base.ObjectListBase, base.CinderObject):
