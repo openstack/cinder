@@ -599,6 +599,10 @@ class TransferNotFound(NotFound):
     message = _("Transfer %(transfer_id)s could not be found.")
 
 
+class NexentaException(NotFound):
+    message = _("Nexenta Cinder Driver exception.")
+
+
 class VolumeMigrationFailed(CinderException):
     message = _("Volume migration failed: %(reason)s")
 

@@ -33,3 +33,5 @@ doc/build
 
 # Files created by releasenotes build
 releasenotes/build
+*sftp-config.json
+*sftp-config-alt.json
