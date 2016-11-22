@@ -203,7 +203,8 @@ class EMCVMAXMasking(object):
         defaultSgGroupName = self.utils.get_v3_storage_group_name(
             maskingviewdict['pool'],
             maskingviewdict['slo'],
-            maskingviewdict['workload'])
+            maskingviewdict['workload'],
+            maskingviewdict['isCompressionDisabled'])
         assocStorageGroupInstanceNames = (
             self.utils.get_storage_groups_from_volume(
                 conn, volumeinstance.path))
@@ -777,7 +778,8 @@ class EMCVMAXMasking(object):
             foundStorageGroupInstanceName = (
                 self.provisionv3.create_storage_group_v3(
                     conn, controllerConfigService, storageGroupName,
-                    pool, slo, workload, maskingViewDict['extraSpecs']))
+                    pool, slo, workload, maskingViewDict['extraSpecs'],
+                    maskingViewDict['isCompressionDisabled']))
         else:
             fastPolicyName = maskingViewDict['fastPolicy']
             volumeInstance = maskingViewDict['volumeInstance']
@@ -2234,9 +2236,10 @@ class EMCVMAXMasking(object):
         :param extraSpecs: additional info
         :raises: VolumeBackendAPIException
         """
+        isCompressionDisabled = self.utils.is_compression_disabled(extraSpecs)
         storageGroupName = self.utils.get_v3_storage_group_name(
             extraSpecs[self.utils.POOL], extraSpecs[self.utils.SLO],
-            extraSpecs[self.utils.WORKLOAD])
+            extraSpecs[self.utils.WORKLOAD], isCompressionDisabled)
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, controllerConfigurationService, storageGroupName)
 
@@ -2245,7 +2248,8 @@ class EMCVMAXMasking(object):
                 self.provisionv3.create_storage_group_v3(
                     conn, controllerConfigurationService, storageGroupName,
                     extraSpecs[self.utils.POOL], extraSpecs[self.utils.SLO],
-                    extraSpecs[self.utils.WORKLOAD], extraSpecs))
+                    extraSpecs[self.utils.WORKLOAD], extraSpecs,
+                    isCompressionDisabled))
             if not storageGroupInstanceName:
                 errorMessage = (_("Failed to create storage group "
                                   "%(storageGroupName)s.") %

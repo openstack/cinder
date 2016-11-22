@@ -1,0 +1,3 @@
+---
+features:
+   - Support for compression on VMAX All Flash in the VMAX driver.

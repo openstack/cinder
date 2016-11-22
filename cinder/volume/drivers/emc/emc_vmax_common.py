@@ -1320,7 +1320,8 @@ class EMCVMAXCommon(object):
 
     def _is_valid_for_storage_assisted_migration_v3(
             self, volumeInstanceName, host, sourceArraySerialNumber,
-            sourcePoolName, volumeName, volumeStatus, sgName):
+            sourcePoolName, volumeName, volumeStatus, sgName,
+            doChangeCompression):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param volumeInstanceName: the volume instance id
@@ -1331,6 +1332,7 @@ class EMCVMAXCommon(object):
         :param volumeName: the name of the volume to be migrated
         :param volumeStatus: the status of the volume
         :param sgName: storage group name
+        :param doChangeCompression: do change compression
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -1390,13 +1392,16 @@ class EMCVMAXCommon(object):
                                  % {'targetSlo': targetSlo,
                                     'targetWorkload': targetWorkload})
             if targetCombination in emcFastSetting:
-                LOG.error(_LE(
-                    "No action required. Volume: %(volumeName)s is "
-                    "already part of slo/workload combination: "
-                    "%(targetCombination)s."),
-                    {'volumeName': volumeName,
-                     'targetCombination': targetCombination})
-                return falseRet
+                # Check if migration is from compression to non compression
+                # of vice versa
+                if not doChangeCompression:
+                    LOG.error(_LE(
+                        "No action required. Volume: %(volumeName)s is "
+                        "already part of slo/workload combination: "
+                        "%(targetCombination)s."),
+                        {'volumeName': volumeName,
+                         'targetCombination': targetCombination})
+                    return falseRet
 
         return (True, targetSlo, targetWorkload)
 
@@ -2036,6 +2041,7 @@ class EMCVMAXCommon(object):
         protocol = self.utils.get_short_protocol_type(self.protocol)
         shortHostName = self.utils.get_host_short_name(hostName)
         if isV3:
+            maskingViewDict['isCompressionDisabled'] = False
             slo = extraSpecs[SLO]
             workload = extraSpecs[WORKLOAD]
             maskingViewDict['slo'] = slo
@@ -2050,6 +2056,12 @@ class EMCVMAXCommon(object):
                         'slo': slo,
                         'workload': workload,
                         'protocol': protocol}))
+                doDisableCompression = self.utils.is_compression_disabled(
+                    extraSpecs)
+                if doDisableCompression:
+                    prefix = ("%(prefix)s-CD"
+                              % {'prefix': prefix})
+                    maskingViewDict['isCompressionDisabled'] = True
             else:
                 prefix = (
                     ("OS-%(shortHostName)s-No_SLO-%(protocol)s"
@@ -3148,13 +3160,15 @@ class EMCVMAXCommon(object):
 
         storageConfigService = self.utils.find_storage_configuration_service(
             self.conn, storageSystemName)
+        doDisableCompression = self.utils.is_compression_disabled(extraSpecs)
 
         # A volume created without specifying a storage group during
         # creation time is allocated from the default SRP pool and
         # assigned the optimized SLO.
         sgInstanceName = self._get_or_create_storage_group_v3(
             extraSpecs[POOL], extraSpecs[SLO],
-            extraSpecs[WORKLOAD], storageSystemName, extraSpecs)
+            extraSpecs[WORKLOAD], doDisableCompression,
+            storageSystemName, extraSpecs)
         volumeDict, rc = self.provisionv3.create_volume_from_sg(
             self.conn, storageConfigService, volumeName,
             sgInstanceName, volumeSize, extraSpecs)
@@ -3162,23 +3176,40 @@ class EMCVMAXCommon(object):
         return rc, volumeDict, storageSystemName
 
     def _get_or_create_storage_group_v3(
-            self, poolName, slo, workload, storageSystemName, extraSpecs):
+            self, poolName, slo, workload, doDisableCompression,
+            storageSystemName, extraSpecs):
         """Get or create storage group_v3 (V3).
 
         :param poolName: the SRP pool nsmr
         :param slo: the SLO
         :param workload: the workload
+        :param doDisableCompression: flag for compression
         :param storageSystemName: storage system name
         :param extraSpecs: extra specifications
         :returns: sgInstanceName
         """
         storageGroupName, controllerConfigService, sgInstanceName = (
             self.utils.get_v3_default_sg_instance_name(
-                self.conn, poolName, slo, workload, storageSystemName))
+                self.conn, poolName, slo, workload, storageSystemName,
+                doDisableCompression))
         if sgInstanceName is None:
             sgInstanceName = self.provisionv3.create_storage_group_v3(
                 self.conn, controllerConfigService, storageGroupName,
-                poolName, slo, workload, extraSpecs)
+                poolName, slo, workload, extraSpecs, doDisableCompression)
+        else:
+            # Check that SG is not part of a masking view
+            mvInstanceName = self.masking.get_masking_view_from_storage_group(
+                self.conn, sgInstanceName)
+            if mvInstanceName:
+                exceptionMessage = (_(
+                    "Default storage group %(storageGroupName)s is part of "
+                    "masking view %(mvInstanceName)s.  Please remove it "
+                    "from this and all masking views")
+                    % {'storageGroupName': storageGroupName,
+                       'mvInstanceName': mvInstanceName})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
         # If qos exists, update storage group to reflect qos parameters
         if 'qos' in extraSpecs:
             self.utils.update_storagegroup_qos(
@@ -3273,14 +3304,20 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        isCompressionDisabled = self.utils.is_compression_disabled(extraSpecs)
         storageGroupName = self.utils.get_v3_storage_group_name(
-            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD],
+            isCompressionDisabled)
+        # Check if old type and new type have different compression types
+        doChangeCompression = (
+            self.utils.change_compression_type(
+                isCompressionDisabled, newType))
         volumeInstanceName = volumeInstance.path
         isValid, targetSlo, targetWorkload = (
             self._is_valid_for_storage_assisted_migration_v3(
                 volumeInstanceName, host, extraSpecs[ARRAY],
                 extraSpecs[POOL], volumeName, volumeStatus,
-                storageGroupName))
+                storageGroupName, doChangeCompression))
 
         storageSystemName = volumeInstance['SystemName']
         if not isValid:
@@ -3289,13 +3326,14 @@ class EMCVMAXCommon(object):
                 "assisted migration using retype."),
                 {'name': volumeName})
             return False
-        if volume['host'] != host['host']:
+        if volume['host'] != host['host'] or doChangeCompression:
             LOG.debug(
                 "Retype Volume %(name)s from source host %(sourceHost)s "
-                "to target host %(targetHost)s.",
+                "to target host %(targetHost)s. Compression change is %(cc)r.",
                 {'name': volumeName,
                  'sourceHost': volume['host'],
-                 'targetHost': host['host']})
+                 'targetHost': host['host'],
+                 'cc': doChangeCompression})
             return self._migrate_volume_v3(
                 volume, volumeInstance, extraSpecs[POOL], targetSlo,
                 targetWorkload, storageSystemName, newType, extraSpecs)
@@ -3325,10 +3363,10 @@ class EMCVMAXCommon(object):
         controllerConfigService = (
             self.utils.find_controller_configuration_service(
                 self.conn, storageSystemName))
-
+        isCompressionDisabled = self.utils.is_compression_disabled(extraSpecs)
         defaultSgName = self.utils.get_v3_storage_group_name(
-            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
-
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD],
+            isCompressionDisabled)
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
                 self.conn, volumeInstance.path, defaultSgName))
@@ -3342,12 +3380,16 @@ class EMCVMAXCommon(object):
                 self.conn, controllerConfigService, volumeInstance,
                 volumeName, extraSpecs, None, False)
 
+        targetExtraSpecs = newType['extra_specs']
+        isCompressionDisabled = self.utils.is_compression_disabled(
+            targetExtraSpecs)
+
         storageGroupName = self.utils.get_v3_storage_group_name(
-            poolName, targetSlo, targetWorkload)
+            poolName, targetSlo, targetWorkload, isCompressionDisabled)
 
         targetSgInstanceName = self._get_or_create_storage_group_v3(
-            poolName, targetSlo, targetWorkload, storageSystemName,
-            extraSpecs)
+            poolName, targetSlo, targetWorkload, isCompressionDisabled,
+            storageSystemName, extraSpecs)
         if targetSgInstanceName is None:
             LOG.error(_LE(
                 "Failed to get or create storage group %(storageGroupName)s."),
@@ -3561,6 +3603,17 @@ class EMCVMAXCommon(object):
 
         extraSpecs[ISV3] = True
         extraSpecs = self._set_common_extraSpecs(extraSpecs, poolRecord)
+        if self.utils.is_all_flash(self.conn, extraSpecs[ARRAY]):
+            try:
+                extraSpecs[self.utils.DISABLECOMPRESSION]
+                # If not True remove it.
+                if not self.utils.str2bool(
+                        extraSpecs[self.utils.DISABLECOMPRESSION]):
+                    extraSpecs.pop(self.utils.DISABLECOMPRESSION, None)
+            except KeyError:
+                pass
+        else:
+            extraSpecs.pop(self.utils.DISABLECOMPRESSION, None)
         LOG.debug("Pool is: %(pool)s "
                   "Array is: %(array)s "
                   "SLO is: %(slo)s "
