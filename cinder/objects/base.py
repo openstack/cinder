@@ -290,7 +290,6 @@ class CinderPersistentObject(object):
             raise NotImplementedError(msg)
 
         orm_obj = db.get_by_id(context, cls.model, id, *args, **kwargs)
-        expected_attrs = cls._get_expected_attrs(context)
         # We pass parameters because fields to expect may depend on them
         expected_attrs = cls._get_expected_attrs(context, *args, **kwargs)
         kargs = {}
