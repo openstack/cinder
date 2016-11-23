@@ -829,8 +829,7 @@ class InvalidReplicationTarget(Invalid):
 
 
 class UnableToFailOver(CinderException):
-    message = _("Unable to failover to replication target:"
-                "%(reason)s).")
+    message = _("Unable to failover to replication target: %(reason)s).")
 
 
 class ReplicationError(CinderException):
