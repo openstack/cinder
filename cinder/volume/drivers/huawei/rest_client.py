@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ast
 import json
 import re
 import six
@@ -288,7 +287,10 @@ class RestClient(object):
                     return item['ID']
 
     def get_lun_id_by_name(self, name):
-        url = "/lun?range=[0-65535]"
+        if not name:
+            return
+
+        url = "/lun?filter=NAME::%s" % name
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lun id by name error.'))
 
@@ -350,7 +352,10 @@ class RestClient(object):
         self._assert_rest_result(result, _('Delete snapshot error.'))
 
     def get_snapshot_id_by_name(self, name):
-        url = "/snapshot?range=[0-32767]"
+        if not name:
+            return
+
+        url = "/snapshot?filter=NAME::%s" % name
         description = 'The snapshot license file is unavailable.'
         result = self.call(url, None, "GET")
         if 'error' in result:
@@ -2111,16 +2116,18 @@ class RestClient(object):
 
         return result.get('data', [])
 
-    def is_lun_in_mirror(self, lun_id):
-        url = "/lun?range=[0-65535]"
+    def is_lun_in_mirror(self, name):
+        if not name:
+            return False
+
+        url = "/lun?filter=NAME::%s" % name
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get volume by name error.'))
         for item in result.get('data', []):
             rss_obj = item.get('HASRSSOBJECT')
             if rss_obj:
-                rss_obj = ast.literal_eval(rss_obj)
-                if (item.get('ID') == lun_id and
-                        rss_obj.get('LUNMirror') == 'TRUE'):
+                rss_obj = json.loads(rss_obj)
+                if rss_obj.get('LUNMirror') == 'TRUE':
                     return True
         return False
 
