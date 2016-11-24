@@ -1382,7 +1382,7 @@ class VolumeManager(manager.CleanableManager,
         except Exception as err:
             err_msg = (_("Validate volume connection failed "
                          "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume)
+            LOG.exception(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         try:
