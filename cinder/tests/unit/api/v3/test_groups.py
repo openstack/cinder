@@ -340,21 +340,24 @@ class GroupsAPITestCase(test.TestCase):
         self.assertEqual([fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID],
                          res_dict['groups'][2]['volume_types'])
 
+    @ddt.data(False, True)
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_group_json(self, mock_validate):
+    def test_create_group_json(self, use_group_type_name, mock_validate):
         # Create volume types and group type
         vol_type = 'test'
         vol_type_id = db.volume_type_create(
             self.ctxt,
             {'name': vol_type, 'extra_specs': {}}).get('id')
-        grp_type = 'grp_type'
-        grp_type_id = db.group_type_create(
+        grp_type_name = 'test_grp_type'
+        grp_type = db.group_type_create(
             self.ctxt,
-            {'name': grp_type, 'group_specs': {}}).get('id')
+            {'name': grp_type_name, 'group_specs': {}}).get('id')
+        if use_group_type_name:
+            grp_type = grp_type_name
         body = {"group": {"name": "group1",
                           "volume_types": [vol_type_id],
-                          "group_type": grp_type_id,
+                          "group_type": grp_type,
                           "description":
                           "Group 1", }}
         req = fakes.HTTPRequest.blank('/v3/%s/groups' % fake.PROJECT_ID,
