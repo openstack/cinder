@@ -702,6 +702,7 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager.get_all_backend_states(context)
         _mock_service_get_all.assert_called_with(context,
                                                  disabled=False,
+                                                 frozen=False,
                                                  topic=topic)
 
         # verify that Service.is_up was called for each srv
@@ -727,6 +728,7 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager.get_all_backend_states(context)
         _mock_service_get_all.assert_called_with(context,
                                                  disabled=False,
+                                                 frozen=False,
                                                  topic=topic)
 
         self.assertEqual(expected, _mock_service_is_up.call_args_list)

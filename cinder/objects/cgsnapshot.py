@@ -22,7 +22,7 @@ from oslo_versionedobjects import fields
 
 @base.CinderObjectRegistry.register
 class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
-                 base.CinderObjectDictCompat):
+                 base.CinderObjectDictCompat, base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Added from_group_snapshot
     VERSION = '1.1'
@@ -43,8 +43,12 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
     }
 
     @property
-    def service_topic_queue(self):
-        return self.consistencygroup.service_topic_queue
+    def host(self):
+        return self.consistencygroup.host
+
+    @property
+    def cluster_name(self):
+        return self.consistencygroup.cluster_name
 
     @classmethod
     def _from_db_object(cls, context, cgsnapshot, db_cgsnapshots,

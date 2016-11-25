@@ -143,6 +143,14 @@ def service_update(context, service_id, values):
 ###############
 
 
+def is_backend_frozen(context, host, cluster_name):
+    """Check if a storage backend is frozen based on host and cluster_name."""
+    return IMPL.is_backend_frozen(context, host, cluster_name)
+
+
+###############
+
+
 def cluster_get(context, id=None, is_up=None, get_services=False,
                 services_summary=False, read_deleted='no',
                 name_match_level=None, **filters):

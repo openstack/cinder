@@ -212,6 +212,8 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidConsistencyGroup(reason=msg)
 
+        group.assert_not_frozen()
+
         if cgsnapshot_id:
             self._create_cg_from_cgsnapshot(context, group, cgsnapshot_id)
         elif source_cgid:
@@ -427,6 +429,8 @@ class API(base.Base):
             group.destroy()
 
             return
+
+        group.assert_not_frozen()
 
         if force:
             expected = {}
@@ -714,6 +718,7 @@ class API(base.Base):
         return groups
 
     def create_cgsnapshot(self, context, group, name, description):
+        group.assert_not_frozen()
         options = {'consistencygroup_id': group.id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -750,6 +755,7 @@ class API(base.Base):
         return cgsnapshot
 
     def delete_cgsnapshot(self, context, cgsnapshot, force=False):
+        cgsnapshot.assert_not_frozen()
         values = {'status': 'deleting'}
         expected = {'status': ('available', 'error')}
         filters = [~db.cg_creating_from_src(cgsnapshot_id=cgsnapshot.id)]

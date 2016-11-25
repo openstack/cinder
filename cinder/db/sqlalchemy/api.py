@@ -428,9 +428,29 @@ def _filter_host(field, value, match_level=None):
     return or_(*conditions)
 
 
+def _clustered_bool_field_filter(query, field_name, filter_value):
+    # Now that we have clusters, a service is disabled/frozen if the service
+    # doesn't belong to a cluster or if it belongs to a cluster and the cluster
+    # itself is disabled/frozen.
+    if filter_value is not None:
+        query_filter = or_(
+            and_(models.Service.cluster_name.is_(None),
+                 getattr(models.Service, field_name)),
+            and_(models.Service.cluster_name.isnot(None),
+                 sql.exists().where(and_(
+                     models.Cluster.name == models.Service.cluster_name,
+                     models.Cluster.binary == models.Service.binary,
+                     ~models.Cluster.deleted,
+                     getattr(models.Cluster, field_name)))))
+        if not filter_value:
+            query_filter = ~query_filter
+        query = query.filter(query_filter)
+    return query
+
+
 def _service_query(context, session=None, read_deleted='no', host=None,
                    cluster_name=None, is_up=None, backend_match_level=None,
-                   disabled=None, **filters):
+                   disabled=None, frozen=None, **filters):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
         return None
@@ -448,22 +468,9 @@ def _service_query(context, session=None, read_deleted='no', host=None,
         query = query.filter(_filter_host(models.Service.cluster_name,
                                           cluster_name, backend_match_level))
 
-    # Now that we have clusters, a service is disabled if the service doesn't
-    # belong to a cluster or if it belongs to a cluster and the cluster itself
-    # is disabled.
-    if disabled is not None:
-        disabled_filter = or_(
-            and_(models.Service.cluster_name.is_(None),
-                 models.Service.disabled),
-            and_(models.Service.cluster_name.isnot(None),
-                 sql.exists().where(and_(
-                     models.Cluster.name == models.Service.cluster_name,
-                     models.Cluster.binary == models.Service.binary,
-                     ~models.Cluster.deleted,
-                     models.Cluster.disabled))))
-        if not disabled:
-            disabled_filter = ~disabled_filter
-        query = query.filter(disabled_filter)
+    query = _clustered_bool_field_filter(query, 'disabled', disabled)
+    query = _clustered_bool_field_filter(query, 'frozen', frozen)
+
     if filters:
         query = query.filter_by(**filters)
 
@@ -551,6 +558,24 @@ def service_update(context, service_id, values):
     result = query.update(values)
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
+
+
+###################
+
+
+@require_admin_context
+def is_backend_frozen(context, host, cluster_name):
+    """Check if a storage backend is frozen based on host and cluster_name."""
+    if cluster_name:
+        model = models.Cluster
+        conditions = [model.name == cluster_name]
+    else:
+        model = models.Service
+        conditions = [model.host == host]
+    conditions.extend((~model.deleted, model.frozen))
+    query = get_session().query(sql.exists().where(and_(*conditions)))
+    frozen = query.scalar()
+    return frozen
 
 
 ###################

@@ -14,6 +14,7 @@ import ddt
 import mock
 from oslo_config import cfg
 
+import cinder.consistencygroup
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -358,6 +359,43 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
         self.volume.delete_cgsnapshot(self.context, cgsnapshot)
 
         self.volume.delete_consistencygroup(self.context, group)
+
+    def test_create_consistencygroup_from_src_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        cg = tests_utils.create_consistencygroup(self.context,
+                                                 host=service.host)
+        cg_api = cinder.consistencygroup.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          cg_api.create_from_src,
+                          self.context, 'cg', 'desc', cgsnapshot_id=None,
+                          source_cgid=cg.id)
+
+    def test_delete_consistencygroup_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        cg = tests_utils.create_consistencygroup(self.context,
+                                                 host=service.host)
+        cg_api = cinder.consistencygroup.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          cg_api.delete, self.context, cg)
+
+    def test_create_cgsnapshot_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        cg = tests_utils.create_consistencygroup(self.context,
+                                                 host=service.host)
+        cg_api = cinder.consistencygroup.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          cg_api.create_cgsnapshot,
+                          self.context, cg, 'cg', 'desc')
+
+    def test_delete_cgsnapshot_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        cg = tests_utils.create_consistencygroup(self.context,
+                                                 host=service.host)
+        cgsnap = tests_utils.create_cgsnapshot(self.context, cg.id)
+        cg_api = cinder.consistencygroup.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          cg_api.delete_cgsnapshot,
+                          self.context, cgsnap)
 
     def test_sort_snapshots(self):
         vol1 = {'id': fake.VOLUME_ID, 'name': 'volume 1',

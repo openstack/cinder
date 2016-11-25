@@ -50,7 +50,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
-            topic=constants.VOLUME_TOPIC, disabled=disabled)
+            topic=constants.VOLUME_TOPIC, frozen=False, disabled=disabled)
         return host_states
 
     def test_default_of_spreading_first(self):

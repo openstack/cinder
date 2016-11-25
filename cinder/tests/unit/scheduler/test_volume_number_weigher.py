@@ -77,6 +77,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             ctxt,
             None,  # backend_match_level
             topic=constants.VOLUME_TOPIC,
+            frozen=False,
             disabled=disabled)
         return backend_states
 

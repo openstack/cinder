@@ -668,6 +668,28 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    def test_delete_volume_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        volume = tests_utils.create_volume(self.context, host=service.host)
+        self.assertRaises(exception.InvalidInput,
+                          self.volume_api.delete, self.context, volume)
+
+    def test_delete_snapshot_frozen(self):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        volume = tests_utils.create_volume(self.context, host=service.host)
+        snapshot = tests_utils.create_snapshot(self.context, volume.id)
+        self.assertRaises(exception.InvalidInput,
+                          self.volume_api.delete_snapshot, self.context,
+                          snapshot)
+
+    @ddt.data('create_snapshot', 'create_snapshot_force')
+    def test_create_snapshot_frozen(self, method):
+        service = tests_utils.create_service(self.context, {'frozen': True})
+        volume = tests_utils.create_volume(self.context, host=service.host)
+        method = getattr(self.volume_api, method)
+        self.assertRaises(exception.InvalidInput,
+                          method, self.context, volume, 'name', 'desc')
+
     def test_delete_volume_another_cluster_fails(self):
         """Test delete of volume from another cluster fails."""
         self.volume.cluster = 'mycluster'
