@@ -18,6 +18,7 @@ import socket
 import sys
 import uuid
 
+from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 import oslo_versionedobjects
@@ -28,6 +29,9 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
+
+
+CONF = cfg.CONF
 
 
 def get_test_admin_context():
@@ -376,16 +380,6 @@ def create_qos(ctxt, testcase_instance=None, **kwargs):
     return qos
 
 
-def create_service(ctxt, binary='cinder-volume', host='host@backend',
-                   topic='topic', disabled=False, availability_zone='cinder',
-                   **kwargs):
-    kwargs.update(binary=binary, host=host, topic=topic, disabled=disabled,
-                  availability_zone=availability_zone)
-    svc = objects.Service(ctxt, **kwargs)
-    svc.create()
-    return svc
-
-
 class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
     def start(self, interval, **kwargs):
         kwargs['initial_delay'] = 0
@@ -449,3 +443,63 @@ def generate_timeout_series(timeout):
     while True:
         iteration += 1
         yield (iteration * timeout) + iteration
+
+
+def default_service_values():
+    return {
+        'host': 'fake_host',
+        'cluster_name': None,
+        'binary': 'fake_binary',
+        'topic': 'fake_topic',
+        'report_count': 3,
+        'disabled': False,
+    }
+
+
+def create_service(ctxt, values=None):
+    values = values or {}
+    v = default_service_values()
+    v.update(values)
+    service = db.service_create(ctxt, v)
+    # We need to read the contents from the DB if we have set updated_at
+    # or created_at fields
+    if 'updated_at' in values or 'created_at' in values:
+        service = db.service_get(ctxt, service.id)
+    return service
+
+
+def default_cluster_values():
+    return {
+        'name': 'cluster_name',
+        'binary': 'cinder-volume',
+        'disabled': False,
+        'disabled_reason': None,
+        'deleted': False,
+        'updated_at': None,
+        'deleted_at': None,
+    }
+
+
+def create_cluster(ctxt, **values):
+    create_values = default_cluster_values()
+    create_values.update(values)
+    cluster = db.cluster_create(ctxt, create_values)
+    return db.cluster_get(ctxt, cluster.id, services_summary=True)
+
+
+def create_populated_cluster(ctxt, num_services, num_down_svcs=0, **values):
+    """Helper method that creates a cluster with up and down services."""
+    up_time = timeutils.utcnow()
+    down_time = (up_time -
+                 datetime.timedelta(seconds=CONF.service_down_time + 1))
+    cluster = create_cluster(ctxt, **values)
+
+    svcs = [
+        db.service_create(
+            ctxt,
+            {'cluster_name': cluster.name,
+             'host': 'host' + str(i),
+             'updated_at': down_time if i < num_down_svcs else up_time})
+        for i in range(num_services)
+    ]
+    return cluster, svcs

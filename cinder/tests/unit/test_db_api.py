@@ -82,39 +82,19 @@ class DBAPIServiceTestCase(BaseTest):
 
     """Unit tests for cinder.db.api.service_*."""
 
-    def _get_base_values(self):
-        return {
-            'host': 'fake_host',
-            'cluster_name': None,
-            'binary': 'fake_binary',
-            'topic': 'fake_topic',
-            'report_count': 3,
-            'disabled': False
-        }
-
-    def _create_service(self, values):
-        v = self._get_base_values()
-        v.update(values)
-        service = db.service_create(self.ctxt, v)
-        # We need to read the contents from the DB if we have set updated_at
-        # or created_at fields
-        if 'updated_at' in values or 'created_at' in values:
-            service = db.service_get(self.ctxt, service.id)
-        return service
-
     def test_service_create(self):
         # Add a cluster value to the service
         values = {'cluster_name': 'cluster'}
-        service = self._create_service(values)
+        service = utils.create_service(self.ctxt, values)
         self.assertIsNotNone(service['id'])
-        expected = self._get_base_values()
+        expected = utils.default_service_values()
         expected.update(values)
         for key, value in expected.items():
             self.assertEqual(value, service[key])
 
     def test_service_destroy(self):
-        service1 = self._create_service({})
-        service2 = self._create_service({'host': 'fake_host2'})
+        service1 = utils.create_service(self.ctxt, {})
+        service2 = utils.create_service(self.ctxt, {'host': 'fake_host2'})
 
         self.assertDictEqual(
             {'deleted': True, 'deleted_at': mock.ANY},
@@ -126,7 +106,7 @@ class DBAPIServiceTestCase(BaseTest):
             db.service_get(self.ctxt, service2['id']))
 
     def test_service_update(self):
-        service = self._create_service({})
+        service = utils.create_service(self.ctxt, {})
         new_values = {
             'host': 'fake_host1',
             'binary': 'fake_binary1',
@@ -144,12 +124,13 @@ class DBAPIServiceTestCase(BaseTest):
                           db.service_update, self.ctxt, 100500, {})
 
     def test_service_get(self):
-        service1 = self._create_service({})
+        service1 = utils.create_service(self.ctxt, {})
         real_service1 = db.service_get(self.ctxt, service1['id'])
         self._assertEqualObjects(service1, real_service1)
 
     def test_service_get_by_cluster(self):
-        service = self._create_service({'cluster_name': 'cluster@backend'})
+        service = utils.create_service(self.ctxt,
+                                       {'cluster_name': 'cluster@backend'})
         # Search with an exact match
         real_service = db.service_get(self.ctxt,
                                       cluster_name='cluster@backend')
@@ -163,7 +144,8 @@ class DBAPIServiceTestCase(BaseTest):
                           db.service_get, self.ctxt, 100500)
 
     def test_service_get_by_host_and_topic(self):
-        service1 = self._create_service({'host': 'host1', 'topic': 'topic1'})
+        service1 = utils.create_service(self.ctxt,
+                                        {'host': 'host1', 'topic': 'topic1'})
 
         real_service1 = db.service_get(self.ctxt, host='host1', topic='topic1')
         self._assertEqualObjects(service1, real_service1)
@@ -191,7 +173,7 @@ class DBAPIServiceTestCase(BaseTest):
         db.cluster_create(self.ctxt, {'name': 'disabled_cluster',
                                       'binary': 'b1',
                                       'disabled': True}),
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
 
         enabled = db.service_get_all(self.ctxt, disabled=False)
         disabled = db.service_get_all(self.ctxt, disabled=True)
@@ -222,7 +204,7 @@ class DBAPIServiceTestCase(BaseTest):
             {'disabled': True, 'cluster_name': 'cluster_disabled'},
             {'disabled': True, 'created_at': expired, 'updated_at': expired},
         ]
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
 
         disabled_services = services[-3:]
         non_disabled_services = services[:-3]
@@ -251,7 +233,7 @@ class DBAPIServiceTestCase(BaseTest):
             {'host': 'host4', 'disabled': True, 'topic': 't1'},
             {'host': 'host3', 'topic': 't2'}
         ]
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
         expected = services[:3]
         real = db.service_get_all(self.ctxt, topic='t1')
         self._assertEqualListsOfObjects(expected, real)
@@ -263,7 +245,7 @@ class DBAPIServiceTestCase(BaseTest):
             {'host': 'host4', 'disabled': True, 'binary': 'b1'},
             {'host': 'host3', 'binary': 'b2'}
         ]
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
         expected = services[:3]
         real = db.service_get_all(self.ctxt, binary='b1')
         self._assertEqualListsOfObjects(expected, real)
@@ -273,7 +255,7 @@ class DBAPIServiceTestCase(BaseTest):
             {'host': 'host1', 'binary': 'a'},
             {'host': 'host2', 'binary': 'b'}
         ]
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
 
         service1 = db.service_get(self.ctxt, host='host1', binary='a')
         self._assertEqualObjects(services[0], service1)
@@ -288,7 +270,7 @@ class DBAPIServiceTestCase(BaseTest):
             {'host': 'host3', 'cluster_name': 'cluster@backend'},
             {'host': 'host4', 'cluster_name': 'cluster2'},
         ]
-        services = [self._create_service(vals) for vals in values]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
         expected = services[:3]
         real = db.service_get_all(self.ctxt, cluster_name='cluster')
         self._assertEqualListsOfObjects(expected, real)

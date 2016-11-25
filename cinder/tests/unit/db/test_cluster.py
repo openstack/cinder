@@ -15,16 +15,14 @@
 
 """Tests for cluster table related operations."""
 
-import datetime
-
 import mock
 from oslo_config import cfg
-from oslo_utils import timeutils
 from sqlalchemy.orm import exc
 
 from cinder import db
 from cinder import exception
 from cinder.tests.unit import test_db_api
+from cinder.tests.unit import utils
 
 
 CONF = cfg.CONF
@@ -33,43 +31,9 @@ CONF = cfg.CONF
 class ClusterTestCase(test_db_api.BaseTest):
     """Unit tests for cinder.db.api.cluster_*."""
 
-    def _default_cluster_values(self):
-        return {
-            'name': 'cluster_name',
-            'binary': 'cinder-volume',
-            'disabled': False,
-            'disabled_reason': None,
-            'deleted': False,
-            'updated_at': None,
-            'deleted_at': None,
-        }
-
-    def _create_cluster(self, **values):
-        create_values = self._default_cluster_values()
-        create_values.update(values)
-        cluster = db.cluster_create(self.ctxt, create_values)
-        return db.cluster_get(self.ctxt, cluster.id, services_summary=True)
-
-    def _create_populated_cluster(self, num_services, num_down_svcs=0,
-                                  **values):
-        """Helper method that creates a cluster with up and down services."""
-        up_time = timeutils.utcnow()
-        down_time = (up_time -
-                     datetime.timedelta(seconds=CONF.service_down_time + 1))
-        cluster = self._create_cluster(**values)
-
-        svcs = [
-            db.service_create(
-                self.ctxt,
-                {'cluster_name': cluster.name,
-                 'updated_at': down_time if i < num_down_svcs else up_time})
-            for i in range(num_services)
-        ]
-        return cluster, svcs
-
     def test_cluster_create_and_get(self):
         """Basic cluster creation test."""
-        values = self._default_cluster_values()
+        values = utils.default_cluster_values()
         cluster = db.cluster_create(self.ctxt, values)
         values['last_heartbeat'] = None
         self.assertEqual(0, cluster.race_preventer)
@@ -85,13 +49,13 @@ class ClusterTestCase(test_db_api.BaseTest):
     def test_cluster_create_cfg_disabled(self):
         """Test that create uses enable_new_services configuration option."""
         self.override_config('enable_new_services', False)
-        cluster = self._create_cluster(disabled=None)
+        cluster = utils.create_cluster(self.ctxt, disabled=None)
         self.assertTrue(cluster.disabled)
 
     def test_cluster_create_disabled_preference(self):
         """Test that provided disabled value has highest priority on create."""
         self.override_config('enable_new_services', False)
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         self.assertFalse(cluster.disabled)
 
     def test_cluster_create_duplicate(self):
@@ -104,9 +68,10 @@ class ClusterTestCase(test_db_api.BaseTest):
         will not conflict with the creation of another cluster with the same
         name.
         """
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         self.assertRaises(exception.ClusterExists,
-                          self._create_cluster,
+                          utils.create_cluster,
+                          self.ctxt,
                           name=cluster.name)
 
     def test_cluster_create_not_duplicate(self):
@@ -119,19 +84,20 @@ class ClusterTestCase(test_db_api.BaseTest):
         will not conflict with the creation of another cluster with the same
         name.
         """
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         self.assertIsNone(db.cluster_destroy(self.ctxt, cluster.id))
-        self.assertIsNotNone(self._create_cluster(name=cluster.name))
+        self.assertIsNotNone(utils.create_cluster(self.ctxt,
+                                                  name=cluster.name))
 
     def test_cluster_get_fail(self):
         """Test that cluster get will fail if the cluster doesn't exists."""
-        self._create_cluster(name='cluster@backend')
+        utils.create_cluster(self.ctxt, name='cluster@backend')
         self.assertRaises(exception.ClusterNotFound,
                           db.cluster_get, self.ctxt, 'name=cluster@backend2')
 
     def test_cluster_get_by_name(self):
         """Getting a cluster by name will include backends if not specified."""
-        cluster = self._create_cluster(name='cluster@backend')
+        cluster = utils.create_cluster(self.ctxt, name='cluster@backend')
         # Get without the backend
         db_cluster = db.cluster_get(self.ctxt, name='cluster')
         self.assertEqual(cluster.id, db_cluster.id)
@@ -141,7 +107,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_without_summary(self):
         """Test getting cluster without summary information."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         db_cluster = db.cluster_get(self.ctxt, cluster.id)
         self.assertRaises(exc.DetachedInstanceError,
                           getattr, db_cluster, 'num_hosts')
@@ -151,7 +117,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_with_summary_empty_cluster(self):
         """Test getting empty cluster with summary information."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         db_cluster = db.cluster_get(self.ctxt, cluster.id,
                                     services_summary=True)
         self.assertEqual(0, db_cluster.num_hosts)
@@ -160,7 +126,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_with_summary(self):
         """Test getting cluster with summary information."""
-        cluster, svcs = self._create_populated_cluster(3, 1)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 1)
         db_cluster = db.cluster_get(self.ctxt, cluster.id,
                                     services_summary=True)
         self.assertEqual(3, db_cluster.num_hosts)
@@ -169,7 +135,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_is_up_on_empty_cluster(self):
         """Test is_up filter works on empty clusters."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         db_cluster = db.cluster_get(self.ctxt, cluster.id, is_up=False)
         self.assertEqual(cluster.id, db_cluster.id)
         self.assertRaises(exception.ClusterNotFound,
@@ -177,7 +143,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_services_on_empty_cluster(self):
         """Test get_services filter works on empty clusters."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         db_cluster = db.cluster_get(self.ctxt, cluster.id, get_services=True)
         self.assertEqual(cluster.id, db_cluster.id)
         self.assertListEqual([], db_cluster.services)
@@ -185,9 +151,9 @@ class ClusterTestCase(test_db_api.BaseTest):
     def test_cluster_get_services(self):
         """Test services is properly populated on non empty cluster."""
         # We create another cluster to see we do the selection correctly
-        self._create_populated_cluster(2, name='cluster2')
+        utils.create_populated_cluster(self.ctxt, 2, name='cluster2')
         # We create our cluster with 2 up nodes and 1 down
-        cluster, svcs = self._create_populated_cluster(3, 1)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 1)
         # Add a deleted service to the cluster
         db.service_create(self.ctxt,
                           {'cluster_name': cluster.name,
@@ -200,7 +166,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_is_up_all_are_down(self):
         """Test that is_up filter works when all services are down."""
-        cluster, svcs = self._create_populated_cluster(3, 3)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 3)
         self.assertRaises(exception.ClusterNotFound,
                           db.cluster_get, self.ctxt, cluster.id, is_up=True)
         db_cluster = db.cluster_get(self.ctxt, name=cluster.name, is_up=False)
@@ -208,19 +174,19 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_by_num_down_hosts(self):
         """Test cluster_get by subquery field num_down_hosts."""
-        cluster, svcs = self._create_populated_cluster(3, 2)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 2)
         result = db.cluster_get(self.ctxt, num_down_hosts=2)
         self.assertEqual(cluster.id, result.id)
 
     def test_cluster_get_by_num_hosts(self):
         """Test cluster_get by subquery field num_hosts."""
-        cluster, svcs = self._create_populated_cluster(3, 2)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 2)
         result = db.cluster_get(self.ctxt, num_hosts=3)
         self.assertEqual(cluster.id, result.id)
 
     def test_cluster_destroy(self):
         """Test basic cluster destroy."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         # On creation race_preventer is marked with a 0
         self.assertEqual(0, cluster.race_preventer)
         db.cluster_destroy(self.ctxt, cluster.id)
@@ -237,7 +203,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_destroy_has_services(self):
         """Test that we cannot delete a cluster with non deleted services."""
-        cluster, svcs = self._create_populated_cluster(3, 1)
+        cluster, svcs = utils.create_populated_cluster(self.ctxt, 3, 1)
         self.assertRaises(exception.ClusterHasHosts,
                           db.cluster_destroy, self.ctxt, cluster.id)
 
@@ -248,7 +214,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_update(self):
         """Test basic cluster update."""
-        cluster = self._create_cluster()
+        cluster = utils.create_cluster(self.ctxt)
         self.assertFalse(cluster.disabled)
         db.cluster_update(self.ctxt, cluster.id, {'disabled': True})
         db_cluster = db.cluster_get(self.ctxt, cluster.id)
@@ -260,9 +226,11 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_all_matches(self):
         """Basic test of get_all with a matching filter."""
-        cluster1, svcs = self._create_populated_cluster(3, 1)
-        cluster2, svcs = self._create_populated_cluster(3, 2, name='cluster2')
-        cluster3, svcs = self._create_populated_cluster(3, 3, name='cluster3')
+        cluster1, svcs = utils.create_populated_cluster(self.ctxt, 3, 1)
+        cluster2, svcs = utils.create_populated_cluster(self.ctxt, 3, 2,
+                                                        name='cluster2')
+        cluster3, svcs = utils.create_populated_cluster(self.ctxt, 3, 3,
+                                                        name='cluster3')
 
         expected = {cluster1.id, cluster2.id}
         result = db.cluster_get_all(self.ctxt, is_up=True)
@@ -271,7 +239,7 @@ class ClusterTestCase(test_db_api.BaseTest):
 
     def test_cluster_get_all_no_match(self):
         """Basic test of get_all with a non matching filter."""
-        cluster1, svcs = self._create_populated_cluster(3, 3)
+        cluster1, svcs = utils.create_populated_cluster(self.ctxt, 3, 3)
         result = db.cluster_get_all(self.ctxt, is_up=True)
         self.assertListEqual([], result)
 
