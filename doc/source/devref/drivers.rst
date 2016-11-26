@@ -147,6 +147,7 @@ additional methods must be implemented to support these operations.
 .. automodule:: cinder.interface.volume_snapshotmanagement_driver
   :members:
 
+
 Volume Consistency Groups
 `````````````````````````
 Some storage backends support the ability to group volumes and create write
@@ -154,5 +155,20 @@ consistent snapshots across the group. In order to support these operations,
 the following interface must be implemented by the driver.
 
 .. automodule:: cinder.interface.volume_consistencygroup_driver
+  :members:
+
+
+Generic Volume Groups
+`````````````````````
+The generic volume groups feature provides the ability to manage a group of
+volumes together. Because this feature is implemented at the manager level,
+every driver gets this feature by default. If a driver wants to override
+the default behavior to support additional functionalities such as consistent
+group snapshot, the following interface must be implemented by the driver.
+Once every driver supporting volume consistency groups has added the
+consistent group snapshot capability to generic volume groups, we no longer
+need the volume consistency groups interface listed above.
+
+.. automodule:: cinder.interface.volume_group_driver
   :members:
 
