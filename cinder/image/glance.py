@@ -355,6 +355,13 @@ class GlanceImageService(object):
     def update(self, context, image_id,
                image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
+        # For v2, _translate_to_glance stores custom properties in image meta
+        # directly. We need the custom properties to identify properties to
+        # remove if purge_props is True. Save the custom properties before
+        # translate.
+        if CONF.glance_api_version > 1 and purge_props:
+            props_to_update = image_meta.get('properties', {}).keys()
+
         image_meta = self._translate_to_glance(image_meta)
         # NOTE(dosaboy): see comment in bug 1210467
         if CONF.glance_api_version == 1:
@@ -362,14 +369,27 @@ class GlanceImageService(object):
         # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
-        if data:
-            image_meta['data'] = data
         try:
             # NOTE(dosaboy): the v2 api separates update from upload
-            if data and CONF.glance_api_version > 1:
-                self._client.call(context, 'upload', image_id, data)
-                image_meta = self._client.call(context, 'get', image_id)
+            if CONF.glance_api_version > 1:
+                if data:
+                    self._client.call(context, 'upload', image_id, data)
+                if image_meta:
+                    if purge_props:
+                        # Properties to remove are those not specified in
+                        # input properties.
+                        cur_image_meta = self.show(context, image_id)
+                        cur_props = cur_image_meta['properties'].keys()
+                        remove_props = list(set(cur_props) -
+                                            set(props_to_update))
+                        image_meta['remove_props'] = remove_props
+                    image_meta = self._client.call(context, 'update', image_id,
+                                                   **image_meta)
+                else:
+                    image_meta = self._client.call(context, 'get', image_id)
             else:
+                if data:
+                    image_meta['data'] = data
                 image_meta = self._client.call(context, 'update', image_id,
                                                **image_meta)
         except Exception:
