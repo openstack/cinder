@@ -26,7 +26,7 @@ for a specific driver. There is no concept of managed vs unmanaged,
 ALL replication configurations are expected to work by using the same
 driver.  In other words, rather than trying to perform any magic
 by changing host entries in the DB for a Volume etc, all replication
-targets are considered "unmanged" BUT if a failover is issued, it's
+targets are considered "unmanaged" BUT if a failover is issued, it's
 the drivers responsibility to access replication volumes on the replicated
 backend device.
 
@@ -98,8 +98,8 @@ backend that supports replication, the extra-specs entry would be::
     {replication: enabled}
 
 Additionally you could provide additional details using scoped keys::
-    {replication: enabled, volume_backend_name: foo,
-     replication: replication_type: async}
+    {replication: enabled, replication_type: async, replication_count: 2,
+    replication_targets: [fake_id1, fake_id2]}
 
 It's up to the driver to parse the volume type info on create and set things up
 as requested.  While the scoping key can be anything, it's strongly recommended that all
