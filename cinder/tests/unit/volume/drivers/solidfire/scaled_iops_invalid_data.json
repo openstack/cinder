@@ -1,0 +1,22 @@
+{
+    "test_max_greater_than_burst": [
+        {
+            "burstIOPS": 2,
+            "maxIOPS": 3,
+            "minIOPS": "100",
+            "scaleMin": "2",
+            "scaledIOPS": "True",
+            "size": 2
+        }
+    ],
+    "test_min_greater_than_max_burst": [
+        {
+            "burstIOPS": 2,
+            "maxIOPS": 2,
+            "minIOPS": "100",
+            "scaleMin": "3",
+            "scaledIOPS": "True",
+            "size": 2
+        }
+    ]
+}
