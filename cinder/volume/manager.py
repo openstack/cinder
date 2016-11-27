@@ -1850,15 +1850,17 @@ class VolumeManager(manager.CleanableManager,
         # As after detach and refresh, volume_attchments will be None.
         # We keep volume_attachment for later attach.
         if orig_volume_status == 'in-use':
-            attachments = volume.volume_attachment
-        else:
-            attachments = None
-        try:
-            for attachment in attachments:
-                self.detach_volume(ctxt, volume.id, attachment['id'])
-        except Exception as ex:
-            LOG.error(_LE("Detach migration source volume failed:  %(err)s"),
-                      {'err': ex}, resource=volume)
+            for attachment in volume.volume_attachment:
+                try:
+                    self.detach_volume(ctxt, volume.id, attachment.id)
+                except Exception as ex:
+                    LOG.error(_LE("Detach migration source volume "
+                                  "%(volume.id)s from instance "
+                                  "%(instance_id)s failed: %(err)s"),
+                              {'err': ex,
+                               'volume.id': volume.id,
+                               'instance_id': attachment.id},
+                              resource=volume)
 
         # Give driver (new_volume) a chance to update things as needed
         # after a successful migration.
@@ -1877,7 +1879,7 @@ class VolumeManager(manager.CleanableManager,
                    'migration_status': 'success'}
 
         if orig_volume_status == 'in-use':
-            for attachment in attachments:
+            for attachment in volume.volume_attachment:
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment['instance_uuid'],
                                      attachment['attached_host'],
