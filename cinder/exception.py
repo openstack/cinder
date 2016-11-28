@@ -859,3 +859,7 @@ class HBSDNotFound(NotFound):
 # Datera driver
 class DateraAPIException(VolumeBackendAPIException):
     message = _("Bad response from Datera API")
+
+
+class NexentaException(NotFound):
+    message = _("Nexenta Cinder Driver exception.")
