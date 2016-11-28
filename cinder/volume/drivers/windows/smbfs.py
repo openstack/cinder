@@ -136,6 +136,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def do_setup(self, context):
         self._check_os_platform()
+        super(WindowsSmbfsDriver, self).do_setup(context)
 
         image_utils.check_qemu_img_version(self._MINIMUM_QEMU_IMG_VERSION)
 
@@ -482,20 +483,16 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                          backing_file_name)
 
     def _do_create_snapshot(self, snapshot, backing_file, new_snap_path):
+        if snapshot.volume.status == 'in-use':
+            LOG.debug("Snapshot is in-use. Performing Nova "
+                      "assisted creation.")
+            return
+
         backing_file_full_path = os.path.join(
             self._local_volume_dir(snapshot.volume),
             backing_file)
         self._vhdutils.create_differencing_vhd(new_snap_path,
                                                backing_file_full_path)
-
-    def _create_snapshot_online(self, snapshot, backing_filename,
-                                new_snap_path):
-        msg = _("This driver does not support snapshotting in-use volumes.")
-        raise exception.SmbfsException(msg)
-
-    def _delete_snapshot_online(self, context, snapshot, info):
-        msg = _("This driver does not support deleting in-use snapshots.")
-        raise exception.SmbfsException(msg)
 
     @remotefs_drv.locked_volume_id_operation
     @update_allocation_data()
@@ -513,6 +510,45 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._vhdutils.resize_vhd(volume_path, size_gb * units.Gi,
                                   is_file_max_size=False)
+
+    def _delete_snapshot(self, snapshot):
+        # NOTE(lpetrut): We're slightly diverging from the super class
+        # workflow. The reason is that we cannot query in-use vhd/x images,
+        # nor can we add or remove images from a vhd/x chain in this case.
+        volume_status = snapshot.volume.status
+        if volume_status != 'in-use':
+            return super(WindowsSmbfsDriver, self)._delete_snapshot(snapshot)
+
+        info_path = self._local_path_volume_info(snapshot.volume)
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
+
+        if snapshot.id not in snap_info:
+            LOG.info('Snapshot record for %s is not present, allowing '
+                     'snapshot_delete to proceed.', snapshot.id)
+            return
+
+        file_to_merge = snap_info[snapshot.id]
+        delete_info = {'file_to_merge': file_to_merge,
+                       'volume_id': snapshot.volume.id}
+        self._nova_assisted_vol_snap_delete(
+            snapshot._context, snapshot, delete_info)
+
+        # At this point, the image file should no longer be in use, so we
+        # may safely query it so that we can update the 'active' image
+        # reference, if needed.
+        merged_img_path = os.path.join(
+            self._local_volume_dir(snapshot.volume),
+            file_to_merge)
+        if snap_info['active'] == file_to_merge:
+            new_active_file_path = self._vhdutils.get_vhd_parent_path(
+                merged_img_path)
+            snap_info['active'] = os.path.basename(new_active_file_path)
+
+        self._delete(merged_img_path)
+
+        # TODO(lpetrut): drop snapshot info file usage.
+        del(snap_info[snapshot.id])
+        self._write_info_file(info_path, snap_info)
 
     def _check_extend_volume_support(self, volume, size_gb):
         volume_path = self.local_path(volume)

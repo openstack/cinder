@@ -1457,6 +1457,17 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
             del(snap_info[snapshot.id])
 
+        self._nova_assisted_vol_snap_delete(context, snapshot, delete_info)
+
+        # Write info file updated above
+        self._write_info_file(info_path, snap_info)
+
+        # Delete stale file
+        path_to_delete = os.path.join(
+            self._local_volume_dir(snapshot.volume), file_to_delete)
+        self._delete(path_to_delete)
+
+    def _nova_assisted_vol_snap_delete(self, context, snapshot, delete_info):
         try:
             self._nova.delete_volume_snapshot(
                 context,
@@ -1502,15 +1513,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                         'for deletion of snapshot %(id)s.') %\
                     {'id': snapshot.id}
                 raise exception.RemoteFSException(msg)
-
-        # Write info file updated above
-        self._write_info_file(info_path, snap_info)
-
-        # Delete stale file
-        path_to_delete = os.path.join(
-            self._local_volume_dir(snapshot.volume), file_to_delete)
-        self._execute('rm', '-f', path_to_delete,
-                      run_as_root=self._execute_as_root)
 
 
 class RemoteFSSnapDriver(RemoteFSSnapDriverBase):

@@ -92,6 +92,8 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver._alloc_info_file_path = (
             self._FAKE_ALLOCATION_DATA_PATH)
 
+        self._vhdutils = self._smbfs_driver._vhdutils
+
         self.volume = self._simple_volume()
         self.snapshot = self._simple_snapshot(volume=self.volume)
 
@@ -114,10 +116,17 @@ class WindowsSmbFsTestCase(test.TestCase):
         snapshot.volume = volume
         return snapshot
 
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_check_os_platform')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_setup_allocation_data')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'do_setup')
     @mock.patch('os.path.exists')
+    @mock.patch('os.path.isabs')
     @mock.patch.object(image_utils, 'check_qemu_img_version')
     def _test_setup(self, mock_check_qemu_img_version,
-                    mock_exists, config, share_config_exists=True):
+                    mock_is_abs, mock_exists,
+                    mock_remotefs_do_setup,
+                    mock_setup_alloc_data, mock_check_os_platform,
+                    config, share_config_exists=True):
         mock_exists.return_value = share_config_exists
         fake_ensure_mounted = mock.MagicMock()
         self._smbfs_driver._ensure_shares_mounted = fake_ensure_mounted
@@ -128,12 +137,19 @@ class WindowsSmbFsTestCase(test.TestCase):
                 0 <= config.smbfs_used_ratio <= 1):
             self.assertRaises(exception.SmbfsException,
                               self._smbfs_driver.do_setup,
-                              None)
+                              mock.sentinel.context)
         else:
             self._smbfs_driver.do_setup(mock.sentinel.context)
-            mock_check_qemu_img_version.assert_called_once_with()
+
+            mock_check_qemu_img_version.assert_called_once_with(
+                self._smbfs_driver._MINIMUM_QEMU_IMG_VERSION)
+            mock_is_abs.assert_called_once_with(self._smbfs_driver.base)
             self.assertEqual({}, self._smbfs_driver.shares)
             fake_ensure_mounted.assert_called_once_with()
+            mock_setup_alloc_data.assert_called_once_with()
+
+        mock_check_os_platform.assert_called_once_with()
+        mock_remotefs_do_setup.assert_called_once_with(mock.sentinel.context)
 
     def test_initialize_connection(self):
         self._smbfs_driver.get_active_image_from_info = mock.Mock(
@@ -156,6 +172,9 @@ class WindowsSmbFsTestCase(test.TestCase):
             self.volume, None)
 
         self.assertEqual(expected, ret_val)
+
+    def test_setup(self):
+        self._test_setup(config=self._FAKE_SMBFS_CONFIG)
 
     def test_setup_missing_shares_config_option(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
@@ -575,7 +594,11 @@ class WindowsSmbFsTestCase(test.TestCase):
     def test_get_snapshot_info(self):
         self._test_get_img_info(self._FAKE_VOLUME_PATH)
 
-    def test_create_snapshot(self):
+    @ddt.data('in-use', 'available')
+    def test_create_snapshot(self, volume_status):
+        snapshot = self._simple_snapshot()
+        snapshot.volume.status = volume_status
+
         self._smbfs_driver._vhdutils.create_differencing_vhd = (
             mock.Mock())
         self._smbfs_driver._local_volume_dir = mock.Mock(
@@ -585,12 +608,89 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._smbfs_driver._vhdutils.create_differencing_vhd)
 
         self._smbfs_driver._do_create_snapshot(
-            self._simple_snapshot(),
+            snapshot,
             os.path.basename(self._FAKE_VOLUME_PATH),
             self._FAKE_SNAPSHOT_PATH)
 
-        fake_create_diff.assert_called_once_with(self._FAKE_SNAPSHOT_PATH,
-                                                 self._FAKE_VOLUME_PATH)
+        if volume_status != 'in-use':
+            fake_create_diff.assert_called_once_with(self._FAKE_SNAPSHOT_PATH,
+                                                     self._FAKE_VOLUME_PATH)
+        else:
+            fake_create_diff.assert_not_called()
+
+    @ddt.data({},
+              {'delete_latest': True},
+              {'volume_status': 'available'},
+              {'snap_info_contains_snap_id': False})
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_delete_snapshot')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_local_volume_dir')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_local_path_volume_info')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_write_info_file')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver, '_read_info_file')
+    @mock.patch.object(smbfs.WindowsSmbfsDriver,
+                       '_nova_assisted_vol_snap_delete')
+    def test_delete_snapshot(self, mock_nova_assisted_snap_del,
+                             mock_read_info_file, mock_write_info_file,
+                             mock_local_path_volume_info,
+                             mock_get_local_dir,
+                             mock_remotefs_snap_delete,
+                             volume_status='in-use',
+                             snap_info_contains_snap_id=True,
+                             delete_latest=False):
+        snapshot = self._simple_snapshot()
+        snapshot.volume.status = volume_status
+
+        fake_snap_file = 'snap_file'
+        fake_snap_parent_path = os.path.join(self._FAKE_MNT_POINT,
+                                             'snap_file_parent')
+        active_img = 'active_img' if not delete_latest else fake_snap_file
+
+        snap_info = dict(active=active_img)
+        if snap_info_contains_snap_id:
+            snap_info[snapshot.id] = fake_snap_file
+
+        mock_info_path = mock_local_path_volume_info.return_value
+        mock_read_info_file.return_value = snap_info
+        mock_get_local_dir.return_value = self._FAKE_MNT_POINT
+        self._vhdutils.get_vhd_parent_path.return_value = (
+            fake_snap_parent_path)
+
+        expected_delete_info = {'file_to_merge': fake_snap_file,
+                                'volume_id': snapshot.volume.id}
+
+        self._smbfs_driver._delete_snapshot(snapshot)
+
+        if volume_status != 'in-use':
+            mock_remotefs_snap_delete.assert_called_once_with(snapshot)
+        elif snap_info_contains_snap_id:
+            mock_local_path_volume_info.assert_called_once_with(
+                snapshot.volume)
+            mock_read_info_file.assert_called_once_with(
+                mock_info_path, empty_if_missing=True)
+            mock_nova_assisted_snap_del.assert_called_once_with(
+                snapshot._context, snapshot, expected_delete_info)
+
+            exp_merged_img_path = os.path.join(self._FAKE_MNT_POINT,
+                                               fake_snap_file)
+            self._smbfs_driver._delete.assert_called_once_with(
+                exp_merged_img_path)
+
+            if delete_latest:
+                self._vhdutils.get_vhd_parent_path.assert_called_once_with(
+                    exp_merged_img_path)
+                exp_active = os.path.basename(fake_snap_parent_path)
+            else:
+                exp_active = active_img
+
+            self.assertEqual(exp_active, snap_info['active'])
+            self.assertNotIn(snap_info, snapshot.id)
+            mock_write_info_file.assert_called_once_with(mock_info_path,
+                                                         snap_info)
+
+        if volume_status != 'in-use' or not snap_info_contains_snap_id:
+            mock_nova_assisted_snap_del.assert_not_called()
+            mock_write_info_file.assert_not_called()
 
     @requires_allocation_data_update(expected_size=_FAKE_VOLUME_SIZE)
     @mock.patch.object(smbfs.WindowsSmbfsDriver,
