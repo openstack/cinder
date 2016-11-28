@@ -1118,20 +1118,30 @@ class StorageCenterApi(object):
         return ret
 
     def _find_volume_primary(self, provider_id, name):
+        # We look for our primary. If it doesn't exist and we have an activated
+        # secondary then we return that.
         # if there is no live volume then we return our provider_id.
         primary_id = provider_id
         lv = self.get_live_volume(provider_id, name)
-        LOG.info(_LI('Volume %(provider)s at primary %(primary)s.'),
-                 {'provider': provider_id, 'primary': primary_id})
+        LOG.info(_LI('Volume %(name)r, '
+                     'id %(provider)s at primary %(primary)s.'),
+                 {'name': name,
+                  'provider': provider_id,
+                  'primary': primary_id})
         # If we have a live volume and are swapped and are not failed over
         # at least give failback a shot.
-        if lv and self.is_swapped(provider_id, lv) and not self.failed_over:
-            if self._autofailback(lv):
+        if lv and (self.is_swapped(provider_id, lv) and not self.failed_over
+                   and self._autofailback(lv)):
                 lv = self.get_live_volume(provider_id)
                 LOG.info(_LI('After failback %s'), lv)
-
+        # Make sure we still have a LV.
         if lv:
-            primary_id = lv['primaryVolume']['instanceId']
+            # At this point if the secondaryRole is Active we have
+            # to return that. Else return normal primary.
+            if lv.get('secondaryRole') == 'Activated':
+                primary_id = lv['secondaryVolume']['instanceId']
+            else:
+                primary_id = lv['primaryVolume']['instanceId']
         return primary_id
 
     def find_volume(self, name, provider_id, islivevol=False):
@@ -1655,9 +1665,10 @@ class StorageCenterApi(object):
         LOG.debug('_get_iqn: %s', iqn)
         return iqn
 
-    def _is_virtualport_mode(self):
+    def _is_virtualport_mode(self, ssn=-1):
+        ssn = self._vet_ssn(ssn)
         isvpmode = False
-        r = self.client.get('StorageCenter/ScConfiguration/%s' % self.ssn)
+        r = self.client.get('StorageCenter/ScConfiguration/%s' % ssn)
         if self._check_result(r):
             scconfig = self._get_json(r)
             if scconfig and scconfig['iscsiTransportMode'] == 'VirtualPort':
@@ -1741,6 +1752,8 @@ class StorageCenterApi(object):
 
         # We should have mappings at the time of this call but do check.
         if len(mappings) > 0:
+            # This might not be on the current controller.
+            ssn = self._get_id(scvolume).split('.')[0]
             # In multipath (per Liberty) we will return all paths.  But
             # if multipath is not set (ip and port are None) then we need
             # to return a mapping from the controller on which the volume
@@ -1748,7 +1761,7 @@ class StorageCenterApi(object):
             actvctrl = self._find_active_controller(scvolume)
             # Two different methods are used to find our luns and portals
             # depending on whether we are in virtual or legacy port mode.
-            isvpmode = self._is_virtualport_mode()
+            isvpmode = self._is_virtualport_mode(ssn)
             # Trundle through our mappings.
             for mapping in mappings:
                 # Don't return remote sc links.
@@ -3095,6 +3108,8 @@ class StorageCenterApi(object):
     def is_swapped(self, provider_id, sclivevolume):
         if (sclivevolume.get('primaryVolume') and
            sclivevolume['primaryVolume']['instanceId'] != provider_id):
+            LOG.debug('Volume %(pid)r in Live Volume %(lv)r is swapped.',
+                      {'pid': provider_id, 'lv': sclivevolume})
             return True
         return False
 
@@ -3153,11 +3168,17 @@ class StorageCenterApi(object):
                          lv['secondaryVolume']['instanceId'] == primaryid)):
                         sclivevol = lv
                         break
-                    # Sometimes the lv object returns without a secondary
-                    # volume. Make sure we find this by name if we have to.
-                    if (name and sclivevol is None and
-                       lv['instanceName'].endswith(name)):
-                        sclivevol = lv
+                    # We might not be able to find the LV via the primaryid.
+                    # So look for LVs that match our name.
+                    if name and sclivevol is None:
+                        # If we have a primaryVolume we will have an
+                        # instanceName. Otherwise check the secondaryVolume
+                        # if it exists.
+                        if (name in lv['instanceName'] or
+                           (lv.get('secondaryVolume') and
+                           name in lv['secondaryVolume']['instanceName'])):
+                            sclivevol = lv
+
         LOG.debug('get_live_volume: %r', sclivevol)
         return sclivevol
 
