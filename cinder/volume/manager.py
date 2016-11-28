@@ -3199,7 +3199,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error(_LE("Update consistency group "
                               "failed to add volume-%(volume_id)s: "
                               "VolumeNotFound."),
-                          {'volume_id': add_vol_ref['id']},
+                          {'volume_id': add_vol},
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
@@ -3228,7 +3228,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error(_LE("Update consistency group "
                               "failed to remove volume-%(volume_id)s: "
                               "VolumeNotFound."),
-                          {'volume_id': remove_vol_ref['id']},
+                          {'volume_id': remove_vol},
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise

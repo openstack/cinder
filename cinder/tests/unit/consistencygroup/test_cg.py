@@ -203,6 +203,23 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
         self.volume.db.volume_get.reset_mock()
         self.volume.db.volume_get = volume_get_orig
 
+    def test_update_consistencygroup_volume_not_found(self):
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+        self.assertRaises(exception.VolumeNotFound,
+                          self.volume.update_consistencygroup,
+                          self.context,
+                          group,
+                          fake.VOLUME_ID)
+        self.assertRaises(exception.VolumeNotFound,
+                          self.volume.update_consistencygroup,
+                          self.context,
+                          group,
+                          None,
+                          fake.VOLUME_ID)
+
     @mock.patch.object(driver.VolumeDriver,
                        "create_consistencygroup",
                        return_value={'status': 'available'})
