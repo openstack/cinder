@@ -28,7 +28,6 @@ from cinder.common import constants
 from cinder import context as cinder_context
 from cinder import exception
 from cinder import objects
-from cinder import utils
 from cinder.i18n import _LI, _LW
 from cinder.scheduler import filters
 from cinder.volume import utils as vol_utils
@@ -465,7 +464,7 @@ class HostManager(object):
         no_capabilities_hosts = set()
         for service in volume_services.objects:
             host = service.host
-            if not utils.service_is_up(service):
+            if not service.is_up:
                 LOG.warning(_LW("volume service is down. (host: %s)"), host)
                 continue
             capabilities = self.service_states.get(host, None)

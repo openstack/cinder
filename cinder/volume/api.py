@@ -1334,7 +1334,7 @@ class API(base.Base):
         found = False
         svc_host = volume_utils.extract_host(host, 'backend')
         for service in services:
-            if utils.service_is_up(service) and service.host == svc_host:
+            if service.is_up and service.host == svc_host:
                 found = True
                 break
         if not found:
@@ -1552,7 +1552,7 @@ class API(base.Base):
                           'service.'), resource)
             raise exception.ServiceUnavailable()
 
-        if not utils.service_is_up(service):
+        if not service.is_up:
             LOG.error(_LE('Unable to manage existing %s on a service that is '
                           'down.'), resource)
             raise exception.ServiceUnavailable()

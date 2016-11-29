@@ -361,15 +361,6 @@ def sanitize_hostname(hostname):
     return hostname
 
 
-def service_is_up(service):
-    """Check whether a service is up based on last heartbeat."""
-    last_heartbeat = service['updated_at'] or service['created_at']
-    # Timestamps in DB are UTC.
-    elapsed = (timeutils.utcnow(with_timezone=True) -
-               last_heartbeat).total_seconds()
-    return abs(elapsed) <= CONF.service_down_time
-
-
 def read_file_as_root(file_path):
     """Secure helper to read file as root."""
     try:

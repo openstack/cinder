@@ -81,7 +81,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
-from cinder import utils
 from cinder import version
 from cinder.volume import utils as vutils
 
@@ -519,7 +518,7 @@ class ServiceCommands(BaseCommand):
                               _('Object Version'),
                               _('Cluster')))
         for svc in services:
-            art = self._state_repr(utils.service_is_up(svc))
+            art = self._state_repr(svc.is_up)
             status = 'disabled' if svc.disabled else 'enabled'
             updated_at = self._normalize_time(svc.updated_at)
             rpc_version = svc.rpc_current_version
@@ -566,7 +565,7 @@ class ClusterCommands(BaseCommand):
                               _('Down Hosts'),
                               _('Updated At')))
         for cluster in clusters:
-            art = self._state_repr(cluster.is_up())
+            art = self._state_repr(cluster.is_up)
             status = 'disabled' if cluster.disabled else 'enabled'
             heartbeat = self._normalize_time(cluster.last_heartbeat)
             updated_at = self._normalize_time(cluster.updated_at)

@@ -117,7 +117,8 @@ class HostManagerTestCase(test.TestCase):
                     'host3': host3_volume_capabs}
         self.assertDictMatch(expected, service_states)
 
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     @mock.patch('cinder.db.service_get_all')
     def test_has_all_capabilities(self, _mock_service_get_all,
                                   _mock_service_is_up):
@@ -151,7 +152,8 @@ class HostManagerTestCase(test.TestCase):
         self.assertTrue(self.host_manager.has_all_capabilities())
 
     @mock.patch('cinder.db.service_get_all')
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_and_get_pools(self, _mock_utcnow,
                                   _mock_service_is_up,
@@ -204,7 +206,8 @@ class HostManagerTestCase(test.TestCase):
             self.assertEqual(dates[2], res[0]['capabilities']['timestamp'])
 
     @mock.patch('cinder.db.service_get_all')
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     def test_get_all_host_states(self, _mock_service_is_up,
                                  _mock_service_get_all):
         context = 'fake_context'
@@ -250,8 +253,7 @@ class HostManagerTestCase(test.TestCase):
                           timestamp=None, reserved_percentage=0,
                           provisioned_capacity_gb=9300),
         }
-
-        # First test: service_is_up is always True, host5 is disabled,
+        # First test: service.is_up is always True, host5 is disabled,
         # host4 has no capabilities
         self.host_manager.service_states = service_states
         _mock_service_get_all.return_value = services
@@ -264,9 +266,9 @@ class HostManagerTestCase(test.TestCase):
         _mock_service_get_all.assert_called_with(context,
                                                  disabled=False,
                                                  topic=topic)
-        expected = []
-        for service in service_objs:
-            expected.append(mock.call(service))
+
+        # verify that Service.is_up was called for each srv
+        expected = [mock.call() for s in service_objs]
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
 
         # Get host_state_map and make sure we have the first 3 hosts
@@ -278,7 +280,7 @@ class HostManagerTestCase(test.TestCase):
             test_service.TestService._compare(self, volume_node,
                                               host_state_map[host].service)
 
-        # Second test: Now service_is_up returns False for host3
+        # Second test: Now service.is_up returns False for host3
         _mock_service_is_up.reset_mock()
         _mock_service_is_up.side_effect = [True, True, False, True]
         _mock_service_get_all.reset_mock()
@@ -304,7 +306,8 @@ class HostManagerTestCase(test.TestCase):
                                               host_state_map[host].service)
 
     @mock.patch('cinder.db.service_get_all')
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     def test_get_pools(self, _mock_service_is_up,
                        _mock_service_get_all):
         context = 'fake_context'

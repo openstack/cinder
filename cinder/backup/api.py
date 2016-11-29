@@ -151,8 +151,7 @@ class API(base.Base):
             ctxt, topic, disabled=False)
         for srv in services:
             if (self._az_matched(srv, availability_zone) and
-                    srv.host == host and
-                    utils.service_is_up(srv)):
+                    srv.host == host and srv.is_up):
                 return True
         return False
 
@@ -169,7 +168,7 @@ class API(base.Base):
         while idx < len(services):
             srv = services[idx]
             if(self._az_matched(srv, availability_zone) and
-               utils.service_is_up(srv)):
+               srv.is_up):
                 return srv.host
             idx = idx + 1
         return None
@@ -199,7 +198,7 @@ class API(base.Base):
     def _list_backup_hosts(self):
         services = self._list_backup_services()
         return [srv.host for srv in services
-                if not srv.disabled and utils.service_is_up(srv)]
+                if not srv.disabled and srv.is_up]
 
     def create(self, context, name, description, volume_id,
                container, incremental=False, availability_zone=None,

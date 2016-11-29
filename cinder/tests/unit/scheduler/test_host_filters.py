@@ -48,6 +48,8 @@ class HostFiltersTestCase(test.TestCase):
 
 
 @ddt.ddt
+@mock.patch('cinder.objects.service.Service.is_up',
+            new_callable=mock.PropertyMock)
 class CapacityFilterTestCase(HostFiltersTestCase):
     def setUp(self):
         super(CapacityFilterTestCase, self).setUp()
@@ -56,7 +58,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                 ['>=', '$free_capacity_gb', 1024],
                 ['>=', '$total_capacity_gb', 10 * 1024]])
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -69,7 +70,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_current_host_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -82,7 +82,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -96,7 +95,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_fails_free_capacity_None(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -108,7 +106,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -120,7 +117,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -132,7 +128,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -146,7 +141,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -160,7 +154,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_fails_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -173,7 +166,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_fails_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -186,7 +178,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_fails_total_zero(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -199,7 +190,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_thin_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -221,7 +211,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_thin_true_passes2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -243,7 +232,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_thin_false_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -267,7 +255,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_over_subscription_less_than_1(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -289,7 +276,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_over_subscription_equal_to_1(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -311,7 +297,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_over_subscription_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -333,7 +318,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_over_subscription_fails2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -355,7 +339,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_true_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -377,7 +360,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_false_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -401,7 +383,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_thick_true_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -423,7 +404,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_thick_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -445,7 +425,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -467,7 +446,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_thick_true_fails2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -489,7 +467,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_reserved_thin_thick_true_passes2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -519,7 +496,6 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         {'volume_type': None},
     )
     @ddt.unpack
-    @mock.patch('cinder.utils.service_is_up')
     def test_filter_provisioning_type(self, _mock_serv_is_up, volume_type):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -540,7 +516,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
 
 
 class AffinityFilterTestCase(HostFiltersTestCase):
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     def test_different_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
@@ -558,7 +535,8 @@ class AffinityFilterTestCase(HostFiltersTestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
     def test_different_filter_legacy_volume_hint_passes(
             self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True

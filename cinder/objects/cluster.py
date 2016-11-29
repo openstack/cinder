@@ -146,6 +146,7 @@ class Cluster(base.CinderPersistentObject, base.CinderObject,
             setattr(self, field, value)
         self.obj_reset_changes(updated_values.keys())
 
+    @property
     def is_up(self):
         return (self.last_heartbeat and
                 self.last_heartbeat >= utils.service_expired_time(True))

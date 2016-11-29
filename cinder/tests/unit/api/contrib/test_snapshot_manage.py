@@ -144,7 +144,9 @@ class SnapshotManageTest(test.TestCase):
         args = mock_rpcapi.call_args[0]
         self.assertEqual('fake_ref', args[2])
 
-    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.objects.service.Service.is_up',
+                return_value=True,
+                new_callable=mock.PropertyMock)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.db.service_get')
@@ -162,7 +164,8 @@ class SnapshotManageTest(test.TestCase):
         mock_rpcapi.assert_not_called()
         mock_is_up.assert_not_called()
 
-    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=False,
+                new_callable=mock.PropertyMock)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
     @mock.patch('cinder.db.service_get')
@@ -276,7 +279,7 @@ class SnapshotManageTest(test.TestCase):
             self._admin_ctxt, 'fakehost', limit=10, marker='1234', offset=4,
             sort_dirs=['asc'], sort_keys=['reference'])
 
-    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=True)
     @mock.patch('cinder.db.service_get')
     def test_get_manageable_snapshots_disabled(self, mock_db, mock_is_up):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
@@ -287,7 +290,8 @@ class SnapshotManageTest(test.TestCase):
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
 
-    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=False,
+                new_callable=mock.PropertyMock)
     @mock.patch('cinder.db.service_get')
     def test_get_manageable_snapshots_is_down(self, mock_db, mock_is_up):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)

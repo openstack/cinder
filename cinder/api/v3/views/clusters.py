@@ -50,7 +50,7 @@ class ViewBuilder(object):
         result = {
             'name': cluster.name,
             'binary': cluster.binary,
-            'state': 'up' if cluster.is_up() else 'down',
+            'state': 'up' if cluster.is_up else 'down',
             'status': 'disabled' if cluster.disabled else 'enabled',
         }
         if flat:

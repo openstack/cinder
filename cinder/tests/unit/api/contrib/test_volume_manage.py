@@ -250,7 +250,8 @@ class VolumeManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
 
-    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=True,
+                new_callable=mock.PropertyMock)
     def test_manage_volume_disabled(self, mock_is_up):
         """Test manage volume failure due to disabled service."""
         body = {'volume': {'host': 'host_disabled', 'ref': 'fake_ref'}}
@@ -260,7 +261,8 @@ class VolumeManageTest(test.TestCase):
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
 
-    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=False,
+                new_callable=mock.PropertyMock)
     def test_manage_volume_is_down(self, mock_is_up):
         """Test manage volume failure due to down service."""
         body = {'volume': {'host': 'host_ok', 'ref': 'fake_ref'}}
@@ -396,7 +398,8 @@ class VolumeManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
 
-    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=True,
+                new_callable=mock.PropertyMock)
     def test_get_manageable_volumes_disabled(self, mock_is_up):
         res = self._get_resp_get('host_disabled', False, True)
         self.assertEqual(400, res.status_int, res)
@@ -404,7 +407,8 @@ class VolumeManageTest(test.TestCase):
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
 
-    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.objects.service.Service.is_up', return_value=False,
+                new_callable=mock.PropertyMock)
     def test_get_manageable_volumes_is_down(self, mock_is_up):
         res = self._get_resp_get('host_ok', False, True)
         self.assertEqual(400, res.status_int, res)
