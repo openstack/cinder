@@ -16,7 +16,6 @@
 
 import copy
 import ddt
-import tempfile
 import uuid
 
 import mock
@@ -51,8 +50,6 @@ class FakeBackupException(Exception):
 class BaseBackupTest(test.TestCase):
     def setUp(self):
         super(BaseBackupTest, self).setUp()
-        vol_tmpdir = tempfile.mkdtemp()
-        self.flags(volumes_dir=vol_tmpdir)
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'
         self.ctxt = context.get_admin_context()
