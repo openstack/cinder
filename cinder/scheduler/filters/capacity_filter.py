@@ -39,7 +39,23 @@ class CapacityFilter(filters.BaseHostFilter):
         if host_state.host == filter_properties.get('vol_exists_on'):
             return True
 
-        volume_size = filter_properties.get('size')
+        spec = filter_properties.get('request_spec')
+        if spec:
+            volid = spec.get('volume_id')
+
+        if filter_properties.get('new_size'):
+            # If new_size is passed, we are allocating space to extend a volume
+            requested_size = (int(filter_properties.get('new_size')) -
+                              int(filter_properties.get('size')))
+            LOG.debug('Checking if host %(host)s can extend the volume %(id)s'
+                      'in %(size)s GB', {'host': host_state.host, 'id': volid,
+                                         'size': requested_size})
+        else:
+            requested_size = filter_properties.get('size')
+            LOG.debug('Checking if host %(host)s can create a %(size)s GB '
+                      'volume (%(id)s)',
+                      {'host': host_state.host, 'id': volid,
+                       'size': requested_size})
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
@@ -78,7 +94,7 @@ class CapacityFilter(filters.BaseHostFilter):
         free = free_space - math.floor(total * reserved)
 
         msg_args = {"host": host_state.host,
-                    "requested": volume_size,
+                    "requested": requested_size,
                     "available": free}
 
         # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
@@ -99,7 +115,7 @@ class CapacityFilter(filters.BaseHostFilter):
         if (thin and host_state.thin_provisioning_support and
                 host_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
-                                  volume_size) / total)
+                                  requested_size) / total)
             if provisioned_ratio > host_state.max_over_subscription_ratio:
                 LOG.warning(_LW(
                     "Insufficient free space for thin provisioning. "
@@ -120,7 +136,7 @@ class CapacityFilter(filters.BaseHostFilter):
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
                     free * host_state.max_over_subscription_ratio)
-                return adjusted_free_virtual >= volume_size
+                return adjusted_free_virtual >= requested_size
         elif thin and host_state.thin_provisioning_support:
             LOG.warning(_LW("Filtering out host %(host)s with an invalid "
                             "maximum over subscription ratio of "
@@ -131,7 +147,7 @@ class CapacityFilter(filters.BaseHostFilter):
                          "host": host_state.host})
             return False
 
-        if free < volume_size:
+        if free < requested_size:
             LOG.warning(_LW("Insufficient free space for volume creation "
                             "on host %(host)s (requested / avail): "
                             "%(requested)s/%(available)s"), msg_args)

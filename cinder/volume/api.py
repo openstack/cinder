@@ -1314,8 +1314,32 @@ class API(base.Base):
             if reservations is None:
                 _roll_back_status()
 
-        self.volume_rpcapi.extend_volume(context, volume, new_size,
-                                         reservations)
+        volume_type = {}
+        if volume.volume_type_id:
+            volume_type = volume_types.get_volume_type(context.elevated(),
+                                                       volume.volume_type_id)
+
+        request_spec = {
+            'volume_properties': volume,
+            'volume_type': volume_type,
+            'volume_id': volume.id
+        }
+
+        try:
+            self.scheduler_rpcapi.extend_volume(context, volume, new_size,
+                                                reservations, request_spec)
+        except exception.ServiceTooOld as e:
+            # NOTE(erlon): During rolling upgrades scheduler and volume can
+            # have different versions. This check makes sure that a new
+            # version of the volume service won't break.
+            msg = _LW("Failed to send extend volume request to scheduler. "
+                      "Falling back to old behaviour. This is normal during a "
+                      "live-upgrade. Error: %(e)s")
+            LOG.warning(msg, {'e': e})
+            # TODO(erlon): Remove in Pike
+            self.volume_rpcapi.extend_volume(context, volume, new_size,
+                                             reservations)
+
         LOG.info(_LI("Extend volume request issued successfully."),
                  resource=volume)
 

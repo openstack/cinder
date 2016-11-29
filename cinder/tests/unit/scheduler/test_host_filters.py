@@ -61,7 +61,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -73,7 +74,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_current_host_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100, 'vol_exists_on': 'host1'}
+        filter_properties = {'size': 100, 'vol_exists_on': 'host1',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 100,
@@ -85,7 +87,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 200,
@@ -98,7 +101,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_fails_free_capacity_None(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': None,
@@ -109,7 +113,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_passes_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': 'infinite',
@@ -117,10 +122,37 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
+    def test_filter_extend_request(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'new_size': 100, 'size': 50,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 200,
+                                    'updated_at': None,
+                                    'total_capacity_gb': 500,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_filter_extend_request_negative(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 50,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 49,
+                                    'updated_at': None,
+                                    'total_capacity_gb': 500,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
     def test_filter_passes_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': 'unknown',
@@ -131,7 +163,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_passes_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': 'infinite',
@@ -144,7 +177,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_passes_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': 'unknown',
@@ -157,7 +191,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_fails_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 'infinite',
@@ -169,7 +204,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_fails_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 'unknown',
@@ -181,7 +217,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
     def test_filter_fails_total_zero(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100}
+        filter_properties = {'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 0,
@@ -197,7 +234,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -218,7 +256,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -239,7 +278,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> False',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         # If "thin_provisioning_support" is False,
         # "max_over_subscription_ratio" will be ignored.
@@ -262,7 +302,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -283,7 +324,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -304,7 +346,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -325,7 +368,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -346,7 +390,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -367,7 +412,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> False',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         # If "thin_provisioning_support" is False,
         # "max_over_subscription_ratio" will be ignored.
@@ -390,7 +436,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -411,7 +458,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -432,7 +480,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> False'}
+                                 '<is> False',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -453,7 +502,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -474,7 +524,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
-                                 '<is> True'}
+                                 '<is> True',
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -500,7 +551,8 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100,
-                             'volume_type': volume_type}
+                             'volume_type': volume_type,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,
@@ -530,8 +582,8 @@ class AffinityFilterTestCase(HostFiltersTestCase):
         vol_id = volume.id
 
         filter_properties = {'context': self.context.elevated(),
-                             'scheduler_hints': {
-            'different_host': [vol_id], }}
+                             'scheduler_hints': {'different_host': [vol_id], },
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
@@ -550,8 +602,8 @@ class AffinityFilterTestCase(HostFiltersTestCase):
         vol_id = volume.id
 
         filter_properties = {'context': self.context.elevated(),
-                             'scheduler_hints': {
-            'different_host': [vol_id], }}
+                             'scheduler_hints': {'different_host': [vol_id], },
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
@@ -574,8 +626,8 @@ class AffinityFilterTestCase(HostFiltersTestCase):
         vol_id = volume.id
 
         filter_properties = {'context': self.context.elevated(),
-                             'scheduler_hints': {
-            'different_host': [vol_id], }}
+                             'scheduler_hints': {'different_host': [vol_id], },
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
@@ -584,7 +636,8 @@ class AffinityFilterTestCase(HostFiltersTestCase):
         host = fakes.FakeHostState('host1', {})
 
         filter_properties = {'context': self.context.elevated(),
-                             'scheduler_hints': None}
+                             'scheduler_hints': None,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
@@ -944,7 +997,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         uuid = nova.novaclient().servers.create('host1')
 
         filter_properties = {'context': self.context,
-                             'scheduler_hints': {'local_to_instance': uuid}}
+                             'scheduler_hints': {'local_to_instance': uuid},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('novaclient.client.discover_extensions')
@@ -958,7 +1012,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         uuid = nova.novaclient().servers.create('host2')
 
         filter_properties = {'context': self.context,
-                             'scheduler_hints': {'local_to_instance': uuid}}
+                             'scheduler_hints': {'local_to_instance': uuid},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     def test_handles_none(self):
@@ -966,7 +1021,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         host = fakes.FakeHostState('host1', {})
 
         filter_properties = {'context': self.context,
-                             'scheduler_hints': None}
+                             'scheduler_hints': None,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     def test_invalid_uuid(self):
@@ -975,7 +1031,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'context': self.context,
                              'scheduler_hints':
-                             {'local_to_instance': 'e29b11d4-not-valid-a716'}}
+                             {'local_to_instance': 'e29b11d4-not-valid-a716'},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.InvalidUUID,
                           filt_cls.host_passes, host, filter_properties)
 
@@ -988,7 +1045,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         uuid = nova.novaclient().servers.create('host1')
 
         filter_properties = {'context': self.context,
-                             'scheduler_hints': {'local_to_instance': uuid}}
+                             'scheduler_hints': {'local_to_instance': uuid},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.CinderException,
                           filt_cls.host_passes, host, filter_properties)
 
@@ -1000,7 +1058,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeHostState('host1', {})
 
-        filter_properties = {'context': self.context, 'size': 100}
+        filter_properties = {'context': self.context, 'size': 100,
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.compute.nova.novaclient')
@@ -1014,7 +1073,8 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
 
         filter_properties = \
             {'context': self.context, 'scheduler_hints':
-                {'local_to_instance': 'e29b11d4-15ef-34a9-a716-598a6f0b5467'}}
+                {'local_to_instance': 'e29b11d4-15ef-34a9-a716-598a6f0b5467'},
+             'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.APITimeout,
                           filt_cls.host_passes, host, filter_properties)
 
@@ -1279,7 +1339,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         capabilities.update(ecaps)
         service = {'disabled': False}
         filter_properties = {'resource_type': {'name': 'fake_type',
-                                               'extra_specs': especs}}
+                                               'extra_specs': especs},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         host = fakes.FakeHostState('host1',
                                    {'free_capacity_gb': 1024,
                                     'capabilities': capabilities,
@@ -1436,7 +1497,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'root_gb': 200,
                                                'ephemeral_gb': 0},
-                             'scheduler_hints': {'query': self.json_query}}
+                             'scheduler_hints': {'query': self.json_query},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 1024,
@@ -1448,7 +1510,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filt_cls = self.class_map['JsonFilter']()
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'root_gb': 200,
-                                               'ephemeral_gb': 0}}
+                                               'ephemeral_gb': 0},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 0,
@@ -1461,7 +1524,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'root_gb': 200,
                                                'ephemeral_gb': 0},
-                             'scheduler_hints': {'query': self.json_query}}
+                             'scheduler_hints': {'query': self.json_query},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 1023,
@@ -1474,7 +1538,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'root_gb': 200,
                                                'ephemeral_gb': 0},
-                             'scheduler_hints': {'query': self.json_query}}
+                             'scheduler_hints': {'query': self.json_query},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 1024,
@@ -1491,7 +1556,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'root_gb': 200,
                                                'ephemeral_gb': 0},
-                             'scheduler_hints': {'query': json_query}}
+                             'scheduler_hints': {'query': json_query},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': False}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 1024,
@@ -1507,7 +1573,8 @@ class BasicFiltersTestCase(HostFiltersTestCase):
              ['not', '$service.disabled']])
         filter_properties = {'resource_type': {'memory_mb': 1024,
                                                'local_gb': 200},
-                             'scheduler_hints': {'query': json_query}}
+                             'scheduler_hints': {'query': json_query},
+                             'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
         host = fakes.FakeHostState('host1',
                                    {'free_ram_mb': 1024,
@@ -1532,6 +1599,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
             'scheduler_hints': {
                 'query': jsonutils.dumps(raw),
             },
+            'request_spec': {'volume_id': fake.VOLUME_ID}
         }
 
         # Passes
@@ -1633,6 +1701,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'scheduler_hints': {
                     'query': jsonutils.dumps(raw),
                 },
+                'request_spec': {'volume_id': fake.VOLUME_ID}
             }
             self.assertEqual(expected,
                              filt_cls.host_passes(host, filter_properties))
