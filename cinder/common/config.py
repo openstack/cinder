@@ -42,11 +42,7 @@ core_opts = [
                deprecated_name='pybasedir',
                help="Top-level directory for maintaining cinder's state"), ]
 
-debug_opts = [
-]
-
 CONF.register_cli_opts(core_opts)
-CONF.register_cli_opts(debug_opts)
 
 global_opts = [
     cfg.StrOpt('my_ip',
