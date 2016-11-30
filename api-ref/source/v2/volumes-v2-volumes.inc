@@ -95,7 +95,7 @@ Response Parameters
    - consistencygroup_id: consistencygroup_id
    - os-vol-mig-status-attr:name_id: os-vol-mig-status-attr:name_id
    - name: name
-   - bootable: bootable
+   - bootable: bootable_response
    - created_at: created_at
    - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volumes: volumes
@@ -204,7 +204,7 @@ Response Parameters
    - volume: volume
    - consistencygroup_id: consistencygroup_id
    - name: name
-   - bootable: bootable
+   - bootable: bootable_response
    - created_at: created_at
    - volume_type: volume_type
 
@@ -310,7 +310,7 @@ Response Parameters
    - consistencygroup_id: consistencygroup_id
    - os-vol-mig-status-attr:name_id: os-vol-mig-status-attr:name_id
    - name: name
-   - bootable: bootable
+   - bootable: bootable_response
    - created_at: created_at
    - os-volume-replication:driver_data: os-volume-replication:driver_data
    - volume_type: volume_type
@@ -382,7 +382,7 @@ Response Parameters
    - volume: volume
    - consistencygroup_id: consistencygroup_id
    - name: name
-   - bootable: bootable
+   - bootable: bootable_response
    - created_at: created_at
    - volume_type: volume_type
 
