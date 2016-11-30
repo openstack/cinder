@@ -3641,7 +3641,10 @@ def volume_type_destroy(context, id):
                                   read_deleted="no",
                                   session=session).\
             filter_by(volume_type_id=id).count()
-        if results or group_count:
+        cg_count = model_query(context, models.ConsistencyGroup,
+                               session=session).filter(
+            models.ConsistencyGroup.volume_type_id.contains(id)).count()
+        if results or group_count or cg_count:
             LOG.error(_LE('VolumeType %s deletion failed, '
                           'VolumeType in use.'), id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
