@@ -773,7 +773,8 @@ class BackupManager(manager.SchedulerDependentManager):
 
             # Remove some values which are not actual fields and some that
             # were set by the API node
-            for key in ('name', 'user_id', 'project_id'):
+            for key in ('name', 'user_id', 'project_id', 'deleted_at',
+                        'deleted', 'fail_reason'):
                 backup_options.pop(key, None)
 
             # Update the database
