@@ -148,7 +148,7 @@ Delete backup
 
 Deletes a backup.
 
-Normal response codes: 204,
+Normal response codes: 202,
 
 
 Request
