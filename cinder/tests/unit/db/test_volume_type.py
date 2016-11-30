@@ -16,6 +16,7 @@
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
@@ -30,6 +31,53 @@ class VolumeTypeTestCase(test.TestCase):
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID,
                                            is_admin = True)
+
+    def test_volume_type_delete(self):
+        volume_type = db.volume_type_create(self.ctxt, {'name':
+                                                        'fake volume type'})
+        volume_types.destroy(self.ctxt, volume_type['id'])
+        self.assertRaises(exception.VolumeTypeNotFound,
+                          volume_types.get_by_name_or_id, self.ctxt,
+                          volume_type['id'])
+
+    def test_volume_type_delete_with_volume_in_use(self):
+        volume_type = db.volume_type_create(self.ctxt, {'name':
+                                                        'fake volume type'})
+        volume = db.volume_create(self.ctxt, {'volume_type_id':
+                                              volume_type['id']})
+        self.assertRaises(exception.VolumeTypeInUse, volume_types.destroy,
+                          self.ctxt, volume_type['id'])
+        db.volume_destroy(self.ctxt, volume['id'])
+        volume_types.destroy(self.ctxt, volume_type['id'])
+
+    def test_volume_type_delete_with_group_in_use(self):
+        volume_type = db.volume_type_create(self.ctxt, {'name':
+                                                        'fake volume type'})
+
+        group = db.group_create(self.ctxt, {})
+        db.group_volume_type_mapping_create(self.ctxt, group['id'],
+                                            volume_type['id'])
+        self.assertRaises(exception.VolumeTypeInUse, volume_types.destroy,
+                          self.ctxt, volume_type['id'])
+        db.group_destroy(self.ctxt, group['id'])
+        volume_types.destroy(self.ctxt, volume_type['id'])
+
+    def test_volume_type_delete_with_consistencygroups_in_use(self):
+        volume_type = db.volume_type_create(self.ctxt, {'name':
+                                                        'fake volume type'})
+        consistency_group1 = db.consistencygroup_create(self.ctxt,
+                                                        {'volume_type_id':
+                                                         volume_type['id']})
+        consistency_group2 = db.consistencygroup_create(self.ctxt,
+                                                        {'volume_type_id':
+                                                         volume_type['id']})
+        self.assertRaises(exception.VolumeTypeInUse, volume_types.destroy,
+                          self.ctxt, volume_type['id'])
+        db.consistencygroup_destroy(self.ctxt, consistency_group1['id'])
+        self.assertRaises(exception.VolumeTypeInUse, volume_types.destroy,
+                          self.ctxt, volume_type['id'])
+        db.consistencygroup_destroy(self.ctxt, consistency_group2['id'])
+        volume_types.destroy(self.ctxt, volume_type['id'])
 
     def test_volume_type_update(self):
         vol_type_ref = volume_types.create(self.ctxt, 'fake volume type')
