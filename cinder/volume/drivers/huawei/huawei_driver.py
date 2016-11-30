@@ -57,6 +57,7 @@ huawei_opts = [
                help='The remote metro device san user.'),
     cfg.StrOpt('metro_san_password',
                default=None,
+               secret=True,
                help='The remote metro device san password.'),
     cfg.StrOpt('metro_domain_name',
                default=None,
