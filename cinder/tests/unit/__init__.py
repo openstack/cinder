@@ -23,15 +23,10 @@
 """
 
 import eventlet
-from six.moves import builtins
 
 from cinder import objects
 
 eventlet.monkey_patch()
-
-# See http://code.google.com/p/python-nose/issues/detail?id=373
-# The code below enables nosetests to work with i18n _() blocks
-setattr(builtins, '_', lambda x: x)
 
 # NOTE(alaski): Make sure this is done after eventlet monkey patching otherwise
 # the threading.local() store used in oslo_messaging will be initialized to
