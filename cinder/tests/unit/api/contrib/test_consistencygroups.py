@@ -1133,9 +1133,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_consistencygroup_from_src(self, mock_validate):
+    def test_create_consistencygroup_from_src(self, mock_validate, mock_quota):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         consistencygroup = utils.create_consistencygroup(self.ctxt)
@@ -1178,7 +1179,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cgsnapshot.destroy()
 
-    def test_create_consistencygroup_from_src_cg(self):
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
+    def test_create_consistencygroup_from_src_cg(self, mock_quota):
         self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         source_cg = utils.create_consistencygroup(self.ctxt)
@@ -1434,11 +1436,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(404, res_dict['itemNotFound']['code'])
         self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
     @mock.patch.object(volume_api.API, 'create',
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
     def test_create_consistencygroup_from_src_cgsnapshot_create_volume_failed(
-            self, mock_create):
+            self, mock_create, mock_quota):
         consistencygroup = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
             self.ctxt,
@@ -1475,11 +1478,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cgsnapshot.destroy()
 
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
     @mock.patch.object(volume_api.API, 'create',
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
     def test_create_consistencygroup_from_src_cg_create_volume_failed(
-            self, mock_create):
+            self, mock_create, mock_quota):
         source_cg = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
             self.ctxt,
@@ -1505,3 +1509,88 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         source_cg.destroy()
+
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
+    def test_create_consistencygroup_from_src_cg_over_quota(self, mock_quota):
+        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
+
+        source_cg = utils.create_consistencygroup(self.ctxt)
+        volume_id = utils.create_volume(
+            self.ctxt,
+            consistencygroup_id=source_cg.id)['id']
+
+        mock_quota.side_effect = exception.OverQuota(
+            overs=10, quotas='volumes', usages={})
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "source_cgid": source_cg.id}}
+        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+                                  fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertIn('message', res_dict['badRequest'])
+
+        cg = objects.ConsistencyGroupList.get_all(self.ctxt)
+        # The new cg has been deleted already.
+        self.assertEqual(1, len(cg))
+
+        db.volume_destroy(self.ctxt.elevated(), volume_id)
+        source_cg.destroy()
+
+    @mock.patch('cinder.quota.QuotaEngine.limit_check')
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_consistencygroup_from_src_cgsnapshot_over_quota(
+            self, mock_validate, mock_quota):
+        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
+
+        consistencygroup = utils.create_consistencygroup(self.ctxt)
+        volume_id = utils.create_volume(
+            self.ctxt,
+            consistencygroup_id=consistencygroup.id)['id']
+        cgsnapshot = utils.create_cgsnapshot(
+            self.ctxt, consistencygroup_id=consistencygroup.id)
+        snapshot = utils.create_snapshot(
+            self.ctxt,
+            volume_id,
+            cgsnapshot_id=cgsnapshot.id,
+            status=fields.SnapshotStatus.AVAILABLE)
+
+        mock_quota.side_effect = exception.OverQuota(
+            overs=10, quotas='volumes', usages={})
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "cgsnapshot_id": cgsnapshot.id}}
+        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+                                  fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertIn('message', res_dict['badRequest'])
+        self.assertTrue(mock_validate.called)
+
+        cg = objects.ConsistencyGroupList.get_all(self.ctxt)
+        # The new cg has been deleted already.
+        self.assertEqual(1, len(cg))
+
+        snapshot.destroy()
+        db.volume_destroy(self.ctxt.elevated(), volume_id)
+        consistencygroup.destroy()
+        cgsnapshot.destroy()
