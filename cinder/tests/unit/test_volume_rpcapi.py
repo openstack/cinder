@@ -16,8 +16,8 @@
 Unit Tests for cinder.volume.rpcapi
 """
 import copy
-import mock
 
+import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
@@ -188,7 +188,8 @@ class VolumeRpcAPITestCase(test.TestCase):
         elif 'group' in kwargs:
             host = kwargs['group']['host']
         elif 'volume' in kwargs:
-            host = kwargs['volume']['host']
+            vol = kwargs['volume']
+            host = vol.service_topic_queue
         elif 'snapshot' in kwargs:
             host = 'fake_host'
         elif 'cgsnapshot' in kwargs:
@@ -239,7 +240,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             elif isinstance(value, objects.Volume):
                 expected_volume = expected_msg[kwarg].obj_to_primitive()
                 volume = value.obj_to_primitive()
-                self.assertEqual(expected_volume, volume)
+                self.assertDictEqual(expected_volume, volume)
             elif isinstance(value, objects.Backup):
                 expected_backup = expected_msg[kwarg].obj_to_primitive()
                 backup = value.obj_to_primitive()
@@ -372,7 +373,7 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_create_snapshot(self):
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               snapshot=self.fake_snapshot,
                               version='3.0')
 
@@ -395,7 +396,7 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_attach_volume_to_instance(self):
         self._test_volume_api('attach_volume',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               instance_uuid='fake_uuid',
                               host_name=None,
                               mountpoint='fake_mountpoint',
@@ -405,7 +406,22 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_attach_volume_to_host(self):
         self._test_volume_api('attach_volume',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              instance_uuid=None,
+                              host_name='fake_host',
+                              mountpoint='fake_mountpoint',
+                              mode='rw',
+                              version='3.0')
+
+    def _set_cluster(self):
+        self.fake_volume_obj.cluster_name = 'my_cluster'
+        self.fake_volume_obj.obj_reset_changes(['cluster_name'])
+
+    def test_attach_volume_to_cluster(self):
+        self._set_cluster()
+        self._test_volume_api('attach_volume',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
                               instance_uuid=None,
                               host_name='fake_host',
                               mountpoint='fake_mountpoint',
@@ -415,14 +431,22 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              attachment_id='fake_uuid',
+                              version="3.0")
+
+    def test_detach_volume_cluster(self):
+        self._set_cluster()
+        self._test_volume_api('detach_volume',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
                               attachment_id='fake_uuid',
                               version="3.0")
 
     def test_copy_volume_to_image(self):
         self._test_volume_api('copy_volume_to_image',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               image_meta={'id': 'fake_image_id',
                                           'container_format': 'fake_type',
                                           'disk_format': 'fake_type'},
@@ -435,10 +459,28 @@ class VolumeRpcAPITestCase(test.TestCase):
                               connector='fake_connector',
                               version='3.0')
 
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_initialize_connection_cluster(self, mock_can_send_version):
+        self._set_cluster()
+        self._test_volume_api('initialize_connection',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
+                              connector='fake_connector',
+                              version='3.0')
+
     def test_terminate_connection(self):
         self._test_volume_api('terminate_connection',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              connector='fake_connector',
+                              force=False,
+                              version='3.0')
+
+    def test_terminate_connection_cluster(self):
+        self._set_cluster()
+        self._test_volume_api('terminate_connection',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
                               connector='fake_connector',
                               force=False,
                               version='3.0')
@@ -446,7 +488,7 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_accept_transfer(self):
         self._test_volume_api('accept_transfer',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               new_user='e5565fd0-06c8-11e3-'
                                        '8ffd-0800200c9b77',
                               new_project='e4465fd0-06c8-11e3'
@@ -566,7 +608,7 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_remove_export(self):
         self._test_volume_api('remove_export',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               version='3.0')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',

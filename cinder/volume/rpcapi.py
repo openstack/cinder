@@ -188,17 +188,17 @@ class VolumeAPI(rpc.RPCAPI):
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
                       mountpoint, mode):
-        cctxt = self._get_cctxt(volume['host'])
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         return cctxt.call(ctxt, 'attach_volume',
-                          volume_id=volume['id'],
+                          volume_id=volume.id,
                           instance_uuid=instance_uuid,
                           host_name=host_name,
                           mountpoint=mountpoint,
                           mode=mode)
 
     def detach_volume(self, ctxt, volume, attachment_id):
-        cctxt = self._get_cctxt(volume['host'])
-        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'],
+        cctxt = self._get_cctxt(volume.service_topic_queue)
+        return cctxt.call(ctxt, 'detach_volume', volume_id=volume.id,
                           attachment_id=attachment_id)
 
     def copy_volume_to_image(self, ctxt, volume, image_meta):
@@ -207,17 +207,17 @@ class VolumeAPI(rpc.RPCAPI):
                    image_meta=image_meta)
 
     def initialize_connection(self, ctxt, volume, connector):
-        cctxt = self._get_cctxt(volume['host'])
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         return cctxt.call(ctxt, 'initialize_connection', connector=connector,
                           volume=volume)
 
     def terminate_connection(self, ctxt, volume, connector, force=False):
-        cctxt = self._get_cctxt(volume['host'])
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         return cctxt.call(ctxt, 'terminate_connection', volume_id=volume['id'],
                           connector=connector, force=force)
 
     def remove_export(self, ctxt, volume):
-        cctxt = self._get_cctxt(volume['host'])
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'remove_export', volume_id=volume['id'])
 
     def publish_service_capabilities(self, ctxt):

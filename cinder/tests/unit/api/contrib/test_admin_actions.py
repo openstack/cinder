@@ -773,7 +773,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
-        volume = objects.Volume.get_by_id(self.ctx, volume.id)
+        volume.refresh()
         self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
