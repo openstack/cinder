@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 # Copyright (c) 2015 Yogesh Kshirsagar.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
