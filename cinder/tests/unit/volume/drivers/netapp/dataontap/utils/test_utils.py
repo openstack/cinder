@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
+import socket
 
 import ddt
 import mock
@@ -101,3 +103,64 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
             hostname='fake_hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
             trace=mock.ANY, vserver='fake_vserver')
+
+
+@ddt.ddt
+class NetAppDataOntapUtilsTestCase(test.TestCase):
+
+    @ddt.data('cluster', '7mode')
+    def test_build_ems_log_message_0(self, driver_mode):
+
+        self.mock_object(
+            socket, 'gethostname', mock.Mock(return_value='fake_hostname'))
+
+        result = utils.build_ems_log_message_0(
+            'fake_driver_name', 'fake_app_version', driver_mode)
+
+        dest = ('cluster node' if driver_mode == 'cluster'
+                else '7 mode controller')
+        expected = {
+            'computer-name': 'fake_hostname',
+            'event-source': 'Cinder driver fake_driver_name',
+            'app-version': 'fake_app_version',
+            'category': 'provisioning',
+            'log-level': '5',
+            'auto-support': 'false',
+            'event-id': '0',
+            'event-description': 'OpenStack Cinder connected to %s' % dest,
+        }
+        self.assertEqual(expected, result)
+
+    def test_build_ems_log_message_1(self):
+
+        self.mock_object(
+            socket, 'gethostname', mock.Mock(return_value='fake_hostname'))
+        aggregate_pools = ['aggr1', 'aggr2']
+        flexvol_pools = ['vol1', 'vol2']
+
+        result = utils.build_ems_log_message_1(
+            'fake_driver_name', 'fake_app_version', 'fake_vserver',
+            flexvol_pools, aggregate_pools)
+
+        pool_info = {
+            'pools': {
+                'vserver': 'fake_vserver',
+                'aggregates': aggregate_pools,
+                'flexvols': flexvol_pools,
+            },
+        }
+        self.assertDictEqual(pool_info,
+                             json.loads(result['event-description']))
+
+        result['event-description'] = ''
+        expected = {
+            'computer-name': 'fake_hostname',
+            'event-source': 'Cinder driver fake_driver_name',
+            'app-version': 'fake_app_version',
+            'category': 'provisioning',
+            'log-level': '5',
+            'auto-support': 'false',
+            'event-id': '1',
+            'event-description': '',
+        }
+        self.assertEqual(expected, result)

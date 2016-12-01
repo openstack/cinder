@@ -1216,6 +1216,8 @@ CLUSTER_ADDRESS_1 = 'fake_cluster_address'
 CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
+ADMIN_VSERVER_NAME = 'fake_admin_vserver'
+NODE_VSERVER_NAME = 'fake_node_vserver'
 SM_SOURCE_VSERVER = 'fake_source_vserver'
 SM_SOURCE_VOLUME = 'fake_source_volume'
 SM_DEST_VSERVER = 'fake_destination_vserver'
@@ -1345,3 +1347,15 @@ SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
     <result-status>succeeded</result-status>
   </results>
 """)
+
+VSERVER_DATA_LIST_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <vserver-name>%(vserver)s</vserver-name>
+        <vserver-type>data</vserver-type>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'vserver': VSERVER_NAME})

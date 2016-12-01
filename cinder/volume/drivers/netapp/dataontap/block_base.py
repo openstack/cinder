@@ -177,11 +177,17 @@ class NetAppBlockStorageLibrary(object):
 
         Inheriting class overrides and then explicitly calls this method.
         """
+
         # Add the task that deletes snapshots marked for deletion.
         self.loopingcalls.add_task(
             self._delete_snapshots_marked_for_deletion,
             loopingcalls.ONE_MINUTE,
             loopingcalls.ONE_MINUTE)
+
+        # Add the task that logs EMS messages
+        self.loopingcalls.add_task(
+            self._handle_ems_logging,
+            loopingcalls.ONE_HOUR)
 
     def _delete_snapshots_marked_for_deletion(self):
         volume_list = self._get_backing_flexvol_names()
@@ -190,6 +196,10 @@ class NetAppBlockStorageLibrary(object):
         for snapshot in snapshots:
             self.zapi_client.delete_snapshot(
                 snapshot['volume_name'], snapshot['name'])
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+        raise NotImplementedError()
 
     def get_pool(self, volume):
         """Return pool name where volume resides.

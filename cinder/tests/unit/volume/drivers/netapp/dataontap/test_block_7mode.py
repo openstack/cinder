@@ -37,6 +37,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -137,6 +138,31 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.zapi_client.get_ontapi_version.return_value = version
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.check_for_setup_error)
+
+    def test_handle_ems_logging(self):
+
+        self.library.volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            mock.Mock(return_value='fake_base_ems_log_message'))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            mock.Mock(return_value='fake_pool_ems_log_message'))
+        mock_send_ems_log_message = self.mock_object(
+            self.zapi_client, 'send_ems_log_message')
+
+        self.library._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.library.driver_name, self.library.app_version,
+            self.library.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.library.driver_name, self.library.app_version, None,
+            self.library.volume_list, [])
 
     def test__get_volume_model_update(self):
         """Driver is not expected to return a model update."""
@@ -404,17 +430,6 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         result = self.library._get_fc_target_wwpns(include_partner=False)
 
         self.assertSetEqual(set(ports1), set(result))
-
-    @mock.patch.object(block_7mode.NetAppBlockStorage7modeLibrary,
-                       '_refresh_volume_info', mock.Mock())
-    @mock.patch.object(block_7mode.NetAppBlockStorage7modeLibrary,
-                       '_get_pool_stats', mock.Mock())
-    def test_vol_stats_calls_provide_ems(self):
-        self.library.zapi_client.provide_ems = mock.Mock()
-
-        self.library.get_volume_stats(refresh=True)
-
-        self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
         self.library.vol_refresh_voluntary = False

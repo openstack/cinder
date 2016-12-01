@@ -1613,15 +1613,17 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_add_looping_tasks(self):
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
-        mock_call = self.mock_object(
+        mock_call_snap_cleanup = self.mock_object(
             self.library, '_delete_snapshots_marked_for_deletion')
+        mock_call_ems_logging = self.mock_object(
+            self.library, '_handle_ems_logging')
 
         self.library._add_looping_tasks()
 
-        mock_add_task.assert_called_once_with(
-            mock_call,
-            loopingcalls.ONE_MINUTE,
-            loopingcalls.ONE_MINUTE)
+        mock_add_task.assert_has_calls([
+            mock.call(mock_call_snap_cleanup, loopingcalls.ONE_MINUTE,
+                      loopingcalls.ONE_MINUTE),
+            mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
 
     def test_delete_snapshots_marked_for_deletion(self):
         snapshots = [{

@@ -39,7 +39,7 @@ from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
-from cinder.volume.drivers.netapp.dataontap.utils import utils as cmode_utils
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
@@ -58,6 +58,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeNfsDriver, self).__init__(*args, **kwargs)
+        self.driver_name = 'NetApp_NFS_Cluster_direct'
+        self.driver_mode = 'cluster'
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
         self.failed_over_backend_name = kwargs.get('active_backend_id')
         self.failed_over = self.failed_over_backend_name is not None
@@ -71,7 +73,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         na_utils.check_flags(self.REQUIRED_CMODE_FLAGS, self.configuration)
 
         # cDOT API client
-        self.zapi_client = cmode_utils.get_client_for_backend(
+        self.zapi_client = dot_utils.get_client_for_backend(
             self.failed_over_backend_name or self.backend_name)
         self.vserver = self.zapi_client.vserver
 
@@ -86,7 +88,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
     def _update_zapi_client(self, backend_name):
         """Set cDOT API client for the specified config backend stanza name."""
 
-        self.zapi_client = cmode_utils.get_client_for_backend(backend_name)
+        self.zapi_client = dot_utils.get_client_for_backend(backend_name)
         self.vserver = self.zapi_client.vserver
         self.ssc_library._update_for_failover(self.zapi_client,
                                               self._get_flexvol_to_pool_map())
@@ -126,6 +128,18 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             0)
 
         super(NetAppCmodeNfsDriver, self)._add_looping_tasks()
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+
+        base_ems_message = dot_utils.build_ems_log_message_0(
+            self.driver_name, self.app_version, self.driver_mode)
+        self.zapi_client.send_ems_log_message(base_ems_message)
+
+        pool_ems_message = dot_utils.build_ems_log_message_1(
+            self.driver_name, self.app_version, self.vserver,
+            self._get_backing_flexvol_names(), [])
+        self.zapi_client.send_ems_log_message(pool_ems_message)
 
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
@@ -207,9 +221,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         LOG.debug('Updating volume stats')
         data = {}
-        netapp_backend = 'NetApp_NFS_Cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or netapp_backend
+        data['volume_backend_name'] = backend_name or self.driver_name
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
@@ -222,7 +235,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         data['replication_enabled'] = self.replication_enabled
 
         self._spawn_clean_cache_job()
-        self.zapi_client.provide_ems(self, netapp_backend, self._app_version)
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):

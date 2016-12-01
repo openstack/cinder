@@ -34,7 +34,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
-from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -87,7 +87,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     def test_do_setup(self, super_do_setup, mock_check_flags):
         self.mock_object(client_base.Client, '_init_ssh_client')
         self.mock_object(
-            config_utils, 'get_backend_configuration',
+            dot_utils, 'get_backend_configuration',
             mock.Mock(return_value=self.get_config_cmode()))
         context = mock.Mock()
 
@@ -154,6 +154,34 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                 fake_utils.SSC.keys())
         else:
             self.assertFalse(ensure_mirrors.called)
+
+    def test_handle_ems_logging(self):
+
+        volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            self.library.ssc_library, 'get_ssc_flexvol_names',
+            mock.Mock(return_value=volume_list))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            mock.Mock(return_value='fake_base_ems_log_message'))
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            mock.Mock(return_value='fake_pool_ems_log_message'))
+        mock_send_ems_log_message = self.mock_object(
+            self.zapi_client, 'send_ems_log_message')
+
+        self.library._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.library.driver_name, self.library.app_version,
+            self.library.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.library.driver_name, self.library.app_version,
+            self.library.vserver, volume_list, [])
 
     def test_find_mapped_lun_igroup(self):
         igroups = [fake.IGROUP1]
@@ -293,15 +321,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         result = self.library._get_fc_target_wwpns()
 
         self.assertSetEqual(set(ports), set(result))
-
-    @mock.patch.object(block_cmode.NetAppBlockStorageCmodeLibrary,
-                       '_get_pool_stats', mock.Mock())
-    def test_vol_stats_calls_provide_ems(self):
-        self.library.zapi_client.provide_ems = mock.Mock()
-
-        self.library.get_volume_stats(refresh=True)
-
-        self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
         self.library._create_lun(
