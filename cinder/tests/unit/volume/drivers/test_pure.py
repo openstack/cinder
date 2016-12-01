@@ -2197,7 +2197,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
 
         real_result = self.driver.initialize_connection(VOLUME,
                                                         ISCSI_CONNECTOR)
-        self.assertDictMatch(result, real_result)
+        self.assertDictEqual(result, real_result)
         mock_get_iscsi_ports.assert_called_with()
         mock_connection.assert_called_with(VOLUME, ISCSI_CONNECTOR)
         self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
@@ -2229,7 +2229,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         real_result = self.driver.initialize_connection(VOLUME,
                                                         ISCSI_CONNECTOR)
         mock_connection.assert_called_with(VOLUME, ISCSI_CONNECTOR)
-        self.assertDictMatch(result, real_result)
+        self.assertDictEqual(result, real_result)
 
         self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
                                      self.driver.initialize_connection,
@@ -2253,7 +2253,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
 
         real_result = self.driver.initialize_connection(VOLUME,
                                                         multipath_connector)
-        self.assertDictMatch(result, real_result)
+        self.assertDictEqual(result, real_result)
         mock_get_iscsi_ports.assert_called_with()
         mock_connection.assert_called_with(VOLUME, multipath_connector)
 
@@ -2327,7 +2327,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         self.driver._connect(VOLUME, ISCSI_CONNECTOR)
         result["auth_username"] = chap_user
         result["auth_password"] = chap_password
-        self.assertDictMatch(result, real_result)
+        self.assertDictEqual(result, real_result)
         self.array.set_host.assert_called_with(PURE_HOST_NAME,
                                                host_user=chap_user,
                                                host_password=chap_password)
@@ -2339,7 +2339,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         result["auth_username"] = chap_user
         result["auth_password"] = chap_password
 
-        self.assertDictMatch(result, real_result)
+        self.assertDictEqual(result, real_result)
         self.array.set_host.assert_called_with(PURE_HOST_NAME,
                                                host_user=chap_user,
                                                host_password=chap_password)
@@ -2517,7 +2517,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
                                         }
         self.array.list_ports.return_value = FC_PORTS
         actual_result = self.driver.initialize_connection(VOLUME, FC_CONNECTOR)
-        self.assertDictMatch(FC_CONNECTION_INFO, actual_result)
+        self.assertDictEqual(FC_CONNECTION_INFO, actual_result)
 
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     @mock.patch(FC_DRIVER_OBJ + "._generate_purity_host_name", spec=True)
@@ -2707,13 +2707,13 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         }
 
         real_result = self.driver.get_volume_stats(refresh=True)
-        self.assertDictMatch(expected_result, real_result)
+        self.assertDictEqual(expected_result, real_result)
 
         # Make sure when refresh=False we are using cached values and not
         # sending additional requests to the array.
         self.array.reset_mock()
         real_result = self.driver.get_volume_stats(refresh=False)
-        self.assertDictMatch(expected_result, real_result)
+        self.assertDictEqual(expected_result, real_result)
         self.assertFalse(self.array.get.called)
         self.assertFalse(self.array.list_volumes.called)
         self.assertFalse(self.array.list_hosts.called)

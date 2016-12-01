@@ -682,7 +682,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                                        **{'object-id':
                                                           fake_volume['id']}
                                                        )
-        self.assertDictMatch(expected_volume, updated_volume)
+        self.assertDictEqual(expected_volume, updated_volume)
 
     def test_get_pool_operation_progress(self):
         fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)

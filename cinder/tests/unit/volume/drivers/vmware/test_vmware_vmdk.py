@@ -1669,7 +1669,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         rp_2 = mock.Mock(value='rp-2')
         self.assertEqual(dc_1, self._driver._get_dc(rp_1))
         self.assertEqual(dc_2, self._driver._get_dc(rp_2))
-        self.assertDictMatch({'rp-1': dc_1, 'rp-2': dc_2},
+        self.assertDictEqual({'rp-1': dc_1, 'rp-2': dc_2},
                              self._driver._dc_cache)
 
         # cache hit

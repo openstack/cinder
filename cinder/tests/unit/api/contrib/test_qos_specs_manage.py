@@ -489,7 +489,7 @@ class QoSSpecManageApiTest(test.TestCase):
             body = {'qos_specs': {'key1': 'value1',
                                   'key2': 'value2'}}
             res = self.controller.update(req, fake.QOS_SPEC_ID, body)
-            self.assertDictMatch(body, res)
+            self.assertDictEqual(body, res)
             self.assertEqual(1, notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.update',

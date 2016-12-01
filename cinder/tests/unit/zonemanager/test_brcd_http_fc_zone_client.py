@@ -598,7 +598,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
     def test_get_active_zone_set(self, connect_mock):
         connect_mock.return_value = zone_info
         returned_zone_map = self.get_active_zone_set()
-        self.assertDictMatch(active_zone_set, returned_zone_map)
+        self.assertDictEqual(active_zone_set, returned_zone_map)
 
     def test_form_zone_string(self):
         new_alias = {

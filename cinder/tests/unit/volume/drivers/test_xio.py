@@ -891,7 +891,7 @@ class XIOISEDriverTestCase(object):
                       'storage_protocol': protocol}
 
         act_result = self.driver.get_volume_stats(True)
-        self.assertDictMatch(exp_result, act_result)
+        self.assertDictEqual(exp_result, act_result)
 
     def test_get_volume_stats_ssl(self, mock_req):
         self.configuration.driver_use_ssl = True
@@ -930,7 +930,7 @@ class XIOISEDriverTestCase(object):
             exp_result = {}
             exp_result = {"provider_auth": ""}
             act_result = self.driver.create_volume(VOLUME1)
-            self.assertDictMatch(exp_result, act_result)
+            self.assertDictEqual(exp_result, act_result)
         elif self.configuration.ise_protocol == 'fibre_channel':
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                          ISE_CREATE_VOLUME_RESP,
@@ -959,7 +959,7 @@ class XIOISEDriverTestCase(object):
             exp_result = {}
             exp_result = {"provider_auth": "CHAP abc abc"}
             act_result = self.driver.create_volume(VOLUME1)
-            self.assertDictMatch(exp_result, act_result)
+            self.assertDictEqual(exp_result, act_result)
         elif self.configuration.ise_protocol == 'fibre_channel':
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                          ISE_CREATE_VOLUME_RESP,
@@ -1051,7 +1051,7 @@ class XIOISEDriverTestCase(object):
 
         act_result =\
             self.driver.initialize_connection(VOLUME1, self.connector)
-        self.assertDictMatch(exp_result, act_result)
+        self.assertDictEqual(exp_result, act_result)
 
     def test_initialize_connection_positive_host_type(self, mock_req):
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
@@ -1080,7 +1080,7 @@ class XIOISEDriverTestCase(object):
 
         act_result =\
             self.driver.initialize_connection(VOLUME1, self.connector)
-        self.assertDictMatch(exp_result, act_result)
+        self.assertDictEqual(exp_result, act_result)
 
     def test_initialize_connection_positive_chap(self, mock_req):
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
@@ -1112,7 +1112,7 @@ class XIOISEDriverTestCase(object):
 
         act_result =\
             self.driver.initialize_connection(VOLUME2, self.connector)
-        self.assertDictMatch(exp_result, act_result)
+        self.assertDictEqual(exp_result, act_result)
 
     def test_initialize_connection_negative_no_host(self, mock_req):
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP,

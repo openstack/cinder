@@ -96,7 +96,7 @@ class HostManagerTestCase(test.TestCase):
     def test_update_service_capabilities(self, _mock_utcnow,
                                          _mock_get_updated_pools):
         service_states = self.host_manager.service_states
-        self.assertDictMatch({}, service_states)
+        self.assertDictEqual({}, service_states)
         _mock_utcnow.side_effect = [31338, 31339]
 
         _mock_get_updated_pools.return_value = []
@@ -126,7 +126,7 @@ class HostManagerTestCase(test.TestCase):
         expected = {'host1': host1_volume_capabs,
                     'host2': host2_volume_capabs,
                     'host3': host3_volume_capabs}
-        self.assertDictMatch(expected, service_states)
+        self.assertDictEqual(expected, service_states)
 
     @mock.patch(
         'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
@@ -157,15 +157,15 @@ class HostManagerTestCase(test.TestCase):
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       capab1, None, None)
-        self.assertDictMatch(dict(dict(timestamp=31337), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31337), **capab1),
                              self.host_manager.service_states['host1'])
 
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
                                                       capab1)
-        self.assertDictMatch(dict(dict(timestamp=31337), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31337), **capab1),
                              self.host_manager.service_states['host1'])
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31338), **capab1),
             self.host_manager.service_states_last_update['host1'])
 
@@ -176,7 +176,7 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
                                                         capab1, None, None)
 
-        self.assertDictMatch(dict(dict(timestamp=31339), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31339), **capab1),
                              self.host_manager_1.service_states['host1'])
 
     @mock.patch(
@@ -216,10 +216,10 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       capab1, None, None)
 
-        self.assertDictMatch(dict(dict(timestamp=31340), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31340), **capab1),
                              self.host_manager.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31338), **capab1),
             self.host_manager.service_states_last_update['host1'])
 
@@ -227,10 +227,10 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
                                                         capab1, None, None)
 
-        self.assertDictMatch(dict(dict(timestamp=31341), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31341), **capab1),
                              self.host_manager_1.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31339), **capab1),
             self.host_manager_1.service_states_last_update['host1'])
 
@@ -238,10 +238,10 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager_1.notify_service_capabilities(service_name, 'host1',
                                                         capab1)
 
-        self.assertDictMatch(dict(dict(timestamp=31341), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31341), **capab1),
                              self.host_manager_1.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.host_manager_1.service_states_last_update['host1'],
             dict(dict(timestamp=31339), **capab1))
 
@@ -286,11 +286,11 @@ class HostManagerTestCase(test.TestCase):
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
                                                       capab1)
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31338), **capab1),
             self.host_manager.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31340), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31340), **capab1),
                              self.host_manager.service_states['host1'])
 
         # Don't notify capab1 to ceilometer.
@@ -300,20 +300,20 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       capab1, None, None)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31340), **capab1),
             self.host_manager.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31344), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31344), **capab1),
                              self.host_manager.service_states['host1'])
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
                                                         capab1, None, None)
-        self.assertDictMatch(dict(dict(timestamp=31345), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31345), **capab1),
                              self.host_manager_1.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31341), **capab1),
             self.host_manager_1.service_states_last_update['host1'])
 
@@ -362,20 +362,20 @@ class HostManagerTestCase(test.TestCase):
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       capab2, None, None)
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31340), **capab1),
             self.host_manager.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31346), **capab2),
+        self.assertDictEqual(dict(dict(timestamp=31346), **capab2),
                              self.host_manager.service_states['host1'])
 
         # S1: notify_service_capabilities()
         self.host_manager_1.notify_service_capabilities(service_name, 'host1',
                                                         capab2)
-        self.assertDictMatch(dict(dict(timestamp=31345), **capab1),
+        self.assertDictEqual(dict(dict(timestamp=31345), **capab1),
                              self.host_manager_1.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31347), **capab2),
             self.host_manager_1.service_states_last_update['host1'])
 
@@ -385,10 +385,10 @@ class HostManagerTestCase(test.TestCase):
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
                                                         capab2, None, None)
-        self.assertDictMatch(dict(dict(timestamp=31348), **capab2),
+        self.assertDictEqual(dict(dict(timestamp=31348), **capab2),
                              self.host_manager_1.service_states['host1'])
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31347), **capab2),
             self.host_manager_1.service_states_last_update['host1'])
 
@@ -446,11 +446,11 @@ class HostManagerTestCase(test.TestCase):
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
                                                       capab2)
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31349), **capab2),
             self.host_manager.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31346), **capab2),
+        self.assertDictEqual(dict(dict(timestamp=31346), **capab2),
                              self.host_manager.service_states['host1'])
 
         # S0 notify capab2 to ceilometer.
@@ -459,22 +459,22 @@ class HostManagerTestCase(test.TestCase):
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       capab2, None, None)
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31349), **capab2),
             self.host_manager.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31350), **capab2),
+        self.assertDictEqual(dict(dict(timestamp=31350), **capab2),
                              self.host_manager.service_states['host1'])
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
                                                         capab2, None, None)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(dict(timestamp=31348), **capab2),
             self.host_manager_1.service_states_last_update['host1'])
 
-        self.assertDictMatch(dict(dict(timestamp=31351), **capab2),
+        self.assertDictEqual(dict(dict(timestamp=31351), **capab2),
                              self.host_manager_1.service_states['host1'])
 
     @mock.patch('cinder.objects.service.Service.is_up',
@@ -1182,4 +1182,4 @@ class PoolStateTestCase(test.TestCase):
         self.assertEqual(512,
                          fake_pool.provisioned_capacity_gb)
 
-        self.assertDictMatch(volume_capability, fake_pool.capabilities)
+        self.assertDictEqual(volume_capability, dict(fake_pool.capabilities))

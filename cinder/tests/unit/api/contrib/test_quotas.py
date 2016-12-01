@@ -165,11 +165,11 @@ class QuotaSetsControllerTestBase(test.TestCase):
 class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     def test_defaults(self):
         result = self.controller.defaults(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(make_body(), result)
+        self.assertDictEqual(make_body(), result)
 
     def test_show(self):
         result = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(make_body(), result)
+        self.assertDictEqual(make_body(), result)
 
     def test_show_not_authorized(self):
         self.req.environ['cinder.context'].is_admin = False
@@ -182,7 +182,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         self.controller._get_quotas = mock.Mock(side_effect=
                                                 self.controller._get_quotas)
         result = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(make_body(), result)
+        self.assertDictEqual(make_body(), result)
         self.controller._get_quotas.assert_called_with(
             self.req.environ['cinder.context'], fake.PROJECT_ID, False)
 
@@ -195,17 +195,17 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     def test_show_with_valid_usage_param(self):
         self.req.params = {'usage': 'false'}
         result = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(make_body(), result)
+        self.assertDictEqual(make_body(), result)
 
     def test_update(self):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
 
         body = make_body(gigabytes=db.MAX_INT, tenant_id=None)
         result = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
 
     def test_update_subproject_not_in_hierarchy_non_nested(self):
         # When not using nested quotas, the hierarchy should not be considered
@@ -221,7 +221,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Try to update the quota of F, it will be allowed even though
         # project E doesn't belong to the project hierarchy of A, because
         # we are NOT using the nested quota driver
@@ -267,7 +267,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
                           self.req, fake.PROJECT_ID, body)
         # Verify that quota values are not updated in db
         new_quota = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(orig_quota, new_quota)
+        self.assertDictEqual(orig_quota, new_quota)
 
     def test_update_bad_quota_limit(self):
         body = {'quota_set': {'gigabytes': -1000}}
@@ -336,18 +336,18 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
 
     def test_delete(self):
         result_show = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(make_body(), result_show)
+        self.assertDictEqual(make_body(), result_show)
 
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, fake.PROJECT_ID, body)
-        self.assertDictMatch(body, result_update)
+        self.assertDictEqual(body, result_update)
 
         self.controller.delete(self.req, fake.PROJECT_ID)
 
         result_show_after = self.controller.show(self.req, fake.PROJECT_ID)
-        self.assertDictMatch(result_show, result_show_after)
+        self.assertDictEqual(result_show, result_show_after)
 
     def test_delete_with_allocated_quota_different_from_zero(self):
         self.req.environ['cinder.context'].project_id = self.A.id
@@ -356,19 +356,19 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result_update)
+        self.assertDictEqual(body, result_update)
 
         # Set usage param to True in order to see get allocated values.
         self.req.params = {'usage': 'True'}
         result_show = self.controller.show(self.req, self.A.id)
 
         result_update = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(body, result_update)
+        self.assertDictEqual(body, result_update)
 
         self.controller.delete(self.req, self.B.id)
 
         result_show_after = self.controller.show(self.req, self.A.id)
-        self.assertDictMatch(result_show, result_show_after)
+        self.assertDictEqual(result_show, result_show_after)
 
     def test_delete_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
@@ -593,13 +593,13 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         context.project_id = self.B.id
         result = self.controller.defaults(self.req, self.B.id)
         expected = make_subproject_body(tenant_id=self.B.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def test_subproject_show(self):
         self.req.environ['cinder.context'].project_id = self.A.id
         result = self.controller.show(self.req, self.B.id)
         expected = make_subproject_body(tenant_id=self.B.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def test_subproject_show_in_hierarchy(self):
         # A user scoped to a root project in a hierarchy can see its children
@@ -607,13 +607,13 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         self.req.environ['cinder.context'].project_id = self.A.id
         result = self.controller.show(self.req, self.D.id)
         expected = make_subproject_body(tenant_id=self.D.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
         # A user scoped to a parent project can see its immediate children
         # quotas.
         self.req.environ['cinder.context'].project_id = self.B.id
         result = self.controller.show(self.req, self.D.id)
         expected = make_subproject_body(tenant_id=self.D.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def test_subproject_show_not_in_hierarchy_admin_context(self):
         E = self.FakeProject(id=uuid.uuid4().hex, parent_id=None,
@@ -622,14 +622,14 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         self.req.environ['cinder.context'].project_id = E.id
         result = self.controller.show(self.req, self.B.id)
         expected = make_subproject_body(tenant_id=self.B.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def test_subproject_show_target_project_equals_to_context_project(
             self):
         self.req.environ['cinder.context'].project_id = self.B.id
         result = self.controller.show(self.req, self.B.id)
         expected = make_subproject_body(tenant_id=self.B.id)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def test_subproject_show_not_authorized(self):
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -652,7 +652,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Try to update the quota of F, it will not be allowed, since the
         # project E doesn't belongs to the project hierarchy of A.
         self.req.environ['cinder.context'].project_id = self.A.id
@@ -671,10 +671,10 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         # Update the project A quota, not in the project hierarchy
         # of E but it will be allowed because E is the cloud admin.
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Update the quota of B to be equal to its parent A.
         result = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Remove the admin role from project E
         E.is_admin_project = False
         # Now updating the quota of B will fail, because it is not
@@ -688,13 +688,13 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Update the quota of B to be equal to its parent quota
         self.req.environ['cinder.context'].project_id = self.A.id
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Try to update the quota of C, it will not be allowed, since the
         # project A doesn't have free quota available.
         self.req.environ['cinder.context'].project_id = self.A.id
@@ -707,7 +707,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=1000, snapshots=7,
                          volumes=3, backups=3, tenant_id=None)
         result = self.controller.update(self.req, self.D.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # An admin of B can also update the quota of D, since D is its
         # immediate child.
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -721,7 +721,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=10, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Update the quota of B to be equal to its parent quota
         # three times should be successful, the quota will not be
         # allocated to 'allocated' value of parent project
@@ -730,7 +730,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
             body = make_body(gigabytes=2000, snapshots=15,
                              volumes=10, backups=5, tenant_id=None)
             result = self.controller.update(self.req, self.B.id, body)
-            self.assertDictMatch(body, result)
+            self.assertDictEqual(body, result)
 
     def test_update_subproject_with_not_root_context_project(self):
         # Update the project A quota.
@@ -738,7 +738,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result)
+        self.assertDictEqual(body, result)
         # Try to update the quota of B, it will not be allowed, since the
         # project in the context (B) is not a root project.
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -755,7 +755,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         expected = make_body(gigabytes=1000, snapshots=10,
                              volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.B.id, expected)
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
     def _assert_quota_show(self, proj_id, resource, in_use=0, reserved=0,
                            allocated=0, limit=0):
@@ -827,19 +827,19 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         body = make_body(gigabytes=2000, snapshots=15, volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(body, result_update)
+        self.assertDictEqual(body, result_update)
 
         # Set usage param to True in order to see get allocated values.
         self.req.params = {'usage': 'True'}
         result_show = self.controller.show(self.req, self.A.id)
 
         result_update = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(body, result_update)
+        self.assertDictEqual(body, result_update)
 
         self.controller.delete(self.req, self.B.id)
 
         result_show_after = self.controller.show(self.req, self.A.id)
-        self.assertDictMatch(result_show, result_show_after)
+        self.assertDictEqual(result_show, result_show_after)
 
     def test_subproject_delete_not_considering_default_quotas(self):
         """Test delete subprojects' quotas won't consider default quotas.

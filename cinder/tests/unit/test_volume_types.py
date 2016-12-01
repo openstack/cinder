@@ -363,7 +363,7 @@ class VolumeTypeTestCase(test.TestCase):
                                       'k2': 'v2',
                                       'k3': 'v3'}}}
         res = volume_types.get_volume_type_qos_specs(type_ref['id'])
-        self.assertDictMatch(expected, res)
+        self.assertDictEqual(expected, res)
 
     def test_volume_types_diff(self):
         # type_ref 1 and 2 have the same extra_specs, while 3 has different

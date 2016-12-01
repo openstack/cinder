@@ -297,7 +297,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         result = self.library._get_volume(fake_volume['id'])
 
         self.assertEqual(1, self.library._client.list_volume.call_count)
-        self.assertDictMatch(volume, result)
+        self.assertDictEqual(volume, result)
 
     def test_get_volume_bad_input(self):
         volume = copy.deepcopy(eseries_fake.VOLUME)
@@ -383,7 +383,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                 'netapp_disk_type': disk_type
             }
             actual = self.library._ssc_stats[poolId]
-            self.assertDictMatch(expected, actual)
+            self.assertDictEqual(expected, actual)
 
     @ddt.data(('FC', True), ('iSCSI', False))
     @ddt.unpack

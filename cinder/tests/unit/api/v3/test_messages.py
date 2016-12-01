@@ -132,4 +132,4 @@ class MessageApiTest(test.TestCase):
         expected = {
             'messages': [ex['message']]
         }
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)

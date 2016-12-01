@@ -1177,7 +1177,7 @@ class SheepdogDriverTestCase(test.TestCase):
             reserved_percentage=0,
             QoS_support=False)
         actual = self.driver.get_volume_stats(True)
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     def test_copy_image_to_volume(self, fake_run_dog):
@@ -1384,7 +1384,7 @@ class SheepdogDriverTestCase(test.TestCase):
             }
         }
         actual = self.driver.initialize_connection(fake_volume, None)
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
     @mock.patch.object(sheepdog, 'LOG')

@@ -2055,13 +2055,13 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             # be consumed by front-end or both front-end and back-end
             conn_info = self.volume.initialize_connection(
                 self.context, fake_volume_obj, connector,)
-            self.assertDictMatch(qos_specs_expected,
+            self.assertDictEqual(qos_specs_expected,
                                  conn_info['data']['qos_specs'])
 
             qos_values.update({'consumer': 'both'})
             conn_info = self.volume.initialize_connection(
                 self.context, fake_volume_obj, connector)
-            self.assertDictMatch(qos_specs_expected,
+            self.assertDictEqual(qos_specs_expected,
                                  conn_info['data']['qos_specs'])
             # initialize_connection() skips qos_specs that is designated to be
             # consumed by back-end only
@@ -2119,7 +2119,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         volume = volume if volume_object else vol
@@ -2168,7 +2168,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
@@ -2202,7 +2202,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:02'}
         conn_info = self.volume.initialize_connection(self.context,
@@ -2296,7 +2296,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         attachment2 = self.volume.attach_volume(self.context, volume_id,
                                                 instance_uuid_2, None,
                                                 mountpoint, 'ro')
@@ -2365,7 +2365,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2437,7 +2437,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2488,7 +2488,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2543,7 +2543,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
@@ -2591,7 +2591,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2655,7 +2655,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2703,7 +2703,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2765,7 +2765,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2800,7 +2800,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
@@ -2862,7 +2862,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
         db.volume_update(self.context, volume_id, {'status': 'available'})
         self.assertRaises(exception.InvalidVolumeAttachMode,
@@ -2886,7 +2886,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(expected, ret)
+        self.assertDictEqual(expected, ret)
 
     def test_run_api_attach_detach_volume_with_wrong_attach_mode(self):
         # Not allow using 'read-write' mode attach readonly volume
@@ -3370,7 +3370,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(len(vol_glance_meta), len(snap_glance_meta))
         vol_glance_dict = {x.key: x.value for x in vol_glance_meta}
         snap_glance_dict = {x.key: x.value for x in snap_glance_meta}
-        self.assertDictMatch(vol_glance_dict, snap_glance_dict)
+        self.assertDictEqual(vol_glance_dict, snap_glance_dict)
 
         # ensure that snapshot's status is changed to 'available'
         self.assertEqual(fields.SnapshotStatus.AVAILABLE, snap.status)

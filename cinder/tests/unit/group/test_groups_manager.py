@@ -105,15 +105,15 @@ class GroupManagerTestCase(test.TestCase):
             'name': 'test_group',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'group_id': group.id,
             'group_type': fake.GROUP_TYPE_ID
         }
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[1]
         self.assertEqual('group.create.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         self.assertEqual(
             group.id,
             objects.Group.get_by_id(context.get_admin_context(),
@@ -127,11 +127,11 @@ class GroupManagerTestCase(test.TestCase):
                          self.notifier.notifications)
         msg = self.notifier.notifications[2]
         self.assertEqual('group.delete.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[3]
         self.assertEqual('group.delete.end', msg['event_type'])
         expected['status'] = fields.GroupStatus.DELETED
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         self.assertRaises(exception.NotFound,
                           objects.Group.get_by_id,
                           self.context,
@@ -188,7 +188,7 @@ class GroupManagerTestCase(test.TestCase):
             'name': 'test_group',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'group_id': group.id,
             'group_type': fake.GROUP_TYPE_ID
@@ -198,10 +198,10 @@ class GroupManagerTestCase(test.TestCase):
                          self.notifier.notifications)
         msg = self.notifier.notifications[6]
         self.assertEqual('group.update.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[8]
         self.assertEqual('group.update.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         grpvolumes = db.volume_get_all_by_generic_group(self.context, group.id)
         grpvol_ids = [grpvol['id'] for grpvol in grpvolumes]
         # Verify volume is removed.
@@ -312,7 +312,7 @@ class GroupManagerTestCase(test.TestCase):
             'name': 'test_group',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'group_id': group2.id,
             'group_type': fake.GROUP_TYPE_ID,
@@ -324,10 +324,10 @@ class GroupManagerTestCase(test.TestCase):
 
         msg = self.notifier.notifications[2]
         self.assertEqual('group.create.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[4]
         self.assertEqual('group.create.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
 
         if len(self.notifier.notifications) > 6:
             self.assertFalse(self.notifier.notifications[6],
@@ -346,11 +346,11 @@ class GroupManagerTestCase(test.TestCase):
         msg = self.notifier.notifications[6]
         self.assertEqual('group.delete.start', msg['event_type'])
         expected['status'] = fields.GroupStatus.AVAILABLE
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[8]
         self.assertEqual('group.delete.end', msg['event_type'])
         expected['status'] = fields.GroupStatus.DELETED
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
 
         grp2 = objects.Group.get_by_id(
             context.get_admin_context(read_deleted='yes'), group2.id)

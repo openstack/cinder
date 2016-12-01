@@ -1213,7 +1213,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         # used as optional configuration values by the LeftHand backend
         optional = self.driver._map_extra_specs(extra_specs)
 
-        self.assertDictMatch({'isThinProvisioned': False}, optional)
+        self.assertDictEqual({'isThinProvisioned': False}, optional)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_extra_spec_mapping_invalid_value(self, _mock_get_volume_type):
@@ -1244,7 +1244,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         # {'hpelh:ao': 'true'} should map to
         # {'isAdaptiveOptimizationEnabled': True}
         # without hpelh:data_pl since r-07 is an invalid value
-        self.assertDictMatch({'isAdaptiveOptimizationEnabled': True}, optional)
+        self.assertDictEqual({'isAdaptiveOptimizationEnabled': True}, optional)
 
     def test_retype_with_no_LH_extra_specs(self):
         # setup driver with default configuration

@@ -107,7 +107,7 @@ class CapabilitiesAPITest(test.TestCase):
             }
         }
 
-        self.assertDictMatch(expected, res)
+        self.assertDictEqual(expected, res)
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities')

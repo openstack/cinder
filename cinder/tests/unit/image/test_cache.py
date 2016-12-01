@@ -98,7 +98,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
                                       volume_ref,
                                       entry['image_id'],
                                       image_meta)
-        self.assertDictMatch(entry, found_entry)
+        self.assertDictEqual(entry, found_entry)
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.assert_called_once_with)(
             self.context,

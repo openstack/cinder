@@ -765,7 +765,7 @@ class DBAPIVolumeTestCase(BaseTest):
                     self.assertEqual(len(val1), len(val2))
                     val1_dict = {x.key: x.value for x in val1}
                     val2_dict = {x.key: x.value for x in val2}
-                    self.assertDictMatch(val1_dict, val2_dict)
+                    self.assertDictEqual(val1_dict, val2_dict)
                 else:
                     self.assertEqual(val1, val2)
         return result

@@ -190,7 +190,7 @@ class SynoISCSIDriverTestCase(test.TestCase):
         result = self.driver.create_snapshot(SNAPSHOT)
 
         self.driver.common.create_snapshot.assert_called_with(SNAPSHOT)
-        self.assertDictMatch(SNAPSHOT_METADATA, result)
+        self.assertDictEqual(SNAPSHOT_METADATA, result)
 
     def test_delete_snapshot(self):
         self.driver.common.delete_snapshot = mock.Mock()
@@ -206,12 +206,12 @@ class SynoISCSIDriverTestCase(test.TestCase):
         result = self.driver.get_volume_stats(True)
 
         self.driver.common.update_volume_stats.assert_called_with()
-        self.assertDictMatch(self.driver.stats, result)
+        self.assertEqual(self.driver.stats, result)
 
         result = self.driver.get_volume_stats(False)
 
         self.driver.common.update_volume_stats.assert_called_with()
-        self.assertDictMatch(self.driver.stats, result)
+        self.assertEqual(self.driver.stats, result)
 
     def test_get_volume_stats_error(self):
         self.driver.common.update_volume_stats = (
@@ -343,7 +343,7 @@ class SynoISCSIDriverTestCase(test.TestCase):
         self.driver.common.get_iscsi_properties.assert_called_with(VOLUME)
         self.conf.safe_get.assert_called_with('iscsi_protocol')
         self.assertEqual('iscsi', result['driver_volume_type'])
-        self.assertDictMatch(iscsi_properties, result['data'])
+        self.assertDictEqual(iscsi_properties, result['data'])
 
     def test_initialize_connection_error(self):
         self.driver.common.get_iscsi_properties = (

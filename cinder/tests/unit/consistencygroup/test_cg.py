@@ -87,14 +87,14 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             'name': 'test_cg',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'consistencygroup_id': group.id
         }
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[1]
         self.assertEqual('consistencygroup.create.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         self.assertEqual(
             group.id,
             objects.ConsistencyGroup.get_by_id(context.get_admin_context(),
@@ -108,11 +108,11 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
                          self.notifier.notifications)
         msg = self.notifier.notifications[2]
         self.assertEqual('consistencygroup.delete.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[3]
         self.assertEqual('consistencygroup.delete.end', msg['event_type'])
         expected['status'] = fields.ConsistencyGroupStatus.DELETED
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         self.assertRaises(exception.NotFound,
                           objects.ConsistencyGroup.get_by_id,
                           self.context,
@@ -163,7 +163,7 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             'name': 'test_cg',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'consistencygroup_id': group.id
         }
@@ -172,10 +172,10 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
                          self.notifier.notifications)
         msg = self.notifier.notifications[6]
         self.assertEqual('consistencygroup.update.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[8]
         self.assertEqual('consistencygroup.update.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         cgvolumes = db.volume_get_all_by_group(self.context, group.id)
         cgvol_ids = [cgvol['id'] for cgvol in cgvolumes]
         # Verify volume is removed.
@@ -286,7 +286,7 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             'name': 'test_cg',
             'availability_zone': 'nova',
             'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'user_id': fake.USER_ID,
             'consistencygroup_id': group2.id,
         }
@@ -297,10 +297,10 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
 
         msg = self.notifier.notifications[2]
         self.assertEqual('consistencygroup.create.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[4]
         self.assertEqual('consistencygroup.create.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
 
         if len(self.notifier.notifications) > 6:
             self.assertFalse(self.notifier.notifications[6],
@@ -319,11 +319,11 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
         msg = self.notifier.notifications[6]
         self.assertEqual('consistencygroup.delete.start', msg['event_type'])
         expected['status'] = fields.ConsistencyGroupStatus.AVAILABLE
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
         msg = self.notifier.notifications[8]
         self.assertEqual('consistencygroup.delete.end', msg['event_type'])
         expected['status'] = fields.ConsistencyGroupStatus.DELETED
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertDictEqual(expected, msg['payload'])
 
         cg2 = objects.ConsistencyGroup.get_by_id(
             context.get_admin_context(read_deleted='yes'), group2.id)

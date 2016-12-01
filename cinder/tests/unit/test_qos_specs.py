@@ -86,7 +86,7 @@ class QoSSpecsTestCase(test.TestCase):
                     'id': ref['id'],
                     'name': 'FakeName',
                     'specs': input}
-        self.assertDictMatch(expected,
+        self.assertDictEqual(expected,
                              specs_obj_dic)
 
         # qos specs must have unique name
@@ -197,7 +197,7 @@ class QoSSpecsTestCase(test.TestCase):
                      'id': specs['id'],
                      'name': specs['name'],
                      'specs': specs['specs']}
-        self.assertDictMatch(expected, specs_dic)
+        self.assertDictEqual(expected, specs_dic)
 
         self.mock_object(db, 'qos_specs_item_delete', fake_db_qos_delete_key)
         self.assertRaises(exception.InvalidQoSSpecs,
