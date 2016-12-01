@@ -78,6 +78,8 @@ from cinder.volume.drivers.dell_emc.scaleio import driver as \
     cinder_volume_drivers_dell_emc_scaleio_driver
 from cinder.volume.drivers.dell_emc.unity import driver as \
     cinder_volume_drivers_dell_emc_unity_driver
+from cinder.volume.drivers.dell_emc.vnx import common as \
+    cinder_volume_drivers_dell_emc_vnx_common
 from cinder.volume.drivers.disco import disco as \
     cinder_volume_drivers_disco_disco
 from cinder.volume.drivers.dothill import dothill_common as \
@@ -86,8 +88,6 @@ from cinder.volume.drivers import drbdmanagedrv as \
     cinder_volume_drivers_drbdmanagedrv
 from cinder.volume.drivers.emc import emc_vmax_common as \
     cinder_volume_drivers_emc_emcvmaxcommon
-from cinder.volume.drivers.emc.vnx import common as \
-    cinder_volume_drivers_emc_vnx_common
 from cinder.volume.drivers.emc import xtremio as \
     cinder_volume_drivers_emc_xtremio
 from cinder.volume.drivers import eqlx as cinder_volume_drivers_eqlx
@@ -276,12 +276,12 @@ def list_opts():
                 common_opts,
                 cinder_volume_drivers_dell_emc_scaleio_driver.scaleio_opts,
                 cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,
+                cinder_volume_drivers_dell_emc_vnx_common.VNX_OPTS,
                 cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_dothill_dothillcommon.common_opts,
                 cinder_volume_drivers_dothill_dothillcommon.iscsi_opts,
                 cinder_volume_drivers_drbdmanagedrv.drbd_opts,
                 cinder_volume_drivers_emc_emcvmaxcommon.emc_opts,
-                cinder_volume_drivers_emc_vnx_common.EMC_VNX_OPTS,
                 cinder_volume_drivers_emc_xtremio.XTREMIO_OPTS,
                 cinder_volume_drivers_eqlx.eqlx_opts,
                 cinder_volume_drivers_falconstor_fsscommon.FSS_OPTS,

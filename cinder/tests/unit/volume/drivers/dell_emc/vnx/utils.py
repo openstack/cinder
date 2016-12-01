@@ -20,8 +20,8 @@ import mock
 import six
 import yaml
 
-from cinder.volume.drivers.emc.vnx import client
-from cinder.volume.drivers.emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import client
+from cinder.volume.drivers.dell_emc.vnx import common
 
 
 patch_sleep = mock.patch('time.sleep')
@@ -46,7 +46,7 @@ def patch_extra_specs(specs):
 
 def patch_extra_specs_validate(return_value=None, side_effect=None):
     return _build_patch_decorator(
-        'cinder.volume.drivers.emc.vnx.common.ExtraSpecs.validate',
+        'cinder.volume.drivers.dell_emc.vnx.common.ExtraSpecs.validate',
         return_value=return_value,
         side_effect=side_effect)
 

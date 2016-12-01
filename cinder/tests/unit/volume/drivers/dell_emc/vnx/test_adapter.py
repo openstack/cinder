@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,16 +18,17 @@ import re
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_exception \
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as storops_ex
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_storops as storops
-from cinder.tests.unit.volume.drivers.emc.vnx import res_mock
-from cinder.tests.unit.volume.drivers.emc.vnx import utils
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
+    as storops
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.emc.vnx import adapter
-from cinder.volume.drivers.emc.vnx import client
-from cinder.volume.drivers.emc.vnx import common
-from cinder.volume.drivers.emc.vnx import utils as vnx_utils
+from cinder.volume.drivers.dell_emc.vnx import adapter
+from cinder.volume.drivers.dell_emc.vnx import client
+from cinder.volume.drivers.dell_emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
 
 
 class TestCommonAdapter(test.TestCase):

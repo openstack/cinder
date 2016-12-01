@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,7 +25,7 @@ storops = importutils.try_import('storops')
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.volume.drivers.emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
@@ -34,7 +34,7 @@ LOG = logging.getLogger(__name__)
 
 
 def init_ops(configuration):
-    configuration.append_config_values(common.EMC_VNX_OPTS)
+    configuration.append_config_values(common.VNX_OPTS)
     configuration.append_config_values(san_opts)
 
 

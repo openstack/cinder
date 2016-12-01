@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,9 +23,9 @@ if storops:
 from cinder import exception
 from cinder.i18n import _, _LW, _LE
 from cinder import utils as cinder_utils
-from cinder.volume.drivers.emc.vnx import common
-from cinder.volume.drivers.emc.vnx import const
-from cinder.volume.drivers.emc.vnx import utils
+from cinder.volume.drivers.dell_emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import const
+from cinder.volume.drivers.dell_emc.vnx import utils
 
 
 LOG = logging.getLogger(__name__)

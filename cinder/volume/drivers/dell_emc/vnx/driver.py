@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,9 +18,9 @@ from oslo_log import log as logging
 
 from cinder import interface
 from cinder.volume import driver
-from cinder.volume.drivers.emc.vnx import adapter
-from cinder.volume.drivers.emc.vnx import common
-from cinder.volume.drivers.emc.vnx import utils
+from cinder.volume.drivers.dell_emc.vnx import adapter
+from cinder.volume.drivers.dell_emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import utils
 from cinder.zonemanager import utils as zm_utils
 
 
@@ -28,15 +28,15 @@ LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class EMCVNXDriver(driver.TransferVD,
-                   driver.ManageableVD,
-                   driver.ExtendVD,
-                   driver.SnapshotVD,
-                   driver.ManageableSnapshotsVD,
-                   driver.MigrateVD,
-                   driver.ConsistencyGroupVD,
-                   driver.BaseVD):
-    """EMC Cinder Driver for VNX using CLI.
+class VNXDriver(driver.TransferVD,
+                driver.ManageableVD,
+                driver.ExtendVD,
+                driver.SnapshotVD,
+                driver.ManageableSnapshotsVD,
+                driver.MigrateVD,
+                driver.ConsistencyGroupVD,
+                driver.BaseVD):
+    """Dell EMC Cinder Driver for VNX using CLI.
 
     Version history:
         1.0.0 - Initial driver
@@ -76,12 +76,12 @@ class EMCVNXDriver(driver.TransferVD,
     """
 
     VERSION = '08.00.00'
-    VENDOR = 'EMC'
+    VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
 
     def __init__(self, *args, **kwargs):
-        super(EMCVNXDriver, self).__init__(*args, **kwargs)
+        super(VNXDriver, self).__init__(*args, **kwargs)
         utils.init_ops(self.configuration)
         self.protocol = self.configuration.storage_protocol.lower()
         self.active_backend_id = kwargs.get('active_backend_id', None)

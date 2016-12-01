@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,19 +17,19 @@ import mock
 
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.emc.vnx import driver
+from cinder.volume.drivers.dell_emc.vnx import driver
 
 
-class TestEMCVNXDriver(test.TestCase):
+class TestVNXDriver(test.TestCase):
     def setUp(self):
-        super(TestEMCVNXDriver, self).setUp()
+        super(TestVNXDriver, self).setUp()
         self.configuration = conf.Configuration(None)
         self.fc_adapter_patcher = mock.patch(
-            'cinder.volume.drivers.emc.vnx.adapter.FCAdapter',
+            'cinder.volume.drivers.dell_emc.vnx.adapter.FCAdapter',
             autospec=True)
         self.fc_adapter_patcher.start()
         self.iscsi_adapter_patcher = mock.patch(
-            'cinder.volume.drivers.emc.vnx.adapter.ISCSIAdapter',
+            'cinder.volume.drivers.dell_emc.vnx.adapter.ISCSIAdapter',
             autospec=True)
         self.iscsi_adapter_patcher.start()
         self.driver = None
@@ -38,8 +38,8 @@ class TestEMCVNXDriver(test.TestCase):
 
     def _get_driver(self, protocol):
         self.configuration.storage_protocol = protocol
-        drv = driver.EMCVNXDriver(configuration=self.configuration,
-                                  active_backend_id=None)
+        drv = driver.VNXDriver(configuration=self.configuration,
+                               active_backend_id=None)
         drv.do_setup(None)
         return drv
 
@@ -47,13 +47,13 @@ class TestEMCVNXDriver(test.TestCase):
         _driver = self._get_driver('iscsi')
         driver_name = str(_driver.adapter)
         self.assertIn('ISCSIAdapter', driver_name)
-        self.assertEqual(driver.EMCVNXDriver.VERSION, _driver.VERSION)
+        self.assertEqual(driver.VNXDriver.VERSION, _driver.VERSION)
 
     def test_init_fc_driver(self):
         _driver = self._get_driver('FC')
         driver_name = str(_driver.adapter)
         self.assertIn('FCAdapter', driver_name)
-        self.assertEqual(driver.EMCVNXDriver.VERSION, _driver.VERSION)
+        self.assertEqual(driver.VNXDriver.VERSION, _driver.VERSION)
 
     def test_create_volume(self):
         _driver = self._get_driver('iscsi')

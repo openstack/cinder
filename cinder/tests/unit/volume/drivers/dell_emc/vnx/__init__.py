@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,11 +17,10 @@ import sys
 
 import mock
 
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_exception
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_storops
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops
 
 fake_vnx = mock.Mock()
 fake_storops.exception = fake_exception
 fake_storops.vnx = fake_vnx
 sys.modules['storops'] = fake_storops
-sys.modules['storops.vnx'] = fake_vnx
