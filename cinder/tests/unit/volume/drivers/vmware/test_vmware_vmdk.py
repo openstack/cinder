@@ -496,7 +496,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             create_backing.assert_called_once_with(
                 volume,
                 create_params={vmdk.CREATE_PARAM_DISK_LESS: True,
-                               vmdk.CREATE_PARAM_BACKING_NAME: disk_name})
+                               vmdk.CREATE_PARAM_BACKING_NAME: disk_name,
+                               vmdk.CREATE_PARAM_TEMP_BACKING: True})
         else:
             create_backing.assert_called_once_with(
                 volume, create_params={vmdk.CREATE_PARAM_DISK_LESS: True})
@@ -517,10 +518,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         if disk_conversion:
             select_ds_for_volume.assert_called_once_with(volume)
+            extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
+                            volumeops.BACKING_UUID_KEY: volume['id']}
             vops.clone_backing.assert_called_once_with(
                 volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
                 datastore, disk_type=disk_type, host=host, resource_pool=rp,
-                folder=folder)
+                extra_config=extra_config, folder=folder)
             delete_tmp_backing.assert_called_once_with(backing)
             vops.update_backing_disk_uuid(clone, volume['id'])
         else:
@@ -1211,6 +1214,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                              vops.rename_backing.call_args_list)
         else:
             vops.rename_backing.assert_called_once_with(backing, uuid)
+            vops.update_backing_uuid.assert_called_once_with(
+                new_backing, volume['id'])
             vops.update_backing_disk_uuid.assert_called_once_with(
                 new_backing, volume['id'])
             delete_temp_backing.assert_called_once_with(backing)
@@ -1520,7 +1525,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             context, name, volume, tmp_file_path, file_size_bytes)
 
         self.assertEqual(vm_ref, ret)
-        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
+                        volumeops.BACKING_UUID_KEY: volume['id']}
         vops.get_create_spec.assert_called_once_with(
             name, 0, disk_type, summary.name, profileId=profile_id,
             extra_config=extra_config)
@@ -1895,7 +1901,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                     volumeops.LINKED_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
 
-        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id']}
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id'],
+                        volumeops.BACKING_UUID_KEY: fake_volume['id']}
         volume_ops.clone_backing.assert_called_with(fake_volume['name'],
                                                     fake_backing,
                                                     fake_snapshot,
@@ -1933,7 +1940,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             volume, backing, snapshot_ref, volumeops.LINKED_CLONE_TYPE,
             volume['size'])
 
-        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
+                        volumeops.BACKING_UUID_KEY: volume['id']}
         vops.clone_backing.assert_called_once_with(
             volume['name'], backing, snapshot_ref, volumeops.LINKED_CLONE_TYPE,
             None, host=None, resource_pool=None, extra_config=extra_config,
@@ -1971,7 +1979,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                     fake_snapshot['volume_size'])
 
         _select_ds_for_volume.assert_called_with(fake_volume)
-        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id']}
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id'],
+                        volumeops.BACKING_UUID_KEY: fake_volume['id']}
         volume_ops.clone_backing.assert_called_with(
             fake_volume['name'],
             fake_backing,
@@ -2315,7 +2324,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         ret = self._driver._create_backing(volume, host, create_params)
 
         self.assertEqual(backing, ret)
-        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+        extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
+                        volumeops.BACKING_UUID_KEY: volume['id']}
         vops.create_backing_disk_less.assert_called_once_with(
             'vol-1',
             folder,
@@ -2736,7 +2746,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         vops.get_backing.assert_called_once_with(volume['name'])
         vops.update_backing_extra_config.assert_called_once_with(
-            backing, {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: ''})
+            backing, {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: '',
+                      volumeops.BACKING_UUID_KEY: ''})
 
     @mock.patch('oslo_vmware.api.VMwareAPISession')
     def test_session(self, apiSession):
