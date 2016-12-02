@@ -103,6 +103,12 @@ class Scheduler(object):
                                                       host,
                                                       capabilities)
 
+    def notify_service_capabilities(self, service_name, host, capabilities):
+        """Notify capability update from a service node."""
+        self.host_manager.notify_service_capabilities(service_name,
+                                                      host,
+                                                      capabilities)
+
     def host_passes_filters(self, context, host, request_spec,
                             filter_properties):
         """Check if the specified host passes the filters."""

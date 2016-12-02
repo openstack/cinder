@@ -174,6 +174,11 @@ class SchedulerDependentManager(Manager):
                 self.service_name,
                 self.host,
                 self.last_capabilities)
+            self.scheduler_rpcapi.notify_service_capabilities(
+                context,
+                self.service_name,
+                self.host,
+                self.last_capabilities)
 
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)

@@ -48,6 +48,8 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager = host_manager.HostManager()
         self.fake_hosts = [host_manager.HostState('fake_host%s' % x)
                            for x in range(1, 5)]
+        # For a second scheduler service.
+        self.host_manager_1 = host_manager.HostManager()
 
     def test_choose_host_filters_not_found(self):
         self.flags(scheduler_default_filters='FakeFilterClass3')
@@ -85,12 +87,15 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(expected, mock_func.call_args_list)
         self.assertEqual(set(self.fake_hosts), set(result))
 
+    @mock.patch('cinder.scheduler.host_manager.HostManager._get_updated_pools')
     @mock.patch('oslo_utils.timeutils.utcnow')
-    def test_update_service_capabilities(self, _mock_utcnow):
+    def test_update_service_capabilities(self, _mock_utcnow,
+                                         _mock_get_updated_pools):
         service_states = self.host_manager.service_states
         self.assertDictMatch({}, service_states)
         _mock_utcnow.side_effect = [31337, 31338, 31339]
 
+        _mock_get_updated_pools.return_value = []
         host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
         host2_volume_capabs = dict(free_capacity_gb=5432, timestamp=1)
         host3_volume_capabs = dict(free_capacity_gb=6543, timestamp=1)
@@ -116,6 +121,355 @@ class HostManagerTestCase(test.TestCase):
                     'host2': host2_volume_capabs,
                     'host3': host3_volume_capabs}
         self.assertDictMatch(expected, service_states)
+
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_notify_service_capabilities_case1(
+            self, _mock_utcnow,
+            _mock_get_usage_and_notify):
+
+        _mock_utcnow.side_effect = [31337, 31338, 31339]
+        service_name = 'volume'
+
+        capab1 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
+                  'reserved_percentage': 0}]}
+
+        # Run 1:
+        # capa: capa1
+        # S0: update_service_capabilities()
+        # S0: notify_service_capabilities()
+        # S1: update_service_capabilities()
+        #
+        # notify capab1 to ceilometer by S0
+        #
+
+        # S0: update_service_capabilities()
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      capab1)
+        self.assertDictMatch(dict(dict(timestamp=31337), **capab1),
+                             self.host_manager.service_states['host1'])
+
+        # S0: notify_service_capabilities()
+        self.host_manager.notify_service_capabilities(service_name, 'host1',
+                                                      capab1)
+        self.assertDictMatch(dict(dict(timestamp=31337), **capab1),
+                             self.host_manager.service_states['host1'])
+        self.assertDictMatch(
+            dict(dict(timestamp=31338), **capab1),
+            self.host_manager.service_states_last_update['host1'])
+
+        # notify capab1 to ceilometer by S0
+        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+
+        # S1: update_service_capabilities()
+        self.host_manager_1.update_service_capabilities(service_name, 'host1',
+                                                        capab1)
+
+        self.assertDictMatch(dict(dict(timestamp=31339), **capab1),
+                             self.host_manager_1.service_states['host1'])
+
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_notify_service_capabilities_case2(
+            self, _mock_utcnow,
+            _mock_get_usage_and_notify):
+
+        _mock_utcnow.side_effect = [31340, 31341, 31342]
+
+        service_name = 'volume'
+
+        capab1 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
+                  'reserved_percentage': 0}]}
+
+        self.host_manager.service_states['host1'] = (
+            dict(dict(timestamp=31337), **capab1))
+        self.host_manager.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31338), **capab1))
+        self.host_manager_1.service_states['host1'] = (
+            dict(dict(timestamp=31339), **capab1))
+
+        # Run 2:
+        # capa: capa1
+        # S0: update_service_capabilities()
+        # S1: update_service_capabilities()
+        # S1: notify_service_capabilities()
+        #
+        # Don't notify capab1 to ceilometer.
+
+        # S0: update_service_capabilities()
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      capab1)
+
+        self.assertDictMatch(dict(dict(timestamp=31340), **capab1),
+                             self.host_manager.service_states['host1'])
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31338), **capab1),
+            self.host_manager.service_states_last_update['host1'])
+
+        # S1: update_service_capabilities()
+        self.host_manager_1.update_service_capabilities(service_name, 'host1',
+                                                        capab1)
+
+        self.assertDictMatch(dict(dict(timestamp=31341), **capab1),
+                             self.host_manager_1.service_states['host1'])
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31339), **capab1),
+            self.host_manager_1.service_states_last_update['host1'])
+
+        # S1: notify_service_capabilities()
+        self.host_manager_1.notify_service_capabilities(service_name, 'host1',
+                                                        capab1)
+
+        self.assertDictMatch(dict(dict(timestamp=31341), **capab1),
+                             self.host_manager_1.service_states['host1'])
+
+        self.assertDictMatch(
+            self.host_manager_1.service_states_last_update['host1'],
+            dict(dict(timestamp=31339), **capab1))
+
+        # Don't notify capab1 to ceilometer.
+        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_notify_service_capabilities_case3(
+            self, _mock_utcnow,
+            _mock_get_usage_and_notify):
+
+        _mock_utcnow.side_effect = [31343, 31344, 31345]
+
+        service_name = 'volume'
+
+        capab1 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
+                  'reserved_percentage': 0}]}
+
+        self.host_manager.service_states['host1'] = (
+            dict(dict(timestamp=31340), **capab1))
+        self.host_manager.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31338), **capab1))
+        self.host_manager_1.service_states['host1'] = (
+            dict(dict(timestamp=31341), **capab1))
+        self.host_manager_1.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31339), **capab1))
+
+        # Run 3:
+        # capa: capab1
+        # S0: notify_service_capabilities()
+        # S0: update_service_capabilities()
+        # S1: update_service_capabilities()
+        #
+        # Don't notify capab1 to ceilometer.
+
+        # S0: notify_service_capabilities()
+        self.host_manager.notify_service_capabilities(service_name, 'host1',
+                                                      capab1)
+        self.assertDictMatch(
+            dict(dict(timestamp=31338), **capab1),
+            self.host_manager.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31340), **capab1),
+                             self.host_manager.service_states['host1'])
+
+        # Don't notify capab1 to ceilometer.
+        self.assertTrue(1, _mock_get_usage_and_notify.call_count)
+
+        # S0: update_service_capabilities()
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      capab1)
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31340), **capab1),
+            self.host_manager.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31344), **capab1),
+                             self.host_manager.service_states['host1'])
+
+        # S1: update_service_capabilities()
+        self.host_manager_1.update_service_capabilities(service_name, 'host1',
+                                                        capab1)
+        self.assertDictMatch(dict(dict(timestamp=31345), **capab1),
+                             self.host_manager_1.service_states['host1'])
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31341), **capab1),
+            self.host_manager_1.service_states_last_update['host1'])
+
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_notify_service_capabilities_case4(
+            self, _mock_utcnow,
+            _mock_get_usage_and_notify):
+
+        _mock_utcnow.side_effect = [31346, 31347, 31348]
+
+        service_name = 'volume'
+
+        capab1 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
+                  'reserved_percentage': 0}]}
+
+        self.host_manager.service_states['host1'] = (
+            dict(dict(timestamp=31344), **capab1))
+        self.host_manager.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31340), **capab1))
+        self.host_manager_1.service_states['host1'] = (
+            dict(dict(timestamp=31345), **capab1))
+        self.host_manager_1.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31341), **capab1))
+
+        capab2 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 9, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 1, 'allocated_capacity_gb': 1,
+                  'reserved_percentage': 0}]}
+
+        # Run 4:
+        # capa: capab2
+        # S0: update_service_capabilities()
+        # S1: notify_service_capabilities()
+        # S1: update_service_capabilities()
+        #
+        # notify capab2 to ceilometer.
+
+        # S0: update_service_capabilities()
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      capab2)
+        self.assertDictMatch(
+            dict(dict(timestamp=31340), **capab1),
+            self.host_manager.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31346), **capab2),
+                             self.host_manager.service_states['host1'])
+
+        # S1: notify_service_capabilities()
+        self.host_manager_1.notify_service_capabilities(service_name, 'host1',
+                                                        capab2)
+        self.assertDictMatch(dict(dict(timestamp=31345), **capab1),
+                             self.host_manager_1.service_states['host1'])
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31347), **capab2),
+            self.host_manager_1.service_states_last_update['host1'])
+
+        # notify capab2 to ceilometer.
+        self.assertTrue(2, _mock_get_usage_and_notify.call_count)
+
+        # S1: update_service_capabilities()
+        self.host_manager_1.update_service_capabilities(service_name, 'host1',
+                                                        capab2)
+        self.assertDictMatch(dict(dict(timestamp=31348), **capab2),
+                             self.host_manager_1.service_states['host1'])
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31347), **capab2),
+            self.host_manager_1.service_states_last_update['host1'])
+
+    @mock.patch(
+        'cinder.scheduler.host_manager.HostManager.get_usage_and_notify')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_notify_service_capabilities_case5(
+            self, _mock_utcnow,
+            _mock_get_usage_and_notify):
+
+        _mock_utcnow.side_effect = [31349, 31350, 31351]
+
+        service_name = 'volume'
+
+        capab1 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 10, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 0, 'allocated_capacity_gb': 0,
+                  'reserved_percentage': 0}]}
+
+        capab2 = {'pools': [{
+                  'pool_name': 'pool1', 'thick_provisioning_support': True,
+                  'thin_provisioning_support': False, 'total_capacity_gb': 10,
+                  'free_capacity_gb': 9, 'max_over_subscription_ratio': 1,
+                  'provisioned_capacity_gb': 1, 'allocated_capacity_gb': 1,
+                  'reserved_percentage': 0}]}
+
+        self.host_manager.service_states['host1'] = (
+            dict(dict(timestamp=31346), **capab2))
+        self.host_manager.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31340), **capab1))
+        self.host_manager_1.service_states['host1'] = (
+            dict(dict(timestamp=31348), **capab2))
+        self.host_manager_1.service_states_last_update['host1'] = (
+            dict(dict(timestamp=31347), **capab2))
+
+        # Run 5:
+        # capa: capa2
+        # S0: notify_service_capabilities()
+        # S0: update_service_capabilities()
+        # S1: update_service_capabilities()
+        #
+        # This is the special case not handled.
+        # 1) capab is changed (from capab1 to capab2)
+        # 2) S1 has already notify the capab2 in Run 4.
+        # 3) S0 just got update_service_capabilities() in Run 4.
+        # 4) S0 got notify_service_capabilities() immediately in next run,
+        #    here is Run 5.
+        #    S0 has no ways to know whether other scheduler (here is S1) who
+        #    has noitified the changed capab2 or not. S0 just thinks it's his
+        #    own turn to notify the changed capab2.
+        #    In this case, we have notified the same capabilities twice.
+        #
+        # S0: notify_service_capabilities()
+        self.host_manager.notify_service_capabilities(service_name, 'host1',
+                                                      capab2)
+        self.assertDictMatch(
+            dict(dict(timestamp=31349), **capab2),
+            self.host_manager.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31346), **capab2),
+                             self.host_manager.service_states['host1'])
+
+        # S0 notify capab2 to ceilometer.
+        self.assertTrue(3, _mock_get_usage_and_notify.call_count)
+
+        # S0: update_service_capabilities()
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      capab2)
+        self.assertDictMatch(
+            dict(dict(timestamp=31349), **capab2),
+            self.host_manager.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31350), **capab2),
+                             self.host_manager.service_states['host1'])
+
+        # S1: update_service_capabilities()
+        self.host_manager_1.update_service_capabilities(service_name, 'host1',
+                                                        capab2)
+
+        self.assertDictMatch(
+            dict(dict(timestamp=31348), **capab2),
+            self.host_manager_1.service_states_last_update['host1'])
+
+        self.assertDictMatch(dict(dict(timestamp=31351), **capab2),
+                             self.host_manager_1.service_states['host1'])
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
@@ -396,6 +750,137 @@ class HostManagerTestCase(test.TestCase):
             self.assertEqual(len(expected), len(res))
             self.assertEqual(sorted(expected, key=sort_func),
                              sorted(res, key=sort_func))
+
+    def test_get_usage(self):
+        host = "host1@backend1"
+        timestamp = 40000
+        volume_stats1 = {'pools': [
+                         {'pool_name': 'pool1',
+                          'total_capacity_gb': 30.01,
+                          'free_capacity_gb': 28.01,
+                          'allocated_capacity_gb': 2.0,
+                          'provisioned_capacity_gb': 2.0,
+                          'max_over_subscription_ratio': 1.0,
+                          'thin_provisioning_support': False,
+                          'thick_provisioning_support': True,
+                          'reserved_percentage': 5},
+                         {'pool_name': 'pool2',
+                          'total_capacity_gb': 20.01,
+                          'free_capacity_gb': 18.01,
+                          'allocated_capacity_gb': 2.0,
+                          'provisioned_capacity_gb': 2.0,
+                          'max_over_subscription_ratio': 2.0,
+                          'thin_provisioning_support': True,
+                          'thick_provisioning_support': False,
+                          'reserved_percentage': 5}]}
+
+        updated_pools1 = [{'pool_name': 'pool1',
+                           'total_capacity_gb': 30.01,
+                           'free_capacity_gb': 28.01,
+                           'allocated_capacity_gb': 2.0,
+                           'provisioned_capacity_gb': 2.0,
+                           'max_over_subscription_ratio': 1.0,
+                           'thin_provisioning_support': False,
+                           'thick_provisioning_support': True,
+                           'reserved_percentage': 5},
+                          {'pool_name': 'pool2',
+                           'total_capacity_gb': 20.01,
+                           'free_capacity_gb': 18.01,
+                           'allocated_capacity_gb': 2.0,
+                           'provisioned_capacity_gb': 2.0,
+                           'max_over_subscription_ratio': 2.0,
+                           'thin_provisioning_support': True,
+                           'thick_provisioning_support': False,
+                           'reserved_percentage': 5}]
+
+        volume_stats2 = {'pools': [
+                         {'pool_name': 'pool1',
+                          'total_capacity_gb': 30.01,
+                          'free_capacity_gb': 28.01,
+                          'allocated_capacity_gb': 2.0,
+                          'provisioned_capacity_gb': 2.0,
+                          'max_over_subscription_ratio': 2.0,
+                          'thin_provisioning_support': True,
+                          'thick_provisioning_support': False,
+                          'reserved_percentage': 0},
+                         {'pool_name': 'pool2',
+                          'total_capacity_gb': 20.01,
+                          'free_capacity_gb': 18.01,
+                          'allocated_capacity_gb': 2.0,
+                          'provisioned_capacity_gb': 2.0,
+                          'max_over_subscription_ratio': 2.0,
+                          'thin_provisioning_support': True,
+                          'thick_provisioning_support': False,
+                          'reserved_percentage': 5}]}
+
+        updated_pools2 = [{'pool_name': 'pool1',
+                           'total_capacity_gb': 30.01,
+                           'free_capacity_gb': 28.01,
+                           'allocated_capacity_gb': 2.0,
+                           'provisioned_capacity_gb': 2.0,
+                           'max_over_subscription_ratio': 2.0,
+                           'thin_provisioning_support': True,
+                           'thick_provisioning_support': False,
+                           'reserved_percentage': 0}]
+
+        expected1 = [
+            {"name_to_id": 'host1@backend1#pool1',
+             "type": "pool",
+             "total": 30.01,
+             "free": 28.01,
+             "allocated": 2.0,
+             "provisioned": 2.0,
+             "virtual_free": 27.01,
+             "reported_at": 40000},
+            {"name_to_id": 'host1@backend1#pool2',
+             "type": "pool",
+             "total": 20.01,
+             "free": 18.01,
+             "allocated": 2.0,
+             "provisioned": 2.0,
+             "virtual_free": 37.02,
+             "reported_at": 40000},
+            {"name_to_id": 'host1@backend1',
+             "type": "backend",
+             "total": 50.02,
+             "free": 46.02,
+             "allocated": 4.0,
+             "provisioned": 4.0,
+             "virtual_free": 64.03,
+             "reported_at": 40000}]
+
+        expected2 = [
+            {"name_to_id": 'host1@backend1#pool1',
+             "type": "pool",
+             "total": 30.01,
+             "free": 28.01,
+             "allocated": 2.0,
+             "provisioned": 2.0,
+             "virtual_free": 58.02,
+             "reported_at": 40000},
+            {"name_to_id": 'host1@backend1',
+             "type": "backend",
+             "total": 50.02,
+             "free": 46.02,
+             "allocated": 4.0,
+             "provisioned": 4.0,
+             "virtual_free": 95.04,
+             "reported_at": 40000}]
+
+        def sort_func(data):
+            return data['name_to_id']
+
+        res1 = self.host_manager._get_usage(volume_stats1,
+                                            updated_pools1, host, timestamp)
+        self.assertEqual(len(expected1), len(res1))
+        self.assertEqual(sorted(expected1, key=sort_func),
+                         sorted(res1, key=sort_func))
+
+        res2 = self.host_manager._get_usage(volume_stats2,
+                                            updated_pools2, host, timestamp)
+        self.assertEqual(len(expected2), len(res2))
+        self.assertEqual(sorted(expected2, key=sort_func),
+                         sorted(res2, key=sort_func))
 
 
 class HostStateTestCase(test.TestCase):
