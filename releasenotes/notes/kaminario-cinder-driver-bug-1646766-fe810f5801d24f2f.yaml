@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed issue of managing a VG with more than one
+    volume in Kaminario FC and iSCSI Cinder drivers.
+

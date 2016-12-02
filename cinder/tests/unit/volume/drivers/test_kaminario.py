@@ -312,6 +312,12 @@ class TestKaminarioISCSI(test.TestCase):
                           self.driver.manage_existing, self.vol,
                           {'source-name': 'test'})
 
+    def test_manage_vg_volumes(self):
+        self.driver.nvol = 2
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, self.vol,
+                          {'source-name': 'test'})
+
     def test_manage_existing_get_size(self):
         """Test manage_existing_get_size."""
         self.driver.client.search().hits[0].size = units.Mi
