@@ -3689,7 +3689,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -3974,7 +3977,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -4006,7 +4012,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(EMCVMAXCommonData.test_CG, EMCVMAXCommonData.test_CG))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -4635,7 +4641,10 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -5101,7 +5110,10 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -5861,7 +5873,10 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -6456,7 +6471,10 @@ class EMCV3DriverTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_find_consistency_group',
-        return_value=(None, EMCVMAXCommonData.test_CG))
+        return_value=(
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG['name'] + "_" + (
+                EMCVMAXCommonData.test_CG['id'])))
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
@@ -6475,8 +6493,8 @@ class EMCV3DriverTestCase(test.TestCase):
         repServ = self.conn.EnumerateInstanceNames("EMC_ReplicationService")[0]
         provisionv3.create_group_replica.assert_called_once_with(
             self.conn, repServ,
-            (None, EMCVMAXCommonData.test_CG),
-            (None, EMCVMAXCommonData.test_CG), '12de',
+            EMCVMAXCommonData.test_CG,
+            EMCVMAXCommonData.test_CG, '12de',
             EMCVMAXCommonData.extra_specs)
 
     @mock.patch.object(
@@ -9123,6 +9141,17 @@ class EMCVMAXProvisionTest(test.TestCase):
         masking.provision.add_members_to_masking_group.assert_called_with(
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstanceName, volumeName, extraSpecs)
+
+    def test_find_consistency_group(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        repserv = common.conn.EnumerateInstanceNames(
+            "EMC_ReplicationService")[0]
+        cgInstanceName, cgName = common._find_consistency_group(
+            repserv, EMCVMAXCommonData.test_CG['id'])
+        self.assertEqual(EMCVMAXCommonData.replicationgroup_creationclass,
+                         cgInstanceName['CreationClassName'])
+        self.assertEqual(EMCVMAXCommonData.test_CG['id'], cgName)
 
 
 class EMCVMAXISCSITest(test.TestCase):
