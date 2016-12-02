@@ -11,7 +11,7 @@ admin_project_id:
   description: |
     The UUID of the administrative project.
   in: path
-  required: false
+  required: true
   type: string
 all_tenants:
   description: |
@@ -112,6 +112,12 @@ qos_id:
     The ID of the QoS specification.
   in: path
   required: false
+  type: string
+quotas_project_id:
+  description: |
+    The UUID of the tenant in a multi-tenancy cloud.
+  in: path
+  required: true
   type: string
 resource:
   description: |

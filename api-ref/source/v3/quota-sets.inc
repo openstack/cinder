@@ -25,7 +25,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id_path
+   - project_id: quotas_project_id
    - admin_project_id: admin_project_id
    - usage: usage
 
@@ -92,7 +92,7 @@ Request
    - fixed_ips: fixed_ips
    - id: id
    - security_groups: security_groups
-   - project_id: project_id_path
+   - project_id: quotas_project_id
    - admin_project_id: admin_project_id
 
 Request Example
@@ -147,7 +147,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id_path
+   - project_id: quotas_project_id
    - admin_project_id: admin_project_id
 
 Response Example
@@ -160,7 +160,7 @@ Response Example
 Get default quotas for a project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/os-quota-sets/defaults
+.. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}/defaults
 
 Gets default quotas for a project.
 
@@ -175,6 +175,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - admin_project_id: admin_project_id
 
 
 Response Parameters
