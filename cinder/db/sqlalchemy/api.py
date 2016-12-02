@@ -1608,44 +1608,50 @@ def volume_detached(context, volume_id, attachment_id):
     """
     session = get_session()
     with session.begin():
-        attachment = None
         try:
             attachment = volume_attachment_get(context, attachment_id,
                                                session=session)
         except exception.VolumeAttachmentNotFound:
-            pass
+            attachment_updates = None
+            attachment = None
 
-        # If this is already detached, attachment will be None
         if attachment:
             now = timeutils.utcnow()
-            attachment['attach_status'] = fields.VolumeAttachStatus.DETACHED
-            attachment['detach_time'] = now
-            attachment['deleted'] = True
-            attachment['deleted_at'] = now
+            attachment_updates = {
+                'attach_status': fields.VolumeAttachStatus.DETACHED,
+                'detach_time': now,
+                'deleted': True,
+                'deleted_at': now,
+                'updated_at':
+                literal_column('updated_at'),
+            }
+            attachment.update(attachment_updates)
             attachment.save(session=session)
+            del attachment_updates['updated_at']
 
-        attachment_list = volume_attachment_get_all_by_volume_id(
-            context, volume_id, session=session)
-        remain_attachment = False
-        if attachment_list and len(attachment_list) > 0:
-            remain_attachment = True
-
-        volume_ref = _volume_get(context, volume_id, session=session)
-        if not remain_attachment:
+        volume_ref = _volume_get(context, volume_id,
+                                 session=session)
+        volume_updates = {'updated_at': literal_column('updated_at')}
+        if not volume_ref.volume_attachment:
             # Hide status update from user if we're performing volume migration
             # or uploading it to image
-            if ((not volume_ref['migration_status'] and
-                    not (volume_ref['status'] == 'uploading')) or
-                    volume_ref['migration_status'] in ('success', 'error')):
-                volume_ref['status'] = 'available'
+            if ((not volume_ref.migration_status and
+                    not (volume_ref.status == 'uploading')) or
+                    volume_ref.migration_status in ('success', 'error')):
+                volume_updates['status'] = 'available'
 
-            volume_ref['attach_status'] = fields.VolumeAttachStatus.DETACHED
-            volume_ref.save(session=session)
+            volume_updates['attach_status'] = (
+                fields.VolumeAttachStatus.DETACHED)
         else:
             # Volume is still attached
-            volume_ref['status'] = 'in-use'
-            volume_ref['attach_status'] = fields.VolumeAttachStatus.ATTACHED
-            volume_ref.save(session=session)
+            volume_updates['status'] = 'in-use'
+            volume_updates['attach_status'] = (
+                fields.VolumeAttachStatus.ATTACHED)
+
+        volume_ref.update(volume_updates)
+        volume_ref.save(session=session)
+        del volume_updates['updated_at']
+        return (volume_updates, attachment_updates)
 
 
 @require_context
