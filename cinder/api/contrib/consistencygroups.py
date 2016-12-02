@@ -84,6 +84,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             if isinstance(group, cg_obj.ConsistencyGroup):
                 self.consistencygroup_api.delete(context, group, force)
             elif isinstance(group, grp_obj.Group):
+                consistencygroup_api.api.check_policy(context, 'delete')
                 self.group_api.delete(context, group, force)
             else:
                 msg = _("Group '%s' not found.") % id
@@ -184,6 +185,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                  {'name': name})
 
         try:
+            consistencygroup_api.api.check_policy(context, 'create')
             new_consistencygroup = self.group_api.create(
                 context, name, description, group_type['id'], volume_types,
                 availability_zone=availability_zone)
@@ -251,6 +253,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                     context, name, description, cgsnapshot_id, source_cgid)
             elif (isinstance(src_grp, grp_obj.Group) or
                     isinstance(src_snap, grpsnap_obj.GroupSnapshot)):
+                consistencygroup_api.api.check_policy(context, 'create')
                 new_group = self.group_api.create_from_src(
                     context, name, description, cgsnapshot_id, source_cgid)
             else:
