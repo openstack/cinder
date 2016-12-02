@@ -41,16 +41,16 @@ class FCZoneDriver(
         fc_common.FCCommon, fczm_driver.FibreChannelZoneManagerDriver):
     """Interface to manage Connection control during attach/detach."""
 
+    # If a driver hasn't maintained their CI system, this will get set
+    # to False, which prevents the driver from starting.
+    # Add enable_unsupported_driver = True in cinder.conf to get the
+    # unsupported driver started.
+    SUPPORTED = True
+
     def __init__(self, **kwargs):
         super(FCZoneDriver, self).__init__(**kwargs)
         LOG.debug("Initializing FCZoneDriver")
 
-        # If a driver hasn't maintained their CI system, this will get set
-        # to False, which prevents the driver from starting.
-        # Add enable_unsupported_driver = True in cinder.conf to get the
-        # unsupported driver started.
-        self._supported = True
-
     @property
     def supported(self):
-        return self._supported
+        return self.SUPPORTED

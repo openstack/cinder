@@ -68,8 +68,11 @@ def format_description(desc, output):
 
 def print_drivers(drivers, config_name, output):
     for driver in sorted(drivers, key=lambda x: x.class_fqn):
-        output.write(driver.class_name)
-        output.write('-' * len(driver.class_name))
+        driver_name = driver.class_name
+        if not driver.supported:
+            driver_name += " (unsupported)"
+        output.write(driver_name)
+        output.write('-' * len(driver_name))
         if driver.version:
             output.write('* Version: %s' % driver.version)
         output.write('* %s=%s' % (config_name, driver.class_fqn))

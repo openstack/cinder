@@ -68,6 +68,7 @@ class DriverInfo(object):
                                         self.class_name)
         self.version = getattr(cls, 'VERSION', None)
         self.ci_wiki_name = getattr(cls, 'CI_WIKI_NAME', None)
+        self.supported = getattr(cls, 'SUPPORTED', True)
 
     def __str__(self):
         return self.class_name
