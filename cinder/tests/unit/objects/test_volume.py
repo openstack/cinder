@@ -353,15 +353,22 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     @ddt.data({'src_vol_type_id': fake.VOLUME_TYPE_ID,
                'dest_vol_type_id': fake.VOLUME_TYPE2_ID},
               {'src_vol_type_id': None,
-               'dest_vol_type_id': fake.VOLUME_TYPE2_ID})
+               'dest_vol_type_id': fake.VOLUME_TYPE2_ID},
+              {'src_vol_type_id': fake.VOLUME_TYPE_ID,
+               'dest_vol_type_id': fake.VOLUME_TYPE2_ID,
+               'src_vol_status': 'retyping'},)
     @ddt.unpack
     def test_finish_volume_migration(self, volume_update, metadata_update,
-                                     src_vol_type_id, dest_vol_type_id):
+                                     src_vol_type_id, dest_vol_type_id,
+                                     src_vol_status=None):
         src_volume_db = fake_volume.fake_db_volume(
             **{'id': fake.VOLUME_ID, 'volume_type_id': src_vol_type_id})
         if src_vol_type_id:
             src_volume_db['volume_type'] = fake_volume.fake_db_volume_type(
                 id=src_vol_type_id)
+        if src_vol_status:
+            src_volume_db['status'] = src_vol_status
+
         dest_volume_db = fake_volume.fake_db_volume(
             **{'id': fake.VOLUME2_ID, 'volume_type_id': dest_vol_type_id})
         if dest_vol_type_id:
@@ -385,7 +392,11 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             mock.call(self.context, src_volume.id, mock.ANY),
             mock.call(self.context, dest_volume.id, mock.ANY)])
         ctxt, vol_id, updates = volume_update.call_args[0]
-        self.assertNotIn('volume_type', updates)
+
+        if src_vol_status and src_vol_status == 'retyping':
+            self.assertIn('volume_type', updates)
+        else:
+            self.assertNotIn('volume_type', updates)
 
         # Ensure that the destination volume type has not been overwritten
         self.assertEqual(dest_vol_type_id,
