@@ -16,8 +16,9 @@
 Unit Tests for cinder.volume.rpcapi
 """
 import copy
-
+import ddt
 import mock
+
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
@@ -39,6 +40,7 @@ from cinder.volume import utils
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class VolumeRpcAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -393,7 +395,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                               unmanage_only=True,
                               version='3.0')
 
-    def test_attach_volume_to_instance(self):
+    @ddt.data('3.0', '3.3')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_attach_volume_to_instance(self, version, can_send_version):
+        can_send_version.return_value = (version == '3.3')
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -401,9 +406,12 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host_name=None,
                               mountpoint='fake_mountpoint',
                               mode='ro',
-                              version='3.0')
+                              version=version)
 
-    def test_attach_volume_to_host(self):
+    @ddt.data('3.0', '3.3')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_attach_volume_to_host(self, version, can_send_version):
+        can_send_version.return_value = (version == '3.3')
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -411,13 +419,16 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host_name='fake_host',
                               mountpoint='fake_mountpoint',
                               mode='rw',
-                              version='3.0')
+                              version=version)
 
     def _set_cluster(self):
         self.fake_volume_obj.cluster_name = 'my_cluster'
         self.fake_volume_obj.obj_reset_changes(['cluster_name'])
 
-    def test_attach_volume_to_cluster(self):
+    @ddt.data('3.0', '3.3')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_attach_volume_to_cluster(self, version, can_send_version):
+        can_send_version.return_value = (version == '3.3')
         self._set_cluster()
         self._test_volume_api('attach_volume',
                               rpc_method='call',
@@ -426,7 +437,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host_name='fake_host',
                               mountpoint='fake_mountpoint',
                               mode='rw',
-                              version='3.0')
+                              version=version)
 
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',

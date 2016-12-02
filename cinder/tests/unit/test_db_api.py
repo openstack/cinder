@@ -285,15 +285,30 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_attached_to_instance(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
-        instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        instance_uuid = fake.INSTANCE_ID
         values = {'volume_id': volume['id'],
                   'instance_uuid': instance_uuid,
                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
-        db.volume_attached(self.ctxt, attachment['id'],
-                           instance_uuid, None, '/tmp')
+        volume_db, updated_values = db.volume_attached(
+            self.ctxt,
+            attachment['id'],
+            instance_uuid, None, '/tmp')
+        expected_updated_values = {
+            'mountpoint': '/tmp',
+            'attach_status': fields.VolumeAttachStatus.ATTACHED,
+            'instance_uuid': instance_uuid,
+            'attached_host': None,
+            'attach_time': mock.ANY,
+            'attach_mode': 'rw'}
+        self.assertDictEqual(expected_updated_values, updated_values)
+
         volume = db.volume_get(self.ctxt, volume['id'])
         attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
+        self._assertEqualObjects(volume, volume_db,
+                                 ignored_keys='volume_attachment')
+        self._assertEqualListsOfObjects(volume.volume_attachment,
+                                        volume_db.volume_attachment)
         self.assertEqual('in-use', volume['status'])
         self.assertEqual('/tmp', attachment['mountpoint'])
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
@@ -308,9 +323,22 @@ class DBAPIVolumeTestCase(BaseTest):
                   'attached_host': host_name,
                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
-        db.volume_attached(self.ctxt, attachment['id'],
-                           None, host_name, '/tmp')
+        volume_db, updated_values = db.volume_attached(
+            self.ctxt, attachment['id'],
+            None, host_name, '/tmp')
+        expected_updated_values = {
+            'mountpoint': '/tmp',
+            'attach_status': fields.VolumeAttachStatus.ATTACHED,
+            'instance_uuid': None,
+            'attached_host': host_name,
+            'attach_time': mock.ANY,
+            'attach_mode': 'rw'}
+        self.assertDictEqual(expected_updated_values, updated_values)
         volume = db.volume_get(self.ctxt, volume['id'])
+        self._assertEqualObjects(volume, volume_db,
+                                 ignored_keys='volume_attachment')
+        self._assertEqualListsOfObjects(volume.volume_attachment,
+                                        volume_db.volume_attachment)
         attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual('/tmp', attachment['mountpoint'])

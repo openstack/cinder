@@ -68,6 +68,30 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
                                          mock.call(self.context,
                                                    fake.ATTACHMENT_ID)])
 
+    @mock.patch('cinder.db.sqlalchemy.api.volume_attached')
+    def test_volume_attached(self, volume_attached):
+        attachment = fake_volume.fake_volume_attachment_obj(self.context)
+        updated_values = {'mountpoint': '/dev/sda',
+                          'attach_status': fields.VolumeAttachStatus.ATTACHED,
+                          'instance_uuid': fake.INSTANCE_ID}
+        volume_attached.return_value = (fake_volume.fake_db_volume(),
+                                        updated_values)
+        volume = attachment.finish_attach(fake.INSTANCE_ID,
+                                          'fake_host',
+                                          '/dev/sda',
+                                          'rw')
+        self.assertIsInstance(volume, objects.Volume)
+        volume_attached.assert_called_once_with(mock.ANY,
+                                                attachment.id,
+                                                fake.INSTANCE_ID,
+                                                'fake_host',
+                                                '/dev/sda',
+                                                'rw')
+        self.assertEqual('/dev/sda', attachment.mountpoint)
+        self.assertEqual(fake.INSTANCE_ID, attachment.instance_uuid)
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment.attach_status)
+
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')

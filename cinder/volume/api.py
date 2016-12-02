@@ -672,7 +672,7 @@ class API(base.Base):
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, host_name,
                mountpoint, mode):
-        if volume['status'] == 'maintenance':
+        if volume.status == 'maintenance':
             LOG.info(_LI('Unable to attach volume, '
                          'because it is in maintenance.'), resource=volume)
             msg = _("The volume cannot be attached in maintenance mode.")
@@ -685,7 +685,7 @@ class API(base.Base):
                                                      update=False)['readonly']
         if readonly == 'True' and mode != 'ro':
             raise exception.InvalidVolumeAttachMode(mode=mode,
-                                                    volume_id=volume['id'])
+                                                    volume_id=volume.id)
 
         attach_results = self.volume_rpcapi.attach_volume(context,
                                                           volume,
@@ -1084,7 +1084,7 @@ class API(base.Base):
 
         """
         utils.check_metadata_properties(metadata)
-        db_meta = self.db.volume_admin_metadata_update(context, volume['id'],
+        db_meta = self.db.volume_admin_metadata_update(context, volume.id,
                                                        metadata, delete, add,
                                                        update)
 

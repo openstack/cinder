@@ -1072,8 +1072,13 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
     def test_attach_attaching_volume_with_different_mode(self):
         """Test that attaching volume reserved for another mode fails."""
         # current status is available
-        volume = self._create_volume(self.ctx, {'provider_location': '',
-                                                'size': 1})
+        volume = self._create_volume(
+            self.ctx,
+            {'provider_location': '',
+             'size': 1,
+             'status': 'attaching',
+             'instance_uuid': fake.INSTANCE_ID,
+             'admin_metadata': {"attached_mode": 'rw'}})
 
         values = {'status': 'attaching'}
         db.volume_update(self.ctx, volume['id'], values)

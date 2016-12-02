@@ -113,9 +113,10 @@ class VolumeAPI(rpc.RPCAPI):
                back in Mitaka when introducing cheesecake replication.
         3.2  - Adds support for sending objects over RPC in
                get_backup_device().
+        3.3  - Adds support for sending objects over RPC in attach_volume().
     """
 
-    RPC_API_VERSION = '3.2'
+    RPC_API_VERSION = '3.3'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -188,13 +189,16 @@ class VolumeAPI(rpc.RPCAPI):
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
                       mountpoint, mode):
-        cctxt = self._get_cctxt(volume.service_topic_queue)
-        return cctxt.call(ctxt, 'attach_volume',
-                          volume_id=volume.id,
-                          instance_uuid=instance_uuid,
-                          host_name=host_name,
-                          mountpoint=mountpoint,
-                          mode=mode)
+        msg_args = {'volume_id': volume.id,
+                    'instance_uuid': instance_uuid,
+                    'host_name': host_name,
+                    'mountpoint': mountpoint,
+                    'mode': mode,
+                    'volume': volume}
+        cctxt = self._get_cctxt(volume.service_topic_queue, ('3.3', '3.0'))
+        if not cctxt.can_send_version('3.3'):
+            msg_args.pop('volume')
+        return cctxt.call(ctxt, 'attach_volume', **msg_args)
 
     def detach_volume(self, ctxt, volume, attachment_id):
         cctxt = self._get_cctxt(volume.service_topic_queue)
