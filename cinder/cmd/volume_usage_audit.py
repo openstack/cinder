@@ -39,6 +39,7 @@
 from __future__ import print_function
 
 import datetime
+from iso8601 import iso8601
 import sys
 
 from oslo_config import cfg
@@ -47,7 +48,6 @@ from oslo_log import log as logging
 from cinder import i18n
 i18n.enable_lazy()
 from cinder import context
-from cinder import db
 from cinder.i18n import _, _LE, _LI
 from cinder import objects
 from cinder import rpc
@@ -89,6 +89,8 @@ def main():
     if CONF.end_time:
         end = datetime.datetime.strptime(CONF.end_time,
                                          "%Y-%m-%d %H:%M:%S")
+    begin = begin.replace(tzinfo=iso8601.Utc())
+    end = end.replace(tzinfo=iso8601.Utc())
     if not end > begin:
         msg = _("The end time (%(end)s) must be after the start "
                 "time (%(start)s).") % {'start': begin,
@@ -104,9 +106,9 @@ def main():
         'audit_period_ending': str(end),
     }
 
-    volumes = db.volume_get_active_by_window(admin_context,
-                                             begin,
-                                             end)
+    volumes = objects.VolumeList.get_active_by_window(admin_context,
+                                                      begin,
+                                                      end)
     LOG.info(_LI("Found %d volumes"), len(volumes))
     for volume_ref in volumes:
         try:
@@ -246,8 +248,8 @@ def main():
                 LOG.exception(_LE("Delete snapshot notification failed: %s"),
                               exc_msg, resource=snapshot_ref)
 
-    backups = db.backup_get_active_by_window(admin_context,
-                                             begin, end)
+    backups = objects.BackupList.get_active_by_window(admin_context,
+                                                      begin, end)
 
     LOG.info(_LI("Found %d backups"), len(backups))
     for backup_ref in backups:

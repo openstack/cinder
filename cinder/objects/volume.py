@@ -601,3 +601,10 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
     def get_volume_summary_by_project(cls, context, project_id):
         volumes = db.get_volume_summary_by_project(context, project_id)
         return volumes
+
+    @classmethod
+    def get_active_by_window(cls, context, begin, end):
+        volumes = db.volume_get_active_by_window(context, begin, end)
+        expected_attrs = cls._get_expected_attrs(context)
+        return base.obj_make_list(context, cls(context), objects.Volume,
+                                  volumes, expected_attrs=expected_attrs)

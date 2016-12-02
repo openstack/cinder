@@ -191,6 +191,12 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
+    @classmethod
+    def get_active_by_window(cls, context, begin, end):
+        backups = db.backup_get_active_by_window(context, begin, end)
+        return base.obj_make_list(context, cls(context), objects.Backup,
+                                  backups)
+
 
 @base.CinderObjectRegistry.register
 class BackupImport(Backup):
