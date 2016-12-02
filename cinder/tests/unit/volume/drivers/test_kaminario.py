@@ -60,6 +60,7 @@ class FakeSaveObject(FakeK2Obj):
         self.current_role = 'target'
         self.current_snapshot_progress = 100
         self.current_snapshot_id = None
+        self.wan_port = None
 
     def refresh(self):
         return

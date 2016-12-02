@@ -93,10 +93,13 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
 
     def get_target_info(self, volume):
         LOG.debug("Searching first iscsi port ip without wan in K2.")
-        iscsi_ip_rs = self.client.search("system/net_ips", wan_port="")
+        iscsi_ip_rs = self.client.search("system/net_ips")
         iscsi_ip = target_iqn = None
         if hasattr(iscsi_ip_rs, 'hits') and iscsi_ip_rs.total != 0:
-            iscsi_ip = iscsi_ip_rs.hits[0].ip_address
+            for ip in iscsi_ip_rs.hits:
+                if not ip.wan_port:
+                    iscsi_ip = ip.ip_address
+                    break
         if not iscsi_ip:
             msg = _("Unable to get ISCSI IP address from K2.")
             LOG.error(msg)
