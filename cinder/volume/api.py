@@ -1616,7 +1616,7 @@ class API(base.Base):
                                  metadata=None):
         service = self._get_service_by_host(context, volume.host, 'snapshot')
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
-                                                     description, False,
+                                                     description, True,
                                                      metadata, None,
                                                      commit_quota=False)
         self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
