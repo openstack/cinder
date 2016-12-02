@@ -17,23 +17,23 @@ lvs: EnvFilter, env, root, LC_ALL=C, lvs
 lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
 # -LVM related show commands with suppress fd warnings
-pvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
-vgs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
-lvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
-lvdisplay_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+pvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 
 # -LVM related show commands conf var
-pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvs
-vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
-lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
-lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
+pvs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, pvs
+vgs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, vgs
+lvs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, lvs
+lvdisplay3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, lvdisplay
 
 # -LVM conf var with suppress fd_warnings
-pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
-vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
-lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
-lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+pvs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvdisplay4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 # os-brick library commands
 # os_brick.privileged.run_as_root oslo.privsep context
