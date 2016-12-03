@@ -2822,6 +2822,7 @@ class VolumeManager(manager.CleanableManager,
     def _update_volume_from_src(self, context, vol, update, group=None):
         try:
             snapshot_id = vol.get('snapshot_id')
+            source_volid = vol.get('source_volid')
             if snapshot_id:
                 snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
                 orig_vref = self.db.volume_get(context,
@@ -2830,6 +2831,15 @@ class VolumeManager(manager.CleanableManager,
                     update['bootable'] = True
                     self.db.volume_glance_metadata_copy_to_volume(
                         context, vol['id'], snapshot_id)
+            if source_volid:
+                source_vol = objects.Volume.get_by_id(context, source_volid)
+                if source_vol.bootable:
+                    update['bootable'] = True
+                    self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                        context, source_volid, vol['id'])
+                if source_vol.multiattach:
+                    update['multiattach'] = True
+
         except exception.SnapshotNotFound:
             LOG.error(_LE("Source snapshot %(snapshot_id)s cannot be found."),
                       {'snapshot_id': vol['snapshot_id']})

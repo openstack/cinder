@@ -230,6 +230,10 @@ class GroupManagerTestCase(test.TestCase):
         self.volume.db.volume_get.reset_mock()
         self.volume.db.volume_get = volume_get_orig
 
+    @mock.patch('cinder.db.sqlalchemy.api.'
+                'volume_glance_metadata_copy_to_volume')
+    @mock.patch('cinder.db.sqlalchemy.api.'
+                'volume_glance_metadata_copy_from_volume_to_volume')
     @mock.patch.object(driver.VolumeDriver,
                        "create_group",
                        return_value={'status': 'available'})
@@ -256,7 +260,9 @@ class GroupManagerTestCase(test.TestCase):
                                    mock_delete_grpsnap,
                                    mock_create_grpsnap,
                                    mock_delete_grp,
-                                   mock_create_grp):
+                                   mock_create_grp,
+                                   mock_metadata_copy_volume_to_volume,
+                                   mock_metadata_copy_to_volume):
         """Test group can be created and deleted."""
         group = tests_utils.create_group(
             self.context,
@@ -269,6 +275,8 @@ class GroupManagerTestCase(test.TestCase):
             self.context,
             group_id=group.id,
             status='available',
+            multiattach=True,
+            bootable=True,
             host=group.host,
             volume_type_id=fake.VOLUME_TYPE_ID,
             size=1)
@@ -371,11 +379,14 @@ class GroupManagerTestCase(test.TestCase):
             self.context, group3, source_group=group)
 
         grp3 = objects.Group.get_by_id(self.context, group3.id)
+        vol3 = objects.Volume.get_by_id(self.context, volume3.id)
 
         self.assertEqual(fields.GroupStatus.AVAILABLE, grp3.status)
         self.assertEqual(group3.id, grp3.id)
         self.assertEqual(group.id, grp3.source_group_id)
         self.assertIsNone(grp3.group_snapshot_id)
+        self.assertEqual(volume.multiattach, vol3.multiattach)
+        self.assertEqual(volume.bootable, vol3.bootable)
 
         self.volume.delete_group_snapshot(self.context, group_snapshot)
         self.volume.delete_group(self.context, group)
