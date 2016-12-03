@@ -156,21 +156,8 @@ class TestCinderVolumeCmd(test.TestCase):
     def test_main(self, log_setup, monkey_patch, service_create,
                   get_launcher):
         CONF.set_override('enabled_backends', None)
-        launcher = get_launcher.return_value
-        server = service_create.return_value
-
-        cinder_volume.main()
-
-        self.assertEqual('cinder', CONF.project)
-        self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with(CONF, "cinder")
-        monkey_patch.assert_called_once_with()
-        get_launcher.assert_called_once_with()
-        service_create.assert_called_once_with(binary='cinder-volume',
-                                               coordination=True,
-                                               cluster=None)
-        launcher.launch_service.assert_called_once_with(server)
-        launcher.wait.assert_called_once_with()
+        self.assertRaises(SystemExit, cinder_volume.main)
+        self.assertFalse(service_create.called)
 
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
