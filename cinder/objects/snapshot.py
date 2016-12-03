@@ -190,8 +190,11 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
                 raise exception.ObjectActionError(action='save',
                                                   reason=_('volume changed'))
             if 'cgsnapshot' in updates:
-                raise exception.ObjectActionError(
-                    action='save', reason=_('cgsnapshot changed'))
+                # NOTE(xyang): Allow this to pass if 'cgsnapshot' is
+                # set to None. This is to support backward compatibility.
+                if updates.get('cgsnapshot'):
+                    raise exception.ObjectActionError(
+                        action='save', reason=_('cgsnapshot changed'))
             if 'group_snapshot' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('group_snapshot changed'))
