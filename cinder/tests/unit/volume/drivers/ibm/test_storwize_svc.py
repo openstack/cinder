@@ -1768,8 +1768,7 @@ port_speed!N/A
         except IndexError:
             return self._errors['CMMVC5707E']
 
-        command = kwargs['cmd']
-        del kwargs['cmd']
+        command = kwargs.pop('cmd')
         func = getattr(self, '_cmd_' + command)
         out, err = func(**kwargs)
 

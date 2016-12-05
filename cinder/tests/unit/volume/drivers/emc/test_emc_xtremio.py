@@ -351,8 +351,7 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
 
     def test_fail_check_for_setup_error(self, req):
         req.side_effect = xms_request
-        clusters = xms_data['clusters']
-        del xms_data['clusters']
+        clusters = xms_data.pop('clusters')
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.check_for_setup_error)
         xms_data['clusters'] = clusters
