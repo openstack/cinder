@@ -24,6 +24,7 @@ from cinder import quota
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 import cinder.volume
@@ -716,17 +717,16 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             context.get_admin_context(),
             dict(name=conf_fixture.def_vol_type, extra_specs={})
         )
-        db_vol_type = db.volume_type_get(context.get_admin_context(),
-                                         vol_type.id)
-        cg = {
-            'id': '1',
-            'name': 'cg1',
-            'volume_type_id': db_vol_type['id'],
-        }
-        fake_type = {
-            'id': '9999',
-            'name': 'fake',
-        }
+        vol_type = objects.VolumeType.get_by_id(self.context,
+                                                vol_type.id)
+        cg = objects.ConsistencyGroup(self.context,
+                                      id=fake.CONSISTENCY_GROUP_ID,
+                                      name='cg1',
+                                      volume_type_id=vol_type.id)
+        fake_type = fake_volume.fake_volume_type_obj(
+            self.context,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake')
         vol_api = cinder.volume.api.API()
 
         # Volume type must be provided when creating a volume in a

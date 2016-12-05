@@ -28,6 +28,7 @@ from cinder import test
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf
@@ -723,10 +724,10 @@ class GroupManagerTestCase(test.TestCase):
             group_type_id=fake.GROUP_TYPE_ID,
             host=CONF.host)
 
-        fake_type = {
-            'id': '9999',
-            'name': 'fake',
-        }
+        fake_type = fake_volume.fake_volume_type_obj(
+            self.context,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake')
 
         # Volume type must be provided when creating a volume in a
         # group.

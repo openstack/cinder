@@ -25,11 +25,11 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LI
+from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
-from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -229,7 +229,7 @@ class VolumeController(wsgi.Controller):
         if req_volume_type:
             # Not found exception will be handled at the wsgi level
             kwargs['volume_type'] = (
-                volume_types.get_by_name_or_id(context, req_volume_type))
+                objects.VolumeType.get_by_name_or_id(context, req_volume_type))
 
         kwargs['metadata'] = volume.get('metadata', None)
 

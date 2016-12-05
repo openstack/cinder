@@ -174,31 +174,34 @@ class API(base.Base):
         return tuple(azs)
 
     def _retype_is_possible(self, context,
-                            source_type_id, target_type_id):
-        safe = False
+                            source_type, target_type):
         elevated = context.elevated()
         # If encryptions are different, it is not allowed
         # to create volume from source volume or snapshot.
         if volume_types.volume_types_encryption_changed(
-                elevated, source_type_id, target_type_id):
+                elevated,
+                source_type.id if source_type else None,
+                target_type.id if target_type else None):
             return False
         services = objects.ServiceList.get_all_by_topic(
             elevated,
             constants.VOLUME_TOPIC,
             disabled=True)
         if len(services.objects) == 1:
-            safe = True
-        else:
-            source_type = volume_types.get_volume_type(
-                elevated,
-                source_type_id)
-            target_type = volume_types.get_volume_type(
-                elevated,
-                target_type_id)
-            if (volume_utils.matching_backend_name(
-                    source_type['extra_specs'], target_type['extra_specs'])):
-                safe = True
-        return safe
+            return True
+
+        source_extra_specs = {}
+        if source_type:
+            with source_type.obj_as_admin():
+                source_extra_specs = source_type.extra_specs
+        target_extra_specs = {}
+        if target_type:
+            with target_type.obj_as_admin():
+                target_extra_specs = target_type.extra_specs
+        if (volume_utils.matching_backend_name(
+                source_extra_specs, target_extra_specs)):
+            return True
+        return False
 
     def _is_volume_migrating(self, volume):
         # The migration status 'none' means no migration has ever been done
@@ -242,8 +245,8 @@ class API(base.Base):
                 msg = _("volume_type must be provided when creating "
                         "a volume in a consistency group.")
                 raise exception.InvalidInput(reason=msg)
-            cg_voltypeids = consistencygroup.get('volume_type_id')
-            if volume_type.get('id') not in cg_voltypeids:
+            cg_voltypeids = consistencygroup.volume_type_id
+            if volume_type.id not in cg_voltypeids:
                 msg = _("Invalid volume_type provided: %s (requested "
                         "type must be supported by this consistency "
                         "group).") % volume_type
@@ -255,26 +258,21 @@ class API(base.Base):
                         "a volume in a group.")
                 raise exception.InvalidInput(reason=msg)
             vol_type_ids = [v_type.id for v_type in group.volume_types]
-            if volume_type.get('id') not in vol_type_ids:
+            if volume_type.id not in vol_type_ids:
                 msg = _("Invalid volume_type provided: %s (requested "
                         "type must be supported by this "
                         "group).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
-        if volume_type and 'extra_specs' not in volume_type:
-            extra_specs = volume_types.get_volume_type_extra_specs(
-                volume_type['id'])
-            volume_type['extra_specs'] = extra_specs
-
         if source_volume and volume_type:
-            if volume_type['id'] != source_volume['volume_type_id']:
+            if volume_type.id != source_volume.volume_type_id:
                 if not self._retype_is_possible(
                         context,
-                        source_volume['volume_type_id'],
-                        volume_type['id']):
+                        source_volume.volume_type,
+                        volume_type):
                     msg = _("Invalid volume_type provided: %s (requested type "
                             "is not compatible; either match source volume, "
-                            "or omit type argument).") % volume_type['id']
+                            "or omit type argument).") % volume_type.id
                     raise exception.InvalidInput(reason=msg)
 
         # When cloning replica (for testing), volume type must be omitted
@@ -284,13 +282,13 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         if snapshot and volume_type:
-            if volume_type['id'] != snapshot.volume_type_id:
+            if volume_type.id != snapshot.volume_type_id:
                 if not self._retype_is_possible(context,
-                                                snapshot.volume_type_id,
-                                                volume_type['id']):
+                                                snapshot.volume.volume_type,
+                                                volume_type):
                     msg = _("Invalid volume_type provided: %s (requested "
                             "type is not compatible; recommend omitting "
-                            "the type argument).") % volume_type['id']
+                            "the type argument).") % volume_type.id
                     raise exception.InvalidInput(reason=msg)
 
         # Determine the valid availability zones that the volume could be
