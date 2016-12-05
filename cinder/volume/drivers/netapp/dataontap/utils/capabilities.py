@@ -215,20 +215,49 @@ class CapabilitiesLibrary(object):
         """Return a list of flexvol names that match a set of extra specs."""
 
         extra_specs = self._modify_extra_specs_for_comparison(extra_specs)
-        extra_specs_set = set(extra_specs.items())
-        ssc = self.get_ssc()
         matching_flexvols = []
 
-        for flexvol_name, flexvol_info in ssc.items():
-            if extra_specs_set.issubset(set(flexvol_info.items())):
+        for flexvol_name, flexvol_info in self.get_ssc().items():
+
+            if self._flexvol_matches_extra_specs(flexvol_info, extra_specs):
                 matching_flexvols.append(flexvol_name)
 
         return matching_flexvols
 
+    def _flexvol_matches_extra_specs(self, flexvol_info, extra_specs):
+        """Check whether the SSC data for a FlexVol matches extra specs.
+
+        A set of extra specs is considered a match for a FlexVol if, for each
+        extra spec, the value matches what is in SSC or the key is unknown to
+        SSC.
+        """
+
+        for extra_spec_key, extra_spec_value in extra_specs.items():
+
+            if extra_spec_key in flexvol_info:
+                if not self._extra_spec_matches(extra_spec_value,
+                                                flexvol_info[extra_spec_key]):
+                    return False
+
+        return True
+
+    def _extra_spec_matches(self, extra_spec_value, ssc_flexvol_value):
+        """Check whether an extra spec value matches something in the SSC.
+
+        The SSC values may be scalars or lists, so the extra spec value must be
+        compared to the SSC value if it is a scalar, or it must be sought in
+        the list.
+        """
+
+        if isinstance(ssc_flexvol_value, list):
+            return extra_spec_value in ssc_flexvol_value
+        else:
+            return extra_spec_value == ssc_flexvol_value
+
     def _modify_extra_specs_for_comparison(self, extra_specs):
         """Adjust extra spec values for simple comparison to SSC values.
 
-        Most extra-spec key-value tuples may be directly compared.  But the
+        Most extra-spec key-value tuples may be directly compared. But the
         boolean values that take the form '<is> True' or '<is> False' must be
         modified to allow comparison with the values we keep in the SSC and
         report to the scheduler.
@@ -237,9 +266,11 @@ class CapabilitiesLibrary(object):
         modified_extra_specs = copy.deepcopy(extra_specs)
 
         for key, value in extra_specs.items():
-            if re.match('<is>\s+True', value, re.I):
-                modified_extra_specs[key] = True
-            elif re.match('<is>\s+False', value, re.I):
-                modified_extra_specs[key] = False
+
+            if isinstance(value, six.string_types):
+                if re.match('<is>\s+True', value, re.I):
+                    modified_extra_specs[key] = True
+                elif re.match('<is>\s+False', value, re.I):
+                    modified_extra_specs[key] = False
 
         return modified_extra_specs

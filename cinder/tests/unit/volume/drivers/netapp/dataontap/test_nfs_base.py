@@ -439,6 +439,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(os.path, 'exists',
                          mock.Mock(return_value=path_exists))
         self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(os, 'utime')
 
         retval = self.driver._do_clone_rel_img_cache(
             fake.CLONE_SOURCE_NAME, fake.CLONE_DESTINATION_NAME,
@@ -450,8 +451,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
             self.driver._clone_backing_file_for_volume.assert_called_once_with(
                 fake.CLONE_SOURCE_NAME, fake.CLONE_DESTINATION_NAME,
                 share=fake.NFS_SHARE, volume_id=None)
+            os.utime.assert_called_once_with(
+                'dir/' + fake.CLONE_SOURCE_NAME, None)
         else:
             self.driver._clone_backing_file_for_volume.assert_not_called()
+            os.utime.assert_not_called()
+
         os.path.exists.assert_called_once_with(
             'dir/' + fake.CLONE_DESTINATION_NAME)
 
