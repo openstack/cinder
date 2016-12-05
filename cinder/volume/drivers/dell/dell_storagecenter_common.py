@@ -287,21 +287,21 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # Look for our volume
         volume_size = volume.get('size')
 
-        # See if we have any extra specs.
-        specs = self._get_volume_extra_specs(volume)
-        storage_profile = specs.get('storagetype:storageprofile')
-        replay_profile_string = specs.get('storagetype:replayprofiles')
-
         LOG.debug('Creating volume %(name)s of size %(size)s',
                   {'name': volume_name,
                    'size': volume_size})
         scvolume = None
         with self._client.open_connection() as api:
             try:
-                scvolume = api.create_volume(volume_name,
-                                             volume_size,
-                                             storage_profile,
-                                             replay_profile_string)
+                # Get our extra specs.
+                specs = self._get_volume_extra_specs(volume)
+                scvolume = api.create_volume(
+                    volume_name, volume_size,
+                    specs.get('storagetype:storageprofile'),
+                    specs.get('storagetype:replayprofiles'),
+                    specs.get('storagetype:volumeqos'),
+                    specs.get('storagetype:groupqos'),
+                    specs.get('storagetype:datareductionprofile'))
                 if scvolume is None:
                     raise exception.VolumeBackendAPIException(
                         message=_('Unable to create volume %s') %
@@ -494,10 +494,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     if replay is not None:
                         # See if we have any extra specs.
                         specs = self._get_volume_extra_specs(volume)
-                        replay_profile_string = specs.get(
-                            'storagetype:replayprofiles')
                         scvolume = api.create_view_volume(
-                            volume_name, replay, replay_profile_string)
+                            volume_name, replay,
+                            specs.get('storagetype:replayprofiles'),
+                            specs.get('storagetype:volumeqos'),
+                            specs.get('storagetype:groupqos'),
+                            specs.get('storagetype:datareductionprofile'))
 
                         # Extend Volume
                         if scvolume and (volume['size'] >
@@ -555,13 +557,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             try:
                 srcvol = api.find_volume(src_volume_name, src_provider_id)
                 if srcvol is not None:
-                    # See if we have any extra specs.
+                    # Get our specs.
                     specs = self._get_volume_extra_specs(volume)
-                    replay_profile_string = specs.get(
-                        'storagetype:replayprofiles')
                     # Create our volume
                     scvolume = api.create_cloned_volume(
-                        volume_name, srcvol, replay_profile_string)
+                        volume_name, srcvol,
+                        specs.get('storagetype:replayprofiles'),
+                        specs.get('storagetype:volumeqos'),
+                        specs.get('storagetype:groupqos'),
+                        specs.get('storagetype:datareductionprofile'))
 
                     # Extend Volume
                     if scvolume and volume['size'] > src_vref['size']:
@@ -1094,6 +1098,40 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                         LOG.error(_LE('Failed to update replay profiles'))
                         return False
 
+                    # Volume QOS profiles.
+                    current, requested = (
+                        self._get_retype_spec(diff, volume_name,
+                                              'Volume QOS Profile',
+                                              'storagetype:volumeqos'))
+                    if current != requested:
+                        if not api.update_qos_profile(scvolume, requested):
+                            LOG.error(_LE('Failed to update volume '
+                                          'qos profile'))
+
+                    # Group QOS profiles.
+                    current, requested = (
+                        self._get_retype_spec(diff, volume_name,
+                                              'Group QOS Profile',
+                                              'storagetype:groupqos'))
+                    if current != requested:
+                        if not api.update_qos_profile(scvolume, requested,
+                                                      True):
+                            LOG.error(_LE('Failed to update group '
+                                          'qos profile'))
+                            return False
+
+                    # Data reduction profiles.
+                    current, requested = (
+                        self._get_retype_spec(
+                            diff, volume_name, 'Data Reduction Profile',
+                            'storagetype:datareductionprofile'))
+                    if current != requested:
+                        if not api.update_datareduction_profile(scvolume,
+                                                                requested):
+                            LOG.error(_LE('Failed to update data reduction '
+                                          'profile'))
+                            return False
+
                     # Replication_enabled.
                     current, requested = (
                         self._get_retype_spec(diff,
@@ -1123,8 +1161,6 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                         LOG.error(_LE('Failed to apply '
                                       'replication:activereplay setting'))
                         return False
-
-                    # TODO(tswanson): replaytype once it actually works.
 
                 except exception.VolumeBackendAPIException:
                     # We do nothing with this. We simply return failure.
@@ -1187,7 +1223,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         return qosnode
 
     def _parse_extraspecs(self, volume):
-        # Digest our extra specs.
+        # Digest our extra specs for replication.
         extraspecs = {}
         specs = self._get_volume_extra_specs(volume)
         if specs.get('replication_type') == '<in> sync':

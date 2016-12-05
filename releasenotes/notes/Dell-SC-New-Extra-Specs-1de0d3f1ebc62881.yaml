@@ -1,0 +1,8 @@
+---
+features:
+  - Dell SC - Compression and Dedupe support
+    added for Storage Centers that support the
+    options.
+  - Dell SC - Volume and Group QOS support
+    added for Storage Centers that support and
+    have enabled the option.

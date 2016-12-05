@@ -1000,8 +1000,17 @@ class StorageCenterApi(object):
                 return False
         return True
 
+    def _check_add_profile_payload(self, payload, profile, name, type):
+        if name:
+            if profile is None:
+                msg = _('Profile %s not found.') % name
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                payload[type] = self._get_id(profile)
+
     def create_volume(self, name, size, storage_profile=None,
-                      replay_profile_string=None):
+                      replay_profile_string=None, volume_qos=None,
+                      group_qos=None, datareductionprofile=None):
         """Creates a new volume on the Storage Center.
 
         It will create it in a folder called self.vfname.  If self.vfname
@@ -1014,15 +1023,22 @@ class StorageCenterApi(object):
         :param storage_profile: Optional storage profile to set for the volume.
         :param replay_profile_string: Optional replay profile to set for
                                       the volume.
+        :param volume_qos: Volume QOS profile name.
+        :param group_qos: Group QOS profile name.
+        :param datareductionprofile: Data reduction profile name
+
         :returns: Dell Volume object or None.
         """
-        LOG.debug('create_volume: %(name)s %(ssn)s %(folder)s %(profile)s',
+        LOG.debug('create_volume: %(name)s %(ssn)s %(folder)s %(profile)s '
+                  '%(vqos)r %(gqos)r %(dup)r',
                   {'name': name,
                    'ssn': self.ssn,
                    'folder': self.vfname,
                    'profile': storage_profile,
-                   'replay': replay_profile_string
-                   })
+                   'replay': replay_profile_string,
+                   'vqos': volume_qos,
+                   'gqos': group_qos,
+                   'dup': datareductionprofile})
 
         # Find our folder
         folder = self._find_volume_folder(True)
@@ -1030,12 +1046,6 @@ class StorageCenterApi(object):
         # If we actually have a place to put our volume create it
         if folder is None:
             LOG.warning(_LW('Unable to create folder %s'), self.vfname)
-
-        # See if we need a storage profile
-        profile = self._find_storage_profile(storage_profile)
-        if storage_profile and profile is None:
-            msg = _('Storage Profile %s not found.') % storage_profile
-            raise exception.VolumeBackendAPIException(data=msg)
 
         # Find our replay_profiles.
         addids, removeids = self._find_replay_profiles(replay_profile_string)
@@ -1051,11 +1061,27 @@ class StorageCenterApi(object):
         payload['StorageCenter'] = self.ssn
         if folder is not None:
             payload['VolumeFolder'] = self._get_id(folder)
-        if profile:
-            payload['StorageProfile'] = self._get_id(profile)
+        # Add our storage profile.
+        self._check_add_profile_payload(
+            payload, self._find_storage_profile(storage_profile),
+            storage_profile, 'StorageProfile')
+        # Add our Volume QOS Profile.
+        self._check_add_profile_payload(
+            payload, self._find_qos_profile(volume_qos), volume_qos,
+            'VolumeQosProfile')
+        # Add our Group QOS Profile.
+        self._check_add_profile_payload(
+            payload, self._find_qos_profile(group_qos, True), group_qos,
+            'GroupQosProfile')
+        # Add our Data Reduction Proflie.
+        self._check_add_profile_payload(
+            payload, self._find_data_reduction_profile(datareductionprofile),
+            datareductionprofile, 'DataReductionProfile')
+
         # This is a new volume so there is nothing to remove.
         if addids:
             payload['ReplayProfileList'] = addids
+
         r = self.client.post('StorageCenter/ScVolume', payload, True)
         if self._check_result(r):
             # Our volume should be in the return.
@@ -2063,12 +2089,16 @@ class StorageCenterApi(object):
         # If we couldn't find it we call that a success.
         return ret
 
-    def create_view_volume(self, volname, screplay, replay_profile_string):
+    def create_view_volume(self, volname, screplay, replay_profile_string,
+                           volume_qos, group_qos, dr_profile):
         """Creates a new volume named volname from the screplay.
 
         :param volname: Name of new volume.  This is the cinder volume ID.
         :param screplay: Dell replay object from which to make a new volume.
         :param replay_profile_string: Profiles to be applied to the volume
+        :param volume_qos: Volume QOS Profile to use.
+        :param group_qos: Group QOS Profile to use.
+        :param dr_profile: Data reduction profile to use.
         :returns: Dell volume object or None.
         """
         folder = self._find_volume_folder(True)
@@ -2084,11 +2114,25 @@ class StorageCenterApi(object):
             payload['VolumeFolder'] = self._get_id(folder)
         if addids:
             payload['ReplayProfileList'] = addids
+        # Add our Volume QOS Profile.
+        self._check_add_profile_payload(
+            payload, self._find_qos_profile(volume_qos), volume_qos,
+            'VolumeQosProfile')
+        # Add our Group QOS Profile.
+        self._check_add_profile_payload(
+            payload, self._find_qos_profile(group_qos, True), group_qos,
+            'GroupQosProfile')
         r = self.client.post('StorageCenter/ScReplay/%s/CreateView'
                              % self._get_id(screplay), payload, True)
         volume = None
         if self._check_result(r):
             volume = self._first_result(r)
+
+        # If we have a dr_profile to apply we should do so now.
+        if dr_profile and not self.update_datareduction_profile(volume,
+                                                                dr_profile):
+            LOG.error(_LE('Unable to apply %s to volume.'), dr_profile)
+            volume = None
 
         if volume is None:
             LOG.error(_LE('Unable to create volume %s from replay'),
@@ -2096,7 +2140,8 @@ class StorageCenterApi(object):
 
         return volume
 
-    def create_cloned_volume(self, volumename, scvolume, replay_profile_list):
+    def create_cloned_volume(self, volumename, scvolume, replay_profile_list,
+                             volume_qos, group_qos, dr_profile):
         """Creates a volume named volumename from a copy of scvolume.
 
         This is done by creating a replay and then a view volume from
@@ -2108,12 +2153,16 @@ class StorageCenterApi(object):
         :param volumename: Name of new volume.  This is the cinder volume ID.
         :param scvolume: Dell volume object.
         :param replay_profile_list: List of snapshot profiles.
+        :param volume_qos: Volume QOS Profile to use.
+        :param group_qos: Group QOS Profile to use.
+        :param dr_profile: Data reduction profile to use.
         :returns: The new volume's Dell volume object.
         """
         replay = self.create_replay(scvolume, 'Cinder Clone Replay', 60)
         if replay is not None:
             return self.create_view_volume(volumename, replay,
-                                           replay_profile_list)
+                                           replay_profile_list, volume_qos,
+                                           group_qos, dr_profile)
         LOG.error(_LE('Error: unable to snap replay'))
         return None
 
@@ -2162,6 +2211,48 @@ class StorageCenterApi(object):
                    'name': name})
         return False
 
+    def _update_profile(self, scvolume, profile, profilename,
+                        profiletype, restname, allowprefname,
+                        continuewithoutdefault=False):
+        prefs = self._get_user_preferences()
+        if not prefs:
+            return False
+
+        if not prefs.get(allowprefname):
+            LOG.error(_LE('User does not have permission to change '
+                          '%s selection.'), profiletype)
+            return False
+
+        if profilename:
+            if not profile:
+                LOG.error(_LE('%(ptype)s %(pname)s was not found.'),
+                          {'ptype': profiletype,
+                           'pname': profilename})
+                return False
+        else:
+            # Going from specific profile to the user default
+            profile = prefs.get(restname)
+            if not profile and not continuewithoutdefault:
+                LOG.error(_LE('Default %s was not found.'), profiletype)
+                return False
+
+        LOG.info(_LI('Switching volume %(vol)s to profile %(prof)s.'),
+                 {'vol': scvolume['name'],
+                  'prof': profile.get('name')})
+        payload = {}
+        payload[restname] = self._get_id(profile) if profile else None
+        r = self.client.put('StorageCenter/ScVolumeConfiguration/%s'
+                            % self._get_id(scvolume), payload, True)
+        if self._check_result(r):
+            return True
+
+        LOG.error(_LE('Error changing %(ptype)s for volume '
+                      '%(original)s to %(name)s'),
+                  {'ptype': profiletype,
+                   'original': scvolume['name'],
+                   'name': profilename})
+        return False
+
     def update_storage_profile(self, scvolume, storage_profile):
         """Update a volume's Storage Profile.
 
@@ -2173,43 +2264,45 @@ class StorageCenterApi(object):
         :param storage_profile: The requested Storage Profile name.
         :returns: True if successful, False otherwise.
         """
-        prefs = self._get_user_preferences()
-        if not prefs:
-            return False
-
-        if not prefs.get('allowStorageProfileSelection'):
-            LOG.error(_LE('User does not have permission to change '
-                          'Storage Profile selection.'))
-            return False
-
         profile = self._find_storage_profile(storage_profile)
-        if storage_profile:
-            if not profile:
-                LOG.error(_LE('Storage Profile %s was not found.'),
-                          storage_profile)
-                return False
-        else:
-            # Going from specific profile to the user default
-            profile = prefs.get('storageProfile')
-            if not profile:
-                LOG.error(_LE('Default Storage Profile was not found.'))
-                return False
+        return self._update_profile(scvolume, profile, storage_profile,
+                                    'Storage Profile', 'storageProfile',
+                                    'allowStorageProfileSelection')
 
-        LOG.info(_LI('Switching volume %(vol)s to profile %(prof)s.'),
-                 {'vol': scvolume['name'],
-                  'prof': profile.get('name')})
-        payload = {}
-        payload['StorageProfile'] = self._get_id(profile)
-        r = self.client.put('StorageCenter/ScVolumeConfiguration/%s'
-                            % self._get_id(scvolume), payload, True)
-        if self._check_result(r):
-            return True
+    def update_datareduction_profile(self, scvolume, dr_profile):
+        """Update a volume's Data Reduction Profile
 
-        LOG.error(_LE('Error changing Storage Profile for volume '
-                      '%(original)s to %(name)s'),
-                  {'original': scvolume['name'],
-                   'name': storage_profile})
-        return False
+        Changes the volume setting to use a different data reduction profile.
+        If dr_profile is None, will reset to the default profile for the
+        cinder user account.
+
+        :param scvolume: The Storage Center volume to be updated.
+        :param dr_profile: The requested data reduction profile name.
+        :returns: True if successful, False otherwise.
+        """
+        profile = self._find_data_reduction_profile(dr_profile)
+        return self._update_profile(scvolume, profile, dr_profile,
+                                    'Data Reduction Profile',
+                                    'dataReductionProfile',
+                                    'allowDataReductionSelection')
+
+    def update_qos_profile(self, scvolume, qosprofile, grouptype=False):
+        """Update a volume's QOS profile
+
+        Changes the volume setting to use a different QOS Profile.
+
+        :param scvolume: The Storage Center volume to be updated.
+        :param qosprofile: The requested QOS profile name.
+        :param grouptype: Is this a group QOS profile?
+        :returns: True if successful, False otherwise.
+        """
+        profiletype = 'groupQosProfile' if grouptype else 'volumeQosProfile'
+
+        profile = self._find_qos_profile(qosprofile, grouptype)
+        return self._update_profile(scvolume, profile, qosprofile,
+                                    'Qos Profile', profiletype,
+                                    'allowQosProfileSelection',
+                                    grouptype)
 
     def _get_user_preferences(self):
         """Gets the preferences and defaults for this user.
@@ -3277,3 +3370,33 @@ class StorageCenterApi(object):
         if self._check_result(r):
             return True
         return False
+
+    def _find_qos_profile(self, qosprofile, grouptype=False):
+        if qosprofile:
+            pf = self._get_payload_filter()
+            pf.append('ScSerialNumber', self.ssn)
+            pf.append('Name', qosprofile)
+            if grouptype:
+                pf.append('profileType', 'GroupQosProfile')
+            else:
+                pf.append('profileType', 'VolumeQosProfile')
+            r = self.client.post('StorageCenter/ScQosProfile/GetList',
+                                 pf.payload)
+            if self._check_result(r):
+                qosprofiles = self._get_json(r)
+                if len(qosprofiles):
+                    return qosprofiles[0]
+        return None
+
+    def _find_data_reduction_profile(self, drprofile):
+        if drprofile:
+            pf = self._get_payload_filter()
+            pf.append('ScSerialNumber', self.ssn)
+            pf.append('instanceName', drprofile)
+            r = self.client.post(
+                'StorageCenter/ScDataReductionProfile/GetList', pf.payload)
+            if self._check_result(r):
+                drps = self._get_json(r)
+                if len(drps):
+                    return drps[0]
+        return None

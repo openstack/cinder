@@ -568,10 +568,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                            mock_init):
         volume = {'id': fake.VOLUME_ID, 'size': 1}
         self.driver.create_volume(volume)
-        mock_create_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                   1,
-                                                   None,
-                                                   None)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, None, None, None, None)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
@@ -591,12 +589,64 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': fake.VOLUME_ID, 'size': 1,
                   'consistencygroup_id': fake.CONSISTENCY_GROUP_ID}
         self.driver.create_volume(volume)
-        mock_create_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                   1,
-                                                   None,
-                                                   None)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, None, None, None, None)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'storagetype:volumeqos': 'volumeqos'})
+    def test_create_volume_volumeqos_profile(self,
+                                             mock_extra,
+                                             mock_create_volume,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        volume = {'id': fake.VOLUME_ID, 'size': 1, 'volume_type_id': 'abc'}
+        self.driver.create_volume(volume)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, None, 'volumeqos', None, None)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'storagetype:groupqos': 'groupqos'})
+    def test_create_volume_groupqos_profile(self,
+                                            mock_extra,
+                                            mock_create_volume,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        volume = {'id': fake.VOLUME_ID, 'size': 1, 'volume_type_id': 'abc'}
+        self.driver.create_volume(volume)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, None, None, 'groupqos', None)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'storagetype:datareductionprofile': 'drprofile'})
+    def test_create_volume_data_reduction_profile(self,
+                                                  mock_extra,
+                                                  mock_create_volume,
+                                                  mock_close_connection,
+                                                  mock_open_connection,
+                                                  mock_init):
+        volume = {'id': fake.VOLUME_ID, 'size': 1, 'volume_type_id': 'abc'}
+        self.driver.create_volume(volume)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, None, None, None, 'drprofile')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
@@ -613,10 +663,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                            mock_init):
         volume = {'id': fake.VOLUME_ID, 'size': 1, 'volume_type_id': 'abc'}
         self.driver.create_volume(volume)
-        mock_create_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                   1,
-                                                   "HighPriority",
-                                                   None)
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, "HighPriority", None, None, None, None)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
@@ -633,10 +681,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                            mock_init):
         volume = {'id': fake.VOLUME_ID, 'size': 1, 'volume_type_id': 'abc'}
         self.driver.create_volume(volume)
-        mock_create_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                   1,
-                                                   None,
-                                                   'Daily')
+        mock_create_volume.assert_called_once_with(
+            fake.VOLUME_ID, 1, None, 'Daily', None, None, None)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
@@ -1492,9 +1538,50 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         snapshot = {'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
                     'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
-        mock_create_view_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                        'fake',
-                                                        None)
+        mock_create_view_volume.assert_called_once_with(
+            fake.VOLUME_ID, 'fake', None, None, None, None)
+        self.assertTrue(mock_find_replay.called)
+        self.assertTrue(mock_find_volume.called)
+        self.assertFalse(mock_find_replay_profile.called)
+        # This just makes sure that we created
+        self.assertTrue(mock_create_replications.called)
+        self.assertEqual(model_update, res)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_view_volume')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_volume_extra_specs')
+    def test_create_volume_from_snapshot_with_profiles(
+            self, mock_get_volume_extra_specs, mock_create_view_volume,
+            mock_find_replay, mock_find_volume, mock_find_replay_profile,
+            mock_create_replications, mock_close_connection,
+            mock_open_connection, mock_init):
+        mock_get_volume_extra_specs.return_value = {
+            'storagetype:replayprofiles': 'replayprofiles',
+            'storagetype:volumeqos': 'volumeqos',
+            'storagetype:groupqos': 'groupqos',
+            'storagetype:datareductionprofile': 'drprofile'}
+
+        mock_create_view_volume.return_value = self.VOLUME
+        mock_find_replay.return_value = 'fake'
+        mock_find_volume.return_value = self.VOLUME
+        model_update = {'something': 'something'}
+        mock_create_replications.return_value = model_update
+        volume = {'id': fake.VOLUME_ID, 'size': 1}
+        snapshot = {'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
+                    'volume_size': 1}
+        res = self.driver.create_volume_from_snapshot(volume, snapshot)
+        mock_create_view_volume.assert_called_once_with(
+            fake.VOLUME_ID, 'fake', 'replayprofiles', 'volumeqos', 'groupqos',
+            'drprofile')
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertFalse(mock_find_replay_profile.called)
@@ -1534,9 +1621,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         snapshot = {'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
                     'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
-        mock_create_view_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                        'fake',
-                                                        None)
+        mock_create_view_volume.assert_called_once_with(
+            fake.VOLUME_ID, 'fake', None, None, None, None)
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertFalse(mock_find_replay_profile.called)
@@ -1578,9 +1664,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         snapshot = {'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
                     'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
-        mock_create_view_volume.assert_called_once_with(fake.VOLUME_ID,
-                                                        'fake',
-                                                        None)
+        mock_create_view_volume.assert_called_once_with(
+            fake.VOLUME_ID, 'fake', None, None, None, None)
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertTrue(mock_find_replay_profile.called)
@@ -1700,9 +1785,37 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID,
-            self.VOLUME,
-            None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
+        self.assertTrue(mock_find_volume.called)
+        self.assertEqual({'provider_id': provider_id}, ret)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_cloned_volume')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_volume_extra_specs')
+    def test_create_cloned_volume_with_profiles(
+            self, mock_get_volume_extra_specs, mock_create_cloned_volume,
+            mock_find_volume, mock_create_replications, mock_close_connection,
+            mock_open_connection, mock_init):
+        mock_get_volume_extra_specs.return_value = {
+            'storagetype:replayprofiles': 'replayprofiles',
+            'storagetype:volumeqos': 'volumeqos',
+            'storagetype:groupqos': 'groupqos',
+            'storagetype:datareductionprofile': 'drprofile'}
+        mock_find_volume.return_value = self.VOLUME
+        mock_create_cloned_volume.return_value = self.VOLUME
+        mock_create_replications.return_value = {}
+        provider_id = self.VOLUME[u'instanceId']
+        volume = {'id': fake.VOLUME_ID, 'size': 1}
+        src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
+        ret = self.driver.create_cloned_volume(volume, src_vref)
+        mock_create_cloned_volume.assert_called_once_with(
+            fake.VOLUME_ID, self.VOLUME, 'replayprofiles', 'volumeqos',
+            'groupqos', 'drprofile')
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
 
@@ -1731,9 +1844,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID,
-            self.VOLUME,
-            None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
         self.assertTrue(mock_expand_volume.called)
@@ -1847,9 +1958,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID,
-            self.VOLUME,
-            None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
         self.assertTrue(mock_find_volume.called)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
