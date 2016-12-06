@@ -19,6 +19,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.volume.drivers.coprhd import common as coprhd_common
 from cinder.volume.drivers.coprhd import fc as coprhd_fc
 from cinder.volume.drivers.coprhd import iscsi as coprhd_iscsi
@@ -251,7 +252,7 @@ def get_connector_data():
 
 def get_test_CG_data(volume_type_id):
     test_CG = {'name': 'consistency_group_name',
-               'id': '12345abcde',
+               'id': fake_constants.CONSISTENCY_GROUP_ID,
                'volume_type_id': volume_type_id,
                'status': fields.ConsistencyGroupStatus.AVAILABLE
                }
@@ -260,12 +261,13 @@ def get_test_CG_data(volume_type_id):
 
 def get_test_CG_snap_data(volume_type_id):
     test_CG_snapshot = {'name': 'cg_snap_name',
-                        'id': '12345abcde',
-                        'consistencygroup_id': '123456789',
+                        'id': fake_constants.SNAPSHOT_ID,
+                        'consistencygroup_id':
+                            fake_constants.CONSISTENCY_GROUP_ID,
                         'status': fields.ConsistencyGroupStatus.AVAILABLE,
                         'snapshots': [],
                         'consistencygroup': get_test_CG_data(volume_type_id),
-                        'cgsnapshot_id': '1',
+                        'cgsnapshot_id': fake_constants.CGSNAPSHOT_ID,
                         }
     return test_CG_snapshot
 
@@ -303,13 +305,14 @@ class MockedEMCCoprHDDriverCommon(coprhd_common.EMCCoprHDDriverCommon):
             'name': 'source_test-vol1',
             'size': 1,
             'volume_name': 'source_test-vol1',
-            'id': '1234',
-            'consistencygroup_id': '12345',
+            'id': fake_constants.VOLUME_ID,
+            'consistencygroup_id': fake_constants.CONSISTENCYGROUP_ID,
             'provider_auth': None,
-            'project_id': 'project',
+            'project_id': fake_constants.PROJECT_ID,
             'display_name': 'source_test-vol1',
             'display_description': 'test volume',
-            'volume_type_id': "vol_type_id-for-snap"}
+            'volume_type_id': fake_constants.VOLUME_TYPE_ID,
+        }
 
     def init_coprhd_api_components(self):
         self.volume_obj = Mock()
