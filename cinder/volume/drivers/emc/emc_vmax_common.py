@@ -172,9 +172,12 @@ class EMCVMAXCommon(object):
         :returns: dict -- volumeDict - the volume dictionary
         """
         volumeSize = int(self.utils.convert_gb_to_bits(volume['size']))
-        volumeName = volume['id']
+        volumeId = volume['id']
         extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
+
+        # VolumeName naming convention is 'OS-UUID'.
+        volumeName = self.utils.get_volume_element_name(volumeId)
 
         if extraSpecs[ISV3]:
             rc, volumeDict, storageSystemName = (
@@ -1445,7 +1448,7 @@ class EMCVMAXCommon(object):
         :returns: foundVolumeinstance
         """
         foundVolumeinstance = None
-        volumename = volume['name']
+        volumename = volume['id']
 
         loc = volume['provider_location']
         if self.conn is None:
@@ -1465,12 +1468,19 @@ class EMCVMAXCommon(object):
 
             instancename = self.utils.get_instance_name(
                 name['classname'], name['keybindings'])
-            # Allow for an external app to delete the volume.
             LOG.debug("Volume instance name: %(in)s",
                       {'in': instancename})
+            # Allow for an external app to delete the volume.
             try:
                 foundVolumeinstance = self.conn.GetInstance(instancename)
-            except Exception:
+                volumeElementName = (self.utils.
+                                     get_volume_element_name(volumename))
+                if not (volumeElementName ==
+                        foundVolumeinstance['ElementName']):
+                    foundVolumeinstance = None
+            except Exception as e:
+                LOG.info(_LI("Exception in retrieving volume: %(e)s."),
+                         {'e': e})
                 foundVolumeinstance = None
 
         if foundVolumeinstance is None:
@@ -3742,7 +3752,8 @@ class EMCVMAXCommon(object):
         :returns: dict -- cloneDict
         """
         sourceName = sourceVolume['name']
-        cloneName = cloneVolume['name']
+        cloneId = cloneVolume['id']
+        cloneName = self.utils.get_volume_element_name(cloneId)
 
         try:
             rc, job = self.provision.create_element_replica(
@@ -3902,7 +3913,8 @@ class EMCVMAXCommon(object):
         :returns: int -- return code
         :returns: dict -- cloneDict
         """
-        cloneName = cloneVolume['name']
+        cloneId = cloneVolume['id']
+        cloneName = self.utils.get_volume_element_name(cloneId)
         # SyncType 7: snap, VG3R default snapshot is snapVx.
         syncType = self.utils.get_num(SNAPVX, '16')
         # Operation 9: Dissolve for snapVx.
@@ -4205,7 +4217,7 @@ class EMCVMAXCommon(object):
                 data=exceptionMessage)
 
         # Rename the volume
-        volumeId = volume['name']
+        volumeId = volume['id']
         volumeElementName = self.utils.get_volume_element_name(volumeId)
         LOG.debug("Rename volume %(vol)s to %(elementName)s.",
                   {'vol': volumeInstanceName,
