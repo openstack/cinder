@@ -19,6 +19,8 @@ Client side of the scheduler manager RPC API.
 from oslo_serialization import jsonutils
 
 from cinder.common import constants
+from cinder import exception
+from cinder.i18n import _
 from cinder import rpc
 
 
@@ -144,6 +146,10 @@ class SchedulerAPI(rpc.RPCAPI):
     def notify_service_capabilities(self, ctxt, service_name,
                                     host, capabilities):
         cctxt = self._get_cctxt(version='3.1')
+        if not cctxt.can_send_version('3.1'):
+            msg = _('notify_service_capabilities requires cinder-scheduler '
+                    'RPC API version >= 3.1.')
+            raise exception.ServiceTooOld(msg)
         cctxt.cast(ctxt, 'notify_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)
