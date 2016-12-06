@@ -245,6 +245,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._storage_policy_enabled = False
         self._ds_sel = None
         self._clusters = None
+        self._dc_cache = {}
 
     @property
     def volumeops(self):
@@ -297,24 +298,23 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return self._stats
 
     def _verify_volume_creation(self, volume):
-        """Verify the volume can be created.
+        """Verify that the volume can be created.
 
-        Verify that there is a datastore that can accommodate this volume.
-        If this volume is being associated with a volume_type then verify
-        the storage_profile exists and can accommodate this volume. Raise
-        an exception otherwise.
+        Verify the vmdk type and storage profile if the volume is associated
+        with a volume type.
 
         :param volume: Volume object
         """
-        try:
-            # find if any host can accommodate the volume
-            self._select_ds_for_volume(volume)
-        except exceptions.VimException as excep:
-            msg = _("Not able to find a suitable datastore for the volume: "
-                    "%s.") % volume['name']
-            LOG.exception(msg)
-            raise exceptions.VimFaultException([excep], msg)
-        LOG.debug("Verified volume %s can be created.", volume['name'])
+        # validate disk type
+        self._get_disk_type(volume)
+
+        # validate storage profile
+        profile_name = self._get_storage_profile(volume)
+        if profile_name:
+            self.ds_sel.get_profile_id(profile_name)
+
+        LOG.debug("Verified disk type and storage profile of volume: %s.",
+                  volume.name)
 
     def create_volume(self, volume):
         """Creates a volume.
@@ -483,6 +483,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return best_candidate
 
+    def _get_dc(self, resource_pool):
+        dc = self._dc_cache.get(resource_pool.value)
+        if not dc:
+            dc = self.volumeops.get_dc(resource_pool)
+            self._dc_cache[resource_pool.value] = dc
+        return dc
+
     def _select_ds_for_volume(self, volume, host=None, create_params=None):
         """Select datastore that can accommodate the given volume's backing.
 
@@ -500,7 +507,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             volume)
 
         (host_ref, resource_pool, summary) = self._select_datastore(req, host)
-        dc = self.volumeops.get_dc(resource_pool)
+        dc = self._get_dc(resource_pool)
         folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         return (host_ref, resource_pool, folder, summary)
@@ -1345,7 +1352,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 return False
 
             (host, rp, summary) = best_candidate
-            dc = self.volumeops.get_dc(rp)
+            dc = self._get_dc(rp)
             folder = self._get_volume_group_folder(dc, volume['project_id'])
             new_datastore = summary.datastore
             if datastore.value != new_datastore.value:
@@ -1966,7 +1973,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # Select datastore satisfying the requirements.
         (host, resource_pool, summary) = self._select_datastore(req, host)
-        dc = self.volumeops.get_dc(resource_pool)
+        dc = self._get_dc(resource_pool)
         folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         self.volumeops.relocate_backing(backing, summary.datastore,

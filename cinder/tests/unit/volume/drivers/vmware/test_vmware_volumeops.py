@@ -321,183 +321,61 @@ class VolumeOpsTestCase(test.TestCase):
                                                         mock.sentinel.dc,
                                                         'vmFolder')
 
-    def test_create_folder_with_concurrent_create(self):
-        parent_folder = mock.sentinel.parent_folder
-        child_name = 'child_folder'
-
-        prop_val_1 = mock.Mock(ManagedObjectReference=[])
-
-        child_folder = mock.Mock(_type='Folder')
-        prop_val_2 = mock.Mock(ManagedObjectReference=[child_folder])
-
-        self.session.invoke_api.side_effect = [prop_val_1,
-                                               exceptions.DuplicateName,
-                                               prop_val_2,
-                                               child_name]
-
-        ret = self.vops.create_folder(parent_folder, child_name)
-
-        self.assertEqual(child_folder, ret)
-        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(self.session.vim, 'CreateFolder',
-                                         parent_folder, name=child_name),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, child_folder,
-                                         'name')]
-        self.assertEqual(expected_invoke_api,
-                         self.session.invoke_api.mock_calls)
-
-    def test_create_folder_with_empty_vmfolder(self):
-        """Test create_folder when the datacenter vmFolder is empty"""
-        child_folder = mock.sentinel.child_folder
-        self.session.invoke_api.side_effect = [None, child_folder]
-
-        parent_folder = mock.sentinel.parent_folder
-        child_name = 'child_folder'
-        ret = self.vops.create_folder(parent_folder, child_name)
-
-        self.assertEqual(child_folder, ret)
-        expected_calls = [mock.call(vim_util, 'get_object_property',
-                                    self.session.vim, parent_folder,
-                                    'childEntity'),
-                          mock.call(self.session.vim, 'CreateFolder',
-                                    parent_folder, name=child_name)]
-        self.assertEqual(expected_calls,
-                         self.session.invoke_api.call_args_list)
-
-    def test_create_folder_not_present(self):
-        """Test create_folder when child not present."""
-        prop_val = mock.Mock(spec=object)
-        child_folder = mock.sentinel.child_folder
-        self.session.invoke_api.side_effect = [prop_val, child_folder]
-
-        child_name = 'child_folder'
-        parent_folder = mock.sentinel.parent_folder
-        ret = self.vops.create_folder(parent_folder, child_name)
-
-        self.assertEqual(child_folder, ret)
-        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(self.session.vim, 'CreateFolder',
-                                         parent_folder, name=child_name)]
-        self.assertEqual(expected_invoke_api,
-                         self.session.invoke_api.mock_calls)
-
-        # Clear side effects.
-        self.session.invoke_api.side_effect = None
-
-    def test_create_folder_already_present(self):
-        """Test create_folder when child already present."""
-        parent_folder = mock.sentinel.parent_folder
-        child_name = 'child_folder'
-        prop_val = mock.Mock(spec=object)
-        child_entity_1 = mock.Mock(spec=object)
-        child_entity_1._type = 'Folder'
-        child_entity_1_name = 'SomeOtherName'
-        child_entity_2 = mock.Mock(spec=object)
-        child_entity_2._type = 'Folder'
-        child_entity_2_name = child_name
-        prop_val.ManagedObjectReference = [child_entity_1, child_entity_2]
-        self.session.invoke_api.side_effect = [prop_val, child_entity_1_name,
-                                               child_entity_2_name]
-        ret = self.vops.create_folder(parent_folder, child_name)
-        self.assertEqual(child_entity_2, ret)
-        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, child_entity_1,
-                                         'name'),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, child_entity_2,
-                                         'name')]
-        self.assertEqual(expected_invoke_api,
-                         self.session.invoke_api.mock_calls)
-
-        # Clear side effects.
-        self.session.invoke_api.side_effect = None
-
-    def test_create_folder_with_special_characters(self):
-        """Test create_folder with names containing special characters."""
-        # Test folder already exists case.
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_entity_name')
+    def test_get_child_folder(self, get_entity_name):
         child_entity_1 = mock.Mock(_type='Folder')
-        child_entity_1_name = 'cinder-volumes'
-
-        child_entity_2 = mock.Mock(_type='Folder')
-        child_entity_2_name = '%2fcinder-volumes'
+        child_entity_2 = mock.Mock(_type='foo')
+        child_entity_3 = mock.Mock(_type='Folder')
 
         prop_val = mock.Mock(ManagedObjectReference=[child_entity_1,
-                                                     child_entity_2])
-        self.session.invoke_api.side_effect = [prop_val,
-                                               child_entity_1_name,
-                                               child_entity_2_name]
+                                                     child_entity_2,
+                                                     child_entity_3])
+        self.session.invoke_api.return_value = prop_val
+        get_entity_name.side_effect = ['bar', '%2fcinder-volumes']
 
         parent_folder = mock.sentinel.parent_folder
         child_name = '/cinder-volumes'
-        ret = self.vops.create_folder(parent_folder, child_name)
+        ret = self.vops._get_child_folder(parent_folder, child_name)
 
-        self.assertEqual(child_entity_2, ret)
+        self.assertEqual(child_entity_3, ret)
+        self.session.invoke_api.assert_called_once_with(
+            vim_util, 'get_object_property', self.session.vim, parent_folder,
+            'childEntity')
+        get_entity_name.assert_has_calls([mock.call(child_entity_1),
+                                          mock.call(child_entity_3)])
 
-        # Test non-existing folder case.
-        child_entity_2_name = '%25%25cinder-volumes'
-        new_child_folder = mock.sentinel.new_child_folder
-        self.session.invoke_api.side_effect = [prop_val,
-                                               child_entity_1_name,
-                                               child_entity_2_name,
-                                               new_child_folder]
+    def test_create_folder(self):
+        folder = mock.sentinel.folder
+        self.session.invoke_api.return_value = folder
 
-        child_name = '%cinder-volumes'
-        ret = self.vops.create_folder(parent_folder, child_name)
-
-        self.assertEqual(new_child_folder, ret)
-        self.session.invoke_api.assert_called_with(self.session.vim,
-                                                   'CreateFolder',
-                                                   parent_folder,
-                                                   name=child_name)
-
-        # Reset side effects.
-        self.session.invoke_api.side_effect = None
-
-    def test_create_folder_with_duplicate_name(self):
         parent_folder = mock.sentinel.parent_folder
-        child_name = 'child_folder'
+        child_folder_name = mock.sentinel.child_folder_name
+        ret = self.vops.create_folder(parent_folder, child_folder_name)
 
-        prop_val_1 = mock.Mock(spec=object)
-        prop_val_1.ManagedObjectReference = []
+        self.assertEqual(folder, ret)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim, 'CreateFolder', parent_folder,
+            name=child_folder_name)
 
-        child_entity_2 = mock.Mock(spec=object)
-        child_entity_2._type = 'Folder'
-        prop_val_2 = mock.Mock(spec=object)
-        prop_val_2.ManagedObjectReference = [child_entity_2]
-        child_entity_2_name = child_name
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_child_folder')
+    def test_create_folder_with_duplicate_name(self, get_child_folder):
+        self.session.invoke_api.side_effect = exceptions.DuplicateName
 
-        self.session.invoke_api.side_effect = [
-            prop_val_1,
-            exceptions.DuplicateName,
-            prop_val_2,
-            child_entity_2_name]
+        folder = mock.sentinel.folder
+        get_child_folder.return_value = folder
 
-        ret = self.vops.create_folder(parent_folder, child_name)
-        self.assertEqual(child_entity_2, ret)
-        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(self.session.vim, 'CreateFolder',
-                                         parent_folder, name=child_name),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, parent_folder,
-                                         'childEntity'),
-                               mock.call(vim_util, 'get_object_property',
-                                         self.session.vim, child_entity_2,
-                                         'name')]
-        self.assertEqual(expected_invoke_api,
-                         self.session.invoke_api.mock_calls)
+        parent_folder = mock.sentinel.parent_folder
+        child_folder_name = mock.sentinel.child_folder_name
+        ret = self.vops.create_folder(parent_folder, child_folder_name)
+
+        self.assertEqual(folder, ret)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim, 'CreateFolder', parent_folder,
+            name=child_folder_name)
+        get_child_folder.assert_called_once_with(parent_folder,
+                                                 child_folder_name)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 'get_vmfolder')
