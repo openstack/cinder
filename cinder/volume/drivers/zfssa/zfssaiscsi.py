@@ -546,6 +546,11 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             info = image_utils.qemu_img_info(tmp_image)
             cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
 
+        # Make sure the volume is big enough since cloning adds extra metadata.
+        # Having it as X Gi can cause creation failures.
+        if info.virtual_size % units.Gi == 0:
+            cachevol_size += 1
+
         if cachevol_size > volume['size']:
             exception_msg = ('Image size %(img_size)dGB is larger '
                              'than volume size %(vol_size)dGB.',
