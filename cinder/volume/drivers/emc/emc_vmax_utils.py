@@ -1521,21 +1521,6 @@ class EMCVMAXUtils(object):
 
         return foundStorageSystemInstanceName
 
-    def is_in_range(self, volumeSize, maximumVolumeSize, minimumVolumeSize):
-        """Check that volumeSize is in range.
-
-        :param volumeSize: volume size
-        :param maximumVolumeSize: the max volume size
-        :param minimumVolumeSize: the min volume size
-        :returns: boolean
-        """
-
-        if (long(volumeSize) < long(maximumVolumeSize)) and (
-                long(volumeSize) >= long(minimumVolumeSize)):
-            return True
-        else:
-            return False
-
     def verify_slo_workload(self, slo, workload):
         """Check if SLO and workload values are valid.
 
