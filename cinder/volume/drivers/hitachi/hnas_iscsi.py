@@ -341,8 +341,6 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         """
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
-        pool_from_host = utils.extract_host(volume.host, level='pool')
-
         if (pool_from_vol_type == 'default' and
                 'default' not in self.config['services']):
             msg = (_("Failed to manage existing volume %(volume)s because the "
@@ -350,7 +348,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                      "service_label configured in its extra-specs and there "
                      "is no pool configured with hnas_svcX_volume_type as "
                      "'default' in cinder.conf.") %
-                   {'volume': volume.id, 'vol_type': volume.volume_type['id']})
+                   {'volume': volume.id,
+                    'vol_type': getattr(volume.volume_type, 'id', None)})
             LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
@@ -363,6 +362,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                    % {'pool': pool, 'fs_label': fs_label})
             LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+        pool_from_host = utils.extract_host(volume.host, level='pool')
 
         if pool_from_host != pool_from_vol_type:
             msg = (_("Failed to manage existing volume because the pool "
@@ -417,8 +418,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         for svc in service_list:
             svc = self.config['services'][svc]
             pool = {}
-            pool['pool_name'] = svc['volume_type']
-            pool['service_label'] = svc['volume_type']
+            pool['pool_name'] = svc['pool_name']
+            pool['service_label'] = svc['pool_name']
             pool['fs'] = svc['hdp']
 
             self.pools.append(pool)

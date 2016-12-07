@@ -100,7 +100,7 @@ class HNASNFSDriverTest(test.TestCase):
             'services': {
                 'default': {
                     'hdp': '172.24.49.21:/fs-cinder',
-                    'volume_type': 'default',
+                    'pool_name': 'default',
                     'label': 'svc_0',
                     'ctl': '1',
                     'export': {
