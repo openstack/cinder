@@ -238,7 +238,8 @@ def _keystone_client(context, version=(3, 0)):
 
 OVER_QUOTA_RESOURCE_EXCEPTIONS = {'snapshots': exception.SnapshotLimitExceeded,
                                   'backups': exception.BackupLimitExceeded,
-                                  'volumes': exception.VolumeLimitExceeded, }
+                                  'volumes': exception.VolumeLimitExceeded,
+                                  'groups': exception.GroupLimitExceeded}
 
 
 def process_reserve_over_quota(context, over_quota_exception,

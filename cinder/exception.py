@@ -659,6 +659,10 @@ class GroupTypeUpdateFailed(CinderException):
     message = _("Cannot update group_type %(id)s")
 
 
+class GroupLimitExceeded(QuotaError):
+    message = _("Maximum number of groups allowed (%(allowed)d) exceeded")
+
+
 class UnknownCmd(VolumeDriverException):
     message = _("Unknown or unsupported command %(cmd)s")
 
