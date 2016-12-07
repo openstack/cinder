@@ -154,9 +154,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         2.0.5 - Try and deal with the stupid retry/clear issues from objects
                 and tflow
         2.0.6 - Add a lock decorator around the clone_image method
+        2.0.7 - Add scaled IOPS
     """
 
-    VERSION = '2.0.6'
+    VERSION = '2.0.7'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "SolidFire_CI"
@@ -178,6 +179,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                    'off': None}
 
     sf_qos_keys = ['minIOPS', 'maxIOPS', 'burstIOPS']
+    sf_scale_qos_keys = ['scaledIOPS', 'scaleMin', 'scaleMax', 'scaleBurst']
+    sf_iops_lim_min = {'minIOPS': 100, 'maxIOPS': 100, 'burstIOPS': 100}
+    sf_iops_lim_max = {'minIOPS': 15000,
+                       'maxIOPS': 200000,
+                       'burstIOPS': 200000}
     cluster_stats = {}
     retry_exc_tuple = (exception.SolidFireRetryableException,
                        requests.exceptions.ConnectionError)
@@ -686,8 +692,9 @@ class SolidFireDriver(san.SanISCSIDriver):
                     qos[i.key] = int(i.value)
         return qos
 
-    def _set_qos_by_volume_type(self, ctxt, type_id):
+    def _set_qos_by_volume_type(self, ctxt, type_id, vol_size):
         qos = {}
+        scale_qos = {}
         volume_type = volume_types.get_volume_type(ctxt, type_id)
         qos_specs_id = volume_type.get('qos_specs_id')
         specs = volume_type.get('extra_specs')
@@ -706,6 +713,43 @@ class SolidFireDriver(san.SanISCSIDriver):
                 key = fields[1]
             if key in self.sf_qos_keys:
                 qos[key] = int(value)
+            if key in self.sf_scale_qos_keys:
+                scale_qos[key] = value
+
+        # look for the 'scaledIOPS' key and scale QoS if set
+        if 'scaledIOPS' in scale_qos:
+            scale_qos.pop('scaledIOPS')
+            for key, value in scale_qos.items():
+                if key == 'scaleMin':
+                    qos['minIOPS'] = (qos['minIOPS'] +
+                                      (int(value) * (vol_size - 1)))
+                elif key == 'scaleMax':
+                    qos['maxIOPS'] = (qos['maxIOPS'] +
+                                      (int(value) * (vol_size - 1)))
+                elif key == 'scaleBurst':
+                    qos['burstIOPS'] = (qos['burstIOPS'] +
+                                        (int(value) * (vol_size - 1)))
+        # Cap the IOPS values at their limits
+        capped = False
+        for key, value in qos.items():
+            if value > self.sf_iops_lim_max[key]:
+                qos[key] = self.sf_iops_lim_max[key]
+                capped = True
+            if value < self.sf_iops_lim_min[key]:
+                qos[key] = self.sf_iops_lim_min[key]
+                capped = True
+        if capped:
+            LOG.debug("A SolidFire QoS value was capped at the defined limits")
+        # Check that minIOPS <= maxIOPS <= burstIOPS
+        if (qos.get('minIOPS', 0) > qos.get('maxIOPS', 0) or
+                qos.get('maxIOPS', 0) > qos.get('burstIOPS', 0)):
+            msg = (_("Scaled QoS error. Must be minIOPS <= maxIOPS <= "
+                     "burstIOPS. Currently: Min: %(min)s, Max: "
+                     "%(max)s, Burst: %(burst)s.") %
+                   {"min": qos['minIOPS'],
+                    "max": qos['maxIOPS'],
+                    "burst": qos['burstIOPS']})
+            raise exception.InvalidQoSSpecs(reason=msg)
         return qos
 
     def _get_sf_volume(self, uuid, params=None):
@@ -1156,7 +1200,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         ctxt = context.get_admin_context()
         type_id = volume.get('volume_type_id', None)
         if type_id is not None:
-            qos = self._set_qos_by_volume_type(ctxt, type_id)
+            qos = self._set_qos_by_volume_type(ctxt, type_id,
+                                               volume.get('size'))
         return qos
 
     def create_volume(self, volume):
@@ -1781,7 +1826,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         attributes = sf_vol['attributes']
         attributes['retyped_at'] = timeutils.utcnow().isoformat()
         params = {'volumeID': sf_vol['volumeID']}
-        qos = self._set_qos_by_volume_type(ctxt, new_type['id'])
+        qos = self._set_qos_by_volume_type(ctxt, new_type['id'],
+                                           volume.get('size'))
 
         if qos:
             params['qos'] = qos

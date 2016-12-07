@@ -1,0 +1,134 @@
+{
+    "test_capping_the_maximum_of_minIOPS": [
+        {
+            "burstIOPS": "200000",
+            "maxIOPS": "200000",
+            "minIOPS": "14950",
+            "scaleMin": "100",
+            "scaledIOPS": "True",
+            "size": 2
+        },
+        {
+            "burstIOPS": 200000,
+            "maxIOPS": 200000,
+            "minIOPS": 15000
+        }
+    ],
+    "test_capping_the_maximums": [
+        {
+            "burstIOPS": "190000",
+            "maxIOPS": "190000",
+            "minIOPS": "100",
+            "scaleBurst": "10003",
+            "scaleMax": "10002",
+            "scaleMin": "2",
+            "scaledIOPS": "True",
+            "size": 2
+        },
+        {
+            "burstIOPS": 200000,
+            "maxIOPS": 200000,
+            "minIOPS": 102
+        }
+    ],
+    "test_capping_the_minimum": [
+        {
+            "burstIOPS": "300",
+            "maxIOPS": "200",
+            "minIOPS": "50",
+            "scaleBurst": "2",
+            "scaleMax": "2",
+            "scaleMin": "2",
+            "scaledIOPS": "True",
+            "size": 2
+        },
+        {
+            "burstIOPS": 302,
+            "maxIOPS": 202,
+            "minIOPS": 100
+        }
+    ],
+    "test_regular_QoS": [
+        {
+            "burstIOPS": "200",
+            "maxIOPS": "200",
+            "minIOPS": "100",
+            "size": 1
+        },
+        {
+            "burstIOPS": 200,
+            "maxIOPS": 200,
+            "minIOPS": 100
+        }
+    ],
+    "test_scaled_QoS_with_size_1": [
+        {
+            "burstIOPS": "300",
+            "maxIOPS": "200",
+            "minIOPS": "100",
+            "scaleBurst": "2",
+            "scaleMax": "2",
+            "scaleMin": "2",
+            "scaledIOPS": "True",
+            "size": 1
+        },
+        {
+            "burstIOPS": 300,
+            "maxIOPS": 200,
+            "minIOPS": 100
+        }
+    ],
+    "test_scaled_QoS_with_size_2": [
+        {
+            "burstIOPS": "300",
+            "maxIOPS": "200",
+            "minIOPS": "100",
+            "scaleBurst": "2",
+            "scaleMax": "2",
+            "scaleMin": "2",
+            "scaledIOPS": "True",
+            "size": 2
+        },
+        {
+            "burstIOPS": 302,
+            "maxIOPS": 202,
+            "minIOPS": 102
+        }
+    ],
+    "test_scoped_regular_QoS": [
+        {
+            "qos:burstIOPS": "200",
+            "qos:maxIOPS": "200",
+            "qos:minIOPS": "100",
+            "size": 1
+        },
+        {
+            "burstIOPS": 200,
+            "maxIOPS": 200,
+            "minIOPS": 100
+        }
+    ],
+    "test_when_no_valid_QoS_values_present": [
+        {
+            "key": "value",
+            "size": 2
+        },
+        {}
+    ],
+    "test_without_presence_of_the_scaled_flag": [
+        {
+            "burstIOPS": "300",
+            "maxIOPS": "200",
+            "minIOPS": "100",
+            "scaleBurst": "2",
+            "scaleMax": "2",
+            "scaleMin": "2",
+            "size": 2
+        },
+        {
+            "burstIOPS": 300,
+            "maxIOPS": 200,
+            "minIOPS": 100
+        }
+    ]
+}

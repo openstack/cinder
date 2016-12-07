@@ -16,6 +16,7 @@
 
 import datetime
 
+import ddt
 import mock
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -31,7 +32,9 @@ from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 
+@ddt.ddt
 class SolidFireVolumeTestCase(test.TestCase):
+
     def setUp(self):
         self.ctxt = context.get_admin_context()
         self.configuration = conf.Configuration(None)
@@ -653,6 +656,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           testvol, 2)
 
     def test_set_by_qos_spec_with_scoping(self):
+        size = 1
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         qos_ref = qos_specs.create(self.ctxt,
                                    'qos-specs-1', {'qos:minIOPS': '1000',
@@ -665,10 +669,11 @@ class SolidFireVolumeTestCase(test.TestCase):
         qos_specs.associate_qos_with_type(self.ctxt,
                                           qos_ref['id'],
                                           type_ref['id'])
-        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size)
         self.assertEqual(self.expected_qos_results, qos)
 
     def test_set_by_qos_spec(self):
+        size = 1
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         qos_ref = qos_specs.create(self.ctxt,
                                    'qos-specs-1', {'minIOPS': '1000',
@@ -681,19 +686,29 @@ class SolidFireVolumeTestCase(test.TestCase):
         qos_specs.associate_qos_with_type(self.ctxt,
                                           qos_ref['id'],
                                           type_ref['id'])
-        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size)
         self.assertEqual(self.expected_qos_results, qos)
 
-    def test_set_by_qos_by_type_only(self):
+    @ddt.file_data("scaled_iops_test_data.json")
+    @ddt.unpack
+    def test_scaled_qos_spec_by_type(self, argument):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        type_ref = volume_types.create(self.ctxt,
-                                       "type1", {"qos:minIOPS": "100",
-                                                 "qos:burstIOPS": "300",
-                                                 "qos:maxIOPS": "200"})
-        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
-        self.assertEqual({'minIOPS': 100,
-                          'maxIOPS': 200,
-                          'burstIOPS': 300}, qos)
+        size = argument[0].pop('size')
+        type_ref = volume_types.create(self.ctxt, "type1", argument[0])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size)
+        self.assertEqual(argument[1], qos)
+
+    @ddt.file_data("scaled_iops_invalid_data.json")
+    @ddt.unpack
+    def test_set_scaled_qos_by_type_invalid(self, inputs):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        size = inputs[0].pop('size')
+        type_ref = volume_types.create(self.ctxt, "type1", inputs[0])
+        self.assertRaises(exception.InvalidQoSSpecs,
+                          sfv._set_qos_by_volume_type,
+                          self.ctxt,
+                          type_ref['id'],
+                          size)
 
     def test_accept_transfer(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1328,7 +1343,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                return_value=vags), \
             mock.patch.object(sfv,
                               '_add_initiator_to_vag',
-                              return_value = vag_id) as add_init:
+                              return_value=vag_id) as add_init:
             res_vag_id = sfv._safe_create_vag(iqn, None)
             self.assertEqual(res_vag_id, vag_id)
             add_init.assert_called_with(iqn, vag_id)
