@@ -93,6 +93,10 @@ class Manager(base.Base, PeriodicTasks):
         self.additional_endpoints = []
         super(Manager, self).__init__(db_driver)
 
+    @property
+    def service_topic_queue(self):
+        return self.cluster or self.host
+
     def periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
         return self.run_periodic_tasks(context, raise_on_error=raise_on_error)

@@ -995,10 +995,7 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
 
-        # Make RPC call to the right host
-        volume = objects.Volume.get_by_id(context, snapshot.volume_id)
-        self.volume_rpcapi.delete_snapshot(context, snapshot, volume.host,
-                                           unmanage_only=unmanage_only)
+        self.volume_rpcapi.delete_snapshot(context, snapshot, unmanage_only)
         LOG.info(_LI("Snapshot delete request issued successfully."),
                  resource=snapshot)
 

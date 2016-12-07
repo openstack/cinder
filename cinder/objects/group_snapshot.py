@@ -40,6 +40,10 @@ class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
     }
 
+    @property
+    def service_topic_queue(self):
+        return self.group.service_topic_queue
+
     @classmethod
     def _from_db_object(cls, context, group_snapshot, db_group_snapshots,
                         expected_attrs=None):

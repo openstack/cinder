@@ -613,7 +613,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
-    def get_all_by_project(cls, context, project_id, marker, limit,
+    def get_all_by_project(cls, context, project_id, marker=None, limit=None,
                            sort_keys=None, sort_dirs=None, filters=None,
                            offset=None):
         volumes = db.volume_get_all_by_project(context, project_id, marker,

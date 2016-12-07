@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
-
 from oslo_config import cfg
 
 from cinder import context
@@ -33,6 +33,7 @@ CGQUOTAS = quota.CGQUOTAS
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
     def test_delete_volume_in_consistency_group(self):
         """Test deleting a volume that's tied to a consistency group fails."""
@@ -475,6 +476,8 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
 
         return cgsnap, snaps
 
+    @ddt.data((CONF.host, None), (CONF.host + 'fake', 'mycluster'))
+    @ddt.unpack
     @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch('cinder.volume.driver.VolumeDriver.create_consistencygroup',
                 autospec=True,
@@ -488,18 +491,23 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.volume.driver.VolumeDriver.delete_cgsnapshot',
                 autospec=True,
                 return_value=({'status': 'deleted'}, []))
-    def test_create_delete_cgsnapshot(self,
+    def test_create_delete_cgsnapshot(self, host, cluster,
                                       mock_del_cgsnap, mock_create_cgsnap,
                                       mock_del_cg, _mock_create_cg,
                                       mock_notify):
         """Test cgsnapshot can be created and deleted."""
 
+        self.volume.cluster = cluster
         group = tests_utils.create_consistencygroup(
             self.context,
+            host=host,
+            cluster_name=cluster,
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2')
+        self.volume_params['host'] = host
         volume = tests_utils.create_volume(
             self.context,
+            cluster_name=cluster,
             consistencygroup_id=group.id,
             **self.volume_params)
         self.volume.create_volume(self.context, volume)
@@ -578,6 +586,47 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             status='creating',
             size=1)
         self.volume.host = 'host1@backend1'
+        self.volume.create_volume(self.context, volume)
+
+        self.volume.delete_consistencygroup(self.context, group)
+        cg = objects.ConsistencyGroup.get_by_id(
+            context.get_admin_context(read_deleted='yes'),
+            group.id)
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED, cg.status)
+        self.assertRaises(exception.NotFound,
+                          objects.ConsistencyGroup.get_by_id,
+                          self.context,
+                          group.id)
+
+        self.assertTrue(mock_del_cg.called)
+
+    @mock.patch('cinder.volume.driver.VolumeDriver.create_consistencygroup',
+                mock.Mock(return_value={'status': 'available'}))
+    @mock.patch('cinder.volume.driver.VolumeDriver.delete_consistencygroup',
+                return_value=({'status': 'deleted'}, []))
+    def test_delete_consistencygroup_cluster(self, mock_del_cg):
+        """Test consistencygroup can be deleted.
+
+        Test consistencygroup can be deleted when volumes are on
+        the correct volume node.
+        """
+        cluster_name = 'cluster@backend1'
+        self.volume.host = 'host2@backend1'
+        self.volume.cluster = cluster_name
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            host=CONF.host + 'fake',
+            cluster_name=cluster_name,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=group.id,
+            host='host1@backend1#pool1',
+            cluster_name=cluster_name,
+            status='creating',
+            size=1)
         self.volume.create_volume(self.context, volume)
 
         self.volume.delete_consistencygroup(self.context, group)

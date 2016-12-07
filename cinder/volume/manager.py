@@ -639,6 +639,10 @@ class VolumeManager(manager.CleanableManager,
         LOG.info(_LI("Created volume successfully."), resource=volume)
         return volume.id
 
+    def _is_our_resource(self, resource):
+        resource_topic = vol_utils.extract_host(resource.service_topic_queue)
+        return resource_topic == self.service_topic_queue
+
     @coordination.synchronized('{volume.id}-{f_name}')
     @objects.Volume.set_workers
     def delete_volume(self, context, volume, unmanage_only=False,
@@ -671,7 +675,7 @@ class VolumeManager(manager.CleanableManager,
         if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume.id)
-        if vol_utils.extract_host(volume.host) != self.host:
+        if not self._is_our_resource(volume):
             raise exception.InvalidVolume(
                 reason=_("volume is not local to this node"))
 
@@ -1647,7 +1651,8 @@ class VolumeManager(manager.CleanableManager,
 
         # Check the backend capabilities of migration destination host.
         rpcapi = volume_rpcapi.VolumeAPI()
-        capabilities = rpcapi.get_capabilities(ctxt, dest_vol['host'],
+        capabilities = rpcapi.get_capabilities(ctxt,
+                                               dest_vol.service_topic_queue,
                                                False)
         sparse_copy_volume = bool(capabilities and
                                   capabilities.get('sparse_copy_volume',
@@ -2900,19 +2905,18 @@ class VolumeManager(manager.CleanableManager,
         else:
             project_id = context.project_id
 
-        volumes = self.db.volume_get_all_by_group(context, group.id)
+        volumes = objects.VolumeList.get_all_by_group(context, group.id)
 
-        for volume_ref in volumes:
-            if (volume_ref['attach_status'] ==
+        for volume in volumes:
+            if (volume.attach_status ==
                     fields.VolumeAttachStatus.ATTACHED):
                 # Volume is still attached, need to detach first
-                raise exception.VolumeAttached(volume_id=volume_ref['id'])
+                raise exception.VolumeAttached(volume_id=volume.id)
             # self.host is 'host@backend'
-            # volume_ref['host'] is 'host@backend#pool'
+            # volume.host is 'host@backend#pool'
             # Extract host before doing comparison
-            if volume_ref['host']:
-                new_host = vol_utils.extract_host(volume_ref['host'])
-                if new_host != self.host:
+            if volume.host:
+                if not self._is_our_resource(volume):
                     raise exception.InvalidVolume(
                         reason=_("Volume is not local to this node"))
 
@@ -2958,8 +2962,8 @@ class VolumeManager(manager.CleanableManager,
                 # None for volumes_model_update.
                 if not volumes_model_update:
                     for vol in volumes:
-                        self.db.volume_update(
-                            context, vol['id'], {'status': 'error'})
+                        vol.status = 'error'
+                        vol.save()
 
         # Get reservations for group
         try:
@@ -2974,15 +2978,14 @@ class VolumeManager(manager.CleanableManager,
                           resource={'type': 'consistency_group',
                                     'id': group.id})
 
-        for volume_ref in volumes:
+        for volume in volumes:
             # Get reservations for volume
             try:
-                volume_id = volume_ref['id']
                 reserve_opts = {'volumes': -1,
-                                'gigabytes': -volume_ref['size']}
+                                'gigabytes': -volume.size}
                 QUOTAS.add_volume_type_opts(context,
                                             reserve_opts,
-                                            volume_ref.get('volume_type_id'))
+                                            volume.volume_type_id)
                 reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
                                               **reserve_opts)
@@ -2994,15 +2997,15 @@ class VolumeManager(manager.CleanableManager,
                                         'id': group.id})
 
             # Delete glance metadata if it exists
-            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+            self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
 
-            self.db.volume_destroy(context, volume_id)
+            self.db.volume_destroy(context, volume.id)
 
             # Commit the reservations
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
-            self.stats['allocated_capacity_gb'] -= volume_ref['size']
+            self.stats['allocated_capacity_gb'] -= volume.size
 
         if cgreservations:
             CGQUOTAS.commit(context, cgreservations,
@@ -3038,11 +3041,10 @@ class VolumeManager(manager.CleanableManager,
             # vol_obj.host is 'host@backend#pool'
             # Extract host before doing comparison
             if vol_obj.host:
-                new_host = vol_utils.extract_host(vol_obj.host)
-                msg = (_("Volume %(vol_id)s is not local to this node "
-                         "%(host)s") % {'vol_id': vol_obj.id,
-                                        'host': self.host})
-                if new_host != self.host:
+                if not self._is_our_resource(vol_obj):
+                    backend = vol_utils.extract_host(self.service_topic_queue)
+                    msg = (_("Volume %(vol_id)s is not local to %(backend)s") %
+                           {'vol_id': vol_obj.id, 'backend': backend})
                     raise exception.InvalidVolume(reason=msg)
 
         self._notify_about_group_usage(

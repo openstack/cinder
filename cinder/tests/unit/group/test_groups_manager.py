@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
-
 from oslo_config import cfg
 from oslo_utils import importutils
 
@@ -38,6 +38,7 @@ GROUP_QUOTAS = quota.GROUP_QUOTAS
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class GroupManagerTestCase(test.TestCase):
 
     def setUp(self):
@@ -508,6 +509,8 @@ class GroupManagerTestCase(test.TestCase):
 
         return grpsnap, snaps
 
+    @ddt.data((CONF.host, None), (CONF.host + 'fake', 'mycluster'))
+    @ddt.unpack
     @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch('cinder.volume.driver.VolumeDriver.create_group',
                 autospec=True,
@@ -521,23 +524,26 @@ class GroupManagerTestCase(test.TestCase):
     @mock.patch('cinder.volume.driver.VolumeDriver.delete_group_snapshot',
                 autospec=True,
                 return_value=({'status': 'deleted'}, []))
-    def test_create_delete_group_snapshot(self,
+    def test_create_delete_group_snapshot(self, host, cluster,
                                           mock_del_grpsnap,
                                           mock_create_grpsnap,
                                           mock_del_grp,
                                           _mock_create_grp,
                                           mock_notify):
         """Test group_snapshot can be created and deleted."""
+        self.volume.cluster = cluster
         group = tests_utils.create_group(
             self.context,
+            cluster_name=cluster,
             availability_zone=CONF.storage_availability_zone,
             volume_type_ids=[fake.VOLUME_TYPE_ID],
             group_type_id=fake.GROUP_TYPE_ID,
-            host=CONF.host)
+            host=host)
         volume = tests_utils.create_volume(
             self.context,
             group_id=group.id,
             host=group.host,
+            cluster_name=group.cluster_name,
             volume_type_id=fake.VOLUME_TYPE_ID)
         self.volume.create_volume(self.context, volume)
 
@@ -616,6 +622,45 @@ class GroupManagerTestCase(test.TestCase):
             volume_type_id=fake.VOLUME_TYPE_ID,
             size=1)
         self.volume.host = 'host1@backend1'
+        self.volume.create_volume(self.context, volume)
+
+        self.volume.delete_group(self.context, group)
+        grp = objects.Group.get_by_id(
+            context.get_admin_context(read_deleted='yes'),
+            group.id)
+        self.assertEqual(fields.GroupStatus.DELETED, grp.status)
+        self.assertRaises(exception.NotFound,
+                          objects.Group.get_by_id,
+                          self.context,
+                          group.id)
+
+        self.assertTrue(mock_del_grp.called)
+
+    @mock.patch('cinder.volume.driver.VolumeDriver.create_group',
+                mock.Mock(return_value={'status': 'available'}))
+    @mock.patch('cinder.volume.driver.VolumeDriver.delete_group',
+                return_value=({'status': 'deleted'}, []))
+    def test_delete_group_cluster(self, mock_del_grp):
+        """Test group can be deleted on another service in the cluster."""
+        cluster_name = 'cluster@backend1'
+        self.volume.host = 'host2@backend1'
+        self.volume.cluster = cluster_name
+        group = tests_utils.create_group(
+            self.context,
+            host=CONF.host + 'fake',
+            cluster_name=cluster_name,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type_ids=[fake.VOLUME_TYPE_ID],
+            group_type_id=fake.GROUP_TYPE_ID)
+        volume = tests_utils.create_volume(
+            self.context,
+            group_id=group.id,
+            host='host1@backend1#pool1',
+            cluster_name=cluster_name,
+            status='creating',
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            size=1)
+        self.volume.host = 'host2@backend1'
         self.volume.create_volume(self.context, volume)
 
         self.volume.delete_group(self.context, group)
