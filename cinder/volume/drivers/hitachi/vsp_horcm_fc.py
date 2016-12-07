@@ -66,7 +66,7 @@ class VSPHORCMFC(horcm.VSPHORCM):
         utils.output_log(MSG.SET_CONFIG_VALUE, object='port-wwn list',
                          value=self.storage_info['wwns'])
 
-    def create_target_to_storage(self, port, connector):
+    def create_target_to_storage(self, port, connector, hba_ids):
         """Create a host group on the specified port."""
         wwpns = self.get_hba_ids_from_connector(connector)
         target_name = utils.TARGET_PREFIX + min(wwpns)
