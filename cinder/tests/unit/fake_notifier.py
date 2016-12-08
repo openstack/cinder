@@ -15,7 +15,7 @@
 import collections
 import functools
 
-import anyjson
+import json
 import oslo_messaging as messaging
 
 from cinder import rpc
@@ -53,7 +53,7 @@ class FakeNotifier(object):
         # NOTE(sileht): simulate the kombu serializer
         # this permit to raise an exception if something have not
         # been serialized correctly
-        anyjson.serialize(payload)
+        json.dumps(payload)
         msg = dict(publisher_id=self.publisher_id,
                    priority=priority,
                    event_type=event_type,
