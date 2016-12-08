@@ -598,11 +598,6 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
 
     LOG.info(_LI("Performing secure delete on volume: %s"), volume_path)
 
-    if volume_clear == 'shred':
-        LOG.warning(_LW("volume_clear=shred has been deprecated and will "
-                        "be removed in the next release. Clearing with dd."))
-        volume_clear = 'zero'
-
     # We pass sparse=False explicitly here so that zero blocks are not
     # skipped in order to clear the volume.
     if volume_clear == 'zero':
