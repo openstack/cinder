@@ -238,7 +238,7 @@ def horcmgr_synchronized(func):
 
 
 def _is_valid_target(target, target_name, target_ports, is_pair):
-    """Return True if the specified host group is valid, False otherwise."""
+    """Return True if the specified target is valid, False otherwise."""
     if is_pair:
         return (target[:utils.PORT_ID_LENGTH] in target_ports and
                 target_name == _PAIR_TARGET_NAME)
@@ -957,7 +957,7 @@ class VSPHORCM(common.VSPCommon):
                 interval=interval, success_code=success_code, timeout=timeout)
             LOG.debug(
                 'Deleted logical unit path of the specified logical '
-                'device. (LDEV: %(ldev)s, host group: %(target)s)',
+                'device. (LDEV: %(ldev)s, target: %(target)s)',
                 {'ldev': ldev, 'target': target})
 
     def find_all_mapped_targets_from_storage(self, targets, ldev):
@@ -968,7 +968,7 @@ class VSPHORCM(common.VSPCommon):
                 targets['list'].append(port.split()[0])
 
     def delete_target_from_storage(self, port, gid):
-        """Delete the host group from the port."""
+        """Delete the host group or the iSCSI target from the port."""
         result = self.run_raidcom(
             'delete', 'host_grp', '-port',
             '-'.join([port, gid]), do_raise=False)
@@ -1123,6 +1123,7 @@ HORCM_CMD
         targets = {
             'info': {},
             'list': [],
+            'iqns': {},
         }
         super(VSPHORCM, self).init_cinder_hosts(targets=targets)
         self._init_pair_targets(targets['info'])
@@ -1141,7 +1142,7 @@ HORCM_CMD
                         'wwpns': [_PAIR_TARGET_NAME_BODY],
                     }
                     target_name, gid = self.create_target_to_storage(
-                        port, connector)
+                        port, connector, None)
                     utils.output_log(MSG.OBJECT_CREATED,
                                      object='a target for pair operation',
                                      details='port: %(port)s, gid: %(gid)s, '

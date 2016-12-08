@@ -43,11 +43,13 @@ _DRIVER_DIR = 'cinder.volume.drivers.hitachi'
 _DRIVERS = {
     'HORCM': {
         'FC': 'vsp_horcm_fc.VSPHORCMFC',
+        'iSCSI': 'vsp_horcm_iscsi.VSPHORCMISCSI',
     },
 }
 
 DRIVER_PREFIX = 'VSP'
 TARGET_PREFIX = 'HBSD-'
+TARGET_IQN_SUFFIX = '.hbsd-target'
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
 
 MAX_PROCESS_WAITTIME = 24 * 60 * 60
@@ -131,14 +133,20 @@ class VSPMsg(enum.Enum):
     DELETE_TARGET_FAILED = {
         'msg_id': 306,
         'loglevel': base_logging.WARNING,
-        'msg': _LW('A host group could not be deleted. (port: %(port)s, '
-                   'gid: %(id)s)'),
+        'msg': _LW('A host group or an iSCSI target could not be deleted. '
+                   '(port: %(port)s, gid: %(id)s)'),
         'suffix': WARNING_SUFFIX
     }
     CREATE_HOST_GROUP_FAILED = {
         'msg_id': 308,
         'loglevel': base_logging.WARNING,
         'msg': _LW('A host group could not be added. (port: %(port)s)'),
+        'suffix': WARNING_SUFFIX
+    }
+    CREATE_ISCSI_TARGET_FAILED = {
+        'msg_id': 309,
+        'loglevel': base_logging.WARNING,
+        'msg': _LW('An iSCSI target could not be added. (port: %(port)s)'),
         'suffix': WARNING_SUFFIX
     }
     UNMAP_LDEV_FAILED = {
@@ -408,7 +416,7 @@ class VSPMsg(enum.Enum):
     NO_CONNECTED_TARGET = {
         'msg_id': 649,
         'loglevel': base_logging.ERROR,
-        'msg': _LE('The host group was not found.'),
+        'msg': _LE('The host group or iSCSI target was not found.'),
         'suffix': ERROR_SUFFIX
     }
     RESOURCE_NOT_FOUND = {

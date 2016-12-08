@@ -95,8 +95,8 @@ common_opts = [
     cfg.BoolOpt(
         'vsp_group_request',
         default=False,
-        help='If True, the driver will create host groups on storage ports '
-             'as needed.'),
+        help='If True, the driver will create host groups or iSCSI targets on '
+             'storage ports as needed.'),
 ]
 
 _REQUIRED_COMMON_OPTS = [
@@ -151,6 +151,7 @@ class VSPCommon(object):
             'ldev_range': [],
             'ports': [],
             'wwns': {},
+            'portals': {},
             'output_first': True,
         }
 
@@ -627,6 +628,20 @@ class VSPCommon(object):
             if not self.conf.safe_get(opt):
                 msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
                 raise exception.VSPError(msg)
+        if self.storage_info['protocol'] == 'iSCSI':
+            self.check_param_iscsi()
+
+    def check_param_iscsi(self):
+        """Check iSCSI-related parameter values and consistency among them."""
+        if self.conf.vsp_use_chap_auth:
+            if not self.conf.vsp_auth_user:
+                msg = utils.output_log(MSG.INVALID_PARAMETER,
+                                       param='vsp_auth_user')
+                raise exception.VSPError(msg)
+            if not self.conf.vsp_auth_password:
+                msg = utils.output_log(MSG.INVALID_PARAMETER,
+                                       param='vsp_auth_password')
+                raise exception.VSPError(msg)
 
     def _range2list(self, param):
         """Analyze a 'xxx-xxx' string and return a list of two integers."""
@@ -674,7 +689,7 @@ class VSPCommon(object):
 
     def init_cinder_hosts(self, **kwargs):
         """Initialize server-storage connection."""
-        targets = kwargs.pop('targets', {'info': {}, 'list': []})
+        targets = kwargs.pop('targets', {'info': {}, 'list': [], 'iqns': {}})
         connector = cinder_utils.brick_get_connector_properties(
             multipath=self.conf.use_multipath_for_image_xfer,
             enforce_multipath=self.conf.enforce_multipath_for_image_xfer)
@@ -719,8 +734,9 @@ class VSPCommon(object):
         raise exception.VSPError(msg)
 
     def _create_target(self, targets, port, connector, hba_ids):
-        """Create a host group for the specified storage port."""
-        target_name, gid = self.create_target_to_storage(port, connector)
+        """Create a host group or an iSCSI target on the storage port."""
+        target_name, gid = self.create_target_to_storage(port, connector,
+                                                         hba_ids)
         utils.output_log(MSG.OBJECT_CREATED, object='a target',
                          details='port: %(port)s, gid: %(gid)s, target_name: '
                          '%(target)s' %
@@ -735,13 +751,13 @@ class VSPCommon(object):
         targets['list'].append((port, gid))
 
     @abc.abstractmethod
-    def create_target_to_storage(self, port, connector):
-        """Create a host group on the specified port."""
+    def create_target_to_storage(self, port, connector, hba_ids):
+        """Create a host group or an iSCSI target on the specified port."""
         raise NotImplementedError()
 
     @abc.abstractmethod
     def set_target_mode(self, port, gid):
-        """Configure the host group to meet the environment."""
+        """Configure the target to meet the environment."""
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -751,7 +767,7 @@ class VSPCommon(object):
 
     @abc.abstractmethod
     def delete_target_from_storage(self, port, gid):
-        """Delete the host group from the port."""
+        """Delete the host group or the iSCSI target from the port."""
         raise NotImplementedError()
 
     def output_param_to_log(self):
@@ -777,6 +793,7 @@ class VSPCommon(object):
             'info': {},
             'list': [],
             'lun': {},
+            'iqns': {},
         }
         ldev = utils.get_ldev(volume)
         # When 'ldev' is 0, it should be true.
@@ -813,10 +830,18 @@ class VSPCommon(object):
         multipath = connector.get('multipath', False)
         if self.storage_info['protocol'] == 'FC':
             data = self.get_properties_fc(targets)
+        elif self.storage_info['protocol'] == 'iSCSI':
+            data = self.get_properties_iscsi(targets, multipath)
         if target_lun is not None:
             data['target_discovered'] = False
             if not multipath or self.storage_info['protocol'] == 'FC':
                 data['target_lun'] = target_lun
+            else:
+                target_luns = []
+                for target in targets['list']:
+                    if targets['lun'][target[0]]:
+                        target_luns.append(target_lun)
+                data['target_luns'] = target_luns
         return data
 
     def get_properties_fc(self, targets):
@@ -827,6 +852,27 @@ class VSPCommon(object):
             if targets['lun'][target[0]]]
         return data
 
+    def get_properties_iscsi(self, targets, multipath):
+        """Return iSCSI-specific server-LDEV connection info."""
+        data = {}
+        primary_target = targets['list'][0]
+        if not multipath:
+            data['target_portal'] = self.storage_info[
+                'portals'][primary_target[0]]
+            data['target_iqn'] = targets['iqns'][primary_target]
+        else:
+            data['target_portals'] = [
+                self.storage_info['portals'][target[0]] for target in
+                targets['list'] if targets['lun'][target[0]]]
+            data['target_iqns'] = [
+                targets['iqns'][target] for target in targets['list']
+                if targets['lun'][target[0]]]
+        if self.conf.vsp_use_chap_auth:
+            data['auth_method'] = 'CHAP'
+            data['auth_username'] = self.conf.vsp_auth_user
+            data['auth_password'] = self.conf.vsp_auth_password
+        return data
+
     @coordination.synchronized('vsp-host-{self.conf.vsp_storage_id}-'
                                '{connector[host]}')
     def terminate_connection(self, volume, connector):
@@ -834,6 +880,7 @@ class VSPCommon(object):
         targets = {
             'info': {},
             'list': [],
+            'iqns': {},
         }
         mapped_targets = {
             'list': [],
@@ -857,11 +904,12 @@ class VSPCommon(object):
         unmap_targets['list'].sort(reverse=True)
         self.unmap_ldev(unmap_targets, ldev)
 
-        target_wwn = [
-            self.storage_info['wwns'][port_gid[:utils.PORT_ID_LENGTH]]
-            for port_gid in unmap_targets['list']]
-        return {'driver_volume_type': self.driver_info['volume_type'],
-                'data': {'target_wwn': target_wwn}}
+        if self.storage_info['protocol'] == 'FC':
+            target_wwn = [
+                self.storage_info['wwns'][port_gid[:utils.PORT_ID_LENGTH]]
+                for port_gid in unmap_targets['list']]
+            return {'driver_volume_type': self.driver_info['volume_type'],
+                    'data': {'target_wwn': target_wwn}}
 
     @abc.abstractmethod
     def find_mapped_targets_from_storage(self, targets, ldev, target_ports):
