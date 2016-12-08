@@ -110,6 +110,12 @@ from cinder.volume.drivers.hitachi import hnas_nfs as \
     cinder_volume_drivers_hitachi_hnasnfs
 from cinder.volume.drivers.hitachi import hnas_utils as \
     cinder_volume_drivers_hitachi_hnasutils
+from cinder.volume.drivers.hitachi import vsp_common as \
+    cinder_volume_drivers_hitachi_vspcommon
+from cinder.volume.drivers.hitachi import vsp_fc as \
+    cinder_volume_drivers_hitachi_vspfc
+from cinder.volume.drivers.hitachi import vsp_horcm as \
+    cinder_volume_drivers_hitachi_vsphorcm
 from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
@@ -285,6 +291,9 @@ def list_opts():
                 cinder_volume_drivers_hitachi_hnasiscsi.iSCSI_OPTS,
                 cinder_volume_drivers_hitachi_hnasnfs.NFS_OPTS,
                 cinder_volume_drivers_hitachi_hnasutils.drivers_common_opts,
+                cinder_volume_drivers_hitachi_vspcommon.common_opts,
+                cinder_volume_drivers_hitachi_vspfc.fc_opts,
+                cinder_volume_drivers_hitachi_vsphorcm.horcm_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
                 cinder_volume_drivers_hpe_hpexpopts.FC_VOLUME_OPTS,
