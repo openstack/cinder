@@ -309,7 +309,7 @@ def list_opts():
                 cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
                 infortrend_esds_extra_opts,
                 cinder_volume_drivers_kaminario_kaminariocommon.
-                kaminario1_opts,
+                kaminario_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.common_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.iscsi_opts,
                 cinder_volume_drivers_lvm.volume_opts,
