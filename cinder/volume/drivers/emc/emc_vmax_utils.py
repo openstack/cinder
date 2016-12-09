@@ -30,6 +30,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder.volume import volume_types
 
 
@@ -63,7 +64,10 @@ RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
 VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
 SYNCHRONIZED = 4
+RDF_FAILOVER = 10
 SMI_VERSION_83 = 830
+IS_RE = 'replication_enabled'
+REPLICATION_FAILOVER = fields.ReplicationStatus.FAILED_OVER
 
 
 class EMCVMAXUtils(object):
@@ -1574,30 +1578,33 @@ class EMCVMAXUtils(object):
         return isValidSLO, isValidWorkload
 
     def get_v3_storage_group_name(self, poolName, slo, workload,
-                                  isCompressionDisabled):
+                                  isCompressionDisabled, rep_enabled=False):
         """Determine default v3 storage group from extraSpecs.
 
         :param poolName: the poolName
         :param slo: the SLO string e.g Bronze
         :param workload: the workload string e.g DSS
         :param isCompressionDisabled: is compression disabled
+        :param rep_enabled: True if replication enabled
         :returns: storageGroupName
         """
         if slo and workload:
+
+            prefix = ("OS-%(poolName)s-%(slo)s-%(workload)s"
+                      % {'poolName': poolName,
+                         'slo': slo,
+                         'workload': workload})
+
             if isCompressionDisabled:
-                postfix = 'CD-SG'
-            else:
-                postfix = 'SG'
-
-            storageGroupName = (
-                "OS-%(poolName)s-%(slo)s-%(workload)s-%(postfix)s"
-                % {'poolName': poolName,
-                   'slo': slo,
-                   'workload': workload,
-                   'postfix': postfix})
+                prefix += "-CD"
         else:
-            storageGroupName = ("OS-no_SLO-SG")
+            prefix = "OS-no_SLO"
 
+        if rep_enabled:
+            prefix += "-RE"
+
+        storageGroupName = ("%(prefix)s-SG"
+                            % {'prefix': prefix})
         return storageGroupName
 
     def _get_fast_settings_from_storage_group(self, storageGroupInstance):
@@ -1913,63 +1920,6 @@ class EMCVMAXUtils(object):
 
         return kwargs
 
-    def _single_pool_support(self, fileName):
-        """Single pool support.
-
-         VMAX2
-        <EMC>
-        <EcomServerIp>10.108.246.202</EcomServerIp>
-        <EcomServerPort>5988</EcomServerPort>
-        <EcomUserName>admin</EcomUserName>
-        <EcomPassword>#1Password</EcomPassword>
-        <PortGroups>
-            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-        </PortGroups>
-        <Array>000198700439</Array>
-        <Pool>FC_SLVR1</Pool>
-        </EMC>
-         VMAX3
-
-        :param fileName: the configuration file
-        :returns: list
-        """
-        myList = []
-        kwargs = {}
-        connargs = {}
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = minidom.parseString(data)
-        try:
-            connargs = self._get_connection_info(dom)
-            interval = self._process_tag(dom, 'Interval')
-            retries = self._process_tag(dom, 'Retries')
-            portGroup = self._get_random_portgroup(dom)
-
-            serialNumber = self._process_tag(dom, 'Array')
-            if serialNumber is None:
-                LOG.error(_LE(
-                    "Array Serial Number must be in the file "
-                    "%(fileName)s."),
-                    {'fileName': fileName})
-            poolName = self._process_tag(dom, 'Pool')
-            if poolName is None:
-                LOG.error(_LE(
-                    "PoolName must be in the file "
-                    "%(fileName)s."),
-                    {'fileName': fileName})
-            kwargs = self._fill_record(
-                connargs, serialNumber, poolName, portGroup, dom)
-            if interval:
-                kwargs['Interval'] = interval
-            if retries:
-                kwargs['Retries'] = retries
-
-            myList.append(kwargs)
-        except IndexError:
-            pass
-        return myList
-
     def parse_file_to_get_array_map(self, fileName):
         """Parses a file and gets array map.
 
@@ -2100,14 +2050,14 @@ class EMCVMAXUtils(object):
                         portGroupNames.append(portGroupName.strip())
             portGroupNames = EMCVMAXUtils._filter_list(portGroupNames)
             if len(portGroupNames) > 0:
-                return EMCVMAXUtils._get_random_pg_from_list(portGroupNames)
+                return EMCVMAXUtils.get_random_pg_from_list(portGroupNames)
 
         exception_message = (_("No Port Group elements found in config file."))
         LOG.error(exception_message)
         raise exception.VolumeBackendAPIException(data=exception_message)
 
     @staticmethod
-    def _get_random_pg_from_list(portgroupnames):
+    def get_random_pg_from_list(portgroupnames):
         """From list of portgroup, choose one randomly
 
         :param portGroupNames: list of available portgroups
@@ -2624,7 +2574,7 @@ class EMCVMAXUtils(object):
 
     def get_v3_default_sg_instance_name(
             self, conn, poolName, slo, workload, storageSystemName,
-            isCompressionDisabled):
+            isCompressionDisabled, is_re=False):
         """Get the V3 default instance name
 
         :param conn: the connection to the ecom server
@@ -2636,7 +2586,7 @@ class EMCVMAXUtils(object):
         :returns: the storage group instance name
         """
         storageGroupName = self.get_v3_storage_group_name(
-            poolName, slo, workload, isCompressionDisabled)
+            poolName, slo, workload, isCompressionDisabled, is_re)
         controllerConfigService = (
             self.find_controller_configuration_service(
                 conn, storageSystemName))
@@ -2908,3 +2858,136 @@ class EMCVMAXUtils(object):
         :returns: boolean
         """
         return value.lower() in ("yes", "true")
+
+    def is_replication_enabled(self, extraSpecs):
+        """Check if replication is to be enabled.
+
+        :param extraSpecs: extra specifications
+        :returns: bool - true if enabled, else false
+        """
+        replication_enabled = False
+        if IS_RE in extraSpecs:
+            replication_enabled = True
+        return replication_enabled
+
+    def get_replication_config(self, rep_device_list):
+        """Gather necessary replication configuration info.
+
+        :param rep_device_list: the replication device list from cinder.conf
+        :returns: rep_config, replication configuration dict
+        """
+        rep_config = {}
+        if not rep_device_list:
+            return None
+        else:
+            target = rep_device_list[0]
+            try:
+                rep_config['array'] = target['target_device_id']
+                rep_config['pool'] = target['remote_pool']
+                rep_config['rdf_group_label'] = target['rdf_group_label']
+                rep_config['portgroup'] = target['remote_port_group']
+
+            except KeyError as ke:
+                errorMessage = (_("Failed to retrieve all necessary SRDF "
+                                  "information. Error received: %(ke)s.") %
+                                {'ke': six.text_type(ke)})
+                LOG.exception(errorMessage)
+                raise exception.VolumeBackendAPIException(data=errorMessage)
+
+            try:
+                allow_extend = target['allow_extend']
+                if self.str2bool(allow_extend):
+                    rep_config['allow_extend'] = True
+                else:
+                    rep_config['allow_extend'] = False
+            except KeyError:
+                rep_config['allow_extend'] = False
+
+        return rep_config
+
+    def failover_provider_location(self, provider_location,
+                                   replication_keybindings):
+        """Transfer ownership of a volume from one array to another.
+
+        :param provider_location: the provider location
+        :param replication_keybindings: the rep keybindings
+        :return: updated provider_location
+        """
+        if isinstance(provider_location, six.text_type):
+            provider_location = eval(provider_location)
+        if isinstance(replication_keybindings, six.text_type):
+            replication_keybindings = eval(replication_keybindings)
+
+        keybindings = provider_location['keybindings']
+        provider_location['keybindings'] = replication_keybindings
+        replication_driver_data = keybindings
+        return provider_location, replication_driver_data
+
+    def find_rdf_storage_sync_sv_sv(
+            self, conn, sourceInstance, storageSystem,
+            targetInstance, targetStorageSystem,
+            extraSpecs, waitforsync=True):
+        """Find the storage synchronized name.
+
+        :param conn: the connection to the ecom server
+        :param sourceInstance: the source instance
+        :param storageSystem: the source storage system name
+        :param targetInstance: the target instance
+        :param targetStorageSystem: the target storage system name
+        :param extraSpecs: the extra specifications
+        :param waitforsync: flag for waiting until sync is complete
+        :return: foundSyncInstanceName
+        """
+
+        foundSyncInstanceName = None
+        syncInstanceNames = conn.EnumerateInstanceNames(
+            'SE_StorageSynchronized_SV_SV')
+        for syncInstanceName in syncInstanceNames:
+            syncSvTarget = syncInstanceName['SyncedElement']
+            syncSvSource = syncInstanceName['SystemElement']
+            if storageSystem != syncSvSource['SystemName'] or (
+                    targetStorageSystem != syncSvTarget['SystemName']):
+                continue
+            if syncSvTarget['DeviceID'] == targetInstance['DeviceID'] and (
+                    syncSvSource['DeviceID'] == sourceInstance['DeviceID']):
+                # Check that it hasn't recently been deleted.
+                try:
+                    conn.GetInstance(syncInstanceName)
+                    foundSyncInstanceName = syncInstanceName
+                    LOG.debug("Found sync Name: %(sync_name)s.",
+                              {'sync_name': foundSyncInstanceName})
+                except Exception:
+                    foundSyncInstanceName = None
+                break
+
+        if foundSyncInstanceName:
+            # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
+            if waitforsync:
+                LOG.warning(_LW(
+                    "Expect a performance hit as volume is not not fully "
+                    "synced on %(deviceId)s."),
+                    {'deviceId': sourceInstance['DeviceID']})
+                startTime = time.time()
+                self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
+                LOG.warning(_LW(
+                    "Synchronization process took: %(delta)s H:MM:SS."),
+                    {'delta': self.get_time_delta(startTime,
+                                                  time.time())})
+
+        return foundSyncInstanceName
+
+    @staticmethod
+    def is_volume_failed_over(volume):
+        """Check if a volume has been failed over.
+
+        :param volume: the volume object
+        :return: bool
+        """
+        if volume is None:
+            return False
+        else:
+            if volume.get('replication_status'):
+                if volume['replication_status'] == REPLICATION_FAILOVER:
+                    return True
+                else:
+                    return False

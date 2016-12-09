@@ -35,6 +35,12 @@ INFO_SRC_V3 = 3
 ACTIVATESNAPVX = 4
 DEACTIVATESNAPVX = 19
 SNAPSYNCTYPE = 7
+RDF_FAILOVER = 10
+RDF_FAILBACK = 11
+RDF_RESYNC = 14
+RDF_SYNC_MODE = 2
+RDF_SYNCHRONIZED = 6
+RDF_FAILEDOVER = 12
 
 
 class EMCVMAXProvisionV3(object):
@@ -231,6 +237,29 @@ class EMCVMAXProvisionV3(object):
 
         return volumeDict
 
+    def get_or_create_default_sg(self, conn, extraSpecs, storageSystemName,
+                                 doDisableCompression):
+        """Get or create default storage group for a replica.
+
+        :param conn: the connection to the ecom server
+        :param extraSpecs: the extra specifications
+        :param storageSystemName: the storage system name
+        :param doDisableCompression: flag for compression
+        :returns: sgInstanceName, instance of storage group
+        """
+        pool = extraSpecs[self.utils.POOL]
+        slo = extraSpecs[self.utils.SLO]
+        workload = extraSpecs[self.utils.WORKLOAD]
+        storageGroupName, controllerConfigService, sgInstanceName = (
+            self.utils.get_v3_default_sg_instance_name(
+                conn, pool, slo, workload, storageSystemName,
+                doDisableCompression))
+        if sgInstanceName is None:
+            sgInstanceName = self.create_storage_group_v3(
+                conn, controllerConfigService, storageGroupName,
+                pool, slo, workload, extraSpecs, doDisableCompression)
+        return sgInstanceName
+
     def create_element_replica(
             self, conn, repServiceInstanceName,
             cloneName, syncType, sourceInstance, extraSpecs,
@@ -257,12 +286,9 @@ class EMCVMAXProvisionV3(object):
                    'source': sourceInstance.path})
         storageSystemName = sourceInstance['SystemName']
         doDisableCompression = self.utils.is_compression_disabled(extraSpecs)
-        __, __, sgInstanceName = (
-            self.utils.get_v3_default_sg_instance_name(
-                conn, extraSpecs[self.utils.POOL],
-                extraSpecs[self.utils.SLO],
-                extraSpecs[self.utils.WORKLOAD], storageSystemName,
-                doDisableCompression))
+        sgInstanceName = (
+            self.get_or_create_default_sg(
+                conn, extraSpecs, storageSystemName, doDisableCompression))
         try:
             storageGroupInstance = conn.GetInstance(sgInstanceName)
         except Exception:
@@ -309,9 +335,54 @@ class EMCVMAXProvisionV3(object):
             return rc, job
         return do_create_element_replica()
 
+    def create_remote_element_replica(
+            self, conn, repServiceInstanceName, cloneName, syncType,
+            sourceInstance, targetInstance, rdfGroupInstance, extraSpecs):
+        """Create a replication relationship between source and target.
+
+        :param conn: the ecom connection
+        :param repServiceInstanceName: the replication service
+        :param cloneName: the name of the target volume
+        :param syncType: the synchronization type
+        :param sourceInstance: the source volume instance
+        :param targetInstance: the target volume instance
+        :param rdfGroupInstance: the rdf group instance
+        :param extraSpecs: additional info
+        :return: rc, job
+        """
+        startTime = time.time()
+        LOG.debug("Setup replication relationship: %(source)s "
+                  "syncType: %(syncType)s  Source: %(target)s.",
+                  {'source': sourceInstance.path,
+                   'syncType': syncType,
+                   'target': targetInstance.path})
+        rc, job = self._create_element_replica_extra_params(
+            conn, repServiceInstanceName, cloneName, syncType,
+            sourceInstance, targetInstance, None, None, rdfGroupInstance)
+        if rc != 0:
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
+            if rc != 0:
+                exceptionMessage = (
+                    _("Error Create Cloned Volume: %(cloneName)s "
+                      "Return code: %(rc)lu. Error: %(error)s.")
+                    % {'cloneName': cloneName,
+                       'rc': rc,
+                       'error': errordesc})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        LOG.debug("InvokeMethod CreateElementReplica "
+                  "took: %(delta)s H:MM:SS.",
+                  {'delta': self.utils.get_time_delta(startTime,
+                                                      time.time())})
+        return rc, job
+
     def _create_element_replica_extra_params(
             self, conn, repServiceInstanceName, cloneName, syncType,
-            sourceInstance, targetInstance, rsdInstance, sgInstanceName):
+            sourceInstance, targetInstance, rsdInstance, sgInstanceName,
+            rdfGroupInstance=None):
         """CreateElementReplica using extra parameters.
 
         :param conn: the connection to the ecom server
@@ -326,6 +397,7 @@ class EMCVMAXProvisionV3(object):
         :returns: job - job object of the replica creation operation
         """
         syncType = self.utils.get_num(syncType, '16')
+        modeType = self.utils.get_num(RDF_SYNC_MODE, '16')
         if targetInstance and rsdInstance:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,
@@ -334,13 +406,14 @@ class EMCVMAXProvisionV3(object):
                 SourceElement=sourceInstance.path,
                 TargetElement=targetInstance.path,
                 ReplicationSettingData=rsdInstance)
-        elif targetInstance:
+        elif targetInstance and rdfGroupInstance:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,
-                ElementName=cloneName,
                 SyncType=syncType,
+                Mode=modeType,
                 SourceElement=sourceInstance.path,
-                TargetElement=targetInstance.path)
+                TargetElement=targetInstance.path,
+                ConnectivityCollection=rdfGroupInstance)
         elif rsdInstance:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,
@@ -349,7 +422,13 @@ class EMCVMAXProvisionV3(object):
                 SourceElement=sourceInstance.path,
                 ReplicationSettingData=rsdInstance,
                 Collections=[sgInstanceName])
-
+        elif targetInstance:
+            rc, job = conn.InvokeMethod(
+                'CreateElementReplica', repServiceInstanceName,
+                ElementName=cloneName,
+                SyncType=syncType,
+                SourceElement=sourceInstance.path,
+                TargetElement=targetInstance.path)
         return rc, job
 
     def break_replication_relationship(
@@ -871,3 +950,105 @@ class EMCVMAXProvisionV3(object):
         # Find the newly created volume.
         volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
         return volumeDict, rc
+
+    def get_rdf_group_instance(self, conn, repServiceInstanceName,
+                               RDFGroupName):
+        """Get the SRDF group instance.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: the replication service
+        :param RDFGroupName: the element name of the RDF group
+        :return: foundRDFGroupInstanceName
+        """
+        foundRDFGroupInstanceName = None
+
+        RDFGroupInstances = (
+            conn.Associators(repServiceInstanceName,
+                             ResultClass='CIM_ConnectivityCollection'))
+
+        for RDFGroupInstance in RDFGroupInstances:
+
+            if RDFGroupName == (
+                    six.text_type(RDFGroupInstance['ElementName'])):
+                # Check that it has not been deleted recently.
+                instance = self.utils.get_existing_instance(
+                    conn, RDFGroupInstance.path)
+                if instance is None:
+                    # SRDF group not found.
+                    foundRDFGroupInstanceName = None
+                else:
+                    foundRDFGroupInstanceName = (
+                        RDFGroupInstance.path)
+                break
+        return foundRDFGroupInstanceName
+
+    def failover_volume(self, conn, repServiceInstanceName,
+                        storageSynchronizationSv,
+                        extraSpecs):
+        """Failover a volume to its target device.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: the replication service
+        :param storageSynchronizationSv: the storage synchronized object
+        :param extraSpecs: the extra specifications
+        """
+        operation = RDF_FAILOVER
+        # check if volume already in failover state
+        syncState = self._check_sync_state(conn, storageSynchronizationSv)
+        if syncState == RDF_FAILEDOVER:
+            return
+
+        else:
+            LOG.debug("Failover: %(sv)s  operation: %(operation)s.",
+                      {'sv': storageSynchronizationSv, 'operation': operation})
+
+            return self._modify_replica_synchronization(
+                conn, repServiceInstanceName, storageSynchronizationSv,
+                operation, extraSpecs)
+
+    def failback_volume(self, conn, repServiceInstanceName,
+                        storageSynchronizationSv,
+                        extraSpecs):
+        """Failback a volume to the source device.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: the replication service
+        :param storageSynchronizationSv: the storage synchronized object
+        :param extraSpecs: the extra specifications
+        """
+        failback_operation = RDF_FAILBACK
+        # check if volume already in failback state
+        syncState = self._check_sync_state(conn, storageSynchronizationSv)
+        if syncState == RDF_SYNCHRONIZED:
+            return
+
+        else:
+            LOG.debug("Failback: %(sv)s  operation: %(operation)s.",
+                      {'sv': storageSynchronizationSv,
+                       'operation': failback_operation})
+
+            return self._modify_replica_synchronization(
+                conn, repServiceInstanceName, storageSynchronizationSv,
+                failback_operation, extraSpecs)
+
+    def _check_sync_state(self, conn, syncName):
+        """Get the copy state of a sync name.
+
+        :param conn: the connection to the ecom server
+        :param syncName: the storage sync sv name
+        :return: the copy state
+        """
+        try:
+            syncInstance = conn.GetInstance(syncName,
+                                            LocalOnly=False)
+            syncState = syncInstance['syncState']
+            LOG.debug("syncState is %(syncState)lu.",
+                      {'syncState': syncState})
+            return syncState
+        except Exception as ex:
+            exceptionMessage = (
+                _("Getting sync instance failed with: %(ex)s.")
+                % {'ex': six.text_type(ex)})
+            LOG.exception(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)

@@ -204,7 +204,8 @@ class EMCVMAXMasking(object):
             maskingviewdict['pool'],
             maskingviewdict['slo'],
             maskingviewdict['workload'],
-            maskingviewdict['isCompressionDisabled'])
+            maskingviewdict['isCompressionDisabled'],
+            maskingviewdict['replication_enabled'])
         assocStorageGroupInstanceNames = (
             self.utils.get_storage_groups_from_volume(
                 conn, volumeinstance.path))
@@ -2230,16 +2231,18 @@ class EMCVMAXMasking(object):
         """Return volume to the default storage group in v3.
 
         :param conn: the ecom connection
-        :param controllerConfigService: controller config service
+        :param controllerConfigurationService: controller config service
         :param volumeInstance: volumeInstance
         :param volumeName: the volume name
         :param extraSpecs: additional info
         :raises: VolumeBackendAPIException
         """
+        rep_enabled = self.utils.is_replication_enabled(extraSpecs)
         isCompressionDisabled = self.utils.is_compression_disabled(extraSpecs)
         storageGroupName = self.utils.get_v3_storage_group_name(
             extraSpecs[self.utils.POOL], extraSpecs[self.utils.SLO],
-            extraSpecs[self.utils.WORKLOAD], isCompressionDisabled)
+            extraSpecs[self.utils.WORKLOAD], isCompressionDisabled,
+            rep_enabled)
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, controllerConfigurationService, storageGroupName)
 
