@@ -1,0 +1,16 @@
+---
+prelude: >
+    Enabling Compression Feature On 3PAR
+features:
+  - |
+    * This adds following functionalities
+
+    * Creating thin/dedup compresssed volume.
+
+    * Retype for tpvv/tdvv volumes to be compressed.
+
+    * Migration of compressed volumes.
+
+    * Create compressed volume from compressed volume/snapshot source
+
+    * Compression support to create cg from source

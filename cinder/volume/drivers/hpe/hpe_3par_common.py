@@ -74,6 +74,7 @@ LOG = logging.getLogger(__name__)
 MIN_CLIENT_VERSION = '4.2.0'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
+COMPRESSION_API_VERSION = 30301215
 SRSTATLD_API_VERSION = 30201200
 REMOTE_COPY_API_VERSION = 30202290
 
@@ -252,10 +253,11 @@ class HPE3PARCommon(object):
                  Bug #1661541
         3.0.29 - Fix convert snapshot volume to base volume type. bug #1656186
         3.0.30 - Handle manage and unmanage hosts present. bug #1648067
+        3.0.31 - Enable HPE-3PAR Compression Feature.
 
     """
 
-    VERSION = "3.0.30"
+    VERSION = "3.0.31"
 
     stats = {}
 
@@ -289,6 +291,7 @@ class HPE3PARCommon(object):
     THIN_PROV_LIC = "Thin Provisioning"
     REMOTE_COPY_LIC = "Remote Copy"
     SYSTEM_REPORTER_LIC = "System Reporter"
+    COMPRESSION_LIC = "Compression"
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -308,7 +311,7 @@ class HPE3PARCommon(object):
                     'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
     hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
-                          'flash_cache']
+                          'flash_cache', 'compression']
 
     def __init__(self, config, active_backend_id=None):
         self.config = config
@@ -571,8 +574,16 @@ class HPE3PARCommon(object):
             cpg = type_info['cpg']
             tpvv = type_info.get('tpvv', False)
             tdvv = type_info.get('tdvv', False)
+
+            compression = self.get_compression_policy(
+                type_info['hpe3par_keys'])
+
             optional = {'online': True, 'snapCPG': cpg,
                         'tpvv': tpvv, 'tdvv': tdvv}
+
+            if compression is not None:
+                optional['compression'] = compression
+
             self.client.copyVolume(snap_name, volume_name, cpg, optional)
             self.client.addVolumeToVolumeSet(vvs_name, volume_name)
 
@@ -1259,6 +1270,7 @@ class HPE3PARCommon(object):
         thin_support = True
         remotecopy_support = True
         sr_support = True
+        compression_support = False
         if 'licenseInfo' in info:
             if 'licenses' in info['licenseInfo']:
                 valid_licenses = info['licenseInfo']['licenses']
@@ -1274,6 +1286,9 @@ class HPE3PARCommon(object):
                 sr_support = self._check_license_enabled(
                     valid_licenses, self.SYSTEM_REPORTER_LIC,
                     "System_reporter_support")
+                compression_support = self._check_license_enabled(
+                    valid_licenses, self.COMPRESSION_LIC,
+                    "Compression")
 
         for cpg_name in self._client_conf['hpe3par_cpg']:
             try:
@@ -1364,6 +1379,7 @@ class HPE3PARCommon(object):
                     'goodness_function': goodness_function,
                     'multiattach': False,
                     'consistencygroup_support': True,
+                    'compression': compression_support,
                     }
 
             if remotecopy_support:
@@ -1608,6 +1624,40 @@ class HPE3PARCommon(object):
                     else:
                         return self.client.FLASH_CACHE_DISABLED
 
+        return None
+
+    def get_compression_policy(self, hpe3par_keys):
+        if hpe3par_keys is not None:
+            # here it should return true/false/None
+            val = self._get_key_value(hpe3par_keys, 'compression', None)
+            compression_support = False
+        if val is not None:
+            info = self.client.getStorageSystemInfo()
+            if 'licenseInfo' in info:
+                if 'licenses' in info['licenseInfo']:
+                    valid_licenses = info['licenseInfo']['licenses']
+                    compression_support = self._check_license_enabled(
+                        valid_licenses, self.COMPRESSION_LIC,
+                        "Compression")
+            # here check the wsapi version
+            if self.API_VERSION < COMPRESSION_API_VERSION:
+                err = (_("Compression Policy requires "
+                         "WSAPI version '%(compression_version)s' "
+                         "version '%(version)s' is installed.") %
+                       {'compression_version': COMPRESSION_API_VERSION,
+                        'version': self.API_VERSION})
+                LOG.error(err)
+                raise exception.InvalidInput(reason=err)
+            else:
+                if val.lower() == 'true':
+                    if not compression_support:
+                        msg = _('Compression is not supported on '
+                                'underlying hardware')
+                        LOG.error(msg)
+                        raise exception.InvalidInput(reason=msg)
+                    return True
+                else:
+                    return False
         return None
 
     def _set_flash_cache_policy_in_vvs(self, flash_cache, vvs_name):
@@ -1855,6 +1905,8 @@ class HPE3PARCommon(object):
             tdvv = type_info['tdvv']
             flash_cache = self.get_flash_cache_policy(
                 type_info['hpe3par_keys'])
+            compression = self.get_compression_policy(
+                type_info['hpe3par_keys'])
 
             cg_id = volume.get('consistencygroup_id', None)
             if cg_id:
@@ -1879,6 +1931,10 @@ class HPE3PARCommon(object):
 
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
+
+            if compression is not None:
+                extras['compression'] = compression
+
             self.client.createVolume(volume_name, cpg, capacity, extras)
             if qos or vvs_name or flash_cache is not None:
                 try:
@@ -1919,7 +1975,7 @@ class HPE3PARCommon(object):
                                       provider_location=self.client.id)
 
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
-                     tpvv=True, tdvv=False):
+                     tpvv=True, tdvv=False, compression=None):
         # Virtual volume sets are not supported with the -online option
         LOG.debug('Creating clone of a volume %(src)s to %(dest)s.',
                   {'src': src_name, 'dest': dest_name})
@@ -1930,6 +1986,10 @@ class HPE3PARCommon(object):
 
         if self.API_VERSION >= DEDUP_API_VERSION:
             optional['tdvv'] = tdvv
+
+        if (compression is not None and
+                self.API_VERSION >= COMPRESSION_API_VERSION):
+            optional['compression'] = compression
 
         body = self.client.copyVolume(src_name, dest_name, cpg, optional)
         return body['taskid']
@@ -2042,12 +2102,15 @@ class HPE3PARCommon(object):
                 type_info = self.get_volume_settings_from_type(volume)
                 cpg = type_info['cpg']
 
+                compression_val = self.get_compression_policy(
+                    type_info['hpe3par_keys'])
                 # make the 3PAR copy the contents.
                 # can't delete the original until the copy is done.
                 self._copy_volume(src_vol_name, vol_name, cpg=cpg,
                                   snap_cpg=type_info['snap_cpg'],
                                   tpvv=type_info['tpvv'],
-                                  tdvv=type_info['tdvv'])
+                                  tdvv=type_info['tdvv'],
+                                  compression=compression_val)
 
                 # v2 replication check
                 replication_flag = False
@@ -2362,7 +2425,6 @@ class HPE3PARCommon(object):
                'status': volume['status']}
         LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s, '
                   'status=%(status)s.', dbg)
-
         ret = False, None
 
         if volume['status'] in ['available', 'in-use']:
@@ -2453,10 +2515,13 @@ class HPE3PARCommon(object):
             volume_name = self._get_3par_vol_name(volume['id'])
             temp_vol_name = volume_name.replace("osv-", "omv-")
 
+            compression = self.get_compression_policy(
+                type_info['hpe3par_keys'])
             # Create a physical copy of the volume
             task_id = self._copy_volume(volume_name, temp_vol_name,
                                         cpg, cpg, type_info['tpvv'],
-                                        type_info['tdvv'])
+                                        type_info['tdvv'],
+                                        compression)
 
             LOG.debug('Copy volume scheduled: convert_to_base_volume: '
                       'id=%s.', volume['id'])
@@ -2632,7 +2697,7 @@ class HPE3PARCommon(object):
         return portPos
 
     def tune_vv(self, old_tpvv, new_tpvv, old_tdvv, new_tdvv,
-                old_cpg, new_cpg, volume_name):
+                old_cpg, new_cpg, volume_name, new_compression):
         """Tune the volume to change the userCPG and/or provisioningType.
 
         The volume will be modified/tuned/converted to the new userCPG and
@@ -2642,6 +2707,10 @@ class HPE3PARCommon(object):
         is no longer active.  When the task is no longer active, then it must
         either be done or it is in a state that we need to treat as an error.
         """
+
+        compression = False
+        if new_compression is not None:
+            compression = new_compression
 
         if old_tpvv == new_tpvv and old_tdvv == new_tdvv:
             if new_cpg != old_cpg:
@@ -2681,12 +2750,21 @@ class HPE3PARCommon(object):
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
 
             try:
-                response, body = self.client.modifyVolume(
-                    volume_name,
-                    {'action': 6,
-                     'tuneOperation': 1,
-                     'userCPG': new_cpg,
-                     'conversionOperation': cop})
+                if self.API_VERSION < COMPRESSION_API_VERSION:
+                    response, body = self.client.modifyVolume(
+                        volume_name,
+                        {'action': 6,
+                         'tuneOperation': 1,
+                         'userCPG': new_cpg,
+                         'conversionOperation': cop})
+                else:
+                    response, body = self.client.modifyVolume(
+                        volume_name,
+                        {'action': 6,
+                         'tuneOperation': 1,
+                         'userCPG': new_cpg,
+                         'compression': compression,
+                         'conversionOperation': cop})
             except hpeexceptions.HTTPBadRequest as ex:
                 if ex.get_code() == 40 and "keepVV" in six.text_type(ex):
                     # Cannot retype with snapshots because we don't want to
@@ -2753,7 +2831,7 @@ class HPE3PARCommon(object):
                 old_tpvv, new_tpvv, old_tdvv, new_tdvv,
                 old_vvs, new_vvs, old_qos, new_qos,
                 old_flash_cache, new_flash_cache,
-                old_comment):
+                old_comment, new_compression):
 
         action = "volume:retype"
 
@@ -2784,7 +2862,8 @@ class HPE3PARCommon(object):
                    'old_flash_cache': old_flash_cache,
                    'new_flash_cache': new_flash_cache,
                    'new_type_name': new_type_name, 'new_type_id': new_type_id,
-                   'old_comment': old_comment
+                   'old_comment': old_comment,
+                   'new_compression': new_compression
                    })
 
     def _retype_from_old_to_new(self, volume, new_type, old_volume_settings,
@@ -2828,6 +2907,9 @@ class HPE3PARCommon(object):
             new_persona = new_hpe3par_keys['persona']
         new_flash_cache = self.get_flash_cache_policy(new_hpe3par_keys)
 
+        # it will return None / True /False$
+        new_compression = self.get_compression_policy(new_hpe3par_keys)
+
         old_qos = old_volume_settings['qos']
         old_vvs = old_volume_settings['vvs_name']
         old_hpe3par_keys = old_volume_settings['hpe3par_keys']
@@ -2854,7 +2936,7 @@ class HPE3PARCommon(object):
                      old_snap_cpg, new_snap_cpg, old_tpvv, new_tpvv,
                      old_tdvv, new_tdvv, old_vvs, new_vvs,
                      old_qos, new_qos, old_flash_cache, new_flash_cache,
-                     old_comment)
+                     old_comment, new_compression)
 
         if host:
             return True, self._get_model_update(host['host'], new_cpg)
@@ -3564,6 +3646,7 @@ class ModifyVolumeTask(flow_utils.CinderTask):
 
     def _get_new_comment(self, old_comment, new_vvs, new_qos,
                          new_type_name, new_type_id):
+
         # Modify the comment during ModifyVolume
         comment_dict = dict(ast.literal_eval(old_comment))
         if 'vvs' in comment_dict:
@@ -3634,19 +3717,21 @@ class TuneVolumeTask(flow_utils.CinderTask):
 
     """Task to change a volume's CPG and/or provisioning type.
 
-    This is a task for changing the CPG and/or provisioning type.  It is
-    intended for use during retype().  This task has no revert.  The current
-    design is to do this task last and do revert-able tasks first. Un-doing a
-    tunevv can be expensive and should be avoided.
+    This is a task for changing the CPG and/or provisioning type.
+    It is intended for use during retype().
+
+    This task has no revert.  The current design is to do this task last
+    and do revert-able tasks first. Un-doing a tunevv can be expensive
+    and should be avoided.
     """
 
     def __init__(self, action, **kwargs):
         super(TuneVolumeTask, self).__init__(addons=[action])
 
     def execute(self, common, old_tpvv, new_tpvv, old_tdvv, new_tdvv,
-                old_cpg, new_cpg, volume_name):
+                old_cpg, new_cpg, volume_name, new_compression):
         common.tune_vv(old_tpvv, new_tpvv, old_tdvv, new_tdvv,
-                       old_cpg, new_cpg, volume_name)
+                       old_cpg, new_cpg, volume_name, new_compression)
 
 
 class ModifySpecsTask(flow_utils.CinderTask):
