@@ -13,10 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
 
 import mock
-from oslo_utils import units
+import sys
 
 from cinder import context
 from cinder import exception
@@ -26,147 +25,144 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.volume.drivers import nimble
 from cinder.volume import volume_types
 
-
-NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.client'
-NIMBLE_URLLIB2 = 'six.moves.urllib.request'
+NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.NimbleRestAPIExecutor'
+NIMBLE_URLLIB2 = 'cinder.volume.drivers.nimble.requests'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
 NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.nimble.NimbleISCSIDriver'
-NIMBLE_BASE_DRIVER = 'cinder.volume.drivers.nimble.NimbleBaseVolumeDriver'
 NIMBLE_FC_DRIVER = 'cinder.volume.drivers.nimble.NimbleFCDriver'
-DRIVER_VERSION = '3.1.0'
+DRIVER_VERSION = '4.0.0'
+nimble.DEFAULT_SLEEP = 0
 
-FAKE_ENUM_STRING = """
-    <simpleType name="SmErrorType">
-        <restriction base="xsd:string">
-            <enumeration value="SM-ok"/><!-- enum const = 0 -->
-            <enumeration value="SM-eperm"/><!-- enum const = 1 -->
-            <enumeration value="SM-enoent"/><!-- enum const = 2 -->
-            <enumeration value="SM-eaccess"/><!-- enum const = 13 -->
-            <enumeration value="SM-eexist"/><!-- enum const = 17 -->
-        </restriction>
-    </simpleType>"""
+FAKE_POSITIVE_LOGIN_RESPONSE_1 = '2c20aad78a220ed1dae21dcd6f9446f5'
 
-FAKE_POSITIVE_LOGIN_RESPONSE_1 = {'err-list': {'err-list':
-                                               [{'code': 0}]},
-                                  'authInfo': {'sid': "a9b9aba7"}}
+FAKE_POSITIVE_LOGIN_RESPONSE_2 = '2c20aad78a220ed1dae21dcd6f9446ff'
 
-FAKE_POSITIVE_LOGIN_RESPONSE_2 = {'err-list': {'err-list':
-                                               [{'code': 0}]},
-                                  'authInfo': {'sid': "a9f3eba7"}}
+FAKE_POSITIVE_HEADERS = {'X-Auth-Token': FAKE_POSITIVE_LOGIN_RESPONSE_1}
 
 FAKE_POSITIVE_NETCONFIG_RESPONSE = {
-    'config': {'subnet-list': [{'label': "data1",
-                               'subnet-id': {'type': 3},
-                                'discovery-ip': "172.18.108.21"},
-                               {'label': "mgmt-data",
-                                'subnet-id':
-                                {'type': 4},
-                                'discovery-ip': "10.18.108.55"}]},
-    'err-list': {'err-list': [{'code': 0}]}}
+    'role': 'active',
+    'subnet_list': [{'network': '172.18.212.0',
+                     'discovery_ip': '172.18.108.21',
+                     'type': 'data',
+                     'allow_iscsi': True,
+                     'label': 'data1',
+                     'allow_group': True,
+                     'vlan_id': 0}],
+    'array_list': [{'nic_list': [{'subnet_label': 'data1',
+                                  'tagged': False,
+                                  'data_ip': '172.18.212.82',
+                                  'name': 'eth3'}]}],
+    'name': 'test-array'}
 
-FAKE_NEGATIVE_NETCONFIG_RESPONSE = {'err-list': {'err-list':
-                                                 [{'code': 13}]}}
+FAKE_NEGATIVE_NETCONFIG_RESPONSE = exception.VolumeDriverException(
+    "Session expired")
 
-FAKE_CREATE_VOLUME_POSITIVE_RESPONSE = {'err-list': {'err-list':
-                                        [{'code': 0}]},
-                                        'name': "openstack-test11"}
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE = {
+    'clone': False,
+    'name': "testvolume"}
 
-FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION = {'err-list': {'err-list':
-                                                   [{'code': 0}]},
-                                                   'name':
-                                                   "openstack-test-encryption"}
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION = {
+    'clone': False,
+    'name': "testvolume-encryption"}
 
-FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERFPOLICY = {'err-list': {'err-list':
-                                                   [{'code': 0}]},
-                                                   'name':
-                                                   "openstack-test-perfpolicy"}
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERF_POLICY = {
+    'clone': False,
+    'name': "testvolume-perf-policy"}
 
-FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE = {'err-list': {'err-list':
-                                                     [{'code': 17}]},
-                                        'name': "openstack-test11"}
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_MULTI_INITIATOR = {
+    'clone': False,
+    'name': "testvolume-multi-initiator"}
 
-FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_ENCRYPTION = {'err-list': {'err-list':
-                                                   [{'code': 17}]},
-                                                   'name':
-                                                   "openstack-test-encryption"}
+FAKE_GET_VOL_INFO_RESPONSE = {'name': 'testvolume',
+                              'clone': False,
+                              'target_name': 'iqn.test',
+                              'online': True,
+                              'agent_type': 'openstack'}
 
-FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_PERFPOLICY = {'err-list': {'err-list':
-                                                   [{'code': 17}]},
-                                                   'name':
-                                                   "openstack-test-perfpolicy"}
+FAKE_GET_VOL_INFO_RESPONSE_MANAGE = {'name': 'testvolume',
+                                     'agent_type': 'none',
+                                     'online': False,
+                                     'target_name': 'iqn.test'}
 
-FAKE_GENERIC_POSITIVE_RESPONSE = {'err-list': {'err-list':
-                                               [{'code': 0}]}}
+FAKE_GET_VOL_INFO_ONLINE = {'name': 'testvolume',
+                            'size': 2048,
+                            'online': True,
+                            'agent_type': 'none'}
 
-FAKE_POSITIVE_GROUP_CONFIG_RESPONSE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'info': {'usableCapacity': 8016883089408,
-             'volUsageCompressed': 2938311843,
-             'snapUsageCompressed': 36189,
-             'unusedReserve': 0,
-             'spaceInfoValid': True}}
-
-FAKE_IGROUP_LIST_RESPONSE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'initiatorgrp-list': [
-        {'initiator-list': [{'name': 'test-initiator1'},
-                            {'name': 'test-initiator2'}],
-         'name': 'test-igrp1'},
-        {'initiator-list': [{'name': 'test-initiator1'}],
-         'name': 'test-igrp2'}]}
-
-FAKE_IGROUP_LIST_RESPONSE_FC = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'initiatorgrp-list': [
-        {'initiator-list': [{'wwpn': '10:00:00:00:00:00:00:00'}],
-         'name': 'test-igrp2'},
-        {'initiator-list': [{'wwpn': '10:00:00:00:00:00:00:00'},
-                            {'wwpn': '10:00:00:00:00:00:00:01'}],
-         'name': 'test-igrp1'}]}
-
-FAKE_GET_VOL_INFO_RESPONSE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'vol': {'target-name': 'iqn.test',
-            'name': 'test_vol',
-            'agent-type': 1,
-            'online': False}}
-
-FAKE_GET_VOL_INFO_BACKUP_RESPONSE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'vol': {'target-name': 'iqn.test',
-            'name': 'test_vol',
-            'agent-type': 1,
-            'clone': 1,
-            'base-snap': 'test-backup-snap',
-            'parent-vol': 'volume-' + fake.VOLUME2_ID,
-            'online': False}}
+FAKE_GET_VOL_INFO_BACKUP_RESPONSE = {'name': 'testvolume',
+                                     'clone': True,
+                                     'target_name': 'iqn.test',
+                                     'online': False,
+                                     'agent_type': 'openstack',
+                                     'parent_vol_id': 'volume-' +
+                                                      fake.VOLUME2_ID,
+                                     'base_snap_id': 'test-backup-snap'}
 
 FAKE_GET_SNAP_INFO_BACKUP_RESPONSE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'snap': {'description': "backup-vol-" + fake.VOLUME2_ID,
-             'name': 'test-backup-snap',
-             'vol': 'volume-' + fake.VOLUME_ID}
-}
+    'description': "backup-vol-" + fake.VOLUME2_ID,
+    'name': 'test-backup-snap',
+    'id': fake.SNAPSHOT_ID,
+    'vol_id': fake.VOLUME_ID,
+    'volume_name': 'volume-' + fake.VOLUME_ID}
 
-FAKE_GET_VOL_INFO_ONLINE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'vol': {'target-name': 'iqn.test',
-            'name': 'test_vol',
-            'agent-type': 1,
-            'size': int(1.75 * units.Gi),
-            'online': True}}
+FAKE_POSITIVE_GROUP_CONFIG_RESPONSE = {
+    'name': 'group-test',
+    'version_current': '0.0.0.0',
+    'access_protocol_list': ['iscsi']}
 
-FAKE_GET_VOL_INFO_ERROR = {
-    'err-list': {'err-list': [{'code': 2}]},
-    'vol': {'target-name': 'iqn.test'}}
+FAKE_LOGIN_POST_RESPONSE = {
+    'data': {'session_token': FAKE_POSITIVE_LOGIN_RESPONSE_1}}
 
-FAKE_GET_VOL_INFO_RESPONSE_WITH_SET_AGENT_TYPE = {
-    'err-list': {'err-list': [{'code': 0}]},
-    'vol': {'target-name': 'iqn.test',
-            'name': 'test_vol',
-            'agent-type': 5}}
+FAKE_EXTEND_VOLUME_PARAMS = {'data': {'size': 5120,
+                                      'reserve': 0,
+                                      'warn_level': 80,
+                                      'limit': 100,
+                                      'snap_limit': sys.maxsize}}
+
+FAKE_IGROUP_LIST_RESPONSE = [
+    {'iscsi_initiators': [{'iqn': 'test-initiator1'}],
+     'name': 'test-igrp1'},
+    {'iscsi_initiators': [{'iqn': 'test-initiator2'}],
+     'name': 'test-igrp2'}]
+
+FAKE_IGROUP_LIST_RESPONSE_FC = [
+    {'fc_initiators': [{'wwpn': '10:00:00:00:00:00:00:00'}],
+     'name': 'test-igrp1'},
+    {'fc_initiators': [{'wwpn': '10:00:00:00:00:00:00:00'},
+                       {'wwpn': '10:00:00:00:00:00:00:01'}],
+     'name': 'test-igrp2'}]
+
+
+FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE = exception.VolumeBackendAPIException(
+    "Volume testvolume not found")
+
+FAKE_VOLUME_INFO_NEGATIVE_RESPONSE = exception.VolumeBackendAPIException(
+    "Volume testvolume not found")
+
+FAKE_CREATE_VOLUME_NEGATIVE_ENCRYPTION = exception.VolumeBackendAPIException(
+    "Volume testvolume-encryption not found")
+
+FAKE_CREATE_VOLUME_NEGATIVE_PERFPOLICY = exception.VolumeBackendAPIException(
+    "Volume testvolume-perfpolicy not found")
+
+FAKE_POSITIVE_GROUP_INFO_RESPONSE = {
+    'version_current': '3.0.0.0',
+    'group_target_enabled': False,
+    'name': 'group-nimble',
+    'usage_valid': True,
+    'usable_capacity_bytes': 8016883089408,
+    'compressed_vol_usage_bytes': 2938311843,
+    'compressed_snap_usage_bytes': 36189,
+    'unused_reserve_bytes': 0}
+
+FAKE_GENERIC_POSITIVE_RESPONSE = ""
 
 FAKE_TYPE_ID = fake.VOLUME_TYPE_ID
+FAKE_POOL_ID = fake.GROUP_ID
+FAKE_PERFORMANCE_POLICY_ID = fake.OBJECT_ID
+NIMBLE_MANAGEMENT_IP = "10.18.108.55"
+NIMBLE_SAN_LOGIN = "nimble"
+NIMBLE_SAN_PASS = "nimble_pass"
 
 
 def create_configuration(username, password, ip_address,
@@ -200,16 +196,16 @@ class NimbleDriverBaseTestCase(test.TestCase):
                     self, mock_client_class, mock_urllib2, *args, **kwargs):
                 self.mock_client_class = mock_client_class
                 self.mock_client_service = mock.MagicMock(name='Client')
-                self.mock_client_class.Client.return_value = \
-                    self.mock_client_service
-                mock_wsdl = mock_urllib2.urlopen.return_value
-                mock_wsdl.read = mock.MagicMock()
-                mock_wsdl.read.return_value = FAKE_ENUM_STRING
+                self.mock_client_class.return_value = self.mock_client_service
                 self.driver = nimble.NimbleISCSIDriver(
                     configuration=configuration)
-                self.mock_client_service.service.login.return_value = \
-                    FAKE_POSITIVE_LOGIN_RESPONSE_1
+                mock_login_response = mock_urllib2.post.return_value
+                mock_login_response = mock.MagicMock()
+                mock_login_response.status_code.return_value = 200
+                mock_login_response.json.return_value = (
+                    FAKE_LOGIN_POST_RESPONSE)
                 self.driver.do_setup(context.get_admin_context())
+                self.driver.APIExecutor.login()
                 func(self, *args, **kwargs)
             return inner_client_mock
         return client_mock_wrapper
@@ -221,16 +217,17 @@ class NimbleDriverBaseTestCase(test.TestCase):
                     self, mock_client_class, mock_urllib2, *args, **kwargs):
                 self.mock_client_class = mock_client_class
                 self.mock_client_service = mock.MagicMock(name='Client')
-                self.mock_client_class.Client.return_value = (
+                self.mock_client_class.return_value = (
                     self.mock_client_service)
-                mock_wsdl = mock_urllib2.urlopen.return_value
-                mock_wsdl.read = mock.MagicMock()
-                mock_wsdl.read.return_value = FAKE_ENUM_STRING
                 self.driver = nimble.NimbleFCDriver(
                     configuration=configuration)
-                self.mock_client_service.service.login.return_value = (
-                    FAKE_POSITIVE_LOGIN_RESPONSE_1)
+                mock_login_response = mock_urllib2.post.return_value
+                mock_login_response = mock.MagicMock()
+                mock_login_response.status_code.return_value = 200
+                mock_login_response.json.return_value = (
+                    FAKE_LOGIN_POST_RESPONSE)
                 self.driver.do_setup(context.get_admin_context())
+                self.driver.APIExecutor.login()
                 func(self, *args, **kwargs)
             return inner_clent_mock
         return client_mock_wrapper
@@ -248,22 +245,10 @@ class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
-        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+        "nimble", "nimble_pass", "10.18.108.55", 'default', '*'))
     def test_do_setup_positive(self):
-        expected_call_list = [
-            mock.call.Client(
-                'https://10.18.108.55/wsdl/NsGroupManagement.wsdl',
-                username='nimble',
-                password='nimble_pass')]
-        self.assertEqual(self.mock_client_class.method_calls,
-                         expected_call_list)
-        expected_call_list = [mock.call.set_options(
-            location='https://10.18.108.55:5391/soap'),
-            mock.call.service.login(
-                req={'username': 'nimble', 'password': 'nimble_pass'})]
-        self.assertEqual(
-            self.mock_client_service.method_calls,
-            expected_call_list)
+        expected_call_list = [mock.call.login()]
+        self.mock_client_service.assert_has_calls(expected_call_list)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -272,26 +257,14 @@ class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_expire_session_id(self):
-        self.mock_client_service.service.login.return_value = \
-            FAKE_POSITIVE_LOGIN_RESPONSE_2
-        self.mock_client_service.service.getNetConfig = mock.MagicMock(
-            side_effect=[
-                FAKE_NEGATIVE_NETCONFIG_RESPONSE,
-                FAKE_POSITIVE_NETCONFIG_RESPONSE])
-        self.driver.APIExecutor.get_netconfig("active")
-        expected_call_list = [mock.call.set_options(
-            location='https://10.18.108.55:5391/soap'),
-            mock.call.service.login(
-                req={
-                    'username': 'nimble', 'password': 'nimble_pass'}),
-            mock.call.service.getNetConfig(
-                request={'name': 'active',
-                         'sid': 'a9b9aba7'}),
-            mock.call.service.login(
-                req={'username': 'nimble',
-                     'password': 'nimble_pass'}),
-            mock.call.service.getNetConfig(
-                request={'name': 'active', 'sid': 'a9f3eba7'})]
+        expected_call_list = [mock.call.login()]
+        self.mock_client_service.assert_has_calls(expected_call_list)
+
+        self.driver.APIExecutor.get("groups")
+        expected_call_list = [mock.call.get_group_info(),
+                              mock.call.login(),
+                              mock.call.get("groups")]
+
         self.assertEqual(
             self.mock_client_service.method_calls,
             expected_call_list)
@@ -310,33 +283,33 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                  'nimble:perfpol-name': 'default',
                                  'nimble:encryption': 'yes'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
-        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
     def test_create_volume_positive(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+
         self.assertEqual({
-            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_location': '172.18.108.21:3260 iqn.test',
             'provider_auth': None},
             self.driver.create_volume({'name': 'testvolume',
                                        'size': 1,
                                        'volume_type_id': None,
                                        'display_name': '',
                                        'display_description': ''}))
-        self.mock_client_service.service.createVol.assert_called_once_with(
-            request={
-                'attr': {'snap-quota': sys.maxsize,
-                         'warn-level': 858993459,
-                         'name': 'testvolume', 'reserve': 0,
-                         'online': True, 'pool-name': 'default',
-                         'size': 1073741824, 'quota': 1073741824,
-                         'perfpol-name': 'default', 'description': '',
-                         'agent-type': 5, 'encryptionAttr': {'cipher': 3},
-                         'multi-initiator': 'false'},
-                'sid': 'a9b9aba7'})
+
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume',
+             'size': 1,
+             'volume_type_id': None,
+             'display_name': '',
+             'display_description': ''},
+            'default',
+            False,
+            'iSCSI',
+            False)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -350,36 +323,34 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_encryption_positive(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service._execute_create_vol.return_value = (
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
 
+        volume = {'name': 'testvolume-encryption',
+                  'size': 1,
+                  'volume_type_id': FAKE_TYPE_ID,
+                  'display_name': '',
+                  'display_description': ''}
         self.assertEqual({
-            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_location': '172.18.108.21:3260 iqn.test',
             'provider_auth': None},
-            self.driver.create_volume({'name': 'testvolume-encryption',
-                                       'size': 1,
-                                       'volume_type_id': FAKE_TYPE_ID,
-                                       'display_name': '',
-                                       'display_description': ''}))
+            self.driver.create_volume(volume))
 
-        mock_volume_type = volume_types.get_volume_type_extra_specs
-        mock_volume_type.assert_called_once_with(FAKE_TYPE_ID)
-
-        self.mock_client_service.service.createVol.assert_called_once_with(
-            request={
-                'attr': {'snap-quota': sys.maxsize,
-                         'warn-level': 858993459,
-                         'name': 'testvolume-encryption', 'reserve': 0,
-                         'online': True, 'pool-name': 'default',
-                         'size': 1073741824, 'quota': 1073741824,
-                         'perfpol-name': 'default', 'description': '',
-                         'agent-type': 5, 'encryptionAttr': {'cipher': 2},
-                         'multi-initiator': 'false'},
-                'sid': 'a9b9aba7'})
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume-encryption',
+             'size': 1,
+             'volume_type_id': FAKE_TYPE_ID,
+             'display_name': '',
+             'display_description': '',
+             },
+            'default',
+            False,
+            'iSCSI',
+            False)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -393,15 +364,15 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_perfpolicy_positive(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERFPOLICY
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service._execute_create_vol.return_value = (
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERF_POLICY)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
 
         self.assertEqual(
-            {'provider_location': '172.18.108.21:3260 iqn.test 0',
+            {'provider_location': '172.18.108.21:3260 iqn.test',
              'provider_auth': None},
             self.driver.create_volume({'name': 'testvolume-perfpolicy',
                                        'size': 1,
@@ -409,20 +380,17 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                        'display_name': '',
                                        'display_description': ''}))
 
-        mock_volume_type = volume_types.get_volume_type_extra_specs
-        mock_volume_type.assert_called_once_with(FAKE_TYPE_ID)
-
-        self.mock_client_service.service.createVol.assert_called_once_with(
-            request={
-                'attr': {'snap-quota': sys.maxsize,
-                         'warn-level': 858993459,
-                         'name': 'testvolume-perfpolicy', 'reserve': 0,
-                         'online': True, 'pool-name': 'default',
-                         'size': 1073741824, 'quota': 1073741824,
-                         'perfpol-name': 'VMware ESX', 'description': '',
-                         'agent-type': 5, 'encryptionAttr': {'cipher': 3},
-                         'multi-initiator': 'false'},
-                'sid': 'a9b9aba7'})
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume-perfpolicy',
+             'size': 1,
+             'volume_type_id': FAKE_TYPE_ID,
+             'display_name': '',
+             'display_description': '',
+             },
+            'default',
+            False,
+            'iSCSI',
+            False)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -436,36 +404,33 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_multi_initiator_positive(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERFPOLICY
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service._execute_create_vol.return_value = (
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_MULTI_INITIATOR)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
 
         self.assertEqual(
-            {'provider_location': '172.18.108.21:3260 iqn.test 0',
+            {'provider_location': '172.18.108.21:3260 iqn.test',
              'provider_auth': None},
-            self.driver.create_volume({'name': 'testvolume-perfpolicy',
+            self.driver.create_volume({'name': 'testvolume-multi-initiator',
                                        'size': 1,
                                        'volume_type_id': FAKE_TYPE_ID,
                                        'display_name': '',
                                        'display_description': ''}))
 
-        mock_volume_type = volume_types.get_volume_type_extra_specs
-        mock_volume_type.assert_called_once_with(FAKE_TYPE_ID)
-
-        self.mock_client_service.service.createVol.assert_called_once_with(
-            request={
-                'attr': {'snap-quota': sys.maxsize,
-                         'warn-level': 858993459,
-                         'name': 'testvolume-perfpolicy', 'reserve': 0,
-                         'online': True, 'pool-name': 'default',
-                         'size': 1073741824, 'quota': 1073741824,
-                         'perfpol-name': 'default', 'description': '',
-                         'agent-type': 5, 'encryptionAttr': {'cipher': 3},
-                         'multi-initiator': 'true'},
-                'sid': 'a9b9aba7'})
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume-multi-initiator',
+             'size': 1,
+             'volume_type_id': FAKE_TYPE_ID,
+             'display_name': '',
+             'display_description': '',
+             },
+            'default',
+            False,
+            'iSCSI',
+            False)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -473,15 +438,21 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                           'nimble:perfpol-name': 'default',
+                           'nimble:encryption': 'no',
+                           'nimble:multi-initiator': 'true'}))
     def test_create_volume_negative(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE
+        self.mock_client_service.get_vol_info.side_effect = (
+            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE)
+
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.create_volume,
             {'name': 'testvolume',
              'size': 1,
-             'volume_type_id': None,
+             'volume_type_id': FAKE_TYPE_ID,
              'display_name': '',
              'display_description': ''})
 
@@ -492,8 +463,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_encryption_negative(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_ENCRYPTION
+        self.mock_client_service.get_vol_info.side_effect = (
+            FAKE_CREATE_VOLUME_NEGATIVE_ENCRYPTION)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.create_volume,
@@ -510,8 +481,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_perfpolicy_negative(self):
-        self.mock_client_service.service.createVol.return_value = \
-            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_PERFPOLICY
+        self.mock_client_service.get_vol_info.side_effect = (
+            FAKE_CREATE_VOLUME_NEGATIVE_PERFPOLICY)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.create_volume,
@@ -530,20 +501,15 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_ISCSI_DRIVER + ".is_volume_backup_clone", mock.Mock(
         return_value = ['', '']))
     def test_delete_volume(self):
-        self.mock_client_service.service.onlineVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.deleteVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.dissocProtPol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
+        self.mock_client_service.online_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.delete_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
         self.driver.delete_volume({'name': 'testvolume'})
-        expected_calls = [mock.call.service.onlineVol(
-            request={
-                'online': False, 'name': 'testvolume', 'sid': 'a9b9aba7'}),
-            mock.call.service.dissocProtPol(
-                request={'vol-name': 'testvolume', 'sid': 'a9b9aba7'}),
-            mock.call.service.deleteVol(
-                request={'name': 'testvolume', 'sid': 'a9b9aba7'})]
+        expected_calls = [mock.call.online_vol(
+            'testvolume', False),
+            mock.call.delete_vol('testvolume')]
+
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -555,34 +521,24 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host')
     def test_delete_volume_with_backup(self, mock_volume_list):
         mock_volume_list.return_value = []
-        self.mock_client_service.service.onlineVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.deleteVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.dissocProtPol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.onlineSnap.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.deleteSnap.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
+        self.mock_client_service.online_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.delete_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.online_snap.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.delete_snap.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
 
         self.driver.delete_volume({'name': 'testvolume'})
-        expected_calls = [mock.call.service.onlineVol(
-            request={
-                'online': False, 'name': 'testvolume', 'sid': 'a9b9aba7'}),
-            mock.call.service.dissocProtPol(
-                request={'vol-name': 'testvolume', 'sid': 'a9b9aba7'}),
-            mock.call.service.deleteVol(
-                request={'name': 'testvolume', 'sid': 'a9b9aba7'}),
-            mock.call.service.onlineSnap(
-                request={'vol': 'volume-' + fake.VOLUME_ID,
-                         'name': 'test-backup-snap',
-                         'online': False,
-                         'sid': 'a9b9aba7'}),
-            mock.call.service.deleteSnap(
-                request={'vol': 'volume-' + fake.VOLUME_ID,
-                         'name': 'test-backup-snap',
-                         'sid': 'a9b9aba7'})]
+        expected_calls = [mock.call.online_vol(
+            'testvolume', False),
+            mock.call.delete_vol('testvolume'),
+            mock.call.online_snap('volume-' + fake.VOLUME_ID,
+                                  False,
+                                  'test-backup-snap'),
+            mock.call.delete_snap('volume-' + fake.VOLUME_ID,
+                                  'test-backup-snap')]
 
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -593,18 +549,12 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_extend_volume(self):
-        self.mock_client_service.service.editVol.return_value = \
-            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE
+        self.mock_client_service.edit_vol.return_value = (
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE)
         self.driver.extend_volume({'name': 'testvolume'}, 5)
-        self.mock_client_service.service.editVol.assert_called_once_with(
-            request={'attr': {'size': 5368709120,
-                              'snap-quota': sys.maxsize,
-                              'warn-level': 4294967296,
-                              'reserve': 0,
-                              'quota': 5368709120},
-                     'mask': 884,
-                     'name': 'testvolume',
-                     'sid': 'a9b9aba7'})
+
+        self.mock_client_service.edit_vol.assert_called_once_with(
+            'testvolume', FAKE_EXTEND_VOLUME_PARAMS)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -621,14 +571,14 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     def test_create_cloned_volume(self, mock_random, mock_volume_list):
         mock_random.sample.return_value = fake.VOLUME_ID
         mock_volume_list.return_value = []
-        self.mock_client_service.service.snapVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.cloneVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service.snap_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.clone_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
 
         volume = obj_volume.Volume(context.get_admin_context(),
                                    id=fake.VOLUME_ID,
@@ -642,33 +592,27 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                        _name_id=None,
                                        size=5.0)
         self.assertEqual({
-            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_location': '172.18.108.21:3260 iqn.test',
             'provider_auth': None},
             self.driver.create_cloned_volume(volume, src_volume))
-        expected_calls = [mock.call.service.snapVol(
-            request={
-                'vol': "volume-" + fake.VOLUME2_ID,
-                'snapAttr': {'name': 'openstack-clone-volume-' +
-                                     fake.VOLUME_ID +
-                             "-" + fake.VOLUME_ID,
-                             'description': ''},
-                'sid': 'a9b9aba7'}),
-            mock.call.service.cloneVol(
-                request={
-                    'snap-name': 'openstack-clone-volume-' + fake.VOLUME_ID +
-                                 "-" + fake.VOLUME_ID,
-                    'attr': {'snap-quota': sys.maxsize,
-                             'name': 'volume-' + fake.VOLUME_ID,
-                             'quota': 5368709120,
-                             'reserve': 5368709120,
-                             'online': True,
-                             'warn-level': 4294967296,
-                             'encryptionAttr': {'cipher': 2},
-                             'multi-initiator': 'false',
-                             'perfpol-name': 'default',
-                             'agent-type': 5},
-                    'name': 'volume-' + fake.VOLUME2_ID,
-                    'sid': 'a9b9aba7'})]
+
+        expected_calls = [mock.call.snap_vol(
+            {'volume_name': "volume-" + fake.VOLUME2_ID,
+                'name': 'openstack-clone-volume-' + fake.VOLUME_ID + "-" +
+                        fake.VOLUME_ID,
+                'volume_size': src_volume['size'],
+                'display_name': volume['display_name'],
+                'display_description': ''}),
+            mock.call.clone_vol(volume,
+                                {'volume_name': "volume-" + fake.VOLUME2_ID,
+                                 'name': 'openstack-clone-volume-' +
+                                         fake.VOLUME_ID + "-" +
+                                         fake.VOLUME_ID,
+                                 'volume_size': src_volume['size'],
+                                 'display_name': volume['display_name'],
+                                 'display_description': ''},
+                                True, False, 'iSCSI')]
+
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -678,33 +622,25 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_manage_volume_positive(self):
-        self.mock_client_service.service.getNetConfig.return_value = (
+        self.mock_client_service.get_netconfig.return_value = (
             FAKE_POSITIVE_NETCONFIG_RESPONSE)
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_RESPONSE)
-        self.mock_client_service.service.onlineVol.return_value = (
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE_MANAGE)
+        self.mock_client_service.online_vol.return_value = (
             FAKE_GENERIC_POSITIVE_RESPONSE)
-        self.mock_client_service.service.editVol.return_value = (
+        self.mock_client_service.edit_vol.return_value = (
             FAKE_CREATE_VOLUME_POSITIVE_RESPONSE)
         self.assertEqual({
-            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_location': '172.18.108.21:3260 iqn.test',
             'provider_auth': None},
-            self.driver.manage_existing({'name': 'volume-abcdef'},
+            self.driver.manage_existing({'name': 'volume-abcdef',
+                                         'id': fake.VOLUME_ID,
+                                         'agent_type': None},
                                         {'source-name': 'test-vol'}))
-        expected_calls = [
-            mock.call.service.editVol(
-                request={
-                    'attr': {
-                        'name': 'volume-abcdef', 'agent-type': 5},
-                    'mask': 262145,
-                    'name': 'test-vol',
-                    'sid': 'a9b9aba7'}),
-            mock.call.service.onlineVol(
-                request={'online': True,
-                         'name': 'volume-abcdef',
-                         'sid': 'a9b9aba7'}
-            )
-        ]
+        expected_calls = [mock.call.edit_vol(
+            'test-vol', {'data': {'agent_type': 'openstack',
+                                  'name': 'volume-abcdef'}}),
+            mock.call.online_vol('volume-abcdef', True)]
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -714,9 +650,9 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_manage_volume_which_is_online(self):
-        self.mock_client_service.service.getNetConfig.return_value = (
+        self.mock_client_service.get_netconfig.return_value = (
             FAKE_POSITIVE_NETCONFIG_RESPONSE)
-        self.mock_client_service.service.getVolInfo.return_value = (
+        self.mock_client_service.get_vol_info.return_value = (
             FAKE_GET_VOL_INFO_ONLINE)
         self.assertRaises(
             exception.InvalidVolume,
@@ -731,9 +667,9 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_manage_volume_get_size(self):
-        self.mock_client_service.service.getNetConfig.return_value = (
+        self.mock_client_service.get_netconfig.return_value = (
             FAKE_POSITIVE_NETCONFIG_RESPONSE)
-        self.mock_client_service.service.getVolInfo.return_value = (
+        self.mock_client_service.get_vol_info.return_value = (
             FAKE_GET_VOL_INFO_ONLINE)
         size = self.driver.manage_existing_get_size(
             {'name': 'volume-abcdef'}, {'source-name': 'test-vol'})
@@ -759,8 +695,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_manage_volume_with_nonexistant_volume(self):
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_ERROR)
+        self.mock_client_service.get_vol_info.side_effect = (
+            FAKE_VOLUME_INFO_NEGATIVE_RESPONSE)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.manage_existing,
@@ -774,8 +710,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_manage_volume_with_wrong_agent_type(self):
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_RESPONSE_WITH_SET_AGENT_TYPE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
         self.assertRaises(
             exception.ManageExistingAlreadyManaged,
             self.driver.manage_existing,
@@ -789,23 +725,18 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_unmanage_volume_positive(self):
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_RESPONSE_WITH_SET_AGENT_TYPE)
-        self.mock_client_service.service.editVol.return_value = (
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.edit_vol.return_value = (
             FAKE_CREATE_VOLUME_POSITIVE_RESPONSE)
         self.driver.unmanage({'name': 'volume-abcdef'})
         expected_calls = [
-            mock.call.service.editVol(
-                request={'attr': {'agent-type': 1},
-                         'mask': 262144,
-                         'name': 'volume-abcdef',
-                         'sid': 'a9b9aba7'}),
-            mock.call.service.onlineVol(
-                request={'online': False,
-                         'name': 'volume-abcdef',
-                         'sid': 'a9b9aba7'}
-            )
-        ]
+            mock.call.edit_vol(
+                'volume-abcdef',
+                {'data': {'agent_type': 'none'}}),
+
+            mock.call.online_vol('volume-abcdef', False)]
+
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -815,8 +746,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_unmanage_with_invalid_volume(self):
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_ERROR)
+        self.mock_client_service.get_vol_info.side_effect = (
+            FAKE_VOLUME_INFO_NEGATIVE_RESPONSE)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver.unmanage,
@@ -830,8 +761,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_unmanage_with_invalid_agent_type(self):
-        self.mock_client_service.service.getVolInfo.return_value = (
-            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_ONLINE)
         self.assertRaises(
             exception.InvalidVolume,
             self.driver.unmanage,
@@ -845,8 +776,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_get_volume_stats(self):
-        self.mock_client_service.service.getGroupConfig.return_value = \
-            FAKE_POSITIVE_GROUP_CONFIG_RESPONSE
+        self.mock_client_service.get_group_info.return_value = (
+            FAKE_POSITIVE_GROUP_INFO_RESPONSE)
         expected_res = {'driver_version': DRIVER_VERSION,
                         'vendor_name': 'Nimble',
                         'volume_backend_name': 'NIMBLE',
@@ -867,23 +798,24 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_is_volume_backup_clone(self):
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_BACKUP_RESPONSE
-        self.mock_client_service.service.getSnapInfo.return_value = \
-            FAKE_GET_SNAP_INFO_BACKUP_RESPONSE
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_BACKUP_RESPONSE)
+        self.mock_client_service.get_snap_info_by_id.return_value = (
+            FAKE_GET_SNAP_INFO_BACKUP_RESPONSE)
+        self.mock_client_service.get_snap_info_detail.return_value = (
+            FAKE_GET_SNAP_INFO_BACKUP_RESPONSE)
+        self.mock_client_service.get_volume_name.return_value = (
+            'volume-' + fake.VOLUME2_ID)
+
         volume = obj_volume.Volume(context.get_admin_context(),
                                    id=fake.VOLUME_ID,
                                    _name_id=None)
-        self.assertEqual(("test-backup-snap", "volume-" + fake.VOLUME_ID),
+        self.assertEqual(("test-backup-snap", "volume-" + fake.VOLUME2_ID),
                          self.driver.is_volume_backup_clone(volume))
         expected_calls = [
-            mock.call.service.getVolInfo(
-                request={'name': 'volume-' + fake.VOLUME_ID,
-                         'sid': 'a9b9aba7'}),
-            mock.call.service.getSnapInfo(
-                request={'sid': 'a9b9aba7',
-                         'vol': 'volume-' + fake.VOLUME2_ID,
-                         'name': 'test-backup-snap'})
+            mock.call.get_vol_info('volume-' + fake.VOLUME_ID),
+            mock.call.get_snap_info_by_id('test-backup-snap',
+                                          'volume-' + fake.VOLUME2_ID)
         ]
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -899,20 +831,16 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_snapshot(self):
-        self.mock_client_service.service.snapVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
+        self.mock_client_service.snap_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
         self.driver.create_snapshot(
             {'volume_name': 'testvolume',
              'name': 'testvolume-snap1',
-             'display_name': '',
-             'display_description': ''})
-        self.mock_client_service.service.snapVol.assert_called_once_with(
-            request={'vol': 'testvolume',
-                     'snapAttr': {'name': 'testvolume-snap1',
-                                  'description':
-                                  ''
-                                  },
-                     'sid': 'a9b9aba7'})
+             'display_name': ''})
+        self.mock_client_service.snap_vol.assert_called_once_with(
+            {'volume_name': 'testvolume',
+             'name': 'testvolume-snap1',
+             'display_name': ''})
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -921,22 +849,17 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_delete_snapshot(self):
-        self.mock_client_service.service.onlineSnap.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.deleteSnap.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
+        self.mock_client_service.online_snap.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.delete_snap.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
         self.driver.delete_snapshot(
             {'volume_name': 'testvolume',
              'name': 'testvolume-snap1'})
-        expected_calls = [mock.call.service.onlineSnap(
-            request={
-                'vol': 'testvolume',
-                'online': False,
-                'name': 'testvolume-snap1',
-                'sid': 'a9b9aba7'}),
-            mock.call.service.deleteSnap(request={'vol': 'testvolume',
-                                                  'name': 'testvolume-snap1',
-                                                  'sid': 'a9b9aba7'})]
+        expected_calls = [mock.call.online_snap(
+            'testvolume', False, 'testvolume-snap1'),
+            mock.call.delete_snap('testvolume',
+                                  'testvolume-snap1')]
         self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -951,14 +874,14 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_from_snapshot(self):
-        self.mock_client_service.service.cloneVol.return_value = \
-            FAKE_GENERIC_POSITIVE_RESPONSE
-        self.mock_client_service.service.getVolInfo.return_value = \
-            FAKE_GET_VOL_INFO_RESPONSE
-        self.mock_client_service.service.getNetConfig.return_value = \
-            FAKE_POSITIVE_NETCONFIG_RESPONSE
+        self.mock_client_service.clone_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
         self.assertEqual({
-            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_location': '172.18.108.21:3260 iqn.test',
             'provider_auth': None},
             self.driver.create_volume_from_snapshot(
                 {'name': 'clone-testvolume',
@@ -968,29 +891,22 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                  'name': 'testvolume-snap1',
                  'volume_size': 1}))
         expected_calls = [
-            mock.call.service.cloneVol(
-                request={'snap-name': 'testvolume-snap1',
-                         'attr': {'snap-quota': sys.maxsize,
-                                  'name': 'clone-testvolume',
-                                  'quota': 1073741824,
-                                  'online': True,
-                                  'reserve': 0,
-                                  'warn-level': 858993459,
-                                  'perfpol-name': 'default',
-                                  'encryptionAttr': {'cipher': 2},
-                                  'multi-initiator': 'false',
-                                  'agent-type': 5},
-                         'name': 'testvolume',
-                         'sid': 'a9b9aba7'}),
-            mock.call.service.editVol(
-                request={'attr': {'size': 2147483648,
-                                  'snap-quota': sys.maxsize,
-                                  'warn-level': 1717986918,
-                                  'reserve': 0,
-                                  'quota': 2147483648},
-                         'mask': 884,
-                         'name': 'clone-testvolume',
-                         'sid': 'a9b9aba7'})]
+            mock.call.clone_vol(
+                {'name': 'clone-testvolume',
+                 'volume_type_id': FAKE_TYPE_ID,
+                 'size': 2},
+                {'volume_name': 'testvolume',
+                 'name': 'testvolume-snap1',
+                 'volume_size': 1},
+                False,
+                False,
+                'iSCSI'),
+            mock.call.edit_vol('clone-testvolume',
+                               {'data': {'size': 2048,
+                                         'snap_limit': sys.maxsize,
+                                         'warn_level': 80,
+                                         'reserve': 0,
+                                         'limit': 100}})]
         self.mock_client_service.assert_has_calls(expected_calls)
 
 
@@ -1005,43 +921,26 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_initialize_connection_igroup_exist(self):
-        self.mock_client_service.service.getInitiatorGrpList.return_value = \
-            FAKE_IGROUP_LIST_RESPONSE
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
         expected_res = {
             'driver_volume_type': 'iscsi',
             'data': {
-                'target_lun': 14,
                 'volume_id': 12,
                 'target_iqn': '13',
-                'target_discovered': False,
+                'target_lun': 0,
                 'target_portal': '12'}}
         self.assertEqual(
             expected_res,
             self.driver.initialize_connection(
                 {'name': 'test-volume',
-                 'provider_location': '12 13 14',
+                 'provider_location': '12 13',
                  'id': 12},
                 {'initiator': 'test-initiator1'}))
-        expected_call_list = [mock.call.set_options(
-            location='https://10.18.108.55:5391/soap'),
-            mock.call.service.login(
-                req={
-                    'username': 'nimble', 'password': 'nimble_pass'}),
-            mock.call.service.getInitiatorGrpList(
-                request={'sid': 'a9b9aba7'}),
-            mock.call.service.addVolAcl(
-                request={'volname': 'test-volume',
-                         'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': 'test-igrp2',
-                         'sid': 'a9b9aba7'})]
-        self.assertEqual(
-            self.mock_client_service.method_calls,
-            expected_call_list)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -1051,7 +950,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                                                    mock_lun_number):
         mock_lun_number.return_value = 13
         mock_wwpns.return_value = ["1111111111111101"]
-        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+        self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE_FC)
         expected_res = {
             'driver_volume_type': 'fibre_channel',
@@ -1069,22 +968,6 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                  'id': 12},
                 {'initiator': 'test-initiator1',
                  'wwpns': ['1000000000000000']}))
-        expected_call_list = [mock.call.set_options(
-            location='https://10.18.108.55:5391/soap'),
-            mock.call.service.login(
-                req={
-                    'username': 'nimble', 'password': 'nimble_pass'}),
-            mock.call.service.getInitiatorGrpList(
-                request={'sid': 'a9b9aba7'}),
-            mock.call.service.addVolAcl(
-                request={'volname': 'test-volume',
-                         'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': 'test-igrp2',
-                         'sid': 'a9b9aba7'})]
-        self.assertEqual(
-            self.mock_client_service.method_calls,
-            expected_call_list)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -1095,44 +978,26 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_RANDOM)
     def test_initialize_connection_igroup_not_exist(self, mock_random):
         mock_random.sample.return_value = 'abcdefghijkl'
-        self.mock_client_service.service.getInitiatorGrpList.return_value = \
-            FAKE_IGROUP_LIST_RESPONSE
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
         expected_res = {
             'driver_volume_type': 'iscsi',
             'data': {
-                'target_lun': 14,
+                'target_lun': 0,
                 'volume_id': 12,
                 'target_iqn': '13',
-                'target_discovered': False,
                 'target_portal': '12'}}
         self.assertEqual(
             expected_res,
             self.driver.initialize_connection(
                 {'name': 'test-volume',
-                 'provider_location': '12 13 14',
+                 'provider_location': '12 13',
                  'id': 12},
                 {'initiator': 'test-initiator3'}))
-        expected_calls = [
-            mock.call.service.getInitiatorGrpList(
-                request={'sid': 'a9b9aba7'}),
-            mock.call.service.createInitiatorGrp(
-                request={
-                    'attr': {'initiator-list': [{'name': 'test-initiator3',
-                                                 'label': 'test-initiator3'}],
-                             'name': 'openstack-abcdefghijkl'},
-                    'sid': 'a9b9aba7'}),
-            mock.call.service.addVolAcl(
-                request={'volname': 'test-volume', 'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': 'openstack-abcdefghijkl',
-                         'sid': 'a9b9aba7'})]
-        self.mock_client_service.assert_has_calls(
-            self.mock_client_service.method_calls,
-            expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -1145,7 +1010,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         mock_random.sample.return_value = 'abcdefghijkl'
         mock_lun_number.return_value = 13
         mock_wwpns.return_value = ["1111111111111101"]
-        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+        self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE_FC)
         expected_res = {
             'driver_volume_type': 'fibre_channel',
@@ -1164,22 +1029,6 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                  'id': 12},
                 {'initiator': 'test-initiator3',
                  'wwpns': ['1000000000000000']}))
-        expected_calls = [
-            mock.call.service.getInitiatorGrpList(
-                request={'sid': 'a9b9aba7'}),
-            mock.call.service.createInitiatorGrp(
-                request={
-                    'attr': {'initiator-list': [{'wwn': '1000000000000000'}],
-                             'name': 'openstack-abcdefghijkl'},
-                    'sid': 'a9b9aba7'}),
-            mock.call.service.addVolAcl(
-                request={'volname': 'test-volume', 'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': 'openstack-abcdefghijkl',
-                         'sid': 'a9b9aba7'})]
-        self.mock_client_service.assert_has_calls(
-            self.mock_client_service.method_calls,
-            expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -1188,36 +1037,31 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_terminate_connection_positive(self):
-        self.mock_client_service.service.getInitiatorGrpList.return_value = \
-            FAKE_IGROUP_LIST_RESPONSE
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
         self.driver.terminate_connection(
             {'name': 'test-volume',
-             'provider_location': '12 13 14',
+             'provider_location': '12 13',
              'id': 12},
             {'initiator': 'test-initiator1'})
-        expected_calls = [mock.call.service.getInitiatorGrpList(
-            request={'sid': 'a9b9aba7'}),
-            mock.call.service.removeVolAcl(
-                request={'volname': 'test-volume',
-                         'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': {'initiator-list':
-                                          [{'name': 'test-initiator1'}]},
-                         'sid': 'a9b9aba7'})]
+        expected_calls = [mock.call._get_igroupname_for_initiator(
+            'test-initiator1'),
+            mock.call.remove_acl({'name': 'test-volume'},
+                                 'test-igrp1')]
         self.mock_client_service.assert_has_calls(
             self.mock_client_service.method_calls,
             expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
     def test_terminate_connection_positive_fc(self, mock_wwpns):
         mock_wwpns.return_value = ["1111111111111101"]
-        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+        self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE_FC)
         self.driver.terminate_connection(
             {'name': 'test-volume',
@@ -1225,15 +1069,11 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
              'id': 12},
             {'initiator': 'test-initiator1',
              'wwpns': ['1000000000000000']})
-        expected_calls = [mock.call.service.getInitiatorGrpList(
-            request={'sid': 'a9b9aba7'}),
-            mock.call.service.removeVolAcl(
-                request={'volname': 'test-volume',
-                         'apply-to': 3,
-                         'chapuser': '*',
-                         'initiatorgrp': {'initiator-list':
-                                          [{'wwn': '1000000000000000'}]},
-                         'sid': 'a9b9aba7'})]
+        expected_calls = [
+            mock.call.get_igroupname_for_initiator_fc(
+                "10:00:00:00:00:00:00:00"),
+            mock.call.remove_acl({'name': 'test-volume'},
+                                 'test-igrp1')]
         self.mock_client_service.assert_has_calls(
             self.mock_client_service.method_calls,
             expected_calls)
@@ -1245,11 +1085,11 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_terminate_connection_negative(self):
-        self.mock_client_service.service.getInitiatorGrpList.return_value = \
-            FAKE_IGROUP_LIST_RESPONSE
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
         self.assertRaises(
             exception.VolumeDriverException,
-            self.driver.terminate_connection, {
-                'name': 'test-volume',
-                'provider_location': '12 13 14', 'id': 12},
+            self.driver.terminate_connection,
+            {'name': 'test-volume',
+             'provider_location': '12 13', 'id': 12},
             {'initiator': 'test-initiator3'})
