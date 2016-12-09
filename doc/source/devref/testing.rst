@@ -86,7 +86,7 @@ More information about tempest can be found in the `Tempest Documentation
 Running a subset of tests using tox
 -----------------------------------
 One common activity is to just run a single test, you can do this with tox
-simply by specifying to just run py27 or py34 tests against a single test::
+simply by specifying to just run py27 or py35 tests against a single test::
 
     tox -epy27 -- -n cinder.tests.unit.test_volume.AvailabilityZoneTestCase.test_list_availability_zones_cached
 
@@ -116,9 +116,9 @@ can get around this by manually setting or updating the following line in
 Note that you may use any location (not just ``/tmp``!) as long as it is not
 a shared folder.
 
-**Running py34 tests**
+**Running py35 tests**
 
-You will need to install python3-dev in order to get py34 tests to run. If you
+You will need to install python3-dev in order to get py35 tests to run. If you
 do not have this, you will get the following::
 
     netifaces.c:1:20: fatal error: Python.h: No such file or directory
@@ -131,13 +131,13 @@ do not have this, you will get the following::
         <snip>
     ERROR: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
         oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
-        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
-        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+        .tox/py35/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py35/log/py35-1.log)', 1)
     _______________________________________________________________ summary _______________________________________________________________
-    ERROR:   py34: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
+    ERROR:   py35: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
         oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
-        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
-        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+        .tox/py35/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py35/log/py35-1.log)', 1)
 
 To Fix:
 
