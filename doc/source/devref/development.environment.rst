@@ -106,29 +106,33 @@ See :doc:`testing` for more details.
 Manually installing and using the virtualenv
 --------------------------------------------
 
-You can manually install the virtual environment instead of having
-``run_tests.sh`` do it for you::
+You can also manually install the virtual environment::
 
-  python tools/install_venv.py
+  tox -e py27 --notest
+
+or::
+
+  tox -e py35 --notest
 
 This will install all of the Python packages listed in the
-``requirements.txt`` file into your virtualenv. There will also be some
-additional packages (pip, setuptools) that are installed
-by the ``tools/install_venv.py`` file into the virtualenv.
+``requirements.txt`` file into your virtualenv.
 
-If all goes well, you should get a message something like this::
+To activate the Cinder virtualenv you can run::
 
-  Cinder development environment setup is complete.
+     $ source .tox/py27/bin/activate
 
-To activate the Cinder virtualenv for the extent of your current shell session
-you can run::
+or::
 
-     $ source .venv/bin/activate
+     $ source .tox/py35/bin/activate
+
+To exit your virtualenv, just type::
+
+     $ deactivate
 
 Or, if you prefer, you can run commands in the virtualenv on a case by case
 basis by running::
 
-     $ tools/with_venv.sh <your command>
+     $ tox -e venv -- <your command>
 
 Contributing Your Work
 ----------------------
