@@ -67,7 +67,7 @@ class Client(client_base.Client):
             node_client.send_request('ems-autosupport-log', message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
-            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
+            LOG.warning(_LW('Failed to invoke EMS. %s'), e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
