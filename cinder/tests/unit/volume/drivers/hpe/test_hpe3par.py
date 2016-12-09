@@ -5700,6 +5700,48 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
+    def test_create_host_with_unmanage_fc_and_manage_iscsi_hosts(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+
+        def get_side_effect(*args):
+            host = {'name': None}
+            if args[0] == 'fake':
+                host['name'] = 'fake'
+            elif args[0] == self.FAKE_HOST:
+                host['name'] = self.FAKE_HOST
+            return host
+
+        mock_client.getHost.side_effect = get_side_effect
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': 'fake'
+            }]
+        }
+        mock_client.getVLUN.return_value = {'lun': 186}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            host = self.driver._create_host(
+                common,
+                self.volume,
+                self.connector)
+            expected = [
+                mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
+                mock.call.getHost('fake')]
+
+            mock_client.assert_has_calls(expected)
+
+            self.assertEqual('fake', host['name'])
+
     def test_create_host(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -5846,6 +5888,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             {'name': self.FAKE_HOST,
                 'FCPaths': [{'wwn': '123456789012345'}, {
                     'wwn': '123456789054321'}]}]
+        mock_client.queryHost.return_value = None
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5862,6 +5905,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.modifyHost('fakehost',
                                      {'FCWWNs': fcwwns,
                                       'pathOperation': 1}),
@@ -5886,6 +5931,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             'FCPaths': [{'wwn': '123456789012345'},
                         {'wwn': '123456789054321'}]}
         mock_client.getHost.side_effect = [getHost_ret1, getHost_ret2]
+        mock_client.queryHost.return_value = None
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5900,6 +5946,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.modifyHost(
                     'fakehost', {
                         'FCWWNs': ['123456789012345'], 'pathOperation': 1}),
@@ -5926,6 +5974,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                         {'wwn': '123456789054321'},
                         {'wwn': 'xxxxxxxxxxxxxxx'}]}
         mock_client.getHost.side_effect = [getHost_ret1, getHost_ret2]
+        mock_client.queryHost.return_value = None
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -5940,6 +5989,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.modifyHost(
                     'fakehost', {
                         'FCWWNs': ['123456789012345'], 'pathOperation': 1}),
@@ -6691,6 +6742,47 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
+    def test_create_host_with_unmanage_iscsi_and_manage_fc_hosts(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+
+        def get_side_effect(*args):
+            host = {'name': None}
+            if args[0] == 'fake':
+                host['name'] = 'fake'
+            elif args[0] == self.FAKE_HOST:
+                host['name'] = self.FAKE_HOST
+                host['iSCSIPaths'] = [{
+                    "name": "iqn.1993-08.org.debian:01:222"}]
+            return host
+
+        mock_client.getHost.side_effect = get_side_effect
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': 'fake'
+            }]
+        }
+        mock_client.getVLUN.return_value = {'lun': 186}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            host, auth_username, auth_password = self.driver._create_host(
+                common, self.volume, self.connector)
+            expected = [
+                mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=[self.connector['initiator']]),
+                mock.call.getHost('fake')]
+
+            mock_client.assert_has_calls(expected)
+
+            self.assertEqual('fake', host['name'])
+
     def test_create_host(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -6798,6 +6890,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver(config=config)
         mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
+        mock_client.queryHost.return_value = None
 
         expected_mod_request = {
             'chapOperation': mock_client.HOST_EDIT_ADD,
@@ -6838,6 +6931,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
                 mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.modifyHost(self.FAKE_HOST, expected_mod_request)]
 
             mock_client.assert_has_calls(expected)
@@ -6990,7 +7084,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             {'name': self.FAKE_HOST,
              'FCPaths': [{'wwn': '123456789012345'},
                          {'wwn': '123456789054321'}]}]
-
+        mock_client.queryHost.return_value = None
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -7002,6 +7096,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.modifyHost(
                     self.FAKE_HOST,
                     {'pathOperation': 1,
@@ -7029,6 +7124,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             {'name': self.FAKE_HOST,
              'FCPaths': [{'wwn': '123456789012345'},
                          {'wwn': '123456789054321'}]}]
+        mock_client.queryHost.return_value = None
 
         def get_side_effect(*args):
             data = {'value': None}
@@ -7062,6 +7158,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
                 mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.modifyHost(
                     self.FAKE_HOST,
                     {'pathOperation': 1,

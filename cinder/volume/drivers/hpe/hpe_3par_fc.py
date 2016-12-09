@@ -109,10 +109,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
         3.0.9 - Handling HTTP conflict 409, host WWN/iSCSI name already used
                 by another host, while creating 3PAR FC Host. bug #1597454
         3.0.10 - Added Entry point tracing
+        3.0.11 - Handle manage and unmanage hosts present. bug #1648067
 
     """
 
-    VERSION = "3.0.10"
+    VERSION = "3.0.11"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -494,6 +495,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
         domain = common.get_domain(cpg)
         try:
             host = common._get_3par_host(hostname)
+            # Check whether host with wwn of initiator present on 3par
+            hosts = common.client.queryHost(wwns=connector['wwpns'])
+            host, hostname = common._get_prioritized_host_on_3par(host,
+                                                                  hosts,
+                                                                  hostname)
         except hpeexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = common.get_persona_type(volume)
