@@ -61,9 +61,10 @@ class SchedulerAPI(rpc.RPCAPI):
 
         3.0 - Remove 2.x compatibility
         3.1 - Adds notify_service_capabilities()
+        3.2 - Adds extend_volume()
     """
 
-    RPC_API_VERSION = '3.1'
+    RPC_API_VERSION = '3.2'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -131,6 +132,25 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties': filter_properties, 'volume': volume,
         }
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
+
+    def extend_volume(self, ctxt, volume, new_size, reservations,
+                      request_spec, filter_properties=None):
+        cctxt = self._get_cctxt()
+        if not cctxt.can_send_version('3.2'):
+            msg = _('extend_volume requires cinder-scheduler '
+                    'RPC API version >= 3.2.')
+            raise exception.ServiceTooOld(msg)
+
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        msg_args = {
+            'volume': volume,
+            'new_size': new_size,
+            'reservations': reservations,
+            'request_spec': request_spec_p,
+            'filter_properties': filter_properties,
+        }
+
+        return cctxt.cast(ctxt, 'extend_volume', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
         cctxt = self._get_cctxt()

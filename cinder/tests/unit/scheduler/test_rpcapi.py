@@ -170,6 +170,37 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  version='3.0')
         create_worker_mock.assert_not_called()
 
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_extend_volume_capped(self, can_send_version_mock):
+        new_size = 4
+        volume = fake_volume.fake_volume_obj(self.context)
+        self.assertRaises(exception.ServiceTooOld,
+                          self._test_scheduler_api,
+                          'extend_volume',
+                          rpc_method='cast',
+                          request_spec='fake_request_spec',
+                          filter_properties='filter_properties',
+                          volume=volume,
+                          new_size=new_size,
+                          reservations=['RESERVATIONS'],
+                          version='3.0')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_extend_volume(self, can_send_version_mock):
+        new_size = 4
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
+        self._test_scheduler_api('extend_volume',
+                                 rpc_method='cast',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 volume=volume,
+                                 new_size=new_size,
+                                 reservations=['RESERVATIONS'],
+                                 version='3.0')
+        create_worker_mock.assert_not_called()
+
     def test_get_pools(self):
         self._test_scheduler_api('get_pools',
                                  rpc_method='call',

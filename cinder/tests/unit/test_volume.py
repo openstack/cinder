@@ -1071,7 +1071,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     def test_get_all_limit_bad_value(self):
         """Test value of 'limit' is numeric and >= 0"""
         volume_api = cinder.volume.api.API()
-
         self.assertRaises(exception.InvalidInput,
                           volume_api.get_all,
                           self.context,
@@ -3955,6 +3954,36 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertRaises(exception.VolumeSizeExceedsLimit,
                           volume_api.extend, self.context,
                           volume, 3)
+
+        # Test scheduler path
+        limit_check.side_effect = None
+        reserve.side_effect = None
+        db.volume_update(self.context, volume.id, {'status': 'available'})
+        volume_api.scheduler_rpcapi = mock.MagicMock()
+        volume_api.scheduler_rpcapi.extend_volume = mock.MagicMock()
+
+        volume_api.extend(self.context, volume, 3)
+
+        request_spec = {
+            'volume_properties': volume,
+            'volume_type': {},
+            'volume_id': volume.id
+        }
+        volume_api.scheduler_rpcapi.extend_volume.assert_called_once_with(
+            self.context, volume, 3, ["RESERVATION"], request_spec)
+
+        # Test direct volume path
+        limit_check.side_effect = None
+        reserve.side_effect = None
+        db.volume_update(self.context, volume.id, {'status': 'available'})
+        ext_mock = mock.MagicMock(side_effect=exception.ServiceTooOld)
+        volume_api.volume_rpcapi.extend_volume = mock.MagicMock()
+        volume_api.scheduler_rpcapi.extend_volume = ext_mock
+
+        volume_api.extend(self.context, volume, 3)
+
+        volume_api.volume_rpcapi.extend_volume.assert_called_once_with(
+            self.context, volume, 3, ["RESERVATION"])
 
         # clean up
         self.volume.delete_volume(self.context, volume)
