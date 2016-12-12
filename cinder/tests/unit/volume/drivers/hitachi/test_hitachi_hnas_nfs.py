@@ -33,6 +33,7 @@ from cinder.volume.drivers.hitachi import hnas_backend as backend
 from cinder.volume.drivers.hitachi import hnas_nfs as nfs
 from cinder.volume.drivers.hitachi import hnas_utils
 from cinder.volume.drivers import nfs as base_nfs
+from cinder.volume import utils as vutils
 
 _VOLUME = {'name': 'cinder-volume',
            'id': fake.VOLUME_ID,
@@ -320,7 +321,7 @@ class HNASNFSDriverTest(test.TestCase):
 
         out = self.driver.get_volume_stats()
 
-        self.assertEqual('5.0.0', out['driver_version'])
+        self.assertEqual('6.0.0', out['driver_version'])
         self.assertEqual('Hitachi', out['vendor_name'])
         self.assertEqual('NFS', out['storage_protocol'])
 
@@ -429,6 +430,25 @@ class HNASNFSDriverTest(test.TestCase):
         existing_vol_ref = {}
 
         self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, self.volume,
+                          existing_vol_ref)
+
+    def test_manage_existing_already_managed(self):
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
+        expected_size = 1
+
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value='/mnt/silver'))
+        self.mock_object(os.path, 'isfile', mock.Mock(return_value=True))
+        self.mock_object(utils, 'get_file_size',
+                         mock.Mock(return_value=expected_size))
+
+        self.mock_object(vutils, 'check_already_managed_volume',
+                         mock.Mock(return_value=True))
+
+        self.assertRaises(exception.ManageExistingAlreadyManaged,
                           self.driver.manage_existing, self.volume,
                           existing_vol_ref)
 
@@ -610,3 +630,145 @@ class HNASNFSDriverTest(test.TestCase):
                                                 check_exit_code=True)
         self.driver._get_mount_point_for_share.assert_called_with(
             self.snapshot.provider_location)
+
+    def test_get_manageable_volumes_not_safe(self):
+        manageable_vol = [{'cinder_id': '1e5177e7-95e5-4a0f-b170-e45f4b469f6a',
+                           'extra_info': None,
+                           'reason_not_safe': 'already managed',
+                           'reference': {
+                               'source-name':
+                                   '172.24.49.21:/fs-cinder/volume-1e5177e7-'
+                                   '95e5-4a0f-b170-e45f4b469f6a'},
+                           'safe_to_manage': False,
+                           'size': 128}]
+
+        rsrc = [self.volume]
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        vols_exp = [self.volume.name]
+        self.mock_object(self.driver, '_get_volumes_from_export',
+                         mock.Mock(return_value=vols_exp))
+        self.mock_object(self.driver, '_get_file_size',
+                         mock.Mock(return_value=self.volume.size))
+
+        out = self.driver._get_manageable_resource_info(
+            rsrc, "volume", None, 1000, 0, ['reference'], ['desc'])
+
+        self.driver._get_volumes_from_export.assert_called_with(
+            '172.24.49.21:/fs-cinder')
+        self.driver._get_file_size.assert_called_with('%s/%s' % (
+            path, self.volume.name))
+        self.driver._get_mount_point_for_share(self.volume.provider_location)
+
+        self.assertEqual(out, manageable_vol)
+
+    def test_get_manageable_volumes(self):
+        manageable_vol = [{
+            'cinder_id': '1e5177e7-95e5-4a0f-b170-e45f4b469f6a',
+            'extra_info': None,
+            'reason_not_safe': 'already managed',
+            'reference': {
+                'source-name': '172.24.49.21:/fs-cinder/'
+                               'volume-1e5177e7-95e5-4a0f-b170-e45f4b469f6a'},
+            'safe_to_manage': False,
+            'size': 128}]
+
+        rsrc = [self.volume]
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        vols_exp = [fake.VOLUME_NAME]
+        self.mock_object(self.driver, '_get_volumes_from_export',
+                         mock.Mock(return_value=vols_exp))
+        self.mock_object(self.driver, '_get_file_size',
+                         mock.Mock(return_value=self.volume.size))
+
+        out = self.driver._get_manageable_resource_info(rsrc, "volume", None,
+                                                        1000, 0, ['reference'],
+                                                        ['desc'])
+
+        self.driver._get_volumes_from_export.assert_called_with(
+            '172.24.49.21:/fs-cinder')
+        self.driver._get_file_size.assert_called_with(
+            '%s/%s' % (path, self.volume.name))
+        self.driver._get_mount_point_for_share(self.volume.provider_location)
+
+        self.assertEqual(out, manageable_vol)
+
+    def test_get_manageable_snapshots(self):
+        manageable_snap = [{
+            'cinder_id': '253b2878-ec60-4793-ad19-e65496ec7aab',
+            'extra_info': None,
+            'reason_not_safe': 'already managed',
+            'reference': {
+                'source-name': '172.24.49.21:/fs-cinder/'
+                               'snapshot-253b2878-ec60-4793-'
+                               'ad19-e65496ec7aab'},
+            'safe_to_manage': False,
+            'size': 128,
+            'source_reference': {'id': '1'}}]
+
+        rsrc = [self.snapshot]
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        vols_exp = [fake.SNAPSHOT_NAME]
+        self.mock_object(self.driver, '_get_volumes_from_export',
+                         mock.Mock(return_value=vols_exp))
+        self.mock_object(self.driver, '_get_file_size',
+                         mock.Mock(return_value=self.volume.size))
+        self.mock_object(backend.HNASSSHBackend, 'get_cloned_file_relatives',
+                         mock.Mock(return_value=[' /nfs_cinder/volume-1',
+                                                 '/nfs_cinder/snapshot2']))
+
+        out = self.driver._get_manageable_resource_info(rsrc, "snapshot", None,
+                                                        1000, 0, ['reference'],
+                                                        ['desc'])
+
+        self.driver._get_volumes_from_export.assert_called_with(
+            '172.24.49.21:/fs-cinder')
+        self.driver._get_file_size.assert_called_with(
+            '%s/%s' % (path, self.snapshot.name))
+        self.driver._get_mount_point_for_share(self.snapshot.provider_location)
+
+        self.assertEqual(out, manageable_snap)
+
+    def test_get_manageable_snapshots_unknown_origin(self):
+        manageable_snap = [{
+            'cinder_id': '253b2878-ec60-4793-ad19-e65496ec7aab',
+            'extra_info': 'Could not determine the volume that owns '
+                          'the snapshot',
+            'reason_not_safe': 'already managed',
+            'reference': {
+                'source-name': '172.24.49.21:/fs-cinder/'
+                               'snapshot-253b2878-ec60-4793-'
+                               'ad19-e65496ec7aab'},
+            'safe_to_manage': False,
+            'size': 128,
+            'source_reference': {'id': 'unknown'}}]
+
+        rsrc = [self.snapshot]
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        vols_exp = [fake.SNAPSHOT_NAME]
+        self.mock_object(self.driver, '_get_volumes_from_export',
+                         mock.Mock(return_value=vols_exp))
+        self.mock_object(self.driver, '_get_file_size',
+                         mock.Mock(return_value=self.volume.size))
+        self.mock_object(backend.HNASSSHBackend, 'get_cloned_file_relatives',
+                         mock.Mock(return_value=[' /nfs_cinder/volume-1',
+                                                 ' /nfs_cinder/volume-2',
+                                                 '/nfs_cinder/snapshot2']))
+
+        out = self.driver._get_manageable_resource_info(rsrc, "snapshot", None,
+                                                        1000, 0, ['reference'],
+                                                        ['desc'])
+
+        self.driver._get_volumes_from_export.assert_called_with(
+            '172.24.49.21:/fs-cinder')
+        self.driver._get_mount_point_for_share(self.snapshot.provider_location)
+        self.driver._get_file_size.assert_called_with('%s/%s' % (
+            path, self.snapshot.name))
+        self.assertEqual(out, manageable_snap)

@@ -28,7 +28,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils as cutils
@@ -38,7 +38,7 @@ from cinder.volume.drivers import nfs
 from cinder.volume import utils
 
 
-HNAS_NFS_VERSION = '5.0.0'
+HNAS_NFS_VERSION = '6.0.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -81,6 +81,8 @@ class HNASNFSDriver(nfs.NfsDriver):
                        Deprecated XML config file
                        Added support to manage/unmanage snapshots features
                        Fixed driver stats reporting
+        Version 6.0.0: Deprecated hnas_svcX_vol_type configuration
+                       Added list-manageable volumes/snapshots support
     """
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
@@ -531,6 +533,10 @@ class HNASNFSDriver(nfs.NfsDriver):
                  {'vol': volume.id,
                   'ref': existing_vol_ref['source-name']})
 
+        vol_id = utils.extract_id_from_volume_name(vol_name)
+        if utils.check_already_managed_volume(vol_id):
+            raise exception.ManageExistingAlreadyManaged(volume_ref=vol_name)
+
         self._check_pool_and_share(volume, nfs_share)
 
         if vol_name == volume.name:
@@ -644,6 +650,11 @@ class HNASNFSDriver(nfs.NfsDriver):
             LOG.exception(_LE("The NFS Volume %(cr)s does not exist."),
                           {'cr': new_path})
 
+    def _get_file_size(self, file_path):
+        file_size = float(cutils.get_file_size(file_path)) / units.Gi
+        # Round up to next Gb
+        return int(math.ceil(file_size))
+
     def _manage_existing_get_size(self, existing_ref):
         # Attempt to find NFS share, NFS mount, and path from vol_ref.
         (nfs_share, nfs_mount, path
@@ -654,9 +665,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                       {'ref': existing_ref['source-name']})
 
             file_path = os.path.join(nfs_mount, path)
-            file_size = float(cutils.get_file_size(file_path)) / units.Gi
-            # Round up to next Gb
-            size = int(math.ceil(file_size))
+            size = self._get_file_size(file_path)
         except (OSError, ValueError):
             exception_message = (_("Failed to manage existing volume/snapshot "
                                    "%(name)s, because of error in getting "
@@ -683,7 +692,15 @@ class HNASNFSDriver(nfs.NfsDriver):
         return self.backend.check_snapshot_parent(volume_path, old_snap_name,
                                                   fs_label)
 
+    @cutils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        :param snapshot:     Cinder volume snapshot to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume snapshot
+        """
+
         # Attempt to find NFS share, NFS mount, and volume path from ref.
         (nfs_share, nfs_mount, src_snapshot_name
          ) = self._get_share_mount_and_vol_from_vol_ref(existing_ref)
@@ -729,10 +746,19 @@ class HNASNFSDriver(nfs.NfsDriver):
                 raise exception.VolumeBackendAPIException(data=msg)
         return {'provider_location': nfs_share}
 
+    @cutils.trace
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         return self._manage_existing_get_size(existing_ref)
 
+    @cutils.trace
     def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        :param snapshot: Cinder volume snapshot to unmanage
+        """
+
         path = self._get_mount_point_for_share(snapshot.provider_location)
 
         new_name = "unmanage-" + snapshot.name
@@ -751,3 +777,165 @@ class HNASNFSDriver(nfs.NfsDriver):
         except (OSError, ValueError):
             LOG.exception(_LE("The NFS snapshot %(old)s does not exist."),
                           {'old': old_path})
+
+    def _get_volumes_from_export(self, export_path):
+        mnt_point = self._get_mount_point_for_share(export_path)
+
+        vols = self._execute("ls", mnt_point, run_as_root=False,
+                             check_exit_code=True)
+
+        vols = vols[0].split('\n')
+        if '' in vols:
+            vols.remove('')
+
+        return list(vols)
+
+    def _get_snapshot_origin(self, snap_path, fs_label):
+        relatives = self.backend.get_cloned_file_relatives(snap_path, fs_label)
+
+        origin = []
+
+        if not relatives:
+            return
+        elif len(relatives) > 1:
+            for relative in relatives:
+                if 'snapshot' not in relative:
+                    origin.append(relative)
+        else:
+            origin.append(relatives[0])
+
+        return origin
+
+    def _get_manageable_resource_info(self, cinder_resources, resource_type,
+                                      marker, limit, offset, sort_keys,
+                                      sort_dirs):
+        """Gets the resources on the backend available for management by Cinder.
+
+        Receives the parameters from "get_manageable_volumes" and
+        "get_manageable_snapshots" and gets the available resources
+
+        :param cinder_resources: A list of resources in this host that Cinder
+        currently manages
+        :param resource_type: If it's a volume or a snapshot
+        :param marker: The last item of the previous page; we return the
+        next results after this value (after sorting)
+        :param limit: Maximum number of items to return
+        :param offset: Number of items to skip after marker
+        :param sort_keys: List of keys to sort results by (valid keys
+        are 'identifier' and 'size')
+        :param sort_dirs: List of directions to sort by, corresponding to
+        sort_keys (valid directions are 'asc' and 'desc')
+
+        :returns: list of dictionaries, each specifying a volume or snapshot
+        (resource) in the host, with the following keys:
+            - reference (dictionary): The reference for a resource,
+            which can be passed to "manage_existing_snapshot".
+            - size (int): The size of the resource according to the storage
+              backend, rounded up to the nearest GB.
+            - safe_to_manage (boolean): Whether or not this resource is
+            safe to manage according to the storage backend.
+            - reason_not_safe (string): If safe_to_manage is False,
+              the reason why.
+            - cinder_id (string): If already managed, provide the Cinder ID.
+            - extra_info (string): Any extra information to return to the
+            user
+            - source_reference (string): Similar to "reference", but for the
+              snapshot's source volume.
+        """
+
+        entries = []
+        exports = {}
+        bend_rsrc = {}
+        cinder_ids = [resource.id for resource in cinder_resources]
+
+        for service in self.config['services']:
+            exp_path = self.config['services'][service]['hdp']
+            exports[exp_path] = (
+                self.config['services'][service]['export']['fs'])
+
+        for exp in exports.keys():
+            # bend_rsrc has all the resources in the specified exports
+            # volumes {u'172.24.54.39:/Export-Cinder':
+            #   ['volume-325e7cdc-8f65-40a8-be9a-6172c12c9394',
+            # '     snapshot-1bfb6f0d-9497-4c12-a052-5426a76cacdc','']}
+            bend_rsrc[exp] = self._get_volumes_from_export(exp)
+            mnt_point = self._get_mount_point_for_share(exp)
+
+            for resource in bend_rsrc[exp]:
+                # Ignoring resources of unwanted types
+                if ((resource_type == 'volume' and 'snapshot' in resource) or
+                        (resource_type == 'snapshot' and
+                            'volume' in resource)):
+                    continue
+                path = '%s/%s' % (exp, resource)
+                mnt_path = '%s/%s' % (mnt_point, resource)
+                size = self._get_file_size(mnt_path)
+
+                rsrc_inf = {'reference': {'source-name': path},
+                            'size': size, 'cinder_id': None,
+                            'extra_info': None}
+
+                if resource_type == 'volume':
+                    potential_id = utils.extract_id_from_volume_name(resource)
+                else:
+                    potential_id = utils.extract_id_from_snapshot_name(
+                        resource)
+
+                # When a resource is already managed by cinder, it's not
+                # recommended to manage it again. So we set safe_to_manage =
+                # False. Otherwise, it is set safe_to_manage = True.
+                if potential_id in cinder_ids:
+                    rsrc_inf['safe_to_manage'] = False
+                    rsrc_inf['reason_not_safe'] = 'already managed'
+                    rsrc_inf['cinder_id'] = potential_id
+                else:
+                    rsrc_inf['safe_to_manage'] = True
+                    rsrc_inf['reason_not_safe'] = None
+
+                # If it's a snapshot, we try to get its source volume. However,
+                # this search is not reliable in some cases. So, if it's not
+                # possible to return a precise result, we return unknown as
+                # source-reference, throw a warning message and fill the
+                # extra-info.
+                if resource_type == 'snapshot':
+                    path = path.split(':')[1]
+                    origin = self._get_snapshot_origin(path, exports[exp])
+
+                    if not origin:
+                        # if origin is empty, the file is not a clone
+                        continue
+                    elif len(origin) == 1:
+                        origin = origin[0].split('/')[2]
+                        origin = utils.extract_id_from_volume_name(origin)
+                        rsrc_inf['source_reference'] = {'id': origin}
+                    else:
+                        LOG.warning(_LW("Could not determine the volume that "
+                                        "owns the snapshot %(snap)s"),
+                                    {'snap': resource})
+                        rsrc_inf['source_reference'] = {'id': 'unknown'}
+                        rsrc_inf['extra_info'] = ('Could not determine the '
+                                                  'volume that owns the '
+                                                  'snapshot')
+
+                entries.append(rsrc_inf)
+
+        return utils.paginate_entries_list(entries, marker, limit, offset,
+                                           sort_keys, sort_dirs)
+
+    @cutils.trace
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder."""
+
+        return self._get_manageable_resource_info(cinder_volumes, 'volume',
+                                                  marker, limit, offset,
+                                                  sort_keys, sort_dirs)
+
+    @cutils.trace
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the backend available for management by Cinder."""
+
+        return self._get_manageable_resource_info(cinder_snapshots, 'snapshot',
+                                                  marker, limit, offset,
+                                                  sort_keys, sort_dirs)
