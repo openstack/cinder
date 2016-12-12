@@ -129,8 +129,8 @@ class CommonAdapter(object):
         location = self._build_provider_location(
             lun_type='lun',
             lun_id=lun.get_id())
-        model_update = {'provider_location': location}
-        return model_update
+        return {'provider_location': location,
+                'provider_id': lun.get_id()}
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -141,6 +141,7 @@ class CommonAdapter(object):
         else:
             self.client.delete_lun(lun_id)
 
+    @cinder_utils.trace
     def _initialize_connection(self, lun_or_snap, connector, vol_id):
         host = self.client.create_host(connector['host'],
                                        self.get_connector_uids(connector))
@@ -156,17 +157,20 @@ class CommonAdapter(object):
         LOG.debug('Initialized connection info: %s', conn_info)
         return conn_info
 
+    @cinder_utils.trace
     def initialize_connection(self, volume, connector):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
         return self._initialize_connection(lun, connector, volume.id)
 
+    @cinder_utils.trace
     def _terminate_connection(self, lun_or_snap, connector):
         host = self.client.get_host(connector['host'])
         self.client.detach(host, lun_or_snap)
 
+    @cinder_utils.trace
     def terminate_connection(self, volume, connector):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
-        self._terminate_connection(lun, connector)
+        return self._terminate_connection(lun, connector)
 
     def get_connector_uids(self, connector):
         return None
@@ -247,7 +251,11 @@ class CommonAdapter(object):
         :param snapshot: snapshot information.
         """
         src_lun_id = self.get_lun_id(snapshot.volume)
-        return self.client.create_snap(src_lun_id, snapshot.name)
+        snap = self.client.create_snap(src_lun_id, snapshot.name)
+        location = self._build_provider_location(lun_type='snapshot',
+                                                 lun_id=snap.get_id())
+        return {'provider_location': location,
+                'provider_id': snap.get_id()}
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot.
@@ -300,7 +308,8 @@ class CommonAdapter(object):
         lun.modify(name=volume.name)
         return {'provider_location':
                 self._build_provider_location(lun_id=lun.get_id(),
-                                              lun_type='lun')}
+                                              lun_type='lun'),
+                'provider_id': lun.get_id()}
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Returns size of volume to be managed by `manage_existing`.
@@ -364,7 +373,8 @@ class CommonAdapter(object):
         data from the Unity snapshot to the `volume`.
         """
         model_update = self.create_volume(volume)
-        volume.provider_location = model_update['provider_location']
+        # Update `provider_location` and `provider_id` of `volume` explicitly.
+        volume.update(model_update)
         src_id = snap.get_id()
         dest_lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
         try:
@@ -429,6 +439,16 @@ class CommonAdapter(object):
 
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)
+
+    @cinder_utils.trace
+    def initialize_connection_snapshot(self, snapshot, connector):
+        snap = self.client.get_snap(snapshot.name)
+        return self._initialize_connection(snap, connector, snapshot.id)
+
+    @cinder_utils.trace
+    def terminate_connection_snapshot(self, snapshot, connector):
+        snap = self.client.get_snap(snapshot.name)
+        return self._terminate_connection(snap, connector)
 
 
 class ISCSIAdapter(CommonAdapter):
@@ -496,8 +516,11 @@ class FCAdapter(CommonAdapter):
         data['target_lun'] = hlu
         return data
 
-    def terminate_connection(self, volume, connector):
-        super(FCAdapter, self).terminate_connection(volume, connector)
+    @cinder_utils.trace
+    def _terminate_connection(self, lun_or_snap, connector):
+        # For FC, terminate_connection needs to return data to zone manager
+        # which would clean the zone based on the data.
+        super(FCAdapter, self)._terminate_connection(lun_or_snap, connector)
 
         ret = None
         if self.auto_zone_enabled:
@@ -510,7 +533,6 @@ class FCAdapter(CommonAdapter):
                 targets = self.client.get_fc_target_info(logged_in_only=True)
                 ret['data'] = self._get_fc_zone_info(connector['wwpns'],
                                                      targets)
-
         return ret
 
     def _get_fc_zone_info(self, initiator_wwns, target_wwns):
