@@ -383,14 +383,6 @@ def validate_log_translations(logical_line, filename):
         yield (0, msg)
 
 
-def check_oslo_namespace_imports(logical_line):
-    if re.match(oslo_namespace_imports, logical_line):
-        msg = ("N333: '%s' must be used instead of '%s'.") % (
-            logical_line.replace('oslo.', 'oslo_'),
-            logical_line)
-        yield(0, msg)
-
-
 def check_datetime_now(logical_line, noqa):
     if noqa:
         return
@@ -500,7 +492,6 @@ def factory(register):
     register(CheckForStrUnicodeExc)
     register(CheckLoggingFormatArgs)
     register(CheckOptRegistrationArgs)
-    register(check_oslo_namespace_imports)
     register(check_datetime_now)
     register(check_timeutils_strtime)
     register(check_timeutils_isotime)

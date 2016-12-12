@@ -294,32 +294,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(1, len(list(checks.no_mutable_default_args(
             "def foo (bar={}):"))))
 
-    def test_oslo_namespace_imports_check(self):
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.concurrency import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_concurrency import bar"))))
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.db import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_db import bar"))))
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.config import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_config import bar"))))
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.utils import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_utils import bar"))))
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.serialization import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_serialization import bar"))))
-        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
-            "from oslo.log import foo"))))
-        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
-            "from oslo_log import bar"))))
-
     def test_check_datetime_now(self):
         self.assertEqual(1, len(list(checks.check_datetime_now(
             "datetime.now", False))))
