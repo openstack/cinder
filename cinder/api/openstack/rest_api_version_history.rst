@@ -264,3 +264,7 @@ user documentation.
   ``id``, ``host``, ``binary``, and ``cluster_name``.  These are not the
   services that will be performing the cleanup, but the services that will be
   cleaned up or couldn't be cleaned up.
+
+3.25
+----
+  Add ``volumes`` field to group list/detail and group show.
