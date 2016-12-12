@@ -96,7 +96,7 @@ Running unit tests
 ------------------
 Run the unit tests by doing::
 
-    tox -e py34
+    tox -e py35
     tox -e py27
 
 See :doc:`testing` for more details.
