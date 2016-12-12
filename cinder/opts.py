@@ -74,6 +74,8 @@ from cinder.volume.drivers.coprhd import scaleio as \
 from cinder.volume.drivers import datera as cinder_volume_drivers_datera
 from cinder.volume.drivers.dell import dell_storagecenter_common as \
     cinder_volume_drivers_dell_dellstoragecentercommon
+from cinder.volume.drivers.dell_emc.unity import driver as \
+    cinder_volume_drivers_dell_emc_unity_driver
 from cinder.volume.drivers.disco import disco as \
     cinder_volume_drivers_disco_disco
 from cinder.volume.drivers.dothill import dothill_common as \
@@ -273,6 +275,7 @@ def list_opts():
                 cinder_volume_drivers_datera.d_opts,
                 cinder_volume_drivers_dell_dellstoragecentercommon.
                 common_opts,
+                cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,
                 cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_dothill_dothillcommon.common_opts,
                 cinder_volume_drivers_dothill_dothillcommon.iscsi_opts,
