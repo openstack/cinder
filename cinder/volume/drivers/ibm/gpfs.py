@@ -379,13 +379,6 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if (self.configuration.gpfs_images_share_mode and
-            self.configuration.gpfs_images_share_mode not in ['copy_on_write',
-                                                              'copy']):
-            msg = _('Option gpfs_images_share_mode is not set correctly.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
         if(self.configuration.gpfs_images_share_mode and
            self.configuration.gpfs_images_dir is None):
             msg = _('Option gpfs_images_dir is not set correctly.')
