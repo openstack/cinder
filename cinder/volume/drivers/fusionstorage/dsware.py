@@ -387,7 +387,7 @@ class DSWAREDriver(driver.VolumeDriver):
                                       volume_attach_path)
         except Exception as e:
             LOG.error(_LE("Upload volume error, details: %s."), e)
-            raise e
+            raise
         finally:
             if not already_attached:
                 self._detach_volume(volume['name'], dsw_manager_ip)
