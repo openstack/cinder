@@ -460,7 +460,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
+   - metadata: metadata_3
    - tenant_id: tenant_id
    - volume_id: volume_id
 
@@ -477,9 +477,14 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
+   - metadata: metadata_3
 
 
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-metadata-create-response.json
+   :language: javascript
 
 
 
@@ -509,7 +514,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
+   - metadata: metadata_3
 
 
 
@@ -542,7 +547,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
+   - metadata: metadata_3
    - tenant_id: tenant_id
    - volume_id: volume_id
 
@@ -559,7 +564,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata
+   - metadata: metadata_3
 
 
 
