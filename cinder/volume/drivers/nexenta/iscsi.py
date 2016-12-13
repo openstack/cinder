@@ -702,7 +702,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     self.nms.snapshot.destroy(zfs_object, '')
                 except exception.NexentaException as exc:
                     LOG.debug('Error occurred while trying to delete a '
-                              'snapshot: {}'.format(exc))
+                              'snapshot: %s', exc)
                     return
             else:
                 try:
@@ -716,7 +716,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                     self.nms.zvol.destroy(zfs_object, '')
                 except exception.NexentaException as exc:
                     LOG.debug('Error occurred while trying to delete a '
-                              'volume: {}'.format(exc))
+                              'volume: %s', exc)
                     return
             self._needless_objects.remove(zfs_object)
             self._collect_garbage(parent)
