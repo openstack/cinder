@@ -10,9 +10,10 @@ Shows capabilities for a storage back end.
 Show back-end capabilities
 ==========================
 
-.. rest_method::  GET /v2/{tenant_id}/capabilities/{hostname}
+.. rest_method::  GET /v2/{tenant_id}/capabilities/{host}
 
-Shows capabilities for a storage back end.
+Shows capabilities for a storage back end on the host.
+The ``host`` takes the form of ``hostname@volume_backend_name``.
 
 
 Normal response codes: 200

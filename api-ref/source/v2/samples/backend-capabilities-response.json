@@ -1,7 +1,7 @@
 {
     "namespace": "OS::Storage::Capabilities::fake",
     "vendor_name": "OpenStack",
-    "volume_backend_name": "lvm",
+    "volume_backend_name": "lvmdriver-1",
     "pool_name": "pool",
     "driver_version": "2.0.0",
     "storage_protocol": "iSCSI",
