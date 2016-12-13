@@ -1010,18 +1010,28 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         vg_new_name = self.get_volume_group_name(volume.id)
         vg_name = None
         is_dedup = self._get_is_dedup(volume.get('volume_type'))
+        reason = None
         try:
             LOG.debug("Searching volume: %s in K2.", vol_name)
             vol = self.client.search("volumes", name=vol_name).hits[0]
             vg = vol.volume_group
+            nvol = self.client.search("volumes", volume_group=vg).total
             vg_replica = self._get_replica_status(vg.name)
             vol_map = False
             if self.client.search("mappings", volume=vol).total != 0:
                 vol_map = True
-            if is_dedup != vg.is_dedup or vg_replica or vol_map:
+            if is_dedup != vg.is_dedup:
+                reason = 'dedup type mismatch for K2 volume group.'
+            elif vg_replica:
+                reason = 'replication enabled K2 volume group.'
+            elif vol_map:
+                reason = 'attached K2 volume.'
+            elif nvol != 1:
+                reason = 'multiple volumes in K2 volume group.'
+            if reason:
                 raise exception.ManageExistingInvalidReference(
                     existing_ref=existing_ref,
-                    reason=_('Manage volume type invalid.'))
+                    reason=_('Unable to manage K2 volume due to: %s') % reason)
             vol.name = new_name
             vg_name = vg.name
             LOG.debug("Manage new volume name: %s", new_name)
@@ -1030,7 +1040,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             vg.save()
             LOG.debug("Manage volume: %s in K2.", vol_name)
             vol.save()
-        except Exception as ex:
+        except exception.ManageExistingInvalidReference:
+            LOG.exception(_LE("manage volume: %s failed."), vol_name)
+            raise
+        except Exception:
+            LOG.exception(_LE("manage volume: %s failed."), vol_name)
             vg_rs = self.client.search("volume_groups", name=vg_new_name)
             if hasattr(vg_rs, 'hits') and vg_rs.total != 0:
                 vg = vg_rs.hits[0]
@@ -1038,10 +1052,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     vg.name = vg_name
                     LOG.debug("Updating vg new name to old name: %s ", vg_name)
                     vg.save()
-            LOG.exception(_LE("manage volume: %s failed."), vol_name)
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=existing_ref,
-                reason=six.text_type(ex.message))
+            raise
 
     @kaminario_logger
     def manage_existing_get_size(self, volume, existing_ref):
