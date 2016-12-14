@@ -37,6 +37,7 @@ from cinder.image import image_utils
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -139,6 +140,7 @@ class RemoteFSDriver(driver.BaseVD):
     driver_volume_type = None
     driver_prefix = 'remotefs'
     volume_backend_name = None
+    vendor_name = 'Open Source'
     SHARE_FORMAT_REGEX = r'.+:/.+'
 
     def __init__(self, *args, **kwargs):
@@ -148,6 +150,10 @@ class RemoteFSDriver(driver.BaseVD):
         self._execute_as_root = True
         self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
         self._supports_encryption = False
+
+        # We let the drivers inheriting this specify
+        # whether thin provisioning is supported or not.
+        self._thin_provisioning_support = False
 
         if self.configuration:
             self.configuration.append_config_values(nas_opts)
@@ -1579,3 +1585,64 @@ class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
 
         return self._copy_volume_to_image(context, volume, image_service,
                                           image_meta)
+
+
+class RemoteFSPoolMixin(object):
+    """Drivers inheriting this will report each share as a pool."""
+
+    def _find_share(self, volume):
+        # We let the scheduler choose a pool for us.
+        pool_name = self._get_pool_name_from_volume(volume)
+        share = self._get_share_from_pool_name(pool_name)
+        return share
+
+    def _get_pool_name_from_volume(self, volume):
+        pool_name = volume_utils.extract_host(volume['host'],
+                                              level='pool')
+        return pool_name
+
+    def _get_pool_name_from_share(self, share):
+        raise NotImplementedError()
+
+    def _get_share_from_pool_name(self, pool_name):
+        # To be implemented by drivers using pools.
+        raise NotImplementedError()
+
+    def _update_volume_stats(self):
+        data = {}
+        pools = []
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data['volume_backend_name'] = backend_name or self.volume_backend_name
+        data['vendor_name'] = self.vendor_name
+        data['driver_version'] = self.get_version()
+        data['storage_protocol'] = self.driver_volume_type
+
+        self._ensure_shares_mounted()
+
+        for share in self._mounted_shares:
+            (share_capacity,
+             share_free,
+             share_used) = self._get_capacity_info(share)
+
+            pool = {'pool_name': self._get_pool_name_from_share(share),
+                    'total_capacity_gb': share_capacity / float(units.Gi),
+                    'free_capacity_gb': share_free / float(units.Gi),
+                    'provisioned_capacity_gb': share_used / float(units.Gi),
+                    'allocated_capacity_gb': (
+                        share_capacity - share_free) / float(units.Gi),
+                    'reserved_percentage': (
+                        self.configuration.reserved_percentage),
+                    'max_over_subscription_ratio': (
+                        self.configuration.max_over_subscription_ratio),
+                    'thin_provisioning_support': (
+                        self._thin_provisioning_support),
+                    'QoS_support': False,
+                    }
+
+            pools.append(pool)
+
+        data['total_capacity_gb'] = 0
+        data['free_capacity_gb'] = 0
+        data['pools'] = pools
+
+        self._stats = data

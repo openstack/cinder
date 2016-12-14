@@ -481,3 +481,96 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                                       'of=/path', 'bs=1M',
                                                       'count=1024',
                                                       run_as_root=True)
+
+
+class RemoteFSPoolMixinTestCase(test.TestCase):
+    def setUp(self):
+        super(RemoteFSPoolMixinTestCase, self).setUp()
+        # We'll instantiate this directly for now.
+        self._driver = remotefs.RemoteFSPoolMixin()
+
+        self.context = context.get_admin_context()
+
+    @mock.patch.object(remotefs.RemoteFSPoolMixin,
+                       '_get_pool_name_from_volume')
+    @mock.patch.object(remotefs.RemoteFSPoolMixin,
+                       '_get_share_from_pool_name')
+    def test_find_share(self, mock_get_share_from_pool,
+                        mock_get_pool_from_volume):
+        share = self._driver._find_share(mock.sentinel.volume)
+
+        self.assertEqual(mock_get_share_from_pool.return_value, share)
+        mock_get_pool_from_volume.assert_called_once_with(
+            mock.sentinel.volume)
+        mock_get_share_from_pool.assert_called_once_with(
+            mock_get_pool_from_volume.return_value)
+
+    def test_get_pool_name_from_volume(self):
+        fake_pool = 'fake_pool'
+        fake_host = 'fake_host@fake_backend#%s' % fake_pool
+        fake_vol = fake_volume.fake_volume_obj(
+            self.context, provider_location='fake_share',
+            host=fake_host)
+
+        pool_name = self._driver._get_pool_name_from_volume(fake_vol)
+        self.assertEqual(fake_pool, pool_name)
+
+    def test_update_volume_stats(self):
+        share_total_gb = 3
+        share_free_gb = 2
+        share_used_gb = 4  # provisioned space
+        expected_allocated_gb = share_total_gb - share_free_gb
+
+        self._driver._mounted_shares = [mock.sentinel.share]
+
+        self._driver.configuration = mock.Mock()
+        self._driver.configuration.safe_get.return_value = (
+            mock.sentinel.backend_name)
+        self._driver.vendor_name = mock.sentinel.vendor_name
+        self._driver.driver_volume_type = mock.sentinel.driver_volume_type
+        self._driver._thin_provisioning_support = (
+            mock.sentinel.thin_prov_support)
+
+        self._driver.get_version = mock.Mock(
+            return_value=mock.sentinel.driver_version)
+        self._driver._ensure_shares_mounted = mock.Mock()
+        self._driver._get_capacity_info = mock.Mock(
+            return_value=(share_total_gb << 30,
+                          share_free_gb << 30,
+                          share_used_gb << 30))
+        self._driver._get_pool_name_from_share = mock.Mock(
+            return_value=mock.sentinel.pool_name)
+
+        expected_pool = {
+            'pool_name': mock.sentinel.pool_name,
+            'total_capacity_gb': float(share_total_gb),
+            'free_capacity_gb': float(share_free_gb),
+            'provisioned_capacity_gb': float(share_used_gb),
+            'allocated_capacity_gb': float(expected_allocated_gb),
+            'reserved_percentage': (
+                self._driver.configuration.reserved_percentage),
+            'max_over_subscription_ratio': (
+                self._driver.configuration.max_over_subscription_ratio),
+            'thin_provisioning_support': (
+                mock.sentinel.thin_prov_support),
+            'QoS_support': False,
+        }
+
+        expected_stats = {
+            'volume_backend_name': mock.sentinel.backend_name,
+            'vendor_name': mock.sentinel.vendor_name,
+            'driver_version': mock.sentinel.driver_version,
+            'storage_protocol': mock.sentinel.driver_volume_type,
+            'total_capacity_gb': 0,
+            'free_capacity_gb': 0,
+            'pools': [expected_pool],
+        }
+
+        self._driver._update_volume_stats()
+
+        self.assertDictEqual(expected_stats, self._driver._stats)
+
+        self._driver._get_capacity_info.assert_called_once_with(
+            mock.sentinel.share)
+        self._driver.configuration.safe_get.assert_called_once_with(
+            'volume_backend_name')
