@@ -20,7 +20,7 @@ import tempfile
 import uuid
 
 import mock
-from os_brick.initiator import connector
+from os_brick.initiator.connectors import fake
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_utils import importutils
@@ -645,18 +645,10 @@ class BackupTestCase(BaseBackupTest):
                 'is_snapshot': True, },
                 self.ctxt, expected_attrs=['metadata']))
 
-        # TODO(walter-boring) This is to account for the missing FakeConnector
-        # in os-brick 1.6.0 and >
-        if hasattr(connector, 'FakeConnector'):
-            conn = connector.FakeConnector(None)
-        else:
-            from os_brick.initiator.connectors import fake
-            conn = fake.FakeConnector(None)
-
         attach_info = {
             'device': {'path': '/dev/null'},
             'conn': {'data': {}},
-            'connector': conn}
+            'connector': fake.FakeConnector(None)}
         mock_detach_snapshot = self.mock_object(driver.BaseVD,
                                                 '_detach_snapshot')
         mock_attach_snapshot = self.mock_object(driver.BaseVD,
