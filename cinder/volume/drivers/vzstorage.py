@@ -295,24 +295,24 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             mnt_flags.extend(extra_flags)
         self._remotefsclient.mount(share, mnt_flags)
 
-    def _find_share(self, volume_size_in_gib):
+    def _find_share(self, volume):
         """Choose VzStorage share among available ones for given volume size.
 
         For instances with more than one share that meets the criteria, the
         first suitable share will be selected.
 
-        :param volume_size_in_gib: int size in GB
+        :param volume: the volume to be created.
         """
 
         if not self._mounted_shares:
             raise exception.VzStorageNoSharesMounted()
 
         for share in self._mounted_shares:
-            if self._is_share_eligible(share, volume_size_in_gib):
+            if self._is_share_eligible(share, volume.size):
                 break
         else:
             raise exception.VzStorageNoSuitableShareFound(
-                volume_size=volume_size_in_gib)
+                volume_size=volume.size)
 
         LOG.debug('Selected %s as target VzStorage share.', share)
 

@@ -219,13 +219,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
                           {'attempt': attempt, 'exc': e})
                 time.sleep(1)
 
-    def _find_share(self, volume_size_in_gib):
+    def _find_share(self, volume):
         """Choose NFS share among available ones for given volume size.
 
         For instances with more than one share that meets the criteria, the
         share with the least "allocated" space will be selected.
 
-        :param volume_size_in_gib: int size in GB
+        :param volume: the volume to be created.
         """
 
         if not self._mounted_shares:
@@ -241,7 +241,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
                           'total_available': total_available,
                           'total_allocated': total_allocated,
                           }
-            if not self._is_share_eligible(nfs_share, volume_size_in_gib,
+            if not self._is_share_eligible(nfs_share,
+                                           volume.size,
                                            share_info):
                 continue
             if target_share is not None:
@@ -254,7 +255,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
 
         if target_share is None:
             raise exception.NfsNoSuitableShareFound(
-                volume_size=volume_size_in_gib)
+                volume_size=volume.size)
 
         LOG.debug('Selected %s as target NFS share.', target_share)
 
