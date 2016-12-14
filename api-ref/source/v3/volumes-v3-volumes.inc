@@ -568,3 +568,41 @@ Response Example
 
 .. literalinclude:: ./samples/volume-metadata-update-response.json
    :language: javascript
+
+
+
+Get volumes summary
+===================
+
+.. rest_method::  GET /v3/{project_id}/volumes/summary
+
+Display volumes summary with total number of volumes and total size in GB
+
+
+Normal response codes: 200
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - all_tenants: all_tenants
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume-summary: volume-summary
+   - total_size: total_size
+   - total_count: total_count
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volumes-list-summary-response.json
+   :language: javascript
