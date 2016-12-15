@@ -3251,6 +3251,8 @@ class EMCVMAXCommon(object):
         :returns: string -- storageSystemName
         :raises: VolumeBackendAPIException
         """
+        rc = -1
+        volumeDict = {}
         isValidSLO, isValidWorkload = self.utils.verify_slo_workload(
             extraSpecs[SLO], extraSpecs[WORKLOAD])
 
@@ -3310,9 +3312,28 @@ class EMCVMAXCommon(object):
             extraSpecs[POOL], extraSpecs[SLO],
             extraSpecs[WORKLOAD], doDisableCompression,
             storageSystemName, extraSpecs)
-        volumeDict, rc = self.provisionv3.create_volume_from_sg(
-            self.conn, storageConfigService, volumeName,
-            sgInstanceName, volumeSize, extraSpecs)
+        try:
+            volumeDict, rc = self.provisionv3.create_volume_from_sg(
+                self.conn, storageConfigService, volumeName,
+                sgInstanceName, volumeSize, extraSpecs)
+        except Exception:
+            # if the volume create fails, check if the
+            # storage group needs to be cleaned up
+            volumeInstanceNames = (
+                self.masking.get_devices_from_storage_group(
+                    self.conn, sgInstanceName))
+
+            if not len(volumeInstanceNames):
+                LOG.debug("There are no volumes in the storage group "
+                          "%(maskingGroup)s. Deleting storage group",
+                          {'maskingGroup': sgInstanceName})
+                controllerConfigService = (
+                    self.utils.find_controller_configuration_service(
+                        self.conn, storageSystemName))
+                self.masking.delete_storage_group(
+                    self.conn, controllerConfigService,
+                    sgInstanceName, extraSpecs)
+            raise
 
         return rc, volumeDict, storageSystemName
 
@@ -5570,8 +5591,7 @@ class EMCVMAXCommon(object):
             # establish replication relationship
             rc, rdfDict = self._create_remote_replica(
                 conn, repServiceInstanceName, rdfGroupInstance, volumeName,
-                sourceInstance, targetInstance, extraSpecs,
-                controllerConfigService, repExtraSpecs)
+                sourceInstance, targetInstance, extraSpecs)
 
             # add source and target instances to their replication groups
             LOG.debug("Adding sourceInstance to default replication group.")
@@ -5642,8 +5662,7 @@ class EMCVMAXCommon(object):
 
     def _create_remote_replica(
             self, conn, repServiceInstanceName, rdfGroupInstance,
-            volumeName, sourceInstance, targetInstance, extraSpecs,
-            controllerConfigService, repExtraSpecs):
+            volumeName, sourceInstance, targetInstance, extraSpecs):
         """Helper function to establish a replication relationship.
 
         :param conn: the connection to the ecom server
@@ -5653,8 +5672,6 @@ class EMCVMAXCommon(object):
         :param sourceInstance: the source volume instance
         :param targetInstance: the target volume instance
         :param extraSpecs: extra specifications
-        :param controllerConfigService: the controller config service
-        :param repExtraSpecs: replication extra specifications
         :return: rc, rdfDict - the target volume dictionary
         """
         syncType = MIRROR_SYNC_TYPE
