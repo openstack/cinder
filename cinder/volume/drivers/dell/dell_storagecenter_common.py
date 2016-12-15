@@ -1551,8 +1551,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             if secondary_id == 'default':
                 LOG.debug('failing back')
                 return 'default', self.failback_volumes(volumes)
-            raise exception.VolumeBackendAPIException(
-                message='Already failed over.')
+            raise exception.InvalidReplicationTarget(
+                reason=_('Already failed over'))
 
         LOG.info(_LI('Failing backend to %s'), secondary_id)
         # basic check
@@ -1594,7 +1594,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     LOG.debug(self.replication_enabled)
                     return destssn, volume_updates
                 else:
-                    raise exception.InvalidInput(message=(
+                    raise exception.InvalidReplicationTarget(reason=(
                         _('replication_failover failed. %s not found.') %
                         secondary_id))
         # I don't think we should ever get here.
