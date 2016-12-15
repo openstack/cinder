@@ -898,6 +898,10 @@ class DellDriverRetryableException(VolumeBackendAPIException):
     message = _("Retryable Dell Exception encountered")
 
 
+class DellDriverUnknownSpec(VolumeDriverException):
+    message = _("Dell driver failure: %(reason)s")
+
+
 # Pure Storage
 class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")

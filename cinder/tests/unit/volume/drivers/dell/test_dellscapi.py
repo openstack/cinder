@@ -2107,6 +2107,84 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_storage_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_replay_profiles')
+    def test_create_volume_with_profiles(self,
+                                         mock_find_replay_profiles,
+                                         mock_find_storage_profile,
+                                         mock_find_data_reduction_profile,
+                                         mock_find_qos_profile,
+                                         mock_post,
+                                         mock_find_volume_folder,
+                                         mock_get_json,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        mock_find_replay_profiles.return_value = (['12345.4'], [])
+        mock_get_json.return_value = self.VOLUME
+        mock_find_volume_folder.return_value = {'instanceId': '12345.200'}
+        mock_post.return_value = self.RESPONSE_201
+        mock_find_storage_profile.return_value = {'instanceId': '12345.0'}
+        mock_find_data_reduction_profile.return_value = {'instanceId':
+                                                         '12345.1'}
+        mock_find_qos_profile.side_effect = [{'instanceId': '12345.2'},
+                                             {'instanceId': '12345.3'}]
+        res = self.scapi.create_volume(self.volume_name, 1, 'storage_profile',
+                                       'replay_profile_string', 'volume_qos',
+                                       'group_qos', 'datareductionprofile')
+        expected_payload = {'Name': self.volume_name,
+                            'Notes': 'Created by Dell Cinder Driver',
+                            'Size': '1 GB',
+                            'StorageCenter': 12345,
+                            'VolumeFolder': '12345.200',
+                            'StorageProfile': '12345.0',
+                            'VolumeQosProfile': '12345.2',
+                            'GroupQosProfile': '12345.3',
+                            'DataReductionProfile': '12345.1',
+                            'ReplayProfileList': ['12345.4']}
+        mock_find_volume_folder.assert_called_once_with(True)
+        mock_post.assert_called_once_with('StorageCenter/ScVolume',
+                                          expected_payload, True)
+        self.assertEqual(self.VOLUME, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_storage_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_replay_profiles')
+    def test_create_volume_profile_not_found(self,
+                                             mock_find_replay_profiles,
+                                             mock_find_storage_profile,
+                                             mock_find_qos_profile,
+                                             mock_find_volume_folder,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        mock_find_replay_profiles.return_value = (['12345.4'], [])
+        mock_find_volume_folder.return_value = self.FLDR
+        mock_find_storage_profile.return_value = [{'instanceId': '12345.0'}]
+        # Failure is on the volumeqosprofile.
+        mock_find_qos_profile.return_value = None
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_volume, self.volume_name, 1,
+                          'storage_profile', 'replay_profile_string',
+                          'volume_qos', 'group_qos', 'datareductionprofile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_storage_profile',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -4360,9 +4438,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_init):
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
-            vol_name,
-            self.TST_RPLAY,
-            None)
+            vol_name, self.TST_RPLAY, None, None, None, None)
         self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
@@ -4387,9 +4463,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where volume folder does not exist and must be created
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
-            vol_name,
-            self.TST_RPLAY,
-            None)
+            vol_name, self.TST_RPLAY, None, None, None, None)
         self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
@@ -4414,9 +4488,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where volume folder does not exist and cannot be created
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
-            vol_name,
-            self.TST_RPLAY,
-            None)
+            vol_name, self.TST_RPLAY, None, None, None, None)
         self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
@@ -4437,12 +4509,147 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where view volume create fails
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
-            vol_name,
-            self.TST_RPLAY,
-            None)
+            vol_name, self.TST_RPLAY, None, None, None, None)
         self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(True)
         self.assertIsNone(res, 'Expected None')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_replay_profiles')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_datareduction_profile')
+    def test_create_view_volume_with_profiles(
+            self, mock_update_datareduction_profile, mock_find_replay_profiles,
+            mock_find_qos_profile, mock_post, mock_find_volume_folder,
+            mock_first_result, mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_replay_profiles.return_value = (['12345.4'], [])
+        mock_first_result.return_value = {'name': 'name'}
+        mock_post.return_value = self.RESPONSE_200
+        mock_find_volume_folder.return_value = {'instanceId': '12345.200'}
+        mock_find_qos_profile.side_effect = [{'instanceId': '12345.2'},
+                                             {'instanceId': '12345.3'}]
+        screplay = {'instanceId': '12345.100.1'}
+        res = self.scapi.create_view_volume(
+            'name', screplay, 'replay_profile_string', 'volume_qos',
+            'group_qos', 'datareductionprofile')
+        expected_payload = {'Name': 'name',
+                            'Notes': 'Created by Dell Cinder Driver',
+                            'VolumeFolder': '12345.200',
+                            'ReplayProfileList': ['12345.4'],
+                            'VolumeQosProfile': '12345.2',
+                            'GroupQosProfile': '12345.3'}
+        mock_find_volume_folder.assert_called_once_with(True)
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScReplay/12345.100.1/CreateView', expected_payload,
+            True)
+        mock_update_datareduction_profile.assert_called_once_with(
+            {'name': 'name'}, 'datareductionprofile')
+        self.assertEqual({'name': 'name'}, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_replay_profiles')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_datareduction_profile')
+    def test_create_view_volume_with_profiles_no_dr(
+            self, mock_update_datareduction_profile, mock_find_replay_profiles,
+            mock_find_qos_profile, mock_post, mock_find_volume_folder,
+            mock_first_result, mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_replay_profiles.return_value = (['12345.4'], [])
+        mock_first_result.return_value = {'name': 'name'}
+        mock_post.return_value = self.RESPONSE_200
+        mock_find_volume_folder.return_value = {'instanceId': '12345.200'}
+        mock_find_qos_profile.side_effect = [{'instanceId': '12345.2'},
+                                             {'instanceId': '12345.3'}]
+        screplay = {'instanceId': '12345.100.1'}
+        res = self.scapi.create_view_volume('name', screplay,
+                                            'replay_profile_string',
+                                            'volume_qos',
+                                            'group_qos',
+                                            None)
+        expected_payload = {'Name': 'name',
+                            'Notes': 'Created by Dell Cinder Driver',
+                            'VolumeFolder': '12345.200',
+                            'ReplayProfileList': ['12345.4'],
+                            'VolumeQosProfile': '12345.2',
+                            'GroupQosProfile': '12345.3'}
+        mock_find_volume_folder.assert_called_once_with(True)
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScReplay/12345.100.1/CreateView', expected_payload,
+            True)
+        mock_update_datareduction_profile.assert_not_called()
+        self.assertEqual({'name': 'name'}, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_create_view_volume_with_profiles_no_replayprofiles(
+            self, mock_find_qos_profile, mock_post, mock_find_volume_folder,
+            mock_first_result, mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_first_result.return_value = {'name': 'name'}
+        mock_post.return_value = self.RESPONSE_200
+        mock_find_volume_folder.return_value = {'instanceId': '12345.200'}
+        mock_find_qos_profile.side_effect = [{'instanceId': '12345.2'},
+                                             {'instanceId': '12345.3'}]
+        screplay = {'instanceId': '12345.100.1'}
+        res = self.scapi.create_view_volume('name', screplay,
+                                            None,
+                                            'volume_qos',
+                                            'group_qos',
+                                            None)
+        expected_payload = {'Name': 'name',
+                            'Notes': 'Created by Dell Cinder Driver',
+                            'VolumeFolder': '12345.200',
+                            'VolumeQosProfile': '12345.2',
+                            'GroupQosProfile': '12345.3'}
+        mock_find_volume_folder.assert_called_once_with(True)
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScReplay/12345.100.1/CreateView', expected_payload,
+            True)
+        self.assertEqual({'name': 'name'}, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_replay_profiles')
+    def test_create_view_volume_with_profiles_not_found(
+            self, mock_find_replay_profiles, mock_find_qos_profile,
+            mock_find_volume_folder, mock_close_connection,
+            mock_open_connection, mock_init):
+        mock_find_replay_profiles.return_value = (['12345.4'], [])
+        mock_find_volume_folder.return_value = {'instanceId': '12345.200'}
+        # Our qos profile isn't found.
+        mock_find_qos_profile.return_value = None
+        screplay = {'instanceId': '12345.100.1'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_view_volume,
+                          'name', screplay, 'replay_profile_string',
+                          'volume_qos', 'group_qos', 'datareductionprofile')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_view_volume',
@@ -4458,16 +4665,14 @@ class DellSCSanAPITestCase(test.TestCase):
                                   mock_init):
         vol_name = u'Test_create_clone_vol'
         res = self.scapi.create_cloned_volume(
-            vol_name,
-            self.VOLUME,
-            ['Daily'])
+            vol_name, self.VOLUME, ['Daily'],
+            'volume_qos', 'group_qos', 'dr_profile')
         mock_create_replay.assert_called_once_with(self.VOLUME,
                                                    'Cinder Clone Replay',
                                                    60)
         mock_create_view_volume.assert_called_once_with(
-            vol_name,
-            self.RPLAY,
-            ['Daily'])
+            vol_name, self.RPLAY, ['Daily'],
+            'volume_qos', 'group_qos', 'dr_profile')
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -4486,9 +4691,7 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_clone_vol'
         mock_create_replay.return_value = None
         res = self.scapi.create_cloned_volume(
-            vol_name,
-            self.VOLUME,
-            ['Daily'])
+            vol_name, self.VOLUME, ['Daily'], None, None, None)
         mock_create_replay.assert_called_once_with(self.VOLUME,
                                                    'Cinder Clone Replay',
                                                    60)
@@ -4497,13 +4700,11 @@ class DellSCSanAPITestCase(test.TestCase):
         # Again buy let create_view_volume fail.
         mock_create_replay.return_value = self.RPLAY
         res = self.scapi.create_cloned_volume(
-            vol_name,
-            self.VOLUME,
-            ['Daily'])
+            vol_name, self.VOLUME, ['Daily'],
+            'volume_qos', 'group_qos', 'dr_profile')
         mock_create_view_volume.assert_called_once_with(
-            vol_name,
-            self.RPLAY,
-            ['Daily'])
+            vol_name, self.RPLAY, ['Daily'],
+            'volume_qos', 'group_qos', 'dr_profile')
         self.assertIsNone(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -7141,6 +7342,441 @@ class DellSCSanAPITestCase(test.TestCase):
         ret = self.scapi.delete_live_volume({'instanceId': '12345.101'},
                                             True)
         self.assertFalse(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test_swap_roles_live_volume(self,
+                                    mock_post,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        lv = {'instanceId': '12345.0'}
+        ret = self.scapi.swap_roles_live_volume(lv)
+        self.assertTrue(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test_swap_roles_live_volume_fail(self,
+                                         mock_post,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        mock_post.return_value = self.RESPONSE_400
+        lv = {'instanceId': '12345.0'}
+        ret = self.scapi.swap_roles_live_volume(lv)
+        self.assertFalse(ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_qos_profile(self,
+                               mock_post,
+                               mock_get_json,
+                               mock_close_connection,
+                               mock_open_connection,
+                               mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = [{'instanceId': '12345.0'}]
+        expected_payload = {'filter': {'filterType': 'AND', 'filters': [
+            {'filterType': 'Equals', 'attributeName': 'ScSerialNumber',
+             'attributeValue': 12345},
+            {'filterType': 'Equals', 'attributeName': 'Name',
+             'attributeValue': 'Default'},
+            {'filterType': 'Equals', 'attributeName': 'profileType',
+             'attributeValue': 'VolumeQosProfile'}]}}
+        ret = self.scapi._find_qos_profile('Default', False)
+        self.assertEqual({'instanceId': '12345.0'}, ret)
+        mock_post.assert_called_once_with('StorageCenter/ScQosProfile/GetList',
+                                          expected_payload)
+
+    def test__find_qos_no_qosprofile(self,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        ret = self.scapi._find_qos_profile('', False)
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_qos_error(self,
+                             mock_post,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
+        mock_post.return_value = self.RESPONSE_400
+        ret = self.scapi._find_qos_profile('Default', False)
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_qos_profile_empty_list(self,
+                                          mock_post,
+                                          mock_get_json,
+                                          mock_close_connection,
+                                          mock_open_connection,
+                                          mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = []
+        ret = self.scapi._find_qos_profile('Default', False)
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_qos_profile_group(self,
+                                     mock_post,
+                                     mock_get_json,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = [{'instanceId': '12345.0'}]
+        expected_payload = {'filter': {'filterType': 'AND', 'filters': [
+            {'filterType': 'Equals', 'attributeName': 'ScSerialNumber',
+             'attributeValue': 12345},
+            {'filterType': 'Equals', 'attributeName': 'Name',
+             'attributeValue': 'Default'},
+            {'filterType': 'Equals', 'attributeName': 'profileType',
+             'attributeValue': 'GroupQosProfile'}]}}
+        ret = self.scapi._find_qos_profile('Default', True)
+        self.assertEqual({'instanceId': '12345.0'}, ret)
+        mock_post.assert_called_once_with('StorageCenter/ScQosProfile/GetList',
+                                          expected_payload)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_datareduction_profile(self,
+                                         mock_post,
+                                         mock_get_json,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = [{'instanceId': '12345.0'}]
+        expected_payload = {'filter': {'filterType': 'AND', 'filters': [
+            {'filterType': 'Equals', 'attributeName': 'ScSerialNumber',
+             'attributeValue': 12345},
+            {'filterType': 'Equals', 'attributeName': 'instanceName',
+             'attributeValue': 'Compression'}]}}
+        ret = self.scapi._find_data_reduction_profile('Compression')
+        self.assertEqual({'instanceId': '12345.0'}, ret)
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScDataReductionProfile/GetList', expected_payload)
+
+    def test__find_datareduction_profile_no_drprofile(self,
+                                                      mock_close_connection,
+                                                      mock_open_connection,
+                                                      mock_init):
+        ret = self.scapi._find_data_reduction_profile('')
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_datareduction_profile_error(self,
+                                               mock_post,
+                                               mock_close_connection,
+                                               mock_open_connection,
+                                               mock_init):
+        mock_post.return_value = self.RESPONSE_400
+        ret = self.scapi._find_data_reduction_profile('Compression')
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test__find_datareduction_profile_empty_list(self,
+                                                    mock_post,
+                                                    mock_get_json,
+                                                    mock_close_connection,
+                                                    mock_open_connection,
+                                                    mock_init):
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = []
+        ret = self.scapi._find_data_reduction_profile('Compression')
+        self.assertIsNone(ret)
+
+    def test__check_add_profile_payload(self,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        payload = {}
+        profile = {'instanceId': '12345.0'}
+        self.scapi._check_add_profile_payload(payload, profile,
+                                              'Profile1', 'GroupQosProfile')
+        self.assertEqual({'GroupQosProfile': '12345.0'}, payload)
+
+    def test__check_add_profile_payload_no_name(self,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        payload = {}
+        profile = {'instanceId': '12345.0'}
+        self.scapi._check_add_profile_payload(payload, profile,
+                                              None, 'GroupQosProfile')
+        self.assertEqual({}, payload)
+
+    def test__check_add_profile_payload_no_profile(self,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        payload = {}
+        profile = None
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi._check_add_profile_payload,
+                          payload, profile, 'Profile1',
+                          'VolumeQosProfile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile(
+            self, mock_find_datareduction_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_datareduction_profile.return_value = {}
+        mock_prefs.return_value = {
+            'allowDataReductionSelection': True,
+            'dataReductionProfile': {'name': 'Default',
+                                     'instanceId': '12345.0'}}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        mock_put.return_value = self.RESPONSE_200
+        expected = {'dataReductionProfile': '12345.0'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertTrue(res)
+        mock_put.assert_called_once_with(
+            'StorageCenter/ScVolumeConfiguration/12345.101', expected, True)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_error(
+            self, mock_find_datareduction_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_datareduction_profile.return_value = {}
+        mock_prefs.return_value = {
+            'allowDataReductionSelection': True,
+            'dataReductionProfile': {'name': 'Default',
+                                     'instanceId': '12345.0'}}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        mock_put.return_value = self.RESPONSE_400
+        expected = {'dataReductionProfile': '12345.0'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertFalse(res)
+        mock_put.assert_called_once_with(
+            'StorageCenter/ScVolumeConfiguration/12345.101', expected, True)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_not_found(
+            self, mock_find_datareduction_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_datareduction_profile.return_value = None
+        mock_prefs.return_value = {'allowDataReductionSelection': True}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_datareduction_profile(scvolume, 'Profile')
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_not_allowed(
+            self, mock_find_datareduction_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_datareduction_profile.return_value = None
+        mock_prefs.return_value = {'allowDataReductionSelection': False}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_prefs_not_found(
+            self, mock_find_datareduction_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_datareduction_profile.return_value = None
+        mock_prefs.return_value = None
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_default_not_found(
+            self, mock_find_datareduction_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_datareduction_profile.return_value = None
+        mock_prefs.return_value = {'allowDataReductionSelection': True}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_datareduction_profile_default(
+            self, mock_find_datareduction_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_datareduction_profile.return_value = None
+        mock_prefs.return_value = {
+            'allowDataReductionSelection': True,
+            'dataReductionProfile': {'name': 'Default',
+                                     'instanceId': '12345.0'}}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_datareduction_profile(scvolume, None)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile(
+            self, mock_find_qos_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_qos_profile.return_value = {}
+        mock_prefs.return_value = {
+            'allowQosProfileSelection': True,
+            'volumeQosProfile': {'name': 'Default',
+                                 'instanceId': '12345.0'}}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        mock_put.return_value = self.RESPONSE_200
+        expected = {'volumeQosProfile': '12345.0'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertTrue(res)
+        mock_put.assert_called_once_with(
+            'StorageCenter/ScVolumeConfiguration/12345.101', expected, True)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_data_reduction_profile')
+    def test_update_qos_profile_error(
+            self, mock_find_qos_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_qos_profile.return_value = {}
+        mock_prefs.return_value = {
+            'allowQosProfileSelection': True,
+            'volumeQosProfile': {'name': 'Default',
+                                 'instanceId': '12345.0'}}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        mock_put.return_value = self.RESPONSE_400
+        expected = {'volumeQosProfile': '12345.0'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertFalse(res)
+        mock_put.assert_called_once_with(
+            'StorageCenter/ScVolumeConfiguration/12345.101', expected, True)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile_not_found(
+            self, mock_find_qos_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_qos_profile.return_value = None
+        mock_prefs.return_value = {'allowQosProfileSelection': True}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_qos_profile(scvolume, 'Profile')
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile_not_allowed(
+            self, mock_find_qos_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_qos_profile.return_value = None
+        mock_prefs.return_value = {'allowQosProfileSelection': False}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile_prefs_not_found(
+            self, mock_find_qos_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_qos_profile.return_value = None
+        mock_prefs.return_value = None
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile_default_not_found(
+            self, mock_find_qos_profile, mock_prefs,
+            mock_close_connection, mock_open_connection,
+            mock_init):
+        mock_find_qos_profile.return_value = None
+        mock_prefs.return_value = {'allowQosProfileSelection': True}
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos_profile')
+    def test_update_qos_profile_default(
+            self, mock_find_qos_profile, mock_put, mock_prefs,
+            mock_close_connection, mock_open_connection, mock_init):
+        # Test we get and set our default
+        mock_find_qos_profile.return_value = None
+        mock_prefs.return_value = {
+            'allowQosProfileSelection': True,
+            'volumeQosProfile': {'name': 'Default',
+                                 'instanceId': '12345.0'}}
+        mock_put.return_value = self.RESPONSE_200
+        scvolume = {'name': fake.VOLUME_ID, 'instanceId': '12345.101'}
+        res = self.scapi.update_qos_profile(scvolume, None)
+        self.assertTrue(res)
 
 
 class DellSCSanAPIConnectionTestCase(test.TestCase):
