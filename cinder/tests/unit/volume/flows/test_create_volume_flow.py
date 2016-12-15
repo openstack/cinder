@@ -781,6 +781,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         self.test_create_from_image_volume(location=False)
 
 
+@ddt.ddt
 @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
 @mock.patch('cinder.volume.flows.manager.create_volume.'
             'CreateVolumeFromSpecTask.'
@@ -906,6 +907,36 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_id=image_id,
             image_meta=image_meta
         )
+
+    @ddt.data(
+        NotImplementedError('Driver does not support clone'),
+        exception.CinderException('Error during cloning'))
+    def test_create_from_image_clone_failure(
+            self, effect, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        mock_get_internal_context.return_value = None
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        mock_create_from_src.side_effect = effect
+
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824'}
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        model, result = manager._create_from_image_cache(self.ctxt,
+                                                         None,
+                                                         volume,
+                                                         image_id,
+                                                         image_meta)
+
+        self.assertIsNone(model)
+        self.assertFalse(result)
 
     def test_create_from_image_bigger_size(
             self, mock_get_internal_context,
