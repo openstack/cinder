@@ -1855,6 +1855,136 @@ class GPFSDriverTestCase(test.TestCase):
         return (volume, new_type, diff, host)
 
 
+class GPFSRemoteDriverTestCase(test.TestCase):
+    """Unit tests for GPFSRemoteDriver class"""
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSRemoteDriver.'
+                '_get_active_gpfs_node_ip')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSRemoteDriver.'
+                '_run_ssh')
+    def test_gpfs_remote_execute(self,
+                                 mock_run_ssh,
+                                 mock_active_gpfs_ip):
+        configuration = conf.Configuration(None)
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        self.driver._gpfs_remote_execute('test', check_exit_code=True)
+        expected = [mock.call(('test',), True)]
+        self.assertEqual(expected, mock_run_ssh.mock_calls)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.expanduser')
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test_get_active_gpfs_node_ip(self, mock_ssh_execute,
+                                     mock_pkey_file, mock_path,
+                                     mock_open, mock_isfile):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_mount_point_base = '/gpfs'
+        configuration.gpfs_private_key = '/test/fake_private_key'
+        mmgetstate_fake_out = "mmgetstate::state:\nmmgetstate::active:"
+        mock_ssh_execute.side_effect = [(mmgetstate_fake_out, ''), ('', '')]
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        san_ip = self.driver._get_active_gpfs_node_ip()
+        self.assertEqual('10.0.0.1', san_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.expanduser')
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test_get_active_gpfs_node_ip_with_password(self, mock_ssh_execute,
+                                                   mock_pkey_file, mock_path,
+                                                   mock_open, mock_isfile):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_mount_point_base = '/gpfs'
+        configuration.gpfs_user_password = 'FakePassword'
+        mmgetstate_fake_out = "mmgetstate::state:\nmmgetstate::active:"
+        mock_ssh_execute.side_effect = [(mmgetstate_fake_out, ''), ('', '')]
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        san_ip = self.driver._get_active_gpfs_node_ip()
+        self.assertEqual('10.0.0.1', san_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('six.moves.builtins.open')
+    def test_get_active_gpfs_node_ip_missing_key_and_password(self, mock_open,
+                                                              mock_isfile):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_mount_point_base = '/gpfs'
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver._get_active_gpfs_node_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.expanduser')
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test_get_active_gpfs_node_ip_second(self, mock_ssh_execute,
+                                            mock_pkey_file, mock_path,
+                                            mock_open, mock_isfile):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_mount_point_base = '/gpfs'
+        configuration.gpfs_private_key = '/test/fake_private_key'
+        mmgetstate_active_fake_out = "mmgetstate::state:\nmmgetstate::active:"
+        mmgetstate_down_fake_out = "mmgetstate::state:\nmmgetstate::down:"
+        mock_ssh_execute.side_effect = [(mmgetstate_down_fake_out, ''),
+                                        (mmgetstate_active_fake_out, ''),
+                                        ('', '')]
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        san_ip = self.driver._get_active_gpfs_node_ip()
+        self.assertEqual('10.0.0.2', san_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    def test_missing_ssh_host_key_config(self):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_hosts_key_file = None
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        self.assertRaises(exception.ParameterNotFound,
+                          self.driver._get_active_gpfs_node_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=False)
+    def test_init_missing_ssh_host_key_file(self,
+                                            mock_is_file):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_hosts_key_file = '/test'
+        self.flags(state_path='/var/lib/cinder')
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver._get_active_gpfs_node_ip)
+
+    @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.expanduser')
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test_get_active_gpfs_node_ip_exception(self, mock_ssh_execute,
+                                               mock_pkey_file, mock_path,
+                                               mock_open, mock_isfile):
+        configuration = conf.Configuration(None)
+        configuration.gpfs_hosts = ['10.0.0.1', '10.0.0.2']
+        configuration.gpfs_mount_point_base = '/gpfs'
+        configuration.gpfs_private_key = "/test/fake_private_key"
+        mmgetstate_down_fake_out = "mmgetstate::state:\nmmgetstate::down:"
+        mock_ssh_execute.side_effect = [(mmgetstate_down_fake_out, ''),
+                                        processutils.ProcessExecutionError(
+                                        stderr='test')]
+        self.driver = gpfs.GPFSRemoteDriver(configuration=configuration)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._get_active_gpfs_node_ip)
+
+
 class GPFSNFSDriverTestCase(test.TestCase):
     driver_name = "cinder.volume.drivers.gpfs.GPFSNFSDriver"
     TEST_NFS_EXPORT = 'nfs-host1:/export'

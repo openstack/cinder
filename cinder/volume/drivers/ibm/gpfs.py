@@ -25,6 +25,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import paramiko
 import six
 
 from cinder import context
@@ -83,8 +84,39 @@ gpfs_opts = [
                help=('Specifies the storage pool that volumes are assigned '
                      'to. By default, the system storage pool is used.')),
 ]
+
+gpfs_remote_ssh_opts = [
+    cfg.ListOpt('gpfs_hosts',
+                default=[],
+                help='Comma-separated list of IP address or '
+                     'hostnames of GPFS nodes.'),
+    cfg.StrOpt('gpfs_user_login',
+               default='root',
+               help='Username for GPFS nodes.'),
+    cfg.StrOpt('gpfs_user_password',
+               default='',
+               help='Password for GPFS node user.',
+               secret=True),
+    cfg.StrOpt('gpfs_private_key',
+               default='',
+               help='Filename of private key to use for SSH authentication.'),
+    cfg.PortOpt('gpfs_ssh_port',
+                default=22,
+                help='SSH port to use.'),
+    cfg.StrOpt('gpfs_hosts_key_file',
+               default='$state_path/ssh_known_hosts',
+               help='File containing SSH host keys for the gpfs nodes '
+                    'with which driver needs to communicate. '
+                    'Default=$state_path/ssh_known_hosts'),
+    cfg.BoolOpt('gpfs_strict_host_key_policy',
+                default=False,
+                help='Option to enable strict gpfs host key checking while '
+                     'connecting to gpfs nodes. Default=False'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(gpfs_opts)
+CONF.register_opts(gpfs_remote_ssh_opts)
 
 
 def _different(difference_tuple):
@@ -1100,8 +1132,8 @@ class GPFSDriver(driver.CloneableImageVD,
         if not mounted:
             return 0, 0
 
-        out, err = self._execute('df', '-P', '-B', '1', path,
-                                 run_as_root=True)
+        out, err = self.gpfs_execute('df', '-P', '-B', '1', path,
+                                     run_as_root=True)
         out = out.splitlines()[1]
         size = int(out.split()[1])
         available = int(out.split()[3])
@@ -1237,6 +1269,125 @@ class GPFSDriver(driver.CloneableImageVD,
 
 
 @interface.volumedriver
+class GPFSRemoteDriver(GPFSDriver, san.SanDriver):
+    """GPFS cinder driver extension.
+
+    This extends the capability of existing GPFS cinder driver
+    to be able to run the driver when cinder volume service
+    is not running on GPFS node where as Nova Compute is a GPFS
+    client. This deployment is typically in Container based
+    OpenStack environment.
+    """
+
+    VERSION = "1.0"
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_GPFS_REMOTE_CI"
+
+    def __init__(self, *args, **kwargs):
+        super(GPFSRemoteDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(san.san_opts)
+        self.configuration.append_config_values(gpfs_remote_ssh_opts)
+        self.configuration.san_login = self.configuration.gpfs_user_login
+        self.configuration.san_password = (
+            self.configuration.gpfs_user_password)
+        self.configuration.san_private_key = (
+            self.configuration.gpfs_private_key)
+        self.configuration.san_ssh_port = self.configuration.gpfs_ssh_port
+        self.gpfs_execute = self._gpfs_remote_execute
+
+    def _gpfs_remote_execute(self, *cmd, **kwargs):
+        check_exit_code = kwargs.pop('check_exit_code', None)
+        return self._run_ssh(cmd, check_exit_code)
+
+    def do_setup(self, ctxt):
+        self.configuration.san_ip = self._get_active_gpfs_node_ip()
+        super(GPFSRemoteDriver, self).do_setup(ctxt)
+
+    def _get_active_gpfs_node_ip(self):
+        """Set the san_ip to active gpfs node IP"""
+        active_gpfs_node_ip = None
+        gpfs_node_ips = self.configuration.gpfs_hosts
+        ssh = paramiko.SSHClient()
+
+        # Validate good config setting here.
+        # Paramiko handles the case where the file is inaccessible.
+        if not self.configuration.gpfs_hosts_key_file:
+            raise exception.ParameterNotFound(param='gpfs_hosts_key_file')
+        elif not os.path.isfile(self.configuration.gpfs_hosts_key_file):
+            # If using the default path, just create the file.
+            if CONF.state_path in self.configuration.gpfs_hosts_key_file:
+                open(self.configuration.gpfs_hosts_key_file, 'a').close()
+            else:
+                msg = (_("Unable to find ssh_hosts_key_file: %s") %
+                       self.configuration.gpfs_hosts_key_file)
+                raise exception.InvalidInput(reason=msg)
+
+        ssh.load_host_keys(self.configuration.gpfs_hosts_key_file)
+        if self.configuration.gpfs_strict_host_key_policy:
+            ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+        else:
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if ((not self.configuration.gpfs_user_password) and
+                (not self.configuration.gpfs_private_key)):
+            msg = _("Specify a password or private_key")
+            raise exception.VolumeDriverException(msg)
+        for ip in gpfs_node_ips:
+            try:
+                if self.configuration.gpfs_user_password:
+                    ssh.connect(ip,
+                                port=self.configuration.gpfs_ssh_port,
+                                username=self.configuration.gpfs_user_login,
+                                password=self.configuration.gpfs_user_password,
+                                timeout=self.configuration.ssh_conn_timeout)
+                elif self.configuration.gpfs_private_key:
+                    pkfile = os.path.expanduser(
+                        self.configuration.gpfs_private_key)
+                    privatekey = paramiko.RSAKey.from_private_key_file(pkfile)
+                    ssh.connect(ip,
+                                port=self.configuration.gpfs_ssh_port,
+                                username=self.configuration.gpfs_user_login,
+                                pkey=privatekey,
+                                timeout=self.configuration.ssh_conn_timeout)
+            except Exception as e:
+                LOG.info("Cannot connect to GPFS node %(ip)s. "
+                         "Error is: %(err)s. "
+                         "Continuing to next node",
+                         {'ip': ip, 'err': e})
+                continue
+            try:
+                # check if GPFS state is active on the node
+                (out, __) = processutils.ssh_execute(ssh, 'mmgetstate -Y')
+                lines = out.splitlines()
+                state_token = lines[0].split(':').index('state')
+                gpfs_state = lines[1].split(':')[state_token]
+                if gpfs_state != 'active':
+                    LOG.info("GPFS is not active on node %(ip)s. "
+                             "Continuing to next node",
+                             {'ip': ip})
+                    continue
+                # check if filesystem is mounted on the node
+                processutils.ssh_execute(
+                    ssh,
+                    'df ' + self.configuration.gpfs_mount_point_base)
+            except processutils.ProcessExecutionError as e:
+                LOG.info("GPFS is not active on node %(ip)s. "
+                         "Error is: %(err)s. "
+                         "Continuing to next node",
+                         {'ip': ip, 'err': e})
+                continue
+            # set the san_ip to the active gpfs node IP
+            LOG.debug("Setting active GPFS node IP to %s", ip)
+            active_gpfs_node_ip = ip
+            break
+        else:
+            msg = _("No GPFS node is active")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return active_gpfs_node_ip
+
+
+@interface.volumedriver
 class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     """GPFS cinder driver extension.
 
@@ -1244,6 +1395,11 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     to be able to create cinder volumes when cinder volume service
     is not running on GPFS node.
     """
+
+    VERSION = "1.0"
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_GPFS_NFS_CI"
 
     def __init__(self, *args, **kwargs):
         self._context = None
