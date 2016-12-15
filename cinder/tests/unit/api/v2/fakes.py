@@ -238,7 +238,7 @@ def fake_snapshot_get(self, context, snapshot_id):
 
 
 def fake_consistencygroup_get_notfound(self, context, cg_id):
-    raise exc.ConsistencyGroupNotFound(consistencygroup_id=cg_id)
+    raise exc.GroupNotFound(group_id=cg_id)
 
 
 def fake_volume_type_get(context, id, *args, **kwargs):

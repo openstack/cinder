@@ -16,6 +16,7 @@
 Tests For Filter Scheduler.
 """
 
+import ddt
 import mock
 
 from cinder import context
@@ -29,6 +30,7 @@ from cinder.tests.unit.scheduler import test_scheduler
 from cinder.volume import utils
 
 
+@ddt.ddt
 class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     """Test case for Filter Scheduler."""
 
@@ -56,8 +58,12 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, 'faki-id1', group_spec,
                           request_spec_list, {}, [])
 
+    @ddt.data(
+        {'capabilities:consistent_group_snapshot_enabled': '<is> True'},
+        {'consistent_group_snapshot_enabled': '<is> True'}
+    )
     @mock.patch('cinder.db.service_get_all')
-    def test_schedule_group(self, _mock_service_get_all):
+    def test_schedule_group(self, specs, _mock_service_get_all):
         # Make sure _schedule_group() can find host successfully.
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
@@ -66,7 +72,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
         fakes.mock_host_manager_db_calls(_mock_service_get_all)
 
-        specs = {'capabilities:consistencygroup_support': '<is> True'}
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 0},
                         'volume_type': {'name': 'Type1',
@@ -83,80 +88,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                                      group_spec,
                                                      request_spec_list,
                                                      {}, [])
-        self.assertIsNotNone(weighed_host.obj)
-        self.assertTrue(_mock_service_get_all.called)
-
-    def test_create_consistencygroup_no_hosts(self):
-        # Ensure empty hosts result in NoValidBackend exception.
-        sched = fakes.FakeFilterScheduler()
-
-        fake_context = context.RequestContext('user', 'project')
-        request_spec = {'volume_properties': {'project_id': 1,
-                                              'size': 0},
-                        'volume_type': {'name': 'Type1',
-                                        'extra_specs': {}}}
-        request_spec2 = {'volume_properties': {'project_id': 1,
-                                               'size': 0},
-                         'volume_type': {'name': 'Type2',
-                                         'extra_specs': {}}}
-        request_spec_list = [request_spec, request_spec2]
-        self.assertRaises(exception.NoValidBackend,
-                          sched.schedule_create_consistencygroup,
-                          fake_context, 'faki-id1', request_spec_list, {})
-
-    @mock.patch('cinder.db.service_get_all')
-    def test_schedule_consistencygroup(self,
-                                       _mock_service_get_all):
-        # Make sure _schedule_group() can find host successfully.
-        sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fake_context = context.RequestContext('user', 'project',
-                                              is_admin=True)
-
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
-
-        specs = {'capabilities:consistencygroup_support': '<is> True'}
-        request_spec = {'volume_properties': {'project_id': 1,
-                                              'size': 0},
-                        'volume_type': {'name': 'Type1',
-                                        'extra_specs': specs}}
-        request_spec2 = {'volume_properties': {'project_id': 1,
-                                               'size': 0},
-                         'volume_type': {'name': 'Type2',
-                                         'extra_specs': specs}}
-        request_spec_list = [request_spec, request_spec2]
-        weighed_host = sched._schedule_group(fake_context,
-                                             request_spec_list,
-                                             {})
-        self.assertIsNotNone(weighed_host.obj)
-        self.assertTrue(_mock_service_get_all.called)
-
-    @mock.patch('cinder.db.service_get_all')
-    def test_schedule_consistencygroup_no_cg_support_in_extra_specs(
-            self,
-            _mock_service_get_all):
-        # Make sure _schedule_group() can find host successfully even
-        # when consistencygroup_support is not specified in volume type's
-        # extra specs
-        sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fake_context = context.RequestContext('user', 'project',
-                                              is_admin=True)
-
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
-
-        request_spec = {'volume_properties': {'project_id': 1,
-                                              'size': 0},
-                        'volume_type': {'name': 'Type1',
-                                        'extra_specs': {}}}
-        request_spec2 = {'volume_properties': {'project_id': 1,
-                                               'size': 0},
-                         'volume_type': {'name': 'Type2',
-                                         'extra_specs': {}}}
-        request_spec_list = [request_spec, request_spec2]
-        weighed_host = sched._schedule_group(fake_context,
-                                             request_spec_list,
-                                             {})
         self.assertIsNotNone(weighed_host.obj)
         self.assertTrue(_mock_service_get_all.called)
 
@@ -281,39 +212,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'group_backend': 'host1'}
-        weighed_host = sched._schedule(fake_context, request_spec, {})
-        self.assertEqual('host1#lvm1', weighed_host.obj.host)
-
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_volume_clear_host_different_with_cg(self,
-                                                        _mock_service_get_all):
-        # Ensure we clear those hosts whose backend is not same as
-        # consistencygroup's backend.
-        sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
-        fake_context = context.RequestContext('user', 'project')
-        request_spec = {'volume_properties': {'project_id': 1,
-                                              'size': 1},
-                        'volume_type': {'name': 'LVM_iSCSI'},
-                        'CG_backend': 'host@lvmdriver'}
-        request_spec = objects.RequestSpec.from_primitives(request_spec)
-        weighed_host = sched._schedule(fake_context, request_spec, {})
-        self.assertIsNone(weighed_host)
-
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_volume_host_same_as_cg(self, _mock_service_get_all):
-        # Ensure we don't clear the host whose backend is same as
-        # consistencygroup's backend.
-        sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all)
-        fake_context = context.RequestContext('user', 'project')
-        request_spec = {'volume_properties': {'project_id': 1,
-                                              'size': 1},
-                        'volume_type': {'name': 'LVM_iSCSI'},
-                        'CG_backend': 'host1'}
-        request_spec = objects.RequestSpec.from_primitives(request_spec)
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertEqual('host1#lvm1', weighed_host.obj.host)
 

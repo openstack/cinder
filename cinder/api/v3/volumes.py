@@ -23,7 +23,6 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import volumes as volumes_v2
 from cinder.api.v3.views import volumes as volume_views_v3
-from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
 from cinder import objects
@@ -235,26 +234,18 @@ class VolumeController(volumes_v2.VolumeController):
         else:
             kwargs['source_replica'] = None
 
+        kwargs['group'] = None
+        kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
-            try:
-                kwargs['consistencygroup'] = (
-                    self.consistencygroup_api.get(context,
-                                                  consistencygroup_id))
-            except exception.ConsistencyGroupNotFound:
-                # Not found exception will be handled at the wsgi level
-                kwargs['group'] = self.group_api.get(
-                    context, consistencygroup_id)
-        else:
-            kwargs['consistencygroup'] = None
+            # Not found exception will be handled at the wsgi level
+            kwargs['group'] = self.group_api.get(context, consistencygroup_id)
 
         # Get group_id if volume is in a group.
         group_id = volume.get('group_id')
         if group_id is not None:
-            try:
-                kwargs['group'] = self.group_api.get(context, group_id)
-            except exception.GroupNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found exception will be handled at the wsgi level
+            kwargs['group'] = self.group_api.get(context, group_id)
 
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:

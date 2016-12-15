@@ -77,7 +77,7 @@ class FakeHostManager(host_manager.HostManager):
                       'reserved_percentage': 5,
                       'volume_backend_name': 'lvm4',
                       'timestamp': UTC_NOW,
-                      'consistencygroup_support': True},
+                      'consistent_group_snapshot_enabled': True},
             'host5': {'total_capacity_gb': 'infinite',
                       'free_capacity_gb': 'unknown',
                       'allocated_capacity_gb': 1548,

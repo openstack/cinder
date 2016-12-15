@@ -124,9 +124,12 @@ class VolumeAPI(rpc.RPCAPI):
         3.9  - Adds new attach/detach methods
         3.10 -  Returning objects instead of raw dictionaries in
                get_manageable_volumes & get_manageable_snapshots
+        3.11 - Removes create_consistencygroup, delete_consistencygroup,
+               create_cgsnapshot, delete_cgsnapshot, update_consistencygroup,
+               and create_consistencygroup_from_src.
     """
 
-    RPC_API_VERSION = '3.10'
+    RPC_API_VERSION = '3.11'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -147,38 +150,6 @@ class VolumeAPI(rpc.RPCAPI):
             kwargs['server'] = server
 
         return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)
-
-    def create_consistencygroup(self, ctxt, group):
-        cctxt = self._get_cctxt(group.service_topic_queue)
-        cctxt.cast(ctxt, 'create_consistencygroup', group=group)
-
-    def delete_consistencygroup(self, ctxt, group):
-        cctxt = self._get_cctxt(group.service_topic_queue)
-        cctxt.cast(ctxt, 'delete_consistencygroup', group=group)
-
-    def update_consistencygroup(self, ctxt, group, add_volumes=None,
-                                remove_volumes=None):
-        cctxt = self._get_cctxt(group.service_topic_queue)
-        cctxt.cast(ctxt, 'update_consistencygroup',
-                   group=group,
-                   add_volumes=add_volumes,
-                   remove_volumes=remove_volumes)
-
-    def create_consistencygroup_from_src(self, ctxt, group, cgsnapshot=None,
-                                         source_cg=None):
-        cctxt = self._get_cctxt(group.service_topic_queue)
-        cctxt.cast(ctxt, 'create_consistencygroup_from_src',
-                   group=group,
-                   cgsnapshot=cgsnapshot,
-                   source_cg=source_cg)
-
-    def create_cgsnapshot(self, ctxt, cgsnapshot):
-        cctxt = self._get_cctxt(cgsnapshot.service_topic_queue)
-        cctxt.cast(ctxt, 'create_cgsnapshot', cgsnapshot=cgsnapshot)
-
-    def delete_cgsnapshot(self, ctxt, cgsnapshot):
-        cctxt = self._get_cctxt(cgsnapshot.service_topic_queue)
-        cctxt.cast(ctxt, 'delete_cgsnapshot', cgsnapshot=cgsnapshot)
 
     def create_volume(self, ctxt, volume, request_spec, filter_properties,
                       allow_reschedule=True):
