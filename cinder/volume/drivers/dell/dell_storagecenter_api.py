@@ -299,6 +299,8 @@ class StorageCenterApiHelper(object):
                 self.san_login = self.config.secondary_san_login
                 self.san_password = self.config.secondary_san_password
             else:
+                LOG.info(_LI('Swapping DSM credentials: Secondary DSM '
+                             'credentials are not set or are incomplete.'))
                 # Cannot swap.
                 return False
             # Odds on this hasn't changed so no need to make setting this a
@@ -311,6 +313,8 @@ class StorageCenterApiHelper(object):
             self.san_login = self.config.san_login
             self.san_password = self.config.san_password
             self.san_port = self.config.dell_sc_api_port
+        LOG.info(_LI('Swapping DSM credentials: New DSM IP is %r.'),
+                 self.san_ip)
         return True
 
     def _setup_connection(self):
