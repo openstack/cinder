@@ -1613,15 +1613,20 @@ class DellSCSanAPITestCase(test.TestCase):
     FLDR_PATH = 'StorageCenter/ScVolumeFolder/'
 
     # Create a Response object that indicates OK
+
     response_ok = models.Response()
     response_ok.status_code = 200
     response_ok.reason = u'ok'
+    response_ok._content = ''
+    response_ok._content_consumed = True
     RESPONSE_200 = response_ok
 
     # Create a Response object that indicates created
     response_created = models.Response()
     response_created.status_code = 201
     response_created.reason = u'created'
+    response_created._content = ''
+    response_created._content_consumed = True
     RESPONSE_201 = response_created
 
     # Create a Response object that can indicate a failure. Although
@@ -1629,12 +1634,16 @@ class DellSCSanAPITestCase(test.TestCase):
     response_nc = models.Response()
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
+    response_nc._content = ''
+    response_nc._content_consumed = True
     RESPONSE_204 = response_nc
 
     # Create a Response object is a pure error.
     response_bad = models.Response()
     response_bad.status_code = 400
     response_bad.reason = u'bad request'
+    response_bad._content = ''
+    response_bad._content_consumed = True
     RESPONSE_400 = response_bad
 
     def setUp(self):
@@ -6565,14 +6574,40 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_open_connection,
                                      mock_init):
         lv1 = {'primaryVolume': {'instanceId': '12345.1'},
-               'secondaryVolume': {'instanceId': '67890.1'},
+               'secondaryVolume': {'instanceId': '67890.1',
+                                   'instanceName': fake.VOLUME2_ID},
                'instanceName': 'Live volume of ' + fake.VOLUME2_ID}
         lv2 = {'primaryVolume': {'instanceId': '67890.2'},
-               'secondaryVolume': {'instanceId': '12345.2'},
+               'secondaryVolume': {'instanceId': '12345.2',
+                                   'instanceName': fake.VOLUME_ID},
                'instanceName': 'Live volume of ' + fake.VOLUME_ID}
         mock_get_live_volumes.return_value = [lv1, lv2]
         mock_sc_live_volumes.return_value = []
         retlv = self.scapi.get_live_volume('12345.2', fake.VOLUME_ID)
+        self.assertEqual(lv2, retlv)
+        mock_sc_live_volumes.assert_called_once_with('12345')
+        mock_get_live_volumes.assert_called_once_with()
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_sc_live_volumes')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_live_volumes')
+    def test_get_live_volume_by_name_unknown(self,
+                                             mock_get_live_volumes,
+                                             mock_sc_live_volumes,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        lv1 = {'primaryVolume': {'instanceId': '12345.1'},
+               'secondaryVolume': {'instanceId': '67890.1',
+                                   'instanceName': fake.VOLUME2_ID},
+               'instanceName': 'Live volume of ' + fake.VOLUME2_ID}
+        lv2 = {'secondaryVolume': {'instanceId': '12345.2',
+                                   'instanceName': fake.VOLUME_ID},
+               'instanceName': 'unknown'}
+        mock_get_live_volumes.return_value = [lv1, lv2]
+        mock_sc_live_volumes.return_value = []
+        retlv = self.scapi.get_live_volume('12345.3', fake.VOLUME_ID)
         self.assertEqual(lv2, retlv)
         mock_sc_live_volumes.assert_called_once_with('12345')
         mock_get_live_volumes.assert_called_once_with()
@@ -7130,6 +7165,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     # Create a Response object is a pure error.
     response_bad = models.Response()
     response_bad.status_code = 400
+    response_bad._content = ''
+    response_bad._content_consumed = True
     response_bad.reason = u'bad request'
     RESPONSE_400 = response_bad
 
@@ -7293,18 +7330,24 @@ class DellHttpClientTestCase(test.TestCase):
     response_ok = models.Response()
     response_ok.status_code = 200
     response_ok.reason = u'ok'
+    response_ok._content = ''
+    response_ok._content_consumed = True
     RESPONSE_200 = response_ok
 
     # Create a Response object with no content
     response_nc = models.Response()
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
+    response_nc._content = ''
+    response_nc._content_consumed = True
     RESPONSE_204 = response_nc
 
     # Create a Response object is a pure error.
     response_bad = models.Response()
     response_bad.status_code = 400
     response_bad.reason = u'bad request'
+    response_bad._content = ''
+    response_bad._content_consumed = True
     RESPONSE_400 = response_bad
 
     def setUp(self):
