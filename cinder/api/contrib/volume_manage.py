@@ -13,8 +13,8 @@
 #   under the License.
 
 from oslo_log import log as logging
-from webob import exc
 
+from cinder.api import common
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
@@ -64,6 +64,7 @@ class VolumeManageController(wsgi.Controller):
            'volume':
            {
              'host': <Cinder host on which the existing storage resides>,
+             'cluster': <Cinder cluster on which the storage resides>,
              'ref':  <Driver-specific reference to existing storage object>,
            }
          }
@@ -106,13 +107,10 @@ class VolumeManageController(wsgi.Controller):
 
         # Check that the required keys are present, return an error if they
         # are not.
-        required_keys = set(['ref', 'host'])
-        missing_keys = list(required_keys - set(volume.keys()))
+        if 'ref' not in volume:
+            raise exception.MissingRequired(element='ref')
 
-        if missing_keys:
-            msg = _("The following elements are required: %s") % \
-                ', '.join(missing_keys)
-            raise exc.HTTPBadRequest(explanation=msg)
+        cluster_name, host = common.get_cluster_host(req, volume, '3.16')
 
         LOG.debug('Manage volume request body: %s', body)
 
@@ -139,7 +137,8 @@ class VolumeManageController(wsgi.Controller):
 
         try:
             new_volume = self.volume_api.manage_existing(context,
-                                                         volume['host'],
+                                                         host,
+                                                         cluster_name,
                                                          volume['ref'],
                                                          **kwargs)
         except exception.ServiceNotFound:

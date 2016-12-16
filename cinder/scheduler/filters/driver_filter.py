@@ -35,10 +35,11 @@ class DriverFilter(filters.BaseHostFilter):
         """Determines whether a host has a passing filter_function or not."""
         stats = self._generate_stats(host_state, filter_properties)
 
-        LOG.debug("Checking host '%s'", stats['host_stats']['host'])
+        LOG.debug("Checking backend '%s'", stats['host_stats']['backend_id'])
         result = self._check_filter_function(stats)
         LOG.debug("Result: %s", result)
-        LOG.debug("Done checking host '%s'", stats['host_stats']['host'])
+        LOG.debug("Done checking backend '%s'",
+                  stats['host_stats']['backend_id'])
 
         return result
 
@@ -89,6 +90,8 @@ class DriverFilter(filters.BaseHostFilter):
 
         host_stats = {
             'host': host_state.host,
+            'cluster_name': host_state.cluster_name,
+            'backend_id': host_state.backend_id,
             'volume_backend_name': host_state.volume_backend_name,
             'vendor_name': host_state.vendor_name,
             'driver_version': host_state.driver_version,

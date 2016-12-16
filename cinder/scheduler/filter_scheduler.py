@@ -74,12 +74,11 @@ class FilterScheduler(driver.Scheduler):
         if not weighed_host:
             raise exception.NoValidHost(reason=_("No weighed hosts available"))
 
-        host = weighed_host.obj.host
+        backend = weighed_host.obj
+        updated_group = driver.group_update_db(context, group, backend.host,
+                                               backend.cluster_name)
 
-        updated_group = driver.group_update_db(context, group, host)
-
-        self.volume_rpcapi.create_consistencygroup(context,
-                                                   updated_group, host)
+        self.volume_rpcapi.create_consistencygroup(context, updated_group)
 
     def schedule_create_group(self, context, group,
                               group_spec,
@@ -96,12 +95,13 @@ class FilterScheduler(driver.Scheduler):
         if not weighed_host:
             raise exception.NoValidHost(reason=_("No weighed hosts available"))
 
-        host = weighed_host.obj.host
+        backend = weighed_host.obj
 
-        updated_group = driver.generic_group_update_db(context, group, host)
+        updated_group = driver.generic_group_update_db(context, group,
+                                                       backend.host,
+                                                       backend.cluster_name)
 
-        self.volume_rpcapi.create_group(context,
-                                        updated_group, host)
+        self.volume_rpcapi.create_group(context, updated_group)
 
     def schedule_create_volume(self, context, request_spec, filter_properties):
         weighed_host = self._schedule(context, request_spec,
@@ -110,18 +110,20 @@ class FilterScheduler(driver.Scheduler):
         if not weighed_host:
             raise exception.NoValidHost(reason=_("No weighed hosts available"))
 
-        host = weighed_host.obj.host
+        backend = weighed_host.obj
         volume_id = request_spec['volume_id']
 
-        updated_volume = driver.volume_update_db(context, volume_id, host)
+        updated_volume = driver.volume_update_db(context, volume_id,
+                                                 backend.host,
+                                                 backend.cluster_name)
         self._post_select_populate_filter_properties(filter_properties,
-                                                     weighed_host.obj)
+                                                     backend)
 
         # context is not serializable
         filter_properties.pop('context', None)
 
-        self.volume_rpcapi.create_volume(context, updated_volume, host,
-                                         request_spec, filter_properties,
+        self.volume_rpcapi.create_volume(context, updated_volume, request_spec,
+                                         filter_properties,
                                          allow_reschedule=True)
 
     def host_passes_filters(self, context, host, request_spec,
@@ -131,7 +133,7 @@ class FilterScheduler(driver.Scheduler):
                                                       filter_properties)
         for weighed_host in weighed_hosts:
             host_state = weighed_host.obj
-            if host_state.host == host:
+            if host_state.backend_id == host:
                 return host_state
 
         volume_id = request_spec.get('volume_id', '??volume_id missing??')
@@ -144,26 +146,27 @@ class FilterScheduler(driver.Scheduler):
                          migration_policy='never'):
         """Find a host that can accept the volume with its new type."""
         filter_properties = filter_properties or {}
-        current_host = request_spec['volume_properties']['host']
+        backend = (request_spec['volume_properties'].get('cluster_name')
+                   or request_spec['volume_properties']['host'])
 
-        # The volume already exists on this host, and so we shouldn't check if
-        # it can accept the volume again in the CapacityFilter.
-        filter_properties['vol_exists_on'] = current_host
+        # The volume already exists on this backend, and so we shouldn't check
+        # if it can accept the volume again in the CapacityFilter.
+        filter_properties['vol_exists_on'] = backend
 
-        weighed_hosts = self._get_weighted_candidates(context, request_spec,
-                                                      filter_properties)
-        if not weighed_hosts:
+        weighed_backends = self._get_weighted_candidates(context, request_spec,
+                                                         filter_properties)
+        if not weighed_backends:
             raise exception.NoValidHost(reason=_('No valid hosts for volume '
                                                  '%(id)s with type %(type)s') %
                                         {'id': request_spec['volume_id'],
                                          'type': request_spec['volume_type']})
 
-        for weighed_host in weighed_hosts:
-            host_state = weighed_host.obj
-            if host_state.host == current_host:
-                return host_state
+        for weighed_backend in weighed_backends:
+            backend_state = weighed_backend.obj
+            if backend_state.backend_id == backend:
+                return backend_state
 
-        if utils.extract_host(current_host, 'pool') is None:
+        if utils.extract_host(backend, 'pool') is None:
             # legacy volumes created before pool is introduced has no pool
             # info in host.  But host_state.host always include pool level
             # info. In this case if above exact match didn't work out, we
@@ -172,11 +175,12 @@ class FilterScheduler(driver.Scheduler):
             # cause migration between pools on same host, which we consider
             # it is different from migration between hosts thus allow that
             # to happen even migration policy is 'never'.
-            for weighed_host in weighed_hosts:
-                host_state = weighed_host.obj
-                backend = utils.extract_host(host_state.host, 'backend')
-                if backend == current_host:
-                    return host_state
+            for weighed_backend in weighed_backends:
+                backend_state = weighed_backend.obj
+                new_backend = utils.extract_host(backend_state.backend_id,
+                                                 'backend')
+                if new_backend == backend:
+                    return backend_state
 
         if migration_policy == 'never':
             raise exception.NoValidHost(reason=_('Current host not valid for '
@@ -186,7 +190,7 @@ class FilterScheduler(driver.Scheduler):
                                         {'id': request_spec['volume_id'],
                                          'type': request_spec['volume_type']})
 
-        top_host = self._choose_top_host(weighed_hosts, request_spec)
+        top_host = self._choose_top_host(weighed_backends, request_spec)
         return top_host.obj
 
     def get_pools(self, context, filters):
@@ -201,7 +205,7 @@ class FilterScheduler(driver.Scheduler):
         been selected by the scheduling process.
         """
         # Add a retry entry for the selected volume backend:
-        self._add_retry_host(filter_properties, host_state.host)
+        self._add_retry_host(filter_properties, host_state.backend_id)
 
     def _add_retry_host(self, filter_properties, host):
         """Add a retry entry for the selected volume backend.
@@ -418,8 +422,8 @@ class FilterScheduler(driver.Scheduler):
                     for host2 in temp_weighed_hosts:
                         # Should schedule creation of CG on backend level,
                         # not pool level.
-                        if (utils.extract_host(host1.obj.host) ==
-                                utils.extract_host(host2.obj.host)):
+                        if (utils.extract_host(host1.obj.backend_id) ==
+                                utils.extract_host(host2.obj.backend_id)):
                             new_weighed_hosts.append(host1)
                 weighed_hosts = new_weighed_hosts
                 if not weighed_hosts:
@@ -530,8 +534,8 @@ class FilterScheduler(driver.Scheduler):
             for host2 in host_list2:
                 # Should schedule creation of group on backend level,
                 # not pool level.
-                if (utils.extract_host(host1.obj.host) ==
-                        utils.extract_host(host2.obj.host)):
+                if (utils.extract_host(host1.obj.backend_id) ==
+                        utils.extract_host(host2.obj.backend_id)):
                     new_hosts.append(host1)
         if not new_hosts:
             return []
@@ -615,7 +619,7 @@ class FilterScheduler(driver.Scheduler):
             # Get host name including host@backend#pool info from
             # weighed_hosts.
             for host in weighed_hosts[::-1]:
-                backend = utils.extract_host(host.obj.host)
+                backend = utils.extract_host(host.obj.backend_id)
                 if backend != group_backend:
                     weighed_hosts.remove(host)
         if not weighed_hosts:
@@ -651,7 +655,7 @@ class FilterScheduler(driver.Scheduler):
     def _choose_top_host(self, weighed_hosts, request_spec):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug("Choosing %s", host_state.host)
+        LOG.debug("Choosing %s", host_state.backend_id)
         volume_properties = request_spec['volume_properties']
         host_state.consume_from_volume(volume_properties)
         return top_host
@@ -659,11 +663,11 @@ class FilterScheduler(driver.Scheduler):
     def _choose_top_host_group(self, weighed_hosts, request_spec_list):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug("Choosing %s", host_state.host)
+        LOG.debug("Choosing %s", host_state.backend_id)
         return top_host
 
     def _choose_top_host_generic_group(self, weighed_hosts):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug("Choosing %s", host_state.host)
+        LOG.debug("Choosing %s", host_state.backend_id)
         return top_host

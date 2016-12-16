@@ -167,6 +167,39 @@ class DBAPIServiceTestCase(BaseTest):
         real_service1 = db.service_get(self.ctxt, host='host1', topic='topic1')
         self._assertEqualObjects(service1, real_service1)
 
+    def test_service_get_all_disabled_by_cluster(self):
+        values = [
+            # Enabled services
+            {'host': 'host1', 'binary': 'b1', 'disabled': False},
+            {'host': 'host2', 'binary': 'b1', 'disabled': False,
+             'cluster_name': 'enabled_cluster'},
+            {'host': 'host3', 'binary': 'b1', 'disabled': True,
+             'cluster_name': 'enabled_cluster'},
+
+            # Disabled services
+            {'host': 'host4', 'binary': 'b1', 'disabled': True},
+            {'host': 'host5', 'binary': 'b1', 'disabled': False,
+             'cluster_name': 'disabled_cluster'},
+            {'host': 'host6', 'binary': 'b1', 'disabled': True,
+             'cluster_name': 'disabled_cluster'},
+        ]
+
+        db.cluster_create(self.ctxt, {'name': 'enabled_cluster',
+                                      'binary': 'b1',
+                                      'disabled': False}),
+        db.cluster_create(self.ctxt, {'name': 'disabled_cluster',
+                                      'binary': 'b1',
+                                      'disabled': True}),
+        services = [self._create_service(vals) for vals in values]
+
+        enabled = db.service_get_all(self.ctxt, disabled=False)
+        disabled = db.service_get_all(self.ctxt, disabled=True)
+
+        self.assertSetEqual({s.host for s in services[:3]},
+                            {s.host for s in enabled})
+        self.assertSetEqual({s.host for s in services[3:]},
+                            {s.host for s in disabled})
+
     def test_service_get_all(self):
         expired = (datetime.datetime.utcnow()
                    - datetime.timedelta(seconds=CONF.service_down_time + 1))

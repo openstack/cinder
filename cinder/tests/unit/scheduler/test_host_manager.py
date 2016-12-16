@@ -19,14 +19,18 @@ Tests For HostManager
 from datetime import datetime
 
 import mock
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
 from cinder.common import constants
+from cinder import context
+from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
 from cinder.scheduler import host_manager
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.objects import test_service
 
 
@@ -46,7 +50,7 @@ class HostManagerTestCase(test.TestCase):
     def setUp(self):
         super(HostManagerTestCase, self).setUp()
         self.host_manager = host_manager.HostManager()
-        self.fake_hosts = [host_manager.HostState('fake_host%s' % x)
+        self.fake_hosts = [host_manager.HostState('fake_host%s' % x, None)
                            for x in range(1, 5)]
         # For a second scheduler service.
         self.host_manager_1 = host_manager.HostManager()
@@ -93,27 +97,29 @@ class HostManagerTestCase(test.TestCase):
                                          _mock_get_updated_pools):
         service_states = self.host_manager.service_states
         self.assertDictMatch({}, service_states)
-        _mock_utcnow.side_effect = [31337, 31338, 31339]
+        _mock_utcnow.side_effect = [31338, 31339]
 
         _mock_get_updated_pools.return_value = []
-        host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
-        host2_volume_capabs = dict(free_capacity_gb=5432, timestamp=1)
-        host3_volume_capabs = dict(free_capacity_gb=6543, timestamp=1)
+        timestamp = jsonutils.to_primitive(datetime.utcnow())
+        host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=timestamp)
+        host2_volume_capabs = dict(free_capacity_gb=5432)
+        host3_volume_capabs = dict(free_capacity_gb=6543)
 
         service_name = 'volume'
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      host1_volume_capabs)
+                                                      host1_volume_capabs,
+                                                      None, timestamp)
         self.host_manager.update_service_capabilities(service_name, 'host2',
-                                                      host2_volume_capabs)
+                                                      host2_volume_capabs,
+                                                      None, None)
         self.host_manager.update_service_capabilities(service_name, 'host3',
-                                                      host3_volume_capabs)
+                                                      host3_volume_capabs,
+                                                      None, None)
 
         # Make sure dictionary isn't re-assigned
         self.assertEqual(service_states, self.host_manager.service_states)
-        # Make sure original dictionary wasn't copied
-        self.assertEqual(1, host1_volume_capabs['timestamp'])
 
-        host1_volume_capabs['timestamp'] = 31337
+        host1_volume_capabs['timestamp'] = timestamp
         host2_volume_capabs['timestamp'] = 31338
         host3_volume_capabs['timestamp'] = 31339
 
@@ -150,7 +156,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      capab1)
+                                                      capab1, None, None)
         self.assertDictMatch(dict(dict(timestamp=31337), **capab1),
                              self.host_manager.service_states['host1'])
 
@@ -168,7 +174,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
-                                                        capab1)
+                                                        capab1, None, None)
 
         self.assertDictMatch(dict(dict(timestamp=31339), **capab1),
                              self.host_manager_1.service_states['host1'])
@@ -208,7 +214,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      capab1)
+                                                      capab1, None, None)
 
         self.assertDictMatch(dict(dict(timestamp=31340), **capab1),
                              self.host_manager.service_states['host1'])
@@ -219,7 +225,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
-                                                        capab1)
+                                                        capab1, None, None)
 
         self.assertDictMatch(dict(dict(timestamp=31341), **capab1),
                              self.host_manager_1.service_states['host1'])
@@ -292,7 +298,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      capab1)
+                                                      capab1, None, None)
 
         self.assertDictMatch(
             dict(dict(timestamp=31340), **capab1),
@@ -303,7 +309,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
-                                                        capab1)
+                                                        capab1, None, None)
         self.assertDictMatch(dict(dict(timestamp=31345), **capab1),
                              self.host_manager_1.service_states['host1'])
 
@@ -355,7 +361,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      capab2)
+                                                      capab2, None, None)
         self.assertDictMatch(
             dict(dict(timestamp=31340), **capab1),
             self.host_manager.service_states_last_update['host1'])
@@ -378,7 +384,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
-                                                        capab2)
+                                                        capab2, None, None)
         self.assertDictMatch(dict(dict(timestamp=31348), **capab2),
                              self.host_manager_1.service_states['host1'])
 
@@ -452,7 +458,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: update_service_capabilities()
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      capab2)
+                                                      capab2, None, None)
         self.assertDictMatch(
             dict(dict(timestamp=31349), **capab2),
             self.host_manager.service_states_last_update['host1'])
@@ -462,7 +468,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: update_service_capabilities()
         self.host_manager_1.update_service_capabilities(service_name, 'host1',
-                                                        capab2)
+                                                        capab2, None, None)
 
         self.assertDictMatch(
             dict(dict(timestamp=31348), **capab2),
@@ -490,19 +496,23 @@ class HostManagerTestCase(test.TestCase):
         self.host_manager = host_manager.HostManager()
         self.assertFalse(self.host_manager.has_all_capabilities())
 
-        host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
-        host2_volume_capabs = dict(free_capacity_gb=5432, timestamp=1)
-        host3_volume_capabs = dict(free_capacity_gb=6543, timestamp=1)
+        timestamp = jsonutils.to_primitive(datetime.utcnow())
+        host1_volume_capabs = dict(free_capacity_gb=4321)
+        host2_volume_capabs = dict(free_capacity_gb=5432)
+        host3_volume_capabs = dict(free_capacity_gb=6543)
 
         service_name = 'volume'
         self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      host1_volume_capabs)
+                                                      host1_volume_capabs,
+                                                      None, timestamp)
         self.assertFalse(self.host_manager.has_all_capabilities())
         self.host_manager.update_service_capabilities(service_name, 'host2',
-                                                      host2_volume_capabs)
+                                                      host2_volume_capabs,
+                                                      None, timestamp)
         self.assertFalse(self.host_manager.has_all_capabilities())
         self.host_manager.update_service_capabilities(service_name, 'host3',
-                                                      host3_volume_capabs)
+                                                      host3_volume_capabs,
+                                                      None, timestamp)
         self.assertTrue(self.host_manager.has_all_capabilities())
 
     @mock.patch('cinder.db.service_get_all')
@@ -532,7 +542,7 @@ class HostManagerTestCase(test.TestCase):
         mocked_service_states = {
             'host1': dict(volume_backend_name='AAA',
                           total_capacity_gb=512, free_capacity_gb=200,
-                          timestamp=None, reserved_percentage=0),
+                          timestamp=dates[1], reserved_percentage=0),
         }
 
         _mock_service_get_all.return_value = services
@@ -547,17 +557,85 @@ class HostManagerTestCase(test.TestCase):
                              mocked_service_states):
             self.host_manager.update_service_capabilities(service_name,
                                                           'host1',
-                                                          host_volume_capabs)
+                                                          host_volume_capabs,
+                                                          None, None)
             res = self.host_manager.get_pools(context)
             self.assertEqual(1, len(res))
             self.assertEqual(dates[1], res[0]['capabilities']['timestamp'])
 
             self.host_manager.update_service_capabilities(service_name,
                                                           'host1',
-                                                          host_volume_capabs)
+                                                          host_volume_capabs,
+                                                          None, None)
             res = self.host_manager.get_pools(context)
             self.assertEqual(1, len(res))
             self.assertEqual(dates[2], res[0]['capabilities']['timestamp'])
+
+    @mock.patch('cinder.objects.Service.is_up', True)
+    def test_get_all_host_states_cluster(self):
+        """Test get_all_host_states when we have clustered services.
+
+        Confirm that clustered services are grouped and that only the latest
+        of the capability reports is relevant.
+        """
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+
+        cluster_name = 'cluster'
+        db.cluster_create(ctxt, {'name': cluster_name,
+                                 'binary': constants.VOLUME_BINARY})
+
+        services = (
+            db.service_create(ctxt,
+                              {'host': 'clustered_host_1',
+                               'topic': constants.VOLUME_TOPIC,
+                               'binary': constants.VOLUME_BINARY,
+                               'cluster_name': cluster_name,
+                               'created_at': timeutils.utcnow()}),
+            # Even if this service is disabled, since it belongs to an enabled
+            # cluster, it's not really disabled.
+            db.service_create(ctxt,
+                              {'host': 'clustered_host_2',
+                               'topic': constants.VOLUME_TOPIC,
+                               'binary': constants.VOLUME_BINARY,
+                               'disabled': True,
+                               'cluster_name': cluster_name,
+                               'created_at': timeutils.utcnow()}),
+            db.service_create(ctxt,
+                              {'host': 'clustered_host_3',
+                               'topic': constants.VOLUME_TOPIC,
+                               'binary': constants.VOLUME_BINARY,
+                               'cluster_name': cluster_name,
+                               'created_at': timeutils.utcnow()}),
+            db.service_create(ctxt,
+                              {'host': 'non_clustered_host',
+                               'topic': constants.VOLUME_TOPIC,
+                               'binary': constants.VOLUME_BINARY,
+                               'created_at': timeutils.utcnow()}),
+            # This service has no capabilities
+            db.service_create(ctxt,
+                              {'host': 'no_capabilities_host',
+                               'topic': constants.VOLUME_TOPIC,
+                               'binary': constants.VOLUME_BINARY,
+                               'created_at': timeutils.utcnow()}),
+        )
+
+        capabilities = ((1, {'free_capacity_gb': 1000}),
+                        # This is the capacity that will be selected for the
+                        # cluster because is the one with the latest timestamp.
+                        (3, {'free_capacity_gb': 2000}),
+                        (2, {'free_capacity_gb': 3000}),
+                        (1, {'free_capacity_gb': 4000}))
+
+        for i in range(len(capabilities)):
+            self.host_manager.update_service_capabilities(
+                'volume', services[i].host, capabilities[i][1],
+                services[i].cluster_name, capabilities[i][0])
+
+        res = self.host_manager.get_all_host_states(ctxt)
+        result = {(s.cluster_name or s.host, s.free_capacity_gb) for s in res}
+        expected = {(cluster_name + '#_pool0', 2000),
+                    ('non_clustered_host#_pool0', 4000)}
+        self.assertSetEqual(expected, result)
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
@@ -565,6 +643,7 @@ class HostManagerTestCase(test.TestCase):
     def test_get_all_host_states(self, _mock_service_is_up,
                                  _mock_service_get_all):
         context = 'fake_context'
+        timestamp = datetime.utcnow()
         topic = constants.VOLUME_TOPIC
 
         services = [
@@ -596,15 +675,15 @@ class HostManagerTestCase(test.TestCase):
         service_states = {
             'host1': dict(volume_backend_name='AAA',
                           total_capacity_gb=512, free_capacity_gb=200,
-                          timestamp=None, reserved_percentage=0,
+                          timestamp=timestamp, reserved_percentage=0,
                           provisioned_capacity_gb=312),
             'host2': dict(volume_backend_name='BBB',
                           total_capacity_gb=256, free_capacity_gb=100,
-                          timestamp=None, reserved_percentage=0,
+                          timestamp=timestamp, reserved_percentage=0,
                           provisioned_capacity_gb=156),
             'host3': dict(volume_backend_name='CCC',
                           total_capacity_gb=10000, free_capacity_gb=700,
-                          timestamp=None, reserved_percentage=0,
+                          timestamp=timestamp, reserved_percentage=0,
                           provisioned_capacity_gb=9300),
         }
         # First test: service.is_up is always True, host5 is disabled,
@@ -665,6 +744,7 @@ class HostManagerTestCase(test.TestCase):
     def test_get_pools(self, _mock_service_is_up,
                        _mock_service_get_all):
         context = 'fake_context'
+        timestamp = datetime.utcnow()
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
@@ -678,15 +758,15 @@ class HostManagerTestCase(test.TestCase):
         mocked_service_states = {
             'host1': dict(volume_backend_name='AAA',
                           total_capacity_gb=512, free_capacity_gb=200,
-                          timestamp=None, reserved_percentage=0,
+                          timestamp=timestamp, reserved_percentage=0,
                           provisioned_capacity_gb=312),
             'host2@back1': dict(volume_backend_name='BBB',
                                 total_capacity_gb=256, free_capacity_gb=100,
-                                timestamp=None, reserved_percentage=0,
+                                timestamp=timestamp, reserved_percentage=0,
                                 provisioned_capacity_gb=156),
             'host2@back2': dict(volume_backend_name='CCC',
                                 total_capacity_gb=10000, free_capacity_gb=700,
-                                timestamp=None, reserved_percentage=0,
+                                timestamp=timestamp, reserved_percentage=0,
                                 provisioned_capacity_gb=9300),
         }
 
@@ -706,7 +786,7 @@ class HostManagerTestCase(test.TestCase):
                 {
                     'name': 'host1#AAA',
                     'capabilities': {
-                        'timestamp': None,
+                        'timestamp': timestamp,
                         'volume_backend_name': 'AAA',
                         'free_capacity_gb': 200,
                         'driver_version': None,
@@ -719,7 +799,7 @@ class HostManagerTestCase(test.TestCase):
                 {
                     'name': 'host2@back1#BBB',
                     'capabilities': {
-                        'timestamp': None,
+                        'timestamp': timestamp,
                         'volume_backend_name': 'BBB',
                         'free_capacity_gb': 100,
                         'driver_version': None,
@@ -732,7 +812,7 @@ class HostManagerTestCase(test.TestCase):
                 {
                     'name': 'host2@back2#CCC',
                     'capabilities': {
-                        'timestamp': None,
+                        'timestamp': timestamp,
                         'volume_backend_name': 'CCC',
                         'free_capacity_gb': 700,
                         'driver_version': None,
@@ -887,7 +967,7 @@ class HostStateTestCase(test.TestCase):
     """Test case for HostState class."""
 
     def test_update_from_volume_capability_nopool(self):
-        fake_host = host_manager.HostState('host1')
+        fake_host = host_manager.HostState('host1', None)
         self.assertIsNone(fake_host.free_capacity_gb)
 
         volume_capability = {'total_capacity_gb': 1024,
@@ -922,7 +1002,7 @@ class HostStateTestCase(test.TestCase):
         self.assertRaises(KeyError, lambda: fake_host.pools['pool0'])
 
     def test_update_from_volume_capability_with_pools(self):
-        fake_host = host_manager.HostState('host1')
+        fake_host = host_manager.HostState('host1', None)
         self.assertIsNone(fake_host.free_capacity_gb)
         capability = {
             'volume_backend_name': 'Local iSCSI',
@@ -1014,7 +1094,7 @@ class HostStateTestCase(test.TestCase):
                          fake_host.pools['3rd pool'].provisioned_capacity_gb)
 
     def test_update_from_volume_infinite_capability(self):
-        fake_host = host_manager.HostState('host1')
+        fake_host = host_manager.HostState('host1', None)
         self.assertIsNone(fake_host.free_capacity_gb)
 
         volume_capability = {'total_capacity_gb': 'infinite',
@@ -1035,7 +1115,7 @@ class HostStateTestCase(test.TestCase):
             fake_host.pools['_pool0'].free_capacity_gb)
 
     def test_update_from_volume_unknown_capability(self):
-        fake_host = host_manager.HostState('host1')
+        fake_host = host_manager.HostState('host1', None)
         self.assertIsNone(fake_host.free_capacity_gb)
 
         volume_capability = {'total_capacity_gb': 'infinite',
@@ -1056,7 +1136,7 @@ class HostStateTestCase(test.TestCase):
             fake_host.pools['_pool0'].free_capacity_gb)
 
     def test_update_from_empty_volume_capability(self):
-        fake_host = host_manager.HostState('host1')
+        fake_host = host_manager.HostState('host1', None)
 
         vol_cap = {'timestamp': None}
 
@@ -1076,7 +1156,7 @@ class PoolStateTestCase(test.TestCase):
     """Test case for HostState class."""
 
     def test_update_from_volume_capability(self):
-        fake_pool = host_manager.PoolState('host1', None, 'pool0')
+        fake_pool = host_manager.PoolState('host1', None, None, 'pool0')
         self.assertIsNone(fake_pool.free_capacity_gb)
 
         volume_capability = {'total_capacity_gb': 1024,

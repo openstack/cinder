@@ -457,6 +457,10 @@ class ClusteredObject(object):
     def service_topic_queue(self):
         return self.cluster_name or self.host
 
+    @property
+    def is_clustered(self):
+        return bool(self.cluster_name)
+
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
     OBJ_BASE_CLASS = CinderObject

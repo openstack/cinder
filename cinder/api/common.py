@@ -370,3 +370,17 @@ class ViewBuilder(object):
         url_parts[2] = prefix_parts[2] + url_parts[2]
 
         return urllib.parse.urlunsplit(url_parts).rstrip('/')
+
+
+def get_cluster_host(req, params, cluster_version):
+    if req.api_version_request.matches(cluster_version):
+        cluster_name = params.get('cluster')
+        msg = _('One and only one of cluster and host must be set.')
+    else:
+        cluster_name = None
+        msg = _('Host field is missing.')
+
+    host = params.get('host')
+    if bool(cluster_name) == bool(host):
+        raise exception.InvalidInput(reason=msg)
+    return cluster_name, host

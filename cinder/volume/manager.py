@@ -222,6 +222,7 @@ class VolumeManager(manager.CleanableManager,
             configuration=self.configuration,
             db=self.db,
             host=self.host,
+            cluster_name=self.cluster,
             is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
 
@@ -548,12 +549,21 @@ class VolumeManager(manager.CleanableManager,
         """
         return self.driver.initialized
 
+    def _set_resource_host(self, resource):
+        """Set the host field on the DB to our own when we are clustered."""
+        if resource.is_clustered and resource.host != self.host:
+            resource.host = self.host
+            resource.save()
+
     @objects.Volume.set_workers
     def create_volume(self, context, volume, request_spec=None,
                       filter_properties=None, allow_reschedule=True):
         """Creates the volume."""
         # Log about unsupported drivers
         utils.log_unsupported_driver_warning(self.driver)
+
+        # Make sure the host in the DB matches our own when clustered
+        self._set_resource_host(volume)
 
         context_elevated = context.elevated()
         if filter_properties is None:
@@ -1683,12 +1693,13 @@ class VolumeManager(manager.CleanableManager,
                                     remote=src_remote,
                                     attach_encryptor=attach_encryptor)
 
-    def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
+    def _migrate_volume_generic(self, ctxt, volume, backend, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
         tmp_skip = {'snapshot_id', 'source_volid'}
-        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | tmp_skip | {'host'}
+        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | tmp_skip | {'host',
+                                                                'cluster_name'}
         new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
@@ -1700,15 +1711,16 @@ class VolumeManager(manager.CleanableManager,
 
         new_volume = objects.Volume(
             context=ctxt,
-            host=host['host'],
+            host=backend['host'],
+            cluster_name=backend.get('cluster_name'),
             status='creating',
             attach_status=fields.VolumeAttachStatus.DETACHED,
             migration_status='target:%s' % volume['id'],
             **new_vol_values
         )
         new_volume.create()
-        rpcapi.create_volume(ctxt, new_volume, host['host'],
-                             None, None, allow_reschedule=False)
+        rpcapi.create_volume(ctxt, new_volume, None, None,
+                             allow_reschedule=False)
 
         # Wait for new_volume to become ready
         starttime = time.time()
@@ -1720,13 +1732,13 @@ class VolumeManager(manager.CleanableManager,
             tries += 1
             now = time.time()
             if new_volume.status == 'error':
-                msg = _("failed to create new_volume on destination host")
+                msg = _("failed to create new_volume on destination")
                 self._clean_temporary_volume(ctxt, volume,
                                              new_volume,
                                              clean_db_only=True)
                 raise exception.VolumeMigrationFailed(reason=msg)
             elif now > deadline:
-                msg = _("timeout creating new_volume on destination host")
+                msg = _("timeout creating new_volume on destination")
                 self._clean_temporary_volume(ctxt, volume,
                                              new_volume,
                                              clean_db_only=True)
@@ -1931,6 +1943,7 @@ class VolumeManager(manager.CleanableManager,
                                                                  host)
                 if moved:
                     updates = {'host': host['host'],
+                               'cluster_name': host.get('cluster_name'),
                                'migration_status': 'success',
                                'previous_status': volume.status}
                     if status_update:
@@ -1948,8 +1961,7 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
         if not moved:
             try:
-                self._migrate_volume_generic(ctxt, volume, host,
-                                             new_type_id)
+                self._migrate_volume_generic(ctxt, volume, host, new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
@@ -2238,17 +2250,22 @@ class VolumeManager(manager.CleanableManager,
         # Call driver to try and change the type
         retype_model_update = None
 
-        # NOTE(jdg): Check to see if the destination host is the same
-        # as the current.  If it's not don't call the driver.retype
-        # method, otherwise drivers that implement retype may report
-        # success, but it's invalid in the case of a migrate.
+        # NOTE(jdg): Check to see if the destination host or cluster (depending
+        # if it's the volume is in a clustered backend or not) is the same as
+        # the current.  If it's not don't call the driver.retype method,
+        # otherwise drivers that implement retype may report success, but it's
+        # invalid in the case of a migrate.
 
         # We assume that those that support pools do this internally
         # so we strip off the pools designation
+
         if (not retyped and
                 not diff.get('encryption') and
-                vol_utils.hosts_are_equivalent(self.driver.host,
-                                               host['host'])):
+                ((not host.get('cluster_name') and
+                  vol_utils.hosts_are_equivalent(self.driver.host,
+                                                 host['host'])) or
+                 (vol_utils.hosts_are_equivalent(self.driver.cluster_name,
+                                                 host.get('cluster_name'))))):
             try:
                 new_type = volume_types.get_volume_type(context, new_type_id)
                 ret = self.driver.retype(context,
@@ -2311,6 +2328,7 @@ class VolumeManager(manager.CleanableManager,
         else:
             model_update = {'volume_type_id': new_type_id,
                             'host': host['host'],
+                            'cluster_name': host.get('cluster_name'),
                             'status': status_update['status']}
             if retype_model_update:
                 model_update.update(retype_model_update)
@@ -2406,6 +2424,9 @@ class VolumeManager(manager.CleanableManager,
 
     def _create_group(self, context, group, is_generic_group=True):
         context = context.elevated()
+
+        # Make sure the host in the DB matches our own when clustered
+        self._set_resource_host(group)
 
         status = fields.GroupStatus.AVAILABLE
         model_update = None

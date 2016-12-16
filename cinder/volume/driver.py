@@ -339,6 +339,7 @@ class BaseVD(object):
         # NOTE(vish): db is set by Manager
         self.db = kwargs.get('db')
         self.host = kwargs.get('host')
+        self.cluster_name = kwargs.get('cluster_name')
         self.configuration = kwargs.get('configuration', None)
 
         if self.configuration:

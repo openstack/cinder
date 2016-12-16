@@ -191,3 +191,12 @@ user documentation.
 ------------------------
   Added injecting the response's `Etag` header to avoid the lost update
   problem with volume metadata.
+
+3.16
+----
+  os-migrate_volume now accepts ``cluster`` parameter when we want to migrate a
+  volume to a cluster.  If we pass the ``host`` parameter for a volume that is
+  in a cluster, the request will be sent to the cluster as if we had requested
+  that specific cluster.  Only ``host`` or ``cluster`` can be provided.
+
+  Creating a managed volume also supports the cluster parameter.

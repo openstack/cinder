@@ -37,7 +37,8 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     def __init__(self, db):
         requires = ['availability_zone', 'description', 'metadata',
-                    'name', 'host', 'bootable', 'volume_type', 'ref']
+                    'name', 'host', 'cluster_name', 'bootable', 'volume_type',
+                    'ref']
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -62,6 +63,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
             'host': kwargs.pop('host'),
+            'cluster_name': kwargs.pop('cluster_name'),
             'availability_zone': kwargs.pop('availability_zone'),
             'volume_type_id': volume_type_id,
             'metadata': kwargs.pop('metadata') or {},

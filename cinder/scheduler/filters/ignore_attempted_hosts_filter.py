@@ -45,7 +45,7 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
             return True
 
         hosts = attempted.get('hosts', [])
-        host = host_state.host
+        host = host_state.backend_id
 
         passes = host not in hosts
         pass_msg = "passes" if passes else "fails"

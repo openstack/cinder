@@ -23,6 +23,7 @@ except ImportError:
     from urllib.parse import urlencode
 import webob
 
+from cinder.api.contrib import volume_manage
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
@@ -51,7 +52,7 @@ def app_v3():
     return mapper
 
 
-def service_get(context, host, binary):
+def service_get(context, id, host=None, binary=None, *args, **kwargs):
     """Replacement for Service.service_get_by_host_and_topic.
 
     We mock the Service.service_get_by_host_and_topic method to return
@@ -146,7 +147,7 @@ def api_get_manageable_volumes(*args, **kwargs):
 
 
 @ddt.ddt
-@mock.patch('cinder.db.service_get', service_get)
+@mock.patch('cinder.db.sqlalchemy.api.service_get', service_get)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
             vt_get_volume_type_by_name)
 @mock.patch('cinder.volume.volume_types.get_volume_type',
@@ -173,6 +174,7 @@ class VolumeManageTest(test.TestCase):
         self._non_admin_ctxt = context.RequestContext(fake.USER_ID,
                                                       fake.PROJECT_ID,
                                                       is_admin=False)
+        self.controller = volume_manage.VolumeManageController()
 
     def _get_resp_post(self, body):
         """Helper to execute a POST os-volume-manage API call."""
@@ -196,10 +198,11 @@ class VolumeManageTest(test.TestCase):
         res = req.get_response(app_v3())
         return res
 
+    @ddt.data(False, True)
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_ok(self, mock_validate, mock_api_manage):
+    def test_manage_volume_ok(self, cluster, mock_validate, mock_api_manage):
         """Test successful manage volume execution.
 
         Tests for correct operation when valid arguments are passed in the
@@ -209,6 +212,9 @@ class VolumeManageTest(test.TestCase):
         """
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
+        # This will be ignored
+        if cluster:
+            body['volume']['cluster'] = 'cluster'
         res = self._get_resp_post(body)
         self.assertEqual(202, res.status_int)
 
@@ -216,8 +222,47 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(1, mock_api_manage.call_count)
         args = mock_api_manage.call_args[0]
         self.assertEqual(body['volume']['host'], args[1])
-        self.assertEqual(body['volume']['ref'], args[2])
+        self.assertIsNone(args[2])  # Cluster argument
+        self.assertEqual(body['volume']['ref'], args[3])
         self.assertTrue(mock_validate.called)
+
+    def _get_resp_create(self, body, version='3.0'):
+        url = '/v3/%s/os-volume-manage' % fake.PROJECT_ID
+        req = webob.Request.blank(url, base_url='http://localhost.com' + url)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.environ['cinder.context'] = self._admin_ctxt
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers = {'OpenStack-API-Version': 'volume %s' % version}
+        req.api_version_request = api_version.APIVersionRequest(version)
+        res = self.controller.create(req, body)
+        return res
+
+    @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_manage_volume_ok_cluster(self, mock_validate, mock_api_manage):
+        body = {'volume': {'cluster': 'cluster',
+                           'ref': 'fake_ref'}}
+        res = self._get_resp_create(body, '3.16')
+        self.assertEqual(['volume'], list(res.keys()))
+
+        # Check that the manage API was called with the correct arguments.
+        self.assertEqual(1, mock_api_manage.call_count)
+        args = mock_api_manage.call_args[0]
+        self.assertIsNone(args[1])
+        self.assertEqual(body['volume']['cluster'], args[2])
+        self.assertEqual(body['volume']['ref'], args[3])
+        self.assertTrue(mock_validate.called)
+
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_manage_volume_fail_host_cluster(self, mock_validate):
+        body = {'volume': {'host': 'host_ok',
+                           'cluster': 'cluster',
+                           'ref': 'fake_ref'}}
+        self.assertRaises(exception.InvalidInput,
+                          self._get_resp_create, body, '3.16')
 
     def test_manage_volume_missing_host(self):
         """Test correct failure when host is not specified."""

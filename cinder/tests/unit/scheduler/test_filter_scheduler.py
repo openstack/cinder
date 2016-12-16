@@ -414,7 +414,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         filter_properties = {'retry': retry}
         sched = fakes.FakeFilterScheduler()
 
-        host_state = host_manager.HostState('host')
+        host_state = host_manager.HostState('host', None)
         host_state.total_capacity_gb = 1024
         sched._post_select_populate_filter_properties(filter_properties,
                                                       host_state)

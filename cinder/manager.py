@@ -177,7 +177,8 @@ class SchedulerDependentManager(Manager):
                 context,
                 self.service_name,
                 self.host,
-                self.last_capabilities)
+                self.last_capabilities,
+                self.cluster)
             try:
                 self.scheduler_rpcapi.notify_service_capabilities(
                     context,

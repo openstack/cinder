@@ -15,6 +15,7 @@
 """
 Tests For Capacity Weigher.
 """
+from datetime import datetime
 
 import ddt
 import mock
@@ -248,7 +249,7 @@ class CapacityWeigherTestCase(test.TestCase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': False,
             'reserved_percentage': 5,
-            'timestamp': None}
+            'timestamp': datetime.utcnow()}
         hostinfo_list = self._get_all_hosts()
 
         # host1: thin_provisioning_support = False
@@ -290,7 +291,7 @@ class CapacityWeigherTestCase(test.TestCase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': False,
             'reserved_percentage': 5,
-            'timestamp': None}
+            'timestamp': datetime.utcnow()}
         hostinfo_list = self._get_all_hosts()
 
         # host1: thin_provisioning_support = False
@@ -332,7 +333,7 @@ class CapacityWeigherTestCase(test.TestCase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': False,
             'reserved_percentage': 5,
-            'timestamp': None}
+            'timestamp': datetime.utcnow()}
         hostinfo_list = self._get_all_hosts()
 
         # host1: thin_provisioning_support = False
@@ -374,7 +375,7 @@ class CapacityWeigherTestCase(test.TestCase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': False,
             'reserved_percentage': 5,
-            'timestamp': None}
+            'timestamp': datetime.utcnow()}
         hostinfo_list = self._get_all_hosts()
 
         # host1: thin_provisioning_support = False
