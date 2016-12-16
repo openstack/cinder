@@ -19,9 +19,12 @@
 
 import logging as python_logging
 import os
+import re
 
 import eventlet
+import eventlet.tpool
 
+from cinder import exception
 from cinder import objects
 
 if os.name == 'nt':
@@ -58,14 +61,109 @@ CONF = cfg.CONF
 host_opt = cfg.StrOpt('backend_host', help='Backend override of host value.')
 CONF.register_cli_opt(host_opt)
 
+backend_name_opt = cfg.StrOpt(
+    'backend_name',
+    help='NOTE: For Windows internal use only. The name of the backend to be '
+         'managed by this process. It must be one of the backends defined '
+         'using the "enabled_backends" option. Note that normally, this '
+         'should not be used directly. Cinder uses it internally in order to '
+         'spawn subprocesses on Windows.')
+CONF.register_cli_opt(backend_name_opt)
+
+
 # TODO(geguileo): Once we complete the work on A-A update the option's help.
 cluster_opt = cfg.StrOpt('cluster',
                          default=None,
-                         help='Name of this cluster.  Used to group volume '
+                         help='Name of this cluster. Used to group volume '
                               'hosts that share the same backend '
                               'configurations to work in HA Active-Active '
                               'mode.  Active-Active is not yet supported.')
 CONF.register_opt(cluster_opt)
+
+LOG = None
+
+service_started = False
+
+
+def _launch_service(launcher, backend):
+    CONF.register_opt(host_opt, group=backend)
+    backend_host = getattr(CONF, backend).backend_host
+    host = "%s@%s" % (backend_host or CONF.host, backend)
+    # We also want to set cluster to None on empty strings, and we
+    # ignore leading and trailing spaces.
+    cluster = CONF.cluster and CONF.cluster.strip()
+    cluster = (cluster or None) and '%s@%s' % (cluster, backend)
+    try:
+        server = service.Service.create(host=host,
+                                        service_name=backend,
+                                        binary=constants.VOLUME_BINARY,
+                                        coordination=True,
+                                        cluster=cluster)
+    except Exception:
+        LOG.exception('Volume service %s failed to start.', host)
+    else:
+        # Dispose of the whole DB connection pool here before
+        # starting another process.  Otherwise we run into cases where
+        # child processes share DB connections which results in errors.
+        session.dispose_engine()
+        launcher.launch_service(server)
+        _notify_service_started()
+
+
+def _ensure_service_started():
+    if not service_started:
+        LOG.error('No volume service(s) started successfully, terminating.')
+        sys.exit(1)
+
+
+def _notify_service_started():
+    global service_started
+    service_started = True
+
+
+def _launch_services_win32():
+    if CONF.backend_name and CONF.backend_name not in CONF.enabled_backends:
+        msg = _('The explicitly passed backend name "%(backend_name)s" is not '
+                'among the enabled backends: %(enabled_backends)s.')
+        raise exception.InvalidInput(
+            reason=msg % dict(backend_name=CONF.backend_name,
+                              enabled_backends=CONF.enabled_backends))
+
+    # We'll avoid spawning a subprocess if a single backend is requested.
+    single_backend_name = (CONF.enabled_backends[0]
+                           if len(CONF.enabled_backends) == 1
+                           else CONF.backend_name)
+    if single_backend_name:
+        launcher = service.get_launcher()
+        _launch_service(launcher, single_backend_name)
+    elif CONF.enabled_backends:
+        # We're using the 'backend_name' argument, requesting a certain backend
+        # and constructing the service object within the child process.
+        launcher = service.WindowsProcessLauncher()
+        py_script_re = re.compile(r'.*\.py\w?$')
+        for backend in filter(None, CONF.enabled_backends):
+            cmd = sys.argv + ['--backend_name=%s' % backend]
+            # Recent setuptools versions will trim '-script.py' and '.exe'
+            # extensions from sys.argv[0].
+            if py_script_re.match(sys.argv[0]):
+                cmd = [sys.executable] + cmd
+            launcher.add_process(cmd)
+            _notify_service_started()
+
+    _ensure_service_started()
+
+    launcher.wait()
+
+
+def _launch_services_posix():
+    launcher = service.get_launcher()
+
+    for backend in filter(None, CONF.enabled_backends):
+        _launch_service(launcher, backend)
+
+    _ensure_service_started()
+
+    launcher.wait()
 
 
 def main():
@@ -78,43 +176,20 @@ def main():
     priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
-    launcher = service.get_launcher()
+    global LOG
     LOG = logging.getLogger(__name__)
-    service_started = False
 
-    if CONF.enabled_backends:
-        for backend in filter(None, CONF.enabled_backends):
-            CONF.register_opt(host_opt, group=backend)
-            backend_host = getattr(CONF, backend).backend_host
-            host = "%s@%s" % (backend_host or CONF.host, backend)
-            # We also want to set cluster to None on empty strings, and we
-            # ignore leading and trailing spaces.
-            cluster = CONF.cluster and CONF.cluster.strip()
-            cluster = (cluster or None) and '%s@%s' % (cluster, backend)
-            try:
-                server = service.Service.create(host=host,
-                                                service_name=backend,
-                                                binary=constants.VOLUME_BINARY,
-                                                coordination=True,
-                                                cluster=cluster)
-            except Exception:
-                msg = _('Volume service %s failed to start.') % host
-                LOG.exception(msg)
-            else:
-                # Dispose of the whole DB connection pool here before
-                # starting another process.  Otherwise we run into cases where
-                # child processes share DB connections which results in errors.
-                session.dispose_engine()
-                launcher.launch_service(server)
-                service_started = True
-    else:
+    if not CONF.enabled_backends:
         LOG.error('Configuration for cinder-volume does not specify '
                   '"enabled_backends". Using DEFAULT section to configure '
                   'drivers is not supported since Ocata.')
-
-    if not service_started:
-        msg = _('No volume service(s) started successfully, terminating.')
-        LOG.error(msg)
         sys.exit(1)
 
-    launcher.wait()
+    if os.name == 'nt':
+        # We cannot use oslo.service to spawn multiple services on Windows.
+        # It relies on forking, which is not available on Windows.
+        # Furthermore, service objects are unmarshallable objects that are
+        # passed to subprocesses.
+        _launch_services_win32()
+    else:
+        _launch_services_posix()

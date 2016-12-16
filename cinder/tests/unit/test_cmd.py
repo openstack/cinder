@@ -140,11 +140,13 @@ class TestCinderSchedulerCmd(test.TestCase):
         service_wait.assert_called_once_with()
 
 
-class TestCinderVolumeCmd(test.TestCase):
+class TestCinderVolumeCmdPosix(test.TestCase):
 
     def setUp(self):
-        super(TestCinderVolumeCmd, self).setUp()
+        super(TestCinderVolumeCmdPosix, self).setUp()
         sys.argv = ['cinder-volume']
+
+        self.patch('os.name', 'posix')
 
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
@@ -183,6 +185,133 @@ class TestCinderVolumeCmd(test.TestCase):
         service_create.assert_has_calls([c1, c2])
         self.assertEqual(2, launcher.launch_service.call_count)
         launcher.wait.assert_called_once_with()
+
+
+@ddt.ddt
+class TestCinderVolumeCmdWin32(test.TestCase):
+
+    def setUp(self):
+        super(TestCinderVolumeCmdWin32, self).setUp()
+        sys.argv = ['cinder-volume']
+
+        self._mock_win32_proc_launcher = mock.Mock()
+
+        self.patch('os.name', 'nt')
+        self.patch('cinder.service.WindowsProcessLauncher',
+                   lambda *args, **kwargs: self._mock_win32_proc_launcher)
+
+    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    def test_main(self, log_setup, monkey_patch, service_create,
+                  get_launcher):
+        CONF.set_override('enabled_backends', None)
+        self.assertRaises(SystemExit, cinder_volume.main)
+        self.assertFalse(service_create.called)
+        self.assertFalse(self._mock_win32_proc_launcher.called)
+
+    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    def test_main_invalid_backend(self, log_setup, monkey_patch,
+                                  service_create, get_launcher):
+        CONF.set_override('enabled_backends', 'backend1')
+        CONF.set_override('backend_name', 'backend2')
+        self.assertRaises(exception.InvalidInput, cinder_volume.main)
+        self.assertFalse(service_create.called)
+        self.assertFalse(self._mock_win32_proc_launcher.called)
+
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    @ddt.data({},
+              {'binary_path': 'cinder-volume-script.py',
+               'exp_py_executable': True})
+    @ddt.unpack
+    def test_main_with_multiple_backends(self, log_setup, monkey_patch,
+                                         binary_path='cinder-volume',
+                                         exp_py_executable=False):
+        # If multiple backends are used, we expect the Windows process
+        # launcher to be used in order to create the child processes.
+        backends = ['', 'backend1', 'backend2', '']
+        CONF.set_override('enabled_backends', backends)
+        CONF.set_override('host', 'host')
+        launcher = self._mock_win32_proc_launcher
+
+        # Depending on the setuptools version, '-script.py' and '.exe'
+        # binary path extensions may be trimmed. We need to take this
+        # into consideration when building the command that will be
+        # used to spawn child subprocesses.
+        sys.argv = [binary_path]
+
+        cinder_volume.main()
+
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+        log_setup.assert_called_once_with(CONF, "cinder")
+        monkey_patch.assert_called_once_with()
+
+        exp_cmd_prefix = [sys.executable] if exp_py_executable else []
+        exp_cmds = [
+            exp_cmd_prefix + sys.argv + ['--backend_name=%s' % backend_name]
+            for backend_name in ['backend1', 'backend2']]
+        launcher.add_process.assert_has_calls(
+            [mock.call(exp_cmd) for exp_cmd in exp_cmds])
+        launcher.wait.assert_called_once_with()
+
+    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    def test_main_with_multiple_backends_child(
+            self, log_setup, monkey_patch, service_create, get_launcher):
+        # We're testing the code expected to be run within child processes.
+        backends = ['', 'backend1', 'backend2', '']
+        CONF.set_override('enabled_backends', backends)
+        CONF.set_override('host', 'host')
+        launcher = get_launcher.return_value
+
+        sys.argv += ['--backend_name', 'backend2']
+
+        cinder_volume.main()
+
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+        log_setup.assert_called_once_with(CONF, "cinder")
+        monkey_patch.assert_called_once_with()
+
+        service_create.assert_called_once_with(
+            binary=constants.VOLUME_BINARY, host='host@backend2',
+            service_name='backend2', coordination=True,
+            cluster=None)
+        launcher.launch_service.assert_called_once_with(
+            service_create.return_value)
+
+    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.setup')
+    def test_main_with_single_backend(
+            self, log_setup, monkey_patch, service_create, get_launcher):
+        # We're expecting the service to be run within the same process.
+        CONF.set_override('enabled_backends', ['backend2'])
+        CONF.set_override('host', 'host')
+        launcher = get_launcher.return_value
+
+        cinder_volume.main()
+
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+        log_setup.assert_called_once_with(CONF, "cinder")
+        monkey_patch.assert_called_once_with()
+
+        service_create.assert_called_once_with(
+            binary=constants.VOLUME_BINARY, host='host@backend2',
+            service_name='backend2', coordination=True,
+            cluster=None)
+        launcher.launch_service.assert_called_once_with(
+            service_create.return_value)
 
 
 @ddt.ddt

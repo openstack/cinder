@@ -21,6 +21,9 @@
 import inspect
 import os
 import random
+import subprocess
+import sys
+import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -47,6 +50,11 @@ from cinder.objects import fields
 from cinder import rpc
 from cinder import version
 from cinder.volume import utils as vol_utils
+
+if os.name == 'nt':
+    from os_win import utilsfactory as os_win_utilsfactory
+else:
+    os_win_utilsfactory = None
 
 
 LOG = logging.getLogger(__name__)
@@ -649,3 +657,48 @@ def get_launcher():
         return Launcher()
     else:
         return process_launcher()
+
+
+class WindowsProcessLauncher(object):
+    def __init__(self):
+        self._processutils = os_win_utilsfactory.get_processutils()
+
+        self._workers = []
+        self._worker_job_handles = []
+        self._signal_handler = service.SignalHandler()
+        self._add_signal_handlers()
+
+    def add_process(self, cmd):
+        LOG.info("Starting subprocess: %s", cmd)
+
+        worker = subprocess.Popen(cmd)
+        try:
+            job_handle = self._processutils.kill_process_on_job_close(
+                worker.pid)
+        except Exception:
+            LOG.exception("Could not associate child process "
+                          "with a job, killing it.")
+            worker.kill()
+            raise
+
+        self._worker_job_handles.append(job_handle)
+        self._workers.append(worker)
+
+    def _add_signal_handlers(self):
+        self._signal_handler.add_handler('SIGINT', self._terminate)
+        self._signal_handler.add_handler('SIGTERM', self._terminate)
+
+    def _terminate(self, *args):
+        # We've already assigned win32 job objects to child processes,
+        # requesting them to stop once all the job handles are closed.
+        # When this process dies, so will the child processes.
+        LOG.info("Received request to terminate.")
+        sys.exit(1)
+
+    def wait(self):
+        pids = [worker.pid for worker in self._workers]
+        if pids:
+            self._processutils.wait_for_multiple_processes(pids,
+                                                           wait_all=True)
+        # By sleeping here, we allow signal handlers to be executed.
+        time.sleep(0)
