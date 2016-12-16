@@ -27,12 +27,12 @@ from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import fields
-from cinder.volume.drivers.emc import emc_vmax_fast
-from cinder.volume.drivers.emc import emc_vmax_https
-from cinder.volume.drivers.emc import emc_vmax_masking
-from cinder.volume.drivers.emc import emc_vmax_provision
-from cinder.volume.drivers.emc import emc_vmax_provision_v3
-from cinder.volume.drivers.emc import emc_vmax_utils
+from cinder.volume.drivers.dell_emc.vmax import fast
+from cinder.volume.drivers.dell_emc.vmax import https
+from cinder.volume.drivers.dell_emc.vmax import masking
+from cinder.volume.drivers.dell_emc.vmax import provision
+from cinder.volume.drivers.dell_emc.vmax import provision_v3
+from cinder.volume.drivers.dell_emc.vmax import utils
 from cinder.volume import utils as volume_utils
 
 
@@ -100,7 +100,7 @@ emc_opts = [
 CONF.register_opts(emc_opts)
 
 
-class EMCVMAXCommon(object):
+class VMAXCommon(object):
     """Common class for SMI-S based EMC volume drivers.
 
     This common class is for EMC volume drivers based on SMI-S.
@@ -142,11 +142,11 @@ class EMCVMAXCommon(object):
         self.url = None
         self.user = None
         self.passwd = None
-        self.masking = emc_vmax_masking.EMCVMAXMasking(prtcl)
-        self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
-        self.fast = emc_vmax_fast.EMCVMAXFast(prtcl)
-        self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
-        self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
+        self.masking = masking.VMAXMasking(prtcl)
+        self.utils = utils.VMAXUtils(prtcl)
+        self.fast = fast.VMAXFast(prtcl)
+        self.provision = provision.VMAXProvision(prtcl)
+        self.provisionv3 = provision_v3.VMAXProvisionV3(prtcl)
         self.version = version
         # replication
         self.replication_enabled = False
@@ -1659,7 +1659,7 @@ class EMCVMAXCommon(object):
                             "cert_file":
                                 self.configuration.safe_get(
                                     'driver_client_cert')}
-            pywbem.cim_http.wbem_request = emc_vmax_https.wbem_request
+            pywbem.cim_http.wbem_request = https.wbem_request
             conn = pywbem.WBEMConnection(
                 self.url,
                 (self.user, self.passwd),

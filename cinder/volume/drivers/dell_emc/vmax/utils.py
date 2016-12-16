@@ -70,7 +70,7 @@ IS_RE = 'replication_enabled'
 REPLICATION_FAILOVER = fields.ReplicationStatus.FAILED_OVER
 
 
-class EMCVMAXUtils(object):
+class VMAXUtils(object):
     """Utility class for SMI-S based EMC volume drivers.
 
     This Utility class is for EMC volume drivers based on SMI-S.
@@ -2048,9 +2048,9 @@ class EMCVMAXUtils(object):
                     portGroupName = portGroupElement.childNodes[0].nodeValue
                     if portGroupName:
                         portGroupNames.append(portGroupName.strip())
-            portGroupNames = EMCVMAXUtils._filter_list(portGroupNames)
+            portGroupNames = VMAXUtils._filter_list(portGroupNames)
             if len(portGroupNames) > 0:
-                return EMCVMAXUtils.get_random_pg_from_list(portGroupNames)
+                return VMAXUtils.get_random_pg_from_list(portGroupNames)
 
         exception_message = (_("No Port Group elements found in config file."))
         LOG.error(exception_message)

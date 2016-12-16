@@ -17,8 +17,8 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.volume.drivers.emc import emc_vmax_provision
-from cinder.volume.drivers.emc import emc_vmax_utils
+from cinder.volume.drivers.dell_emc.vmax import provision
+from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ DEFAULT_SG_PREFIX = 'OS_default_'
 DEFAULT_SG_POSTFIX = '_SG'
 
 
-class EMCVMAXFast(object):
+class VMAXFast(object):
     """FAST Class for SMI-S based EMC volume drivers.
 
     This FAST class is for EMC volume drivers based on SMI-S.
@@ -34,8 +34,8 @@ class EMCVMAXFast(object):
     """
     def __init__(self, prtcl):
         self.protocol = prtcl
-        self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
-        self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
+        self.utils = utils.VMAXUtils(prtcl)
+        self.provision = provision.VMAXProvision(prtcl)
 
     def _check_if_fast_supported(self, conn, storageSystemInstanceName):
         """Check to see if fast is supported on the array.
