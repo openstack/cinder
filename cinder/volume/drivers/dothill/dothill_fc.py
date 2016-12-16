@@ -44,6 +44,10 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     # ThirdPartySystems CI wiki
     CI_WIKI_NAME = "Vedams_DotHillDriver_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Pike release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(DotHillFCDriver, self).__init__(*args, **kwargs)
         self.common = None
