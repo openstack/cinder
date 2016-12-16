@@ -142,7 +142,7 @@ class SnapshotsController(wsgi.Controller):
         msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id)
 
-        if not utils.is_valid_boolstr(force):
+        if not strutils.is_valid_boolstr(force):
             msg = _("Invalid value '%s' for force. ") % force
             raise exception.InvalidParameterValue(err=msg)
 

@@ -124,7 +124,7 @@ class GroupTypesController(wsgi.Controller):
                     "a combination thereof.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if is_public is not None and not utils.is_valid_boolstr(is_public):
+        if is_public is not None and not strutils.is_valid_boolstr(is_public):
             msg = _("Invalid value '%s' for is_public. Accepted values: "
                     "True or False.") % is_public
             raise webob.exc.HTTPBadRequest(explanation=msg)

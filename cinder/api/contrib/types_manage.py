@@ -18,6 +18,8 @@
 import six
 import webob
 
+from oslo_utils import strutils
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
@@ -72,7 +74,7 @@ class VolumeTypesManageController(wsgi.Controller):
             utils.check_string_length(description, 'Type description',
                                       min_length=0, max_length=255)
 
-        if not utils.is_valid_boolstr(is_public):
+        if not strutils.is_valid_boolstr(is_public):
             msg = _("Invalid value '%s' for is_public. Accepted values: "
                     "True or False.") % is_public
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -124,7 +126,7 @@ class VolumeTypesManageController(wsgi.Controller):
                     "a combination thereof.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if is_public is not None and not utils.is_valid_boolstr(is_public):
+        if is_public is not None and not strutils.is_valid_boolstr(is_public):
             msg = _("Invalid value '%s' for is_public. Accepted values: "
                     "True or False.") % is_public
             raise webob.exc.HTTPBadRequest(explanation=msg)

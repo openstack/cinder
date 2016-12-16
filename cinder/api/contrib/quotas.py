@@ -212,7 +212,7 @@ class QuotaSetsController(wsgi.Controller):
         # Get the optional argument 'skip_validation' from body,
         # if skip_validation is False, then validate existing resource.
         skip_flag = body.get('skip_validation', True)
-        if not utils.is_valid_boolstr(skip_flag):
+        if not strutils.is_valid_boolstr(skip_flag):
             msg = _("Invalid value '%s' for skip_validation.") % skip_flag
             raise exception.InvalidParameterValue(err=msg)
         skip_flag = strutils.bool_from_string(skip_flag)
