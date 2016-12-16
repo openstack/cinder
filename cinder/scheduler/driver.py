@@ -115,15 +115,21 @@ class Scheduler(object):
                                                       host,
                                                       capabilities)
 
-    def host_passes_filters(self, context, host, request_spec,
+    def host_passes_filters(self, context, backend, request_spec,
                             filter_properties):
-        """Check if the specified host passes the filters."""
-        raise NotImplementedError(_("Must implement host_passes_filters"))
+        """Check if the specified backend passes the filters."""
+        raise NotImplementedError(_("Must implement backend_passes_filters"))
 
     def find_retype_host(self, context, request_spec, filter_properties=None,
                          migration_policy='never'):
-        """Find a host that can accept the volume with its new type."""
-        raise NotImplementedError(_("Must implement find_retype_host"))
+        """Find a backend that can accept the volume with its new type."""
+        raise NotImplementedError(_("Must implement find_retype_backend"))
+
+    # NOTE(geguileo): For backward compatibility with out of tree Schedulers
+    # we don't change host_passes_filters or find_retype_host method names but
+    # create an "alias" for them with the right name instead.
+    backend_passes_filters = host_passes_filters
+    find_retype_backend = find_retype_host
 
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""

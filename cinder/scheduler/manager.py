@@ -124,8 +124,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 context, group,
                 request_spec_list,
                 filter_properties_list)
-        except exception.NoValidHost:
-            LOG.error(_LE("Could not find a host for consistency group "
+        except exception.NoValidBackend:
+            LOG.error(_LE("Could not find a backend for consistency group "
                           "%(group_id)s."),
                       {'group_id': group.id})
             group.status = 'error'
@@ -149,8 +149,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 request_spec_list,
                 group_filter_properties,
                 filter_properties_list)
-        except exception.NoValidHost:
-            LOG.error(_LE("Could not find a host for group "
+        except exception.NoValidBackend:
+            LOG.error(_LE("Could not find a backend for group "
                           "%(group_id)s."),
                       {'group_id': group.id})
             group.status = 'error'
@@ -198,7 +198,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
     def migrate_volume(self, context, volume, backend, force_copy,
                        request_spec, filter_properties):
-        """Ensure that the host exists and can accept the volume."""
+        """Ensure that the backend exists and can accept the volume."""
         self._wait_for_scheduler()
 
         def _migrate_volume_set_error(self, context, ex, request_spec):
@@ -214,10 +214,10 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                               context, ex, request_spec)
 
         try:
-            tgt_backend = self.driver.host_passes_filters(context, backend,
-                                                          request_spec,
-                                                          filter_properties)
-        except exception.NoValidHost as ex:
+            tgt_backend = self.driver.backend_passes_filters(context, backend,
+                                                             request_spec,
+                                                             filter_properties)
+        except exception.NoValidBackend as ex:
             _migrate_volume_set_error(self, context, ex, request_spec)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
@@ -269,19 +269,20 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             migration_policy = 'never'
 
         try:
-            tgt_host = self.driver.find_retype_host(context, request_spec,
-                                                    filter_properties,
-                                                    migration_policy)
+            tgt_backend = self.driver.find_retype_backend(context,
+                                                          request_spec,
+                                                          filter_properties,
+                                                          migration_policy)
         except Exception as ex:
             # Not having a valid host is an expected exception, so we don't
             # reraise on it.
-            reraise = not isinstance(ex, exception.NoValidHost)
+            reraise = not isinstance(ex, exception.NoValidBackend)
             with excutils.save_and_reraise_exception(reraise=reraise):
                 _retype_volume_set_error(self, context, ex, request_spec,
                                          volume, reservations)
         else:
             volume_rpcapi.VolumeAPI().retype(context, volume,
-                                             new_type['id'], tgt_host,
+                                             new_type['id'], tgt_backend,
                                              migration_policy,
                                              reservations,
                                              old_reservations)
@@ -298,11 +299,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                               context, ex, request_spec)
 
         try:
-            self.driver.host_passes_filters(context,
-                                            volume.service_topic_queue,
-                                            request_spec,
-                                            filter_properties)
-        except exception.NoValidHost as ex:
+            self.driver.backend_passes_filters(context,
+                                               volume.service_topic_queue,
+                                               request_spec,
+                                               filter_properties)
+        except exception.NoValidBackend as ex:
             _manage_existing_set_error(self, context, ex, request_spec)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
@@ -333,12 +334,12 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
         filter_properties['new_size'] = new_size
         try:
-            self.driver.host_passes_filters(context,
-                                            volume.service_topic_queue,
-                                            request_spec, filter_properties)
+            self.driver.backend_passes_filters(context,
+                                               volume.service_topic_queue,
+                                               request_spec, filter_properties)
             volume_rpcapi.VolumeAPI().extend_volume(context, volume, new_size,
                                                     reservations)
-        except exception.NoValidHost as ex:
+        except exception.NoValidBackend as ex:
             QUOTAS.rollback(context, reservations,
                             project_id=volume.project_id)
             _extend_volume_set_error(self, context, ex, request_spec)

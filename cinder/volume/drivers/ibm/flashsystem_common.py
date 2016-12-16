@@ -189,7 +189,7 @@ class FlashSystemDriver(san.SanDriver,
             msg = _('_create_host: Can not translate host name. Host name '
                     'is not unicode or string.')
             LOG.error(msg)
-            raise exception.NoValidHost(reason=msg)
+            raise exception.NoValidBackend(reason=msg)
 
         host_name = six.text_type(host_name)
 

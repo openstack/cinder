@@ -68,21 +68,21 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all')
-    def _get_all_hosts(self, _mock_service_get_all, disabled=False):
+    def _get_all_backends(self, _mock_service_get_all, disabled=False):
         ctxt = context.get_admin_context()
         fakes.mock_host_manager_db_calls(_mock_service_get_all,
                                          disabled=disabled)
-        host_states = self.host_manager.get_all_host_states(ctxt)
+        backend_states = self.host_manager.get_all_backend_states(ctxt)
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
             topic=constants.VOLUME_TOPIC,
             disabled=disabled)
-        return host_states
+        return backend_states
 
     def test_volume_number_weight_multiplier1(self):
         self.flags(volume_number_multiplier=-1.0)
-        hostinfo_list = self._get_all_hosts()
+        backend_info_list = self._get_all_backends()
 
         # host1: 1 volume    Norm=0.0
         # host2: 2 volumes
@@ -92,14 +92,14 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # so, host1 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
-            weighed_host = self._get_weighed_host(hostinfo_list)
+            weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(0.0, weighed_host.weight)
             self.assertEqual('host1',
                              utils.extract_host(weighed_host.obj.host))
 
     def test_volume_number_weight_multiplier2(self):
         self.flags(volume_number_multiplier=1.0)
-        hostinfo_list = self._get_all_hosts()
+        backend_info_list = self._get_all_backends()
 
         # host1: 1 volume      Norm=0
         # host2: 2 volumes
@@ -109,7 +109,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # so, host5 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
-            weighed_host = self._get_weighed_host(hostinfo_list)
+            weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(1.0, weighed_host.weight)
             self.assertEqual('host5',
                              utils.extract_host(weighed_host.obj.host))

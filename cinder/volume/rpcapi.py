@@ -244,10 +244,10 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'extend_volume', volume=volume, new_size=new_size,
                    reservations=reservations)
 
-    def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
-        backend_p = {'host': dest_host.host,
-                     'cluster_name': dest_host.cluster_name,
-                     'capabilities': dest_host.capabilities}
+    def migrate_volume(self, ctxt, volume, dest_backend, force_host_copy):
+        backend_p = {'host': dest_backend.host,
+                     'cluster_name': dest_backend.cluster_name,
+                     'capabilities': dest_backend.capabilities}
 
         version = '3.5'
         if not self.client.can_send_version(version):
@@ -263,12 +263,12 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'migrate_volume_completion', volume=volume,
                           new_volume=new_volume, error=error,)
 
-    def retype(self, ctxt, volume, new_type_id, dest_host,
+    def retype(self, ctxt, volume, new_type_id, dest_backend,
                migration_policy='never', reservations=None,
                old_reservations=None):
-        backend_p = {'host': dest_host.host,
-                     'cluster_name': dest_host.cluster_name,
-                     'capabilities': dest_host.capabilities}
+        backend_p = {'host': dest_backend.host,
+                     'cluster_name': dest_backend.cluster_name,
+                     'capabilities': dest_backend.capabilities}
         version = '3.5'
         if not self.client.can_send_version(version):
             version = '3.0'
@@ -308,8 +308,8 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'failover_host',
                    secondary_backend_id=secondary_backend_id)
 
-    def manage_existing_snapshot(self, ctxt, snapshot, ref, host):
-        cctxt = self._get_cctxt(host)
+    def manage_existing_snapshot(self, ctxt, snapshot, ref, backend):
+        cctxt = self._get_cctxt(backend)
         cctxt.cast(ctxt, 'manage_existing_snapshot',
                    snapshot=snapshot,
                    ref=ref)

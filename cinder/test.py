@@ -413,11 +413,13 @@ class ModelsObjectComparatorMixin(object):
     def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None,
                                    msg=None):
         obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
-        sort_key = lambda d: [d[k] for k in sorted(d)]
-        conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
-
-        self.assertListEqual(conv_and_sort(objs1), conv_and_sort(objs2),
-                             msg=msg)
+        objs1 = map(obj_to_dict, objs1)
+        objs2 = list(map(obj_to_dict, objs2))
+        # We don't care about the order of the lists, as long as they are in
+        for obj1 in objs1:
+            self.assertIn(obj1, objs2)
+            objs2.remove(obj1)
+        self.assertEqual([], objs2)
 
     def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
         self.assertEqual(len(primitives1), len(primitives2))

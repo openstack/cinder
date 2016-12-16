@@ -21,8 +21,8 @@ import six
 from cinder.scheduler import filters
 
 
-class JsonFilter(filters.BaseHostFilter):
-    """Host Filter to allow simple JSON-based grammar for selecting hosts."""
+class JsonFilter(filters.BaseBackendFilter):
+    """Backend filter for simple JSON-based grammar for selecting backends."""
     def _op_compare(self, args, op):
         """Compare first item of args with the rest using specified operator.
 
@@ -87,12 +87,12 @@ class JsonFilter(filters.BaseHostFilter):
         'and': _and,
     }
 
-    def _parse_string(self, string, host_state):
+    def _parse_string(self, string, backend_state):
         """Parse capability lookup strings.
 
         Strings prefixed with $ are capability lookups in the
         form '$variable' where 'variable' is an attribute in the
-        HostState class.  If $variable is a dictionary, you may
+        BackendState class.  If $variable is a dictionary, you may
         use: $variable.dictkey
         """
         if not string:
@@ -101,7 +101,7 @@ class JsonFilter(filters.BaseHostFilter):
             return string
 
         path = string[1:].split(".")
-        obj = getattr(host_state, path[0], None)
+        obj = getattr(backend_state, path[0], None)
         if obj is None:
             return None
         for item in path[1:]:
@@ -110,7 +110,7 @@ class JsonFilter(filters.BaseHostFilter):
                 return None
         return obj
 
-    def _process_filter(self, query, host_state):
+    def _process_filter(self, query, backend_state):
         """Recursively parse the query structure."""
         if not query:
             return True
@@ -119,16 +119,16 @@ class JsonFilter(filters.BaseHostFilter):
         cooked_args = []
         for arg in query[1:]:
             if isinstance(arg, list):
-                arg = self._process_filter(arg, host_state)
+                arg = self._process_filter(arg, backend_state)
             elif isinstance(arg, six.string_types):
-                arg = self._parse_string(arg, host_state)
+                arg = self._parse_string(arg, backend_state)
             if arg is not None:
                 cooked_args.append(arg)
         result = method(self, cooked_args)
         return result
 
-    def host_passes(self, host_state, filter_properties):
-        """Return a list of hosts that can fulfill query requirements."""
+    def backend_passes(self, backend_state, filter_properties):
+        """Return a list of backends that can fulfill query requirements."""
         # TODO(zhiteng) Add description for filter_properties structure
         # and scheduler_hints.
         try:
@@ -141,9 +141,9 @@ class JsonFilter(filters.BaseHostFilter):
         # NOTE(comstud): Not checking capabilities or service for
         # enabled/disabled so that a provided json filter can decide
 
-        result = self._process_filter(jsonutils.loads(query), host_state)
+        result = self._process_filter(jsonutils.loads(query), backend_state)
         if isinstance(result, list):
-            # If any succeeded, include the host
+            # If any succeeded, include the backend
             result = any(result)
         if result:
             # Filter it out.

@@ -259,7 +259,7 @@ class NetAppESeriesLibrary(object):
             except socket.gaierror as e:
                 LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.'),
                           {'host': host, 'e': e})
-                raise exception.NoValidHost(
+                raise exception.NoValidBackend(
                     _("Controller IP '%(host)s' could not be resolved: %(e)s.")
                     % {'host': host, 'e': e})
 

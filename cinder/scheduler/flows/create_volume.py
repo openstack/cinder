@@ -124,11 +124,11 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
         except Exception as e:
             # An error happened, notify on the scheduler queue and log that
             # this happened and set the volume to errored out and reraise the
-            # error *if* exception caught isn't NoValidHost. Otherwise *do not*
-            # reraise (since what's the point?)
+            # error *if* exception caught isn't NoValidBackend. Otherwise *do
+            # not* reraise (since what's the point?)
             with excutils.save_and_reraise_exception(
-                    reraise=not isinstance(e, exception.NoValidHost)):
-                if isinstance(e, exception.NoValidHost):
+                    reraise=not isinstance(e, exception.NoValidBackend)):
+                if isinstance(e, exception.NoValidBackend):
                     self.message_api.create(
                         context,
                         defined_messages.UNABLE_TO_ALLOCATE,

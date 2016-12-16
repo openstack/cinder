@@ -574,8 +574,8 @@ class PasteAppNotFound(NotFound):
     message = _("Could not load paste app '%(name)s' from %(path)s")
 
 
-class NoValidHost(CinderException):
-    message = _("No valid host was found. %(reason)s")
+class NoValidBackend(CinderException):
+    message = _("No valid backend was found. %(reason)s")
 
 
 class NoMoreTargets(CinderException):

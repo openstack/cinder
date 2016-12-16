@@ -178,8 +178,8 @@ class TestBaseFilterHandler(test.TestCase):
     def test_get_filtered_objects_info_and_debug_log_none_returned(self):
 
         all_filters = [FilterA, FilterA, FilterB]
-        fake_hosts = [host_manager.HostState('fake_host%s' % x, None)
-                      for x in range(1, 4)]
+        fake_backends = [host_manager.BackendState('fake_be%s' % x, None)
+                         for x in range(1, 4)]
 
         filt_props = {"request_spec": {'volume_id': fake.VOLUME_ID,
                       'volume_properties': {'project_id': fake.PROJECT_ID,
@@ -187,7 +187,7 @@ class TestBaseFilterHandler(test.TestCase):
                                             'host': 'host4'}}}
         with mock.patch.object(base_filter, 'LOG') as mock_log:
             result = self.handler.get_filtered_objects(
-                all_filters, fake_hosts, filt_props)
+                all_filters, fake_backends, filt_props)
             self.assertFalse(result)
             msg = "with volume ID '%s'" % fake.VOLUME_ID
             # FilterA should leave Host1 and Host2; FilterB should leave None.
@@ -197,8 +197,8 @@ class TestBaseFilterHandler(test.TestCase):
             self.assertIn(msg, cargs)
             self.assertIn(exp_output, cargs)
 
-            exp_output = ("[('FilterA', ['fake_host2', 'fake_host3']), "
-                          "('FilterA', ['fake_host3']), "
+            exp_output = ("[('FilterA', ['fake_be2', 'fake_be3']), "
+                          "('FilterA', ['fake_be3']), "
                           + "('FilterB', None)]")
             cargs = mock_log.debug.call_args[0][0]
             self.assertIn(msg, cargs)

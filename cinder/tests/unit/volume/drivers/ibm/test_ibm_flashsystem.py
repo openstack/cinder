@@ -1164,7 +1164,7 @@ class FlashSystemDriverTestCase(test.TestCase):
 
         # case 3: host name is neither unicode nor string
         conn = {'host': 12345}
-        self.assertRaises(exception.NoValidHost,
+        self.assertRaises(exception.NoValidBackend,
                           self.driver._connector_to_hostname_prefix,
                           conn)
 

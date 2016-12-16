@@ -350,7 +350,7 @@ class NetAppESeriesDriverTestCase(object):
                          mock.Mock(side_effect=socket.gaierror))
 
         self.assertRaises(
-            exception.NoValidHost,
+            exception.NoValidBackend,
             driver.library._check_mode_get_or_register_storage_system)
 
     def test_setup_error_invalid_first_controller_ip(self):
@@ -361,7 +361,7 @@ class NetAppESeriesDriverTestCase(object):
                          mock.Mock(side_effect=socket.gaierror))
 
         self.assertRaises(
-            exception.NoValidHost,
+            exception.NoValidBackend,
             driver.library._check_mode_get_or_register_storage_system)
 
     def test_setup_error_invalid_second_controller_ip(self):
@@ -372,7 +372,7 @@ class NetAppESeriesDriverTestCase(object):
                          mock.Mock(side_effect=socket.gaierror))
 
         self.assertRaises(
-            exception.NoValidHost,
+            exception.NoValidBackend,
             driver.library._check_mode_get_or_register_storage_system)
 
     def test_setup_error_invalid_both_controller_ips(self):
@@ -383,7 +383,7 @@ class NetAppESeriesDriverTestCase(object):
                          mock.Mock(side_effect=socket.gaierror))
 
         self.assertRaises(
-            exception.NoValidHost,
+            exception.NoValidBackend,
             driver.library._check_mode_get_or_register_storage_system)
 
     def test_manage_existing_get_size(self):

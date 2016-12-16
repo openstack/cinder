@@ -90,9 +90,9 @@ class FakeHostManager(host_manager.HostManager):
         }
 
 
-class FakeHostState(host_manager.HostState):
+class FakeBackendState(host_manager.BackendState):
     def __init__(self, host, attribute_dict):
-        super(FakeHostState, self).__init__(host, None)
+        super(FakeBackendState, self).__init__(host, None)
         for (key, val) in attribute_dict.items():
             setattr(self, key, val)
 

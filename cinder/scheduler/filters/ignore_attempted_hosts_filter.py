@@ -20,7 +20,7 @@ from cinder.scheduler import filters
 LOG = logging.getLogger(__name__)
 
 
-class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
+class IgnoreAttemptedHostsFilter(filters.BaseBackendFilter):
     """Filter out previously attempted hosts
 
     A host passes this filter if it has not already been attempted for
@@ -30,13 +30,13 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
 
      {
       'retry': {
-                'hosts': ['host1', 'host2'],
+                'backends': ['backend1', 'backend2'],
                 'num_attempts': 3,
                }
      }
     """
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         """Skip nodes that have already been attempted."""
         attempted = filter_properties.get('retry')
         if not attempted:
@@ -44,14 +44,15 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
             LOG.debug("Re-scheduling is disabled.")
             return True
 
-        hosts = attempted.get('hosts', [])
-        host = host_state.backend_id
+        # TODO(geguileo): In P - Just use backends
+        backends = attempted.get('backends', attempted.get('hosts', []))
+        backend = backend_state.backend_id
 
-        passes = host not in hosts
+        passes = backend not in backends
         pass_msg = "passes" if passes else "fails"
 
-        LOG.debug("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
-                  "%(hosts)s" % {'host': host,
-                                 'pass_msg': pass_msg,
-                                 'hosts': hosts})
+        LOG.debug("Backend %(backend)s %(pass_msg)s.  Previously tried "
+                  "backends: %(backends)s" % {'backend': backend,
+                                              'pass_msg': pass_msg,
+                                              'backends': backends})
         return passes

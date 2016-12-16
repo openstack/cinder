@@ -203,20 +203,30 @@ class DBAPIServiceTestCase(BaseTest):
     def test_service_get_all(self):
         expired = (datetime.datetime.utcnow()
                    - datetime.timedelta(seconds=CONF.service_down_time + 1))
+        db.cluster_create(self.ctxt, {'name': 'cluster_disabled',
+                                      'binary': 'fake_binary',
+                                      'disabled': True})
+        db.cluster_create(self.ctxt, {'name': 'cluster_enabled',
+                                      'binary': 'fake_binary',
+                                      'disabled': False})
         values = [
             # Now we are updating updated_at at creation as well so this one
             # is up.
             {'host': 'host1', 'binary': 'b1', 'created_at': expired},
             {'host': 'host1@ceph', 'binary': 'b2'},
             {'host': 'host2', 'binary': 'b2'},
+            {'disabled': False, 'cluster_name': 'cluster_enabled'},
+            {'disabled': True, 'cluster_name': 'cluster_enabled'},
+            {'disabled': False, 'cluster_name': 'cluster_disabled'},
+            {'disabled': True, 'cluster_name': 'cluster_disabled'},
             {'disabled': True, 'created_at': expired, 'updated_at': expired},
         ]
         services = [self._create_service(vals) for vals in values]
 
-        disabled_services = services[-1:]
-        non_disabled_services = services[:-1]
-        up_services = services[0:3]
-        down_services = [services[3]]
+        disabled_services = services[-3:]
+        non_disabled_services = services[:-3]
+        up_services = services[:7]
+        down_services = [services[7]]
         expected = services[:2]
         expected_bin = services[1:3]
         compares = [

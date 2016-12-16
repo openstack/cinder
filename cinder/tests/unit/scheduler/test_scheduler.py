@@ -126,9 +126,9 @@ class SchedulerManagerTestCase(test.TestCase):
     def test_create_volume_exception_puts_volume_in_error_state(
             self, _mock_volume_update, _mock_message_create,
             _mock_sched_create):
-        # Test NoValidHost exception behavior for create_volume.
+        # Test NoValidBackend exception behavior for create_volume.
         # Puts the volume in 'error' state and eats the exception.
-        _mock_sched_create.side_effect = exception.NoValidHost(reason="")
+        _mock_sched_create.side_effect = exception.NoValidBackend(reason="")
         volume = fake_volume.fake_volume_obj(self.context)
         request_spec = {'volume_id': volume.id,
                         'volume': {'id': volume.id, '_name_id': None,
@@ -223,39 +223,39 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertFalse(_mock_sleep.called)
 
     @mock.patch('cinder.db.volume_get')
-    @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
+    @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
     @mock.patch('cinder.db.volume_update')
     def test_migrate_volume_exception_returns_volume_state(
-            self, _mock_volume_update, _mock_host_passes,
+            self, _mock_volume_update, _mock_backend_passes,
             _mock_volume_get):
-        # Test NoValidHost exception behavior for migrate_volume_to_host.
+        # Test NoValidBackend exception behavior for migrate_volume_to_host.
         # Puts the volume in 'error_migrating' state and eats the exception.
         fake_updates = {'migration_status': 'error'}
         self._test_migrate_volume_exception_returns_volume_state(
-            _mock_volume_update, _mock_host_passes, _mock_volume_get,
+            _mock_volume_update, _mock_backend_passes, _mock_volume_get,
             'available', fake_updates)
 
     @mock.patch('cinder.db.volume_get')
-    @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
+    @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
     @mock.patch('cinder.db.volume_update')
     def test_migrate_volume_exception_returns_volume_state_maintenance(
-            self, _mock_volume_update, _mock_host_passes,
+            self, _mock_volume_update, _mock_backend_passes,
             _mock_volume_get):
         fake_updates = {'status': 'available',
                         'migration_status': 'error'}
         self._test_migrate_volume_exception_returns_volume_state(
-            _mock_volume_update, _mock_host_passes, _mock_volume_get,
+            _mock_volume_update, _mock_backend_passes, _mock_volume_get,
             'maintenance', fake_updates)
 
     def _test_migrate_volume_exception_returns_volume_state(
-            self, _mock_volume_update, _mock_host_passes,
+            self, _mock_volume_update, _mock_backend_passes,
             _mock_volume_get, status, fake_updates):
         volume = tests_utils.create_volume(self.context,
                                            status=status,
                                            previous_status='available')
         fake_volume_id = volume.id
         request_spec = {'volume_id': fake_volume_id}
-        _mock_host_passes.side_effect = exception.NoValidHost(reason="")
+        _mock_backend_passes.side_effect = exception.NoValidBackend(reason="")
         _mock_volume_get.return_value = volume
 
         self.manager.migrate_volume_to_host(self.context, volume, 'host', True,
@@ -264,15 +264,15 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_volume_update.assert_called_once_with(self.context,
                                                     fake_volume_id,
                                                     fake_updates)
-        _mock_host_passes.assert_called_once_with(self.context, 'host',
-                                                  request_spec, {})
+        _mock_backend_passes.assert_called_once_with(self.context, 'host',
+                                                     request_spec, {})
 
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
     @mock.patch('cinder.quota.QUOTAS.rollback')
     def test_retype_volume_exception_returns_volume_state(
             self, quota_rollback, _mock_vol_attachment_get, _mock_vol_update):
-        # Test NoValidHost exception behavior for retype.
+        # Test NoValidBackend exception behavior for retype.
         # Puts the volume in original state and eats the exception.
         volume = tests_utils.create_volume(self.context,
                                            status='retyping',
@@ -287,17 +287,17 @@ class SchedulerManagerTestCase(test.TestCase):
                         'migration_policy': 'on-demand',
                         'quota_reservations': reservations}
         _mock_vol_update.return_value = {'status': 'in-use'}
-        _mock_find_retype_host = mock.Mock(
-            side_effect=exception.NoValidHost(reason=""))
-        orig_retype = self.manager.driver.find_retype_host
-        self.manager.driver.find_retype_host = _mock_find_retype_host
+        _mock_find_retype_backend = mock.Mock(
+            side_effect=exception.NoValidBackend(reason=""))
+        orig_retype = self.manager.driver.find_retype_backend
+        self.manager.driver.find_retype_backend = _mock_find_retype_backend
 
         self.manager.retype(self.context, volume, request_spec=request_spec,
                             filter_properties={})
 
-        _mock_find_retype_host.assert_called_once_with(self.context,
-                                                       request_spec, {},
-                                                       'on-demand')
+        _mock_find_retype_backend.assert_called_once_with(self.context,
+                                                          request_spec, {},
+                                                          'on-demand')
         quota_rollback.assert_called_once_with(self.context, reservations)
         _mock_vol_update.assert_called_once_with(self.context, volume.id,
                                                  {'status': 'in-use'})
@@ -329,7 +329,7 @@ class SchedulerManagerTestCase(test.TestCase):
             LOG.exception.reset_mock()
             db.consistencygroup_update.reset_mock()
 
-            mock_cg.side_effect = exception.NoValidHost(
+            mock_cg.side_effect = exception.NoValidBackend(
                 reason="No weighed hosts available")
             self.manager.create_consistencygroup(
                 self.context, consistencygroup_obj)

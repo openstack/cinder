@@ -36,6 +36,7 @@ def _get_filters_sentinel():
             'race_preventer': mock.sentinel.race_preventer,
             'last_heartbeat': mock.sentinel.last_heartbeat,
             'num_hosts': mock.sentinel.num_hosts,
+            'name_match_level': mock.sentinel.name_match_level,
             'num_down_hosts': mock.sentinel.num_down_hosts}
 
 

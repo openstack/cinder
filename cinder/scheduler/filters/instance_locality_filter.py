@@ -30,7 +30,7 @@ INSTANCE_HOST_PROP = 'OS-EXT-SRV-ATTR:host'
 REQUESTS_TIMEOUT = 5
 
 
-class InstanceLocalityFilter(filters.BaseHostFilter):
+class InstanceLocalityFilter(filters.BaseBackendFilter):
     """Schedule volume on the same host as a given instance.
 
     This filter enables selection of a storage back-end located on the host
@@ -51,7 +51,7 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
 
     def __init__(self):
         # Cache Nova API answers directly into the Filter object.
-        # Since a BaseHostFilter instance lives only during the volume's
+        # Since a BaseBackendFilter instance lives only during the volume's
         # scheduling, the cache is re-created for every new volume creation.
         self._cache = {}
         super(InstanceLocalityFilter, self).__init__()
@@ -69,9 +69,9 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
 
         return self._nova_ext_srv_attr
 
-    def host_passes(self, backend_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
-        host = volume_utils.extract_host(backend_state.backend_id, 'host')
+        backend = volume_utils.extract_host(backend_state.backend_id, 'host')
 
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
         instance_uuid = scheduler_hints.get(HINT_KEYWORD, None)
@@ -93,7 +93,7 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
 
         # First, lookup for already-known information in local cache
         if instance_uuid in self._cache:
-            return self._cache[instance_uuid] == host
+            return self._cache[instance_uuid] == backend
 
         if not self._nova_has_extended_server_attributes(context):
             LOG.warning(_LW('Hint "%s" dropped because '
@@ -116,5 +116,5 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
 
         self._cache[instance_uuid] = getattr(server, INSTANCE_HOST_PROP)
 
-        # Match if given instance is hosted on host
-        return self._cache[instance_uuid] == host
+        # Match if given instance is hosted on backend
+        return self._cache[instance_uuid] == backend

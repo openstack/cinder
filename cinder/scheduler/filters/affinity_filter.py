@@ -20,7 +20,7 @@ from cinder.scheduler import filters
 from cinder.volume import api as volume
 
 
-class AffinityFilter(filters.BaseHostFilter):
+class AffinityFilter(filters.BaseBackendFilter):
     def __init__(self):
         self.volume_api = volume.API()
 
@@ -36,7 +36,7 @@ class AffinityFilter(filters.BaseHostFilter):
 class DifferentBackendFilter(AffinityFilter):
     """Schedule volume on a different back-end from a set of volumes."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
 
@@ -62,7 +62,7 @@ class DifferentBackendFilter(AffinityFilter):
 
         if affinity_uuids:
             return not self._get_volumes(context, affinity_uuids,
-                                         host_state)
+                                         backend_state)
         # With no different_host key
         return True
 
@@ -70,7 +70,7 @@ class DifferentBackendFilter(AffinityFilter):
 class SameBackendFilter(AffinityFilter):
     """Schedule volume on the same back-end as another volume."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
 
@@ -95,7 +95,7 @@ class SameBackendFilter(AffinityFilter):
             return False
 
         if affinity_uuids:
-            return self._get_volumes(context, affinity_uuids, host_state)
+            return self._get_volumes(context, affinity_uuids, backend_state)
 
         # With no same_host key
         return True
