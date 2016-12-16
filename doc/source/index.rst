@@ -45,6 +45,7 @@ Developer Docs
    scheduler-filters
    scheduler-weights
    oslo-middleware
+   upgrade
 
 Drivers
 =======
