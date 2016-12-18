@@ -787,7 +787,6 @@ def quota_get(context, project_id, resource):
 
 @require_context
 def quota_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
 
     rows = model_query(context, models.Quota, read_deleted="no").\
         filter_by(project_id=project_id).\
@@ -819,7 +818,7 @@ def _quota_get_by_resource(context, resource, session=None):
     return rows
 
 
-@require_admin_context
+@require_context
 def quota_create(context, project_id, resource, limit, allocated):
     quota_ref = models.Quota()
     quota_ref.project_id = project_id
@@ -834,7 +833,7 @@ def quota_create(context, project_id, resource, limit, allocated):
         return quota_ref
 
 
-@require_admin_context
+@require_context
 def quota_update(context, project_id, resource, limit):
     session = get_session()
     with session.begin():
@@ -905,7 +904,6 @@ def quota_class_get_default(context):
 
 @require_context
 def quota_class_get_all_by_name(context, class_name):
-    authorize_quota_class_context(context, class_name)
 
     rows = model_query(context, models.QuotaClass, read_deleted="no").\
         filter_by(class_name=class_name).\
@@ -930,7 +928,7 @@ def _quota_class_get_all_by_resource(context, resource, session):
 
 
 @handle_db_data_error
-@require_admin_context
+@require_context
 def quota_class_create(context, class_name, resource, limit):
     quota_class_ref = models.QuotaClass()
     quota_class_ref.class_name = class_name
@@ -943,7 +941,7 @@ def quota_class_create(context, class_name, resource, limit):
         return quota_class_ref
 
 
-@require_admin_context
+@require_context
 def quota_class_update(context, class_name, resource, limit):
     session = get_session()
     with session.begin():
@@ -963,7 +961,7 @@ def quota_class_update_resource(context, old_res, new_res):
             quota_class.resource = new_res
 
 
-@require_admin_context
+@require_context
 def quota_class_destroy(context, class_name, resource):
     session = get_session()
     with session.begin():
@@ -972,7 +970,7 @@ def quota_class_destroy(context, class_name, resource):
         return quota_class_ref.delete(session=session)
 
 
-@require_admin_context
+@require_context
 def quota_class_destroy_all_by_name(context, class_name):
     session = get_session()
     with session.begin():
@@ -1003,7 +1001,6 @@ def quota_usage_get(context, project_id, resource):
 
 @require_context
 def quota_usage_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
 
     rows = model_query(context, models.QuotaUsage, read_deleted="no").\
         filter_by(project_id=project_id).\

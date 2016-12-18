@@ -25,6 +25,7 @@ import webob.exc
 
 from cinder.api.contrib import quota_classes
 from cinder import context
+from cinder import exception
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -99,7 +100,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         self.req.environ['cinder.context'].is_admin = False
         self.req.environ['cinder.context'].user_id = fake.USER_ID
         self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.show,
+        self.assertRaises(exception.PolicyNotAuthorized, self.controller.show,
                           self.req, fake.PROJECT_ID)
 
     def test_update(self):
@@ -138,8 +139,9 @@ class QuotaClassSetsControllerTest(test.TestCase):
 
     def test_update_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
-                          self.req, fake.PROJECT_ID, make_body(tenant_id=None))
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.update, self.req, fake.PROJECT_ID,
+                          make_body(tenant_id=None))
 
     def test_update_with_more_volume_types(self):
         volume_types.create(self.ctxt, 'fake_type_1')

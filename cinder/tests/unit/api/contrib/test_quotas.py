@@ -281,8 +281,9 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         self.req.environ['cinder.context'].is_admin = False
         self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
         self.req.environ['cinder.context'].user_id = 'foo_user'
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
-                          self.req, fake.PROJECT_ID, make_body(tenant_id=None))
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.update, self.req, fake.PROJECT_ID,
+                          make_body(tenant_id=None))
 
     def test_update_without_quota_set_field(self):
         body = {'fake_quota_set': {'gigabytes': 100}}
@@ -372,8 +373,8 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
 
     def test_delete_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
-                          self.req, fake.PROJECT_ID)
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.delete, self.req, fake.PROJECT_ID)
 
     def test_subproject_show_not_using_nested_quotas(self):
         # Current roles say for non-nested quotas, an admin should be able to
