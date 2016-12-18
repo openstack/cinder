@@ -257,7 +257,7 @@ def handle_db_data_error(f):
     return wrapper
 
 
-def model_query(context, *args, **kwargs):
+def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
     :param context: context to query under
@@ -270,7 +270,7 @@ def model_query(context, *args, **kwargs):
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
 
-    query = session.query(*args)
+    query = session.query(model, *args)
 
     if read_deleted == 'no':
         query = query.filter_by(deleted=False)
@@ -285,7 +285,13 @@ def model_query(context, *args, **kwargs):
             _("Unrecognized read_deleted value '%s'") % read_deleted)
 
     if project_only and is_user_context(context):
-        query = query.filter_by(project_id=context.project_id)
+        if model == models.VolumeAttachment:
+            # NOTE(dulek): In case of VolumeAttachment, we need to join
+            # `project_id` through `volume` relationship.
+            query = query.filter(models.Volume.project_id ==
+                                 context.project_id)
+        else:
+            query = query.filter_by(project_id=context.project_id)
 
     return query
 
@@ -1392,8 +1398,8 @@ def volume_attach(context, values):
     session = get_session()
     with session.begin():
         volume_attachment_ref.save(session=session)
-        return volume_attachment_get(context, values['id'],
-                                     session=session)
+        return _attachment_get(context, values['id'],
+                               session=session)
 
 
 @require_admin_context
@@ -1411,8 +1417,8 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
 
     session = get_session()
     with session.begin():
-        volume_attachment_ref = volume_attachment_get(context, attachment_id,
-                                                      session=session)
+        volume_attachment_ref = _attachment_get(context, attachment_id,
+                                                session=session)
 
         updated_values = {'mountpoint': mountpoint,
                           'attach_status': fields.VolumeAttachStatus.ATTACHED,
@@ -1619,11 +1625,17 @@ def volume_detached(context, volume_id, attachment_id):
     if this was the last detachment made.
 
     """
+
+    # NOTE(jdg): This is a funky band-aid for the earlier attempts at
+    # multiattach, it's a bummer because these things aren't really being used
+    # but at the same time we don't want to break them until we work out the
+    # new proposal for multi-attach
+    remain_attachment = True
     session = get_session()
     with session.begin():
         try:
-            attachment = volume_attachment_get(context, attachment_id,
-                                               session=session)
+            attachment = _attachment_get(context, attachment_id,
+                                         session=session)
         except exception.VolumeAttachmentNotFound:
             attachment_updates = None
             attachment = None
@@ -1642,10 +1654,20 @@ def volume_detached(context, volume_id, attachment_id):
             attachment.save(session=session)
             del attachment_updates['updated_at']
 
+        attachment_list = None
         volume_ref = _volume_get(context, volume_id,
                                  session=session)
         volume_updates = {'updated_at': literal_column('updated_at')}
         if not volume_ref.volume_attachment:
+            # NOTE(jdg): We kept the old arg style allowing session exclusively
+            # for this one call
+            attachment_list = volume_attachment_get_all_by_volume_id(
+                context, volume_id, session=session)
+            remain_attachment = False
+        if attachment_list and len(attachment_list) > 0:
+            remain_attachment = True
+
+        if not remain_attachment:
             # Hide status update from user if we're performing volume migration
             # or uploading it to image
             if ((not volume_ref.migration_status and
@@ -1719,16 +1741,63 @@ def _volume_get(context, volume_id, session=None, joined_load=True):
     return result
 
 
-@require_context
-def volume_attachment_get(context, attachment_id, session=None):
-    result = model_query(context, models.VolumeAttachment,
-                         session=session).\
-        filter_by(id=attachment_id).\
-        first()
+def _attachment_get_all(context, filters=None, marker=None, limit=None,
+                        offset=None, sort_keys=None, sort_dirs=None):
+    project_id = filters.pop('project_id', None)
+    if filters and not is_valid_model_filters(models.VolumeAttachment,
+                                              filters):
+        return []
+
+    session = get_session()
+    with session.begin():
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, models.VolumeAttachment)
+        if query is None:
+            return []
+
+        query = query.options(joinedload('volume'))
+        if project_id:
+            query = query.filter(models.Volume.project_id == project_id)
+
+        return query.all()
+
+
+def _attachment_get(context, attachment_id, session=None, read_deleted=False,
+                    project_only=True):
+    result = (model_query(context, models.VolumeAttachment, session=session,
+                          read_deleted=read_deleted)
+              .filter_by(id=attachment_id)
+              .options(joinedload('volume'))
+              .first())
+
     if not result:
-        raise exception.VolumeAttachmentNotFound(filter='attachment_id = %s' %
-                                                 attachment_id)
+        msg = _("Unable to find attachment with id: %s"), attachment_id
+        raise exception.VolumeAttachmentNotFound(msg)
     return result
+
+
+def _attachment_get_query(context, session=None, project_only=False):
+    return model_query(context, models.VolumeAttachment, session=session,
+                       project_only=project_only).options(joinedload('volume'))
+
+
+def _process_attachment_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.VolumeAttachment, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
+@require_admin_context
+def volume_attachment_get_all(context, filters=None, marker=None, limit=None,
+                              offset=None, sort_keys=None, sort_dirs=None):
+    """Retrieve all Attachment records with filter and pagination options."""
+    return _attachment_get_all(context, filters, marker, limit, offset,
+                               sort_keys, sort_dirs)
 
 
 @require_context
@@ -1737,7 +1806,8 @@ def volume_attachment_get_all_by_volume_id(context, volume_id, session=None):
                          session=session).\
         filter_by(volume_id=volume_id).\
         filter(models.VolumeAttachment.attach_status !=
-               fields.VolumeAttachStatus.DETACHED).\
+               fields.VolumeAttachStatus.DETACHED). \
+        options(joinedload('volume')).\
         all()
     return result
 
@@ -1750,9 +1820,15 @@ def volume_attachment_get_all_by_host(context, host):
                              session=session).\
             filter_by(attached_host=host).\
             filter(models.VolumeAttachment.attach_status !=
-                   fields.VolumeAttachStatus.DETACHED).\
+                   fields.VolumeAttachStatus.DETACHED). \
+            options(joinedload('volume')).\
             all()
         return result
+
+
+@require_context
+def volume_attachment_get(context, attachment_id):
+    return _attachment_get(context, attachment_id)
 
 
 @require_context
@@ -1765,8 +1841,27 @@ def volume_attachment_get_all_by_instance_uuid(context,
             filter_by(instance_uuid=instance_uuid).\
             filter(models.VolumeAttachment.attach_status !=
                    fields.VolumeAttachStatus.DETACHED).\
+            options(joinedload('volume')).\
             all()
         return result
+
+
+@require_context
+def volume_attachment_get_all_by_project(context, project_id, filters=None,
+                                         marker=None, limit=None, offset=None,
+                                         sort_keys=None, sort_dirs=None):
+    """Retrieve all Attachment records for specific project."""
+    authorize_project_context(context, project_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['project_id'] = project_id
+
+    return _attachment_get_all(context, filters, marker,
+                               limit, offset, sort_keys,
+                               sort_dirs)
 
 
 @require_context
@@ -2239,8 +2334,8 @@ def volumes_update(context, values_list):
 def volume_attachment_update(context, attachment_id, values):
     session = get_session()
     with session.begin():
-        volume_attachment_ref = volume_attachment_get(context, attachment_id,
-                                                      session=session)
+        volume_attachment_ref = _attachment_get(context, attachment_id,
+                                                session=session)
         volume_attachment_ref.update(values)
         volume_attachment_ref.save(session=session)
         return volume_attachment_ref
@@ -6034,6 +6129,9 @@ PAGINATION_HELPERS = {
     models.Group: (_groups_get_query,
                    _process_groups_filters,
                    _group_get),
+    models.VolumeAttachment: (_attachment_get_query,
+                              _process_attachment_filters,
+                              _attachment_get),
 }
 
 

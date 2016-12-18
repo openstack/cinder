@@ -27,10 +27,11 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
     def test_get_by_id(self, volume_attachment_get):
         db_attachment = fake_volume.fake_db_volume_attachment()
+        attachment_obj = fake_volume.fake_volume_attachment_obj(self.context)
         volume_attachment_get.return_value = db_attachment
         attachment = objects.VolumeAttachment.get_by_id(self.context,
                                                         fake.ATTACHMENT_ID)
-        self._compare(self, db_attachment, attachment)
+        self._compare(self, attachment_obj, attachment)
 
     @mock.patch('cinder.db.volume_attachment_update')
     def test_save(self, volume_attachment_update):
@@ -44,20 +45,23 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
     def test_refresh(self, attachment_get):
         db_attachment1 = fake_volume.fake_db_volume_attachment()
+        attachment_obj1 = fake_volume.fake_volume_attachment_obj(self.context)
         db_attachment2 = db_attachment1.copy()
         db_attachment2['mountpoint'] = '/dev/sdc'
+        attachment_obj2 = fake_volume.fake_volume_attachment_obj(
+            self.context, mountpoint='/dev/sdc')
 
         # On the second volume_attachment_get, return the volume attachment
         # with an updated mountpoint
         attachment_get.side_effect = [db_attachment1, db_attachment2]
         attachment = objects.VolumeAttachment.get_by_id(self.context,
                                                         fake.ATTACHMENT_ID)
-        self._compare(self, db_attachment1, attachment)
+        self._compare(self, attachment_obj1, attachment)
 
         # mountpoint was updated, so a volume attachment refresh should have a
         # new value for that field
         attachment.refresh()
-        self._compare(self, db_attachment2, attachment)
+        self._compare(self, attachment_obj2, attachment)
         if six.PY3:
             call_bool = mock.call.__bool__()
         else:
@@ -98,28 +102,31 @@ class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
     def test_get_all_by_volume_id(self, get_used_by_volume_id):
         db_attachment = fake_volume.fake_db_volume_attachment()
         get_used_by_volume_id.return_value = [db_attachment]
+        attachment_obj = fake_volume.fake_volume_attachment_obj(self.context)
 
         attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
             self.context, mock.sentinel.volume_id)
         self.assertEqual(1, len(attachments))
-        TestVolumeAttachment._compare(self, db_attachment, attachments[0])
+        TestVolumeAttachment._compare(self, attachment_obj, attachments[0])
 
     @mock.patch('cinder.db.volume_attachment_get_all_by_host')
     def test_get_all_by_host(self, get_by_host):
         db_attachment = fake_volume.fake_db_volume_attachment()
+        attachment_obj = fake_volume.fake_volume_attachment_obj(self.context)
         get_by_host.return_value = [db_attachment]
 
         attachments = objects.VolumeAttachmentList.get_all_by_host(
             self.context, mock.sentinel.host)
         self.assertEqual(1, len(attachments))
-        TestVolumeAttachment._compare(self, db_attachment, attachments[0])
+        TestVolumeAttachment._compare(self, attachment_obj, attachments[0])
 
     @mock.patch('cinder.db.volume_attachment_get_all_by_instance_uuid')
     def test_get_all_by_instance_uuid(self, get_by_instance_uuid):
         db_attachment = fake_volume.fake_db_volume_attachment()
         get_by_instance_uuid.return_value = [db_attachment]
+        attachment_obj = fake_volume.fake_volume_attachment_obj(self.context)
 
         attachments = objects.VolumeAttachmentList.get_all_by_instance_uuid(
             self.context, mock.sentinel.uuid)
         self.assertEqual(1, len(attachments))
-        TestVolumeAttachment._compare(self, db_attachment, attachments[0])
+        TestVolumeAttachment._compare(self, attachment_obj, attachments[0])
