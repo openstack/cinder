@@ -6600,6 +6600,8 @@ def worker_update(context, id, filters=None, orm_worker=None, **values):
     # we set it here instead of letting SQLAlchemy do it to be able to update
     # the orm_worker.
     _worker_set_updated_at_field(values)
+    reference = orm_worker or models.Worker
+    values['race_preventer'] = reference.race_preventer + 1
     result = query.update(values)
     if not result:
         raise exception.WorkerNotFound(id=id, **filters)
@@ -6612,6 +6614,7 @@ def worker_claim_for_cleanup(context, claimer_id, orm_worker):
     # We set updated_at value so we are sure we update the DB entry even if the
     # service_id is the same in the DB, thus flagging the claim.
     values = {'service_id': claimer_id,
+              'race_preventer': orm_worker.race_preventer + 1,
               'updated_at': timeutils.utcnow()}
     _worker_set_updated_at_field(values)
 
@@ -6620,6 +6623,7 @@ def worker_claim_for_cleanup(context, claimer_id, orm_worker):
     query = _worker_query(context,
                           status=orm_worker.status,
                           service_id=orm_worker.service_id,
+                          race_preventer=orm_worker.race_preventer,
                           until=orm_worker.updated_at,
                           id=orm_worker.id)
 
