@@ -14,6 +14,8 @@
 #    under the License.
 """ Tests for create_volume TaskFlow """
 
+import sys
+
 import ddt
 import mock
 
@@ -341,6 +343,61 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'cgsnapshot_id': None,
                            'group_id': None,
                            'replication_status': 'disabled'}
+        self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    def test_extract_volume_request_task_with_large_volume_size(
+            self,
+            fake_get_type_id,
+            fake_get_qos,
+            fake_is_encrypted):
+        fake_image_service = fake_image.FakeImageService()
+        image_id = 11
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_manager.MockKeyManager()
+        volume_type = 'type1'
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_qos.return_value = {'qos_specs': None}
+        result = task.execute(self.ctxt,
+                              size=(sys.maxsize + 1),
+                              snapshot=None,
+                              image_id=image_id,
+                              source_volume=None,
+                              availability_zone=None,
+                              volume_type=volume_type,
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              source_replica=None,
+                              consistencygroup=None,
+                              cgsnapshot=None,
+                              group=None)
+        expected_result = {'size': (sys.maxsize + 1),
+                           'snapshot_id': None,
+                           'source_volid': None,
+                           'availability_zone': 'nova',
+                           'volume_type': volume_type,
+                           'volume_type_id': 1,
+                           'encryption_key_id': None,
+                           'qos_specs': None,
+                           'replication_status': 'disabled',
+                           'source_replicaid': None,
+                           'consistencygroup_id': None,
+                           'cgsnapshot_id': None,
+                           'group_id': None, }
         self.assertEqual(expected_result, result)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
