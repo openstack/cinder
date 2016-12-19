@@ -3,4 +3,3 @@
 ==============================
 
 .. release-notes::
-    :branch: origin/master
