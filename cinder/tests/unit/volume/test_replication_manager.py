@@ -62,3 +62,18 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
         db_svc = objects.Service.get_by_id(self.context, svc.id)
         self.assertEqual(expected, db_svc.replication_status)
+
+    @mock.patch('cinder.volume.driver.BaseVD.failover_host',
+                mock.Mock(side_effect=exception.VolumeDriverException('')))
+    def test_failover_host_driver_exception(self):
+        svc = utils.create_service(
+            self.context,
+            host=self.host,
+            active_backend_id=None,
+            replication_status=fields.ReplicationStatus.FAILING_OVER)
+
+        self.manager.failover_host(self.context, mock.sentinel.backend_id)
+
+        db_svc = objects.Service.get_by_id(self.context, svc.id)
+        self.assertEqual(fields.ReplicationStatus.FAILOVER_ERROR,
+                         db_svc.replication_status)

@@ -4075,7 +4075,9 @@ class VolumeManager(manager.CleanableManager,
             # backend is still set as primary as per driver memory
             LOG.error(_LE("Driver reported error during "
                           "replication failover."))
-            service.status = 'error'
+            service.replication_status = (
+                fields.ReplicationStatus.FAILOVER_ERROR)
+            service.disabled = True
             service.save()
             exception_encountered = True
         if exception_encountered:
