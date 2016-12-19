@@ -234,22 +234,8 @@ class EMCVMAXCommon(object):
         extraSpecs = self._initial_setup(snapshot)
         self.conn = self._get_ecom_connection()
         snapshotInstance = self._find_lun(snapshot)
-        storageSystem = snapshotInstance['SystemName']
 
-        syncName = self.utils.find_sync_sv_by_target(
-            self.conn, storageSystem, snapshotInstance, extraSpecs, True)
-        if syncName is not None:
-            repservice = self.utils.find_replication_service(self.conn,
-                                                             storageSystem)
-            if repservice is None:
-                exception_message = (_("Cannot find Replication Service to "
-                                       "create volume for snapshot %s.")
-                                     % snapshotInstance)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-            self.provision.delete_clone_relationship(
-                self.conn, repservice, syncName, extraSpecs)
+        self._sync_check(snapshotInstance, snapshot['name'], extraSpecs)
 
         snapshot['host'] = volume['host']
         return self._create_cloned_volume(volume, snapshot, extraSpecs, False)
@@ -2300,6 +2286,8 @@ class EMCVMAXCommon(object):
                 {'name': volumeName})
             return errorRet
 
+        self._sync_check(volumeInstance, volumeName, extraSpecs)
+
         storageConfigService = self.utils.find_storage_configuration_service(
             self.conn, volumeInstance['SystemName'])
 
@@ -2469,58 +2457,16 @@ class EMCVMAXCommon(object):
         :param snapshot: snapshot object to be deleted
         :raises: VolumeBackendAPIException
         """
-        LOG.debug("Entering delete_snapshot.")
+        LOG.debug("Entering _delete_snapshot.")
 
-        snapshotname = snapshot['name']
-        LOG.info(_LI("Delete Snapshot: %(snapshot)s."),
-                 {'snapshot': snapshotname})
-
-        extraSpecs = self._initial_setup(snapshot)
         self.conn = self._get_ecom_connection()
 
-        if not extraSpecs[ISV3]:
-            snapshotInstance = self._find_lun(snapshot)
-            if snapshotInstance is None:
-                LOG.error(_LE(
-                    "Snapshot %(snapshotname)s not found on the array. "
-                    "No volume to delete."),
-                    {'snapshotname': snapshotname})
-                return (-1, snapshotname)
-            storageSystem = snapshotInstance['SystemName']
-
-            # Wait for it to fully sync in case there is an ongoing
-            # create volume from snapshot request.
-            syncName = self.utils.find_sync_sv_by_target(
-                self.conn, storageSystem, snapshotInstance, extraSpecs,
-                True)
-
-            if syncName is None:
-                LOG.info(_LI(
-                    "Snapshot: %(snapshot)s: not found on the array."),
-                    {'snapshot': snapshotname})
-            else:
-                repservice = self.utils.find_replication_service(self.conn,
-                                                                 storageSystem)
-                if repservice is None:
-                    exception_message = _(
-                        "Cannot find Replication Service to"
-                        " delete snapshot %s.") % snapshotname
-                    raise exception.VolumeBackendAPIException(
-                        data=exception_message)
-                # Break the replication relationship
-                LOG.debug("Deleting snap relationship: Target: %(snapshot)s "
-                          "Method: ModifyReplicaSynchronization "
-                          "Replication Service: %(service)s  Operation: 8  "
-                          "Synchronization: %(syncName)s.",
-                          {'snapshot': snapshotname,
-                           'service': repservice,
-                           'syncName': syncName})
-
-                self.provision.delete_clone_relationship(
-                    self.conn, repservice, syncName, extraSpecs, True)
-
         # Delete the target device.
-        self._delete_volume(snapshot)
+        rc, snapshotname = self._delete_volume(snapshot)
+        LOG.info(_LI("Leaving delete_snapshot: %(ssname)s  Return code: "
+                     "%(rc)lu."),
+                 {'ssname': snapshotname,
+                  'rc': rc})
 
     def create_consistencygroup(self, context, group):
         """Creates a consistency group.
@@ -3773,8 +3719,9 @@ class EMCVMAXCommon(object):
             if targetInstance is not None:
                 # Check if the copy session exists.
                 storageSystem = targetInstance['SystemName']
-                syncInstanceName = self.utils.find_sync_sv_by_target(
-                    self.conn, storageSystem, targetInstance, False)
+                syncInstanceName = self.utils.find_sync_sv_by_volume(
+                    self.conn, storageSystem, targetInstance, extraSpecs,
+                    False)
                 if syncInstanceName is not None:
                     # Remove the Clone relationship.
                     rc, job = self.provision.delete_clone_relationship(
@@ -3930,7 +3877,7 @@ class EMCVMAXCommon(object):
                 sourceInstance, cloneName, extraSpecs)
 
         try:
-            _rc, job = (
+            rc, job = (
                 self.provisionv3.create_element_replica(
                     self.conn, repServiceInstanceName, cloneName, syncType,
                     sourceInstance, extraSpecs, targetInstance, rsdInstance))
@@ -3939,7 +3886,6 @@ class EMCVMAXCommon(object):
                 "Clone failed on V3. Cleaning up the target volume. "
                 "Clone name: %(cloneName)s "),
                 {'cloneName': cloneName})
-            # Check if the copy session exists.
             if targetInstance:
                 self._cleanup_target(
                     repServiceInstanceName, targetInstance, extraSpecs)
@@ -3953,15 +3899,16 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("The target instance device id is: %(deviceid)s."),
                  {'deviceid': targetVolumeInstance['DeviceID']})
 
-        cloneVolume['provider_location'] = six.text_type(cloneDict)
+        if not isSnapshot:
+            cloneVolume['provider_location'] = six.text_type(cloneDict)
 
-        syncInstanceName, _storageSystem = (
-            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
-                                          extraSpecs, True))
+            syncInstanceName, _storageSystem = (
+                self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
+                                              extraSpecs, True))
 
-        rc, job = self.provisionv3.break_replication_relationship(
-            self.conn, repServiceInstanceName, syncInstanceName,
-            operation, extraSpecs)
+            rc, job = self.provisionv3.break_replication_relationship(
+                self.conn, repServiceInstanceName, syncInstanceName,
+                operation, extraSpecs)
         return rc, cloneDict
 
     def _cleanup_target(
@@ -3973,7 +3920,7 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         """
         storageSystem = targetInstance['SystemName']
-        syncInstanceName = self.utils.find_sync_sv_by_target(
+        syncInstanceName = self.utils.find_sync_sv_by_volume(
             self.conn, storageSystem, targetInstance, False)
         if syncInstanceName is not None:
             # Break the clone relationship.
@@ -4668,3 +4615,35 @@ class EMCVMAXCommon(object):
 
         cgName += str(group[update_variable])
         return cgName
+
+    def _sync_check(self, volumeInstance, volumeName, extraSpecs):
+        """Check if volume is part of a sync process.
+
+        :param volumeInstance: volume instance
+        :param volumeName: volume name
+        :param extraSpecs: extra specifications
+        """
+        storageSystem = volumeInstance['SystemName']
+
+        # Wait for it to fully sync in case there is an ongoing
+        # create volume from snapshot request.
+        syncInstanceName = self.utils.find_sync_sv_by_volume(
+            self.conn, storageSystem, volumeInstance, extraSpecs,
+            True)
+
+        if syncInstanceName:
+            repservice = self.utils.find_replication_service(self.conn,
+                                                             storageSystem)
+
+            # Break the replication relationship
+            LOG.debug("Deleting snap relationship: Source: %(volume)s "
+                      "Synchronization: %(syncName)s.",
+                      {'volume': volumeName,
+                       'syncName': syncInstanceName})
+            if extraSpecs[ISV3]:
+                rc, job = self.provisionv3.break_replication_relationship(
+                    self.conn, repservice, syncInstanceName,
+                    DISSOLVE_SNAPVX, extraSpecs)
+            else:
+                self.provision.delete_clone_relationship(
+                    self.conn, repservice, syncInstanceName, extraSpecs, True)

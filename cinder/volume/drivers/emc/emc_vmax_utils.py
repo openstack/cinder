@@ -19,6 +19,7 @@ import os
 import pickle
 import random
 import re
+import time
 from xml.dom import minidom
 
 from oslo_log import log as logging
@@ -1246,14 +1247,14 @@ class EMCVMAXUtils(object):
         delta = endTime - startTime
         return six.text_type(datetime.timedelta(seconds=int(delta)))
 
-    def find_sync_sv_by_target(
-            self, conn, storageSystem, target, extraSpecs,
+    def find_sync_sv_by_volume(
+            self, conn, storageSystem, volumeInstance, extraSpecs,
             waitforsync=True):
-        """Find the storage synchronized name by target device ID.
+        """Find the storage synchronized name by device ID.
 
         :param conn: connection to the ecom server
         :param storageSystem: the storage system name
-        :param target: target volume object
+        :param volumeInstance: volume instance
         :param extraSpecs: the extraSpecs dict
         :param waitforsync: wait for the synchronization to complete if True
         :returns: foundSyncInstanceName
@@ -1263,9 +1264,11 @@ class EMCVMAXUtils(object):
             'SE_StorageSynchronized_SV_SV')
         for syncInstanceName in syncInstanceNames:
             syncSvTarget = syncInstanceName['SyncedElement']
+            syncSvSource = syncInstanceName['SystemElement']
             if storageSystem != syncSvTarget['SystemName']:
                 continue
-            if syncSvTarget['DeviceID'] == target['DeviceID']:
+            if syncSvTarget['DeviceID'] == volumeInstance['DeviceID'] or (
+                    syncSvSource['DeviceID'] == volumeInstance['DeviceID']):
                 # Check that it hasn't recently been deleted.
                 try:
                     conn.GetInstance(syncInstanceName)
@@ -1277,15 +1280,20 @@ class EMCVMAXUtils(object):
                     foundSyncInstanceName = None
                 break
 
-        if foundSyncInstanceName is None:
-            LOG.warning(_LW(
-                "Storage sync name not found for target %(target)s "
-                "on %(storageSystem)s."),
-                {'target': target['DeviceID'], 'storageSystem': storageSystem})
-        else:
+        if foundSyncInstanceName:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
+                LOG.warning(_LW(
+                    "Expect a performance hit as volume is not fully "
+                    "synced on %(deviceId)s."),
+                    {'deviceId': volumeInstance['DeviceID']})
+                startTime = time.time()
                 self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
+                LOG.warning(_LW(
+                    "Synchronization process took "
+                    "took: %(delta)s H:MM:SS."),
+                    {'delta': self.get_time_delta(startTime,
+                                                  time.time())})
 
         return foundSyncInstanceName
 
