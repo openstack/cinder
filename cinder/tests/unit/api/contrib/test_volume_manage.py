@@ -52,11 +52,12 @@ def app_v3():
     return mapper
 
 
-def service_get(context, id, host=None, binary=None, *args, **kwargs):
-    """Replacement for Service.service_get_by_host_and_topic.
+def service_get(context, service_id, backend_match_level=None, host=None,
+                **filters):
+    """Replacement for db.sqlalchemy.api.service_get.
 
-    We mock the Service.service_get_by_host_and_topic method to return
-    something for a specific host, and raise an exception for anything else.
+    We mock the db.sqlalchemy.api.service_get method to return something for a
+    specific host, and raise an exception for anything else.
     We don't use the returned data (the code under test just use the call to
     check for existence of a host, so the content returned doesn't matter.
     """
