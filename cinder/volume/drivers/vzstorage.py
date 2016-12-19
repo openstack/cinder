@@ -27,7 +27,7 @@ from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
@@ -184,6 +184,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def _qemu_img_info(self, path, volume_name):
         qemu_img_cache = path + ".qemu_img_info"
+        is_cache_outdated = True
         if os.path.isdir(path):
             # Ploop disks stored along with metadata xml as directories
             # qemu-img should explore base data file inside
@@ -191,8 +192,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         if os.path.isfile(qemu_img_cache):
             info_tm = os.stat(qemu_img_cache).st_mtime
             snap_tm = os.stat(path).st_mtime
-        ret = None
-        if not os.path.isfile(qemu_img_cache) or snap_tm > info_tm:
+            if info_tm >= snap_tm:
+                is_cache_outdated = False
+        if is_cache_outdated:
             LOG.debug("Cached qemu-img info %s not present or outdated,"
                       " refresh", qemu_img_cache)
             ret = super(VZStorageDriver, self)._qemu_img_info_base(
@@ -382,7 +384,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         if volume_format == DISK_FORMAT_PLOOP:
             self._create_ploop(volume_path, volume_size)
-        elif volume_format == 'qcow2':
+        elif volume_format == DISK_FORMAT_QCOW2:
             self._create_qcow2_file(volume_path, volume_size)
         elif self.configuration.vzstorage_sparsed_volumes:
             self._create_sparsed_file(volume_path, volume_size)
@@ -419,7 +421,6 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                           '%dG' % size_gb,
                           os.path.join(volume_path, 'DiskDescriptor.xml'),
                           run_as_root=True)
-            volume_path = os.path.join(volume_path, PLOOP_BASE_DELTA_NAME)
         else:
             image_utils.resize_image(volume_path, size_gb)
             if not self._is_file_size_equal(volume_path, size_gb):
@@ -578,7 +579,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self._execute('ploop', 'snapshot-delete', '-u', '{%s}' % snapshot.id,
                       self._get_desc_path(snapshot.volume),
                       run_as_root=True)
-        snap_info.pop(snapshot.id)
+        snap_info.pop(snapshot.id, None)
         self._write_info_file(info_path, snap_info)
 
     @remotefs_drv.locked_volume_id_operation
@@ -597,15 +598,14 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         # Cache qemu-img info for created snapshot
         self._qemu_img_info(new_snap_path, snapshot.volume.name)
 
-    @remotefs_drv.locked_volume_id_operation
-    def delete_snapshot(self, snapshot):
-        volume_format = self.get_volume_format(snapshot.volume)
-        if volume_format == DISK_FORMAT_PLOOP:
-            self._delete_snapshot_ploop(snapshot)
-            return
-
+    def _delete_snapshot_qcow2(self, snapshot):
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path, empty_if_missing=True)
+        if snapshot.id not in snap_info:
+            LOG.warning(_LW("Snapshot %s doesn't exist in snap_info"),
+                        snapshot.id)
+            return
+
         snap_file = os.path.join(self._local_volume_dir(snapshot.volume),
                                  snap_info[snapshot.id])
         active_file = os.path.join(self._local_volume_dir(snapshot.volume),
@@ -622,7 +622,6 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         img_info = self._qemu_img_info(snap_file, snapshot.volume.name)
         base_file = os.path.join(self._local_volume_dir(snapshot.volume),
                                  img_info.backing_file)
-        online = snapshot.volume.status == 'in-use'
 
         super(VZStorageDriver, self)._delete_snapshot(snapshot)
 
@@ -637,22 +636,29 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             with open(info_dst, 'w') as fdw:
                 json.dump(dst, fdw)
 
-        if volume_format == "qcow2":
-            if snap_file != active_file:
-                # mv snap_file.info higher_file.info
-                _update_backing_file(
-                    _qemu_info_cache(snap_file),
-                    _qemu_info_cache(higher_file))
-                self._delete(_qemu_info_cache(snap_file))
-            elif online:
-                # mv base_file.info snap_file.info
-                _update_backing_file(
-                    _qemu_info_cache(base_file),
-                    _qemu_info_cache(snap_file))
-                self._delete(_qemu_info_cache(base_file))
-            else:
-                # rm snap_file.info
-                self._delete(_qemu_info_cache(snap_file))
+        if snap_file != active_file:
+            # mv snap_file.info higher_file.info
+            _update_backing_file(
+                _qemu_info_cache(snap_file),
+                _qemu_info_cache(higher_file))
+            self._delete(_qemu_info_cache(snap_file))
+        elif snapshot.volume.status == 'in-use':
+            # mv base_file.info snap_file.info
+            _update_backing_file(
+                _qemu_info_cache(base_file),
+                _qemu_info_cache(snap_file))
+            self._delete(_qemu_info_cache(base_file))
+        else:
+            # rm snap_file.info
+            self._delete(_qemu_info_cache(snap_file))
+
+    @remotefs_drv.locked_volume_id_operation
+    def delete_snapshot(self, snapshot):
+        volume_format = self.get_volume_format(snapshot.volume)
+        if volume_format == DISK_FORMAT_PLOOP:
+            self._delete_snapshot_ploop(snapshot)
+        else:
+            self._delete_snapshot_qcow2(snapshot)
 
     def _copy_volume_to_image(self, context, volume, image_service,
                               image_meta):
