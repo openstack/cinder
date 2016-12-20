@@ -843,7 +843,7 @@ class Worker(BASE, CinderBase):
                         onupdate=timeutils.utcnow)
 
     # Id added for convenience and speed on some operations
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Type of the resource we are working on (Volume, Snapshot, Backup) it must
     # match the Versioned Object class name.
