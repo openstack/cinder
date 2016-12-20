@@ -19,7 +19,7 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc import scaleio
 
 
 @ddt.ddt

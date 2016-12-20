@@ -17,63 +17,82 @@ import json
 from six.moves import urllib
 
 from cinder import context
+from cinder import db
 from cinder import exception
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.emc import scaleio
-from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
 
 
-class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
-    """Test cases for ``ScaleIODriver.create_volume_from_snapshot()``"""
+class TestCreateSnapShot(scaleio.TestScaleIODriver):
+    """Test cases for ``ScaleIODriver.create_snapshot()``"""
+    def return_fake_volume(self, ctx, id):
+        return self.fake_volume
+
     def setUp(self):
         """Setup a test case environment.
 
         Creates fake volume and snapshot objects and sets up the required
         API responses.
         """
-        super(TestCreateVolumeFromSnapShot, self).setUp()
+        super(TestCreateSnapShot, self).setUp()
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
-        self.snapshot = fake_snapshot.fake_snapshot_obj(ctx)
+        self.fake_volume = fake_volume.fake_volume_obj(
+            ctx, **{'provider_id': fake.PROVIDER_ID})
+
+        self.snapshot = fake_snapshot.fake_snapshot_obj(
+            ctx, **{'volume': self.fake_volume})
+
+        self.mock_object(db.sqlalchemy.api, 'volume_get',
+                         self.return_fake_volume)
+
+        snap_vol_id = self.snapshot.volume_id
+        self.volume_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(self.driver._id_to_base64(snap_vol_id))
+        )
         self.snapshot_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(self.driver._id_to_base64(self.snapshot.id))
-        )
-        self.volume = fake_volume.fake_volume_obj(ctx)
-        self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
         )
 
         self.snapshot_reply = json.dumps(
             {
-                'volumeIdList': [self.volume.id],
-                'snapshotGroupId': 'snap_group'
+                'volumeIdList': ['cloned'],
+                'snapshotGroupId': 'cloned_snapshot'
             }
         )
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
                 'types/Volume/instances/getByName::' +
-                self.snapshot_name_2x_enc: self.snapshot.id,
+                self.volume_name_2x_enc: '"{}"'.format(
+                    self.snapshot.volume_id
+                ),
                 'instances/System/action/snapshotVolumes':
                     self.snapshot_reply,
+                'types/Volume/instances/getByName::' +
+                self.snapshot_name_2x_enc: self.snapshot.id,
             },
             self.RESPONSE_MODE.BadStatus: {
-                'instances/System/action/snapshotVolumes':
-                    self.BAD_STATUS_RESPONSE,
+                'types/Volume/instances/getByName::' +
+                self.volume_name_2x_enc: self.BAD_STATUS_RESPONSE,
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.BAD_STATUS_RESPONSE,
+                'instances/System/action/snapshotVolumes':
+                    self.BAD_STATUS_RESPONSE,
             },
             self.RESPONSE_MODE.Invalid: {
+                'types/Volume/instances/getByName::' +
+                self.volume_name_2x_enc: None,
                 'instances/System/action/snapshotVolumes':
                     mocks.MockHTTPSResponse(
                         {
-                            'errorCode': self.OLD_VOLUME_NOT_FOUND_ERROR,
-                            'message': 'BadStatus Volume Test',
+                            'errorCode': 400,
+                            'message': 'Invalid Volume Snapshot Test'
                         }, 400
                     ),
-                'types/Volume/instances/getByName::' +
-                self.snapshot_name_2x_enc: None,
             },
         }
 
@@ -81,20 +100,18 @@ class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
         self.assertRaises(
             exception.VolumeBackendAPIException,
-            self.driver.create_volume_from_snapshot,
-            self.volume,
+            self.driver.create_snapshot,
             self.snapshot
         )
 
-    def test_invalid_snapshot(self):
+    def test_invalid_volume(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
         self.assertRaises(
             exception.VolumeBackendAPIException,
-            self.driver.create_volume_from_snapshot,
-            self.volume,
+            self.driver.create_snapshot,
             self.snapshot
         )
 
-    def test_create_volume_from_snapshot(self):
+    def test_create_snapshot(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
-        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+        self.driver.create_snapshot(self.snapshot)

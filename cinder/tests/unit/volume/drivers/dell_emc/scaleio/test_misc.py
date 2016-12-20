@@ -21,8 +21,8 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.emc import scaleio
-from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
 
 
 @ddt.ddt
@@ -154,7 +154,8 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver.get_volume_stats(True)
 
     @mock.patch(
-        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        '_rename_volume',
         return_value=None)
     def test_update_migrated_volume(self, mock_rename):
         test_vol = self.driver.update_migrated_volume(
@@ -164,7 +165,8 @@ class TestMisc(scaleio.TestScaleIODriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        '_rename_volume',
         return_value=None)
     def test_update_unavailable_migrated_volume(self, mock_rename):
         test_vol = self.driver.update_migrated_volume(
@@ -175,7 +177,8 @@ class TestMisc(scaleio.TestScaleIODriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        '_rename_volume',
         side_effect=exception.VolumeBackendAPIException(data='Error!'))
     def test_fail_update_migrated_volume(self, mock_rename):
         self.assertRaises(

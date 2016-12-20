@@ -17,7 +17,7 @@ import requests
 import six
 
 from cinder import test
-from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
 
 
 class CustomResponseMode(object):

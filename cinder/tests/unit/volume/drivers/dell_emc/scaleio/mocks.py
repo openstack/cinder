@@ -17,11 +17,11 @@ import requests
 import six
 
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.emc import scaleio
+from cinder.volume.drivers.dell_emc.scaleio import driver
 from oslo_config import cfg
 
 
-class ScaleIODriver(scaleio.ScaleIODriver):
+class ScaleIODriver(driver.ScaleIODriver):
     """Mock ScaleIO Driver class.
 
     Provides some fake configuration options
