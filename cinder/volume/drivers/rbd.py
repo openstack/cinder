@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 
@@ -87,11 +88,18 @@ RBD_OPTS = [
                     'failed.'),
     cfg.IntOpt('rados_connection_interval', default=5,
                help='Interval value (in seconds) between connection '
-                    'retries to ceph cluster.')
+                    'retries to ceph cluster.'),
+    cfg.IntOpt('replication_connect_timeout', default=5,
+               help='Timeout value (in seconds) used when connecting to '
+                    'ceph cluster to do a demotion/promotion of volumes. '
+                    'If value < 0, no timeout is set and default librados '
+                    'value is used.'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(RBD_OPTS)
+
+EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 
 
 class RBDVolumeProxy(object):
@@ -104,8 +112,8 @@ class RBDVolumeProxy(object):
     'client' and 'ioctx'.
     """
     def __init__(self, driver, name, pool=None, snapshot=None,
-                 read_only=False):
-        client, ioctx = driver._connect_to_rados(pool)
+                 read_only=False, remote=None, timeout=None):
+        client, ioctx = driver._connect_to_rados(pool, remote, timeout)
         if snapshot is not None:
             snapshot = utils.convert_str(snapshot)
 
@@ -166,7 +174,9 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
 
-    def __init__(self, *args, **kwargs):
+    SYSCONFDIR = '/etc/ceph/'
+
+    def __init__(self, active_backend_id=None, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(RBD_OPTS)
         self._stats = {}
@@ -181,6 +191,66 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             val = getattr(self.configuration, attr)
             if val is not None:
                 setattr(self.configuration, attr, utils.convert_str(val))
+
+        self._backend_name = (self.configuration.volume_backend_name or
+                              self.__class__.__name__)
+        self._active_backend_id = active_backend_id
+        self._active_config = {}
+        self._is_replication_enabled = False
+        self._replication_targets = []
+        self._target_names = []
+
+    def _get_target_config(self, target_id):
+        """Get a replication target from known replication targets."""
+        for target in self._replication_targets:
+            if target['name'] == target_id:
+                return target
+        if not target_id or target_id == 'default':
+            return {
+                'name': self.configuration.rbd_cluster_name,
+                'conf': self.configuration.rbd_ceph_conf,
+                'user': self.configuration.rbd_user
+            }
+        raise exception.InvalidReplicationTarget(
+            reason=_('RBD: Unknown failover target host %s.') % target_id)
+
+    def do_setup(self, context):
+        """Performs initialization steps that could raise exceptions."""
+        self._do_setup_replication()
+        self._active_config = self._get_target_config(self._active_backend_id)
+
+    def _do_setup_replication(self):
+        replication_devices = self.configuration.safe_get(
+            'replication_device')
+        if replication_devices:
+            self._parse_replication_configs(replication_devices)
+            self._is_replication_enabled = True
+            self._target_names.append('default')
+
+    def _parse_replication_configs(self, replication_devices):
+        for replication_device in replication_devices:
+            if 'backend_id' not in replication_device:
+                msg = _('Missing backend_id in replication_device '
+                        'configuration.')
+                raise exception.InvalidConfigurationValue(msg)
+
+            name = replication_device['backend_id']
+            conf = replication_device.get('conf',
+                                          self.SYSCONFDIR + name + '.conf')
+            user = replication_device.get(
+                'user', self.configuration.rbd_user or 'cinder')
+            # Pool has to be the same in all clusters
+            replication_target = {'name': name,
+                                  'conf': utils.convert_str(conf),
+                                  'user': utils.convert_str(user)}
+            LOG.info(_LI('Adding replication target: %s.'), name)
+            self._replication_targets.append(replication_target)
+            self._target_names.append(name)
+
+    def _get_config_tuple(self, remote=None):
+        if not remote:
+            remote = self._active_config
+        return (remote.get('name'), remote.get('conf'), remote.get('user'))
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -204,32 +274,41 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
     def _ceph_args(self):
         args = []
-        if self.configuration.rbd_user:
-            args.extend(['--id', self.configuration.rbd_user])
-        if self.configuration.rbd_ceph_conf:
-            args.extend(['--conf', self.configuration.rbd_ceph_conf])
-        if self.configuration.rbd_cluster_name:
-            args.extend(['--cluster', self.configuration.rbd_cluster_name])
+
+        name, conf, user = self._get_config_tuple()
+
+        if user:
+            args.extend(['--id', user])
+        if name:
+            args.extend(['--cluster', name])
+        if conf:
+            args.extend(['--conf', conf])
+
         return args
 
     @utils.retry(exception.VolumeBackendAPIException,
                  CONF.rados_connection_interval,
                  CONF.rados_connection_retries)
-    def _connect_to_rados(self, pool=None):
-        LOG.debug("opening connection to ceph cluster (timeout=%s).",
-                  self.configuration.rados_connect_timeout)
+    def _connect_to_rados(self, pool=None, remote=None, timeout=None):
 
-        client = self.rados.Rados(
-            rados_id=self.configuration.rbd_user,
-            clustername=self.configuration.rbd_cluster_name,
-            conffile=self.configuration.rbd_ceph_conf)
+        name, conf, user = self._get_config_tuple(remote)
+
         if pool is not None:
             pool = utils.convert_str(pool)
         else:
             pool = self.configuration.rbd_pool
 
-        try:
+        if timeout is None:
             timeout = self.configuration.rados_connect_timeout
+
+        LOG.debug("connecting to %(name)s (timeout=%(timeout)s).",
+                  {'name': name, 'timeout': timeout})
+
+        client = self.rados.Rados(rados_id=user,
+                                  clustername=name,
+                                  conffile=conf)
+
+        try:
             if timeout >= 0:
                 timeout = six.text_type(timeout)
                 client.conf_set('rados_osd_op_timeout', timeout)
@@ -313,6 +392,10 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         }
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'RBD'
+
+        stats['replication_enabled'] = self._is_replication_enabled
+        if self._is_replication_enabled:
+            stats['replication_targets'] = self._target_names
 
         try:
             with RADOSClient(self) as client:
@@ -443,7 +526,16 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             except Exception:
                 src_volume.unprotect_snap(clone_snap)
                 src_volume.remove_snap(clone_snap)
+                src_volume.close()
                 raise
+
+            try:
+                volume_update = self._enable_replication_if_needed(volume)
+            except Exception:
+                self.RBDProxy().remove(client.ioctx, dest_name)
+                err_msg = (_('Failed to enable image replication'))
+                raise exception.ReplicationError(reason=err_msg,
+                                                 volume_id=volume.id)
             finally:
                 src_volume.close()
 
@@ -455,6 +547,35 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             self._resize(volume)
 
         LOG.debug("clone created successfully")
+        return volume_update
+
+    def _enable_replication(self, volume):
+        """Enable replication for a volume.
+
+        Returns required volume update.
+        """
+        vol_name = utils.convert_str(volume.name)
+        with RBDVolumeProxy(self, vol_name) as image:
+            had_journaling = image.features() & self.rbd.RBD_FEATURE_JOURNALING
+            if not had_journaling:
+                image.update_features(self.rbd.RBD_FEATURE_JOURNALING, True)
+            image.mirror_image_enable()
+
+        driver_data = self._dumps({'had_journaling': bool(had_journaling)})
+        return {'replication_status': fields.ReplicationStatus.ENABLED,
+                'replication_driver_data': driver_data}
+
+    def _is_replicated_type(self, volume_type):
+        # We do a safe attribute get because volume_type could be None
+        specs = getattr(volume_type, 'extra_specs', {})
+        return specs.get(EXTRA_SPECS_REPL_ENABLED) == "<is> True"
+
+    def _enable_replication_if_needed(self, volume):
+        if self._is_replicated_type(volume.volume_type):
+            return self._enable_replication(volume)
+        if self._is_replication_enabled:
+            return {'replication_status': fields.ReplicationStatus.DISABLED}
+        return None
 
     def create_volume(self, volume):
         """Creates a logical volume."""
@@ -469,14 +590,24 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
         chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
+        vol_name = utils.convert_str(volume.name)
 
         with RADOSClient(self) as client:
             self.RBDProxy().create(client.ioctx,
-                                   utils.convert_str(volume.name),
+                                   vol_name,
                                    size,
                                    order,
                                    old_format=False,
                                    features=client.features)
+
+            try:
+                volume_update = self._enable_replication_if_needed(volume)
+            except Exception:
+                self.RBDProxy().remove(client.ioctx, vol_name)
+                err_msg = (_('Failed to enable image replication'))
+                raise exception.ReplicationError(reason=err_msg,
+                                                 volume_id=volume.id)
+        return volume_update
 
     def _flatten(self, pool, volume_name):
         LOG.debug('flattening %(pool)s/%(img)s',
@@ -491,6 +622,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
         chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
+        vol_name = utils.convert_str(volume.name)
 
         with RADOSClient(self, src_pool) as src_client:
             with RADOSClient(self) as dest_client:
@@ -498,9 +630,18 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                                       utils.convert_str(src_image),
                                       utils.convert_str(src_snap),
                                       dest_client.ioctx,
-                                      utils.convert_str(volume.name),
+                                      vol_name,
                                       features=src_client.features,
                                       order=order)
+
+            try:
+                volume_update = self._enable_replication_if_needed(volume)
+            except Exception:
+                self.RBDProxy().remove(dest_client.ioctx, vol_name)
+                err_msg = (_('Failed to enable image replication'))
+                raise exception.ReplicationError(reason=err_msg,
+                                                 volume_id=volume.id)
+            return volume_update or {}
 
     def _resize(self, volume, **kwargs):
         size = kwargs.get('size', None)
@@ -512,12 +653,13 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        self._clone(volume, self.configuration.rbd_pool,
-                    snapshot.volume_name, snapshot.name)
+        volume_update = self._clone(volume, self.configuration.rbd_pool,
+                                    snapshot.volume_name, snapshot.name)
         if self.configuration.rbd_flatten_volume_from_snapshot:
             self._flatten(self.configuration.rbd_pool, volume.name)
         if int(volume.size):
             self._resize(volume)
+        return volume_update
 
     def _delete_backup_snaps(self, rbd_image):
         backup_snaps = self._get_backup_snaps(rbd_image)
@@ -719,16 +861,162 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                 LOG.info(_LI("Snapshot %s does not exist in backend."),
                          snap_name)
 
-    def retype(self, context, volume, new_type, diff, host):
-        """Retypes a volume, allow Qos and extra_specs change."""
+    def _disable_replication(self, volume):
+        """Disable replication on the given volume."""
+        vol_name = utils.convert_str(volume.name)
+        with RBDVolumeProxy(self, vol_name) as image:
+            image.mirror_image_disable(False)
+            driver_data = json.loads(volume.replication_driver_data)
+            # If we didn't have journaling enabled when we enabled replication
+            # we must remove journaling since it we added it for the
+            # replication
+            if not driver_data['had_journaling']:
+                image.update_features(self.rbd.RBD_FEATURE_JOURNALING, False)
+        return {'replication_status': fields.ReplicationStatus.DISABLED,
+                'replication_driver_data': None}
 
-        # No need to check encryption, extra_specs and Qos here as:
-        # encryptions have been checked as same.
-        # extra_specs are not used in the driver.
-        # Qos settings are not used in the driver.
-        LOG.debug('RBD retype called for volume %s. No action '
-                  'required for RBD volumes.', volume.id)
-        return True
+    def retype(self, context, volume, new_type, diff, host):
+        """Retype from one volume type to another on the same backend."""
+        old_vol_replicated = self._is_replicated_type(volume.volume_type)
+        new_vol_replicated = self._is_replicated_type(new_type)
+
+        if old_vol_replicated and not new_vol_replicated:
+            try:
+                return True, self._disable_replication(volume)
+            except Exception:
+                err_msg = (_('Failed to disable image replication'))
+                raise exception.ReplicationError(reason=err_msg,
+                                                 volume_id=volume.id)
+        elif not old_vol_replicated and new_vol_replicated:
+            try:
+                return True, self._enable_replication(volume)
+            except Exception:
+                err_msg = (_('Failed to enable image replication'))
+                raise exception.ReplicationError(reason=err_msg,
+                                                 volume_id=volume.id)
+
+        if not new_vol_replicated and self._is_replication_enabled:
+            update = {'replication_status': fields.ReplicationStatus.DISABLED}
+        else:
+            update = None
+        return True, update
+
+    def _dumps(self, obj):
+        return json.dumps(obj, separators=(',', ':'))
+
+    def _exec_on_volume(self, volume_name, remote, operation, *args, **kwargs):
+        @utils.retry(rbd.ImageBusy,
+                     CONF.rados_connection_interval,
+                     CONF.rados_connection_retries)
+        def _do_exec():
+            timeout = self.configuration.replication_connect_timeout
+            with RBDVolumeProxy(self, volume_name, self.configuration.rbd_pool,
+                                remote=remote, timeout=timeout) as rbd_image:
+                return getattr(rbd_image, operation)(*args, **kwargs)
+        return _do_exec()
+
+    def _failover_volume(self, volume, remote, is_demoted, replication_status):
+        """Process failover for a volume.
+
+        There are 3 different cases that will return different update values
+        for the volume:
+
+        - Volume has replication enabled and failover succeeded: Set
+          replication status to failed-over.
+        - Volume has replication enabled and failover fails: Set status to
+          error, replication status to failover-error, and store previous
+          status in previous_status field.
+        - Volume replication is disabled: Set status to error, and store
+          status in previous_status field.
+        """
+        # Failover is allowed when volume has it enabled or it has already
+        # failed over, because we may want to do a second failover.
+        if self._is_replicated_type(volume.volume_type):
+            vol_name = utils.convert_str(volume.name)
+            try:
+                self._exec_on_volume(vol_name, remote,
+                                     'mirror_image_promote', not is_demoted)
+
+                return {'volume_id': volume.id,
+                        'updates': {'replication_status': replication_status}}
+            except Exception as e:
+                replication_status = fields.ReplicationStatus.FAILOVER_ERROR
+                LOG.error(_LE('Failed to failover volume %(volume)s with '
+                              'error: %(error)s.'),
+                          {'volume': volume.name, 'error': e})
+        else:
+            replication_status = fields.ReplicationStatus.NOT_CAPABLE
+            LOG.debug('Skipping failover for non replicated volume '
+                      '%(volume)s with status: %(status)s',
+                      {'volume': volume.name, 'status': volume.status})
+
+        # Failover did not happen
+        error_result = {
+            'volume_id': volume.id,
+            'updates': {
+                'status': 'error',
+                'previous_status': volume.status,
+                'replication_status': replication_status
+            }
+        }
+
+        return error_result
+
+    def _demote_volumes(self, volumes, until_failure=True):
+        """Try to demote volumes on the current primary cluster."""
+        result = []
+        try_demoting = True
+        for volume in volumes:
+            demoted = False
+            if try_demoting and self._is_replicated_type(volume.volume_type):
+                vol_name = utils.convert_str(volume.name)
+                try:
+                    self._exec_on_volume(vol_name, self._active_config,
+                                         'mirror_image_demote')
+                    demoted = True
+                except Exception as e:
+                    LOG.debug('Failed to demote %(volume)s with error: '
+                              '%(error)s.',
+                              {'volume': volume.name, 'error': e})
+                    try_demoting = not until_failure
+            result.append(demoted)
+        return result
+
+    def _get_failover_target_config(self, secondary_id=None):
+        if not secondary_id:
+            # In auto mode exclude failback and active
+            candidates = set(self._target_names).difference(
+                ('default', self._active_backend_id))
+            if not candidates:
+                raise exception.InvalidReplicationTarget(
+                    reason=_('RBD: No available failover target host.'))
+            secondary_id = candidates.pop()
+        return secondary_id, self._get_target_config(secondary_id)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover to replication target."""
+        LOG.info(_LI('RBD driver failover started.'))
+        if not self._is_replication_enabled:
+            raise exception.UnableToFailOver(
+                reason=_('RBD: Replication is not enabled.'))
+
+        if secondary_id == 'default':
+            replication_status = fields.ReplicationStatus.ENABLED
+        else:
+            replication_status = fields.ReplicationStatus.FAILED_OVER
+
+        secondary_id, remote = self._get_failover_target_config(secondary_id)
+
+        # Try to demote the volumes first
+        demotion_results = self._demote_volumes(volumes)
+        # Do the failover taking into consideration if they have been demoted
+        updates = [self._failover_volume(volume, remote, is_demoted,
+                                         replication_status)
+                   for volume, is_demoted in zip(volumes, demotion_results)]
+        self._active_backend_id = secondary_id
+        self._active_config = remote
+        LOG.info(_LI('RBD driver failover completed.'))
+        return secondary_id, updates
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -834,9 +1122,10 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                         url_location, image_meta):
                     _prefix, pool, image, snapshot = \
                         self._parse_location(url_location)
-                    self._clone(volume, pool, image, snapshot)
+                    volume_update = self._clone(volume, pool, image, snapshot)
+                    volume_update['provider_location'] = None
                     self._resize(volume)
-                    return {'provider_location': None}, True
+                    return volume_update, True
         return ({}, False)
 
     def _image_conversion_dir(self):
