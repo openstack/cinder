@@ -167,7 +167,6 @@ from cinder.volume.drivers import remotefs as cinder_volume_drivers_remotefs
 from cinder.volume.drivers.san.hp import hpmsa_common as \
     cinder_volume_drivers_san_hp_hpmsacommon
 from cinder.volume.drivers.san import san as cinder_volume_drivers_san_san
-from cinder.volume.drivers import scality as cinder_volume_drivers_scality
 from cinder.volume.drivers import sheepdog as cinder_volume_drivers_sheepdog
 from cinder.volume.drivers import smbfs as cinder_volume_drivers_smbfs
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
@@ -359,7 +358,6 @@ def list_opts():
                 cinder_volume_drivers_san_hp_hpmsacommon.common_opts,
                 cinder_volume_drivers_san_hp_hpmsacommon.iscsi_opts,
                 cinder_volume_drivers_san_san.san_opts,
-                cinder_volume_drivers_scality.volume_opts,
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 cinder_volume_drivers_smbfs.volume_opts,
                 cinder_volume_drivers_solidfire.sf_opts,
