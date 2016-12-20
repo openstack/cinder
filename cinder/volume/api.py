@@ -1657,10 +1657,11 @@ class API(base.Base):
                      resource=vol_ref)
             return vol_ref
 
-    def get_manageable_volumes(self, context, host, marker=None, limit=None,
-                               offset=None, sort_keys=None, sort_dirs=None):
-        self._get_service_by_host_cluster(context, host, None)
-        return self.volume_rpcapi.get_manageable_volumes(context, host,
+    def get_manageable_volumes(self, context, host, cluster_name, marker=None,
+                               limit=None, offset=None, sort_keys=None,
+                               sort_dirs=None):
+        svc = self._get_service_by_host_cluster(context, host, cluster_name)
+        return self.volume_rpcapi.get_manageable_volumes(context, svc,
                                                          marker, limit,
                                                          offset, sort_keys,
                                                          sort_dirs)
@@ -1680,10 +1681,12 @@ class API(base.Base):
             context, snapshot_object, ref, service.service_topic_queue)
         return snapshot_object
 
-    def get_manageable_snapshots(self, context, host, marker=None, limit=None,
-                                 offset=None, sort_keys=None, sort_dirs=None):
-        self._get_service_by_host_cluster(context, host, None, 'snapshot')
-        return self.volume_rpcapi.get_manageable_snapshots(context, host,
+    def get_manageable_snapshots(self, context, host, cluster_name,
+                                 marker=None, limit=None, offset=None,
+                                 sort_keys=None, sort_dirs=None):
+        svc = self._get_service_by_host_cluster(context, host, cluster_name,
+                                                'snapshot')
+        return self.volume_rpcapi.get_manageable_snapshots(context, svc,
                                                            marker, limit,
                                                            offset, sort_keys,
                                                            sort_dirs)

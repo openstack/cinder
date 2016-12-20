@@ -12,7 +12,9 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import ddt
 import mock
+from oslo_config import cfg
 from oslo_serialization import jsonutils
 try:
     from urllib import urlencode
@@ -22,10 +24,14 @@ import webob
 
 from cinder.api.v3 import router as router_v3
 from cinder import context
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api.contrib import test_volume_manage as test_contrib
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+
+
+CONF = cfg.CONF
 
 
 def app():
@@ -36,6 +42,7 @@ def app():
     return mapper
 
 
+@ddt.ddt
 @mock.patch('cinder.objects.service.Service.get_by_host_and_topic',
             test_contrib.service_get)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
@@ -83,9 +90,10 @@ class VolumeManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int, res)
 
-    def _get_resp_get(self, host, detailed, paging, version="3.8"):
+    def _get_resp_get(self, host, detailed, paging, version="3.8", **kwargs):
         """Helper to execute a GET os-volume-manage API call."""
-        params = {'host': host}
+        params = {'host': host} if host else {}
+        params.update(kwargs)
         if paging:
             params.update({'marker': '1234', 'limit': 10,
                            'offset': 4, 'sort': 'reference:asc'})
@@ -134,3 +142,56 @@ class VolumeManageTest(test.TestCase):
     def test_get_manageable_volumes_detail_previous_version(self):
         res = self._get_resp_get('fakehost', True, False, version="3.7")
         self.assertEqual(404, res.status_int)
+
+    @ddt.data((True, True, 'detail_list'), (True, False, 'summary_list'),
+              (False, True, 'detail_list'), (False, False, 'summary_list'))
+    @ddt.unpack
+    @mock.patch('cinder.objects.Service.is_up', True)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI._get_cctxt')
+    @mock.patch('cinder.objects.Service.get_by_id')
+    def test_get_manageable_detail(self, clustered, is_detail, view_method,
+                                   get_service_mock, get_cctxt_mock):
+        if clustered:
+            host = None
+            cluster_name = 'mycluster'
+            version = '3.17'
+            kwargs = {'cluster': cluster_name}
+        else:
+            host = 'fakehost'
+            cluster_name = None
+            version = '3.8'
+            kwargs = {}
+        service = objects.Service(disabled=False, host='fakehost',
+                                  cluster_name=cluster_name)
+        get_service_mock.return_value = service
+        volumes = [mock.sentinel.volume1, mock.sentinel.volume2]
+        get_cctxt_mock.return_value.call.return_value = volumes
+
+        view_data = {'manageable-volumes': [{'vol': str(v)} for v in volumes]}
+        view_path = ('cinder.api.views.manageable_volumes.ViewBuilder.' +
+                     view_method)
+        with mock.patch(view_path, return_value=view_data) as detail_view_mock:
+            res = self._get_resp_get(host, is_detail, False, version=version,
+                                     **kwargs)
+
+        self.assertEqual(200, res.status_int)
+        get_cctxt_mock.assert_called_once_with(service.service_topic_queue)
+        get_cctxt_mock.return_value.call.assert_called_once_with(
+            mock.ANY, 'get_manageable_volumes', marker=None,
+            limit=CONF.osapi_max_limit, offset=0, sort_keys=['reference'],
+            sort_dirs=['desc'])
+        detail_view_mock.assert_called_once_with(mock.ANY, volumes,
+                                                 len(volumes))
+        get_service_mock.assert_called_once_with(
+            mock.ANY, None, host=host, binary='cinder-volume',
+            cluster_name=cluster_name)
+
+    @ddt.data('3.8', '3.17')
+    def test_get_manageable_missing_host(self, version):
+        res = self._get_resp_get(None, True, False, version=version)
+        self.assertEqual(400, res.status_int)
+
+    def test_get_manageable_both_host_cluster(self):
+        res = self._get_resp_get('host', True, False, version='3.17',
+                                 cluster='cluster')
+        self.assertEqual(400, res.status_int)

@@ -254,7 +254,7 @@ class SnapshotManageTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(jsonutils.loads(res.body), exp)
         mock_api_manageable.assert_called_once_with(
-            self._admin_ctxt, 'fakehost', limit=CONF.osapi_max_limit,
+            self._admin_ctxt, 'fakehost', None, limit=CONF.osapi_max_limit,
             marker=None, offset=0, sort_dirs=['desc'],
             sort_keys=['reference'])
 
@@ -277,8 +277,8 @@ class SnapshotManageTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(jsonutils.loads(res.body), exp)
         mock_api_manageable.assert_called_once_with(
-            self._admin_ctxt, 'fakehost', limit=10, marker='1234', offset=4,
-            sort_dirs=['asc'], sort_keys=['reference'])
+            self._admin_ctxt, 'fakehost', None, limit=10, marker='1234',
+            offset=4, sort_dirs=['asc'], sort_keys=['reference'])
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True)
     @mock.patch('cinder.db.sqlalchemy.api.service_get')

@@ -418,12 +418,8 @@ class VolumeManager(manager.CleanableManager,
         # Initialize backend capabilities list
         self.driver.init_capabilities()
 
-        if self.cluster:
-            filters = {'cluster_name': self.cluster}
-        else:
-            filters = {'host': self.host}
-        volumes = objects.VolumeList.get_all(ctxt, filters=filters)
-        snapshots = objects.SnapshotList.get_all(ctxt, search_opts=filters)
+        volumes = self._get_my_volumes(ctxt)
+        snapshots = self._get_my_snapshots(ctxt)
         self._sync_provider_info(ctxt, volumes, snapshots)
         # FIXME volume count for exporting is wrong
 
@@ -651,9 +647,16 @@ class VolumeManager(manager.CleanableManager,
         LOG.info(_LI("Created volume successfully."), resource=volume)
         return volume.id
 
-    def _is_our_resource(self, resource):
-        resource_topic = vol_utils.extract_host(resource.service_topic_queue)
-        return resource_topic == self.service_topic_queue
+    def _check_is_our_resource(self, resource):
+        if resource.host:
+            res_backend = vol_utils.extract_host(resource.service_topic_queue)
+            backend = vol_utils.extract_host(self.service_topic_queue)
+            if res_backend != backend:
+                msg = (_('Invalid %(resource)s: %(resource)s %(id)s is not '
+                         'local to %(backend)s.') %
+                       {'resource': resource.obj_name, 'id': resource.id,
+                        'backend': backend})
+                raise exception.Invalid(msg)
 
     @coordination.synchronized('{volume.id}-{f_name}')
     @objects.Volume.set_workers
@@ -687,9 +690,7 @@ class VolumeManager(manager.CleanableManager,
         if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume.id)
-        if not self._is_our_resource(volume):
-            raise exception.InvalidVolume(
-                reason=_("volume is not local to this node"))
+        self._check_is_our_resource(volume)
 
         if unmanage_only and cascade:
             # This could be done, but is ruled out for now just
@@ -2413,6 +2414,19 @@ class VolumeManager(manager.CleanableManager,
 
         return vol_ref
 
+    def _get_my_resources(self, ctxt, ovo_class_list):
+        if self.cluster:
+            filters = {'cluster_name': self.cluster}
+        else:
+            filters = {'host': self.host}
+        return getattr(ovo_class_list, 'get_all')(ctxt, filters=filters)
+
+    def _get_my_volumes(self, ctxt):
+        return self._get_my_resources(ctxt, objects.VolumeList)
+
+    def _get_my_snapshots(self, ctxt):
+        return self._get_my_resources(ctxt, objects.SnapshotList)
+
     def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
                                sort_dirs):
         try:
@@ -2422,7 +2436,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.exception(_LE("Listing manageable volumes failed, due "
                                   "to uninitialized driver."))
 
-        cinder_volumes = objects.VolumeList.get_all_by_host(ctxt, self.host)
+        cinder_volumes = self._get_my_volumes(ctxt)
         try:
             driver_entries = self.driver.get_manageable_volumes(
                 cinder_volumes, marker, limit, offset, sort_keys, sort_dirs)
@@ -2951,13 +2965,7 @@ class VolumeManager(manager.CleanableManager,
                     fields.VolumeAttachStatus.ATTACHED):
                 # Volume is still attached, need to detach first
                 raise exception.VolumeAttached(volume_id=volume.id)
-            # self.host is 'host@backend'
-            # volume.host is 'host@backend#pool'
-            # Extract host before doing comparison
-            if volume.host:
-                if not self._is_our_resource(volume):
-                    raise exception.InvalidVolume(
-                        reason=_("Volume is not local to this node"))
+            self._check_is_our_resource(volume)
 
         self._notify_about_consistencygroup_usage(
             context, group, "delete.start")
@@ -3076,15 +3084,7 @@ class VolumeManager(manager.CleanableManager,
             if vol_obj.attach_status == "attached":
                 # Volume is still attached, need to detach first
                 raise exception.VolumeAttached(volume_id=vol_obj.id)
-            # self.host is 'host@backend'
-            # vol_obj.host is 'host@backend#pool'
-            # Extract host before doing comparison
-            if vol_obj.host:
-                if not self._is_our_resource(vol_obj):
-                    backend = vol_utils.extract_host(self.service_topic_queue)
-                    msg = (_("Volume %(vol_id)s is not local to %(backend)s") %
-                           {'vol_id': vol_obj.id, 'backend': backend})
-                    raise exception.InvalidVolume(reason=msg)
+            self._check_is_our_resource(vol_obj)
 
         self._notify_about_group_usage(
             context, group, "delete.start")
@@ -3240,7 +3240,7 @@ class VolumeManager(manager.CleanableManager,
             remove_volumes_list = remove_volumes.split(',')
         for add_vol in add_volumes_list:
             try:
-                add_vol_ref = self.db.volume_get(context, add_vol)
+                add_vol_ovo = objects.Volume.get_by_id(context, add_vol)
             except exception.VolumeNotFound:
                 LOG.error(_LE("Update consistency group "
                               "failed to add volume-%(volume_id)s: "
@@ -3249,23 +3249,17 @@ class VolumeManager(manager.CleanableManager,
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
-            if add_vol_ref['status'] not in VALID_ADD_VOL_TO_CG_STATUS:
+            if add_vol_ovo.status not in VALID_ADD_VOL_TO_CG_STATUS:
                 msg = (_("Cannot add volume %(volume_id)s to consistency "
                          "group %(group_id)s because volume is in an invalid "
                          "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': add_vol_ref['id'],
+                       {'volume_id': add_vol_ovo.id,
                         'group_id': group.id,
-                        'status': add_vol_ref['status'],
+                        'status': add_vol_ovo.status,
                         'valid': VALID_ADD_VOL_TO_CG_STATUS})
                 raise exception.InvalidVolume(reason=msg)
-            # self.host is 'host@backend'
-            # volume_ref['host'] is 'host@backend#pool'
-            # Extract host before doing comparison
-            new_host = vol_utils.extract_host(add_vol_ref['host'])
-            if new_host != self.host:
-                raise exception.InvalidVolume(
-                    reason=_("Volume is not local to this node."))
-            add_volumes_ref.append(add_vol_ref)
+            self._check_is_our_resource(add_vol_ovo)
+            add_volumes_ref.append(add_vol_ovo)
 
         for remove_vol in remove_volumes_list:
             try:
@@ -3402,13 +3396,7 @@ class VolumeManager(manager.CleanableManager,
                         'status': add_vol_ref.status,
                         'valid': VALID_ADD_VOL_TO_GROUP_STATUS})
                 raise exception.InvalidVolume(reason=msg)
-            # self.host is 'host@backend'
-            # volume_ref['host'] is 'host@backend#pool'
-            # Extract host before doing comparison
-            new_host = vol_utils.extract_host(add_vol_ref.host)
-            if new_host != self.host:
-                raise exception.InvalidVolume(
-                    reason=_("Volume is not local to this node."))
+            self._check_is_our_resource(add_vol_ref)
             add_volumes_ref.append(add_vol_ref)
 
         for remove_vol in remove_volumes_list:
@@ -4238,7 +4226,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.exception(_LE("Listing manageable snapshots failed, due "
                                   "to uninitialized driver."))
 
-        cinder_snapshots = self.db.snapshot_get_by_host(ctxt, self.host)
+        cinder_snapshots = self._get_my_snapshots(ctxt)
         try:
             driver_entries = self.driver.get_manageable_snapshots(
                 cinder_snapshots, marker, limit, offset, sort_keys, sort_dirs)

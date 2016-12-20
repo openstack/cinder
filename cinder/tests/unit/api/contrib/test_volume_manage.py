@@ -411,8 +411,8 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
-            self._admin_ctxt, 'fakehost', limit=10, marker='1234', offset=4,
-            sort_dirs=['asc'], sort_keys=['reference'])
+            self._admin_ctxt, 'fakehost', None, limit=10, marker='1234',
+            offset=4, sort_dirs=['asc'], sort_keys=['reference'])
 
     @mock.patch('cinder.volume.api.API.get_manageable_volumes',
                 wraps=api_get_manageable_volumes)
@@ -429,7 +429,7 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
-            self._admin_ctxt, 'fakehost', limit=CONF.osapi_max_limit,
+            self._admin_ctxt, 'fakehost', None, limit=CONF.osapi_max_limit,
             marker=None, offset=0, sort_dirs=['desc'],
             sort_keys=['reference'])
 

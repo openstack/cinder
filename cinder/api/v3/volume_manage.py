@@ -14,31 +14,19 @@
 
 from cinder.api.contrib import volume_manage as volume_manage_v2
 from cinder.api.openstack import wsgi
-from cinder import exception
+from cinder.api.v3 import resource_common_manage as common
 
 
-class VolumeManageController(volume_manage_v2.VolumeManageController):
-    def _ensure_min_version(self, req, allowed_version):
-        version = req.api_version_request
-        if not version.matches(allowed_version, None):
-            raise exception.VersionNotFoundForAPIMethod(version=version)
+class VolumeManageController(common.ManageResource,
+                             volume_manage_v2.VolumeManageController):
+    def __init__(self, *args, **kwargs):
+        super(VolumeManageController, self).__init__(*args, **kwargs)
+        self._set_resource_type('volume')
 
     @wsgi.response(202)
     def create(self, req, body):
         self._ensure_min_version(req, "3.8")
         return super(VolumeManageController, self).create(req, body)
-
-    @wsgi.extends
-    def index(self, req):
-        """Returns a summary list of volumes available to manage."""
-        self._ensure_min_version(req, "3.8")
-        return super(VolumeManageController, self).index(req)
-
-    @wsgi.extends
-    def detail(self, req):
-        """Returns a detailed list of volumes available to manage."""
-        self._ensure_min_version(req, "3.8")
-        return super(VolumeManageController, self).detail(req)
 
 
 def create_resource():
