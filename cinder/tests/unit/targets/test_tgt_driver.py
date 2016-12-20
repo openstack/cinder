@@ -77,6 +77,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
              '    ACL information:\n'
              '        ALL"\n' % {'test_vol': self.test_vol,
                                  'bspath': self.testvol_path})
+        self.patch('time.sleep')
 
     def fake_get(self, value, default):
         if value in ('iscsi_target_flags', 'iscsi_write_cache'):
@@ -386,3 +387,20 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
             old_name=None,
             portals_ips=[self.configuration.iscsi_ip_address],
             portals_port=self.configuration.iscsi_port)
+
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
+    def test_create_iscsi_target_retry(self):
+        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+                mock.patch.object(self.target, '_get_target',
+                                  side_effect=[None, None, 1]) as get_target,\
+                mock.patch.object(self.target, '_verify_backing_lun',
+                                  side_effect=lambda x, y: True):
+            self.assertEqual(
+                1,
+                self.target.create_iscsi_target(
+                    self.test_vol,
+                    1,
+                    0,
+                    self.fake_volumes_dir))
+            # 3 - default retries count value for utils.retry
+            self.assertEqual(3, get_target.call_count)
