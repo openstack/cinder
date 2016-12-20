@@ -109,11 +109,13 @@ class Scheduler(object):
                                                       cluster_name,
                                                       timestamp)
 
-    def notify_service_capabilities(self, service_name, host, capabilities):
+    def notify_service_capabilities(self, service_name, backend,
+                                    capabilities, timestamp):
         """Notify capability update from a service node."""
         self.host_manager.notify_service_capabilities(service_name,
-                                                      host,
-                                                      capabilities)
+                                                      backend,
+                                                      capabilities,
+                                                      timestamp)
 
     def host_passes_filters(self, context, backend, request_spec,
                             filter_properties):

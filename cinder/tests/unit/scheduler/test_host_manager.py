@@ -17,6 +17,7 @@ Tests For HostManager
 """
 
 from datetime import datetime
+from datetime import timedelta
 
 import mock
 from oslo_serialization import jsonutils
@@ -102,13 +103,21 @@ class HostManagerTestCase(test.TestCase):
         _mock_get_updated_pools.return_value = []
         timestamp = jsonutils.to_primitive(datetime.utcnow())
         host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=timestamp)
+        host1_old_volume_capabs = dict(free_capacity_gb=1, timestamp=timestamp)
         host2_volume_capabs = dict(free_capacity_gb=5432)
         host3_volume_capabs = dict(free_capacity_gb=6543)
 
         service_name = 'volume'
+        # The host manager receives a deserialized timestamp
+        timestamp = datetime.strptime(timestamp, timeutils.PERFECT_TIME_FORMAT)
         self.host_manager.update_service_capabilities(service_name, 'host1',
                                                       host1_volume_capabs,
                                                       None, timestamp)
+        # It'll ignore older updates
+        old_timestamp = timestamp - timedelta(hours=1)
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      host1_old_volume_capabs,
+                                                      None, old_timestamp)
         self.host_manager.update_service_capabilities(service_name, 'host2',
                                                       host2_volume_capabs,
                                                       None, None)
@@ -162,7 +171,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
-                                                      capab1)
+                                                      capab1, None)
         self.assertDictEqual(dict(dict(timestamp=31337), **capab1),
                              self.host_manager.service_states['host1'])
         self.assertDictEqual(
@@ -236,7 +245,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: notify_service_capabilities()
         self.host_manager_1.notify_service_capabilities(service_name, 'host1',
-                                                        capab1)
+                                                        capab1, None)
 
         self.assertDictEqual(dict(dict(timestamp=31341), **capab1),
                              self.host_manager_1.service_states['host1'])
@@ -285,7 +294,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
-                                                      capab1)
+                                                      capab1, None)
         self.assertDictEqual(
             dict(dict(timestamp=31338), **capab1),
             self.host_manager.service_states_last_update['host1'])
@@ -371,7 +380,7 @@ class HostManagerTestCase(test.TestCase):
 
         # S1: notify_service_capabilities()
         self.host_manager_1.notify_service_capabilities(service_name, 'host1',
-                                                        capab2)
+                                                        capab2, None)
         self.assertDictEqual(dict(dict(timestamp=31345), **capab1),
                              self.host_manager_1.service_states['host1'])
 
@@ -445,7 +454,7 @@ class HostManagerTestCase(test.TestCase):
         #
         # S0: notify_service_capabilities()
         self.host_manager.notify_service_capabilities(service_name, 'host1',
-                                                      capab2)
+                                                      capab2, None)
         self.assertDictEqual(
             dict(dict(timestamp=31349), **capab2),
             self.host_manager.service_states_last_update['host1'])
@@ -562,18 +571,6 @@ class HostManagerTestCase(test.TestCase):
             res = self.host_manager.get_pools(context)
             self.assertEqual(1, len(res))
             self.assertEqual(dates[1], res[0]['capabilities']['timestamp'])
-
-        # Now we simulate old service that doesn't send timestamp
-        del mocked_service_states['host1']['timestamp']
-        with mock.patch.dict(self.host_manager.service_states,
-                             mocked_service_states):
-            self.host_manager.update_service_capabilities(service_name,
-                                                          'host1',
-                                                          host_volume_capabs,
-                                                          None, None)
-            res = self.host_manager.get_pools(context)
-            self.assertEqual(1, len(res))
-            self.assertEqual(dates[2], res[0]['capabilities']['timestamp'])
 
     @mock.patch('cinder.objects.Service.is_up', True)
     def test_get_all_backend_states_cluster(self):

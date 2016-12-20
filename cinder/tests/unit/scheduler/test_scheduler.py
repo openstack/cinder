@@ -18,6 +18,7 @@ Tests For Scheduler
 """
 
 import collections
+from datetime import datetime
 
 import mock
 from oslo_config import cfg
@@ -122,6 +123,40 @@ class SchedulerManagerTestCase(test.TestCase):
                                                  capabilities=capabilities)
         _mock_update_cap.assert_called_once_with(service, host, capabilities,
                                                  None, None)
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.'
+                'notify_service_capabilities')
+    def test_notify_service_capabilities_no_timestamp(self, _mock_notify_cap):
+        """Test old interface that receives host."""
+        service = 'volume'
+        host = 'fake_host'
+        capabilities = {'fake_capability': 'fake_value'}
+
+        self.manager.notify_service_capabilities(self.context,
+                                                 service_name=service,
+                                                 host=host,
+                                                 capabilities=capabilities)
+        _mock_notify_cap.assert_called_once_with(service, host, capabilities,
+                                                 None)
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.'
+                'notify_service_capabilities')
+    def test_notify_service_capabilities_timestamp(self, _mock_notify_cap):
+        """Test new interface that receives backend and timestamp."""
+        service = 'volume'
+        backend = 'fake_cluster'
+        capabilities = {'fake_capability': 'fake_value'}
+
+        timestamp = '1970-01-01T00:00:00.000000'
+
+        self.manager.notify_service_capabilities(self.context,
+                                                 service_name=service,
+                                                 backend=backend,
+                                                 capabilities=capabilities,
+                                                 timestamp=timestamp)
+        _mock_notify_cap.assert_called_once_with(service, backend,
+                                                 capabilities,
+                                                 datetime(1970, 1, 1))
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('cinder.message.api.API.create')
