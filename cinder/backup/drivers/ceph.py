@@ -88,6 +88,9 @@ service_opts = [
                help='RBD stripe unit to use when creating a backup image.'),
     cfg.IntOpt('backup_ceph_stripe_count', default=0,
                help='RBD stripe count to use when creating a backup image.'),
+    cfg.BoolOpt('backup_ceph_image_journals', default=False,
+                help='If True, apply JOURNALING and EXCLUSIVE_LOCK feature '
+                     'bits to the backup RBD objects to allow mirroring'),
     cfg.BoolOpt('restore_discard_excess_bytes', default=True,
                 help='If True, always discard excess bytes when restoring '
                      'volumes i.e. pad with zeroes.')
@@ -222,6 +225,16 @@ class CephBackupDriver(driver.BackupDriver):
         """Determine if striping is supported by our version of librbd."""
         return hasattr(self.rbd, 'RBD_FEATURE_STRIPINGV2')
 
+    @property
+    def _supports_exclusive_lock(self):
+        """Determine if exclusive-lock is supported by librbd."""
+        return hasattr(self.rbd, 'RBD_FEATURE_EXCLUSIVE_LOCK')
+
+    @property
+    def _supports_journaling(self):
+        """Determine if journaling is supported by our version of librbd."""
+        return hasattr(self.rbd, 'RBD_FEATURE_JOURNALING')
+
     def _get_rbd_support(self):
         """Determine RBD features supported by our version of librbd."""
         old_format = True
@@ -232,6 +245,25 @@ class CephBackupDriver(driver.BackupDriver):
         if self._supports_stripingv2:
             old_format = False
             features |= self.rbd.RBD_FEATURE_STRIPINGV2
+
+        # journaling requires exclusive_lock; check both together
+        if CONF.backup_ceph_image_journals:
+            if self._supports_exclusive_lock and self._supports_journaling:
+                old_format = False
+                features |= (self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK |
+                             self.rbd.RBD_FEATURE_JOURNALING)
+            else:
+                # FIXME (tasker): when the backup manager supports loading the
+                #   driver during its initialization, this exception should be
+                #   moved to the driver's initialization so that it can stop
+                #   the service from starting when the underyling RBD does not
+                #   support the requested features.
+                LOG.error(_LE("RBD journaling not supported - unable to "
+                              "support per image mirroring in backup pool"))
+                raise exception.BackupInvalidCephArgs(
+                    _("Image Journaling set but RBD backend does "
+                      "not support journaling")
+                )
 
         return (old_format, features)
 

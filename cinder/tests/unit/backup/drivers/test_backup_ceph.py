@@ -22,6 +22,7 @@ import uuid
 import mock
 from os_brick.initiator import linuxrbd
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import units
 import six
@@ -41,6 +42,8 @@ from cinder.tests.unit import fake_constants as fake
 # raised.
 # NOTE: this must be initialised in test setUp().
 RAISED_EXCEPTIONS = []
+
+CONF = cfg.CONF
 
 
 class MockException(Exception):
@@ -202,8 +205,13 @@ class BackupCephTestCase(test.TestCase):
     def test_get_rbd_support(self):
         del self.service.rbd.RBD_FEATURE_LAYERING
         del self.service.rbd.RBD_FEATURE_STRIPINGV2
+        del self.service.rbd.RBD_FEATURE_EXCLUSIVE_LOCK
+        del self.service.rbd.RBD_FEATURE_JOURNALING
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_LAYERING'))
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_STRIPINGV2'))
+        self.assertFalse(hasattr(self.service.rbd,
+                                 'RBD_FEATURE_EXCLUSIVE_LOCK'))
+        self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_JOURNALING'))
 
         oldformat, features = self.service._get_rbd_support()
         self.assertTrue(oldformat)
@@ -220,6 +228,28 @@ class BackupCephTestCase(test.TestCase):
         oldformat, features = self.service._get_rbd_support()
         self.assertFalse(oldformat)
         self.assertEqual(1 | 2, features)
+
+        # initially, backup_ceph_image_journals = False. test that
+        #   the flags are defined, but that they are not returned.
+        self.service.rbd.RBD_FEATURE_EXCLUSIVE_LOCK = 4
+
+        oldformat, features = self.service._get_rbd_support()
+        self.assertFalse(oldformat)
+        self.assertEqual(1 | 2, features)
+
+        self.service.rbd.RBD_FEATURE_JOURNALING = 64
+
+        oldformat, features = self.service._get_rbd_support()
+        self.assertFalse(oldformat)
+        self.assertEqual(1 | 2, features)
+
+        # test that the config setting properly sets the FEATURE bits.
+        #   because journaling requires exclusive-lock, these are set
+        #   at the same time.
+        CONF.set_override("backup_ceph_image_journals", True)
+        oldformat, features = self.service._get_rbd_support()
+        self.assertFalse(oldformat)
+        self.assertEqual(1 | 2 | 4 | 64, features)
 
     @common_mocks
     def test_get_most_recent_snap(self):
