@@ -706,7 +706,10 @@ class VolumeManager(manager.CleanableManager,
         is_migrating_dest = (is_migrating and
                              volume.migration_status.startswith(
                                  'target:'))
-        self._notify_about_volume_usage(context, volume, "delete.start")
+        notification = "delete.start"
+        if unmanage_only:
+            notification = "unmanage.start"
+        self._notify_about_volume_usage(context, volume, notification)
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -749,8 +752,12 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 # If this is a destination volume, we have to clear the
                 # database record to avoid user confusion.
+                new_status = 'error_deleting'
+                if unmanage_only is True:
+                    new_status = 'error_unmanaging'
+
                 self._clear_db(context, is_migrating_dest, volume,
-                               'error_deleting')
+                               new_status)
 
         # If deleting source/destination volume in a migration, we should
         # skip quotas.
@@ -779,7 +786,10 @@ class VolumeManager(manager.CleanableManager,
         # If deleting source/destination volume in a migration, we should
         # skip quotas.
         if not is_migrating:
-            self._notify_about_volume_usage(context, volume, "delete.end")
+            notification = "delete.end"
+            if unmanage_only:
+                notification = "unmanage.end"
+            self._notify_about_volume_usage(context, volume, notification)
 
             # Commit the reservations
             if reservations:
@@ -801,7 +811,10 @@ class VolumeManager(manager.CleanableManager,
 
             self.publish_service_capabilities(context)
 
-        LOG.info(_LI("Deleted volume successfully."), resource=volume)
+        msg = _LI("Deleted volume successfully.")
+        if unmanage_only:
+            msg = _LI("Unmanaged volume successfully.")
+        LOG.info(msg, resource=volume)
 
     def _clear_db(self, context, is_migrating_dest, volume_ref, status):
         # This method is called when driver.unmanage() or
@@ -936,8 +949,11 @@ class VolumeManager(manager.CleanableManager,
         # Commit the reservations
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
-        LOG.info(_LI("Delete snapshot completed successfully"),
-                 resource=snapshot)
+
+        msg = _LI("Delete snapshot completed successfully.")
+        if unmanage_only:
+            msg = _LI("Unmanage snapshot completed successfully.")
+        LOG.info(msg, resource=snapshot)
 
     @coordination.synchronized('{volume_id}')
     def attach_volume(self, context, volume_id, instance_uuid, host_name,

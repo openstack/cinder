@@ -34,7 +34,8 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
     # Version 1.0: Initial version
     # Version 1.1: Changed 'status' field to use SnapshotStatusField
     # Version 1.2: This object is now cleanable (adds rows to workers table)
-    VERSION = '1.2'
+    # Version 1.3: SnapshotStatusField now includes "unmanaging"
+    VERSION = '1.3'
 
     # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They
     # are typically the relationship in the sqlalchemy object.
@@ -115,6 +116,10 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
         """Make an object representation compatible with a target version."""
         super(Snapshot, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
+
+        if target_version < (1, 3):
+            if primitive.get('status') == c_fields.SnapshotStatus.UNMANAGING:
+                primitive['status'] = c_fields.SnapshotStatus.DELETING
 
     @classmethod
     def _from_db_object(cls, context, snapshot, db_snapshot,

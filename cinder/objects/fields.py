@@ -105,9 +105,10 @@ class SnapshotStatus(BaseCinderEnum):
     DELETED = 'deleted'
     UPDATING = 'updating'
     ERROR_DELETING = 'error_deleting'
+    UNMANAGING = 'unmanaging'
 
     ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
-           UPDATING, ERROR_DELETING)
+           UPDATING, ERROR_DELETING, UNMANAGING)
 
 
 class SnapshotStatusField(BaseEnumField):

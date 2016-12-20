@@ -412,6 +412,8 @@ class API(base.Base):
             # Don't allow deletion of volume with snapshots
             filters = [~db.volume_has_snapshots_filter()]
         values = {'status': 'deleting', 'terminated_at': timeutils.utcnow()}
+        if unmanage_only is True:
+            values['status'] = 'unmanaging'
         if volume.status == 'error_managing':
             values['status'] = 'error_managing_deleting'
 
@@ -985,8 +987,10 @@ class API(base.Base):
             expected['status'] = (fields.SnapshotStatus.AVAILABLE,
                                   fields.SnapshotStatus.ERROR)
 
-        result = snapshot.conditional_update(
-            {'status': fields.SnapshotStatus.DELETING}, expected)
+        values = {'status': fields.SnapshotStatus.DELETING}
+        if unmanage_only is True:
+            values['status'] = fields.SnapshotStatus.UNMANAGING
+        result = snapshot.conditional_update(values, expected)
         if not result:
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))

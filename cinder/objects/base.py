@@ -122,6 +122,7 @@ OBJ_VERSIONS.add('1.14', {'VolumeAttachmentList': '1.1'})
 OBJ_VERSIONS.add('1.15', {'Volume': '1.6', 'Snapshot': '1.2'})
 OBJ_VERSIONS.add('1.16', {'BackupDeviceInfo': '1.0'})
 OBJ_VERSIONS.add('1.17', {'VolumeAttachment': '1.1'})
+OBJ_VERSIONS.add('1.18', {'Snapshot': '1.3'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
