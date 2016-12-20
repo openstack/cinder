@@ -84,6 +84,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Huawei_volume_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Pike release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(HuaweiBaseDriver, self).__init__(*args, **kwargs)
 
