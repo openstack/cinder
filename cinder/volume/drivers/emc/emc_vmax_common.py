@@ -1880,15 +1880,18 @@ class EMCVMAXCommon(object):
             maskingViewDict['pool'] = uniqueName
             if slo:
                 prefix = (
-                    ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-%(workload)s"
+                    ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-"
+                     "%(workload)s-%(protocol)s"
                      % {'shortHostName': shortHostName,
                         'poolName': uniqueName,
                         'slo': slo,
-                        'workload': workload}))
+                        'workload': workload,
+                        'protocol': protocol}))
             else:
                 prefix = (
-                    ("OS-%(shortHostName)s-No_SLO"
-                     % {'shortHostName': shortHostName}))
+                    ("OS-%(shortHostName)s-No_SLO-%(protocol)s"
+                     % {'shortHostName': shortHostName,
+                        'protocol': protocol}))
         else:
             maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
             if maskingViewDict['fastPolicy']:

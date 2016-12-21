@@ -2028,81 +2028,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         if bExists:
             os.remove(config_file)
 
-    def populate_masking_dict_setup(self):
-        extraSpecs = {'storagetype:pool': u'gold_pool',
-                      'volume_backend_name': 'GOLD_POOL_BE',
-                      'storagetype:array': u'1234567891011',
-                      'isV3': False,
-                      'portgroupname': u'OS-portgroup-PG',
-                      'storagetype:fastpolicy': u'GOLD'}
-        vol = {'SystemName': self.data.storage_system}
-        self.driver.common._find_lun = mock.Mock(
-            return_value=vol)
-        self.driver.common.utils.find_controller_configuration_service = (
-            mock.Mock(return_value=None))
-        return extraSpecs
-
-    def test_populate_masking_dict_fast(self):
-        extraSpecs = self.populate_masking_dict_setup()
-        # If fast is enabled it will uniquely determine the SG and MV
-        # on the host along with the protocol(iSCSI) e.g. I
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        self.assertEqual(
-            'OS-fakehost-GOLD-FP-I-SG', maskingViewDict['sgGroupName'])
-        self.assertEqual(
-            'OS-fakehost-GOLD-FP-I-MV', maskingViewDict['maskingViewName'])
-
-    def test_populate_masking_dict_fast_more_than_14chars(self):
-        # If the length of the FAST policy name is greater than 14 chars
-        extraSpecs = self.populate_masking_dict_setup()
-        extraSpecs['storagetype:fastpolicy'] = 'GOLD_MORE_THAN_FOURTEEN_CHARS'
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        self.assertEqual(
-            'OS-fakehost-GOLD_MO__CHARS-FP-I-SG',
-            maskingViewDict['sgGroupName'])
-        self.assertEqual(
-            'OS-fakehost-GOLD_MO__CHARS-FP-I-MV',
-            maskingViewDict['maskingViewName'])
-
-    def test_populate_masking_dict_no_fast(self):
-        # If fast isn't enabled the pool will uniquely determine the SG and MV
-        # on the host along with the protocol(iSCSI) e.g. I
-        extraSpecs = self.populate_masking_dict_setup()
-        extraSpecs['storagetype:fastpolicy'] = None
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        self.assertEqual(
-            'OS-fakehost-gold_pool-I-SG', maskingViewDict['sgGroupName'])
-        self.assertEqual(
-            'OS-fakehost-gold_pool-I-MV', maskingViewDict['maskingViewName'])
-
-    def test_populate_masking_dict_fast_both_exceeding(self):
-        # If the length of the FAST policy name is greater than 14 chars and
-        # the length of the short host is more than 38 characters
-        extraSpecs = self.populate_masking_dict_setup()
-        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
-        extraSpecs['storagetype:fastpolicy'] = (
-            'GOLD_MORE_THAN_FOURTEEN_CHARACTERS')
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, connector, extraSpecs)
-        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
-        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
-
-    def test_populate_masking_dict_no_fast_both_exceeding(self):
-        # If the length of the FAST policy name is greater than 14 chars and
-        # the length of the short host is more than 38 characters
-        extraSpecs = self.populate_masking_dict_setup()
-        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
-        extraSpecs['storagetype:pool'] = (
-            'GOLD_POOL_MORE_THAN_SIXTEEN_CHARACTERS')
-        extraSpecs['storagetype:fastpolicy'] = None
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, connector, extraSpecs)
-        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
-        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
-
     def test_filter_list(self):
         portgroupnames = ['pg3', 'pg1', 'pg4', 'pg2']
         portgroupnames = (
@@ -6038,41 +5963,6 @@ class EMCV3DriverTestCase(test.TestCase):
         storagegroup['ElementName'] = 'no_masking_view'
         return storagegroup
 
-    def test_populate_masking_dict_no_slo(self):
-        extraSpecs = {'storagetype:pool': 'SRP_1',
-                      'volume_backend_name': 'V3_BE',
-                      'storagetype:workload': None,
-                      'storagetype:slo': None,
-                      'storagetype:array': '1234567891011',
-                      'isV3': True,
-                      'portgroupname': 'OS-portgroup-PG'}
-        # If fast is enabled it will uniquely determine the SG and MV
-        # on the host along with the protocol(iSCSI) e.g. I
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        self.assertEqual(
-            'OS-fakehost-No_SLO-SG', maskingViewDict['sgGroupName'])
-        self.assertEqual(
-            'OS-fakehost-No_SLO-MV', maskingViewDict['maskingViewName'])
-
-    def test_populate_masking_dict_slo_NONE(self):
-        extraSpecs = {'storagetype:pool': 'SRP_1',
-                      'volume_backend_name': 'V3_BE',
-                      'storagetype:workload': 'NONE',
-                      'storagetype:slo': 'NONE',
-                      'storagetype:array': '1234567891011',
-                      'isV3': True,
-                      'portgroupname': 'OS-portgroup-PG'}
-        # If fast is enabled it will uniquely determine the SG and MV
-        # on the host along with the protocol(iSCSI) e.g. I
-        maskingViewDict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        self.assertEqual(
-            'OS-fakehost-SRP_1-NONE-NONE-SG', maskingViewDict['sgGroupName'])
-        self.assertEqual(
-            'OS-fakehost-SRP_1-NONE-NONE-MV',
-            maskingViewDict['maskingViewName'])
-
     def test_last_vol_in_SG_with_MV(self):
         conn = self.fake_ecom_connection()
         controllerConfigService = (
@@ -8717,6 +8607,9 @@ class EMCVMAXCommonTest(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils,
+                         'find_controller_configuration_service',
+                         return_value=None)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -8899,6 +8792,170 @@ class EMCVMAXCommonTest(test.TestCase):
         deleted_vol = self.data.deleted_volume
         foundVolumeInstance = common._find_lun(deleted_vol)
         self.assertIsNone(foundVolumeInstance)
+
+    def populate_masking_dict_setup(self):
+        extraSpecs = {'storagetype:pool': u'gold_pool',
+                      'volume_backend_name': 'GOLD_POOL_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': False,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:fastpolicy': u'GOLD'}
+        return extraSpecs
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_fast(self, mock_find_lun):
+        extraSpecs = self.populate_masking_dict_setup()
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-GOLD-FP-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-GOLD-FP-I-MV', maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_fast_more_than_14chars(self, mock_find_lun):
+        # If the length of the FAST policy name is greater than 14 chars
+        extraSpecs = self.populate_masking_dict_setup()
+        extraSpecs['storagetype:fastpolicy'] = 'GOLD_MORE_THAN_FOURTEEN_CHARS'
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-GOLD_MO__CHARS-FP-I-SG',
+            maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-GOLD_MO__CHARS-FP-I-MV',
+            maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_no_fast(self, mock_find_lun):
+        # If fast isn't enabled the pool will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        extraSpecs = self.populate_masking_dict_setup()
+        extraSpecs['storagetype:fastpolicy'] = None
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-gold_pool-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-gold_pool-I-MV', maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_fast_both_exceeding(self, mock_find_lun):
+        # If the length of the FAST policy name is greater than 14 chars and
+        # the length of the short host is more than 38 characters
+        extraSpecs = self.populate_masking_dict_setup()
+        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
+        extraSpecs['storagetype:fastpolicy'] = (
+            'GOLD_MORE_THAN_FOURTEEN_CHARACTERS')
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
+        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_no_fast_both_exceeding(self, mock_find_lun):
+        # If the length of the FAST policy name is greater than 14 chars and
+        # the length of the short host is more than 38 characters
+        extraSpecs = self.populate_masking_dict_setup()
+        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
+        extraSpecs['storagetype:pool'] = (
+            'GOLD_POOL_MORE_THAN_SIXTEEN_CHARACTERS')
+        extraSpecs['storagetype:fastpolicy'] = None
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
+        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_no_slo(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': 'SRP_1',
+                      'volume_backend_name': 'V3_BE',
+                      'storagetype:workload': None,
+                      'storagetype:slo': None,
+                      'storagetype:array': '1234567891011',
+                      'isV3': True,
+                      'portgroupname': 'OS-portgroup-PG'}
+        self.populate_masking_dict_setup()
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-No_SLO-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-No_SLO-I-MV', maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_slo_NONE(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': 'SRP_1',
+                      'volume_backend_name': 'V3_BE',
+                      'storagetype:workload': 'NONE',
+                      'storagetype:slo': 'NONE',
+                      'storagetype:array': '1234567891011',
+                      'isV3': True,
+                      'portgroupname': 'OS-portgroup-PG'}
+        self.populate_masking_dict_setup()
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-SRP_1-NONE-NONE-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-SRP_1-NONE-NONE-I-MV',
+            maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_v3(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'VMAX_ISCSI_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        connector = {'host': 'fakehost'}
+        self.populate_masking_dict_setup()
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertEqual('OS-fakehost-SRP_1-Diamond-DSS-I-SG',
+                         maskingViewDict['sgGroupName'])
+        self.assertEqual('OS-fakehost-SRP_1-Diamond-DSS-I-MV',
+                         maskingViewDict['maskingViewName'])
 
 
 class EMCVMAXProvisionTest(test.TestCase):

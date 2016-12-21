@@ -71,6 +71,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - VMAX oversubscription Support (blueprint vmax-oversubscription)
               - QoS support (blueprint vmax-qos)
         2.5.0 - Attach and detach snapshot (blueprint vmax-attach-snapshot)
+              - MVs and SGs not reflecting correct protocol (bug #1640222)
 
     """
 
