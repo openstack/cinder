@@ -225,6 +225,15 @@ class QuotaUtilsTest(test.TestCase):
             overs, usages, quotas,
             exception.VolumeLimitExceeded)
 
+    def test_groups_limit_quota(self):
+        overs = ['groups']
+        usages = {'groups': {'reserved': 1, 'in_use': 9}}
+        quotas = {'groups': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.GroupLimitExceeded,
+            resource='groups')
+
     def test_unknown_quota(self):
         overs = ['unknown']
         usages = {'volumes': {'reserved': 1, 'in_use': 9}}

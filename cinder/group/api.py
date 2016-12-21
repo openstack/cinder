@@ -35,6 +35,7 @@ from cinder.objects import base as objects_base
 from cinder.objects import fields as c_fields
 import cinder.policy
 from cinder import quota
+from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
@@ -469,10 +470,13 @@ class API(base.Base):
                                                 **reserve_opts)
             if reservations:
                 GROUP_QUOTAS.commit(context, reservations)
-        except Exception:
+        except Exception as e:
             with excutils.save_and_reraise_exception():
                 try:
                     group.destroy()
+                    if isinstance(e, exception.OverQuota):
+                        quota_utils.process_reserve_over_quota(
+                            context, e, resource='groups')
                 finally:
                     LOG.error(_LE("Failed to update quota for "
                                   "group %s."), group.id)

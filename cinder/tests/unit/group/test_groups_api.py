@@ -22,12 +22,17 @@ import mock
 
 from cinder import context
 from cinder import db
+from cinder import exception
 import cinder.group
 from cinder import objects
 from cinder.objects import fields
+from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
+
+
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 
 
 @ddt.ddt
@@ -167,6 +172,40 @@ class GroupAPITestCase(test.TestCase):
                                                     "fake-grouptype-name")
         mock_volume_types_get.assert_called_once_with(mock.ANY,
                                                       volume_type_names)
+
+    @mock.patch.object(GROUP_QUOTAS, "reserve")
+    @mock.patch('cinder.objects.Group')
+    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.group.api.check_policy')
+    def test_create_group_failed_update_quota(self, mock_policy,
+                                              mock_volume_types_get,
+                                              mock_group_type_get, mock_group,
+                                              mock_group_quota_reserve):
+        mock_volume_types_get.return_value = [{'id': fake.VOLUME_TYPE_ID}]
+        mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
+        fake_overs = ['groups']
+        fake_quotas = {'groups': 1}
+        fake_usages = {'groups': {'reserved': 0, 'in_use': 1}}
+        mock_group_quota_reserve.side_effect = exception.OverQuota(
+            overs=fake_overs,
+            quotas=fake_quotas,
+            usages=fake_usages)
+        name = "test_group"
+        description = "this is a test group"
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova', host=None,
+                                 name=name, description=description,
+                                 status=fields.GroupStatus.CREATING)
+        mock_group.return_value = grp
+
+        self.assertRaises(exception.GroupLimitExceeded,
+                          self.group_api.create,
+                          self.ctxt, name, description,
+                          "fake-grouptype-name",
+                          [fake.VOLUME_TYPE_ID],
+                          availability_zone='nova')
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')

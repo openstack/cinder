@@ -491,6 +491,22 @@ class GroupsAPITestCase(test.TestCase):
             group.id)
         self.assertEqual(fields.GroupStatus.DELETED, group.status)
 
+    @mock.patch('cinder.group.api.API.create')
+    def test_create_group_failed_exceeded_quota(self, mock_group_create):
+        mock_group_create.side_effect = exception.GroupLimitExceeded(allowed=1)
+        name = 'group1'
+        body = {"group": {"group_type": fake.GROUP_TYPE_ID,
+                          "volume_types": [fake.VOLUME_TYPE_ID],
+                          "name": name,
+                          "description":
+                          "Group 1", }}
+        req = fakes.HTTPRequest.blank('/v3/%s/groups' % fake.PROJECT_ID,
+                                      version=GROUP_MICRO_VERSION)
+        ex = self.assertRaises(exception.GroupLimitExceeded,
+                               self.controller.create,
+                               req, body)
+        self.assertEqual(413, ex.code)
+
     def test_delete_group_with_invalid_body(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
         self.group1.save()
