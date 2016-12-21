@@ -1961,13 +1961,14 @@ class SolidFireDriver(san.SanISCSIDriver):
                                            endpoint=remote['endpoint'])
         primary_vols = self._map_sf_volumes(volumes)
         for v in volumes:
-            remote_vlist = filter(lambda sfv: sfv['cinder_id'] == v['id'],
-                                  remote_vols)
+            remote_vlist = [sfv for sfv in remote_vols
+                            if sfv['cinder_id'] == v['id']]
+
             if len(remote_vlist) > 0:
                 remote_vol = remote_vlist[0]
                 self._failover_volume(remote_vol, remote)
-                primary_vol = filter(lambda sfv: sfv['cinder_id'] == v['id'],
-                                     primary_vols)[0]
+                primary_vol = [sfv for sfv in primary_vols if
+                               sfv['cinder_id'] == v['id']][0]
                 if len(primary_vol['volumePairs']) > 0:
                     self._issue_api_request(
                         'RemoveVolumePair',

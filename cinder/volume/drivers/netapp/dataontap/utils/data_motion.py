@@ -547,8 +547,8 @@ class DataMotionMixin(object):
         The 'slowest' mirror determines the best update that occurred on a
         given replication target.
         """
-        filtered_mirrors = list(filter(lambda x: x.get('destination-volume')
-                                in flexvols, mirrors))
+        filtered_mirrors = [x for x in mirrors
+                            if x.get('destination-volume')in flexvols]
         sorted_mirrors = sorted(filtered_mirrors,
                                 key=lambda x: int(x.get('lag-time')),
                                 reverse=True)

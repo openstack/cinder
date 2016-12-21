@@ -102,8 +102,8 @@ class CommonAdapter(object):
         if pool_names is not None:
             # Filter out the empty string in the list.
             pool_names = [name.strip()
-                          for name in filter(lambda x: len(x.strip()) != 0,
-                                             pool_names)]
+                          for name in [x for x in pool_names
+                                       if len(x.strip()) != 0]]
             if len(pool_names) == 0:
                 raise exception.InvalidConfigurationValue(
                     option='[{group}] storage_vnx_pool_names'.format(
@@ -116,8 +116,8 @@ class CommonAdapter(object):
         io_port_list = self.config.io_port_list
         if io_port_list is not None:
             io_port_list = [port.strip().upper()
-                            for port in filter(lambda x: len(x.strip()) != 0,
-                                               io_port_list)]
+                            for port in [x for x in io_port_list
+                                         if len(x.strip()) != 0]]
             if len(io_port_list) == 0:
                 # io_port_list is allowed to be an empty list, which means
                 # none of the ports will be registered.

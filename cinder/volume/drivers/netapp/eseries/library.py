@@ -459,9 +459,8 @@ class NetAppESeriesLibrary(object):
     def _get_ordered_images_in_snapshot_group(self, snapshot_group_id):
         images = self._client.list_snapshot_images()
         if images:
-            filtered_images = filter(lambda img: (img['pitGroupRef'] ==
-                                                  snapshot_group_id),
-                                     images)
+            filtered_images = [img for img in images if img['pitGroupRef'] ==
+                               snapshot_group_id]
             sorted_imgs = sorted(filtered_images, key=lambda x: x[
                 'pitTimestamp'])
             return sorted_imgs
@@ -826,12 +825,11 @@ class NetAppESeriesLibrary(object):
         groups_for_v = self._get_snapshot_groups_for_volume(vol)
 
         # Filter out reserved snapshot groups
-        groups = filter(lambda g: self.SNAPSHOT_VOL_COPY_SUFFIX not in g[
-            'label'], groups_for_v)
+        groups = [g for g in groups_for_v
+                  if self.SNAPSHOT_VOL_COPY_SUFFIX not in g['label']]
 
         # Filter out groups that are part of a consistency group
-        groups = filter(lambda g: not g['consistencyGroup'], groups)
-
+        groups = [g for g in groups if not g['consistencyGroup']]
         # Find all groups with free snapshot capacity
         groups = [group for group in groups if group.get('snapshotCount') <
                   self.MAX_SNAPSHOT_COUNT]
@@ -1630,8 +1628,8 @@ class NetAppESeriesLibrary(object):
 
         pool_ids = set(pool.get("volumeGroupRef") for pool in storage_pools)
 
-        relevant_disks = filter(lambda x: x.get('currentVolumeGroupRef') in
-                                pool_ids, all_disks)
+        relevant_disks = [x for x in all_disks
+                          if x.get('currentVolumeGroupRef') in pool_ids]
         for drive in relevant_disks:
             current_vol_group = drive.get('currentVolumeGroupRef')
             if current_vol_group not in ssc_stats:
