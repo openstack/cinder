@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_enum
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_enum
 
 
 class VNXSystem(object):

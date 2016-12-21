@@ -17,13 +17,14 @@ import mock
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_exception \
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
     as storops_ex
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_storops as storops
-from cinder.tests.unit.volume.drivers.emc.vnx import res_mock
-from cinder.tests.unit.volume.drivers.emc.vnx import utils as ut_utils
-from cinder.volume.drivers.emc.vnx import common
-from cinder.volume.drivers.emc.vnx import utils
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
+    as storops
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils as ut_utils
+from cinder.volume.drivers.dell_emc.vnx import common
+from cinder.volume.drivers.dell_emc.vnx import utils
 
 
 class TestUtils(test.TestCase):

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,10 +17,11 @@ import mock
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.emc.vnx import fake_storops as storops
-from cinder.tests.unit.volume.drivers.emc.vnx import res_mock
-from cinder.volume.drivers.emc.vnx import client
-from cinder.volume.drivers.emc.vnx import common
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
+    as storops
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
+from cinder.volume.drivers.dell_emc.vnx import client
+from cinder.volume.drivers.dell_emc.vnx import common
 
 
 class TestExtraSpecs(test.TestCase):

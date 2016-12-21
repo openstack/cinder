@@ -1,0 +1,7 @@
+---
+upgrade:
+  - EMC VNX driver have been rebranded to Dell EMC VNX driver.
+    Existing configurations will continue to work with the legacy name,
+    but will need to be updated by the next release.
+    User needs update ``volume_driver`` to
+    ``cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver``.

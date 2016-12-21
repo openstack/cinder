@@ -1,4 +1,4 @@
-# Copyright (c) 2016 EMC Corporation, Inc.
+# Copyright (c) 2016 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,7 +24,7 @@ storops = importutils.try_import('storops')
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.volume.drivers.emc.vnx import const
+from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume import volume_types
 
 CONF = cfg.CONF
@@ -38,7 +38,7 @@ INTERVAL_20_SEC = 20
 INTERVAL_30_SEC = 30
 INTERVAL_60_SEC = 60
 
-EMC_VNX_OPTS = [
+VNX_OPTS = [
     cfg.StrOpt('storage_vnx_authentication_type',
                default='global',
                help='VNX authentication scope type. '
@@ -102,7 +102,7 @@ EMC_VNX_OPTS = [
                 'By default, the value is False.')
 ]
 
-CONF.register_opts(EMC_VNX_OPTS)
+CONF.register_opts(VNX_OPTS)
 
 
 PROTOCOL_FC = 'fc'

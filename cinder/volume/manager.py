@@ -151,6 +151,8 @@ MAPPING = {
     'cinder.volume.drivers.ibm.ibm_storage',
     'cinder.volume.drivers.emc.scaleio':
     'cinder.volume.drivers.dell_emc.scaleio.driver',
+    'cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver':
+    'cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver'
 }
 
 
