@@ -66,6 +66,7 @@ REST_API_VERSION_HISTORY = """
              problem with volume metadata.
     * 3.16 - Migrate volume now supports cluster
     * 3.17 - Getting manageable volumes and snapshots now accepts cluster.
+    * 3.18 - Add backup project attribute.
 """
 
 # The minimum and maximum versions of the API supported
@@ -73,7 +74,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.17"
+_MAX_API_VERSION = "3.18"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
