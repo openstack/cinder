@@ -47,7 +47,7 @@ _SNAPSHOT = {
     'id': fake.SNAPSHOT_ID,
     'size': 128,
     'volume_type': None,
-    'provider_location': None,
+    'provider_location': 'hnas',
     'volume_size': 128,
     'volume': _VOLUME,
     'volume_name': _VOLUME['name'],
@@ -321,24 +321,65 @@ class HNASNFSDriverTest(test.TestCase):
         self.assertEqual('NFS', out['storage_protocol'])
 
     def test_create_volume_from_snapshot(self):
-        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+        expected_out = {'provider_location': 'hnas'}
 
-        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+        self.mock_object(self.driver, '_file_not_present',
+                         mock.Mock(return_value=False))
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+        result = self.driver.create_volume_from_snapshot(self.volume,
+                                                         self.snapshot)
+
+        self.assertEqual(expected_out, result)
+
+    def test_create_volume_from_snapshot_legacy(self):
+        expected_out = {'provider_location': 'hnas'}
+
+        self.mock_object(self.driver, '_file_not_present',
+                         mock.Mock(return_value=True))
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+        result = self.driver.create_volume_from_snapshot(self.volume,
+                                                         self.snapshot)
+
+        self.assertEqual(expected_out, result)
 
     def test_create_snapshot(self):
+        expected_out = {'provider_location': 'hnas'}
         self.mock_object(backend.HNASSSHBackend, 'file_clone')
-        self.driver.create_snapshot(self.snapshot)
+        result = self.driver.create_snapshot(self.snapshot)
+
+        self.assertEqual(expected_out, result)
 
     def test_delete_snapshot(self):
+        nfs_mount = "/opt/stack/data/cinder/mnt/"
+        path = nfs_mount + self.driver._get_snapshot_name(self.snapshot)
+
+        self.mock_object(self.driver, '_file_not_present',
+                         mock.Mock(return_value=False))
+
+        self.mock_object(self.driver, '_get_file_path',
+                         mock.Mock(return_value=path))
         self.mock_object(self.driver, '_execute')
 
         self.driver.delete_snapshot(self.snapshot)
 
-    def test_delete_snapshot_execute_exception(self):
-        self.mock_object(self.driver, '_execute',
-                         side_effect=putils.ProcessExecutionError)
+        self.driver._execute.assert_called_with('rm', path, run_as_root=True)
+
+    def test_delete_snapshot_legacy(self):
+        nfs_mount = "/opt/stack/data/cinder/mnt/"
+        legacy_path = nfs_mount + self.snapshot.name
+
+        self.mock_object(self.driver, '_file_not_present',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.driver, '_file_not_present',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.driver, '_get_file_path',
+                         mock.Mock(return_value=legacy_path))
+        self.mock_object(self.driver, '_execute')
 
         self.driver.delete_snapshot(self.snapshot)
+
+        self.driver._execute.assert_called_with('rm', legacy_path,
+                                                run_as_root=True)
 
     def test_extend_volume(self):
         share_mount_point = '/fs-cinder'
@@ -539,7 +580,7 @@ class HNASNFSDriverTest(test.TestCase):
     def test_manage_existing_snapshot(self):
         nfs_share = "172.24.49.21:/fs-cinder"
         nfs_mount = "/opt/stack/data/cinder/mnt/" + fake.SNAPSHOT_ID
-        path = "unmanage-snapshot-" + fake.SNAPSHOT_ID
+        path = "unmanage-%s.%s" % (self.snapshot.volume.name, self.snapshot.id)
         loc = {'provider_location': '172.24.49.21:/fs-cinder'}
         existing_ref = {'source-name': '172.24.49.21:/fs-cinder/'
                                        + fake.SNAPSHOT_ID}
@@ -557,10 +598,30 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.assertEqual(loc, out)
 
+    def test_manage_existing_snapshot_legacy(self):
+        nfs_share = "172.24.49.21:/fs-cinder"
+        nfs_mount = "/opt/stack/data/cinder/mnt/" + fake.SNAPSHOT_ID
+        path = "unmanage-snapshot-%s" % self.snapshot.id
+        loc = {'provider_location': '172.24.49.21:/fs-cinder'}
+        existing_ref = {
+            'source-name': '172.24.49.21:/fs-cinder/' + fake.SNAPSHOT_ID}
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         return_value=(nfs_share, nfs_mount, path))
+        self.mock_object(backend.HNASSSHBackend, 'check_snapshot_parent',
+                         return_value=True)
+        self.mock_object(self.driver, '_execute')
+        self.mock_object(backend.HNASSSHBackend, 'get_export_path',
+                         return_value='fs-cinder')
+
+        out = self.driver.manage_existing_snapshot(self.snapshot, existing_ref)
+
+        self.assertEqual(loc, out)
+
     def test_manage_existing_snapshot_not_parent_exception(self):
         nfs_share = "172.24.49.21:/fs-cinder"
         nfs_mount = "/opt/stack/data/cinder/mnt/" + fake.SNAPSHOT_ID
-        path = "unmanage-snapshot-" + fake.SNAPSHOT_ID
+        path = "unmanage-%s.%s" % (fake.VOLUME_ID, self.snapshot.id)
 
         existing_ref = {'source-name': '172.24.49.21:/fs-cinder/'
                                        + fake.SNAPSHOT_ID}
@@ -601,7 +662,7 @@ class HNASNFSDriverTest(test.TestCase):
 
     def test_unmanage_snapshot(self):
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
-        snapshot_name = 'snapshot-' + self.snapshot.id
+        snapshot_name = "%s.%s" % (self.snapshot.volume.name, self.snapshot.id)
         old_path = os.path.join(path, snapshot_name)
         new_path = os.path.join(path, 'unmanage-' + snapshot_name)
 
