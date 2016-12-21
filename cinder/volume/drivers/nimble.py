@@ -43,15 +43,21 @@ from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
-DRIVER_VERSION = "4.0.0"
+DRIVER_VERSION = "4.0.1"
 AES_256_XTS_CIPHER = 'aes_256_xts'
 DEFAULT_CIPHER = 'none'
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
 EXTRA_SPEC_PERF_POLICY = 'nimble:perfpol-name'
 EXTRA_SPEC_MULTI_INITIATOR = 'nimble:multi-initiator'
+EXTRA_SPEC_DEDUPE = 'nimble:dedupe'
+EXTRA_SPEC_IOPS_LIMIT = 'nimble:iops-limit'
+EXTRA_SPEC_FOLDER = 'nimble:folder'
 DEFAULT_PERF_POLICY_SETTING = 'default'
 DEFAULT_ENCRYPTION_SETTING = 'no'
+DEFAULT_DEDUPE_SETTING = 'false'
+DEFAULT_IOPS_LIMIT_SETTING = None
 DEFAULT_MULTI_INITIATOR_SETTING = 'false'
+DEFAULT_FOLDER_SETTING = None
 DEFAULT_SNAP_QUOTA = sys.maxsize
 BACKUP_VOL_PREFIX = 'backup-vol-'
 AGENT_TYPE_OPENSTACK = 'openstack'
@@ -63,6 +69,8 @@ SM_STATE_MSG = "is already in requested state"
 LUN_ID = '0'
 WARN_LEVEL = 80
 DEFAULT_SLEEP = 5
+MIN_IOPS = 256
+MAX_IOPS = 4294967294
 NimbleDefaultVersion = 1
 
 
@@ -113,6 +121,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         3.1.0 - Fibre Channel Support
         4.0.0 - Migrate from SOAP to REST API
                 Add support for Group Scoped Target
+        4.0.1 - Add QoS and dedupe support
     """
     VERSION = DRIVER_VERSION
 
@@ -1042,10 +1051,19 @@ class NimbleRestAPIExecutor(object):
                                      DEFAULT_ENCRYPTION_SETTING)
         multi_initiator = extra_specs.get(EXTRA_SPEC_MULTI_INITIATOR,
                                           DEFAULT_MULTI_INITIATOR_SETTING)
+        iops_limit = extra_specs.get(EXTRA_SPEC_IOPS_LIMIT,
+                                     DEFAULT_IOPS_LIMIT_SETTING)
+        folder_name = extra_specs.get(EXTRA_SPEC_FOLDER,
+                                      DEFAULT_FOLDER_SETTING)
+        dedupe = extra_specs.get(EXTRA_SPEC_DEDUPE,
+                                 DEFAULT_DEDUPE_SETTING)
         extra_specs_map = {}
         extra_specs_map[EXTRA_SPEC_PERF_POLICY] = perf_policy_name
         extra_specs_map[EXTRA_SPEC_ENCRYPTION] = encryption
         extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR] = multi_initiator
+        extra_specs_map[EXTRA_SPEC_IOPS_LIMIT] = iops_limit
+        extra_specs_map[EXTRA_SPEC_DEDUPE] = dedupe
+        extra_specs_map[EXTRA_SPEC_FOLDER] = folder_name
 
         return extra_specs_map
 
@@ -1080,6 +1098,10 @@ class NimbleRestAPIExecutor(object):
         perf_policy_id = self.get_performance_policy_id(perf_policy_name)
         encrypt = extra_specs_map[EXTRA_SPEC_ENCRYPTION]
         multi_initiator = extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR]
+        folder_name = extra_specs_map[EXTRA_SPEC_FOLDER]
+        iops_limit = extra_specs_map[EXTRA_SPEC_IOPS_LIMIT]
+        dedupe = extra_specs_map[EXTRA_SPEC_DEDUPE]
+
         cipher = DEFAULT_CIPHER
         if encrypt.lower() == 'yes':
             cipher = AES_256_XTS_CIPHER
@@ -1121,6 +1143,62 @@ class NimbleRestAPIExecutor(object):
 
         if protocol == "iSCSI":
             data['data']['multi_initiator'] = multi_initiator
+
+        if dedupe.lower() == 'true':
+            data['data']['dedupe_enabled'] = True
+
+        folder_id = None
+        if folder_name is not None:
+            # validate if folder exists in pool_name
+            pool_info = self.get_pool_info(pool_id)
+            if 'folder_list' in pool_info and (pool_info['folder_list'] is
+                                               not None):
+                for folder_list in pool_info['folder_list']:
+                    LOG.debug("folder_list : %s", folder_list)
+                    if folder_list['fqn'] == "/" + folder_name:
+                        LOG.debug("Folder %(folder)s present in pool "
+                                  "%(pool)s",
+                                  {'folder': folder_name,
+                                   'pool': pool_name})
+                        folder_id = self.get_folder_id(folder_name)
+                        if folder_id is not None:
+                            data['data']["folder_id"] = folder_id
+                if folder_id is None:
+                    raise NimbleAPIException(_("Folder '%(folder)s' not "
+                                               "present in pool '%(pool)s'") %
+                                             {'folder': folder_name,
+                                              'pool': pool_name})
+            else:
+                raise NimbleAPIException(_("Folder '%(folder)s' not present in"
+                                           " pool '%(pool)s'") %
+                                         {'folder': folder_name,
+                                          'pool': pool_name})
+
+        if iops_limit is not None:
+            if not iops_limit.isdigit() or (
+               int(iops_limit) < MIN_IOPS) or (int(iops_limit) > MAX_IOPS):
+                raise NimbleAPIException(_("Please set valid IOPS limit"
+                                         " in the range [%(min)s, %(max)s]") %
+                                         {'min': MIN_IOPS,
+                                          'max': MAX_IOPS})
+            data['data']['limit_iops'] = iops_limit
+
+        LOG.debug("Volume metadata :%s", volume.metadata)
+        for key, value in volume.metadata.items():
+            LOG.debug("Key %(key)s Value %(value)s",
+                      {'key': key, 'value': value})
+            if key == EXTRA_SPEC_IOPS_LIMIT and value.isdigit():
+                if type(value) == int or int(value) < MIN_IOPS or (
+                   int(value) > MAX_IOPS):
+                    raise NimbleAPIException(_("Please enter valid IOPS "
+                                               "limit in the range ["
+                                               "%(min)s, %(max)s]") %
+                                             {'min': MIN_IOPS,
+                                              'max': MAX_IOPS})
+                LOG.debug("IOPS Limit %s", value)
+                data['data']['limit_iops'] = value
+        LOG.debug("Data : %s", data)
+
         api = 'volumes'
         r = self.post(api, data)
         return r['data']
@@ -1175,6 +1253,11 @@ class NimbleRestAPIExecutor(object):
                                        "pool : %(pool)s") %
                                      {'pool': pool_name})
         return r.json()['data'][0]['id']
+
+    def get_pool_info(self, pool_id):
+        api = 'pools/' + six.text_type(pool_id)
+        r = self.get(api)
+        return r.json()['data']
 
     def get_initiator_grp_list(self):
         api = "initiator_groups/detail"
@@ -1289,8 +1372,9 @@ class NimbleRestAPIExecutor(object):
         LOG.debug("volume_id %s", six.text_type(volume_id))
         eventlet.sleep(DEFAULT_SLEEP)
         api = "volumes/" + six.text_type(volume_id)
-        data = {'data': {"online": online_flag}}
+        data = {'data': {"online": online_flag, 'force': True}}
         try:
+            LOG.debug("data :%s", data)
             self.put(api, data)
             LOG.debug("Volume %(vol)s is in requested online state :%(flag)s" %
                       {'vol': volume_name,
