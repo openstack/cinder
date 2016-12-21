@@ -194,9 +194,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     @property
     def is_up(self):
         """Check whether a service is up based on last heartbeat."""
-        last_heartbeat = self.updated_at or self.created_at
-        return (last_heartbeat and
-                last_heartbeat >= utils.service_expired_time(True))
+        return (self.updated_at and
+                self.updated_at >= utils.service_expired_time(True))
 
 
 @base.CinderObjectRegistry.register
