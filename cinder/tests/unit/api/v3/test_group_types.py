@@ -110,6 +110,7 @@ class GroupTypesApiTest(test.TestCase):
         self.type_id3 = self._create_group_type('group_type3',
                                                 {'key3': 'value3'}, False,
                                                 [fake.PROJECT_ID])
+        self.type_id0 = group_types.get_default_cgsnapshot_type()['id']
 
     def test_group_types_index(self):
         self.mock_object(group_types, 'get_all_group_types',
@@ -160,7 +161,7 @@ class GroupTypesApiTest(test.TestCase):
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
-        self.assertEqual(2, len(res['group_types']))
+        self.assertEqual(3, len(res['group_types']))
 
     def test_group_types_index_with_offset_out_of_range(self):
         url = '/v3/%s/group_types?offset=424366766556787' % fake.PROJECT_ID
@@ -198,10 +199,11 @@ class GroupTypesApiTest(test.TestCase):
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
-        self.assertEqual(3, len(res['group_types']))
+        self.assertEqual(4, len(res['group_types']))
         self.assertEqual(self.type_id3, res['group_types'][0]['id'])
         self.assertEqual(self.type_id2, res['group_types'][1]['id'])
         self.assertEqual(self.type_id1, res['group_types'][2]['id'])
+        self.assertEqual(self.type_id0, res['group_types'][3]['id'])
 
     def test_group_types_index_with_invalid_filter(self):
         req = fakes.HTTPRequest.blank(
@@ -210,7 +212,7 @@ class GroupTypesApiTest(test.TestCase):
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
-        self.assertEqual(3, len(res['group_types']))
+        self.assertEqual(4, len(res['group_types']))
 
     def test_group_types_index_with_sort_keys(self):
         req = fakes.HTTPRequest.blank('/v3/%s/group_types?sort=id' %
@@ -218,13 +220,15 @@ class GroupTypesApiTest(test.TestCase):
                                       version=GROUP_TYPE_MICRO_VERSION)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+        expect_result = [self.type_id0, self.type_id1, self.type_id2,
+                         self.type_id3]
         expect_result.sort(reverse=True)
 
-        self.assertEqual(3, len(res['group_types']))
+        self.assertEqual(4, len(res['group_types']))
         self.assertEqual(expect_result[0], res['group_types'][0]['id'])
         self.assertEqual(expect_result[1], res['group_types'][1]['id'])
         self.assertEqual(expect_result[2], res['group_types'][2]['id'])
+        self.assertEqual(expect_result[3], res['group_types'][3]['id'])
 
     def test_group_types_index_with_sort_and_limit(self):
         req = fakes.HTTPRequest.blank(
@@ -232,7 +236,8 @@ class GroupTypesApiTest(test.TestCase):
             version=GROUP_TYPE_MICRO_VERSION)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+        expect_result = [self.type_id0, self.type_id1, self.type_id2,
+                         self.type_id3]
         expect_result.sort(reverse=True)
 
         self.assertEqual(2, len(res['group_types']))
@@ -245,13 +250,15 @@ class GroupTypesApiTest(test.TestCase):
             version=GROUP_TYPE_MICRO_VERSION)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+        expect_result = [self.type_id0, self.type_id1, self.type_id2,
+                         self.type_id3]
         expect_result.sort()
 
-        self.assertEqual(3, len(res['group_types']))
+        self.assertEqual(4, len(res['group_types']))
         self.assertEqual(expect_result[0], res['group_types'][0]['id'])
         self.assertEqual(expect_result[1], res['group_types'][1]['id'])
         self.assertEqual(expect_result[2], res['group_types'][2]['id'])
+        self.assertEqual(expect_result[3], res['group_types'][3]['id'])
 
     def test_group_types_show(self):
         self.mock_object(group_types, 'get_group_type',
