@@ -17,6 +17,7 @@
 
 """Unit tests for Cisco FC zone driver."""
 
+import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import importutils
@@ -24,11 +25,18 @@ from oslo_utils import importutils
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.zonemanager.drivers.cisco import cisco_fc_zone_driver as driver
 
 _active_cfg_before_add = {}
 _active_cfg_before_delete = {
     'zones': {
         'openstack10008c7cff523b0120240002ac000a50': (
+            ['10:00:8c:7c:ff:52:3b:01',
+             '20:24:00:02:ac:00:0a:50'])},
+        'active_zone_config': 'cfg1'}
+_active_cfg_default = {
+    'zones': {
+        'openstack10008c7cff523b0120240002ac000b90': (
             ['10:00:8c:7c:ff:52:3b:01',
              '20:24:00:02:ac:00:0a:50'])},
         'active_zone_config': 'cfg1'}
@@ -127,6 +135,34 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
             'CISCO_FAB_1', _initiator_target_map)
         self.assertNotIn(_zone_name, GlobalVars._zone_state)
 
+    @mock.patch.object(driver.CiscoFCZoneDriver, 'get_zoning_status')
+    @mock.patch.object(driver.CiscoFCZoneDriver, 'get_active_zone_set')
+    def test_add_connection(self, get_active_zone_set_mock,
+                            get_zoning_status_mock):
+        """Test normal flows."""
+        GlobalVars._is_normal_test = True
+        GlobalVars._zone_state = []
+        self.setup_driver(self.setup_config(True, 1))
+        get_zoning_status_mock.return_value = {'mode': 'basis',
+                                               'session': 'none'}
+        get_active_zone_set_mock.return_value = _active_cfg_default
+        self.driver.add_connection('CISCO_FAB_1', _initiator_target_map)
+        self.assertTrue(_zone_name in GlobalVars._zone_state)
+
+    @mock.patch.object(driver.CiscoFCZoneDriver, 'get_zoning_status')
+    @mock.patch.object(driver.CiscoFCZoneDriver, 'get_active_zone_set')
+    def test_add_connection_with_no_cfg(self, get_active_zone_set_mock,
+                                        get_zoning_status_mock):
+        """Test normal flows."""
+        GlobalVars._is_normal_test = True
+        GlobalVars._zone_state = []
+        self.setup_driver(self.setup_config(True, 1))
+        get_zoning_status_mock.return_value = {'mode': 'basis',
+                                               'session': 'none'}
+        get_active_zone_set_mock.return_value = {}
+        self.driver.add_connection('CISCO_FAB_1', _initiator_target_map)
+        self.assertTrue(_zone_name in GlobalVars._zone_state)
+
     def test_add_connection_for_invalid_fabric(self):
         """Test abnormal flows."""
         GlobalVars._is_normal_test = True
@@ -157,7 +193,8 @@ class FakeCiscoFCZoneClientCLI(object):
     def get_active_zone_set(self):
         return GlobalVars._active_cfg
 
-    def add_zones(self, zones, isActivate):
+    def add_zones(self, zones, activate, fabric_vsan, active_zone_set,
+                  zone_status):
         GlobalVars._zone_state.extend(zones.keys())
 
     def delete_zones(self, zone_names, isActivate):
