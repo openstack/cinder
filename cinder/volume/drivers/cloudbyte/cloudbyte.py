@@ -49,6 +49,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
     VERSION = '1.2.0'
     CI_WIKI_NAME = "CloudByte_CI"
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Pike release per normal deprecation
+    SUPPORTED = False
+
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -62,6 +66,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         self.configuration.append_config_values(
             options.cloudbyte_connection_opts)
         self.cb_use_chap = self.configuration.use_chap_auth
+
         self.get_volume_stats()
 
     def _get_url(self, cmd, params, apikey):
