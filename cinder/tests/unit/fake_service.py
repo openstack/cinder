@@ -30,7 +30,7 @@ def fake_db_service(**updates):
     NOW = timeutils.utcnow().replace(microsecond=0)
     db_service = {
         'created_at': NOW,
-        'updated_at': None,
+        'updated_at': NOW,
         'deleted_at': None,
         'deleted': False,
         'id': 123,
