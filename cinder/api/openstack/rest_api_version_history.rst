@@ -210,3 +210,7 @@ user documentation.
 3.18
 ----
   Added backup project attribute.
+
+3.19
+----
+  Added reset status actions 'reset_status' to group snapshot.

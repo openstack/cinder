@@ -515,3 +515,16 @@ class GroupAPITestCase(test.TestCase):
         self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
         mock_create_from_snap.assert_called_once_with(
             self.ctxt, grp, fake.GROUP_SNAPSHOT_ID)
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    @mock.patch('cinder.objects.GroupSnapshot')
+    def test_reset_group_snapshot_status(self, mock_group_snapshot,
+                                         mock_time_util):
+        mock_time_util.return_value = "time_now"
+        self.group_api.reset_group_snapshot_status(
+            self.ctxt, mock_group_snapshot, fields.GroupSnapshotStatus.ERROR)
+
+        update_field = {'updated_at': "time_now",
+                        'status': fields.GroupSnapshotStatus.ERROR}
+        mock_group_snapshot.update.assert_called_once_with(update_field)
+        mock_group_snapshot.save.assert_called_once_with()

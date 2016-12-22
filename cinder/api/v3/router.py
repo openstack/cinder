@@ -100,12 +100,16 @@ class APIRouter(cinder.api.openstack.APIRouter):
                        action="action",
                        conditions={"method": ["POST"]})
 
-        self.resources['group_snapshots'] = (group_snapshots.create_resource())
+        self.resources['group_snapshots'] = group_snapshots.create_resource()
         mapper.resource("group_snapshot", "group_snapshots",
                         controller=self.resources['group_snapshots'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
-
+        mapper.connect("group_snapshots",
+                       "/{project_id}/group_snapshots/{id}/action",
+                       controller=self.resources["group_snapshots"],
+                       action="action",
+                       conditions={"method": ["POST"]})
         self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",
                         controller=self.resources['snapshots'],
