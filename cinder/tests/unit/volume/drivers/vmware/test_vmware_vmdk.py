@@ -2785,7 +2785,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             port=config.vmware_host_port,
             cacert=config.vmware_ca_file,
             insecure=config.vmware_insecure,
-            pool_size=config.vmware_connection_pool_size)
+            pool_size=config.vmware_connection_pool_size,
+            op_id_prefix='c-vol')
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_extend_backing')
