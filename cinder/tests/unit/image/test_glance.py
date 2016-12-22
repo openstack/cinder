@@ -175,10 +175,10 @@ class TestGlanceImageService(test.TestCase):
             'properties': {'instance_id': '42', 'user_id': 'fake'},
             'owner': None,
         }
-        self.assertDictMatch(expected, image_meta)
+        self.assertDictEqual(expected, image_meta)
 
         image_metas = self.service.detail(self.context)
-        self.assertDictMatch(expected, image_metas[0])
+        self.assertDictEqual(expected, image_metas[0])
 
     def test_create_without_instance_id(self):
         """Test Creating images without instance_id.
@@ -211,7 +211,7 @@ class TestGlanceImageService(test.TestCase):
             'owner': None,
         }
         actual = self.service.show(self.context, image_id)
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     def test_create(self):
         fixture = self._make_fixture(name='test image')
@@ -303,7 +303,7 @@ class TestGlanceImageService(test.TestCase):
                 'owner': None,
             }
 
-            self.assertDictMatch(expected, meta)
+            self.assertDictEqual(expected, meta)
             i = i + 1
 
     def test_detail_limit(self):
@@ -360,7 +360,7 @@ class TestGlanceImageService(test.TestCase):
                 'deleted': None,
                 'owner': None,
             }
-            self.assertDictMatch(expected, meta)
+            self.assertDictEqual(expected, meta)
             i = i + 1
 
     def test_detail_invalid_marker(self):
@@ -421,7 +421,7 @@ class TestGlanceImageService(test.TestCase):
         translate_from_glance.return_value = image_meta.copy()
 
         ret = service.update(self.context, image_id, image_meta)
-        self.assertDictMatch(image_meta, ret)
+        self.assertDictEqual(image_meta, ret)
         if ver == 2:
             client.call.assert_called_once_with(
                 self.context, 'update', image_id, k1='v1', remove_props=['k2'])

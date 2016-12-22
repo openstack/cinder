@@ -859,7 +859,7 @@ class VolumeImageActionsTest(test.TestCase):
                      'container_format': 'bare',
                      'disk_format': 'raw',
                      'image_name': 'image_name'}}
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     def test_copy_volume_to_image_volumenotfound(self):
         def fake_volume_get_raise_exc(self, context, volume_id):
@@ -1019,11 +1019,11 @@ class VolumeImageActionsTest(test.TestCase):
         expected = {
             'os-volume_upload_image': {
                 'id': volume.id,
-                'updated_at': 'DONTCARE',
+                'updated_at': mock.ANY,
                 'status': 'uploading',
                 'display_description': 'displaydesc',
                 'size': 1,
-                'volume_type': 'DONTCARE',
+                'volume_type': mock.ANY,
                 'image_id': fake.IMAGE_ID,
                 'container_format': 'bare',
                 'disk_format': 'raw',
@@ -1051,7 +1051,7 @@ class VolumeImageActionsTest(test.TestCase):
 
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
@@ -1092,7 +1092,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
@@ -1182,7 +1182,7 @@ class VolumeImageActionsTest(test.TestCase):
         CONF.set_default('enable_force_upload', True)
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
@@ -1206,7 +1206,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
@@ -1228,7 +1228,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
@@ -1251,7 +1251,7 @@ class VolumeImageActionsTest(test.TestCase):
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     @mock.patch.object(volume_api.API, "get_volume_image_metadata")
     @mock.patch.object(glance.GlanceImageService, "create")
@@ -1289,7 +1289,7 @@ class VolumeImageActionsTest(test.TestCase):
 
         expected['os-volume_upload_image'].update(visibility='public',
                                                   protected=True)
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     @mock.patch.object(volume_api.API, "get_volume_image_metadata")
     @mock.patch.object(glance.GlanceImageService, "create")
@@ -1309,7 +1309,7 @@ class VolumeImageActionsTest(test.TestCase):
 
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
@@ -1332,7 +1332,7 @@ class VolumeImageActionsTest(test.TestCase):
 
         res_dict = self.controller._volume_upload_image(req, volume.id, body)
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         vol_db = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)

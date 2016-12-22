@@ -349,7 +349,7 @@ class GroupTypesApiTest(test.TestCase):
             is_public=True,
             id=42,
         )
-        self.assertDictMatch(expected_group_type, output['group_type'])
+        self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_show_admin(self):
         view_builder = views_types.ViewBuilder()
@@ -379,7 +379,7 @@ class GroupTypesApiTest(test.TestCase):
             group_specs={},
             id=42,
         )
-        self.assertDictMatch(expected_group_type, output['group_type'])
+        self.assertDictEqual(expected_group_type, output['group_type'])
 
     def __test_view_builder_show_qos_specs_id_policy(self):
         with mock.patch.object(common,
@@ -409,7 +409,7 @@ class GroupTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42,
             )
-            self.assertDictMatch(expected_group_type, output['group_type'])
+            self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_show_group_specs_policy(self):
         with mock.patch.object(common,
@@ -441,7 +441,7 @@ class GroupTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42,
             )
-            self.assertDictMatch(expected_group_type, output['group_type'])
+            self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_show_pass_all_policy(self):
         with mock.patch.object(common,
@@ -473,7 +473,7 @@ class GroupTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42,
             )
-            self.assertDictMatch(expected_group_type, output['group_type'])
+            self.assertDictEqual(expected_group_type, output['group_type'])
 
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
@@ -507,7 +507,7 @@ class GroupTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42 + i
             )
-            self.assertDictMatch(expected_group_type,
+            self.assertDictEqual(expected_group_type,
                                  output['group_types'][i])
 
     def test_view_builder_list_admin(self):
@@ -543,7 +543,7 @@ class GroupTypesApiTest(test.TestCase):
                 group_specs={},
                 id=42 + i
             )
-            self.assertDictMatch(expected_group_type,
+            self.assertDictEqual(expected_group_type,
                                  output['group_types'][i])
 
     def test_check_policy(self):

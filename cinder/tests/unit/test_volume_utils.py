@@ -158,13 +158,13 @@ class NotifyUsageTestCase(test.TestCase):
             'volume_size': 1,
             'snapshot_id': fake.SNAPSHOT_ID,
             'display_name': '11',
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'metadata': six.text_type({'fake_snap_meta_key':
                                       u'fake_snap_meta_value'}),
         }
-        self.assertDictMatch(expected_snapshot, usage_info)
+        self.assertDictEqual(expected_snapshot, usage_info)
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     def test_usage_from_deleted_snapshot(self, volume_get_by_id):
@@ -204,13 +204,13 @@ class NotifyUsageTestCase(test.TestCase):
             'volume_size': 1,
             'snapshot_id': fake.SNAPSHOT_ID,
             'display_name': '11',
-            'created_at': 'DONTCARE',
+            'created_at': mock.ANY,
             'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'metadata': six.text_type({'fake_snap_meta_key':
                                       u'fake_snap_meta_value'}),
         }
-        self.assertDictMatch(expected_snapshot, usage_info)
+        self.assertDictEqual(expected_snapshot, usage_info)
 
     @mock.patch('cinder.db.volume_glance_metadata_get')
     @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
@@ -372,7 +372,7 @@ class NotifyUsageTestCase(test.TestCase):
             six.text_type(expected_backup['created_at']) + '+00:00')
 
         usage_info = volume_utils._usage_from_backup(backup_obj)
-        self.assertDictMatch(expected_backup, usage_info)
+        self.assertDictEqual(expected_backup, usage_info)
 
 
 class LVMVolumeDriverTestCase(test.TestCase):

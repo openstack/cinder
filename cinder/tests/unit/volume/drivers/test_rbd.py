@@ -1111,7 +1111,7 @@ class RBDTestCase(test.TestCase):
         actual = self.driver.get_volume_stats(True)
         client.cluster.mon_command.assert_called_once_with(
             '{"prefix":"df", "format":"json"}', '')
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     @common_mocks
     def test_update_volume_stats_error(self):
@@ -1141,7 +1141,7 @@ class RBDTestCase(test.TestCase):
         actual = self.driver.get_volume_stats(True)
         client.cluster.mon_command.assert_called_once_with(
             '{"prefix":"df", "format":"json"}', '')
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     @common_mocks
     def test_get_mon_addrs(self):
@@ -1176,7 +1176,7 @@ class RBDTestCase(test.TestCase):
                 }
             }
             actual = self.driver.initialize_connection(self.volume_a, None)
-            self.assertDictMatch(expected, actual)
+            self.assertDictEqual(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
 
     @ddt.data({'rbd_chunk_size': 1, 'order': 20},

@@ -684,7 +684,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.create_vg.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_GROUP['id']), DATA_IN_GROUP['name'],
             DATA_IN_GROUP['description'])
-        self.assertDictMatch({'status': (
+        self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
     def test_delete_consistency_group(self):
@@ -698,7 +698,7 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
             self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
-        self.assertDictMatch({'status': (
+        self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.DELETED)}, model_update)
 
     def test_update_consistencygroup(self):
@@ -718,7 +718,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.leave_vg.assert_called_once_with(
             self._conver_uuid2hex(remove_vol['id']),
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
-        self.assertDictMatch({'status': (
+        self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
     def test_update_consistencygroup_exception_join(self):
@@ -753,7 +753,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.create_cgsnapshot(
             self.context, snapshot_obj, [])
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictEqual({'status': 'available'}, model_update)
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_delete_consistency_group_snapshot(self, get_all_for_cgsnapshot):
@@ -768,4 +768,4 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['consistencygroup_id']),
             self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['id']),
             True)
-        self.assertDictMatch({'status': 'deleted'}, model_update)
+        self.assertDictEqual({'status': 'deleted'}, model_update)

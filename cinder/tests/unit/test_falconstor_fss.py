@@ -345,7 +345,7 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
         ctxt = context.get_admin_context()
         model_update = self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
         mock_create_group.assert_called_once_with(CONSISTGROUP)
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictEqual({'status': 'available'}, model_update)
 
     @mock.patch.object(proxy.RESTProxy, 'destroy_group')
     @mock.patch(BASE_DRIVER + ".delete_volume", autospec=True)
@@ -435,7 +435,7 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
             ISCSI_CONNECTOR,
             FSS_HOSTS)
         result = deepcopy(ISCSI_INFO)
-        self.assertDictMatch(result, ret)
+        self.assertDictEqual(result, ret)
 
     @mock.patch.object(proxy.RESTProxy, 'initialize_connection_iscsi')
     @mock.patch(ISCSI_DRIVER + "._check_multipath", autospec=True)

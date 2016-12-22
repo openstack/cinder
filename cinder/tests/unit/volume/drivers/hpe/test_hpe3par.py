@@ -4667,7 +4667,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(expected_properties, result)
+            self.assertDictEqual(expected_properties, result)
 
     @mock.patch('cinder.zonemanager.utils.create_lookup_service')
     def test_initialize_connection_with_lookup_single_nsp(self, mock_lookup):
@@ -4761,7 +4761,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(expected_properties, result)
+            self.assertDictEqual(expected_properties, result)
 
     def test_initialize_connection_encrypted(self):
         # setup_mock_client drive with default configuration
@@ -4861,7 +4861,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(expected_properties, result)
+            self.assertDictEqual(expected_properties, result)
 
     def test_terminate_connection(self):
         # setup_mock_client drive with default configuration
@@ -5787,7 +5787,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(self.properties, result)
+            self.assertDictEqual(self.properties, result)
 
     def test_initialize_connection_multipath(self):
         # setup_mock_client drive with default configuration
@@ -5852,7 +5852,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(self.multipath_properties, result)
+            self.assertDictEqual(self.multipath_properties, result)
 
     def test_initialize_connection_multipath_existing_nsp(self):
         # setup_mock_client drive with default configuration
@@ -5905,7 +5905,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(self.multipath_properties, result)
+            self.assertDictEqual(self.multipath_properties, result)
 
     def test_initialize_connection_encrypted(self):
         # setup_mock_client drive with default configuration
@@ -5960,7 +5960,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
             expected_properties = self.properties
             expected_properties['data']['encrypted'] = True
-            self.assertDictMatch(self.properties, result)
+            self.assertDictEqual(self.properties, result)
 
     def test_terminate_connection_for_clear_chap_creds_not_found(self):
         # setup_mock_client drive with default configuration
@@ -7304,7 +7304,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
             model_with_remote_name = self.driver._do_export(common, volume)
             mock_client.assert_has_calls(expected)
-            self.assertDictMatch(expected_model, model_with_remote_name)
+            self.assertDictEqual(expected_model, model_with_remote_name)
 
             # vlun does not has remoteName
             mock_client.getHostVLUNs.return_value = [
@@ -7313,7 +7313,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
             model_without_remote_name = self.driver._do_export(common, volume)
             mock_client.assert_has_calls(expected)
-            self.assertDictMatch(expected_model, model_without_remote_name)
+            self.assertDictEqual(expected_model, model_without_remote_name)
 
     @mock.patch('cinder.volume.utils.generate_password')
     def test_create_export(self, mock_utils):
@@ -7351,7 +7351,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
         mock_create_client.return_value = mock_client
         model = self.driver.create_export(None, volume, None)
         mock_client.assert_has_calls(expected)
-        self.assertDictMatch(expected_model, model)
+        self.assertDictEqual(expected_model, model)
 
     def test_initialize_iscsi_ports_with_iscsi_ip_and_port(self):
         # setup_mock_client drive with default configuration

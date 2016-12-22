@@ -2161,9 +2161,9 @@ class InfortrendCLITestCase(test.TestCase):
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):
-                self.assertDictMatch(test_data[1][i], out[i])
+                self.assertDictEqual(test_data[1][i], out[i])
         else:
-            self.assertDictMatch(test_data[1], out)
+            self.assertDictEqual(test_data[1], out)
 
     @mock.patch.object(cli.LOG, 'debug', mock.Mock())
     def test_cli_all_command_execute(self):

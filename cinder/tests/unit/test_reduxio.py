@@ -585,7 +585,7 @@ class ReduxioISCSIDriverTestCase(test.TestCase):
         ]
 
         mock_run_cmd.assert_has_calls(calls)
-        self.assertDictMatch(
+        self.assertDictEqual(
             ret_connection_info,
             ISCSI_CONNECTION_INFO_NO_MULTIPATH
         )
@@ -613,7 +613,7 @@ class ReduxioISCSIDriverTestCase(test.TestCase):
         ]
 
         mock_run_cmd.assert_has_calls(calls)
-        self.assertDictMatch(ret_connection_info, ISCSI_CONNECTION_INFO)
+        self.assertDictEqual(ret_connection_info, ISCSI_CONNECTION_INFO)
 
         self.driver.rdxApi.list_hosts.return_value = [{
             "iscsi_name": CONNECTOR["initiator"],
@@ -625,7 +625,7 @@ class ReduxioISCSIDriverTestCase(test.TestCase):
 
         mock_run_cmd.assert_has_calls([mock.call.driver._run_cmd(assign_cmd)])
 
-        self.assertDictMatch(ISCSI_CONNECTION_INFO, ret_connection_info)
+        self.assertDictEqual(ISCSI_CONNECTION_INFO, ret_connection_info)
 
     @mock.patch.object(rdx_cli_api.ReduxioAPI, "_run_cmd")
     @mock_api(False)

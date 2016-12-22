@@ -135,7 +135,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         actual_stats = self.dm_mixin.get_replication_backend_stats(self.config)
 
-        self.assertDictMatch(expected_stats, actual_stats)
+        self.assertDictEqual(expected_stats, actual_stats)
 
     @ddt.data(None, [],
               [{'backend_id': 'replication_backend_2', 'aggr2': 'aggr20'}])
@@ -165,7 +165,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         aggr_map = self.dm_mixin._get_replication_aggregate_map(
             self.src_backend, 'replication_backend_1')
 
-        self.assertDictMatch({'aggr1': 'aggr10'}, aggr_map)
+        self.assertDictEqual({'aggr1': 'aggr10'}, aggr_map)
 
     @ddt.data(True, False)
     def test_create_snapmirror_dest_flexvol_exists(self, dest_exists):

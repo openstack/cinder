@@ -77,7 +77,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
 
         specs_returned = db.qos_specs_get(self.ctxt, specs_id)
         qos_spec['id'] = specs_id
-        self.assertDictMatch(qos_spec, specs_returned)
+        self.assertDictEqual(qos_spec, specs_returned)
 
     def test_qos_specs_get_all(self):
         qos_list = [
@@ -124,7 +124,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                     'specs': value}
         db.qos_specs_item_delete(self.ctxt, specs_id, 'foo')
         specs = db.qos_specs_get(self.ctxt, specs_id)
-        self.assertDictMatch(expected, specs)
+        self.assertDictEqual(expected, specs)
 
     def test_associate_type_with_qos(self):
         self.assertRaises(exception.VolumeTypeNotFound,

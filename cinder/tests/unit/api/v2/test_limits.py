@@ -792,7 +792,7 @@ class LimitsViewBuilderTest(test.TestCase):
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)
-        self.assertDictMatch(expected_limits, output)
+        self.assertDictEqual(expected_limits, output)
 
     def test_build_limits_empty_limits(self):
         expected_limits = {"limits": {"rate": [],
@@ -801,4 +801,4 @@ class LimitsViewBuilderTest(test.TestCase):
         abs_limits = {}
         rate_limits = []
         output = self.view_builder.build(rate_limits, abs_limits)
-        self.assertDictMatch(expected_limits, output)
+        self.assertDictEqual(expected_limits, output)

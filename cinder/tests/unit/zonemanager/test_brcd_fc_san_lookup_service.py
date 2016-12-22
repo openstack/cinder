@@ -124,7 +124,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         get_southbound_client_mock.return_value = self.get_client("HTTPS")
         device_map = self.get_device_mapping_from_network(
             initiator_list, target_list)
-        self.assertDictMatch(_device_map_to_verify, device_map)
+        self.assertDictEqual(_device_map_to_verify, device_map)
 
 
 class FakeClient(object):

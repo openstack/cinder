@@ -203,7 +203,7 @@ class SynoSessionTestCase(test.TestCase):
             'https://127.0.0.1:5001/webapi/query.cgi',
             data=data,
             verify=self.ssl_verify)
-        self.assertDictMatch(out, result)
+        self.assertDictEqual(out, result)
 
         result = self.session.query(FAKE_API)
         self.assertIsNone(result)
@@ -296,10 +296,10 @@ class SynoAPIRequestTestCase(test.TestCase):
         ])
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
-        self.assertDictMatch({'success': True}, result)
+        self.assertDictEqual({'success': True}, result)
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
-        self.assertDictMatch({'error': {'code': 101}, 'success': False},
+        self.assertDictEqual({'error': {'code': 101}, 'success': False},
                              result)
 
         self.assertRaises(exception.MalformedResponse,
@@ -309,7 +309,7 @@ class SynoAPIRequestTestCase(test.TestCase):
                           version)
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
-        self.assertDictMatch({'http_status': 500}, result)
+        self.assertDictEqual({'http_status': 500}, result)
 
     @mock.patch.object(common.LOG, 'debug')
     def test_request_auth_error(self, _log):
@@ -435,7 +435,7 @@ class SynoCommonTestCase(test.TestCase):
                                'get',
                                mock.ANY,
                                volume_path='/' + POOL_NAME))
-        self.assertDictMatch(POOL_INFO, result)
+        self.assertDictEqual(POOL_INFO, result)
 
         del out['data']['volume']
         self.assertRaises(exception.MalformedResponse,
@@ -527,7 +527,7 @@ class SynoCommonTestCase(test.TestCase):
                                mock.ANY,
                                uuid=VOLUME['name'],
                                additional=['is_mapped']))
-        self.assertDictMatch(LUN_INFO, result)
+        self.assertDictEqual(LUN_INFO, result)
 
         del out['data']['lun']
         self.assertRaises(exception.MalformedResponse,
@@ -617,7 +617,7 @@ class SynoCommonTestCase(test.TestCase):
                                mock.ANY,
                                snapshot_uuid=DS_SNAPSHOT_UUID,
                                additional=['status']))
-        self.assertDictMatch(SNAPSHOT_INFO, result)
+        self.assertDictEqual(SNAPSHOT_INFO, result)
 
         del out['data']['snapshot']
         self.assertRaises(exception.MalformedResponse,
@@ -1160,7 +1160,7 @@ class SynoCommonTestCase(test.TestCase):
                                                      version,
                                                      param1='value1',
                                                      param2='value2')
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
         self.assertRaises(exception.SynoAPIHTTPError,
                           self.common.exec_webapi,
@@ -1248,7 +1248,7 @@ class SynoCommonTestCase(test.TestCase):
 
         result = self.common.update_volume_stats()
 
-        self.assertDictMatch(data, result)
+        self.assertDictEqual(data, result)
 
     def test_create_volume(self):
         out = {
@@ -1390,7 +1390,7 @@ class SynoCommonTestCase(test.TestCase):
 
         self.common._modify_lun_name.assert_called_with(NEW_VOLUME['name'],
                                                         VOLUME['name'])
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
 
         self.assertRaises(exception.VolumeMigrationFailed,
                           self.common.update_migrated_volume,
@@ -1426,7 +1426,7 @@ class SynoCommonTestCase(test.TestCase):
                                taken_by='Cinder',
                                description='(Cinder) ' +
                                SNAPSHOT['id']))
-        self.assertDictMatch(metadata, result)
+        self.assertDictEqual(metadata, result)
 
         self.assertRaises(exception.VolumeDriverException,
                           self.common.create_snapshot,
@@ -1571,7 +1571,7 @@ class SynoCommonTestCase(test.TestCase):
         self.conf.safe_get = mock.Mock(return_value=[])
 
         result = self.common.get_iscsi_properties(volume)
-        self.assertDictMatch(iscsi_properties, result)
+        self.assertDictEqual(iscsi_properties, result)
 
         volume['provider_location'] = ''
         self.assertRaises(exception.InvalidParameterValue,
@@ -1600,7 +1600,7 @@ class SynoCommonTestCase(test.TestCase):
         self.conf.safe_get = mock.Mock(return_value=['10.0.0.2', '10.0.0.3'])
 
         result = self.common.get_iscsi_properties(volume)
-        self.assertDictMatch(iscsi_properties, result)
+        self.assertDictEqual(iscsi_properties, result)
 
         volume['provider_location'] = ''
         self.assertRaises(exception.InvalidParameterValue,
@@ -1622,15 +1622,15 @@ class SynoCommonTestCase(test.TestCase):
 
         volume['provider_auth'] = 'abcde'
         result = self.common.get_iscsi_properties(volume)
-        self.assertDictMatch(iscsi_properties, result)
+        self.assertDictEqual(iscsi_properties, result)
 
         volume['provider_auth'] = ''
         result = self.common.get_iscsi_properties(volume)
-        self.assertDictMatch(iscsi_properties, result)
+        self.assertDictEqual(iscsi_properties, result)
 
         del volume['provider_auth']
         result = self.common.get_iscsi_properties(volume)
-        self.assertDictMatch(iscsi_properties, result)
+        self.assertDictEqual(iscsi_properties, result)
 
     def test_create_iscsi_export(self):
         self.common._target_create = (
