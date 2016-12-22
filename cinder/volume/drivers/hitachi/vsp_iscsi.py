@@ -63,7 +63,7 @@ class VSPISCSIDriver(driver.ISCSIDriver):
 
     .. code-block:: none
 
-    1.0.0 - Initial driver.
+        1.0.0 - Initial driver.
 
     """
 

@@ -40,15 +40,7 @@ MSG = utils.VSPMsg
 
 
 class VSPHORCMISCSI(horcm.VSPHORCM):
-    """HORCM interface iscsi class for Hitachi VSP Driver.
-
-    Version history:
-
-    .. code-block:: none
-
-    1.0.0 - Initial driver.
-
-    """
+    """HORCM interface iscsi class for Hitachi VSP Driver."""
 
     def connect_storage(self):
         """Prepare for using the storage."""

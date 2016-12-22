@@ -305,15 +305,7 @@ def _check_ldev(ldev_info, ldev, existing_ref):
 
 
 class VSPHORCM(common.VSPCommon):
-    """HORCM interface class for Hitachi VSP Driver.
-
-    Version history:
-
-    .. code-block:: none
-
-    1.0.0 - Initial driver.
-
-    """
+    """HORCM interface class for Hitachi VSP Driver."""
 
     def __init__(self, conf, storage_protocol, db):
         """Initialize instance variables."""
