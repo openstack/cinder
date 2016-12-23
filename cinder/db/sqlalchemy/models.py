@@ -90,7 +90,7 @@ class Service(BASE, CinderBase):
 
     # replication_status can be: enabled, disabled, not-capable, error,
     # failed-over or not-configured
-    replication_status = Column(String(255), default="not-capable")
+    replication_status = Column(String(36), default="not-capable")
     active_backend_id = Column(String(255))
     frozen = Column(Boolean, nullable=False, default=False)
 
