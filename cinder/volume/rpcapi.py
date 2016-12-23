@@ -116,16 +116,30 @@ class VolumeAPI(rpc.RPCAPI):
         3.3  - Adds support for sending objects over RPC in attach_volume().
         3.4  - Adds support for sending objects over RPC in detach_volume().
         3.5  - Adds support for cluster in retype and migrate_volume
+        3.6  - Switch to use oslo.messaging topics to indicate backends instead
+               of @backend suffixes in server names.
     """
 
-    RPC_API_VERSION = '3.5'
+    RPC_API_VERSION = '3.6'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
 
     def _get_cctxt(self, host=None, version=None, **kwargs):
-        if host is not None:
-            kwargs['server'] = utils.get_volume_rpc_host(host)
+        if host:
+            server = utils.extract_host(host)
+
+            # TODO(dulek): If we're pinned before 3.6, we should send stuff the
+            # old way - addressing server=host@backend, topic=cinder-volume.
+            # Otherwise we're addressing server=host,
+            # topic=cinder-volume.host@backend. This conditional can go away
+            # when we stop supporting 3.x.
+            if self.client.can_send_version('3.6'):
+                kwargs['topic'] = '%(topic)s.%(host)s' % {'topic': self.TOPIC,
+                                                          'host': server}
+                server = utils.extract_host(server, 'host')
+            kwargs['server'] = server
+
         return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)
 
     def create_consistencygroup(self, ctxt, group):

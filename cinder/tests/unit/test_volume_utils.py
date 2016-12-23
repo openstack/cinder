@@ -800,13 +800,6 @@ class VolumeUtilsTestCase(test.TestCase):
                           volume_utils.extract_host,
                           None)
 
-    def test_get_volume_rpc_host(self):
-        host = 'Host@backend'
-        # default level is 'backend'
-        # check if host with backend is returned
-        self.assertEqual(volume_utils.extract_host(host),
-                         volume_utils.get_volume_rpc_host(host))
-
     def test_append_host(self):
         host = 'Host'
         pool = 'Pool'
