@@ -277,6 +277,10 @@ class MissingRequired(Invalid):
     message = _("Missing required element '%(element)s' in request body.")
 
 
+class ValidationError(Invalid):
+    message = "%(detail)s"
+
+
 class APIException(CinderException):
     message = _("Error while requesting %(service)s API.")
 
