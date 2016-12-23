@@ -21,6 +21,7 @@ iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS-HNAS) platform.
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 import six
 
 from cinder import exception
@@ -100,9 +101,14 @@ class HNASISCSIDriver(driver.ISCSIDriver):
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
     VERSION = HNAS_ISCSI_VERSION
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Initializes and reads different config parameters."""
         super(HNASISCSIDriver, self).__init__(*args, **kwargs)
+        msg = _("The Hitachi NAS iSCSI  driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
         self.configuration = kwargs.get('configuration', None)
         self.context = {}
         self.config = {}
