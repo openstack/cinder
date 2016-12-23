@@ -86,6 +86,7 @@ CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
+AO_LIST = objects.VolumeAttachmentList
 
 
 def wrap_check_policy(func):
@@ -98,7 +99,6 @@ def wrap_check_policy(func):
     def wrapped(self, context, target_obj, *args, **kwargs):
         check_policy(context, func.__name__, target_obj)
         return func(self, context, target_obj, *args, **kwargs)
-
     return wrapped
 
 
@@ -1905,6 +1905,98 @@ class API(base.Base):
                 return True
             else:
                 return bool(val)
+
+    def _attachment_reserve(self, ctxt, vref, instance_uuid=None):
+        # NOTE(jdg): Reserved is a special case, we're avoiding allowing
+        # creation of other new reserves/attachments while in this state
+        # so we avoid contention issues with shared connections
+
+        # FIXME(JDG):  We want to be able to do things here like reserve a
+        # volume for Nova to do BFV WHILE the volume may be in the process of
+        # downloading image, we add downloading here; that's easy enough but
+        # we've got a race inbetween with the attaching/detaching that we do
+        # locally on the Cinder node.  Just come up with an easy way to
+        # determine if we're attaching to the Cinder host for some work or if
+        # we're being used by the outside world.
+        expected = {'multiattach': vref.multiattach,
+                    'status': (('available', 'in-use', 'downloading')
+                               if vref.multiattach
+                               else ('available', 'downloading'))}
+        result = vref.conditional_update({'status': 'reserved'}, expected)
+        if not result:
+            msg = (_('Volume %(vol_id)s status must be %(statuses)s') %
+                   {'vol_id': vref.id,
+                    'statuses': utils.build_or_str(expected['status'])})
+            raise exception.InvalidVolume(reason=msg)
+
+        values = {'volume_id': vref.id,
+                  'volume_host': vref.host,
+                  'attach_status': 'reserved',
+                  'instance_uuid': instance_uuid}
+        db_ref = self.db.volume_attach(ctxt.elevated(), values)
+        return objects.VolumeAttachment.get_by_id(ctxt, db_ref['id'])
+
+    @wrap_check_policy
+    def attachment_create(self,
+                          ctxt,
+                          volume_ref,
+                          instance_uuid,
+                          connector=None):
+        """Create an attachment record for the specified volume."""
+        connection_info = {}
+        attachment_ref = self._attachment_reserve(ctxt,
+                                                  volume_ref,
+                                                  instance_uuid)
+        if connector:
+            connection_info = (
+                self.volume_rpcapi.attachment_update(ctxt,
+                                                     volume_ref,
+                                                     connector,
+                                                     attachment_ref.id))
+        attachment_ref.connection_info = connection_info
+        attachment_ref.save()
+        return attachment_ref
+
+    @wrap_check_policy
+    def attachment_update(self, ctxt, attachment_ref, connector):
+        """Update an existing attachment record."""
+        # Valid items to update (connector includes mode and mountpoint):
+        #   1. connector (required)
+        #     a. mode (if None use value from attachment_ref)
+        #     b. mountpoint (if None use value from attachment_ref)
+        #     c. instance_uuid(if None use value from attachment_ref)
+
+        # We fetch the volume object and pass it to the rpc call because we
+        # need to direct this to the correct host/backend
+
+        volume_ref = objects.Volume.get_by_id(ctxt, attachment_ref.volume_id)
+        connection_info = (
+            self.volume_rpcapi.attachment_update(ctxt,
+                                                 volume_ref,
+                                                 connector,
+                                                 attachment_ref.id))
+        attachment_ref.connection_info = connection_info
+        attachment_ref.save()
+        return attachment_ref
+
+    @wrap_check_policy
+    def attachment_delete(self, ctxt, attachment):
+        volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
+        if attachment.attach_status == 'reserved':
+            attachment.destroy()
+        else:
+            self.volume_rpcapi.attachment_delete(ctxt,
+                                                 attachment.id,
+                                                 volume)
+        remaining_attachments = AO_LIST.get_all_by_volume_id(ctxt, volume.id)
+
+        # TODO(jdg): Make this check attachments_by_volume_id when we
+        # implement multi-attach for real
+        if len(remaining_attachments) < 1:
+            volume.status = 'available'
+            volume.attach_status = 'detached'
+            volume.save()
+        return remaining_attachments
 
 
 class HostAPI(base.Base):

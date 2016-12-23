@@ -132,6 +132,11 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
             db_attachment = db.volume_attach(self._context, updates)
         self._from_db_object(self._context, self, db_attachment)
 
+    def destroy(self):
+        updated_values = db.attachment_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
+
 
 @base.CinderObjectRegistry.register
 class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):

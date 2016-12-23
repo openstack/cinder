@@ -1771,7 +1771,8 @@ def _volume_get(context, volume_id, session=None, joined_load=True):
 
 def _attachment_get_all(context, filters=None, marker=None, limit=None,
                         offset=None, sort_keys=None, sort_dirs=None):
-    project_id = filters.pop('project_id', None)
+
+    project_id = filters.pop('project_id', None) if filters else None
     if filters and not is_valid_model_filters(models.VolumeAttachment,
                                               filters):
         return []
@@ -1856,12 +1857,14 @@ def volume_attachment_get_all_by_host(context, host):
 
 @require_context
 def volume_attachment_get(context, attachment_id):
+    """Fetch the specified attachment record."""
     return _attachment_get(context, attachment_id)
 
 
 @require_context
 def volume_attachment_get_all_by_instance_uuid(context,
                                                instance_uuid):
+    """Fetch all attachment records associated with the specified instance."""
     session = get_session()
     with session.begin():
         result = model_query(context, models.VolumeAttachment,
@@ -1890,6 +1893,102 @@ def volume_attachment_get_all_by_project(context, project_id, filters=None,
     return _attachment_get_all(context, filters, marker,
                                limit, offset, sort_keys,
                                sort_dirs)
+
+
+@require_admin_context
+@_retry_on_deadlock
+def attachment_destroy(context, attachment_id):
+    """Destroy the specified attachment record."""
+    utcnow = timeutils.utcnow()
+    session = get_session()
+    with session.begin():
+        updated_values = {'attach_status': 'deleted',
+                          'deleted': True,
+                          'deleted_at': utcnow,
+                          'updated_at': literal_column('updated_at')}
+        model_query(context, models.VolumeAttachment, session=session).\
+            filter_by(id=attachment_id).\
+            update(updated_values)
+        model_query(context, models.AttachmentSpecs, session=session).\
+            filter_by(attachment_id=attachment_id).\
+            update({'deleted': True,
+                    'deleted_at': utcnow,
+                    'updated_at': literal_column('updated_at')})
+    del updated_values['updated_at']
+    return updated_values
+
+
+def _attachment_specs_query(context, attachment_id, session=None):
+    return model_query(context, models.AttachmentSpecs, session=session,
+                       read_deleted="no").\
+        filter_by(attachment_id=attachment_id)
+
+
+@require_context
+def attachment_specs_get(context, attachment_id):
+    """Fetch the attachment_specs for the specified attachment record."""
+    rows = _attachment_specs_query(context, attachment_id).\
+        all()
+
+    result = {row['key']: row['value'] for row in rows}
+    return result
+
+
+@require_context
+def attachment_specs_delete(context, attachment_id, key):
+    """Delete attachment_specs for the specified attachment record."""
+    session = get_session()
+    with session.begin():
+        _attachment_specs_get_item(context,
+                                   attachment_id,
+                                   key,
+                                   session)
+        _attachment_specs_query(context, attachment_id, session).\
+            filter_by(key=key).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+@require_context
+def _attachment_specs_get_item(context,
+                               attachment_id,
+                               key,
+                               session=None):
+    result = _attachment_specs_query(
+        context, attachment_id, session=session).\
+        filter_by(key=key).\
+        first()
+
+    if not result:
+        raise exception.AttachmentSpecsNotFound(
+            specs_key=key,
+            attachment_id=attachment_id)
+
+    return result
+
+
+@handle_db_data_error
+@require_context
+def attachment_specs_update_or_create(context,
+                                      attachment_id,
+                                      specs):
+    """Update attachment_specs for the specified attachment record."""
+    session = get_session()
+    with session.begin():
+        spec_ref = None
+        for key, value in specs.items():
+            try:
+                spec_ref = _attachment_specs_get_item(
+                    context, attachment_id, key, session)
+            except exception.AttachmentSpecsNotFound:
+                spec_ref = models.AttachmentSpecs()
+            spec_ref.update({"key": key, "value": value,
+                             "attachment_id": attachment_id,
+                             "deleted": False})
+            spec_ref.save(session=session)
+
+        return specs
 
 
 @require_context

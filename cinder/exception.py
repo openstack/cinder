@@ -1347,3 +1347,12 @@ class RdxAPICommandException(VolumeDriverException):
 
 class RdxAPIConnectionException(VolumeDriverException):
     message = _("Reduxio API Connection Exception")
+
+
+class AttachmentSpecsNotFound(NotFound):
+    message = _("Attachment %(attachment_id)s has no "
+                "key %(specs_key)s.")
+
+
+class InvalidAttachment(Invalid):
+    message = _("Invalid attachment: %(reason)s")
