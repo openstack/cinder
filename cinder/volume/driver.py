@@ -625,7 +625,7 @@ class BaseVD(object):
 
         self._set_property(
             properties,
-            "replication",
+            "replication_enabled",
             "Replication",
             _("Enables replication."),
             "boolean")

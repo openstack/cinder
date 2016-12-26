@@ -4526,7 +4526,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                 'title': 'QoS',
                 'description': 'Enables QoS.',
                 'type': 'boolean'},
-            'replication': {
+            'replication_enabled': {
                 'title': 'Replication',
                 'description': 'Enables replication.',
                 'type': 'boolean'},
