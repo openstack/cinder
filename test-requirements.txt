@@ -12,6 +12,8 @@ mock>=2.0 # BSD
 os-api-ref>=1.0.0 # Apache-2.0
 oslotest>=1.10.0 # Apache-2.0
 sphinx!=1.3b1,<1.4,>=1.2.1 # BSD
+PyMySQL>=0.7.6 # MIT License
+psycopg2>=2.5 # LGPL/ZPL
 python-subunit>=0.0.18 # Apache-2.0/BSD
 testtools>=1.4.0 # MIT
 testrepository>=0.0.18 # Apache-2.0/BSD
