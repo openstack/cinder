@@ -26,6 +26,7 @@ from cinder.api.v3.views import groups as views_groups
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _, _LI
+from cinder import rpc
 from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
@@ -64,6 +65,47 @@ class GroupsController(wsgi.Controller):
         self._check_default_cgsnapshot_type(group.group_type_id)
 
         return self._view_builder.detail(req, group)
+
+    @wsgi.Controller.api_version('3.20')
+    @wsgi.action("reset_status")
+    def reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    def _reset_status(self, req, id, body):
+        """Reset status on generic group."""
+
+        context = req.environ['cinder.context']
+        try:
+            status = body['reset_status']['status'].lower()
+        except (TypeError, KeyError):
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'status'"))
+
+        LOG.debug("Updating group '%(id)s' with "
+                  "'%(update)s'", {'id': id,
+                                   'update': status})
+        try:
+            notifier = rpc.get_notifier('groupStatusUpdate')
+            notifier.info(context, 'groups.reset_status.start',
+                          {'id': id,
+                           'update': status})
+            group = self.group_api.get(context, id)
+
+            self.group_api.reset_status(context, group, status)
+            notifier.info(context, 'groups.reset_status.end',
+                          {'id': id,
+                           'update': status})
+        except exception.GroupNotFound as error:
+            # Not found exception will be handled at the wsgi level
+            notifier.error(context, 'groups.reset_status',
+                           {'error_message': error.msg,
+                            'id': id})
+            raise
+        except exception.InvalidGroupStatus as error:
+            notifier.error(context, 'groups.reset_status',
+                           {'error_message': error.msg,
+                            'id': id})
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        return webob.Response(status_int=202)
 
     @wsgi.Controller.api_version(GROUP_API_VERSION)
     @wsgi.action("delete")

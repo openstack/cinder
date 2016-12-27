@@ -253,6 +253,9 @@ class TestOpenStackClient(object):
     def delete_group(self, group_id, params):
         return self.api_post('/groups/%s/action' % group_id, params)
 
+    def reset_group(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
+
     def put_group(self, group_id, group):
         return self.api_put('/groups/%s' % group_id, group)['group']
 

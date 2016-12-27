@@ -173,6 +173,18 @@ class GroupAPITestCase(test.TestCase):
         mock_volume_types_get.assert_called_once_with(mock.ANY,
                                                       volume_type_names)
 
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    @mock.patch('cinder.objects.Group')
+    def test_reset_status(self, mock_group, mock_time_util):
+        mock_time_util.return_value = "time_now"
+        self.group_api.reset_status(self.ctxt, mock_group,
+                                    fields.GroupStatus.AVAILABLE)
+
+        update_field = {'updated_at': "time_now",
+                        'status': fields.GroupStatus.AVAILABLE}
+        mock_group.update.assert_called_once_with(update_field)
+        mock_group.save.assert_called_once_with()
+
     @mock.patch.object(GROUP_QUOTAS, "reserve")
     @mock.patch('cinder.objects.Group')
     @mock.patch('cinder.db.group_type_get_by_name')

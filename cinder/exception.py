@@ -1061,6 +1061,10 @@ class InvalidGroup(Invalid):
     message = _("Invalid Group: %(reason)s")
 
 
+class InvalidGroupStatus(Invalid):
+    message = _("Invalid Group Status: %(reason)s")
+
+
 # CgSnapshot
 class CgSnapshotNotFound(NotFound):
     message = _("CgSnapshot %(cgsnapshot_id)s could not be found.")
