@@ -41,6 +41,7 @@ class CommonAdapter(object):
     def __init__(self, version=None):
         self.version = version
         self.driver = None
+        self.config = None
         self.configured_pool_names = None
         self.reserved_percentage = None
         self.max_over_subscription_ratio = None
@@ -54,23 +55,74 @@ class CommonAdapter(object):
         self._serial_number = None
         self.storage_pools_map = None
         self._client = None
+        self.allowed_ports = None
 
     def do_setup(self, driver, conf):
         self.driver = driver
-        self.configured_pool_names = conf.unity_storage_pool_names
-        self.reserved_percentage = conf.reserved_percentage
-        self.max_over_subscription_ratio = conf.max_over_subscription_ratio
-        self.volume_backend_name = (conf.safe_get('volume_backend_name') or
-                                    self.driver_name)
-        self.ip = conf.san_ip
-        self.username = conf.san_login
-        self.password = conf.san_password
+        self.config = self.normalize_config(conf)
+        self.configured_pool_names = self.config.unity_storage_pool_names
+        self.reserved_percentage = self.config.reserved_percentage
+        self.max_over_subscription_ratio = (
+            self.config.max_over_subscription_ratio)
+        self.volume_backend_name = (
+            self.config.safe_get('volume_backend_name') or self.driver_name)
+        self.ip = self.config.san_ip
+        self.username = self.config.san_login
+        self.password = self.config.san_password
         # Unity currently not support to upload certificate.
         # Once it supports, enable the verify.
         self.array_cert_verify = False
-        self.array_ca_cert_path = conf.driver_ssl_cert_path
+        self.array_ca_cert_path = self.config.driver_ssl_cert_path
 
         self.storage_pools_map = self.get_managed_pools()
+
+        self.allowed_ports = self.validate_ports(self.config.unity_io_ports)
+
+    def normalize_config(self, config):
+        config.unity_storage_pool_names = utils.remove_empty(
+            '%s.unity_storage_pool_names' % config.config_group,
+            config.unity_storage_pool_names)
+
+        config.unity_io_ports = utils.remove_empty(
+            '%s.unity_io_ports' % config.config_group,
+            config.unity_io_ports)
+        return config
+
+    def get_all_ports(self):
+        raise NotImplementedError()
+
+    def validate_ports(self, ports_whitelist):
+        all_ports = self.get_all_ports()
+        # After normalize_config, `ports_whitelist` could be only None or valid
+        # list in which the items are stripped.
+        if ports_whitelist is None:
+            return all_ports.id
+
+        # For iSCSI port, the format is 'spa_eth0', and 'spa_iom_0_fc0' for FC.
+        # Unix style glob like 'spa_*' is supported.
+        whitelist = set(ports_whitelist)
+
+        matched, _ignored, unmatched_whitelist = utils.match_any(all_ports.id,
+                                                                 whitelist)
+        if not matched:
+            LOG.error(_LE('No matched ports filtered by all patterns: %s'),
+                      whitelist)
+            raise exception.InvalidConfigurationValue(
+                option='%s.unity_io_ports' % self.config.config_group,
+                value=self.config.unity_io_ports)
+
+        if unmatched_whitelist:
+            LOG.error(_LE('No matched ports filtered by below patterns: %s'),
+                      unmatched_whitelist)
+            raise exception.InvalidConfigurationValue(
+                option='%s.unity_io_ports' % self.config.config_group,
+                value=self.config.unity_io_ports)
+
+        LOG.info(_LI('These ports %(matched)s will be used based on '
+                     'the option unity_io_ports: %(config)s'),
+                 {'matched': matched,
+                  'config': self.config.unity_io_ports})
+        return matched
 
     @property
     def verify_cert(self):
@@ -436,11 +488,14 @@ class ISCSIAdapter(CommonAdapter):
     driver_name = 'UnityISCSIDriver'
     driver_volume_type = 'iscsi'
 
+    def get_all_ports(self):
+        return self.client.get_ethernet_ports()
+
     def get_connector_uids(self, connector):
         return utils.extract_iscsi_uids(connector)
 
     def get_connection_info(self, hlu, host, connector):
-        targets = self.client.get_iscsi_target_info()
+        targets = self.client.get_iscsi_target_info(self.allowed_ports)
         if not targets:
             msg = _("There is no accessible iSCSI targets on the system.")
             raise exception.VolumeBackendAPIException(data=msg)
@@ -471,6 +526,9 @@ class FCAdapter(CommonAdapter):
         super(FCAdapter, self).do_setup(driver, config)
         self.lookup_service = utils.create_lookup_service()
 
+    def get_all_ports(self):
+        return self.client.get_fc_ports()
+
     def get_connector_uids(self, connector):
         return utils.extract_fc_uids(connector)
 
@@ -480,7 +538,8 @@ class FCAdapter(CommonAdapter):
 
     def get_connection_info(self, hlu, host, connector):
         targets = self.client.get_fc_target_info(
-            host, logged_in_only=(not self.auto_zone_enabled))
+            host, logged_in_only=(not self.auto_zone_enabled),
+            allowed_ports=self.allowed_ports)
 
         if not targets:
             msg = _("There is no accessible fibre channel targets on the "
@@ -507,7 +566,8 @@ class FCAdapter(CommonAdapter):
             }
             host = self.client.get_host(connector['host'])
             if len(host.host_luns) == 0:
-                targets = self.client.get_fc_target_info(logged_in_only=True)
+                targets = self.client.get_fc_target_info(
+                    logged_in_only=True, allowed_ports=self.allowed_ports)
                 ret['data'] = self._get_fc_zone_info(connector['wwpns'],
                                                      targets)
 

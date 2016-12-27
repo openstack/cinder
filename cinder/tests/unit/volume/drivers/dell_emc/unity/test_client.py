@@ -48,6 +48,10 @@ class MockResource(object):
         self.max_kbps = None
         self.pool_name = 'Pool0'
 
+    @property
+    def id(self):
+        return self._id
+
     def get_id(self):
         return self._id
 
@@ -141,11 +145,11 @@ class MockResource(object):
         path1.is_logged_in = False
         path2 = MockResource('%s_path_2' % self.name)
         path2.is_logged_in = True
-        return [path0, path1]
+        return MockResourceList.create(path0, path1)
 
     @property
     def fc_port(self):
-        ret = MockResource()
+        ret = MockResource(_id='spa_iom_0_fc0')
         ret.wwn = '00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF'
         return ret
 
@@ -163,8 +167,11 @@ class MockResource(object):
 
 
 class MockResourceList(object):
-    def __init__(self, names):
-        self.resources = [MockResource(name) for name in names]
+    def __init__(self, names=None, ids=None):
+        if names is not None:
+            self.resources = [MockResource(name=name) for name in names]
+        elif ids is not None:
+            self.resources = [MockResource(_id=_id) for _id in ids]
 
     @staticmethod
     def create(*rsc_list):
@@ -184,6 +191,12 @@ class MockResourceList(object):
 
     def __getattr__(self, item):
         return [getattr(i, item) for i in self.resources]
+
+    def shadow_copy(self, **kwargs):
+        if list(filter(None, kwargs.values())):
+            return MockResourceList.create(self.resources[0])
+        else:
+            return self
 
 
 class MockSystem(object):
@@ -222,7 +235,7 @@ class MockSystem(object):
         portal0.ip_address = '1.1.1.1'
         portal1 = MockResource('p1')
         portal1.ip_address = '1.1.1.2'
-        return [portal0, portal1]
+        return MockResourceList.create(portal0, portal1)
 
     @staticmethod
     def get_fc_port():
@@ -230,7 +243,7 @@ class MockSystem(object):
         port0.wwn = '00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF'
         port1 = MockResource('fcp1')
         port1.wwn = '00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:FF:EE'
-        return [port0, port1]
+        return MockResourceList.create(port0, port1)
 
     @staticmethod
     def create_io_limit_policy(name, max_iops=None, max_kbps=None):
@@ -393,14 +406,29 @@ class ClientTest(unittest.TestCase):
                     {'iqn': 'iqn.1-1.com.e:c.p1.0', 'portal': '1.1.1.2:3260'}]
         self.assertListEqual(expected, ret)
 
+    def test_get_iscsi_target_info_allowed_ports(self):
+        ret = self.client.get_iscsi_target_info(allowed_ports=['spa_eth0'])
+        expected = [{'iqn': 'iqn.1-1.com.e:c.p0.0', 'portal': '1.1.1.1:3260'}]
+        self.assertListEqual(expected, ret)
+
     def test_get_fc_target_info_without_host(self):
         ret = self.client.get_fc_target_info()
         self.assertListEqual(['8899AABBCCDDEEFF', '8899AABBCCDDFFEE'], ret)
+
+    def test_get_fc_target_info_without_host_but_allowed_ports(self):
+        ret = self.client.get_fc_target_info(allowed_ports=['spa_fc0'])
+        self.assertListEqual(['8899AABBCCDDEEFF'], ret)
 
     def test_get_fc_target_info_with_host(self):
         host = MockResource('host0')
         ret = self.client.get_fc_target_info(host, True)
         self.assertListEqual(['8899AABBCCDDEEFF', '8899AABBCCDDEEFF'], ret)
+
+    def test_get_fc_target_info_with_host_and_allowed_ports(self):
+        host = MockResource('host0')
+        ret = self.client.get_fc_target_info(host, True,
+                                             allowed_ports=['spb_iom_0_fc0'])
+        self.assertListEqual([], ret)
 
     def test_get_io_limit_policy_none(self):
         ret = self.client.get_io_limit_policy(None)
