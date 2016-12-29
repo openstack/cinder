@@ -1,4 +1,4 @@
-#    Copyright (c) 2013 Dell Inc.
+#    Copyright (c) 2013-2017 Dell Inc, or its subsidiaries.
 #    Copyright 2013 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -28,13 +28,13 @@ from cinder import ssh_utils
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers import eqlx
+from cinder.volume.drivers.dell_emc import ps
 
 
-class DellEQLSanISCSIDriverTestCase(test.TestCase):
+class PSSeriesISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(DellEQLSanISCSIDriverTestCase, self).setUp()
+        super(PSSeriesISCSIDriverTestCase, self).setUp()
         self.configuration = mock.Mock(conf.Configuration)
         self.configuration.san_is_local = False
         self.configuration.san_ip = "10.0.0.1"
@@ -61,7 +61,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                     'VolumeReserve: 80GB']
         self.cmd = 'this is dummy command'
         self._context = context.get_admin_context()
-        self.driver = eqlx.DellEQLSanISCSIDriver(
+        self.driver = ps.PSSeriesISCSIDriver(
             configuration=self.configuration)
         self.volume_name = "fakevolume"
         self.volid = "fakeid"
@@ -418,7 +418,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             self.assertEqual(thin_enabled, stats['thin_provisioning_support'])
             self.assertEqual(not thin_enabled,
                              stats['thick_provisioning_support'])
-            self.assertEqual('Dell', stats['vendor_name'])
+            self.assertEqual('Dell EMC', stats['vendor_name'])
             self.assertTrue(stats['multiattach'])
 
     def test_get_space_in_gb(self):
@@ -568,11 +568,11 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     def test_with_timeout(self):
-        @eqlx.with_timeout
+        @ps.with_timeout
         def no_timeout(cmd, *args, **kwargs):
             return 'no timeout'
 
-        @eqlx.with_timeout
+        @ps.with_timeout
         def w_timeout(cmd, *args, **kwargs):
             time.sleep(1)
 
