@@ -514,6 +514,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertFalse(volume_attachment_get.called)
 
 
+@ddt.ddt
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')
     def test_get_all(self, volume_get_all):
@@ -559,6 +560,16 @@ class TestVolumeList(test_objects.BaseObjectsTestCase):
             mock.sentinel.sorted_dirs, mock.sentinel.filters)
         self.assertEqual(1, len(volumes))
         TestVolume._compare(self, db_volume, volumes[0])
+
+    @ddt.data(['name_id'], ['__contains__'])
+    def test_get_by_project_with_sort_key(self, sort_keys):
+        fake_volume.fake_db_volume()
+
+        self.assertRaises(exception.InvalidInput,
+                          objects.VolumeList.get_all_by_project,
+                          self.context,
+                          self.context.project_id,
+                          sort_keys=sort_keys)
 
     @mock.patch('cinder.db.volume_include_in_cluster')
     def test_include_in_cluster(self, include_mock):
