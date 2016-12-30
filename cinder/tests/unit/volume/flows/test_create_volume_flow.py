@@ -854,6 +854,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         image_meta = {'id': image_id,
                       'container_format': 'bare',
                       'disk_format': format,
+                      'size': 1024,
                       'owner': owner or self.ctxt.project_id,
                       'virtual_size': None}
 
@@ -921,7 +922,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': '1073741824'}
+        image_meta = {'virtual_size': '1073741824', 'size': 1073741824}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -968,7 +969,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': '1073741824'}
+        image_meta = {'virtual_size': '1073741824', 'size': 1073741824}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1052,7 +1053,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': '2147483648'}
+        image_meta = {'virtual_size': '2147483648', 'size': 2147483648}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1085,7 +1086,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': None}
+        image_meta = {'virtual_size': None, 'size': 1024}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1122,10 +1123,12 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_cache_miss(
-            self, mock_qemu_info, mock_volume_get, mock_volume_update,
-            mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            self, mock_check_size, mock_qemu_info, mock_volume_get,
+            mock_volume_update, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = self.ctxt
         mock_fetch_img.return_value = mock.MagicMock(
             spec=utils.get_file_spec())
@@ -1189,9 +1192,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_cache_miss_error_downloading(
-            self, mock_qemu_info, mock_volume_get, mock_volume_update,
-            mock_get_internal_context,
+            self, mock_check_size, mock_qemu_info, mock_volume_get,
+            mock_volume_update, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_fetch_img.return_value = mock.MagicMock()
@@ -1267,7 +1271,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': '1073741824'}
+        image_meta = {'virtual_size': '1073741824', 'size': 1073741824}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1313,9 +1317,10 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_cache_miss_error_size_invalid(
-            self, mock_qemu_info, mock_get_internal_context,
+            self, mock_qemu_info, mock_check_space, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_fetch_img.return_value = mock.MagicMock()

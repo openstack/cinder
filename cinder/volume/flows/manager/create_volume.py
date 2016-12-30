@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import traceback
 
 from oslo_concurrency import processutils
@@ -712,6 +713,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                   " at location %(image_location)s.",
                   {'volume_id': volume.id,
                    'image_location': image_location, 'image_id': image_id})
+
+        # NOTE(e0ne): check for free space in image_conversion_dir before
+        # image downloading.
+        if (CONF.image_conversion_dir and not
+                os.path.exists(CONF.image_conversion_dir)):
+            os.makedirs(CONF.image_conversion_dir)
+        image_utils.check_available_space(CONF.image_conversion_dir,
+                                          image_meta['size'], image_id)
 
         virtual_size = image_meta.get('virtual_size')
         if virtual_size:

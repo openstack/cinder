@@ -39,6 +39,7 @@ from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import psutil
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -350,6 +351,10 @@ def fetch_to_volume_format(context, image_service,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file, })
 
+        # NOTE(e0ne): check for free space in destination directory before
+        # image convertion.
+        check_available_space(dest, virt_size, image_id)
+
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
         # TODO(avishay): We can speed this up by checking if the image is raw
@@ -444,6 +449,17 @@ def check_virtual_size(virtual_size, volume_size, image_id):
         raise exception.ImageUnacceptable(image_id=image_id,
                                           reason=reason)
     return virtual_size
+
+
+def check_available_space(dest, image_size, image_id):
+    # TODO(e0ne): replace psutil with shutil.disk_usage when we drop
+    # Python 2.7 support.
+    free_space = psutil.disk_usage(dest).free
+    if free_space <= image_size:
+        msg = ('There is no space to convert image. '
+               'Requested: %(image_size), available: %(free_space)'
+               ) % {'image_size': image_size, 'free_space': free_space}
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
 
 def is_xenserver_format(image_meta):

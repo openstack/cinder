@@ -97,6 +97,7 @@ class _FakeImageService(object):
                   'updated_at': timestamp,
                   'deleted_at': None,
                   'deleted': False,
+                  'size': 1024,
                   'status': 'active',
                   'visibility': 'public',
                   'protected': True,
