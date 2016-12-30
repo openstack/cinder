@@ -1,0 +1,4 @@
+---
+upgrade:
+  - Removed deprecated option 'max_request_body_size_opt'
+    in api.middleware.
