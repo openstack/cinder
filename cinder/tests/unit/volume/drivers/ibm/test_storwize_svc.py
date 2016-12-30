@@ -3754,7 +3754,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'grainsize': 256,
                'compression': False,
                'easytier': True,
-               'iogrp': 0,
+               'iogrp': '0',
                'qos': None,
                'replication': False,
                'stretched_cluster': None,
@@ -4114,7 +4114,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         opts_list = []
         chck_list = []
-        opts_list.append({'rsize': -1, 'easytier': True, 'iogrp': 0})
+        opts_list.append({'rsize': -1, 'easytier': True, 'iogrp': '0'})
         chck_list.append({'free_capacity': '0', 'easy_tier': 'on',
                           'IO_group_id': '0'})
 
@@ -4124,14 +4124,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         opts_list.append({'rsize': -1, 'nofmtdisk': True})
         chck_list.append({'formatted': 'no'})
 
-        test_iogrp = 1 if self.USESIM else 0
+        test_iogrp = '1' if self.USESIM else '0'
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 0,
                           'autoexpand': True, 'grainsize': 32,
                           'easytier': False, 'iogrp': test_iogrp})
         chck_list.append({'-free_capacity': '0', 'compressed_copy': 'no',
                           'warning': '0', 'autoexpand': 'on',
                           'grainsize': '32', 'easy_tier': 'off',
-                          'IO_group_id': six.text_type(test_iogrp)})
+                          'IO_group_id': (test_iogrp)})
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 80,
                           'autoexpand': False, 'grainsize': 256,
                           'easytier': True})
@@ -5672,6 +5672,61 @@ class StorwizeHelpersTestCase(test.TestCase):
 
         for i in range(7):
             self.assertTrue(self.storwize_svc_common.replication_licensed())
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_count_by_io_group')
+    def test_select_io_group(self, get_vdisk_count_by_io_group):
+        # given io groups
+        opts = {}
+        # system io groups
+        state = {}
+
+        fake_iog_vdc1 = {0: 100, 1: 50, 2: 50, 3: 300}
+        fake_iog_vdc2 = {0: 2, 1: 1, 2: 200}
+        fake_iog_vdc3 = {0: 2, 2: 200}
+        fake_iog_vdc4 = {0: 100, 1: 100, 2: 100, 3: 100}
+        fake_iog_vdc5 = {0: 10, 1: 1, 2: 200, 3: 300}
+
+        get_vdisk_count_by_io_group.side_effect = [fake_iog_vdc1,
+                                                   fake_iog_vdc2,
+                                                   fake_iog_vdc3,
+                                                   fake_iog_vdc4,
+                                                   fake_iog_vdc5]
+        opts['iogrp'] = '0,2'
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(2, iog)
+
+        opts['iogrp'] = '0'
+        state['available_iogrps'] = [0, 1, 2]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(0, iog)
+
+        opts['iogrp'] = '1,2'
+        state['available_iogrps'] = [0, 2]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(2, iog)
+
+        opts['iogrp'] = ' 0, 1, 2 '
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts)
+        self.assertTrue(iog in state['available_iogrps'])
+        # since vdisk count in all iogroups is same, it will pick the first
+        self.assertEqual(0, iog)
+
+        opts['iogrp'] = '0,1,2, 3'
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(1, iog)
 
 
 @ddt.ddt

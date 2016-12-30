@@ -237,6 +237,9 @@ class StorwizeSVCReplicationGlobalMirror(
             if not attr:
                 opts = self.driver._get_vdisk_params(vref['volume_type_id'])
                 pool = self.target.get('pool_name')
+                src_attr = self.driver._helpers.get_vdisk_attributes(
+                    vref['name'])
+                opts['iogrp'] = src_attr['IO_group_id']
                 self.target_helpers.create_vdisk(target_vol_name,
                                                  six.text_type(vref['size']),
                                                  'gb', pool, opts)

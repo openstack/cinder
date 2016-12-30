@@ -82,9 +82,12 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_vol_easytier',
                 default=True,
                 help='Enable Easy Tier for volumes'),
-    cfg.IntOpt('storwize_svc_vol_iogrp',
-               default=0,
-               help='The I/O group in which to allocate volumes'),
+    cfg.StrOpt('storwize_svc_vol_iogrp',
+               default='0',
+               help='The I/O group in which to allocate volumes. It can be a '
+               'comma-separated list in which case the driver will select an '
+               'io_group based on least number of volumes associated with the '
+               'io_group.'),
     cfg.IntOpt('storwize_svc_flashcopy_timeout',
                default=120,
                min=1, max=600,
@@ -665,9 +668,44 @@ class StorwizeHelpers(object):
                 msg = (_('Expected integer for node_count, '
                          'svcinfo lsiogrp returned: %(node)s.') %
                        {'node': iogrp['node_count']})
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         return iogrps
+
+    def get_vdisk_count_by_io_group(self):
+        res = {}
+        resp = self.ssh.lsiogrp()
+        for iogrp in resp:
+            try:
+                if int(iogrp['node_count']) > 0:
+                    res[int(iogrp['id'])] = int(iogrp['vdisk_count'])
+            except KeyError:
+                self.handle_keyerror('lsiogrp', iogrp)
+            except ValueError:
+                msg = (_('Expected integer for node_count, '
+                         'svcinfo lsiogrp returned: %(node)s') %
+                       {'node': iogrp['node_count']})
+                raise exception.VolumeBackendAPIException(data=msg)
+        return res
+
+    def select_io_group(self, state, opts):
+        selected_iog = 0
+        iog_list = StorwizeHelpers._get_valid_requested_io_groups(state, opts)
+        if len(iog_list) == 0:
+            raise exception.InvalidInput(
+                reason=_('Given I/O group(s) %(iogrp)s not valid; available '
+                         'I/O groups are %(avail)s.')
+                % {'iogrp': opts['iogrp'],
+                   'avail': state['available_iogrps']})
+        iog_vdc = self.get_vdisk_count_by_io_group()
+        LOG.debug("IO group current balance %s", iog_vdc)
+        min_vdisk_count = iog_vdc[iog_list[0]]
+        selected_iog = iog_list[0]
+        for iog in iog_list:
+            if iog_vdc[iog] < min_vdisk_count:
+                min_vdisk_count = iog_vdc[iog]
+                selected_iog = iog
+        LOG.debug("Selected io_group is %d", selected_iog)
+        return selected_iog
 
     def get_volume_io_group(self, vol_name):
         vdisk = self.ssh.lsvdisk(vol_name)
@@ -1016,18 +1054,32 @@ class StorwizeHelpers(object):
                 reason=_('If compression is set to True, rsize must '
                          'also be set (not equal to -1).'))
 
-        if opts['iogrp'] not in state['available_iogrps']:
-            avail_grps = ''.join(str(e) for e in state['available_iogrps'])
+        iogs = StorwizeHelpers._get_valid_requested_io_groups(state, opts)
+
+        if len(iogs) == 0:
             raise exception.InvalidInput(
-                reason=_('I/O group %(iogrp)d is not valid; available '
+                reason=_('Given I/O group(s) %(iogrp)s not valid; available '
                          'I/O groups are %(avail)s.')
                 % {'iogrp': opts['iogrp'],
-                   'avail': avail_grps})
+                   'avail': state['available_iogrps']})
 
         if opts['nofmtdisk'] and opts['rsize'] != -1:
             raise exception.InvalidInput(
                 reason=_('If nofmtdisk is set to True, rsize must '
                          'also be set to -1.'))
+
+    @staticmethod
+    def _get_valid_requested_io_groups(state, opts):
+        given_iogs = str(opts['iogrp'])
+        iog_list = given_iogs.split(',')
+        # convert to int
+        iog_list = list(map(int, iog_list))
+        LOG.debug("Requested iogroups %s", iog_list)
+        LOG.debug("Available iogroups %s", state['available_iogrps'])
+        filtiog = set(iog_list).intersection(state['available_iogrps'])
+        iog_list = list(filtiog)
+        LOG.debug("Filtered (valid) requested iogroups %s", iog_list)
+        return iog_list
 
     def _get_opts_from_specs(self, opts, specs):
         qos = {}
@@ -1298,6 +1350,7 @@ class StorwizeHelpers(object):
             for snapshot in snapshots:
                 opts = self.get_vdisk_params(config, state,
                                              snapshot['volume_type_id'])
+
                 self.create_flashcopy_to_consistgrp(snapshot['volume_name'],
                                                     snapshot['name'],
                                                     fc_consistgrp,
@@ -1459,6 +1512,7 @@ class StorwizeHelpers(object):
         # In case we need to use a specific pool
         if not pool:
             pool = src_attrs['mdisk_grp_name']
+        opts['iogrp'] = src_attrs['IO_group_id']
         self.create_vdisk(target, src_size, 'b', pool, opts)
 
         self.ssh.mkfcmap(source, target, full_copy,
@@ -1673,6 +1727,8 @@ class StorwizeHelpers(object):
         # In case we need to use a specific pool
         if not pool:
             pool = src_attrs['mdisk_grp_name']
+
+        opts['iogrp'] = src_attrs['IO_group_id']
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
@@ -2285,6 +2341,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                       volume_metadata=
                                       volume.get('volume_metadata'))
         pool = utils.extract_host(volume['host'], 'pool')
+
+        opts['iogrp'] = self._helpers.select_io_group(self._state, opts)
         self._helpers.create_vdisk(volume['name'], str(volume['size']),
                                    'gb', pool, opts)
         if opts['qos']:
@@ -3167,15 +3225,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         model_update = None
         new_rep_type = self._get_specs_replicated_type(new_type)
         old_rep_type = self._get_volume_replicated_type(ctxt, volume)
+        old_io_grp = self._helpers.get_volume_io_group(volume['name'])
 
         # There are three options for rep_type: None, metro, global
         if new_rep_type != old_rep_type:
-            if new_opts['iogrp'] != old_opts['iogrp']:
+            if (old_io_grp not in
+                    StorwizeHelpers._get_valid_requested_io_groups(
+                        self._state, new_opts)):
                 msg = (_('Unable to retype: it is not allowed to change '
                          'replication type and io group at the same time.'))
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-
             if new_rep_type and old_rep_type:
                 msg = (_('Unable to retype: it is not allowed to change '
                          '%(old_rep_type)s volume to %(new_rep_type)s '
@@ -3191,6 +3251,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          ' Volume = %s') % volume['id'])
                 raise exception.VolumeDriverException(message=msg)
 
+        new_io_grp = self._helpers.select_io_group(self._state, new_opts)
+
         if need_copy:
             self._check_volume_copy_ops()
             dest_pool = self._helpers.can_migrate_to_host(host, self._state)
@@ -3198,8 +3260,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 return False
 
             retype_iogrp_property(volume,
-                                  new_opts['iogrp'],
-                                  old_opts['iogrp'])
+                                  new_io_grp, old_io_grp)
             try:
                 new_op = self.add_vdisk_copy(volume['name'],
                                              dest_pool,
@@ -3207,14 +3268,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self._add_vdisk_copy_op(ctxt, volume, new_op)
             except exception.VolumeDriverException:
                 # roll back changing iogrp property
-                retype_iogrp_property(volume, old_opts['iogrp'],
-                                      new_opts['iogrp'])
+                retype_iogrp_property(volume, old_io_grp, new_io_grp)
                 msg = (_('Unable to retype:  A copy of volume %s exists. '
                          'Retyping would exceed the limit of 2 copies.'),
                        volume['id'])
                 raise exception.VolumeDriverException(message=msg)
         else:
-            retype_iogrp_property(volume, new_opts['iogrp'], old_opts['iogrp'])
+            retype_iogrp_property(volume, new_io_grp, old_io_grp)
 
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
@@ -3350,7 +3410,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          "the volume type chosen is not compress."))
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
-            if vdisk_io_grp != opts['iogrp']:
+            if (vdisk_io_grp not in
+                    StorwizeHelpers._get_valid_requested_io_groups(
+                        self._state, opts)):
                 msg = (_("Failed to manage existing volume due to "
                          "I/O group mismatch. The I/O group of the "
                          "volume to be managed is %(vdisk_iogrp)s. I/O group"
