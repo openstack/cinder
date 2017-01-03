@@ -37,4 +37,10 @@ class ViewBuilder(views_v2.ViewBuilder):
         if req_version.matches("3.13", None):
             volume_ref['volume']['group_id'] = volume.get('group_id')
 
+        # Add provider_id if min version is greater than or equal to 3.21
+        # for admin.
+        if (request.environ['cinder.context'].is_admin and
+                req_version.matches("3.21", None)):
+            volume_ref['volume']['provider_id'] = volume.get('provider_id')
+
         return volume_ref

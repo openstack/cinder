@@ -218,3 +218,7 @@ user documentation.
 3.20
 ----
   Added reset status actions 'reset_status' to generic volume group.
+
+3.21
+----
+  Show provider_id in detailed view of a volume for admin.
