@@ -16,6 +16,7 @@
 
 import ddt
 import mock
+from six.moves import http_client
 import webob
 
 from cinder.api.contrib import qos_specs_manage
@@ -590,7 +591,7 @@ class QoSSpecManageApiTest(test.TestCase):
             (fake.PROJECT_ID, fake.QOS_SPEC_ID, fake.VOLUME_TYPE_ID))
         res = self.controller.associate(req, fake.QOS_SPEC_ID)
 
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
                 side_effect=return_qos_specs_get_qos_specs)
@@ -643,7 +644,7 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/%s/qos-specs/%s/disassociate?vol_type_id=%s' % (
                 fake.PROJECT_ID, fake.QOS_SPEC_ID, fake.VOLUME_TYPE_ID))
         res = self.controller.disassociate(req, fake.QOS_SPEC_ID)
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
                 side_effect=return_qos_specs_get_qos_specs)
@@ -698,7 +699,7 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/%s/qos-specs/%s/disassociate_all' % (
                 fake.PROJECT_ID, fake.QOS_SPEC_ID))
         res = self.controller.disassociate_all(req, fake.QOS_SPEC_ID)
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
                 side_effect=return_qos_specs_get_qos_specs)

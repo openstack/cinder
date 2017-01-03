@@ -19,6 +19,7 @@ Tests for cgsnapshot code.
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder.consistencygroup import api as consistencygroupAPI
@@ -61,7 +62,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual('this is a test cgsnapshot',
                          res_dict['cgsnapshot']['description'])
 
@@ -83,8 +84,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(404, res.status_int)
-        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND,
+                         res_dict['itemNotFound']['code'])
         self.assertEqual('GroupSnapshot %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
@@ -108,7 +110,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(cgsnapshot1.id,
                          res_dict['cgsnapshots'][0]['id'])
         self.assertEqual('test_cgsnapshot',
@@ -150,7 +152,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual('this is a test cgsnapshot',
                          res_dict['cgsnapshots'][0]['description'])
         self.assertEqual('test_cgsnapshot',
@@ -205,7 +207,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['cgsnapshot'])
         self.assertTrue(mock_validate.called)
 
@@ -236,8 +238,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(400, res.status_int)
-        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         self.assertEqual(
             "Invalid volume: The snapshot cannot be created when the volume "
             "is in error status.",
@@ -258,8 +261,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(400, res.status_int)
-        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         self.assertEqual("Missing required element 'cgsnapshot' in "
                          "request body.",
                          res_dict['badRequest']['message'])
@@ -284,8 +288,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(400, res.status_int)
-        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         self.assertEqual('Invalid CgSnapshot: invalid cgsnapshot',
                          res_dict['badRequest']['message'])
         consistencygroup.destroy()
@@ -311,8 +316,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(404, res.status_int)
-        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND,
+                         res_dict['itemNotFound']['code'])
         self.assertEqual('CgSnapshot invalid_id could not be found.',
                          res_dict['itemNotFound']['message'])
         consistencygroup.destroy()
@@ -333,8 +339,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(400, res.status_int)
-        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         expected = ("Invalid ConsistencyGroup: Source CG cannot be empty or "
                     "in 'creating' or 'updating' state. No cgsnapshot will be "
                     "created.")
@@ -363,7 +370,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
 
         cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertEqual('deleting', cgsnapshot.status)
 
         cgsnapshot.destroy()
@@ -390,7 +397,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
 
         cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertEqual('available', cgsnapshot.status)
 
         cgsnapshot.destroy()
@@ -408,8 +415,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(404, res.status_int)
-        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND,
+                         res_dict['itemNotFound']['code'])
         self.assertEqual('GroupSnapshot %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
@@ -431,8 +439,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(400, res.status_int)
-        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST,
+                         res_dict['badRequest']['code'])
         expected = ('Invalid CgSnapshot: CgSnapshot status must be available '
                     'or error, and no CG can be currently using it as source '
                     'for its creation.')

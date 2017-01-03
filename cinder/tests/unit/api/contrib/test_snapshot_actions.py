@@ -14,6 +14,7 @@
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder import context
@@ -58,7 +59,7 @@ class SnapshotActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
                 side_effect=fake_snapshot_get)
@@ -73,7 +74,7 @@ class SnapshotActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_update_snapshot_status_without_status(self):
         self.mock_object(db, 'snapshot_get', fake_snapshot_get)
@@ -86,4 +87,4 @@ class SnapshotActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)

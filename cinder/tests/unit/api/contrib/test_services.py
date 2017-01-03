@@ -19,6 +19,7 @@ import datetime
 import ddt
 from iso8601 import iso8601
 import mock
+from six.moves import http_client
 import webob.exc
 
 from cinder.api.contrib import services
@@ -793,7 +794,7 @@ class ServicesTest(test.TestCase):
                                               mock.sentinel.host,
                                               None,
                                               mock.sentinel.backend_id)
-        self.assertEqual(202, res.status_code)
+        self.assertEqual(http_client.ACCEPTED, res.status_code)
 
     @ddt.data(('failover_host', {'host': mock.sentinel.host,
                                  'backend_id': mock.sentinel.backend_id}),
