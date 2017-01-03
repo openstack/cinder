@@ -223,7 +223,7 @@ class InvalidHost(Invalid):
 # Cannot be templated as the error syntax varies.
 # msg needs to be constructed when raised.
 class InvalidParameterValue(Invalid):
-    message = _("%(err)s")
+    message = "%(err)s"
 
 
 class InvalidAuthKey(Invalid):
@@ -1145,7 +1145,7 @@ class ISCSITargetDetachFailed(CinderException):
 
 
 class ISCSITargetHelperCommandFailed(CinderException):
-    message = _("%(error_message)s")
+    message = "%(error_message)s"
 
 
 # X-IO driver exception.
@@ -1204,7 +1204,7 @@ class ZadaraInvalidAttachmentInfo(Invalid):
 
 
 class ZadaraVolumeNotFound(VolumeDriverException):
-    message = _("%(reason)s")
+    message = "%(reason)s"
 
 
 # ZFSSA NFS driver exception.
@@ -1239,11 +1239,11 @@ class DotHillInvalidBackend(VolumeDriverException):
 
 
 class DotHillConnectionError(VolumeDriverException):
-    message = _("%(message)s")
+    message = "%(message)s"
 
 
 class DotHillAuthenticationError(VolumeDriverException):
-    message = _("%(message)s")
+    message = "%(message)s"
 
 
 class DotHillNotEnoughSpace(VolumeDriverException):
@@ -1251,7 +1251,7 @@ class DotHillNotEnoughSpace(VolumeDriverException):
 
 
 class DotHillRequestError(VolumeDriverException):
-    message = _("%(message)s")
+    message = "%(message)s"
 
 
 class DotHillNotTargetPortal(VolumeDriverException):
@@ -1282,7 +1282,7 @@ class NotSupportedOperation(Invalid):
 
 # Hitachi HNAS drivers
 class HNASConnError(VolumeDriverException):
-    message = _("%(message)s")
+    message = "%(message)s"
 
 
 # Coho drivers
@@ -1297,7 +1297,7 @@ class TegileAPIException(VolumeBackendAPIException):
 
 # NexentaStor driver exception
 class NexentaException(VolumeDriverException):
-    message = _("%(message)s")
+    message = "%(message)s"
 
 
 # Google Cloud Storage(GCS) backup driver
