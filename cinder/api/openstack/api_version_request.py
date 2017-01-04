@@ -71,6 +71,7 @@ REST_API_VERSION_HISTORY = """
     * 3.20 - Add API reset status actions 'reset_status' to generic
              volume group.
     * 3.21 - Show provider_id in detailed view of a volume for admin.
+    * 3.22 - Add filtering based on metadata for snapshot listing.
 """
 
 # The minimum and maximum versions of the API supported
@@ -78,7 +79,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.21"
+_MAX_API_VERSION = "3.22"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
