@@ -15,6 +15,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
@@ -169,7 +170,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 raise exception.InvalidInput(reason=msg)
 
         def validate_int(size):
-            if not isinstance(size, int) or size <= 0:
+            if not isinstance(size, six.integer_types) or size <= 0:
                 msg = _("Volume size '%(size)s' must be an integer and"
                         " greater than 0") % {'size': size}
                 raise exception.InvalidInput(reason=msg)
