@@ -48,9 +48,14 @@ class QuotaIntegrationTestCase(test.TestCase):
         objects.register_all()
         super(QuotaIntegrationTestCase, self).setUp()
         self.volume_type_name = CONF.default_volume_type
-        self.volume_type = db.volume_type_create(
-            context.get_admin_context(),
-            dict(name=self.volume_type_name))
+        self.volume_type = objects.VolumeType(context.get_admin_context(),
+                                              name=self.volume_type_name,
+                                              description='',
+                                              is_public=False,
+                                              projects=[],
+                                              extra_specs={})
+        self.volume_type.create()
+
         self.addCleanup(db.volume_type_destroy, context.get_admin_context(),
                         self.volume_type['id'])
 

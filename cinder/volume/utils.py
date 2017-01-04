@@ -877,3 +877,11 @@ def create_encryption_key(context, key_manager, volume_type_id):
             algorithm=algorithm,
             length=length)
     return encryption_key_id
+
+
+def is_replicated_spec(extra_specs):
+    if not extra_specs:
+        return False
+    spec = extra_specs.get('replication_enabled', '').split()
+    return (len(spec) == 2 and
+            spec[0] == '<is>' and strutils.bool_from_string(spec[1]))
