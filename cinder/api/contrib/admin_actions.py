@@ -14,6 +14,7 @@
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -123,7 +124,7 @@ class AdminController(wsgi.Controller):
         notifier.info(context, self.collection + '.reset_status.end',
                       notifier_info)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-force_delete')
     def _force_delete(self, req, id, body):
@@ -133,7 +134,7 @@ class AdminController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         resource = self._get(context, id)
         self._delete(context, resource, force=True)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class VolumeAdminController(AdminController):
@@ -232,7 +233,7 @@ class VolumeAdminController(AdminController):
                 # be exposed to the user and in such cases it should raise
                 # 500 error.
                 raise
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-migrate_volume')
     def _migrate_volume(self, req, id, body):
@@ -248,7 +249,7 @@ class VolumeAdminController(AdminController):
         lock_volume = utils.get_bool_param('lock_volume', params)
         self.volume_api.migrate_volume(context, volume, host, cluster_name,
                                        force_host_copy, lock_volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-migrate_volume_completion')
     def _migrate_volume_completion(self, req, id, body):
@@ -325,7 +326,7 @@ class BackupAdminController(AdminController):
         # Not found exception will be handled at the wsgi level
         self.backup_api.reset_status(context=context, backup_id=id,
                                      status=update['status'])
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Admin_actions(extensions.ExtensionDescriptor):

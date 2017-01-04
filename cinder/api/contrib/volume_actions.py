@@ -18,6 +18,7 @@ import oslo_messaging as messaging
 from oslo_utils import encodeutils
 from oslo_utils import strutils
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -87,7 +88,7 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-detach')
     def _detach(self, req, id, body):
@@ -113,7 +114,7 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-reserve')
     def _reserve(self, req, id, body):
@@ -123,7 +124,7 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         self.volume_api.reserve_volume(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-unreserve')
     def _unreserve(self, req, id, body):
@@ -133,7 +134,7 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         self.volume_api.unreserve_volume(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-begin_detaching')
     def _begin_detaching(self, req, id, body):
@@ -143,7 +144,7 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         self.volume_api.begin_detaching(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-roll_detaching')
     def _roll_detaching(self, req, id, body):
@@ -153,7 +154,7 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
 
         self.volume_api.roll_detaching(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-initialize_connection')
     def _initialize_connection(self, req, id, body):
@@ -195,9 +196,9 @@ class VolumeActionsController(wsgi.Controller):
         except exception.VolumeBackendAPIException:
             msg = _("Unable to terminate volume connection from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
@@ -288,7 +289,7 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-update_readonly_flag')
     def _volume_readonly_update(self, req, id, body):
@@ -312,7 +313,7 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-retype')
     def _retype(self, req, id, body):
@@ -327,7 +328,7 @@ class VolumeActionsController(wsgi.Controller):
         policy = body['os-retype'].get('migration_policy')
 
         self.volume_api.retype(context, volume, new_type, policy)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-set_bootable')
     def _set_bootable(self, req, id, body):
@@ -353,7 +354,7 @@ class VolumeActionsController(wsgi.Controller):
         update_dict = {'bootable': bootable}
 
         self.volume_api.update(context, volume, update_dict)
-        return webob.Response(status_int=200)
+        return webob.Response(status_int=http_client.OK)
 
 
 class Volume_actions(extensions.ExtensionDescriptor):

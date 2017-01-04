@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -31,7 +32,7 @@ class SnapshotUnmanageController(wsgi.Controller):
         super(SnapshotUnmanageController, self).__init__(*args, **kwargs)
         self.volume_api = volume.API()
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-unmanage')
     def unmanage(self, req, id, body):
         """Stop managing a snapshot.
@@ -57,7 +58,7 @@ class SnapshotUnmanageController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         except exception.InvalidSnapshot as ex:
             raise exc.HTTPBadRequest(explanation=ex.msg)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Snapshot_unmanage(extensions.ExtensionDescriptor):

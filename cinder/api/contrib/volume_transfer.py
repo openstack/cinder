@@ -14,6 +14,7 @@
 #    under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -72,7 +73,7 @@ class VolumeTransferController(wsgi.Controller):
 
         return transfers
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
@@ -107,7 +108,7 @@ class VolumeTransferController(wsgi.Controller):
                                              dict(new_transfer))
         return transfer
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
         transfer_id = id
@@ -147,7 +148,7 @@ class VolumeTransferController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         self.transfer_api.delete(context, transfer_id=id)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Volume_transfer(extensions.ExtensionDescriptor):

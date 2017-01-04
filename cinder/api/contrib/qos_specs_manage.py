@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api import common
@@ -191,7 +192,7 @@ class QoSSpecsController(wsgi.Controller):
             msg = _('Qos specs still in use.')
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
@@ -219,7 +220,7 @@ class QoSSpecsController(wsgi.Controller):
             # Not found exception will be handled at the wsgi level
             raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def associations(self, req, id):
         """List all associations of given qos specs."""
@@ -298,7 +299,7 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPInternalServerError(
                 explanation=six.text_type(err))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def disassociate(self, req, id):
         """Disassociate a qos specs from a volume type."""
@@ -338,7 +339,7 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPInternalServerError(
                 explanation=six.text_type(err))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def disassociate_all(self, req, id):
         """Disassociate a qos specs from all volume types."""
@@ -368,7 +369,7 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPInternalServerError(
                 explanation=six.text_type(err))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Qos_specs_manage(extensions.ExtensionDescriptor):

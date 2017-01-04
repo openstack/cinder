@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import strutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -91,7 +92,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of consistency groups."""
@@ -154,7 +155,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             groups['consistencygroups'])
         return consistencygroups
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new consistency group."""
         LOG.debug('Creating new consistency group %s', body)
@@ -198,7 +199,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create_from_src(self, req, body):
         """Create a new consistency group from a source.
 
@@ -335,7 +336,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                                       remove_volumes)
         self._update(context, id, name, description, add_volumes,
                      remove_volumes)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Consistencygroups(extensions.ExtensionDescriptor):

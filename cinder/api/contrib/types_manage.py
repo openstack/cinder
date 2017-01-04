@@ -16,6 +16,7 @@
 """The volume types manage extension."""
 
 import six
+from six.moves import http_client
 import webob
 
 from oslo_utils import strutils
@@ -187,7 +188,7 @@ class VolumeTypesManageController(wsgi.Controller):
             # Not found exception will be handled at the wsgi level
             raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Types_manage(extensions.ExtensionDescriptor):

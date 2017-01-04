@@ -18,6 +18,7 @@
 """The backups api."""
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -67,7 +68,7 @@ class BackupsController(wsgi.Controller):
         except exception.InvalidBackup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of backups."""
@@ -116,7 +117,7 @@ class BackupsController(wsgi.Controller):
     # - whether requested volume_id exists so we can return some errors
     #   immediately
     # - maybe also do validation of swift container name
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new backup."""
         LOG.debug('Creating new backup %s', body)
@@ -160,7 +161,7 @@ class BackupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, dict(new_backup))
         return retval
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def restore(self, req, id, body):
         """Restore an existing backup to a volume."""
         LOG.debug('Restoring backup %(backup_id)s (%(body)s)',
@@ -199,7 +200,7 @@ class BackupsController(wsgi.Controller):
             req, dict(new_restore))
         return retval
 
-    @wsgi.response(200)
+    @wsgi.response(http_client.OK)
     def export_record(self, req, id):
         """Export a backup."""
         LOG.debug('export record called for member %s.', id)
@@ -216,7 +217,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('export record output: %s.', retval)
         return retval
 
-    @wsgi.response(201)
+    @wsgi.response(http_client.CREATED)
     def import_record(self, req, body):
         """Import a backup."""
         LOG.debug('Importing record from %s.', body)

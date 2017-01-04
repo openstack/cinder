@@ -15,6 +15,7 @@
 
 from oslo_utils import uuidutils
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -118,7 +119,7 @@ class VolumeTypeActionController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         except exception.VolumeTypeAccessExists as err:
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')
     def _removeProjectAccess(self, req, id, body):
@@ -129,7 +130,7 @@ class VolumeTypeActionController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         volume_types.remove_volume_type_access(context, id, project)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Volume_type_access(extensions.ExtensionDescriptor):

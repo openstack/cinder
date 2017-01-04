@@ -15,6 +15,7 @@
 
 """The volume types encryption extension."""
 
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -167,7 +168,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             # Not found exception will be handled at the wsgi level
             db.volume_type_encryption_delete(context, type_id)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Volume_type_encryption(extensions.ExtensionDescriptor):
