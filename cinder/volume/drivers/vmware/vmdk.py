@@ -2123,3 +2123,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param src_vref: Source Volume object
         """
         self._create_cloned_volume(volume, src_vref)
+
+    def accept_transfer(self, context, volume, new_user, new_project):
+        """Accept the transfer of a volume for a new user/project."""
+        backing = self.volumeops.get_backing(volume.name)
+        if backing:
+            dc = self.volumeops.get_dc(backing)
+            new_folder = self._get_volume_group_folder(dc, new_project)
+            self.volumeops.move_backing_to_folder(backing, new_folder)
