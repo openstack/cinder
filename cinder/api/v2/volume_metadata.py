@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from six.moves import http_client
 import webob
 
 from cinder.api import common
@@ -136,7 +137,7 @@ class Controller(wsgi.Controller):
             volume,
             id,
             meta_type=common.METADATA_TYPES.user)
-        return webob.Response(status_int=200)
+        return webob.Response(status_int=http_client.OK)
 
 
 def create_resource():

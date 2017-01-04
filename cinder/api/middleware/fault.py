@@ -16,6 +16,7 @@
 
 from oslo_log import log as logging
 import six
+from six.moves import http_client
 import webob.dec
 import webob.exc
 
@@ -49,9 +50,9 @@ class FaultWrapper(base_wsgi.Middleware):
                            'error': inner})
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
-        status = getattr(inner, 'code', 500)
+        status = getattr(inner, 'code', http_client.INTERNAL_SERVER_ERROR)
         if status is None:
-            status = 500
+            status = http_client.INTERNAL_SERVER_ERROR
 
         msg_dict = dict(url=req.url, status=status)
         LOG.info("%(url)s returned with HTTP %(status)d", msg_dict)

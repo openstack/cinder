@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -128,7 +129,7 @@ class Controller(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         snapshot = self.volume_api.get_snapshot(context, snapshot_id)
         self.volume_api.delete_snapshot_metadata(context, snapshot, id)
-        return webob.Response(status_int=200)
+        return webob.Response(status_int=http_client.OK)
 
 
 def create_resource():

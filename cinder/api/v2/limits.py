@@ -415,7 +415,7 @@ class WsgiLimiterProxy(object):
 
         resp = conn.getresponse()
 
-        if 200 >= resp.status < 300:
+        if http_client.OK >= resp.status < http_client.MULTIPLE_CHOICES:
             return None, None
 
         return resp.getheader("X-Wait-Seconds"), resp.read() or None

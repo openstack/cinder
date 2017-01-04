@@ -19,6 +19,7 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import uuidutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -75,7 +76,7 @@ class VolumeController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
         self.volume_api.delete(context, volume, cascade=cascade)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of volumes."""
@@ -171,7 +172,7 @@ class VolumeController(wsgi.Controller):
                 "access requested image.")
         raise exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Creates a new volume."""
         self.assert_valid_body(body, 'volume')
