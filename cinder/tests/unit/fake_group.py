@@ -18,6 +18,32 @@ from cinder import objects
 from cinder.tests.unit import fake_constants as fake
 
 
+def fake_db_group(**updates):
+    db_group = {
+        'id': fake.GROUP_ID,
+        'name': 'group-1',
+        'status': 'available',
+        'user_id': fake.USER_ID,
+        'project_id': fake.PROJECT_ID,
+        'group_type_id': fake.GROUP_TYPE_ID,
+    }
+
+    for name, field in objects.Group.fields.items():
+        if name in db_group:
+            continue
+        if field.nullable:
+            db_group[name] = None
+        elif field.default != fields.UnspecifiedDefault:
+            db_group[name] = field.default
+        else:
+            raise Exception('fake_db_group needs help with %s.' % name)
+
+    if updates:
+        db_group.update(updates)
+
+    return db_group
+
+
 def fake_db_group_type(**updates):
     db_group_type = {
         'id': fake.GROUP_TYPE_ID,
@@ -42,6 +68,11 @@ def fake_db_group_type(**updates):
         db_group_type.update(updates)
 
     return db_group_type
+
+
+def fake_group_obj(context, **updates):
+    return objects.Group._from_db_object(
+        context, objects.Group(), fake_db_group(**updates))
 
 
 def fake_group_type_obj(context, **updates):

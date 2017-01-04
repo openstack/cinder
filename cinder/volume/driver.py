@@ -1755,7 +1755,7 @@ class BaseVD(object):
         """Creates a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the group to be created.
+        :param group: the Group object of the group to be created.
         :returns: model_update
 
         model_update will be in this format: {'status': xxx, ......}.
@@ -1776,8 +1776,8 @@ class BaseVD(object):
         """Deletes a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the group to be deleted.
-        :param volumes: a list of volume dictionaries in the group.
+        :param group: the Group object of the group to be deleted.
+        :param volumes: a list of Volume objects in the group.
         :returns: model_update, volumes_model_update
 
         param volumes is retrieved directly from the db. It is a list of
@@ -1821,9 +1821,9 @@ class BaseVD(object):
         """Updates a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the group to be updated.
-        :param add_volumes: a list of volume dictionaries to be added.
-        :param remove_volumes: a list of volume dictionaries to be removed.
+        :param group: the Group object of the group to be updated.
+        :param add_volumes: a list of Volume objects to be added.
+        :param remove_volumes: a list of Volume objects to be removed.
         :returns: model_update, add_volumes_update, remove_volumes_update
 
         model_update is a dictionary that the driver wants the manager
