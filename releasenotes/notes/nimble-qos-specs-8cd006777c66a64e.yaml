@@ -1,0 +1,5 @@
+---
+features:
+  - Add Support for QoS in the Nimble Storage driver.
+    QoS is available from Nimble OS release 4.x and above.
+  - Add Support for deduplication of volumes in the Nimble Storage driver.
