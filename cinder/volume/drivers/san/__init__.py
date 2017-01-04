@@ -13,10 +13,10 @@
 #    under the License.
 
 """
-:mod:`cinder.volume.san` -- Cinder San Drivers
+:mod:`cinder.volume.drivers.san` -- Cinder San Drivers
 =====================================================
 
-.. automodule:: cinder.volume.san
+.. automodule:: cinder.volume.drivers.san
    :platform: Unix
    :synopsis: Module containing all the Cinder San drivers.
 """

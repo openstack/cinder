@@ -95,15 +95,6 @@ The :mod:`cinder.wsgi` Module
 Tests
 -----
 
-The :mod:`declare_conf` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.unit.declare_conf
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 The :mod:`conf_fixture` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,11 +116,3 @@ The :mod:`test_rpc` Module
     :show-inheritance:
 
 
-The :mod:`runtime_conf` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.unit.runtime_conf
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
