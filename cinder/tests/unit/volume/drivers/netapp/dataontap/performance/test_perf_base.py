@@ -261,7 +261,7 @@ class PerformanceLibraryTestCase(test.TestCase):
         result = self.perf_library._get_adjusted_consistency_point_time(
             500, 200)
 
-        self.assertAlmostEqual(250, result)
+        self.assertAlmostEqual(360.0, result)
 
     def test_get_performance_counter_delta(self):
 
