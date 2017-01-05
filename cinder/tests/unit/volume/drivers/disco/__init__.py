@@ -20,12 +20,15 @@ import mock
 from suds import client
 
 from os_brick.initiator import connector
+from oslo_config import cfg
 
 from cinder import context
 from cinder import test
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.disco.disco as driver
+import cinder.volume.drivers.disco.disco_api as disco_api
+import cinder.volume.drivers.disco.disco_attach_detach as attach_detach
 
 
 class TestDISCODriver(test.TestCase):
@@ -55,9 +58,14 @@ class TestDISCODriver(test.TestCase):
         self.cfg.restore_check_timeout = 3600
         self.cfg.clone_check_timeout = 3600
         self.cfg.snapshot_reserve_days = -1
-        self.cfg.retry_interval = 1
+        self.cfg.retry_interval = 2
+        self.cfg.num_volume_device_scan_tries = 3
 
-        self.FAKE_SOAP_RESPONSE = {
+        CONF = cfg.CONF
+        CONF.choice_client = 'SOAP'
+        CONF.rest_ip = '127.0.0.1'
+
+        self.FAKE_RESPONSE = {
             'standard': {
                 'success': {'status': 0, 'result': 'a normal message'},
                 'fail': {'status': 1, 'result': 'an error message'}}
@@ -67,26 +75,28 @@ class TestDISCODriver(test.TestCase):
                           'Client',
                           self.create_client).start()
 
+        mock.patch.object(disco_api,
+                          'DiscoApi',
+                          self.create_client).start()
+
         mock.patch.object(connector.InitiatorConnector,
                           'factory',
                           self.get_mock_connector).start()
-
-        mock.patch.object(driver.DiscoDriver,
-                          '_get_connector_identifier',
-                          self.get_mock_attribute).start()
 
         self.driver = driver.DiscoDriver(execute=mock_exec,
                                          configuration=self.cfg)
         self.driver.do_setup(None)
 
+        self.attach_detach = attach_detach.AttachDetachDiscoVolume()
+
         self.ctx = context.RequestContext('fake', 'fake', auth_token=True)
         self.volume = fake_volume.fake_volume_obj(self.ctx)
         self.volume['volume_id'] = '1234567'
 
-        self.requester = self.driver.client.service
+        self.requester = self.driver.client
 
     def create_client(self, *cmd, **kwargs):
-        """Mock the suds client."""
+        """Mock the client's methods."""
         return FakeClient()
 
     def get_mock_connector(self, *cmd, **kwargs):
@@ -97,9 +107,13 @@ class TestDISCODriver(test.TestCase):
         """Mock the os_brick connector."""
         return 'DISCO'
 
+    def get_fake_volume(self, *cmd, **kwards):
+        """Return a volume object for the tests."""
+        return self.volume
+
 
 class FakeClient(object):
-    """Fake class to mock suds.Client."""
+    """Fake class to mock client."""
 
     def __init__(self, *args, **kwargs):
         """Create a fake service attribute."""
@@ -107,10 +121,10 @@ class FakeClient(object):
 
 
 class FakeMethod(object):
-    """Fake class recensing some of the method of the suds client."""
+    """Fake class recensing some of the method of the rest client."""
 
     def __init__(self, *args, **kwargs):
-        """Fake class to mock the suds client."""
+        """Fake class to mock the client."""
 
     def volumeCreate(self, *args, **kwargs):
         """"Mock function to create a volume."""
@@ -132,6 +146,9 @@ class FakeMethod(object):
 
     def restoreDetail(self, *args, **kwargs):
         """"Mock function to detail the restore operation."""
+
+    def volumeDetail(self, *args, **kwargs):
+        """Mock function to get the volume detail from its id."""
 
     def volumeDetailByName(self, *args, **kwargs):
         """"Mock function to get the volume detail from its name."""

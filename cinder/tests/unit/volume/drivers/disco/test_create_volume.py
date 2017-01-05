@@ -27,12 +27,12 @@ class CreateVolumeTestCase(disco.TestDISCODriver):
         """Prepare variables and mock functions."""
         super(CreateVolumeTestCase, self).setUp()
 
-        # Mock the suds cliebt.
+        # Mock the method volumeCreate.
         mock.patch.object(self.requester,
                           'volumeCreate',
                           self.perform_disco_request).start()
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
 
     def perform_disco_request(self, *cmd, **kwargs):
         """Mock function for the suds client."""
@@ -48,6 +48,6 @@ class CreateVolumeTestCase(disco.TestDISCODriver):
 
     def test_create_volume_fail(self):
         """Request to DISCO failed."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume)

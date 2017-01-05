@@ -75,18 +75,18 @@ class CreateSnapshotTestCase(disco.TestDISCODriver):
             self.DETAIL_OPTIONS['failure'])
         snap_response_fail['status'] = 1
 
-        self.FAKE_SOAP_RESPONSE['snapshot_detail'] = {
+        self.FAKE_RESPONSE['snapshot_detail'] = {
             'success': snap_success,
             'fail': snap_fail,
             'pending': snap_pending,
             'request_fail': snap_response_fail}
 
         self.response = (
-            self.FAKE_SOAP_RESPONSE['standard']['success'])
+            self.FAKE_RESPONSE['standard']['success'])
         self.response['result'] = 1234
 
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['snapshot_detail']['success'])
+            self.FAKE_RESPONSE['snapshot_detail']['success'])
         self.test_pending = False
 
         self.test_pending_count = 0
@@ -100,9 +100,9 @@ class CreateSnapshotTestCase(disco.TestDISCODriver):
         if self.test_pending:
             if self.test_pending_count == 0:
                 self.test_pending_count += 1
-                return self.FAKE_SOAP_RESPONSE['snapshot_detail']['pending']
+                return self.FAKE_RESPONSE['snapshot_detail']['pending']
             else:
-                return self.FAKE_SOAP_RESPONSE['snapshot_detail']['success']
+                return self.FAKE_RESPONSE['snapshot_detail']['success']
         else:
             return self.response_detail
 
@@ -114,29 +114,29 @@ class CreateSnapshotTestCase(disco.TestDISCODriver):
 
     def test_create_snapshot_fail(self):
         """Request to DISCO failed."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_snapshot)
 
     def test_create_snapshot_fail_not_immediate(self):
         """Request to DISCO failed when monitoring the snapshot details."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['snapshot_detail']['fail'])
+            self.FAKE_RESPONSE['snapshot_detail']['fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_snapshot)
 
     def test_create_snapshot_fail_not_immediate_response_fail(self):
         """Request to get the snapshot details returns a failure."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['snapshot_detail']['request_fail'])
+            self.FAKE_RESPONSE['snapshot_detail']['request_fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_snapshot)
 
     def test_create_snapshot_detail_pending(self):
         """Request to get the snapshot detail return pending then success."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.test_pending = True
         self.test_create_snapshot()
 
@@ -146,8 +146,8 @@ class CreateSnapshotTestCase(disco.TestDISCODriver):
         timeout = 3
         mock_time.side_effect = utils.generate_timeout_series(timeout)
         self.driver.configuration.snapshot_check_timeout = timeout
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['snapshot_detail']['pending'])
+            self.FAKE_RESPONSE['snapshot_detail']['pending'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_snapshot)

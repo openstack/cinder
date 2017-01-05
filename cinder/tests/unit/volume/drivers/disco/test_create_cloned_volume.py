@@ -34,7 +34,7 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
         super(CreateCloneVolumeTestCase, self).setUp()
 
         self.dest_volume = fake_volume.fake_volume_obj(self.ctx)
-        # Create mock functions for all the suds call done by the driver."""
+        # Create mock functions for all the call done by the driver."""
         mock.patch.object(self.requester,
                           'volumeClone',
                           self.clone_request).start()
@@ -54,13 +54,13 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
         }
 
         clone_success = (
-            copy.deepcopy(self.FAKE_SOAP_RESPONSE['standard']['success']))
+            copy.deepcopy(self.FAKE_RESPONSE['standard']['success']))
         clone_pending = (
-            copy.deepcopy(self.FAKE_SOAP_RESPONSE['standard']['success']))
+            copy.deepcopy(self.FAKE_RESPONSE['standard']['success']))
         clone_fail = (
-            copy.deepcopy(self.FAKE_SOAP_RESPONSE['standard']['success']))
+            copy.deepcopy(self.FAKE_RESPONSE['standard']['success']))
         clone_response_fail = (
-            copy.deepcopy(self.FAKE_SOAP_RESPONSE['standard']['success']))
+            copy.deepcopy(self.FAKE_RESPONSE['standard']['success']))
 
         clone_success['result'] = (
             six.text_type(self.DETAIL_OPTIONS['success']))
@@ -70,18 +70,18 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
             six.text_type(self.DETAIL_OPTIONS['failure']))
         clone_response_fail['status'] = 1
 
-        self.FAKE_SOAP_RESPONSE['clone_detail'] = {
+        self.FAKE_RESPONSE['clone_detail'] = {
             'success': clone_success,
             'fail': clone_fail,
             'pending': clone_pending,
             'request_fail': clone_response_fail
         }
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response['result'] = '1234'
 
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['clone_detail']['success'])
+            self.FAKE_RESPONSE['clone_detail']['success'])
         self.test_pending = False
         self.test_pending_count = 0
 
@@ -94,9 +94,9 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
         if self.test_pending:
             if self.test_pending_count == 0:
                 self.test_pending_count += 1
-                return self.FAKE_SOAP_RESPONSE['clone_detail']['pending']
+                return self.FAKE_RESPONSE['clone_detail']['pending']
             else:
-                return self.FAKE_SOAP_RESPONSE['clone_detail']['success']
+                return self.FAKE_RESPONSE['clone_detail']['success']
         else:
             return self.response_detail
 
@@ -113,29 +113,29 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
 
     def test_create_clone_volume_fail(self):
         """Clone volume request to DISCO fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_cloned_volume)
 
     def test_create_cloned_volume_fail_not_immediate(self):
         """Get clone detail returns that the clone fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['clone_detail']['fail'])
+            self.FAKE_RESPONSE['clone_detail']['fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_cloned_volume)
 
     def test_create_cloned_volume_fail_not_immediate_response_fail(self):
         """Get clone detail request to DISCO fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['clone_detail']['request_fail'])
+            self.FAKE_RESPONSE['clone_detail']['request_fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_cloned_volume)
 
     def test_create_cloned_volume_fail_not_immediate_request_fail(self):
         """Get clone detail returns the task is pending then complete."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.test_pending = True
         self.test_create_cloned_volume()
 
@@ -145,9 +145,9 @@ class CreateCloneVolumeTestCase(disco.TestDISCODriver):
         timeout = 3
         mock_time.side_effect = utils.generate_timeout_series(timeout)
         self.driver.configuration.clone_check_timeout = timeout
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['clone_detail']['pending'])
+            self.FAKE_RESPONSE['clone_detail']['pending'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_cloned_volume)
 

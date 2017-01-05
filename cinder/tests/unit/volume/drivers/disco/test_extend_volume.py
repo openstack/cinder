@@ -32,7 +32,7 @@ class VolumeExtendTestCase(disco.TestDISCODriver):
                           'volumeExtend',
                           self.perform_disco_request).start()
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.new_size = 5
 
     def perform_disco_request(self, *cmd, **kwargs):
@@ -45,6 +45,6 @@ class VolumeExtendTestCase(disco.TestDISCODriver):
 
     def test_extend_volume_fail(self):
         """Request to DISCO failed."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_extend_volume)
