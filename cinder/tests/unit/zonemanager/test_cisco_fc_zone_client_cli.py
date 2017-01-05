@@ -241,12 +241,40 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_ssh_execute')
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_cfg_save')
-    def test__add_zones_with_update(self, ssh_execute_mock, cfg_save_mock):
-        self.add_zones(new_zone, False, self.fabric_vsan,
-                       active_zoneset_multiple_zones,
-                       zoning_status_basic)
-        self.assertEqual(2, ssh_execute_mock.call_count)
-        self.assertEqual(2, cfg_save_mock.call_count)
+    def test__update_zones_add(self, cfg_save_mock, ssh_execute_mock):
+        self.update_zones(new_zone, False, self.fabric_vsan,
+                          ZoneConstant.ZONE_ADD, active_zoneset_multiple_zones,
+                          zoning_status_basic)
+        ssh_cmd = [['conf'],
+                   ['zoneset', 'name', 'OpenStack_Cfg', 'vsan',
+                    self.fabric_vsan],
+                   ['zone', 'name',
+                    'openstack10000012345678902001009876543210'],
+                   ['member', 'pwwn', '10:00:00:12:34:56:78:90'],
+                   ['member', 'pwwn', '20:01:00:98:76:54:32:10'],
+                   ['end']]
+
+        self.assertEqual(1, cfg_save_mock.call_count)
+        ssh_execute_mock.assert_called_once_with(ssh_cmd, True, 1)
+
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_ssh_execute')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_cfg_save')
+    def test__update_zones_remove(self, cfg_save_mock, ssh_execute_mock):
+        self.update_zones(new_zone, False, self.fabric_vsan,
+                          ZoneConstant.ZONE_REMOVE,
+                          active_zoneset_multiple_zones,
+                          zoning_status_basic)
+        ssh_cmd = [['conf'],
+                   ['zoneset', 'name', 'OpenStack_Cfg', 'vsan',
+                    self.fabric_vsan],
+                   ['zone', 'name',
+                    'openstack10000012345678902001009876543210'],
+                   ['no', 'member', 'pwwn', '10:00:00:12:34:56:78:90'],
+                   ['no', 'member', 'pwwn', '20:01:00:98:76:54:32:10'],
+                   ['end']]
+
+        self.assertEqual(1, cfg_save_mock.call_count)
+        ssh_execute_mock.assert_called_once_with(ssh_cmd, True, 1)
 
     def test__parse_ns_output(self):
         return_wwn_list = []
