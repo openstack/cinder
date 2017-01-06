@@ -76,7 +76,7 @@ def print_drivers(drivers, config_name, output):
         if driver.version:
             output.write('* Version: %s' % driver.version)
         output.write('* %s=%s' % (config_name, driver.class_fqn))
-        if driver.ci_wiki_name:
+        if driver.ci_wiki_name and 'Cinder_Jenkins' not in driver.ci_wiki_name:
             output.write('* CI info: %s%s' % (CI_WIKI_ROOT,
                                               driver.ci_wiki_name))
         output.write('* Description:')
