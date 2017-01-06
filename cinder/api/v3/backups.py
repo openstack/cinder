@@ -96,6 +96,10 @@ class BackupsController(backups_v2.BackupsController):
                 pass
         return resp_backup
 
+    def _convert_sort_name(self, req_version, sort_keys):
+        if req_version.matches("3.37") and 'name' in sort_keys:
+            sort_keys[sort_keys.index('name')] = 'display_name'
+
 
 def create_resource():
     return wsgi.Resource(BackupsController())
