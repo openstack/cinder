@@ -554,3 +554,26 @@ class VolumeTypeTestCase(test.TestCase):
                 'cipher': 'fake1',
                 'created_at': 'time1', }
         self._exec_volume_types_encryption_changed(enc1, None, True)
+
+    @mock.patch('cinder.volume.volume_types.CONF')
+    @mock.patch('cinder.volume.volume_types.rpc')
+    def test_notify_about_volume_type_access_usage(self, mock_rpc,
+                                                   mock_conf):
+        mock_conf.host = 'host1'
+        project_id = fake.PROJECT_ID
+        volume_type_id = fake.VOLUME_TYPE_ID
+
+        output = volume_types.notify_about_volume_type_access_usage(
+            mock.sentinel.context,
+            volume_type_id,
+            project_id,
+            'test_suffix')
+
+        self.assertIsNone(output)
+        mock_rpc.get_notifier.assert_called_once_with('volume_type_project',
+                                                      'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'volume_type_project.test_suffix',
+            {'volume_type_id': volume_type_id,
+             'project_id': project_id})
