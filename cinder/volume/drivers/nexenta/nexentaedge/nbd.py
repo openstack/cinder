@@ -49,6 +49,10 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Pike release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, vg_obj=None, *args, **kwargs):
         LOG.debug('NexentaEdgeNBDDriver. Trying to initialize.')
         super(NexentaEdgeNBDDriver, self).__init__(*args, **kwargs)
