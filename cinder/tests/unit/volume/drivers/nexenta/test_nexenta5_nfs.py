@@ -22,6 +22,7 @@ from mock import patch
 from cinder import context
 from cinder import db
 from cinder import test
+from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import nfs
@@ -36,23 +37,25 @@ class TestNexentaNfsDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
 
-    TEST_VOLUME = {
+    TEST_VOLUME = fake_volume_obj(None, **{
         'name': TEST_VOLUME_NAME,
         'id': '1',
         'size': 1,
         'status': 'available',
         'provider_location': TEST_SHARE
-    }
-    TEST_VOLUME2 = {
+    })
+
+    TEST_VOLUME2 = fake_volume_obj(None, **{
         'name': TEST_VOLUME_NAME2,
-        'size': 1,
+        'size': 2,
         'id': '2',
         'status': 'in-use'
-    }
+    })
 
     TEST_SNAPSHOT = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
+        'volume_size': 1,
         'volume_id': '1'
     }
 
@@ -71,16 +74,16 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nfs_mount_attempts = 3
         self.cfg.nas_mount_options = 'vers=4'
         self.cfg.reserved_percentage = 20
-        self.cfg.nexenta_rest_protocol = 'http'
-        self.cfg.nexenta_rest_port = 8080
+        self.cfg.nexenta_use_https = False
+        self.cfg.nexenta_rest_port = 0
         self.cfg.nexenta_user = 'user'
         self.cfg.nexenta_password = 'pass'
         self.cfg.max_over_subscription_ratio = 20.0
         self.cfg.nas_host = '1.1.1.1'
         self.cfg.nas_share_path = 'pool/share'
         self.nef_mock = mock.Mock()
-        self.mock_object(jsonrpc, 'NexentaJSONProxy',
-                         return_value=self.nef_mock)
+        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
+                       lambda *_, **__: self.nef_mock)
         self.drv = nfs.NexentaNfsDriver(configuration=self.cfg)
         self.drv.db = db
         self.drv.do_setup(self.ctxt)
@@ -123,7 +126,7 @@ class TestNexentaNfsDriver(test.TestCase):
 
         url = 'storage/pools/pool/filesystems'
         data = {
-            'name': 'share/volume1',
+            'name': 'share/volume-1',
             'compressionMode': 'on',
             'dedupMode': 'off',
         }
@@ -136,7 +139,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.get.return_value = {}
         self.drv.delete_volume(self.TEST_VOLUME)
         self.nef_mock.delete.assert_called_with(
-            'storage/pools/pool/filesystems/share%2Fvolume1?snapshots=true')
+            'storage/pools/pool/filesystems/share%2Fvolume-1?snapshots=true')
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
@@ -154,19 +157,26 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.delete.assert_called_with(url)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
+           'NexentaNfsDriver.local_path')
+    @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._share_folder')
-    def test_create_volume_from_snapshot(self, share):
+    def test_create_volume_from_snapshot(self, share, path):
         self._create_volume_db_entry()
-        url = ('storage/filesystems/pool%2Fshare%2Fvolume2/promote')
-
+        url = ('storage/pools/%(pool)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
+            'pool': 'pool',
+            'fs': '%2F'.join(['share', 'volume-1']),
+            'snap': self.TEST_SNAPSHOT['name']
+        }
+        path = '/'.join(['pool/share', self.TEST_VOLUME2['name']])
+        data = {'targetPath': path}
         self.drv.create_volume_from_snapshot(
             self.TEST_VOLUME2, self.TEST_SNAPSHOT)
-        self.nef_mock.post.assert_called_with(url)
+        self.nef_mock.post.assert_called_with(url, data)
 
     def test_get_capacity_info(self):
         self.nef_mock.get.return_value = {
             'bytesAvailable': 1000,
             'bytesUsed': 100}
-
         self.assertEqual(
             (1000, 900, 100), self.drv._get_capacity_info('pool/share'))
