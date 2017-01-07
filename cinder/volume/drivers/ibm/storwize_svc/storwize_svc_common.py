@@ -761,13 +761,13 @@ class StorwizeHelpers(object):
         hosts_info = self.ssh.lshost()
         host_list = list(hosts_info.select('name'))
         # If we have a "real" connector, we might be able to find the
-        # the host entry with fewer queries if we move the host entries
+        # host entry with fewer queries if we move the host entries
         # that contain the connector's host property value to the front
         # of the list
         if 'host' in connector:
             # order host_list such that the host entries that
             # contain the connector's host name are at the
-            # begining of the list
+            # beginning of the list
             for host in host_list:
                 if re.search(connector['host'], host):
                     update_host_list(host, host_list)
