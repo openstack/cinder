@@ -75,7 +75,7 @@ class FSSFCDriver(fss_common.FalconstorBaseDriver,
                           'information.'))
             raise exception.InvalidConnectorException(missing='wwpns')
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         fss_hosts = []
         fss_hosts.append(self.configuration.san_ip)
@@ -99,7 +99,7 @@ class FSSFCDriver(fss_common.FalconstorBaseDriver,
         init_targ_map = dict.fromkeys(initiator_wwns, self.gateway_fc_wwns)
         return init_targ_map
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         host_id = self.proxy.fc_terminate_connection(volume, connector)
         fc_info = {"driver_volume_type": "fibre_channel", "data": {}}

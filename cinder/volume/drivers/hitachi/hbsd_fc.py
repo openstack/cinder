@@ -409,7 +409,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
         return hostgroups
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)
@@ -437,7 +437,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         self._delete_lun(hostgroups, ldev)
         LOG.debug("*** _terminate_ ***")
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)

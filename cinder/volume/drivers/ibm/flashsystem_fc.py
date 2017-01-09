@@ -258,7 +258,7 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
 
         return {'driver_volume_type': type_str, 'data': properties}
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     @utils.synchronized('flashsystem-init-conn', external=True)
     def initialize_connection(self, volume, connector):
         """Perform work so that an FC connection can be made.
@@ -317,7 +317,7 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
 
         return properties
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     @utils.synchronized('flashsystem-term-conn', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after connection has been terminated.

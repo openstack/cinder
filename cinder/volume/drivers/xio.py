@@ -1571,7 +1571,7 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
     def unmanage(self, volume):
         return self.driver.unmanage(volume)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         hostname = ''
         if 'host' in connector:
@@ -1589,7 +1589,7 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
         return {'driver_volume_type': 'fibre_channel',
                 'data': data}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         # now we are ready to tell ISE to delete presentations
         hostname = self.driver.ise_unpresent(volume, connector['wwpns'])

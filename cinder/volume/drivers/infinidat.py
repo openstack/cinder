@@ -199,7 +199,7 @@ class InfiniboxVolumeDriver(san.SanDriver,
                    and port['state'] == 'OK'):
                     yield self._cleanup_wwpn(port['wwpn'])
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Map an InfiniBox volume to the host"""
         volume_name = self._make_volume_name(volume)
@@ -220,7 +220,7 @@ class InfiniboxVolumeDriver(san.SanDriver,
                               target_lun=lun,
                               initiator_target_map=init_target_map))
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Unmap an InfiniBox volume from the host"""
         volume_id = self._get_infinidat_volume_id(volume)

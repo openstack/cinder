@@ -598,7 +598,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
     def do_setup(self, context):
         super(TegileFCDriver, self).do_setup(context)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     @debugger
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
@@ -631,7 +631,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
 
         return connection_data
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     @debugger
     def terminate_connection(self, volume, connector, force=False, **kwargs):
 

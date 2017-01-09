@@ -69,7 +69,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
             self.configuration.safe_get('volume_backend_name') or 'Dell-FC'
         self.storage_protocol = 'FC'
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -188,7 +188,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                      'wwns': wwns})
         return None, [], {}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Get our volume name
         volume_name = volume.get('id')
