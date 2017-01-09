@@ -2188,9 +2188,8 @@ class ManageableSnapshotsVD(object):
         pass
 
 
-class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
-                   ExtendVD, CloneableImageVD, ManageableSnapshotsVD,
-                   SnapshotVD, LocalVD, MigrateVD, BaseVD):
+class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
+                   MigrateVD, BaseVD):
     def check_for_setup_error(self):
         raise NotImplementedError()
 

@@ -26,11 +26,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 
 @interface.volumedriver
 class NetAppEseriesISCSIDriver(driver.BaseVD,
-                               driver.ManageableVD,
-                               driver.ExtendVD,
-                               driver.TransferVD,
-                               driver.SnapshotVD,
-                               driver.ConsistencyGroupVD):
+                               driver.ManageableVD):
     """NetApp E-Series iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_ESeries'

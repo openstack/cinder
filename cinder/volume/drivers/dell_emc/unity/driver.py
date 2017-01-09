@@ -38,10 +38,7 @@ CONF.register_opts(UNITY_OPTS)
 
 
 @interface.volumedriver
-class UnityDriver(driver.TransferVD,
-                  driver.ManageableVD,
-                  driver.ExtendVD,
-                  driver.SnapshotVD,
+class UnityDriver(driver.ManageableVD,
                   driver.ManageableSnapshotsVD,
                   driver.BaseVD):
     """Unity Driver.

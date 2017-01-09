@@ -29,7 +29,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
-from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -50,10 +49,7 @@ CONF.register_opts(infinidat_opts)
 
 
 @interface.volumedriver
-class InfiniboxVolumeDriver(san.SanDriver,
-                            driver.ExtendVD,
-                            driver.SnapshotVD,
-                            driver.TransferVD):
+class InfiniboxVolumeDriver(san.SanDriver):
     VERSION = '1.0'
 
     # ThirdPartySystems wiki page

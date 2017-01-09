@@ -57,13 +57,9 @@ CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
 @interface.volumedriver
-class HPE3PARISCSIDriver(driver.TransferVD,
-                         driver.ManageableVD,
-                         driver.ExtendVD,
-                         driver.SnapshotVD,
+class HPE3PARISCSIDriver(driver.ManageableVD,
                          driver.ManageableSnapshotsVD,
                          driver.MigrateVD,
-                         driver.ConsistencyGroupVD,
                          driver.BaseVD):
     """OpenStack iSCSI driver to enable 3PAR storage array.
 

@@ -697,9 +697,8 @@ class DPLVolume(object):
                              [http_client.OK, http_client.ACCEPTED])
 
 
-class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
-                      driver.CloneableImageVD,
-                      driver.SnapshotVD, driver.LocalVD, driver.BaseVD):
+class DPLCOMMONDriver(driver.CloneableImageVD,
+                      driver.BaseVD):
     """Class of dpl storage adapter."""
     VERSION = '2.0.4'
 

@@ -65,9 +65,6 @@ CONF.register_opts(flashsystem_opts)
 
 class FlashSystemDriver(san.SanDriver,
                         driver.ManageableVD,
-                        driver.TransferVD,
-                        driver.ExtendVD,
-                        driver.SnapshotVD,
                         driver.BaseVD):
     """IBM FlashSystem volume driver.
 
