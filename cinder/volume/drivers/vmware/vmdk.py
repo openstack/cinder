@@ -23,7 +23,6 @@ machine is never powered on and is often referred as the shadow VM.
 """
 
 import contextlib
-import distutils.version as dist_version  # pylint: disable=E0611
 import math
 import os
 import tempfile
@@ -34,12 +33,12 @@ from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import units
 from oslo_utils import uuidutils
+from oslo_utils import versionutils
 from oslo_vmware import api
 from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
-import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -229,11 +228,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     CI_WIKI_NAME = "VMware_CI"
 
     # Minimum supported vCenter version.
-    MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.1')
-    NEXT_MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.5')
+    MIN_SUPPORTED_VC_VERSION = '5.1'
+    NEXT_MIN_SUPPORTED_VC_VERSION = '5.5'
 
     # PBM is enabled only for vCenter versions 5.5 and above
-    PBM_ENABLED_VC_VERSION = dist_version.LooseVersion('5.5')
+    PBM_ENABLED_VC_VERSION = '5.5'
 
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
@@ -1849,23 +1848,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         else:
             version_str = vim_util.get_vc_version(self.session)
             LOG.info(_LI("Fetched vCenter server version: %s"), version_str)
-        # Convert version_str to LooseVersion and return.
-        version = None
-        try:
-            version = dist_version.LooseVersion(version_str)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Version string '%s' is not parseable"),
-                              version_str)
-        return version
+        return version_str
 
     def _validate_vcenter_version(self, vc_version):
-        if vc_version < self.MIN_SUPPORTED_VC_VERSION:
+        if not versionutils.is_compatible(
+                self.MIN_SUPPORTED_VC_VERSION, vc_version, same_major=False):
             msg = _('Running Cinder with a VMware vCenter version less than '
                     '%s is not allowed.') % self.MIN_SUPPORTED_VC_VERSION
             LOG.error(msg)
             raise exceptions.VMwareDriverException(message=msg)
-        elif vc_version < self.NEXT_MIN_SUPPORTED_VC_VERSION:
+        elif not versionutils.is_compatible(self.NEXT_MIN_SUPPORTED_VC_VERSION,
+                                            vc_version,
+                                            same_major=False):
             # TODO(vbala): enforce vCenter version 5.5 in Pike release.
             LOG.warning(_LW('Running Cinder with a VMware vCenter version '
                             'less than %(ver)s is deprecated. The minimum '
@@ -1883,9 +1877,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # Enable pbm only if vCenter version is 5.5+.
         if (self._vc_version and
-                self._vc_version >= self.PBM_ENABLED_VC_VERSION):
-            self.pbm_wsdl = pbm.get_pbm_wsdl_location(
-                six.text_type(self._vc_version))
+                versionutils.is_compatible(self.PBM_ENABLED_VC_VERSION,
+                                           self._vc_version,
+                                           same_major=False)):
+            self.pbm_wsdl = pbm.get_pbm_wsdl_location(self._vc_version)
             if not self.pbm_wsdl:
                 LOG.error(_LE("Not able to configure PBM for vCenter server: "
                               "%s"), self._vc_version)
@@ -2032,7 +2027,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # vCenter 6.0+ does not allow changing the UUID of delta disk created
         # during linked cloning; skip setting UUID for vCenter 6.0+.
         if (clone_type == volumeops.LINKED_CLONE_TYPE and
-                self._vc_version >= dist_version.LooseVersion('6.0')):
+                versionutils.is_compatible(
+                    '6.0', self._vc_version, same_major=False)):
             LOG.debug("Not setting vmdk UUID for volume: %s.", volume['id'])
         else:
             self.volumeops.update_backing_disk_uuid(clone, volume['id'])
