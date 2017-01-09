@@ -11,7 +11,7 @@ deletes group snapshots.
 Delete group snapshot
 =====================
 
-.. rest_method::  DELETE /v3/{tenant_id}/group_snapshots/{group_snapshot_id}
+.. rest_method::  DELETE /v3/{project_id}/group_snapshots/{group_snapshot_id}
 
 Deletes a group snapshot.
 
@@ -24,14 +24,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - group_snapshot_id: group_snapshot_id
 
 
 Show group snapshot details
 ===========================
 
-.. rest_method::  GET /v3/{tenant_id}/group_snapshots/{group_snapshot_id}
+.. rest_method::  GET /v3/{project_id}/group_snapshots/{group_snapshot_id}
 
 Shows details for a group snapshot.
 
@@ -45,7 +45,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - group_snapshot_id: group_snapshot_id
 
 
@@ -71,7 +71,7 @@ Response Example
 List group snapshots with details
 =================================
 
-.. rest_method::  GET /v3/{tenant_id}/group_snapshots/detail
+.. rest_method::  GET /v3/{project_id}/group_snapshots/detail
 
 Lists all group snapshots with details.
 
@@ -84,7 +84,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -108,7 +108,7 @@ Response Example
 List group snapshots
 ====================
 
-.. rest_method::  GET /v3/{tenant_id}/group_snapshots
+.. rest_method::  GET /v3/{project_id}/group_snapshots
 
 Lists all group snapshots.
 
@@ -122,7 +122,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -144,7 +144,7 @@ Response Example
 Create group snapshot
 =====================
 
-.. rest_method::  POST /v3/{tenant_id}/group_snapshots
+.. rest_method::  POST /v3/{project_id}/group_snapshots
 
 Creates a group snapshot.
 
@@ -160,7 +160,7 @@ Request
    - name: name
    - description: description
    - group_id: group_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------

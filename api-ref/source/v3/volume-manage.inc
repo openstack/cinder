@@ -11,7 +11,7 @@ storage.
 Manage an existing volume
 =========================
 
-.. rest_method::  POST /v3/{tenant_id}/os-volume-manage
+.. rest_method::  POST /v3/{project_id}/os-volume-manage
 
 Creates a Block Storage volume by using existing storage rather than allocating new storage.
 
@@ -46,7 +46,7 @@ Request
    - cluster: cluster_mutex
    - ref: ref
    - metadata: metadata
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------

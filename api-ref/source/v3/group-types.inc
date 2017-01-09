@@ -8,7 +8,7 @@ Group types
 Update group type
 =================
 
-.. rest_method::  PUT /v3/{tenant_id}/group_types/{group_type_id}
+.. rest_method::  PUT /v3/{project_id}/group_types/{group_type_id}
 
 Updates a group type.
 
@@ -26,7 +26,7 @@ Request
 
    - group_type: group_type
    - group_type_id: group_type_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -56,7 +56,7 @@ Response Example
 Create group specs for a group type
 ===================================
 
-.. rest_method::  POST /v3/{tenant_id}/group_types/{group_type_id}/group_specs
+.. rest_method::  POST /v3/{project_id}/group_types/{group_type_id}/group_specs
 
 Create group specs for a group type.
 
@@ -73,7 +73,7 @@ Request
    - group_specs: group_specs
    - group_type: group_type
    - group_type_id: group_type_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -105,7 +105,7 @@ Response Example
 Show group type details
 =======================
 
-.. rest_method::  GET /v3/{tenant_id}/group_types/{group_type_id}
+.. rest_method::  GET /v3/{project_id}/group_types/{group_type_id}
 
 Shows details for a group type.
 
@@ -119,7 +119,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - group_type_id: group_type_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -144,7 +144,7 @@ Response Example
 Delete group type
 =================
 
-.. rest_method::  DELETE /v3/{tenant_id}/group_types/{group_type_id}
+.. rest_method::  DELETE /v3/{project_id}/group_types/{group_type_id}
 
 Deletes a group type.
 
@@ -158,13 +158,13 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - group_type_id: group_type_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 List group types
 ================
 
-.. rest_method::  GET /v3/{tenant_id}/group_types
+.. rest_method::  GET /v3/{project_id}/group_types
 
 Lists group types.
 
@@ -178,7 +178,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort_key: sort_key
    - sort_dir: sort_dir
    - limit: limit
@@ -205,7 +205,7 @@ Response Example
 Create group type
 =================
 
-.. rest_method::  POST /v2/{tenant_id}/group_types
+.. rest_method::  POST /v3/{project_id}/group_types
 
 Creates a group type.
 
@@ -223,7 +223,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - group_type: group_type
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------

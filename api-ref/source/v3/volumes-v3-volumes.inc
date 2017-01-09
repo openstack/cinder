@@ -47,9 +47,9 @@ status values are:
 List accessbile volumes with details
 ====================================
 
-.. rest_method::  GET /v3/{tenant_id}/volumes/detail
+.. rest_method::  GET /v3/{project_id}/volumes/detail
 
-Lists all Block Storage volumes, with details, that the tenant can access.
+Lists all Block Storage volumes, with details, that the project can access.
 
 
 Normal response codes: 200
@@ -61,7 +61,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort: sort
    - limit: limit
    - marker: marker
@@ -115,7 +115,7 @@ Response Example
 Create a volume
 ===============
 
-.. rest_method::  POST /v3/{tenant_id}/volumes
+.. rest_method::  POST /v3/{project_id}/volumes
 
 Creates a volume.
 
@@ -170,7 +170,7 @@ Request
    - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
    - source_replica: source_replica
    - metadata: metadata
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -215,9 +215,9 @@ Response Parameters
 List accessible volumes
 =======================
 
-.. rest_method::  GET /v3/{tenant_id}/volumes
+.. rest_method::  GET /v3/{project_id}/volumes
 
-Lists summary information for all Block Storage volumes that the tenant can access.
+Lists summary information for all Block Storage volumes that the project can access.
 
 
 Normal response codes: 200
@@ -229,7 +229,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort: sort
    - limit: limit
    - marker: marker
@@ -259,7 +259,7 @@ Response Example
 Show a volume's details
 =======================
 
-.. rest_method::  GET /v3/{tenant_id}/volumes/{volume_id}
+.. rest_method::  GET /v3/{project_id}/volumes/{volume_id}
 
 Shows details for a volume.
 
@@ -277,7 +277,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 
@@ -329,7 +329,7 @@ Response Example
 Update a volume
 ===============
 
-.. rest_method::  PUT /v3/{tenant_id}/volumes/{volume_id}
+.. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}
 
 Updates a volume.
 
@@ -347,7 +347,7 @@ Request
    - description: description
    - name: name
    - metadata: metadata
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 Request Example
@@ -400,7 +400,7 @@ Response Example
 Delete a volume
 ===============
 
-.. rest_method::  DELETE /v3/{tenant_id}/volumes/{volume_id}
+.. rest_method::  DELETE /v3/{project_id}/volumes/{volume_id}
 
 Deletes a volume.
 
@@ -437,7 +437,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 
@@ -448,7 +448,7 @@ Request
 Create metadata for volume
 ==========================
 
-.. rest_method::  POST /v3/{tenant_id}/volumes/{volume_id}/metadata
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/metadata
 
 Creates metadata for a volume.
 
@@ -461,7 +461,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - metadata: metadata
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 Request Example
@@ -486,7 +486,7 @@ Response Parameters
 Show a volume's metadata
 ========================
 
-.. rest_method::  GET /v3/{tenant_id}/volumes/{volume_id}/metadata
+.. rest_method::  GET /v3/{project_id}/volumes/{volume_id}/metadata
 
 Shows metadata for a volume.
 
@@ -500,7 +500,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 
@@ -525,7 +525,7 @@ Response Example
 Update a volume's metadata
 ==========================
 
-.. rest_method::  PUT /v3/{tenant_id}/volumes/{volume_id}/metadata
+.. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}/metadata
 
 Updates metadata for a volume.
 
@@ -543,7 +543,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - metadata: metadata
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - volume_id: volume_id
 
 Request Example

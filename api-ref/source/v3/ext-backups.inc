@@ -41,9 +41,9 @@ in the ``fail_reason`` field for the backup.
 List backups with detail
 ========================
 
-.. rest_method::  GET /v3/{tenant_id}/backups/detail
+.. rest_method::  GET /v3/{project_id}/backups/detail
 
-Lists Block Storage backups, with details, to which the tenant has access.
+Lists Block Storage backups, with details, to which the project has access.
 
 
 Normal response codes: 200
@@ -55,7 +55,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort_key: sort_key
    - sort_dir: sort_dir
    - limit: limit
@@ -94,7 +94,7 @@ Response Example
 Show backup detail
 ==================
 
-.. rest_method::  GET /v3/{tenant_id}/backups/{backup_id}
+.. rest_method::  GET /v3/{project_id}/backups/{backup_id}
 
 Shows details for a backup.
 
@@ -108,7 +108,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 
@@ -144,7 +144,7 @@ Response Example
 Delete a backup
 ===============
 
-.. rest_method::  DELETE /v3/{tenant_id}/backups/{backup_id}
+.. rest_method::  DELETE /v3/{project_id}/backups/{backup_id}
 
 Deletes a backup.
 
@@ -155,14 +155,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 
 Restore a backup
 ================
 
-.. rest_method::  POST /v3/{tenant_id}/backups/{backup_id}/restore
+.. rest_method::  POST /v3/{project_id}/backups/{backup_id}/restore
 
 Restores a Block Storage backup to an existing or new Block Storage volume.
 
@@ -180,7 +180,7 @@ Request
    - restore: restore
    - name: name
    - volume_id: volume_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 Request Example
@@ -201,7 +201,7 @@ Response Parameters
 Create a backup
 ===============
 
-.. rest_method::  POST /v3/{tenant_id}/backups
+.. rest_method::  POST /v3/{project_id}/backups
 
 Creates a Block Storage backup from a volume.
 
@@ -219,7 +219,7 @@ Request
    - force: force
    - backup: backup
    - name: name
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -237,12 +237,12 @@ Response Parameters
    - links: links
    - name: name
 
-List backups for tenant
-=======================
+List backups for project
+========================
 
-.. rest_method::  GET /v3/{tenant_id}/backups
+.. rest_method::  GET /v3/{project_id}/backups
 
-Lists Block Storage backups to which the tenant has access.
+Lists Block Storage backups to which the project has access.
 
 Normal response codes: 200
 Error response codes:
@@ -252,7 +252,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort_key: sort_key
    - sort_dir: sort_dir
    - limit: limit

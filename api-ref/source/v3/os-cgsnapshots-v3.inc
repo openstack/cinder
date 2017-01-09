@@ -11,7 +11,7 @@ deletes consistency group snapshots.
 Delete a consistency group snapshot
 ===================================
 
-.. rest_method::  DELETE /v3/{tenant_id}/cgsnapshots/{cgsnapshot_id}
+.. rest_method::  DELETE /v3/{project_id}/cgsnapshots/{cgsnapshot_id}
 
 Deletes a consistency group snapshot.
 
@@ -23,14 +23,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - cgsnapshot_id: cgsnapshot_id
 
 
 Show consistency group snapshot detail
 ======================================
 
-.. rest_method::  GET /v3/{tenant_id}/cgsnapshots/{cgsnapshot_id}
+.. rest_method::  GET /v3/{project_id}/cgsnapshots/{cgsnapshot_id}
 
 Shows details for a consistency group snapshot.
 
@@ -44,7 +44,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - cgsnapshot_id: cgsnapshot_id
 
 
@@ -70,7 +70,7 @@ Response Example
 List all consistency group snapshots with details
 =================================================
 
-.. rest_method::  GET /v3/{tenant_id}/cgsnapshots/detail
+.. rest_method::  GET /v3/{project_id}/cgsnapshots/detail
 
 Lists all consistency group snapshots with details.
 
@@ -83,7 +83,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -107,7 +107,7 @@ Response Example
 List all consistency group snapshots
 ====================================
 
-.. rest_method::  GET /v3/{tenant_id}/cgsnapshots
+.. rest_method::  GET /v3/{project_id}/cgsnapshots
 
 Lists all consistency group snapshots.
 
@@ -121,7 +121,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -146,7 +146,7 @@ Response Example
 Create a consistency group snapshot
 ===================================
 
-.. rest_method::  POST /v3/{tenant_id}/cgsnapshots
+.. rest_method::  POST /v3/{project_id}/cgsnapshots
 
 Creates a consistency group snapshot.
 
@@ -158,7 +158,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - name: name
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------

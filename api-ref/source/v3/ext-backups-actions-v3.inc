@@ -10,7 +10,7 @@ Force-deletes a backup.
 Force-delete a backup
 =====================
 
-.. rest_method::  POST /v3/{tenant_id}/backups/{backup_id}/action
+.. rest_method::  POST /v3/{project_id}/backups/{backup_id}/action
 
 Force-deletes a backup. Specify the ``os-force_delete`` action in the request body.
 
@@ -28,7 +28,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - os-force_delete: os-force_delete
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - backup_id: backup_id
 
 Request Example
