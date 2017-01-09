@@ -40,7 +40,6 @@ Programming HowTos and Tutorials
     migration
     api.apache
     rolling.upgrades
-    genconfig
 
 Background Concepts for Cinder
 ------------------------------
