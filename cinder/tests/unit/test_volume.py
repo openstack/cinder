@@ -630,6 +630,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     def test_create_driver_not_initialized_rescheduling(self):
         self.volume.driver._initialized = False
+        mock_delete = self.mock_object(self.volume.driver, 'delete_volume')
 
         volume = tests_utils.create_volume(
             self.context,
@@ -647,6 +648,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         # and filter_properties, assert that it wasn't counted in
         # allocated_capacity tracking.
         self.assertEqual({}, self.volume.stats['pools'])
+
+        # NOTE(dulek): As we've rescheduled, make sure delete_volume was
+        # called.
+        self.assertTrue(mock_delete.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
@@ -3683,12 +3688,16 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.stubs.Set(self.volume.driver, 'copy_image_to_volume',
                        fake_copy_image_to_volume)
+        mock_delete = self.mock_object(self.volume.driver, 'delete_volume')
         self.assertRaises(exception.ImageCopyFailure,
                           self._create_volume_from_image)
         # NOTE(dulek): Rescheduling should not occur, so lets assert that
         # allocated_capacity is incremented.
         self.assertDictEqual(self.volume.stats['pools'],
                              {'_pool0': {'allocated_capacity_gb': 1}})
+        # NOTE(dulek): As we haven't rescheduled, make sure no delete_volume
+        # was called.
+        self.assertFalse(mock_delete.called)
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.brick_get_connector')
