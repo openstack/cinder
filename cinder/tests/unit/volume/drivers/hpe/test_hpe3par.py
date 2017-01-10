@@ -7346,8 +7346,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
         expected_model = {'provider_auth': 'CHAP test-host random-pass'}
         mock_create_client = self.mock_object(hpecommon.HPE3PARCommon,
                                               '_create_client',
-                                              mock.Mock(return_value=
-                                                        mock_client))
+                                              return_value=mock_client)
         mock_create_client.return_value = mock_client
         model = self.driver.create_export(None, volume, None)
         mock_client.assert_has_calls(expected)

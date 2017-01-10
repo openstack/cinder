@@ -88,7 +88,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(client_base.Client, '_init_ssh_client')
         self.mock_object(
             dot_utils, 'get_backend_configuration',
-            mock.Mock(return_value=self.get_config_cmode()))
+            return_value=self.get_config_cmode())
         context = mock.Mock()
 
         self.library.do_setup(context)
@@ -105,7 +105,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.library, '_add_looping_tasks')
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
-            mock.Mock(return_value={'fake_map': None}))
+            return_value={'fake_map': None})
         mock_add_looping_tasks = self.mock_object(
             self.library, '_add_looping_tasks')
 
@@ -124,8 +124,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.library.ssc_library, 'check_api_permissions')
         self.mock_object(self.library, '_add_looping_tasks')
         self.mock_object(
-            self.library, '_get_flexvol_to_pool_map',
-            mock.Mock(return_value={}))
+            self.library, '_get_flexvol_to_pool_map', return_value={})
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
@@ -140,7 +139,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
                                           'ensure_snapmirrors')
         self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
-                         mock.Mock(return_value=fake_utils.SSC.keys()))
+                         return_value=fake_utils.SSC.keys())
         self.library.replication_enabled = replication_enabled
         self.library.failed_over = failed_over
 
@@ -160,13 +159,13 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         volume_list = ['vol0', 'vol1', 'vol2']
         self.mock_object(
             self.library.ssc_library, 'get_ssc_flexvol_names',
-            mock.Mock(return_value=volume_list))
+            return_value=volume_list)
         self.mock_object(
             dot_utils, 'build_ems_log_message_0',
-            mock.Mock(return_value='fake_base_ems_log_message'))
+            return_value='fake_base_ems_log_message')
         self.mock_object(
             dot_utils, 'build_ems_log_message_1',
-            mock.Mock(return_value='fake_pool_ems_log_message'))
+            return_value='fake_pool_ems_log_message')
         mock_send_ems_log_message = self.mock_object(
             self.zapi_client, 'send_ems_log_message')
 
@@ -362,12 +361,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         }
         mock_get_ssc = self.mock_object(self.library.ssc_library,
                                         'get_ssc',
-                                        mock.Mock(return_value=ssc))
+                                        return_value=ssc)
         mock_get_aggrs = self.mock_object(self.library.ssc_library,
                                           'get_ssc_aggregates',
-                                          mock.Mock(return_value=['aggr1']))
+                                          return_value=['aggr1'])
         self.mock_object(self.library, 'get_replication_backend_names',
-                         mock.Mock(return_value=replication_backends))
+                         return_value=replication_backends)
 
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
@@ -379,10 +378,10 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         }
         self.mock_object(self.zapi_client,
                          'get_flexvol_capacity',
-                         mock.Mock(return_value=mock_capacities))
+                         return_value=mock_capacities)
         self.mock_object(self.zapi_client,
                          'get_flexvol_dedupe_used_percent',
-                         mock.Mock(return_value=55.0))
+                         return_value=55.0)
 
         aggr_capacities = {
             'aggr1': {
@@ -393,7 +392,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         }
         mock_get_aggr_capacities = self.mock_object(
             self.zapi_client, 'get_aggregate_capacities',
-            mock.Mock(return_value=aggr_capacities))
+            return_value=aggr_capacities)
 
         result = self.library._get_pool_stats(filter_function='filter',
                                               goodness_function='goodness')
@@ -442,7 +441,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         mock_get_ssc = self.mock_object(self.library.ssc_library,
                                         'get_ssc',
-                                        mock.Mock(return_value=ssc))
+                                        return_value=ssc)
 
         pools = self.library._get_pool_stats()
 
@@ -456,7 +455,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_pool_name_search_pattern = patterns
         mock_list_flexvols = self.mock_object(
             self.zapi_client, 'list_flexvols',
-            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+            return_value=fake.FAKE_CMODE_VOLUMES)
 
         result = self.library._get_flexvol_to_pool_map()
 
@@ -478,7 +477,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_pool_name_search_pattern = patterns
         mock_list_flexvols = self.mock_object(
             self.zapi_client, 'list_flexvols',
-            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+            return_value=fake.FAKE_CMODE_VOLUMES)
 
         result = self.library._get_flexvol_to_pool_map()
 
@@ -499,7 +498,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_pool_name_search_pattern = patterns
         mock_list_flexvols = self.mock_object(
             self.zapi_client, 'list_flexvols',
-            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+            return_value=fake.FAKE_CMODE_VOLUMES)
 
         result = self.library._get_flexvol_to_pool_map()
 
@@ -510,7 +509,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
-            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+            return_value=fake.FAKE_CMODE_VOLUMES)
 
         result = self.library._update_ssc()
 
@@ -521,8 +520,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_delete_volume(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(
-                             return_value=fake.QOS_POLICY_GROUP_INFO))
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
 
         self.library.delete_volume(fake.VOLUME)
@@ -536,7 +534,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_delete_volume_get_valid_qos_policy_group_info_exception(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(side_effect=exception.Invalid))
+                         side_effect=exception.Invalid)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
 
         self.library.delete_volume(fake.VOLUME)
@@ -548,8 +546,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_setup_qos_for_volume(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(
-                             return_value=fake.QOS_POLICY_GROUP_INFO))
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.zapi_client, 'provision_qos_policy_group')
 
         result = self.library._setup_qos_for_volume(fake.VOLUME,
@@ -561,8 +558,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_setup_qos_for_volume_exception_path(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(
-                             side_effect=exception.Invalid))
+                         side_effect=exception.Invalid)
         self.mock_object(self.zapi_client, 'provision_qos_policy_group')
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -585,7 +581,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_unmanage(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(return_value=fake.QOS_POLICY_GROUP_INFO))
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.mock_object(block_base.NetAppBlockStorageLibrary, 'unmanage')
 
@@ -600,7 +596,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_unmanage_w_invalid_qos_policy(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(side_effect=exception.Invalid))
+                         side_effect=exception.Invalid)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.mock_object(block_base.NetAppBlockStorageLibrary, 'unmanage')
 
@@ -623,7 +619,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._check_volume_type_for_lun = mock.Mock()
         self.library._setup_qos_for_volume = mock.Mock()
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
-                         mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+                         return_value=fake.QOS_POLICY_GROUP_NAME)
         self.library._add_lun_to_table = mock.Mock()
         self.zapi_client.move_lun = mock.Mock()
         mock_set_lun_qos_policy_group = self.mock_object(
@@ -669,7 +665,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.backend_name = 'dev0'
         self.mock_object(data_motion.DataMotionMixin,
                          'get_replication_backend_names',
-                         mock.Mock(return_value=configured_targets))
+                         return_value=configured_targets)
         complete_failover_call = self.mock_object(
             data_motion.DataMotionMixin, '_complete_failover')
 
@@ -683,12 +679,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.backend_name = 'dev0'
         self.mock_object(
             data_motion.DataMotionMixin, '_complete_failover',
-            mock.Mock(side_effect=exception.NetAppDriverException))
+            side_effect=exception.NetAppDriverException)
         self.mock_object(data_motion.DataMotionMixin,
                          'get_replication_backend_names',
-                         mock.Mock(return_value=['dev1', 'dev2']))
+                         return_value=['dev1', 'dev2'])
         self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
-                         mock.Mock(return_value=fake_utils.SSC.keys()))
+                         return_value=fake_utils.SSC.keys())
         self.mock_object(self.library, '_update_zapi_client')
 
         self.assertRaises(exception.UnableToFailOver,
@@ -703,12 +699,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         """This tests executes a method in the DataMotionMixin."""
         self.library.backend_name = 'dev0'
         self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
-                         mock.Mock(return_value=('dev1', [])))
+                         return_value=('dev1', []))
         self.mock_object(data_motion.DataMotionMixin,
                          'get_replication_backend_names',
-                         mock.Mock(return_value=['dev1', 'dev2']))
+                         return_value=['dev1', 'dev2'])
         self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
-                         mock.Mock(return_value=fake_utils.SSC.keys()))
+                         return_value=fake_utils.SSC.keys())
         self.mock_object(self.library, '_update_zapi_client')
 
         actual_active, vol_updates = self.library.failover_host(

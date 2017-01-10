@@ -69,10 +69,10 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
 
         mock_get_export_ip_path = self.mock_object(
             self.driver, '_get_export_ip_path',
-            mock.Mock(return_value=(fake.SHARE_IP, fake.EXPORT_PATH)))
+            return_value=(fake.SHARE_IP, fake.EXPORT_PATH))
         mock_get_actual_path_for_export = self.mock_object(
             self.driver.zapi_client, 'get_actual_path_for_export',
-            mock.Mock(return_value='fake_path'))
+            return_value='fake_path')
 
         self.driver._clone_backing_file_for_volume(
             fake.FLEXVOL, 'fake_clone', fake.VOLUME_ID, share=share,
@@ -108,10 +108,10 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         }
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
-                         mock.Mock(return_value=capacity))
+                         return_value=capacity)
         self.mock_object(self.driver.perf_library,
                          'get_node_utilization',
-                         mock.Mock(return_value=30.0))
+                         return_value=30.0)
 
         result = self.driver._get_pool_stats(filter_function='filter',
                                              goodness_function='goodness')
@@ -237,13 +237,13 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         volume_list = ['vol0', 'vol1', 'vol2']
         self.mock_object(
             self.driver, '_get_backing_flexvol_names',
-            mock.Mock(return_value=volume_list))
+            return_value=volume_list)
         self.mock_object(
             dot_utils, 'build_ems_log_message_0',
-            mock.Mock(return_value='fake_base_ems_log_message'))
+            return_value='fake_base_ems_log_message')
         self.mock_object(
             dot_utils, 'build_ems_log_message_1',
-            mock.Mock(return_value='fake_pool_ems_log_message'))
+            return_value='fake_pool_ems_log_message')
         mock_send_ems_log_message = self.mock_object(
             self.driver.zapi_client, 'send_ems_log_message')
 

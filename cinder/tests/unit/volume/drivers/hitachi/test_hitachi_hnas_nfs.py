@@ -121,7 +121,7 @@ class HNASNFSDriverTest(test.TestCase):
         self.configuration.hds_hnas_nfs_config_file = 'fake.xml'
 
         self.mock_object(hnas_utils, 'read_cinder_conf',
-                         mock.Mock(return_value=self.parsed_xml))
+                         return_value=self.parsed_xml)
 
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.max_over_subscription_ratio = 20.0
@@ -135,8 +135,7 @@ class HNASNFSDriverTest(test.TestCase):
     def test_check_pool_and_share_no_default_configured(self):
         nfs_shares = '172.24.49.21:/fs-cinder'
 
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
 
         self.driver.config['services'] = {
             'silver': {
@@ -163,8 +162,7 @@ class HNASNFSDriverTest(test.TestCase):
         # exception
         nfs_shares = '172.24.49.21:/nfs_share'
 
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver._check_pool_and_share, self.volume,
@@ -175,8 +173,7 @@ class HNASNFSDriverTest(test.TestCase):
         self.volume.host = 'host1@hnas-nfs-backend#gold'
 
         # returning a pool different from 'default' should raise an exception
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver._check_pool_and_share, self.volume,
@@ -205,12 +202,11 @@ class HNASNFSDriverTest(test.TestCase):
 "
 
         self.mock_object(backend.HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
         self.mock_object(self.driver, '_load_shares_config')
         self.mock_object(backend.HNASSSHBackend, 'get_export_list',
-                         mock.Mock(return_value=export_list))
-        self.mock_object(self.driver, '_execute',
-                         mock.Mock(return_value=(showmount, '')))
+                         return_value=export_list)
+        self.mock_object(self.driver, '_execute', return_value=(showmount, ''))
 
         self.driver.do_setup(None)
 
@@ -237,12 +233,12 @@ class HNASNFSDriverTest(test.TestCase):
         ]
 
         self.mock_object(backend.HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
         self.mock_object(self.driver, '_load_shares_config')
         self.mock_object(backend.HNASSSHBackend, 'get_export_list',
-                         mock.Mock(return_value=export_list))
+                         return_value=export_list)
         self.mock_object(self.driver, '_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+                         side_effect=putils.ProcessExecutionError)
 
         self.assertRaises(putils.ProcessExecutionError, self.driver.do_setup,
                           None)
@@ -269,12 +265,11 @@ class HNASNFSDriverTest(test.TestCase):
 "
 
         self.mock_object(backend.HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
         self.mock_object(self.driver, '_load_shares_config')
         self.mock_object(backend.HNASSSHBackend, 'get_export_list',
-                         mock.Mock(return_value=export_list))
-        self.mock_object(self.driver, '_execute',
-                         mock.Mock(return_value=(showmount, '')))
+                         return_value=export_list)
+        self.mock_object(self.driver, '_execute', return_value=(showmount, ''))
 
         self.assertRaises(exception.InvalidParameterValue,
                           self.driver.do_setup, None)
@@ -341,7 +336,7 @@ class HNASNFSDriverTest(test.TestCase):
 
     def test_delete_snapshot_execute_exception(self):
         self.mock_object(self.driver, '_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+                         side_effect=putils.ProcessExecutionError)
 
         self.driver.delete_snapshot(self.snapshot)
 
@@ -351,9 +346,8 @@ class HNASNFSDriverTest(test.TestCase):
         data.virtual_size = 200 * 1024 ** 3
 
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=share_mount_point))
-        self.mock_object(image_utils, 'qemu_img_info',
-                         mock.Mock(return_value=data))
+                         return_value=share_mount_point)
+        self.mock_object(image_utils, 'qemu_img_info', return_value=data)
 
         self.driver.extend_volume(self.volume, 200)
 
@@ -365,9 +359,8 @@ class HNASNFSDriverTest(test.TestCase):
         data.virtual_size = 2048 ** 3
 
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=share_mount_point))
-        self.mock_object(image_utils, 'qemu_img_info',
-                         mock.Mock(return_value=data))
+                         return_value=share_mount_point)
+        self.mock_object(image_utils, 'qemu_img_info', return_value=data)
 
         self.mock_object(image_utils, 'resize_image')
 
@@ -378,11 +371,11 @@ class HNASNFSDriverTest(test.TestCase):
         self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
         existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
 
-        self.mock_object(os.path, 'isfile', mock.Mock(return_value=True))
+        self.mock_object(os.path, 'isfile', return_value=True)
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value='/fs-cinder/cinder-volume'))
+                         return_value='/fs-cinder/cinder-volume')
         self.mock_object(utils, 'resolve_hostname',
-                         mock.Mock(return_value='172.24.49.21'))
+                         return_value='172.24.49.21')
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(self.driver, '_execute')
 
@@ -402,9 +395,9 @@ class HNASNFSDriverTest(test.TestCase):
         existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
 
         self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
-                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
-                                                 '/mnt/silver',
-                                                 self.volume.name)))
+                         return_value=('172.24.49.21:/fs-cinder',
+                                       '/mnt/silver',
+                                       self.volume.name))
 
         out = self.driver.manage_existing(self.volume, existing_vol_ref)
 
@@ -415,11 +408,11 @@ class HNASNFSDriverTest(test.TestCase):
         existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
 
         self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
-                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
-                                                 '/mnt/silver',
-                                                 'cinder-volume')))
+                         return_value=('172.24.49.21:/fs-cinder',
+                                       '/mnt/silver',
+                                       'cinder-volume'))
         self.mock_object(self.driver, '_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+                         side_effect=putils.ProcessExecutionError)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.manage_existing, self.volume,
@@ -440,13 +433,12 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value='/mnt/silver'))
-        self.mock_object(os.path, 'isfile', mock.Mock(return_value=True))
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=expected_size))
+                         return_value='/mnt/silver')
+        self.mock_object(os.path, 'isfile', return_value=True)
+        self.mock_object(utils, 'get_file_size', return_value=expected_size)
 
         self.mock_object(vutils, 'check_already_managed_volume',
-                         mock.Mock(return_value=True))
+                         return_value=True)
 
         self.assertRaises(exception.ManageExistingAlreadyManaged,
                           self.driver.manage_existing, self.volume,
@@ -458,8 +450,7 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(utils, 'resolve_hostname',
-                         mock.Mock(side_effect=['172.24.49.21',
-                                                '172.24.49.22']))
+                         side_effect=['172.24.49.21', '172.24.49.22'])
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing, self.volume,
@@ -474,13 +465,11 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(utils, 'resolve_hostname',
-                         mock.Mock(return_value='172.24.49.21'))
+                         return_value='172.24.49.21')
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value='/mnt/silver'))
-        self.mock_object(os.path, 'isfile',
-                         mock.Mock(return_value=True))
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=expected_size))
+                         return_value='/mnt/silver')
+        self.mock_object(os.path, 'isfile', return_value=True)
+        self.mock_object(utils, 'get_file_size', return_value=expected_size)
 
         out = self.driver.manage_existing_get_size(self.volume,
                                                    existing_vol_ref)
@@ -497,9 +486,9 @@ class HNASNFSDriverTest(test.TestCase):
         self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
 
         self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
-                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
-                                                 '/mnt/silver',
-                                                 'cinder-volume')))
+                         return_value=('172.24.49.21:/fs-cinder',
+                                       '/mnt/silver',
+                                       'cinder-volume'))
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.manage_existing_get_size, self.volume,
@@ -514,7 +503,7 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(utils, 'resolve_hostname',
-                         mock.Mock(side_effect=socket.gaierror))
+                         side_effect=socket.gaierror)
 
         self.assertRaises(socket.gaierror,
                           self.driver.manage_existing_get_size, self.volume,
@@ -527,7 +516,7 @@ class HNASNFSDriverTest(test.TestCase):
         new_path = os.path.join(path, 'unmanage-' + vol_str)
 
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         self.mock_object(self.driver, '_execute')
 
         self.driver.unmanage(self.volume)
@@ -542,9 +531,8 @@ class HNASNFSDriverTest(test.TestCase):
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
 
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
-        self.mock_object(self.driver, '_execute',
-                         mock.Mock(side_effect=ValueError))
+                         return_value=path)
+        self.mock_object(self.driver, '_execute', side_effect=ValueError)
 
         self.driver.unmanage(self.volume)
 
@@ -557,12 +545,12 @@ class HNASNFSDriverTest(test.TestCase):
                                        + fake.SNAPSHOT_ID}
 
         self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
-                         mock.Mock(return_value=(nfs_share, nfs_mount, path)))
+                         return_value=(nfs_share, nfs_mount, path))
         self.mock_object(backend.HNASSSHBackend, 'check_snapshot_parent',
-                         mock.Mock(return_value=True))
+                         return_value=True)
         self.mock_object(self.driver, '_execute')
         self.mock_object(backend.HNASSSHBackend, 'get_export_path',
-                         mock.Mock(return_value='fs-cinder'))
+                         return_value='fs-cinder')
 
         out = self.driver.manage_existing_snapshot(self.snapshot,
                                                    existing_ref)
@@ -578,11 +566,11 @@ class HNASNFSDriverTest(test.TestCase):
                                        + fake.SNAPSHOT_ID}
 
         self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
-                         mock.Mock(return_value=(nfs_share, nfs_mount, path)))
+                         return_value=(nfs_share, nfs_mount, path))
         self.mock_object(backend.HNASSSHBackend, 'check_snapshot_parent',
-                         mock.Mock(return_value=False))
+                         return_value=False)
         self.mock_object(backend.HNASSSHBackend, 'get_export_path',
-                         mock.Mock(return_value='fs-cinder'))
+                         return_value='fs-cinder')
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot, self.snapshot,
@@ -597,13 +585,11 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(utils, 'resolve_hostname',
-                         mock.Mock(return_value='172.24.49.21'))
+                         return_value='172.24.49.21')
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value='/mnt/silver'))
-        self.mock_object(os.path, 'isfile',
-                         mock.Mock(return_value=True))
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=expected_size))
+                         return_value='/mnt/silver')
+        self.mock_object(os.path, 'isfile', return_value=True)
+        self.mock_object(utils, 'get_file_size', return_value=expected_size)
 
         out = self.driver.manage_existing_snapshot_get_size(
             self.snapshot, existing_ref)
@@ -620,7 +606,7 @@ class HNASNFSDriverTest(test.TestCase):
         new_path = os.path.join(path, 'unmanage-' + snapshot_name)
 
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         self.mock_object(self.driver, '_execute')
 
         self.driver.unmanage_snapshot(self.snapshot)
@@ -645,12 +631,12 @@ class HNASNFSDriverTest(test.TestCase):
         rsrc = [self.volume]
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         vols_exp = [self.volume.name]
         self.mock_object(self.driver, '_get_volumes_from_export',
-                         mock.Mock(return_value=vols_exp))
+                         return_value=vols_exp)
         self.mock_object(self.driver, '_get_file_size',
-                         mock.Mock(return_value=self.volume.size))
+                         return_value=self.volume.size)
 
         out = self.driver._get_manageable_resource_info(
             rsrc, "volume", None, 1000, 0, ['reference'], ['desc'])
@@ -677,12 +663,12 @@ class HNASNFSDriverTest(test.TestCase):
         rsrc = [self.volume]
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         vols_exp = [fake.VOLUME_NAME]
         self.mock_object(self.driver, '_get_volumes_from_export',
-                         mock.Mock(return_value=vols_exp))
+                         return_value=vols_exp)
         self.mock_object(self.driver, '_get_file_size',
-                         mock.Mock(return_value=self.volume.size))
+                         return_value=self.volume.size)
 
         out = self.driver._get_manageable_resource_info(rsrc, "volume", None,
                                                         1000, 0, ['reference'],
@@ -712,15 +698,15 @@ class HNASNFSDriverTest(test.TestCase):
         rsrc = [self.snapshot]
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         vols_exp = [fake.SNAPSHOT_NAME]
         self.mock_object(self.driver, '_get_volumes_from_export',
-                         mock.Mock(return_value=vols_exp))
+                         return_value=vols_exp)
         self.mock_object(self.driver, '_get_file_size',
-                         mock.Mock(return_value=self.volume.size))
+                         return_value=self.volume.size)
         self.mock_object(backend.HNASSSHBackend, 'get_cloned_file_relatives',
-                         mock.Mock(return_value=[' /nfs_cinder/volume-1',
-                                                 '/nfs_cinder/snapshot2']))
+                         return_value=[' /nfs_cinder/volume-1',
+                                       '/nfs_cinder/snapshot2'])
 
         out = self.driver._get_manageable_resource_info(rsrc, "snapshot", None,
                                                         1000, 0, ['reference'],
@@ -751,16 +737,16 @@ class HNASNFSDriverTest(test.TestCase):
         rsrc = [self.snapshot]
         path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
         self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         vols_exp = [fake.SNAPSHOT_NAME]
         self.mock_object(self.driver, '_get_volumes_from_export',
-                         mock.Mock(return_value=vols_exp))
+                         return_value=vols_exp)
         self.mock_object(self.driver, '_get_file_size',
-                         mock.Mock(return_value=self.volume.size))
+                         return_value=self.volume.size)
         self.mock_object(backend.HNASSSHBackend, 'get_cloned_file_relatives',
-                         mock.Mock(return_value=[' /nfs_cinder/volume-1',
-                                                 ' /nfs_cinder/volume-2',
-                                                 '/nfs_cinder/snapshot2']))
+                         return_value=[' /nfs_cinder/volume-1',
+                                       ' /nfs_cinder/volume-2',
+                                       '/nfs_cinder/snapshot2'])
 
         out = self.driver._get_manageable_resource_info(rsrc, "snapshot", None,
                                                         1000, 0, ['reference'],

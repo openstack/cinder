@@ -136,7 +136,7 @@ class AdminActionsTest(BaseAdminTest):
     def _issue_backup_reset(self, ctx, backup, updated_status):
         self.mock_object(backup_api.API,
                          '_get_available_backup_service_host',
-                         mock.Mock(return_value='testhost'))
+                         return_value='testhost')
         return self._issue_resource_reset(ctx,
                                           'backups',
                                           backup['id'],

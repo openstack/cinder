@@ -134,8 +134,8 @@ class NetAppESeriesDriverTestCase(object):
         configuration.netapp_controller_ips = '127.0.0.1,127.0.0.3'
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(driver.library, '_version_check')
-        self.mock_object(client.RestClient, 'list_storage_systems', mock.Mock(
-            return_value=[fakes.STORAGE_SYSTEM]))
+        self.mock_object(client.RestClient, 'list_storage_systems',
+                         return_value=[fakes.STORAGE_SYSTEM])
         driver.do_setup(context='context')
 
         self.assertEqual('1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b',
@@ -154,11 +154,11 @@ class NetAppESeriesDriverTestCase(object):
 
     def test_create_destroy(self):
         self.mock_object(client.RestClient, 'delete_volume',
-                         mock.Mock(return_value='None'))
+                         return_value='None')
         self.mock_object(self.driver.library, 'create_volume',
-                         mock.Mock(return_value=self.volume))
-        self.mock_object(self.library._client, 'list_volume', mock.Mock(
-            return_value=fakes.VOLUME))
+                         return_value=self.volume)
+        self.mock_object(self.library._client, 'list_volume',
+                         return_value=fakes.VOLUME)
 
         self.driver.create_volume(self.volume)
         self.driver.delete_volume(self.volume)
@@ -168,11 +168,10 @@ class NetAppESeriesDriverTestCase(object):
 
     def test_get_pool(self):
         self.mock_object(self.library, '_get_volume',
-                         mock.Mock(return_value={
-                             'volumeGroupRef': 'fake_ref'}))
+                         return_value={'volumeGroupRef': 'fake_ref'})
         self.mock_object(self.library._client, "get_storage_pool",
-                         mock.Mock(return_value={'volumeGroupRef': 'fake_ref',
-                                                 'label': 'ddp1'}))
+                         return_value={'volumeGroupRef': 'fake_ref',
+                                       'label': 'ddp1'})
 
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
 
@@ -180,10 +179,9 @@ class NetAppESeriesDriverTestCase(object):
 
     def test_get_pool_no_pools(self):
         self.mock_object(self.library, '_get_volume',
-                         mock.Mock(return_value={
-                             'volumeGroupRef': 'fake_ref'}))
+                         return_value={'volumeGroupRef': 'fake_ref'})
         self.mock_object(self.library._client, "get_storage_pool",
-                         mock.Mock(return_value=None))
+                         return_value=None)
 
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
 
@@ -347,7 +345,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration.netapp_controller_ips = '987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(side_effect=socket.gaierror))
+                         side_effect=socket.gaierror)
 
         self.assertRaises(
             exception.NoValidBackend,
@@ -358,7 +356,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration.netapp_controller_ips = '987.65.43.21,127.0.0.1'
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(side_effect=socket.gaierror))
+                         side_effect=socket.gaierror)
 
         self.assertRaises(
             exception.NoValidBackend,
@@ -369,7 +367,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration.netapp_controller_ips = '127.0.0.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(side_effect=socket.gaierror))
+                         side_effect=socket.gaierror)
 
         self.assertRaises(
             exception.NoValidBackend,
@@ -380,7 +378,7 @@ class NetAppESeriesDriverTestCase(object):
         configuration.netapp_controller_ips = '564.124.1231.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(side_effect=socket.gaierror))
+                         side_effect=socket.gaierror)
 
         self.assertRaises(
             exception.NoValidBackend,

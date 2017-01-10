@@ -465,14 +465,10 @@ class GroupsAPITestCase(test.TestCase):
         grp_type = {'id': fake.GROUP_TYPE_ID, 'name': 'group_type'}
         fake_type = {'id': fake.VOLUME_TYPE_ID, 'name': 'fake_type'}
         self.mock_object(db, 'volume_types_get_by_name_or_id',
-                         mock.Mock(return_value=[fake_type]))
-        self.mock_object(db, 'group_type_get',
-                         mock.Mock(return_value=grp_type))
-        self.mock_object(self.group_api,
-                         '_cast_create_group',
-                         mock.Mock())
-        self.mock_object(self.group_api, 'update_quota',
-                         mock.Mock())
+                         return_value=[fake_type])
+        self.mock_object(db, 'group_type_get', return_value=grp_type)
+        self.mock_object(self.group_api, '_cast_create_group')
+        self.mock_object(self.group_api, 'update_quota')
         group = self.group_api.create(self.ctxt, name, description,
                                       grp_type['id'], [fake_type['id']])
         self.group_api.update_quota.assert_called_once_with(

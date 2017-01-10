@@ -187,8 +187,7 @@ class volumeMetaDataTest(test.TestCase):
 
     def test_validate_etag_true(self):
         self.mock_object(db, 'volume_metadata_get',
-                         mock.Mock(return_value={'key1': 'vanue1',
-                                                 'key2': 'value2'}))
+                         return_value={'key1': 'vanue1', 'key2': 'value2'})
         req = fakes.HTTPRequest.blank(self.url, version="3.15")
         req.environ['cinder.context'] = mock.Mock()
         req.if_match.etags = ['d5103bf7b26ff0310200d110da3ed186']

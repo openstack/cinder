@@ -16,7 +16,6 @@
 
 import copy
 import ddt
-import mock
 import os
 
 from xml.etree import ElementTree as ETree
@@ -178,11 +177,10 @@ class HNASUtilsTest(test.TestCase):
             'id': fake_constants.VOLUME_TYPE_ID, 'name': 'silver'}))
 
     def test_read_xml_config(self):
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(return_value=ETree.ElementTree))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', return_value=ETree.ElementTree)
         self.mock_object(ETree.ElementTree, 'getroot',
-                         mock.Mock(return_value=valid_XML_etree))
+                         return_value=valid_XML_etree)
 
         xml_path = 'xml_file_found'
         out = hnas_utils.read_xml_config(xml_path,
@@ -193,15 +191,14 @@ class HNASUtilsTest(test.TestCase):
 
     def test_read_xml_config_parser_error(self):
         xml_file = 'hnas_nfs.xml'
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(side_effect=ETree.ParseError))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', side_effect=ETree.ParseError)
 
         self.assertRaises(exception.ConfigNotFound, hnas_utils.read_xml_config,
                           xml_file, service_parameters, optional_parameters)
 
     def test_read_xml_config_not_found(self):
-        self.mock_object(os, 'access', mock.Mock(return_value=False))
+        self.mock_object(os, 'access', return_value=False)
 
         xml_path = 'xml_file_not_found'
         self.assertRaises(exception.NotFound, hnas_utils.read_xml_config,
@@ -210,11 +207,10 @@ class HNASUtilsTest(test.TestCase):
     def test_read_xml_config_without_services_configured(self):
         xml_file = 'hnas_nfs.xml'
 
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(return_value=ETree.ElementTree))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', return_value=ETree.ElementTree)
         self.mock_object(ETree.ElementTree, 'getroot',
-                         mock.Mock(return_value=invalid_XML_etree_no_service))
+                         return_value=invalid_XML_etree_no_service)
 
         self.assertRaises(exception.ParameterNotFound,
                           hnas_utils.read_xml_config, xml_file,
@@ -223,12 +219,10 @@ class HNASUtilsTest(test.TestCase):
     def test_read_xml_config_empty_authentication_parameter(self):
         xml_file = 'hnas_nfs.xml'
 
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(return_value=ETree.ElementTree))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', return_value=ETree.ElementTree)
         self.mock_object(ETree.ElementTree, 'getroot',
-                         mock.Mock(return_value=
-                                   invalid_XML_etree_empty_parameter))
+                         return_value=invalid_XML_etree_empty_parameter)
 
         self.assertRaises(exception.ParameterNotFound,
                           hnas_utils.read_xml_config, xml_file,
@@ -237,12 +231,10 @@ class HNASUtilsTest(test.TestCase):
     def test_read_xml_config_mandatory_parameters_missing(self):
         xml_file = 'hnas_nfs.xml'
 
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(return_value=ETree.ElementTree))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', return_value=ETree.ElementTree)
         self.mock_object(ETree.ElementTree, 'getroot',
-                         mock.Mock(return_value=
-                                   invalid_XML_etree_no_mandatory_params))
+                         return_value=invalid_XML_etree_no_mandatory_params)
 
         self.assertRaises(exception.ParameterNotFound,
                           hnas_utils.read_xml_config, xml_file,
@@ -251,19 +243,17 @@ class HNASUtilsTest(test.TestCase):
     def test_read_config_xml_without_authentication_parameter(self):
         xml_file = 'hnas_nfs.xml'
 
-        self.mock_object(os, 'access', mock.Mock(return_value=True))
-        self.mock_object(ETree, 'parse',
-                         mock.Mock(return_value=ETree.ElementTree))
+        self.mock_object(os, 'access', return_value=True)
+        self.mock_object(ETree, 'parse', return_value=ETree.ElementTree)
         self.mock_object(ETree.ElementTree, 'getroot',
-                         mock.Mock(return_value=
-                                   invalid_XML_etree_no_authentication))
+                         return_value=invalid_XML_etree_no_authentication)
 
         self.assertRaises(exception.ConfigNotFound, hnas_utils.read_xml_config,
                           xml_file, service_parameters, optional_parameters)
 
     def test_get_pool_with_vol_type(self):
         self.mock_object(volume_types, 'get_volume_type_extra_specs',
-                         mock.Mock(return_value={'service_label': 'silver'}))
+                         return_value={'service_label': 'silver'})
 
         self.volume.volume_type_id = fake_constants.VOLUME_TYPE_ID
         self.volume.volume_type = self.volume_type
@@ -282,7 +272,7 @@ class HNASUtilsTest(test.TestCase):
 
     def test_get_pool_with_missing_service_label(self):
         self.mock_object(volume_types, 'get_volume_type_extra_specs',
-                         mock.Mock(return_value={'service_label': 'gold'}))
+                         return_value={'service_label': 'gold'})
 
         self.volume.volume_type_id = fake_constants.VOLUME_TYPE_ID
         self.volume.volume_type = self.volume_type

@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from cinder import exception
 from cinder import test
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
@@ -31,7 +29,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
     def test_new(self):
 
         self.mock_object(na_utils.OpenStackInfo, 'info',
-                         mock.Mock(return_value='fake_info'))
+                         return_value='fake_info')
         mock_create_driver = self.mock_object(na_common.NetAppDriver,
                                               'create_driver')
 

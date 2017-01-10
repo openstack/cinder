@@ -14,7 +14,6 @@
 #    under the License.
 
 import ddt
-import mock
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 import six
@@ -317,7 +316,7 @@ class VersionsControllerTestCase(test.TestCase):
         api_version_request_4_0 = api_version_request.APIVersionRequest('4.0')
         self.mock_object(api_version_request,
                          'max_api_version',
-                         mock.Mock(return_value=api_version_request_4_0))
+                         return_value=api_version_request_4_0)
 
         class Controller(wsgi.Controller):
 
@@ -375,7 +374,7 @@ class VersionsControllerTestCase(test.TestCase):
         version_request = api_version_request.APIVersionRequest(version)
         self.mock_object(api_version_request,
                          'max_api_version',
-                         mock.Mock(return_value=version_request))
+                         return_value=version_request)
 
         class Controller(wsgi.Controller):
 
@@ -401,7 +400,7 @@ class VersionsControllerTestCase(test.TestCase):
         version_request = api_version_request.APIVersionRequest(version)
         self.mock_object(api_version_request,
                          'max_api_version',
-                         mock.Mock(return_value=version_request))
+                         return_value=version_request)
 
         class Controller(wsgi.Controller):
 
@@ -427,7 +426,7 @@ class VersionsControllerTestCase(test.TestCase):
         version_request = api_version_request.APIVersionRequest(version)
         self.mock_object(api_version_request,
                          'max_api_version',
-                         mock.Mock(return_value=version_request))
+                         return_value=version_request)
 
         class Controller(wsgi.Controller):
 
@@ -451,7 +450,7 @@ class VersionsControllerTestCase(test.TestCase):
         version_request = api_version_request.APIVersionRequest('3.39')
         self.mock_object(api_version_request,
                          'max_api_version',
-                         mock.Mock(return_value=version_request))
+                         return_value=version_request)
 
         class Controller(wsgi.Controller):
 
