@@ -5449,20 +5449,31 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                             snap=False, policy='on-demand',
                             migrate_exc=False, exc=None, diff_equal=False,
                             replica=False, reserve_vol_type_only=False,
-                            encryption_changed=False):
+                            encryption_changed=False,
+                            replica_new=None):
         elevated = context.get_admin_context()
         project_id = self.context.project_id
 
-        db.volume_type_create(elevated, {'name': 'old', 'extra_specs': {}})
+        if replica:
+            rep_status = 'enabled'
+            extra_specs = {'replication_enabled': '<is> True'}
+        else:
+            rep_status = 'disabled'
+            extra_specs = {}
+
+        if replica_new is None:
+            replica_new = replica
+        new_specs = {'replication_enabled': '<is> True'} if replica_new else {}
+
+        db.volume_type_create(elevated, {'name': 'old',
+                                         'extra_specs': extra_specs})
         old_vol_type = db.volume_type_get_by_name(elevated, 'old')
-        db.volume_type_create(elevated, {'name': 'new', 'extra_specs': {}})
+
+        db.volume_type_create(elevated, {'name': 'new',
+                                         'extra_specs': new_specs})
         vol_type = db.volume_type_get_by_name(elevated, 'new')
         db.quota_create(elevated, project_id, 'volumes_new', 10)
 
-        if replica:
-            rep_status = 'active'
-        else:
-            rep_status = 'disabled'
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host, status='retyping',
                                            volume_type_id=old_vol_type['id'],
@@ -5514,8 +5525,14 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 'qos_specs': {},
                 'extra_specs': {},
             }
+            if replica != replica_new:
+                returned_diff['extra_specs']['replication_enabled'] = (
+                    extra_specs.get('replication_enabled'),
+                    new_specs.get('replication_enabled'))
+            expected_replica_status = 'enabled' if replica_new else 'disabled'
+
             if encryption_changed:
-                returned_diff = {'encryption': 'fake'}
+                returned_diff['encryption'] = 'fake'
             _diff.return_value = (returned_diff, diff_equal)
             if migrate_exc:
                 _mig.side_effect = KeyError
@@ -5581,9 +5598,16 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             mock_notify.assert_not_called()
         if encryption_changed:
             self.assertTrue(_mig.called)
+        self.assertEqual(expected_replica_status, volume.replication_status)
 
     def test_retype_volume_driver_success(self):
         self._retype_volume_exec(True)
+
+    @ddt.data((False, False), (False, True), (True, False), (True, True))
+    @ddt.unpack
+    def test_retype_volume_replica(self, replica, replica_new):
+        self._retype_volume_exec(True, replica=replica,
+                                 replica_new=replica_new)
 
     def test_retype_volume_migration_bad_policy(self):
         # Test volume retype that requires migration by not allowed
