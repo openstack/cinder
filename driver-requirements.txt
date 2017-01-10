@@ -36,3 +36,7 @@ storops>=0.4.8 # Apache-2.0
 
 # Violin
 vmemclient>=1.1.8 # Apache-2.0
+
+# INFINIDAT
+infinisdk # BSD-3
+capacity # BSD
