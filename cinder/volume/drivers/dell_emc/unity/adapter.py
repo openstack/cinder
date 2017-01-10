@@ -282,7 +282,7 @@ class CommonAdapter(object):
 
         LUN ID or name are supported in `existing_ref`, like:
 
-        .. code-block::
+        .. code-block:: none
 
         existing_ref:{
             'source-id':<LUN id in Unity>
@@ -290,7 +290,7 @@ class CommonAdapter(object):
 
         or
 
-        .. code-block::
+        .. code-block:: none
 
         existing_ref:{
             'source-name':<LUN name in Unity>
