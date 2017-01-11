@@ -387,6 +387,10 @@ def volume_has_undeletable_snapshots_filter():
     return IMPL.volume_has_undeletable_snapshots_filter()
 
 
+def volume_has_snapshots_in_a_cgsnapshot_filter():
+    return IMPL.volume_has_snapshots_in_a_cgsnapshot_filter()
+
+
 def volume_has_attachments_filter():
     return IMPL.volume_has_attachments_filter()
 

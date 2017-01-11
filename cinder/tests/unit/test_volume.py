@@ -4516,6 +4516,26 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume,
                           cascade=True)
 
+    def test_cascade_force_delete_volume_with_snapshots_error(self):
+        """Test volume force deletion with errored dependent snapshots."""
+        volume = tests_utils.create_volume(self.context,
+                                           host='fakehost')
+
+        snapshot = create_snapshot(volume.id,
+                                   size=volume.size,
+                                   status=fields.SnapshotStatus.ERROR_DELETING)
+        self.volume.create_snapshot(self.context, snapshot)
+
+        volume_api = cinder.volume.api.API()
+
+        volume_api.delete(self.context, volume, cascade=True, force=True)
+
+        snapshot = objects.Snapshot.get_by_id(self.context, snapshot.id)
+        self.assertEqual('deleting', snapshot.status)
+
+        volume = objects.Volume.get_by_id(self.context, volume.id)
+        self.assertEqual('deleting', volume.status)
+
     @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'get_volume_stats')
     @mock.patch.object(driver.BaseVD, '_init_vendor_properties')
     def test_get_capabilities(self, mock_init_vendor, mock_get_volume_stats):

@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import uuidutils
+import webob
 from webob import exc
 
 from cinder.api import common
@@ -24,12 +25,24 @@ from cinder.api.v3.views import volumes as volume_views_v3
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _, _LI
+import cinder.policy
 from cinder import utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
 SUMMARY_BASE_MICRO_VERSION = '3.12'
+
+
+def check_policy(context, action, target_obj=None):
+    target = {
+        'project_id': context.project_id,
+        'user_id': context.user_id
+    }
+    target.update(target_obj or {})
+
+    _action = 'volume:%s' % action
+    cinder.policy.enforce(context, _action, target)
 
 
 class VolumeController(volumes_v2.VolumeController):
@@ -40,6 +53,35 @@ class VolumeController(volumes_v2.VolumeController):
     def __init__(self, ext_mgr):
         self.group_api = group_api.API()
         super(VolumeController, self).__init__(ext_mgr)
+
+    def delete(self, req, id):
+        """Delete a volume."""
+        context = req.environ['cinder.context']
+        req_version = req.api_version_request
+
+        cascade = utils.get_bool_param('cascade', req.params)
+        force = False
+
+        params = ""
+        if req_version.matches('3.23'):
+            force = utils.get_bool_param('force', req.params)
+            if cascade or force:
+                params = "(cascade: %(c)s, force: %(f)s)" % {'c': cascade,
+                                                             'f': force}
+
+        msg = _LI("Delete volume with id: %(id)s %(params)s")
+        LOG.info(msg, {'id': id, 'params': params}, context=context)
+
+        if force:
+            check_policy(context, 'force_delete')
+
+        volume = self.volume_api.get(context, id)
+
+        self.volume_api.delete(context, volume,
+                               cascade=cascade,
+                               force=force)
+
+        return webob.Response(status_int=202)
 
     def _get_volumes(self, req, is_detail):
         """Returns a list of volumes, transformed through view builder."""

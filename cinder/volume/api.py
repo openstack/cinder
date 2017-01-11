@@ -406,8 +406,13 @@ class API(base.Base):
                                   'error_extending', 'error_managing')
 
         if cascade:
-            # Allow deletion if all snapshots are in an expected state
-            filters = [~db.volume_has_undeletable_snapshots_filter()]
+            if force:
+                # Ignore status checks, but ensure snapshots are not part
+                # of a cgsnapshot.
+                filters = [~db.volume_has_snapshots_in_a_cgsnapshot_filter()]
+            else:
+                # Allow deletion if all snapshots are in an expected state
+                filters = [~db.volume_has_undeletable_snapshots_filter()]
         else:
             # Don't allow deletion of volume with snapshots
             filters = [~db.volume_has_snapshots_filter()]
@@ -429,9 +434,11 @@ class API(base.Base):
 
         if cascade:
             values = {'status': 'deleting'}
-            expected = {'status': ('available', 'error', 'deleting'),
-                        'cgsnapshot_id': None,
+            expected = {'cgsnapshot_id': None,
                         'group_snapshot_id': None}
+            if not force:
+                expected['status'] = ('available', 'error', 'deleting')
+
             snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
                 context, volume.id)
             for s in snapshots:

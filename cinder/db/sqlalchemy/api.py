@@ -2384,6 +2384,12 @@ def volume_has_undeletable_snapshots_filter():
                  models.Snapshot.status.notin_(deletable_statuses))))
 
 
+def volume_has_snapshots_in_a_cgsnapshot_filter():
+    return sql.exists().where(
+        and_(models.Volume.id == models.Snapshot.volume_id,
+             models.Snapshot.cgsnapshot_id.isnot(None)))
+
+
 def volume_has_attachments_filter():
     return sql.exists().where(
         and_(models.Volume.id == models.VolumeAttachment.volume_id,
