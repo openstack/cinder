@@ -71,17 +71,41 @@ CONF.register_opts(vzstorage_opts)
 PLOOP_BASE_DELTA_NAME = 'root.hds'
 DISK_FORMAT_RAW = 'raw'
 DISK_FORMAT_QCOW2 = 'qcow2'
-DISK_FORMAT_PLOOP = 'parallels'
+DISK_FORMAT_PLOOP = 'ploop'
+
+# Due to the inconsistency in qemu-img format convention
+# it calls ploop disk format "parallels".
+# Convert it here to properly name it in Cinder
+# and, hence, in Nova and Libvirt
+FROM_QEMU_FORMAT_MAP = {k: k for k in image_utils.VALID_DISK_FORMATS}
+FROM_QEMU_FORMAT_MAP['parallels'] = DISK_FORMAT_PLOOP
+TO_QEMU_FORMAT_MAP = {v: k for k, v in FROM_QEMU_FORMAT_MAP.items()}
+
+
+def _to_qemu_format(fmt):
+    """Convert from Qemu format name
+
+    param fmt: Qemu format name
+    """
+    return TO_QEMU_FORMAT_MAP[fmt]
+
+
+def _from_qemu_format(fmt):
+    """Convert to Qemu format name
+
+    param fmt: conventional format name
+    """
+    return FROM_QEMU_FORMAT_MAP[fmt]
 
 
 class PloopDevice(object):
-    """Setup a ploop device for parallels image
+    """Setup a ploop device for ploop image
 
     This class is for mounting ploop devices using with statement:
-    with PloopDevice('/parallels/my-vm/harddisk.hdd') as dev_path:
+    with PloopDevice('/vzt/private/my-ct/harddisk.hdd') as dev_path:
         # do something
 
-    :param path: A path to parallels harddisk dir
+    :param path: A path to ploop harddisk dir
     :param snapshot_id: Snapshot id to mount
     :param execute: execute helper
     """
@@ -161,7 +185,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     def _qemu_img_info(self, path, volume_name):
         qemu_img_cache = path + ".qemu_img_info"
         if os.path.isdir(path):
-            # 'parallels' disks stored along with metadata xml as directories
+            # Ploop disks stored along with metadata xml as directories
             # qemu-img should explore base data file inside
             path = os.path.join(path, PLOOP_BASE_DELTA_NAME)
         if os.path.isfile(qemu_img_cache):
@@ -174,6 +198,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             ret = super(VZStorageDriver, self)._qemu_img_info_base(
                 path, volume_name,
                 self.configuration.vzstorage_mount_point_base)
+            ret.file_format = _from_qemu_format(ret.file_format)
             # We need only backing_file and file_format
             d = {'file_format': ret.file_format,
                  'backing_file': ret.backing_file}
@@ -182,7 +207,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         else:
             ret = imageutils.QemuImgInfo()
             with open(qemu_img_cache, "r") as f:
-                ret.__dict__ = json.load(f)
+                cached_data = json.load(f)
+            ret.file_format = cached_data['file_format']
+            ret.backing_file = cached_data['backing_file']
         return ret
 
     @remotefs_drv.locked_volume_id_operation
@@ -324,7 +351,6 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         active_file = self.get_active_image_from_info(volume)
         active_file_path = os.path.join(self._local_volume_dir(volume),
                                         active_file)
-
         img_info = self._qemu_img_info(active_file_path, volume.name)
         return img_info.file_format
 
@@ -354,7 +380,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        if volume_format == 'parallels':
+        if volume_format == DISK_FORMAT_PLOOP:
             self._create_ploop(volume_path, volume_size)
         elif volume_format == 'qcow2':
             self._create_qcow2_file(volume_path, volume_size)
@@ -388,7 +414,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self._do_extend_volume(volume_path, size_gb, volume_format)
 
     def _do_extend_volume(self, volume_path, size_gb, volume_format):
-        if volume_format == "parallels":
+        if volume_format == DISK_FORMAT_PLOOP:
             self._execute('ploop', 'grow', '-s',
                           '%dG' % size_gb,
                           os.path.join(volume_path, 'DiskDescriptor.xml'),
@@ -438,7 +464,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         image_utils.fetch_to_volume_format(
             context, image_service, image_id,
-            image_path, volume_format,
+            image_path, _to_qemu_format(volume_format),
             self.configuration.volume_dd_blocksize)
 
         if volume_format == DISK_FORMAT_PLOOP:
@@ -479,13 +505,15 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
             image_utils.convert_image(path_to_snap_img,
                                       volume_path,
-                                      out_format)
+                                      _to_qemu_format(out_format))
         elif volume_format == DISK_FORMAT_PLOOP:
             with PloopDevice(self.local_path(snapshot.volume),
                              snapshot.id,
                              execute=self._execute) as dev:
                 base_file = os.path.join(volume_path, 'root.hds')
-                image_utils.convert_image(dev, base_file, out_format)
+                image_utils.convert_image(dev,
+                                          base_file,
+                                          _to_qemu_format(out_format))
         else:
             msg = _("Unsupported volume format %s") % volume_format
             raise exception.InvalidVolume(msg)
@@ -553,9 +581,10 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         snap_info.pop(snapshot.id)
         self._write_info_file(info_path, snap_info)
 
+    @remotefs_drv.locked_volume_id_operation
     def create_snapshot(self, snapshot):
         volume_format = self.get_volume_format(snapshot.volume)
-        if volume_format == 'parallels':
+        if volume_format == DISK_FORMAT_PLOOP:
             self._create_snapshot_ploop(snapshot)
         else:
             super(VZStorageDriver, self)._create_snapshot(snapshot)
@@ -568,7 +597,13 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         # Cache qemu-img info for created snapshot
         self._qemu_img_info(new_snap_path, snapshot.volume.name)
 
+    @remotefs_drv.locked_volume_id_operation
     def delete_snapshot(self, snapshot):
+        volume_format = self.get_volume_format(snapshot.volume)
+        if volume_format == DISK_FORMAT_PLOOP:
+            self._delete_snapshot_ploop(snapshot)
+            return
+
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path, empty_if_missing=True)
         snap_file = os.path.join(self._local_volume_dir(snapshot.volume),
@@ -587,13 +622,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         img_info = self._qemu_img_info(snap_file, snapshot.volume.name)
         base_file = os.path.join(self._local_volume_dir(snapshot.volume),
                                  img_info.backing_file)
-        volume_format = self.get_volume_format(snapshot.volume)
         online = snapshot.volume.status == 'in-use'
 
-        if volume_format == 'parallels':
-            self._delete_snapshot_ploop(snapshot)
-        else:
-            super(VZStorageDriver, self)._delete_snapshot(snapshot)
+        super(VZStorageDriver, self)._delete_snapshot(snapshot)
 
         def _qemu_info_cache(fn):
             return fn + ".qemu_img_info"
@@ -684,7 +715,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         volume_format = self.get_volume_format(src_vref)
-        if volume_format == 'parallels':
+        if volume_format == DISK_FORMAT_PLOOP:
             self._create_cloned_volume(volume, src_vref)
         else:
             super(VZStorageDriver, self)._create_cloned_volume(volume,
