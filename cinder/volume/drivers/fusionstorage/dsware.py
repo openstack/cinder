@@ -70,7 +70,7 @@ class DSWAREDriver(driver.VolumeDriver):
     VERSION = '1.0'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Huawei_volume_CI"
+    CI_WIKI_NAME = "Huawei_FusionStorage_CI"
 
     DSWARE_VOLUME_CREATE_SUCCESS_STATUS = 0
     DSWARE_VOLUME_DUPLICATE_VOLUME = 6
