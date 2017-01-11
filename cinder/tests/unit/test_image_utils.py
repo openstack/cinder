@@ -511,7 +511,7 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_convert.called)
         self.assertFalse(mock_info.called)
         mock_chown.assert_called_once_with(volume_path)
-        mock_open.assert_called_once_with(volume_path)
+        mock_open.assert_called_once_with(volume_path, 'rb')
         image_service.update.assert_called_once_with(
             ctxt, image_meta['id'], {},
             mock_open.return_value.__enter__.return_value)
