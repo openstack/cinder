@@ -207,7 +207,7 @@ class GroupsController(wsgi.Controller):
         if not uuidutils.is_uuid_like(group_type):
             req_group_type = group_types.get_group_type_by_name(context,
                                                                 group_type)
-            group_type = req_group_type.id
+            group_type = req_group_type['id']
         self._check_default_cgsnapshot_type(group_type)
         volume_types = group.get('volume_types')
         if not volume_types:
