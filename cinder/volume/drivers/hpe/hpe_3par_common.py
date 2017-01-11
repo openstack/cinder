@@ -562,7 +562,10 @@ class HPE3PARCommon(object):
             volume_name = self._get_3par_vol_name(volume['id'])
             type_info = self.get_volume_settings_from_type(volume)
             cpg = type_info['cpg']
-            optional = {'online': True, 'snapCPG': cpg}
+            tpvv = type_info.get('tpvv', False)
+            tdvv = type_info.get('tdvv', False)
+            optional = {'online': True, 'snapCPG': cpg,
+                        'tpvv': tpvv, 'tdvv': tdvv}
             self.client.copyVolume(snap_name, volume_name, cpg, optional)
             self.client.addVolumeToVolumeSet(vvs_name, volume_name)
 

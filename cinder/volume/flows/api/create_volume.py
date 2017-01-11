@@ -518,6 +518,14 @@ class EntryCreateTask(flow_utils.CinderTask):
         pre-cursor task.
         """
 
+        src_volid = kwargs.get('source_volid')
+        src_vol = None
+        if src_volid is not None:
+            src_vol = objects.Volume.get_by_id(context, src_volid)
+        bootable = False
+        if src_vol is not None:
+            bootable = src_vol.bootable
+
         volume_properties = {
             'size': kwargs.pop('size'),
             'user_id': context.user_id,
@@ -529,6 +537,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
             'multiattach': kwargs.pop('multiattach'),
+            'bootable': bootable,
         }
 
         # Merge in the other required arguments which should provide the rest
