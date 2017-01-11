@@ -570,10 +570,6 @@ class ParameterNotFound(NotFound):
     message = _("Could not find parameter %(param)s")
 
 
-class PasteAppNotFound(NotFound):
-    message = _("Could not load paste app '%(name)s' from %(path)s")
-
-
 class NoValidBackend(CinderException):
     message = _("No valid backend was found. %(reason)s")
 
