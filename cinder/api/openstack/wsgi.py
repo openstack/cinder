@@ -948,7 +948,7 @@ class Resource(wsgi.Application):
 
                 response.headers[hdr] = val
 
-            if (not request.api_version_request.is_null() and
+            if (request.api_version_request and
                not _is_legacy_endpoint(request)):
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     VOLUME_SERVICE + ' ' +
@@ -1356,8 +1356,7 @@ class Fault(webob.exc.HTTPException):
             if retry:
                 fault_data[fault_name]['retryAfter'] = retry
 
-        if (not req.api_version_request.is_null() and not
-           _is_legacy_endpoint(req)):
+        if req.api_version_request and not _is_legacy_endpoint(req):
             self.wrapped_exc.headers[API_VERSION_REQUEST_HEADER] = (
                 VOLUME_SERVICE + ' ' + req.api_version_request.get_string())
             self.wrapped_exc.headers['Vary'] = API_VERSION_REQUEST_HEADER

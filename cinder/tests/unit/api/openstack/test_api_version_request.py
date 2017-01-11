@@ -63,10 +63,12 @@ class APIVersionRequestTests(test.TestCase):
         self.assertEqual(minor, request._ver_minor)
 
     def test_null_version(self):
-
         v = api_version_request.APIVersionRequest()
+        self.assertFalse(v)
 
-        self.assertTrue(v.is_null())
+    def test_not_null_version(self):
+        v = api_version_request.APIVersionRequest('1.1')
+        self.assertTrue(v)
 
     @ddt.data('2', '200', '2.1.4', '200.23.66.3', '5 .3', '5. 3',
               '5.03', '02.1', '2.001', '', ' 2.1', '2.1 ')
