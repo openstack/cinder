@@ -1157,6 +1157,7 @@ class VSPHORCMISCSIDriverTest(test.TestCase):
         """Normal case: Refreshing data required."""
         stats = self.driver.get_volume_stats(True)
         self.assertEqual('Hitachi', stats['vendor_name'])
+        self.assertTrue(stats['multiattach'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     def test_get_volume_stats_no_refresh(self, *args):

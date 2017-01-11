@@ -56,7 +56,7 @@ class VSPFCDriver(driver.FibreChannelDriver):
 
     .. code-block:: none
 
-    1.0.0 - Initial driver.
+        1.0.0 - Initial driver.
 
     """
 

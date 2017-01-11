@@ -128,15 +128,7 @@ def _str2int(num):
 
 @six.add_metaclass(abc.ABCMeta)
 class VSPCommon(object):
-    """Common class for Hitachi VSP Driver.
-
-    Version history:
-
-    .. code-block:: none
-
-    1.0.0 - Initial driver.
-
-    """
+    """Common class for Hitachi VSP Driver."""
 
     def __init__(self, conf, driverinfo, db):
         """Initialize instance variables."""
@@ -520,6 +512,7 @@ class VSPCommon(object):
         data['free_capacity_gb'] = free_gb
         data['reserved_percentage'] = self.conf.safe_get('reserved_percentage')
         data['QoS_support'] = False
+        data['multiattach'] = True
         LOG.debug("Updating volume status. (%s)", data)
         self._stats = data
 

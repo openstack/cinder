@@ -36,15 +36,7 @@ MSG = utils.VSPMsg
 
 
 class VSPHORCMFC(horcm.VSPHORCM):
-    """HORCM interface fibre channel class for Hitachi VSP Driver.
-
-    Version history:
-
-    .. code-block:: none
-
-    1.0.0 - Initial driver.
-
-    """
+    """HORCM interface fibre channel class for Hitachi VSP Driver."""
 
     def __init__(self, conf, storage_protocol, db):
         """Initialize instance variables."""
