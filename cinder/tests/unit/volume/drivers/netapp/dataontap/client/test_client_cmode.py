@@ -1940,6 +1940,72 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertFalse(result)
 
+    def test_is_flexvol_encrypted(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_ENCRYPTION_SSC_RESPONSE)
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': fake_client.VOLUME_NAME,
+                        'owning-vserver-name': fake_client.VOLUME_VSERVER_NAME,
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                }
+            }
+        }
+
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+
+        self.assertTrue(result)
+
+    def test_is_flexvol_encrypted_unsupported_version(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION', supported=False)
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted_no_records_found(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
     def test_get_aggregates(self):
 
         api_response = netapp_api.NaElement(

@@ -41,6 +41,7 @@ SSC = {
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': ['SSD'],
         'netapp_hybrid_aggregate': 'false',
+        'netapp_flexvol_encryption': 'true',
         'pool_name': 'volume1',
     },
     'volume2': {
@@ -54,6 +55,7 @@ SSC = {
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': ['FCAL', 'SSD'],
         'netapp_hybrid_aggregate': 'true',
+        'netapp_flexvol_encryption': 'false',
         'pool_name': 'volume2',
     },
 }
@@ -81,6 +83,15 @@ SSC_DEDUPE_INFO = {
     'volume2': {
         'netapp_dedup': 'true',
         'netapp_compression': 'true',
+    },
+}
+
+SSC_ENCRYPTION_INFO = {
+    'volume1': {
+        'netapp_flexvol_encryption': 'true',
+    },
+    'volume2': {
+        'netapp_flexvol_encryption': 'false',
     },
 }
 
@@ -116,6 +127,19 @@ PROVISIONING_OPTS = {
     'snapshot_reserve': '12',
     'volume_type': 'rw',
     'size': 20,
+}
+
+ENCRYPTED_PROVISIONING_OPTS = {
+    'aggregate': 'fake_aggregate',
+    'thin_provisioned': True,
+    'snapshot_policy': None,
+    'language': 'en_US',
+    'dedupe_enabled': False,
+    'compression_enabled': False,
+    'snapshot_reserve': '12',
+    'volume_type': 'rw',
+    'size': 20,
+    'encrypt': 'true',
 }
 
 

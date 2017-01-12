@@ -1,4 +1,5 @@
 # Copyright (c) 2016 Clinton Knight.  All rights reserved.
+# Copyright (c) 2017 Jose Porrua.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -44,7 +45,9 @@ SSC_API_MAP = {
         'netapp_dedup',
         'netapp_compression',
     ],
-    ('volume', 'show', 'volume-get-iter'): [],
+    ('volume', 'show', 'volume-get-iter'): [
+        'netapp_flexvol_encryption',
+    ],
 }
 
 
@@ -129,6 +132,7 @@ class CapabilitiesLibrary(object):
             ssc_volume.update(self._get_ssc_flexvol_info(flexvol_name))
             ssc_volume.update(self._get_ssc_dedupe_info(flexvol_name))
             ssc_volume.update(self._get_ssc_mirror_info(flexvol_name))
+            ssc_volume.update(self._get_ssc_encryption_info(flexvol_name))
 
             # Get aggregate info
             aggregate_name = ssc_volume.get('netapp_aggregate')
@@ -188,6 +192,13 @@ class CapabilitiesLibrary(object):
             'netapp_dedup': six.text_type(dedupe).lower(),
             'netapp_compression': six.text_type(compression).lower(),
         }
+
+    def _get_ssc_encryption_info(self, flexvol_name):
+        """Gather flexvol encryption info and recast into SSC-style stats."""
+        encrypted = self.zapi_client.is_flexvol_encrypted(
+            flexvol_name, self.vserver_name)
+
+        return {'netapp_flexvol_encryption': six.text_type(encrypted).lower()}
 
     def _get_ssc_mirror_info(self, flexvol_name):
         """Gather SnapMirror info and recast into SSC-style volume stats."""

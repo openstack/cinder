@@ -543,6 +543,9 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_get_provisioning_opts_call = self.mock_object(
             self.mock_src_client, 'get_provisioning_options_from_flexvol',
             return_value=provisioning_opts)
+        mock_is_flexvol_encrypted = self.mock_object(
+            self.mock_src_client, 'is_flexvol_encrypted',
+            return_value=False)
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
         mock_client_call = self.mock_object(
@@ -560,6 +563,45 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_client_call.assert_called_once_with(
             self.dest_flexvol_name, 'aggr01', fakes.PROVISIONING_OPTS['size'],
             volume_type='dp', **expected_prov_opts)
+        mock_is_flexvol_encrypted.assert_called_once_with(
+            self.src_flexvol_name, self.src_vserver)
+
+    def test_create_encrypted_destination_flexvol(self):
+        aggr_map = {
+            fakes.ENCRYPTED_PROVISIONING_OPTS['aggregate']: 'aggr01',
+            'aggr20': 'aggr02',
+        }
+        provisioning_opts = copy.deepcopy(fakes.ENCRYPTED_PROVISIONING_OPTS)
+        expected_prov_opts = copy.deepcopy(fakes.ENCRYPTED_PROVISIONING_OPTS)
+        expected_prov_opts.pop('volume_type', None)
+        expected_prov_opts.pop('size', None)
+        expected_prov_opts.pop('aggregate', None)
+        mock_get_provisioning_opts_call = self.mock_object(
+            self.mock_src_client, 'get_provisioning_options_from_flexvol',
+            return_value=provisioning_opts)
+        mock_is_flexvol_encrypted = self.mock_object(
+            self.mock_src_client, 'is_flexvol_encrypted',
+            return_value=True)
+        self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
+                         return_value=aggr_map)
+        mock_client_call = self.mock_object(
+            self.mock_dest_client, 'create_flexvol')
+
+        retval = self.dm_mixin.create_destination_flexvol(
+            self.src_backend, self.dest_backend,
+            self.src_flexvol_name, self.dest_flexvol_name)
+
+        self.assertIsNone(retval)
+        mock_get_provisioning_opts_call.assert_called_once_with(
+            self.src_flexvol_name)
+        self.dm_mixin._get_replication_aggregate_map.assert_called_once_with(
+            self.src_backend, self.dest_backend)
+        mock_client_call.assert_called_once_with(
+            self.dest_flexvol_name, 'aggr01',
+            fakes.ENCRYPTED_PROVISIONING_OPTS['size'],
+            volume_type='dp', **expected_prov_opts)
+        mock_is_flexvol_encrypted.assert_called_once_with(
+            self.src_flexvol_name, self.src_vserver)
 
     def test_ensure_snapmirrors(self):
         flexvols = ['nvol1', 'nvol2']

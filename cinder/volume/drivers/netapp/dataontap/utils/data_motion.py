@@ -417,6 +417,12 @@ class DataMotionMixin(object):
                 src_flexvol_name)
         )
 
+        # If the source is encrypted then the destination needs to be
+        # encrypted too. Using is_flexvol_encrypted because it includes
+        # a simple check to ensure that the NVE feature is supported.
+        if src_client.is_flexvol_encrypted(src_flexvol_name, src_vserver):
+            provisioning_options['encrypt'] = 'true'
+
         # Remove size and volume_type
         size = provisioning_options.pop('size', None)
         if not size:

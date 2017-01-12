@@ -889,6 +889,47 @@ CLONE_SPLIT_STATUS_NO_DATA_RESPONSE = etree.XML("""
   </results>
 """)
 
+VOLUME_GET_ITER_ENCRYPTION_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <encrypt>true</encrypt>
+        <volume-id-attributes>
+          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+          <junction-path>/%(volume)s</junction-path>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+          <type>rw</type>
+        </volume-id-attributes>
+        <volume-mirror-attributes>
+          <is-data-protection-mirror>false</is-data-protection-mirror>
+          <is-replica-volume>false</is-replica-volume>
+        </volume-mirror-attributes>
+        <volume-qos-attributes>
+          <policy-group-name>fake_qos_policy_group_name</policy-group-name>
+        </volume-qos-attributes>
+        <volume-space-attributes>
+          <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
+          <space-guarantee>none</space-guarantee>
+          <percentage-snapshot-reserve>5</percentage-snapshot-reserve>
+          <size>12345</size>
+        </volume-space-attributes>
+        <volume-snapshot-attributes>
+          <snapshot-policy>default</snapshot-policy>
+        </volume-snapshot-attributes>
+        <volume-language-attributes>
+          <language-code>en_US</language-code>
+        </volume-language-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': VOLUME_AGGREGATE_NAMES[0],
+    'volume': VOLUME_NAMES[0],
+    'vserver': VOLUME_VSERVER_NAME,
+})
+
 STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
   <results status="passed">
     <attributes-list>
