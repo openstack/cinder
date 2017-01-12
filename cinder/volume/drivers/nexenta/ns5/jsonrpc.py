@@ -81,7 +81,15 @@ class RESTCaller(object):
         LOG.debug('Sending JSON data: %s, method: %s, data: %s',
                   url, self.__method, data)
 
-        response = getattr(self.__proxy.session, self.__method)(url, **kwargs)
+        try:
+            response = getattr(
+                self.__proxy.session, self.__method)(url, **kwargs)
+        except requests.exceptions.ConnectionError:
+            self.handle_failover()
+            LOG.debug('Sending JSON data: %s, method: %s, data: %s',
+                      self.__proxy.url, self.__method, data)
+            response = getattr(
+                self.__proxy.session, self.__method)(url, **kwargs)
         check_error(response)
         content = json.loads(response.content) if response.content else None
         LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
@@ -94,7 +102,11 @@ class RESTCaller(object):
             keep_going = True
             while keep_going:
                 time.sleep(1)
-                response = self.__proxy.session.get(url, verify=False)
+                try:
+                    response = self.__proxy.session.get(url, verify=False)
+                except requests.exceptions.ConnectionError:
+                    self.handle_failover()
+                    response = self.__proxy.session.get(url, verify=False)
                 check_error(response)
                 LOG.debug("Got response: %(code)s %(reason)s", {
                     'code': response.status_code,
@@ -102,6 +114,18 @@ class RESTCaller(object):
                 content = response.json() if response.content else None
                 keep_going = response.status_code == 202
         return content
+
+    def handle_failover(self):
+        if self.__proxy.backup:
+            LOG.info('Server %s timed out, failing over to backup: %s',
+                     self.__proxy.host, self.__proxy.backup)
+            self.__proxy.host, self.__proxy.backup = (
+                self.__proxy.backup, self.__proxy.host)
+            self.__proxy.__init__(
+                self.__proxy.host, self.__proxy.port, self.__proxy.user,
+                self.__proxy.password, self.__proxy.use_https)
+        else:
+            raise
 
 
 class HTTPSAuth(requests.auth.AuthBase):
@@ -151,7 +175,7 @@ class HTTPSAuth(requests.auth.AuthBase):
         return r
 
     def https_auth(self):
-        LOG.debug('Sending auth request...')
+        LOG.debug('Sending auth request to %s.' % self.url)
         url = '/'.join((self.url, 'auth/login'))
         headers = {'Content-Type': 'application/json'}
         data = {'username': self.username, 'password': self.password}
@@ -179,7 +203,12 @@ class NexentaJSONProxy(object):
     def __init__(self, host, port, user, password, use_https):
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
-        self.host = host
+        self.user = user
+        self.password = password
+        self.use_https = use_https
+        parts = host.split(',')
+        self.host = parts[0].strip()
+        self.backup = parts[1].strip() if len(parts) > 1 else None
         if use_https:
             self.scheme = 'https'
             self.port = port if port else 8443

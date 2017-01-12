@@ -74,7 +74,8 @@ class NexentaNfsDriver(nfs.NfsDriver,
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
-        self.nef_host = self.configuration.nas_host
+        self.nef_host = self.configuration.nexenta_rest_address
+        self.vip = self.configuration.nexenta_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -90,8 +91,9 @@ class NexentaNfsDriver(nfs.NfsDriver,
         return backend_name
 
     def do_setup(self, context):
+        host = self.nef_host or self.vip
         self.nef = jsonrpc.NexentaJSONProxy(
-            self.nef_host, self.nef_port, self.nef_user,
+            host, self.nef_port, self.nef_user,
             self.nef_password, self.use_https)
 
     def check_for_setup_error(self):
@@ -150,12 +152,13 @@ class NexentaNfsDriver(nfs.NfsDriver,
             'dedupMode': self.dataset_deduplication,
         }
         self.nef.post(url, data)
+        host = self.vip or self.nef_host
         volume['provider_location'] = '%s:/%s/%s' % (
-            self.nef_host, self.share, volume['name'])
+            host, self.share, volume['name'])
         try:
             self._share_folder(fs, volume['name'])
             self._ensure_share_mounted('%s:/%s/%s' % (
-                self.nef_host, self.share, volume['name']))
+                host, self.share, volume['name']))
 
             volume_size = volume['size']
             if getattr(self.configuration,
@@ -436,10 +439,11 @@ class NexentaNfsDriver(nfs.NfsDriver,
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
-        share = ':/'.join([self.nef_host, self.share])
         total, free, allocated = self._get_capacity_info(self.share)
         total_space = utils.str2gib_size(total)
         free_space = utils.str2gib_size(free)
+        host = self.vip or self.nef_host
+        share = ':/'.join([host, self.share])
 
         location_info = '%(driver)s:%(share)s' % {
             'driver': self.__class__.__name__,

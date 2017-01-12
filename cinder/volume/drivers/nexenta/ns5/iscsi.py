@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import units
 
@@ -68,7 +69,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
         self.use_https = self.configuration.nexenta_use_https
-        self.nef_host = self.configuration.nexenta_host
+        self.nef_host = self.configuration.nexenta_rest_address
+        self.vip = self.configuration.nexenta_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
@@ -92,8 +94,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         return backend_name
 
     def do_setup(self, context):
+        host = self.nef_host or self.vip
         self.nef = jsonrpc.NexentaJSONProxy(
-            self.nef_host, self.nef_port, self.nef_user,
+            host, self.nef_port, self.nef_user,
             self.nef_password, self.use_https)
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
@@ -313,6 +316,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
     def remove_export(self, _ctx, volume):
         """Destroy all resources created to export zfs volume.
 
+
         :param volume: reference of volume to be unexported
         """
         volume_path = self._get_volume_path(volume)
@@ -357,9 +361,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         free_amount = utils.str2gib_size(
             stats['bytesAvailable'] - stats['bytesUsed'])
 
+        host = self.vip or self.nef_host
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
-            'host': self.nef_host,
+            'host': host,
             'pool': self.storage_pool,
             'group': self.volume_group,
         }
@@ -424,9 +429,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
                 # Create new target
                 url = 'san/iscsi/targets'
+                portal = self.vip or self.nef_host
                 data = {
                     "portals": [
-                        {"address": self.nef_host}
+                        {"address": portal}
                     ],
                     'alias': tg_name
                 }
@@ -462,10 +468,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
             # Get LUN of just created volume
             data = self.nef.get(vol_map_url).get('data')
+            counter = 0
+            while not data and counter < 20:
+                greenthread.sleep(1)
+                counter += 1
+                data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
+            host = self.vip or self.nef_host
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': self.nef_host,
+                'host': host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
                 'name': target_name,
                 'lun': lun,
