@@ -79,9 +79,6 @@
     "volume:get_transfer": "rule:admin_or_owner",
     "volume:get_all_transfers": "rule:admin_or_owner",
 
-    "volume_extension:replication:promote": "rule:admin_api",
-    "volume_extension:replication:reenable": "rule:admin_api",
-
     "volume:failover_host": "rule:admin_api",
     "volume:freeze_host": "rule:admin_api",
     "volume:thaw_host": "rule:admin_api",
