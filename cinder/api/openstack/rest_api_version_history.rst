@@ -227,6 +227,10 @@ user documentation.
 ----
   Added support to filter snapshot list based on metadata of snapshot.
 
+3.23
+----
+  Allow passing force parameter to volume delete.
+
 3.24
 ----
   New API endpoint /workers/cleanup allows triggering cleanup for cinder-volume
