@@ -403,9 +403,14 @@ class StorageCenterApi(object):
         3.1.0 - Failback supported.
         3.2.0 - Live Volume support.
         3.3.0 - Support for a secondary DSM.
+        3.4.0 - Support for excluding a domain.
+        3.5.0 - Support for AFO.
+        3.6.0 - Server type support.
+        3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
+
     """
 
-    APIDRIVERVERSION = '3.3.0'
+    APIDRIVERVERSION = '3.7.0'
 
     def __init__(self, host, port, user, password, verify, apiversion):
         """This creates a connection to Dell SC or EM.
