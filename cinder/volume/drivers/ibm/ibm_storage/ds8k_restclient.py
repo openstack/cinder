@@ -271,18 +271,19 @@ class RESTScheduler(object):
                     attempts == 0):
                 self.connect()
             elif response['server'].get('code') in AUTHENTICATION_ERROR_CODES:
-                msg = (_('Authentication failed for host %(host)s. '
-                         'Exception= %(e)s') %
-                       {'host': self.host, 'e': response['server']['message']})
-                raise APIAuthenticationException(data=msg)
+                raise APIAuthenticationException(
+                    data=(_('Authentication failed for host %(host)s. '
+                            'Exception= %(e)s') %
+                          {'host': self.host,
+                           'e': response['server']['message']}))
             elif response['server'].get('code') in LSS_ERROR_CODES:
-                msg = (_('Can not put the volume in LSS: %s') %
-                       response['server']['message'])
-                raise LssFullException(data=msg)
+                raise LssFullException(
+                    data=(_('Can not put the volume in LSS: %s')
+                          % response['server']['message']))
             elif response['server']['status'] == 'timeout':
-                msg = (_('Request to storage API time out: %s') %
-                       response['server']['message'])
-                raise TimeoutException(data=msg)
+                raise TimeoutException(
+                    data=(_('Request to storage API time out: %s')
+                          % response['server']['message']))
             elif (response['server']['status'] != 'ok' and
                   (badStatusException or 'code' not in response['server'])):
                 # if code is not in response means that error was in
@@ -290,10 +291,11 @@ class RESTScheduler(object):
                 # via badStatusException=False, but will retry it to
                 # confirm the problem.
                 if attempts == 1:
-                    msg = (_("Request to storage API failed: %(err)s, "
-                             "(%(url)s).") %
-                           {'err': response['server']['message'], 'url': url})
-                    raise APIException(data=msg)
+                    raise APIException(
+                        data=(_("Request to storage API failed: %(err)s, "
+                                "(%(url)s).")
+                              % {'err': response['server']['message'],
+                                 'url': url}))
                 eventlet.sleep(2)
             else:
                 return response
@@ -303,8 +305,8 @@ class RESTScheduler(object):
     def fetchall(self, *args, **kwargs):
         r = self.send(*args, **kwargs)['data']
         if len(r) != 1:
-            msg = _('Expected one result but got %d.') % len(r)
-            raise APIException(data=msg)
+            raise APIException(
+                data=(_('Expected one result but got %d.') % len(r)))
         else:
             return r.popitem()[1]
 
@@ -313,8 +315,8 @@ class RESTScheduler(object):
     def fetchone(self, *args, **kwargs):
         r = self.fetchall(*args, **kwargs)
         if len(r) != 1:
-            msg = _('Expected one item in result but got %d.') % len(r)
-            raise APIException(data=msg)
+            raise APIException(
+                data=(_('Expected one item in result but got %d.') % len(r)))
         return r[0]
 
     # same as the send method above but returns the last element of the
@@ -323,9 +325,9 @@ class RESTScheduler(object):
         r = self.send(*args, **kwargs)
         if 'responses' in r:
             if len(r['responses']) != 1:
-                msg = (_('Expected one item in result responses but '
-                         'got %d.') % len(r['responses']))
-                raise APIException(data=msg)
+                raise APIException(
+                    data=(_('Expected one item in result responses but '
+                            'got %d.') % len(r['responses'])))
             r = r['responses'][0]
         return r['link']['href'].split('/')[-1]
 

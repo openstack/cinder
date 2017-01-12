@@ -61,6 +61,8 @@ def filter_alnum(s):
 class DS8KCommonHelper(object):
     """Manage the primary backend, it is common class too."""
 
+    OPTIONAL_PARAMS = ['ds8k_host_type', 'lss_range_for_cg']
+
     def __init__(self, conf, HTTPConnectorObject=None):
         self.conf = conf
         self._connector_obj = HTTPConnectorObject
@@ -76,9 +78,13 @@ class DS8KCommonHelper(object):
 
     def _get_value(self, key):
         if getattr(self.conf, 'safe_get', 'get') == 'get':
-            return self.conf.get(key)
+            value = self.conf.get(key)
         else:
-            return self.conf.safe_get(key)
+            value = self.conf.safe_get(key)
+        if not value and key not in self.OPTIONAL_PARAMS:
+            raise exception.InvalidParameterValue(
+                err=(_('Param [%s] should be provided.') % key))
+        return value
 
     def get_thin_provision(self):
         return self._disable_thin_provision
@@ -100,6 +106,7 @@ class DS8KCommonHelper(object):
         self._get_storage_information()
         self._check_host_type()
         self.backend['pools_str'] = self._get_value('san_clustername')
+        self._get_lss_ids_for_cg()
         self._verify_version()
         self._verify_pools()
 
@@ -109,8 +116,8 @@ class DS8KCommonHelper(object):
 
     def _get_certificate(self, host):
         cert_file = strings.CERTIFICATES_PATH + host + '.pem'
-        msg = "certificate file for DS8K %(host)s: %(cert)s"
-        LOG.debug(msg, {'host': host, 'cert': cert_file})
+        LOG.debug("certificate file for DS8K %(host)s: %(cert)s",
+                  {'host': host, 'cert': cert_file})
         # Use the certificate if it exists, otherwise use the System CA Bundle
         if os.path.exists(cert_file):
             return cert_file
@@ -119,23 +126,23 @@ class DS8KCommonHelper(object):
             return True
 
     def _create_client(self):
+        san_ip = self._get_value('san_ip')
         try:
             clear_pass = cryptish.decrypt(self._get_value('san_password'))
         except TypeError:
-            err = _('Param [san_password] is invalid.')
-            raise exception.InvalidParameterValue(err=err)
-        verify = self._get_certificate(self._get_value('san_ip'))
+            raise exception.InvalidParameterValue(
+                err=_('Param [san_password] is invalid.'))
+        verify = self._get_certificate(san_ip)
         try:
             self._client = restclient.RESTScheduler(
-                self._get_value('san_ip'),
+                san_ip,
                 self._get_value('san_login'),
                 clear_pass,
                 self._connector_obj,
                 verify)
         except restclient.TimeoutException:
-            msg = (_("Can't connect to %(host)s") %
-                   {'host': self._get_value('san_ip')})
-            raise restclient.APIException(data=msg)
+            raise restclient.APIException(
+                data=(_("Can't connect to %(host)s") % {'host': san_ip}))
         self.backend['rest_version'] = self._get_version()['bundle_version']
         LOG.info("Connection to DS8K storage system %(host)s has been "
                  "established successfully, the version of REST is %(rest)s.",
@@ -148,12 +155,31 @@ class DS8KCommonHelper(object):
         self.backend['storage_wwnn'] = storage_info['wwnn']
         self.backend['storage_version'] = storage_info['release']
 
+    def _get_lss_ids_for_cg(self):
+        lss_range = self._get_value('lss_range_for_cg')
+        if lss_range:
+            lss_range = lss_range.replace(' ', '').split('-')
+            if len(lss_range) == 1:
+                begin = int(lss_range[0], 16)
+                end = begin
+            else:
+                begin = int(lss_range[0], 16)
+                end = int(lss_range[1], 16)
+            if begin > 0xFF or end > 0xFF or begin > end:
+                raise exception.InvalidParameterValue(
+                    err=_('Param [lss_range_for_cg] is invalid, it '
+                          'should be within 00-FF.'))
+            self.backend['lss_ids_for_cg'] = set(
+                ('%02x' % i).upper() for i in range(begin, end + 1))
+        else:
+            self.backend['lss_ids_for_cg'] = set()
+
     def _check_host_type(self):
         ds8k_host_type = self._get_value('ds8k_host_type')
-        if ((ds8k_host_type is not None) and
+        if (ds8k_host_type and
            (ds8k_host_type not in VALID_HOST_TYPES)):
-            msg = (_("Param [ds8k_host_type] must be one of: %(values)s.") %
-                   {'values': VALID_HOST_TYPES[1:-1]})
+            msg = (_("Param [ds8k_host_type] must be one of: %(values)s.")
+                   % {'values': VALID_HOST_TYPES[1:-1]})
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
         self.backend['host_type_override'] = (
@@ -161,12 +187,12 @@ class DS8KCommonHelper(object):
 
     def _verify_version(self):
         if self.backend['storage_version'] == '8.0.1':
-            msg = (_("8.0.1 does not support bulk deletion of volumes, "
-                     "if you want to use this version of driver, "
-                     "please upgrade the CCL, and make sure the REST "
-                     "version is not lower than %s.")
-                   % VALID_REST_VERSION_5_8_MIN)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(
+                data=(_("8.0.1 does not support bulk deletion of volumes, "
+                        "if you want to use this version of driver, "
+                        "please upgrade the CCL, and make sure the REST "
+                        "version is not lower than %s.")
+                      % VALID_REST_VERSION_5_8_MIN))
         else:
             if (('5.7' in self.backend['rest_version'] and
                dist_version.LooseVersion(self.backend['rest_version']) <
@@ -174,13 +200,13 @@ class DS8KCommonHelper(object):
                ('5.8' in self.backend['rest_version'] and
                dist_version.LooseVersion(self.backend['rest_version']) <
                dist_version.LooseVersion(VALID_REST_VERSION_5_8_MIN))):
-                msg = (_("REST version %(invalid)s is lower than "
-                         "%(valid)s, please upgrade it in DS8K.")
-                       % {'invalid': self.backend['rest_version'],
-                          'valid': (VALID_REST_VERSION_5_7_MIN if '5.7' in
-                                    self.backend['rest_version'] else
-                                    VALID_REST_VERSION_5_8_MIN)})
-                raise exception.VolumeDriverException(data=msg)
+                raise exception.VolumeDriverException(
+                    data=(_("REST version %(invalid)s is lower than "
+                            "%(valid)s, please upgrade it in DS8K.")
+                          % {'invalid': self.backend['rest_version'],
+                             'valid': (VALID_REST_VERSION_5_7_MIN if '5.7' in
+                                       self.backend['rest_version'] else
+                                       VALID_REST_VERSION_5_8_MIN)}))
 
         if self._connection_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
             if (dist_version.LooseVersion(self.backend['storage_version']) <
@@ -193,15 +219,15 @@ class DS8KCommonHelper(object):
         elif self._connection_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
             ptype = 'ckd'
         else:
-            err = _('Param [connection_type] is invalid.')
-            raise exception.InvalidParameterValue(err=err)
+            raise exception.InvalidParameterValue(
+                err=_('Param [connection_type] is invalid.'))
         self._storage_pools = self.get_pools()
         for pid, p in self._storage_pools.items():
             if p['stgtype'] != ptype:
                 LOG.error('The stgtype of pool %(pool)s is %(ptype)s.',
                           {'pool': pid, 'ptype': p['stgtype']})
-                err = _('Param [san_clustername] is invalid.')
-                raise exception.InvalidParameterValue(err=err)
+                raise exception.InvalidParameterValue(
+                    err='Param [san_clustername] is invalid.')
 
     @proxy.logger
     def get_pools(self, new_pools=None):
@@ -229,7 +255,7 @@ class DS8KCommonHelper(object):
         }) for p in pools)
 
     @proxy.logger
-    def find_available_lss(self, pool, find_new_pid, excluded_lss):
+    def find_pool_lss_pair(self, pool, find_new_pid, excluded_lss):
         if pool:
             node = int(pool[1:], 16) % 2
             lss = self._find_lss(node, excluded_lss)
@@ -237,9 +263,9 @@ class DS8KCommonHelper(object):
                 return (pool, lss)
             else:
                 if not find_new_pid:
-                    msg = _('All LSS/LCU IDs for configured pools on '
-                            'storage are exhausted.')
-                    raise restclient.LssIDExhaustError(message=msg)
+                    raise restclient.LssIDExhaustError(
+                        message=_('All LSS/LCU IDs for configured pools '
+                                  'on storage are exhausted.'))
         # find new pool id and lss for lun
         return self.find_biggest_pool_and_lss(excluded_lss)
 
@@ -250,8 +276,8 @@ class DS8KCommonHelper(object):
             lss = self._find_lss(pool['node'], excluded_lss)
             if lss:
                 return pool_id, lss
-        msg = _("All LSS/LCU IDs for configured pools are exhausted.")
-        raise restclient.LssIDExhaustError(message=msg)
+        raise restclient.LssIDExhaustError(
+            message=_("All LSS/LCU IDs for configured pools are exhausted."))
 
     @proxy.logger
     def _find_lss(self, node, excluded_lss):
@@ -259,20 +285,35 @@ class DS8KCommonHelper(object):
         existing_lss = self.get_all_lss(fileds)
         LOG.info("existing LSS IDs are: %s.",
                  ','.join([lss['id'] for lss in existing_lss]))
+        existing_lss_cg, nonexistent_lss_cg = (
+            self._classify_lss_for_cg(existing_lss))
 
+        # exclude LSSs that are full.
         if excluded_lss:
             existing_lss = [lss for lss in existing_lss
                             if lss['id'] not in excluded_lss]
-        lss = self._find_from_existing_lss(node, existing_lss)
-        lss = lss if lss else self._find_from_unexisting_lss(node,
-                                                             existing_lss)
+        # exclude LSSs that reserved for CG.
+        candidates = [lss for lss in existing_lss
+                      if lss['id'] not in existing_lss_cg]
+        lss = self._find_from_existing_lss(node, candidates)
+        if not lss:
+            lss = self._find_from_nonexistent_lss(node, existing_lss,
+                                                  nonexistent_lss_cg)
         return lss
 
+    def _classify_lss_for_cg(self, existing_lss):
+        existing_lss_ids = set(lss['id'] for lss in existing_lss)
+        existing_lss_cg = existing_lss_ids & self.backend['lss_ids_for_cg']
+        nonexistent_lss_cg = self.backend['lss_ids_for_cg'] - existing_lss_cg
+        return existing_lss_cg, nonexistent_lss_cg
+
     def _find_from_existing_lss(self, node, existing_lss):
+        # exclude LSSs that are used by PPRC paths.
         lss_in_pprc = self.get_lss_in_pprc_paths()
         if lss_in_pprc:
             existing_lss = [lss for lss in existing_lss
                             if lss['id'] not in lss_in_pprc]
+        # exclude wrong type of LSSs and those that are not in expected node.
         existing_lss = [lss for lss in existing_lss if lss['type'] == 'fb'
                         and int(lss['group']) == node]
         lss_id = None
@@ -286,18 +327,19 @@ class DS8KCommonHelper(object):
                          {'lss': lss_id, 'num': lss['configvols']})
         return lss_id
 
-    def _find_from_unexisting_lss(self, node, existing_lss):
+    def _find_from_nonexistent_lss(self, node, existing_lss, lss_cg=None):
         addrgrps = set(int(lss['addrgrp'], 16) for lss in existing_lss if
                        lss['type'] == 'ckd' and int(lss['group']) == node)
-
         fulllss = set(int(lss['id'], 16) for lss in existing_lss if
                       lss['type'] == 'fb' and int(lss['group']) == node)
-
-        # look for an available lss from unexisting lss
+        cglss = set(int(lss, 16) for lss in lss_cg) if lss_cg else set()
+        # look for an available lss from nonexistent lss
         lss_id = None
         for lss in range(node, LSS_SLOTS, 2):
             addrgrp = lss // 16
-            if addrgrp not in addrgrps and lss not in fulllss:
+            if (addrgrp not in addrgrps and
+               lss not in fulllss and
+               lss not in cglss):
                 lss_id = ("%02x" % lss).upper()
                 break
         LOG.info('_find_from_unexisting_lss: choose %s.', lss_id)
@@ -314,7 +356,7 @@ class DS8KCommonHelper(object):
         if lun.type_os400:
             volData['os400'] = lun.type_os400
         volData['name'] = lun.ds_name
-        volData['pool'], volData['lss'] = lun.lss_pair['source']
+        volData['pool'], volData['lss'] = lun.pool_lss_pair['source']
         lun.ds_id = self._create_lun(volData)
         return lun
 
@@ -339,7 +381,7 @@ class DS8KCommonHelper(object):
             else:
                 lun_ids_str = ','.join(lun_ids)
                 lun_ids = []
-            LOG.error("Deleting volumes: %s.", lun_ids_str)
+            LOG.info("Deleting volumes: %s.", lun_ids_str)
             self._delete_lun(lun_ids_str)
 
     def get_lss_in_pprc_paths(self):
@@ -361,7 +403,7 @@ class DS8KCommonHelper(object):
             vol_ids = [vol['volume_id'] for vol in host['mappings_briefs']]
             if vol_id in vol_ids:
                 host_ids.append(host['id'])
-        LOG.info('_find_host: host IDs are: %s.', host_ids)
+        LOG.info('_find_host: host IDs are %s.', ','.join(host_ids))
         return host_ids
 
     def wait_flashcopy_finished(self, src_luns, tgt_luns):
@@ -378,9 +420,9 @@ class DS8KCommonHelper(object):
                             continue
                         if fcs[0]['state'] not in ('valid',
                                                    'validation_required'):
-                            msg = (_('Flashcopy ended up in bad state %s. '
-                                     'Rolling back.') % fcs[0]['state'])
-                            raise restclient.APIException(data=msg)
+                            raise restclient.APIException(
+                                data=(_('Flashcopy ended up in bad state %s. '
+                                        'Rolling back.') % fcs[0]['state']))
                 if fc_state.count(False) == 0:
                     break
             finished = True
@@ -420,10 +462,10 @@ class DS8KCommonHelper(object):
                 unfinished_pairs = [p for p in pairs if p['state'] != state]
                 for p in unfinished_pairs:
                     if p['state'] in invalid_states:
-                        msg = (_('Metro Mirror pair %(id)s enters into '
-                                 'state %(state)s. ') %
-                               {'id': p['id'], 'state': p['state']})
-                        raise restclient.APIException(data=msg)
+                        raise restclient.APIException(
+                            data=(_('Metro Mirror pair %(id)s enters into '
+                                    'state %(state)s. ')
+                                  % {'id': p['id'], 'state': p['state']}))
         finally:
             if not finished and delete:
                 pair_ids = {'ids': ','.join([p['id'] for p in pairs])}
@@ -459,22 +501,19 @@ class DS8KCommonHelper(object):
             hp['wwpn'] for hp in host_ports)
         unconfigured_ports = set(
             hp['wwpn'] for hp in host_ports if not hp['host_id'])
-        msg = ("initialize_connection: defined_hosts: %(defined)s, "
-               "unknown_ports: %(unknown)s, unconfigured_ports: "
-               "%(unconfigured)s.")
-        LOG.debug(msg, {
-            "defined": defined_hosts,
-            "unknown": unknown_ports,
-            "unconfigured": unconfigured_ports
-        })
+        LOG.debug("initialize_connection: defined_hosts: %(defined)s, "
+                  "unknown_ports: %(unknown)s, unconfigured_ports: "
+                  "%(unconfigured)s.", {"defined": defined_hosts,
+                                        "unknown": unknown_ports,
+                                        "unconfigured": unconfigured_ports})
         # Create host if it is not defined
         if not defined_hosts:
             host_id = self._create_host(host)['id']
         elif len(defined_hosts) == 1:
             host_id = defined_hosts.pop()
         else:
-            msg = _('More than one host defined for requested ports.')
-            raise restclient.APIException(message=msg)
+            raise restclient.APIException(
+                message='More than one host defined for requested ports.')
         LOG.info('Volume will be attached to host %s.', host_id)
 
         # Create missing host ports
@@ -511,13 +550,11 @@ class DS8KCommonHelper(object):
             host_ports = None
             delete_ports = None
             defined_hosts = self._find_host(vol_id)
-        msg = ("terminate_connection: host_ports: %(host)s, defined_hosts: "
-               "%(defined)s, delete_ports: %(delete)s.")
-        LOG.debug(msg, {
-            "host": host_ports,
-            "defined": defined_hosts,
-            "delete": delete_ports
-        })
+        LOG.debug("terminate_connection: host_ports: %(host)s, "
+                  "defined_hosts: %(defined)s, delete_ports: %(delete)s.",
+                  {"host": host_ports,
+                   "defined": defined_hosts,
+                   "delete": delete_ports})
 
         if not defined_hosts:
             LOG.info('Could not find host.')
@@ -552,33 +589,49 @@ class DS8KCommonHelper(object):
                     target_map = {initiator.upper(): target_ports
                                   for initiator in connector['wwpns']}
                     ret_info['data']['initiator_target_map'] = target_map
-                    return ret_info
             return ret_info
 
-    def create_group(self, ctxt, group):
+    def create_group(self, group):
         return {'status': fields.GroupStatus.AVAILABLE}
 
-    def delete_group(self, ctxt, group, luns):
+    def delete_group(self, group, src_luns):
         volumes_model_update = []
         model_update = {'status': fields.GroupStatus.DELETED}
-        if luns:
+        if src_luns:
             try:
-                self.delete_lun(luns)
-            except restclient.APIException:
+                self.delete_lun(src_luns)
+            except restclient.APIException as e:
                 model_update['status'] = fields.GroupStatus.ERROR_DELETING
                 LOG.exception(
-                    "Failed to delete the volumes in group %(group)s",
-                    {'group': group.id})
+                    "Failed to delete the volumes in group %(group)s, "
+                    "Exception = %(ex)s",
+                    {'group': group.id, 'ex': e})
 
-            for lun in luns:
+            for src_lun in src_luns:
                 volumes_model_update.append({
-                    'id': lun.os_id,
+                    'id': src_lun.os_id,
                     'status': model_update['status']
                 })
         return model_update, volumes_model_update
 
-    def update_group(self, ctxt, group, add_volumes, remove_volumes):
-        return None, None, None
+    def delete_group_snapshot(self, group_snapshot, tgt_luns):
+        snapshots_model_update = []
+        model_update = {'status': fields.GroupSnapshotStatus.DELETED}
+        if tgt_luns:
+            try:
+                self.delete_lun(tgt_luns)
+            except restclient.APIException as e:
+                model_update['status'] = (
+                    fields.GroupSnapshotStatus.ERROR_DELETING)
+                LOG.error("Failed to delete snapshots in group snapshot "
+                          "%(gsnapshot)s, Exception = %(ex)s",
+                          {'gsnapshot': group_snapshot.id, 'ex': e})
+        for tgt_lun in tgt_luns:
+            snapshots_model_update.append({
+                'id': tgt_lun.os_id,
+                'status': model_update['status']
+            })
+        return model_update, snapshots_model_update
 
     def _delete_lun(self, lun_ids_str):
         self._client.send('DELETE', '/volumes',
@@ -768,27 +821,34 @@ class DS8KReplicationSourceHelper(DS8KCommonHelper):
                                                       excluded_lss)
             if lss:
                 return pool_id, lss
-        msg = _("All LSS/LCU IDs for configured pools are exhausted.")
-        raise restclient.LssIDExhaustError(message=msg)
+        raise restclient.LssIDExhaustError(
+            message=_("All LSS/LCU IDs for configured pools are exhausted."))
 
     @proxy.logger
     def _find_lss_for_type_replication(self, node, excluded_lss):
-        # prefer to choose the non-existing one firstly
+        # prefer to choose non-existing one first.
         fileds = ['id', 'type', 'addrgrp', 'group', 'configvols']
         existing_lss = self.get_all_lss(fileds)
         LOG.info("existing LSS IDs are %s",
                  ','.join([lss['id'] for lss in existing_lss]))
-        lss_id = self._find_from_unexisting_lss(node, existing_lss)
+        existing_lss_cg, nonexistent_lss_cg = (
+            self._classify_lss_for_cg(existing_lss))
+        lss_id = self._find_from_nonexistent_lss(node, existing_lss,
+                                                 nonexistent_lss_cg)
         if not lss_id:
             if excluded_lss:
                 existing_lss = [lss for lss in existing_lss
                                 if lss['id'] not in excluded_lss]
-            lss_id = self._find_from_existing_lss(node, existing_lss)
+            candidates = [lss for lss in existing_lss
+                          if lss['id'] not in existing_lss_cg]
+            lss_id = self._find_from_existing_lss(node, candidates)
         return lss_id
 
 
 class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
     """Manage target storage for replication."""
+
+    OPTIONAL_PARAMS = ['ds8k_host_type', 'port_pairs']
 
     def setup(self):
         self._create_client()
@@ -814,6 +874,21 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
         self.backend['port_pairs'] = port_pairs
         self.backend['id'] = self._get_value('backend_id')
 
+    @proxy.logger
+    def _find_lss_for_type_replication(self, node, excluded_lss):
+        # prefer to choose non-existing one first.
+        fileds = ['id', 'type', 'addrgrp', 'group', 'configvols']
+        existing_lss = self.get_all_lss(fileds)
+        LOG.info("existing LSS IDs are %s",
+                 ','.join([lss['id'] for lss in existing_lss]))
+        lss_id = self._find_from_nonexistent_lss(node, existing_lss)
+        if not lss_id:
+            if excluded_lss:
+                existing_lss = [lss for lss in existing_lss
+                                if lss['id'] not in excluded_lss]
+            lss_id = self._find_from_existing_lss(node, existing_lss)
+        return lss_id
+
     def create_lun(self, lun):
         volData = {
             'cap': self._gb2b(lun.size),
@@ -826,7 +901,7 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
             volData['os400'] = lun.type_os400
 
         volData['name'] = lun.replica_ds_name
-        volData['pool'], volData['lss'] = lun.lss_pair['target']
+        volData['pool'], volData['lss'] = lun.pool_lss_pair['target']
         volID = self._create_lun(volData)
         lun.replication_driver_data.update(
             {self.backend['id']: {'vol_hex_id': volID}})
@@ -848,16 +923,19 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
 class DS8KECKDHelper(DS8KCommonHelper):
     """Manage ECKD volume."""
 
+    OPTIONAL_PARAMS = ['ds8k_host_type', 'port_pairs', 'ds8k_ssid_prefix',
+                       'lss_range_for_cg']
+
     @staticmethod
     def _gb2cyl(gb):
         # now only support 3390, no 3380 or 3390-A
         cyl = int(math.ceil(gb * 1263.28))
         if cyl > 65520:
-            msg = (_("For 3390 volume, capacity can be in the range "
-                     "1-65520(849KiB to 55.68GiB) cylinders, now it "
-                     "is %(gb)d GiB, equals to %(cyl)d cylinders.") %
-                   {'gb': gb, 'cyl': cyl})
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(
+                message=(_("For 3390 volume, capacity can be in the range "
+                           "1-65520(849KiB to 55.68GiB) cylinders, now it "
+                           "is %(gb)d GiB, equals to %(cyl)d cylinders.")
+                         % {'gb': gb, 'cyl': cyl}))
         return cyl
 
     @staticmethod
@@ -874,6 +952,7 @@ class DS8KECKDHelper(DS8KCommonHelper):
         self._create_client()
         self._get_storage_information()
         self._check_host_type()
+        self._get_lss_ids_for_cg()
         self.backend['pools_str'] = self._get_value('san_clustername')
         ssid_prefix = self._get_value('ds8k_ssid_prefix')
         self.backend['ssid_prefix'] = ssid_prefix if ssid_prefix else 'FF'
@@ -885,10 +964,10 @@ class DS8KECKDHelper(DS8KCommonHelper):
     def _check_and_verify_lcus(self):
         map_str = self._get_value('ds8k_devadd_unitadd_mapping')
         if not map_str:
-            err = _('Param [ds8k_devadd_unitadd_mapping] is not '
-                    'provided, please provide the mapping between '
-                    'IODevice address and unit address.')
-            raise exception.InvalidParameterValue(err=err)
+            raise exception.InvalidParameterValue(
+                err=_('Param [ds8k_devadd_unitadd_mapping] is not '
+                      'provided, please provide the mapping between '
+                      'IODevice address and unit address.'))
 
         # verify the LCU
         mappings = map_str.replace(' ', '').upper().split(';')
@@ -896,9 +975,9 @@ class DS8KECKDHelper(DS8KCommonHelper):
         dev_mapping = {p[1]: int(p[0], 16) for p in pairs}
         for lcu in dev_mapping.keys():
             if int(lcu, 16) > 255:
-                err = (_('LCU %s in param [ds8k_devadd_unitadd_mapping]'
-                         'is invalid, it should be within 00-FF.') % lcu)
-                raise exception.InvalidParameterValue(err=err)
+                raise exception.InvalidParameterValue(
+                    err=(_('LCU %s in param [ds8k_devadd_unitadd_mapping]'
+                           'is invalid, it should be within 00-FF.') % lcu))
 
         # verify address group
         all_lss = self.get_all_lss(['id', 'type'])
@@ -907,23 +986,24 @@ class DS8KECKDHelper(DS8KCommonHelper):
         ckd_addrgrp = set((int(lcu, 16) // 16) for lcu in dev_mapping.keys())
         intersection = ckd_addrgrp & fb_addrgrp
         if intersection:
-            msg = (_('Invaild LCUs which first digit is %s, they are'
-                     'for fb volume.') % ', '.join(intersection))
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(
+                message=(_('LCUs which first digit is %s are invalid, they '
+                           'are for FB volume.') % ', '.join(intersection)))
 
         # create LCU that doesn't exist
         ckd_lss = set(lss['id'] for lss in all_lss if lss['type'] == 'ckd')
-        unexisting_lcu = set(dev_mapping.keys()) - ckd_lss
-        if unexisting_lcu:
-            LOG.info('LCUs %s do not exist in DS8K, they will be created.',
-                     ','.join(unexisting_lcu))
-            for lcu in unexisting_lcu:
+        nonexistent_lcu = set(dev_mapping.keys()) - ckd_lss
+        if nonexistent_lcu:
+            LOG.info('LCUs %s do not exist in DS8K, they will be '
+                     'created.', ','.join(nonexistent_lcu))
+            for lcu in nonexistent_lcu:
                 try:
                     self._create_lcu(self.backend['ssid_prefix'], lcu)
                 except restclient.APIException as e:
-                    msg = (_('can not create lcu %(lcu)s, Exception= '
-                             '%(e)s') % {'lcu': lcu, 'e': six.text_type(e)})
-                    raise exception.VolumeDriverException(data=msg)
+                    raise exception.VolumeDriverException(
+                        message=(_('Can not create lcu %(lcu)s, '
+                                   'Exception= %(e)s.')
+                                 % {'lcu': lcu, 'e': six.text_type(e)}))
         return dev_mapping
 
     def _format_pools(self, pools):
@@ -944,14 +1024,19 @@ class DS8KECKDHelper(DS8KCommonHelper):
         # all LCUs have existed, not like LSS
         all_lss = self.get_all_lss(['id', 'type', 'group', 'configvols'])
         existing_lcu = [lss for lss in all_lss if lss['type'] == 'ckd']
+        excluded_lcu = excluded_lcu or []
         candidate_lcu = [lcu for lcu in existing_lcu if (
                          lcu['id'] in self.backend['device_mapping'].keys() and
                          lcu['id'] not in excluded_lcu and
                          lcu['group'] == str(node))]
+
+        # exclude LCUs reserved for CG.
+        candidate_lcu = [lss for lss in candidate_lcu if lss['id']
+                         not in self.backend['lss_ids_for_cg']]
         if not candidate_lcu:
             return None
 
-        # perfer to use LCU that is not in PPRC path first.
+        # prefer to use LCU that is not in PPRC path first.
         lcu_pprc = self.get_lss_in_pprc_paths() & set(
             self.backend['device_mapping'].keys())
         if lcu_pprc:
@@ -984,7 +1069,7 @@ class DS8KECKDHelper(DS8KCommonHelper):
         }
         lun.data_type = '3390'
         volData['name'] = lun.ds_name
-        volData['pool'], volData['lss'] = lun.lss_pair['source']
+        volData['pool'], volData['lss'] = lun.pool_lss_pair['source']
         lun.ds_id = self._create_lun(volData)
         return lun
 
@@ -1030,7 +1115,7 @@ class DS8KReplicationTargetECKDHelper(DS8KECKDHelper,
         lun.data_type = '3390'
 
         volData['name'] = lun.replica_ds_name
-        volData['pool'], volData['lss'] = lun.lss_pair['target']
+        volData['pool'], volData['lss'] = lun.pool_lss_pair['target']
         volID = self._create_lun(volData)
         lun.replication_driver_data.update(
             {self.backend['id']: {'vol_hex_id': volID}})
