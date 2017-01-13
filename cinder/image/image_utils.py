@@ -392,7 +392,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 image_service.update(context, image_id, {}, image_file)
         else:
             with utils.temporary_chown(volume_path):
-                with open(volume_path) as image_file:
+                with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {}, image_file)
         return
 
