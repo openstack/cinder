@@ -246,9 +246,9 @@ def get_migration_rate(volume):
 
 
 def validate_cg_type(group):
-    if group.get('volume_type_id') is None:
+    if not group.get('volume_type_ids'):
         return
-    for type_id in group['volume_type_id'].split(","):
+    for type_id in group.get('volume_type_ids'):
         if type_id:
             specs = volume_types.get_volume_type_extra_specs(type_id)
             extra_specs = common.ExtraSpecs(specs)
@@ -337,3 +337,12 @@ def truncate_fc_port_wwn(wwn):
 
 def is_volume_smp(volume):
     return 'smp' == extract_provider_location(volume.provider_location, 'type')
+
+
+def require_consistent_group_snapshot_enabled(func):
+    @six.wraps(func)
+    def inner(self, *args, **kwargs):
+        if not self.is_consistent_group_snapshot_enabled():
+            raise NotImplementedError
+        return func(self, *args, **kwargs)
+    return inner

@@ -222,9 +222,10 @@ class CommonAdapter(object):
                   'provision': provision,
                   'tier': tier})
 
+        cg_id = volume.group_id or volume.consistencygroup_id
         lun = self.client.create_lun(
             pool, volume_name, volume_size,
-            provision, tier, volume.consistencygroup_id,
+            provision, tier, cg_id,
             ignore_thresholds=self.config.ignore_pool_full_threshold)
         location = self._build_provider_location(
             lun_type='lun',
@@ -464,15 +465,21 @@ class CommonAdapter(object):
         return model_update, volumes_model_update
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+
         """Creates a CG snapshot(snap group)."""
+        return self.do_create_cgsnap(cgsnapshot.consistencygroup_id,
+                                     cgsnapshot.id,
+                                     snapshots)
+
+    def do_create_cgsnap(self, group_name, snap_name, snapshots):
         model_update = {}
         snapshots_model_update = []
-        LOG.info(_LI('Creating CG snapshot for consistency group'
+        LOG.info(_LI('Creating consistency snapshot for group'
                      ': %(group_name)s'),
-                 {'group_name': cgsnapshot.consistencygroup_id})
+                 {'group_name': group_name})
 
-        self.client.create_cg_snapshot(cgsnapshot.id,
-                                       cgsnapshot.consistencygroup_id)
+        self.client.create_cg_snapshot(snap_name,
+                                       group_name)
         for snapshot in snapshots:
             snapshots_model_update.append(
                 {'id': snapshot.id, 'status': 'available'})
@@ -482,15 +489,22 @@ class CommonAdapter(object):
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a CG snapshot(snap group)."""
+        return self.do_delete_cgsnap(cgsnapshot.consistencygroup_id,
+                                     cgsnapshot.id,
+                                     cgsnapshot.status,
+                                     snapshots)
+
+    def do_delete_cgsnap(self, group_name, snap_name,
+                         snap_status, snapshots):
         model_update = {}
         snapshots_model_update = []
-        model_update['status'] = cgsnapshot.status
-        LOG.info(_LI('Deleting CG snapshot %(snap_name)s for consistency '
+        model_update['status'] = snap_status
+        LOG.info(_LI('Deleting consistency snapshot %(snap_name)s for '
                      'group: %(group_name)s'),
-                 {'snap_name': cgsnapshot.id,
-                  'group_name': cgsnapshot.consistencygroup_id})
+                 {'snap_name': snap_name,
+                  'group_name': group_name})
 
-        self.client.delete_cg_snapshot(cgsnapshot.id)
+        self.client.delete_cg_snapshot(snap_name)
         for snapshot in snapshots:
             snapshots_model_update.append(
                 {'id': snapshot.id, 'status': 'deleted'})
@@ -500,6 +514,11 @@ class CommonAdapter(object):
 
     def create_cg_from_cgsnapshot(self, context, group,
                                   volumes, cgsnapshot, snapshots):
+        return self.do_create_cg_from_cgsnap(
+            group.id, group.host, volumes, cgsnapshot.id, snapshots)
+
+    def do_create_cg_from_cgsnap(self, cg_id, cg_host, volumes,
+                                 cgsnap_id, snapshots):
         # 1. Copy a temp CG snapshot from CG snapshot
         #    and allow RW for it
         # 2. Create SMPs from source volumes
@@ -509,9 +528,9 @@ class CommonAdapter(object):
         # 6. Wait completion of migration
         # 7. Create a new CG, add all LUNs to it
         # 8. Delete the temp CG snapshot
-        cg_name = group.id
-        src_cg_snap_name = cgsnapshot.id
-        pool_name = utils.get_pool_from_host(group.host)
+        cg_name = cg_id
+        src_cg_snap_name = cgsnap_id
+        pool_name = utils.get_pool_from_host(cg_host)
         lun_sizes = []
         lun_names = []
         src_lun_names = []
@@ -549,9 +568,14 @@ class CommonAdapter(object):
 
     def create_cloned_cg(self, context, group,
                          volumes, source_cg, source_vols):
+        self.do_clone_cg(group.id, group.host, volumes,
+                         source_cg.id, source_vols)
+
+    def do_clone_cg(self, cg_id, cg_host, volumes,
+                    source_cg_id, source_vols):
         # 1. Create temp CG snapshot from source_cg
         # Same with steps 2-8 of create_cg_from_cgsnapshot
-        pool_name = utils.get_pool_from_host(group.host)
+        pool_name = utils.get_pool_from_host(cg_host)
         lun_sizes = []
         lun_names = []
         src_lun_names = []
@@ -564,8 +588,8 @@ class CommonAdapter(object):
 
         lun_id_list = emc_taskflow.create_cloned_cg(
             client=self.client,
-            cg_name=group.id,
-            src_cg_name=source_cg.id,
+            cg_name=cg_id,
+            src_cg_name=source_cg_id,
             pool_name=pool_name,
             lun_sizes=lun_sizes,
             lun_names=lun_names,
@@ -623,6 +647,8 @@ class CommonAdapter(object):
         stats['thin_provisioning_support'] = self.client.is_thin_enabled()
         stats['consistencygroup_support'] = self.client.is_snap_enabled()
         stats['replication_enabled'] = True if self.mirror_view else False
+        stats['consistent_group_snapshot_enabled'] = (
+            self.client.is_snap_enabled())
         return stats
 
     def get_pool_stats(self, enabler_stats=None):
@@ -1017,7 +1043,12 @@ class CommonAdapter(object):
 
     def update_consistencygroup(self, context, group, add_volumes,
                                 remove_volumes):
-        cg = self.client.get_cg(name=group.id)
+        return self.do_update_cg(group.id, add_volumes,
+                                 remove_volumes)
+
+    def do_update_cg(self, cg_name, add_volumes,
+                     remove_volumes):
+        cg = self.client.get_cg(name=cg_name)
         lun_ids_to_add = [self.client.get_lun_id(volume)
                           for volume in add_volumes]
         lun_ids_to_remove = [self.client.get_lun_id(volume)
@@ -1203,6 +1234,46 @@ class CommonAdapter(object):
                                 else 'False')
         return {'provider_location': new_volume.provider_location,
                 'metadata': metadata}
+
+    def create_group(self, context, group):
+        return self.create_consistencygroup(context, group)
+
+    def delete_group(self, context, group, volumes):
+        return self.delete_consistencygroup(context, group, volumes)
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot."""
+        return self.do_create_cgsnap(group_snapshot.group_id,
+                                     group_snapshot.id,
+                                     snapshots)
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group snapshot."""
+        return self.do_delete_cgsnap(
+            group_snapshot.group_id,
+            group_snapshot.id,
+            group_snapshot.status,
+            snapshots)
+
+    def create_group_from_group_snapshot(self,
+                                         context, group, volumes,
+                                         group_snapshot, snapshots):
+        """Creates a group from a group snapshot."""
+        return self.do_create_cg_from_cgsnap(group.id, group.host, volumes,
+                                             group_snapshot.id, snapshots)
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        return self.do_update_cg(group.id,
+                                 add_volumes,
+                                 remove_volumes)
+
+    def create_cloned_group(self, context, group, volumes,
+                            source_group, source_vols):
+        """Clones a group"""
+        return self.do_clone_cg(group.id, group.host, volumes,
+                                source_group.id, source_vols)
 
 
 class ISCSIAdapter(CommonAdapter):

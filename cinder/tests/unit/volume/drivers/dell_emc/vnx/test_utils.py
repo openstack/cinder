@@ -27,6 +27,18 @@ from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import utils
 
 
+class FakeDriver(object):
+    def __init__(self, support):
+        self.support = support
+
+    def is_consistent_group_snapshot_enabled(self):
+        return self.support
+
+    @utils.require_consistent_group_snapshot_enabled
+    def fake_method(self):
+        return 'called'
+
+
 class TestUtils(test.TestCase):
     def setUp(self):
         super(TestUtils, self).setUp()
@@ -173,3 +185,14 @@ class TestUtils(test.TestCase):
                           'wwn2_1': ['wwnt_1', 'wwnt_3'],
                           'wwn2_2': ['wwnt_1', 'wwnt_3']},
                          itor_tgt_map)
+
+    def test_cg_snapshot_is_not_enabled(self):
+        def do():
+            driver = FakeDriver(False)
+            driver.fake_method()
+        self.assertRaises(NotImplementedError, do)
+
+    def test_cg_snapshot_is_enabled(self):
+        driver = FakeDriver(True)
+        ret = driver.fake_method()
+        self.assertEqual('called', ret)

@@ -71,3 +71,11 @@ class TestVNXDriver(test.TestCase):
         _driver.terminate_connection('fake_volume', {'host': 'fake_host'})
         _driver.adapter.terminate_connection.assert_called_once_with(
             'fake_volume', {'host': 'fake_host'})
+
+    def test_is_consistent_group_snapshot_enabled(self):
+        _driver = self._get_driver('iscsi')
+        _driver._stats = {'consistent_group_snapshot_enabled': True}
+        self.assertTrue(_driver.is_consistent_group_snapshot_enabled())
+        _driver._stats = {'consistent_group_snapshot_enabled': False}
+        self.assertFalse(_driver.is_consistent_group_snapshot_enabled())
+        self.assertFalse(_driver.is_consistent_group_snapshot_enabled())
