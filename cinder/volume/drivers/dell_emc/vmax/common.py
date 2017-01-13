@@ -2120,7 +2120,7 @@ class VMAXCommon(object):
             else:
                 # V2 extra specs
                 extraSpecs = self._set_v2_extra_specs(extraSpecs, poolRecord)
-            if (qosSpecs.get('qos_spec')
+            if (qosSpecs.get('qos_specs')
                     and qosSpecs['qos_specs']['consumer'] != "front-end"):
                 extraSpecs['qos'] = qosSpecs['qos_specs']['specs']
         except Exception:
