@@ -66,11 +66,6 @@ RBD_OPTS = [
     cfg.StrOpt('rbd_secret_uuid',
                help='The libvirt uuid of the secret for the rbd_user '
                     'volumes'),
-    cfg.StrOpt('volume_tmp_dir',
-               help='Directory where temporary image files are stored '
-                    'when the volume driver does not write them directly '
-                    'to the volume.  Warning: this option is now deprecated, '
-                    'please use image_conversion_dir instead.'),
     cfg.IntOpt('rbd_max_clone_depth',
                default=5,
                help='Maximum number of nested volume clones that are '
@@ -1129,13 +1124,8 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         return ({}, False)
 
     def _image_conversion_dir(self):
-        tmpdir = (self.configuration.volume_tmp_dir or
-                  CONF.image_conversion_dir or
+        tmpdir = (CONF.image_conversion_dir or
                   tempfile.gettempdir())
-
-        if tmpdir == self.configuration.volume_tmp_dir:
-            LOG.warning(_LW('volume_tmp_dir is now deprecated, please use '
-                            'image_conversion_dir.'))
 
         # ensure temporary directory exists
         if not os.path.exists(tmpdir):

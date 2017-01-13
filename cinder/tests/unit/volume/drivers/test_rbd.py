@@ -151,7 +151,6 @@ class RBDTestCase(test.TestCase):
         super(RBDTestCase, self).setUp()
 
         self.cfg = mock.Mock(spec=conf.Configuration)
-        self.cfg.volume_tmp_dir = None
         self.cfg.image_conversion_dir = None
         self.cfg.rbd_cluster_name = 'nondefault'
         self.cfg.rbd_pool = 'rbd'
@@ -1056,13 +1055,11 @@ class RBDTestCase(test.TestCase):
 
     @common_mocks
     def test_copy_image_no_volume_tmp(self):
-        self.cfg.volume_tmp_dir = None
         self.cfg.image_conversion_dir = None
         self._copy_image()
 
     @common_mocks
     def test_copy_image_volume_tmp(self):
-        self.cfg.volume_tmp_dir = None
         self.cfg.image_conversion_dir = '/var/run/cinder/tmp'
         self._copy_image()
 
