@@ -31,9 +31,8 @@ from oslo_service import loopingcall
 from oslo_service import service
 from oslo_service import wsgi
 from oslo_utils import importutils
-osprofiler_notifier = importutils.try_import('osprofiler.notifier')
+osprofiler_initializer = importutils.try_import('osprofiler.initializer')
 profiler = importutils.try_import('osprofiler.profiler')
-osprofiler_web = importutils.try_import('osprofiler.web')
 profiler_opts = importutils.try_import('osprofiler.opts')
 
 
@@ -89,19 +88,20 @@ if profiler_opts:
 
 
 def setup_profiler(binary, host):
-    if (osprofiler_notifier is None or
+    if (osprofiler_initializer is None or
             profiler is None or
-            osprofiler_web is None or
             profiler_opts is None):
         LOG.debug('osprofiler is not present')
         return
 
     if CONF.profiler.enabled:
-        _notifier = osprofiler_notifier.create(
-            "Messaging", messaging, context.get_admin_context().to_dict(),
-            rpc.TRANSPORT, "cinder", binary, host)
-        osprofiler_notifier.set(_notifier)
-        osprofiler_web.enable(CONF.profiler.hmac_keys)
+        osprofiler_initializer.init_from_conf(
+            conf=CONF,
+            context=context.get_admin_context().to_dict(),
+            project="cinder",
+            service=binary,
+            host=host
+        )
         LOG.warning(
             _LW("OSProfiler is enabled.\nIt means that person who knows "
                 "any of hmac_keys that are specified in "
@@ -110,10 +110,8 @@ def setup_profiler(binary, host):
                 "is no security issue. Note that even if person can "
                 "trigger profiler, only admin user can retrieve trace "
                 "information.\n"
-                "To disable OSprofiler set in cinder.conf:\n"
+                "To disable OSProfiler set in cinder.conf:\n"
                 "[profiler]\nenabled=false"))
-    else:
-        osprofiler_web.disable()
 
 
 class Service(service.Service):
