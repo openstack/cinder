@@ -52,6 +52,7 @@ Volume = collections.namedtuple('Volume', vol_attrs)
 PROVIDER_LOCATION = '11'
 HOST = 'ubuntu001@backend001#OpenStack_Pool'
 ID = '21ec7341-9256-497b-97d9-ef48edcf0635'
+ENCODE_NAME = huawei_utils.encode_name(ID)
 ADMIN_METADATA = {'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'}
 TEST_PAIR_ID = "3400a30d844d0004"
 REPLICA_DRIVER_DATA = '{"pair_id": "%s", "rmt_lun_id": "1"}' % TEST_PAIR_ID
@@ -374,7 +375,7 @@ FAKE_QUERY_ALL_LUN_RESPONSE = {
     },
     "data": [{
         "ID": "1",
-        "NAME": huawei_utils.encode_name(ID)
+        "NAME": ENCODE_NAME
     }]
 }
 
@@ -443,26 +444,17 @@ FAKE_LUN_COUNT_RESPONSE = """
 }
 """
 # A fake response of snapshot list response
-FAKE_SNAPSHOT_LIST_INFO_RESPONSE = """
-{
+FAKE_SNAPSHOT_LIST_INFO_RESPONSE = {
     "error": {
         "code": 0,
         "description": "0"
     },
     "data": [{
         "ID": 11,
-        "NAME": "wr_LMKAjS7O_VtsEIREGYw"
-    },
-    {
-        "ID": 12,
-        "NAME": "SDFAJSDFLKJ"
-    },
-    {
-        "ID": 13,
-        "NAME": "s1Ew5v36To-hR2txJitX5Q"
-    }]
+        "NAME": ENCODE_NAME
+    }, ]
 }
-"""
+
 
 # A fake response of create snapshot response
 FAKE_CREATE_SNAPSHOT_INFO_RESPONSE = """
@@ -1203,7 +1195,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lun/1/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/lun?range=[0-65535]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun?filter=NAME::%s/GET' % ENCODE_NAME] = (
     json.dumps(FAKE_QUERY_ALL_LUN_RESPONSE))
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
@@ -1307,8 +1299,8 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/stop/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?range=[0-32767]/GET'] = (
-    FAKE_SNAPSHOT_LIST_INFO_RESPONSE)
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?filter=NAME::%s/GET' % ENCODE_NAME] = (
+    json.dumps(FAKE_SNAPSHOT_LIST_INFO_RESPONSE))
 
 # mock QoS info map
 MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/GET'] = (
