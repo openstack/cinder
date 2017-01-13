@@ -647,7 +647,13 @@ class API(base.Base):
         value = {'status': db.Case([(db.volume_has_attachments_filter(),
                                      'in-use')],
                                    else_='available')}
-        volume.conditional_update(value, expected)
+        result = volume.conditional_update(value, expected)
+        if not result:
+            LOG.debug("Attempted to unreserve volume that was not "
+                      "reserved, nothing to do.",
+                      resource=volume)
+            return
+
         LOG.info(_LI("Unreserve volume completed successfully."),
                  resource=volume)
 
