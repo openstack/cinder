@@ -3417,7 +3417,7 @@ class StorageCenterApi(object):
         if drprofile:
             pf = self._get_payload_filter()
             pf.append('ScSerialNumber', self.ssn)
-            pf.append('instanceName', drprofile)
+            pf.append('type', drprofile)
             r = self.client.post(
                 'StorageCenter/ScDataReductionProfile/GetList', pf.payload)
             if self._check_result(r):

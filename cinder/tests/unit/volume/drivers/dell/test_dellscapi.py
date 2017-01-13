@@ -7463,7 +7463,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_payload = {'filter': {'filterType': 'AND', 'filters': [
             {'filterType': 'Equals', 'attributeName': 'ScSerialNumber',
              'attributeValue': 12345},
-            {'filterType': 'Equals', 'attributeName': 'instanceName',
+            {'filterType': 'Equals', 'attributeName': 'type',
              'attributeValue': 'Compression'}]}}
         ret = self.scapi._find_data_reduction_profile('Compression')
         self.assertEqual({'instanceId': '12345.0'}, ret)
