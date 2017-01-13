@@ -33,6 +33,8 @@ LOG = logging.getLogger(__name__)
 LINKED_CLONE_TYPE = 'linked'
 FULL_CLONE_TYPE = 'full'
 
+BACKING_UUID_KEY = 'instanceUuid'
+
 
 def split_datastore_path(datastore_path):
     """Split the datastore path to components.
@@ -704,6 +706,8 @@ class VMwareVolumeOps(object):
             create_spec.vmProfile = [vmProfile]
 
         if extra_config:
+            if BACKING_UUID_KEY in extra_config:
+                create_spec.instanceUuid = extra_config.pop(BACKING_UUID_KEY)
             create_spec.extraConfig = self._get_extra_config_option_values(
                 extra_config)
 
@@ -1063,6 +1067,8 @@ class VMwareVolumeOps(object):
 
         if extra_config:
             config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+            if BACKING_UUID_KEY in extra_config:
+                config_spec.instanceUuid = extra_config.pop(BACKING_UUID_KEY)
             config_spec.extraConfig = self._get_extra_config_option_values(
                 extra_config)
             clone_spec.config = config_spec
@@ -1259,6 +1265,8 @@ class VMwareVolumeOps(object):
     def update_backing_extra_config(self, backing, extra_config):
         cf = self._session.vim.client.factory
         reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        if BACKING_UUID_KEY in extra_config:
+            reconfig_spec.instanceUuid = extra_config.pop(BACKING_UUID_KEY)
         reconfig_spec.extraConfig = self._get_extra_config_option_values(
             extra_config)
         self._reconfigure_backing(backing, reconfig_spec)
@@ -1266,6 +1274,15 @@ class VMwareVolumeOps(object):
                   "%(extra_config)s.",
                   {'backing': backing,
                    'extra_config': extra_config})
+
+    def update_backing_uuid(self, backing, uuid):
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        reconfig_spec.instanceUuid = uuid
+        self._reconfigure_backing(backing, reconfig_spec)
+        LOG.debug("Backing: %(backing)s reconfigured with uuid: %(uuid)s.",
+                  {'backing': backing,
+                   'uuid': uuid})
 
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.

@@ -60,6 +60,7 @@ CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
 CREATE_PARAM_DISK_LESS = 'disk_less'
 CREATE_PARAM_BACKING_NAME = 'name'
 CREATE_PARAM_DISK_SIZE = 'disk_size'
+CREATE_PARAM_TEMP_BACKING = 'temp_backing'
 
 TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
 
@@ -393,7 +394,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return profile_id
 
     def _get_extra_config(self, volume):
-        return {EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+        return {EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
+                volumeops.BACKING_UUID_KEY: volume['id']}
 
     def _create_backing(self, volume, host=None, create_params=None):
         """Create volume backing under the given host.
@@ -418,6 +420,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                          volume['name'])
 
         extra_config = self._get_extra_config(volume)
+        # We shoudln't set backing UUID to volume UUID for temporary backing.
+        if create_params.get(CREATE_PARAM_TEMP_BACKING):
+            del extra_config[volumeops.BACKING_UUID_KEY]
 
         # default is a backing with single disk
         disk_less = create_params.get(CREATE_PARAM_DISK_LESS, False)
@@ -954,6 +959,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # for clone operation.
             disk_name = uuidutils.generate_uuid()
             create_params[CREATE_PARAM_BACKING_NAME] = disk_name
+            create_params[CREATE_PARAM_TEMP_BACKING] = True
         else:
             disk_name = volume['name']
 
@@ -1006,6 +1012,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
                           "conversion.", backing)
+                extra_config = self._get_extra_config(volume)
                 clone = self.volumeops.clone_backing(volume['name'],
                                                      backing,
                                                      None,
@@ -1014,9 +1021,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                      disk_type=disk_type,
                                                      host=host,
                                                      resource_pool=rp,
+                                                     extra_config=extra_config,
                                                      folder=folder)
                 self._delete_temp_backing(backing)
                 backing = clone
+
             self.volumeops.update_backing_disk_uuid(backing, volume['id'])
         except Exception:
             # Delete backing and virtual disk created from image.
@@ -1379,17 +1388,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         volumeops.FULL_CLONE_TYPE, datastore,
                         disk_type=new_disk_type, host=host,
                         resource_pool=rp, folder=folder)
-                    self.volumeops.update_backing_disk_uuid(new_backing,
-                                                            volume['id'])
                     self._delete_temp_backing(backing)
                     backing = new_backing
+                    self.volumeops.update_backing_uuid(backing, volume['id'])
+                    self.volumeops.update_backing_disk_uuid(backing,
+                                                            volume['id'])
                 except exceptions.VimException:
                     with excutils.save_and_reraise_exception():
                         LOG.exception(_LE("Error occurred while cloning "
                                           "backing:"
                                           " %s during retype."),
                                       backing)
-                        if renamed:
+                        if renamed and not new_backing:
                             LOG.debug("Undo rename of backing: %(backing)s; "
                                       "changing name from %(new_name)s to "
                                       "%(old_name)s.",
