@@ -276,7 +276,7 @@ class HuaweiConf(object):
         # Step 4, remove invalid configure pairs, convert to:
         # [['Name:xxx', 'TargetPortGroup:xxx'],
         # ['Name:xxx', 'CHAPinfo:mm-usr#mm-pwd']]
-        initiator_infos = map(lambda x: filter(lambda y: y, x),
+        initiator_infos = map(lambda x: [y for y in x if y],
                               initiator_infos)
 
         # Step 5, make initiators configure dict, convert to:

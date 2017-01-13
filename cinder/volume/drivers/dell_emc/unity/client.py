@@ -188,7 +188,7 @@ class UnityClient(object):
             host = self.system.create_host(name=name)
 
         host_initiators_ids = self.get_host_initiator_ids(host)
-        un_registered = filter(lambda h: h not in host_initiators_ids, uids)
+        un_registered = [h for h in uids if h not in host_initiators_ids]
         for uid in un_registered:
             host.add_initiator(uid, force_create=True)
 

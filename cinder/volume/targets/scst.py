@@ -264,7 +264,7 @@ class SCSTAdm(iscsi.ISCSITarget):
         out = out.split("\n")[2]
         if "IncomingUser" in out:
             out = out.split(" ")
-            out = filter(lambda a: a != "", out)
+            out = [a for a in out if a != ""]
             return (out[1], out[2])
         else:
             return None
