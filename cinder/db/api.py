@@ -433,13 +433,13 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
                                             sort_dirs, offset)
 
 
-def snapshot_get_by_host(context, host, filters=None):
+def snapshot_get_all_by_host(context, host, filters=None):
     """Get all snapshots belonging to a host.
 
     :param host: Include include snapshots only for specified host.
     :param filters: Filters for the query in the form of key/value.
     """
-    return IMPL.snapshot_get_by_host(context, host, filters)
+    return IMPL.snapshot_get_all_by_host(context, host, filters)
 
 
 def snapshot_get_all_for_cgsnapshot(context, project_id):
@@ -473,12 +473,14 @@ def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
                                               volume_type_id)
 
 
-def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
+def snapshot_get_all_active_by_window(context, begin, end=None,
+                                      project_id=None):
     """Get all the snapshots inside the window.
 
     Specifying a project_id will filter for a certain project.
     """
-    return IMPL.snapshot_get_active_by_window(context, begin, end, project_id)
+    return IMPL.snapshot_get_all_active_by_window(context, begin, end,
+                                                  project_id)
 
 
 ####################
@@ -643,12 +645,13 @@ def volume_type_destroy(context, id):
     return IMPL.volume_type_destroy(context, id)
 
 
-def volume_get_active_by_window(context, begin, end=None, project_id=None):
+def volume_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Get all the volumes inside the window.
 
     Specifying a project_id will filter for a certain project.
     """
-    return IMPL.volume_get_active_by_window(context, begin, end, project_id)
+    return IMPL.volume_get_all_active_by_window(context, begin, end,
+                                                project_id)
 
 
 def volume_type_access_get_all(context, type_id):
@@ -1053,9 +1056,9 @@ def quota_class_get(context, class_name, resource):
     return IMPL.quota_class_get(context, class_name, resource)
 
 
-def quota_class_get_default(context):
+def quota_class_get_defaults(context):
     """Retrieve all default quotas."""
-    return IMPL.quota_class_get_default(context)
+    return IMPL.quota_class_get_defaults(context)
 
 
 def quota_class_get_all_by_name(context, class_name):
@@ -1178,12 +1181,13 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
                                          filters=filters)
 
 
-def backup_get_active_by_window(context, begin, end=None, project_id=None):
+def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Get all the backups inside the window.
 
     Specifying a project_id will filter for a certain project.
     """
-    return IMPL.backup_get_active_by_window(context, begin, end, project_id)
+    return IMPL.backup_get_all_active_by_window(context, begin, end,
+                                                project_id)
 
 
 def backup_update(context, backup_id, values):

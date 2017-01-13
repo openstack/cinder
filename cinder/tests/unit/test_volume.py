@@ -6197,7 +6197,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
             },
         ]
 
-    def test_volume_get_active_by_window(self):
+    def test_volume_get_all_active_by_window(self):
         # Find all all volumes valid within a timeframe window.
 
         # Not in window
@@ -6215,7 +6215,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
         # Not of window.
         db.volume_create(self.context, self.db_vol_attrs[4])
 
-        volumes = db.volume_get_active_by_window(
+        volumes = db.volume_get_all_active_by_window(
             self.context,
             datetime.datetime(1, 3, 1, 1, 1, 1),
             datetime.datetime(1, 4, 1, 1, 1, 1),
@@ -6225,7 +6225,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
         self.assertEqual(fake.VOLUME3_ID, volumes[1].id)
         self.assertEqual(fake.VOLUME4_ID, volumes[2].id)
 
-    def test_snapshot_get_active_by_window(self):
+    def test_snapshot_get_all_active_by_window(self):
         # Find all all snapshots valid within a timeframe window.
         db.volume_create(self.context, {'id': fake.VOLUME_ID})
         for i in range(5):
@@ -6256,7 +6256,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
         snap5 = objects.Snapshot(self.ctx, **self.db_snap_attrs[4])
         snap5.create()
 
-        snapshots = objects.SnapshotList.get_active_by_window(
+        snapshots = objects.SnapshotList.get_all_active_by_window(
             self.context,
             datetime.datetime(1, 3, 1, 1, 1, 1),
             datetime.datetime(1, 4, 1, 1, 1, 1)).objects
@@ -6268,7 +6268,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
         self.assertEqual(snap4.id, snapshots[2].id)
         self.assertEqual(fake.VOLUME_ID, snapshots[2].volume_id)
 
-    def test_backup_get_active_by_window(self):
+    def test_backup_get_all_active_by_window(self):
         # Find all backups valid within a timeframe window.
         db.volume_create(self.context, {'id': fake.VOLUME_ID})
         for i in range(5):
@@ -6289,7 +6289,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
         # Not of window
         db.backup_create(self.ctx, self.db_back_attrs[4])
 
-        backups = db.backup_get_active_by_window(
+        backups = db.backup_get_all_active_by_window(
             self.context,
             datetime.datetime(1, 3, 1, 1, 1, 1),
             datetime.datetime(1, 4, 1, 1, 1, 1),

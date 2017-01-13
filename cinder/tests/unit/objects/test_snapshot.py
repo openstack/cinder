@@ -241,7 +241,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
                                                  None, None, None, None, None)
 
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_by_host',
+    @mock.patch('cinder.db.snapshot_get_all_by_host',
                 return_value=[fake_db_snapshot])
     def test_get_by_host(self, get_by_host, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
@@ -282,14 +282,14 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_active_by_window',
+    @mock.patch('cinder.db.snapshot_get_all_active_by_window',
                 return_value=[fake_db_snapshot])
-    def test_get_active_by_window(self, get_active_by_window,
-                                  volume_get_by_id):
+    def test_get_all_active_by_window(self, get_all_active_by_window,
+                                      volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
         volume_get_by_id.return_value = fake_volume_obj
 
-        snapshots = objects.SnapshotList.get_active_by_window(
+        snapshots = objects.SnapshotList.get_all_active_by_window(
             self.context, mock.sentinel.begin, mock.sentinel.end)
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])

@@ -103,7 +103,7 @@ class DbQuotaDriver(object):
 
     def get_default(self, context, resource, project_id):
         """Get a specific default quota for a resource."""
-        default_quotas = db.quota_class_get_default(context)
+        default_quotas = db.quota_class_get_defaults(context)
         return default_quotas.get(resource.name, resource.default)
 
     def get_defaults(self, context, resources, project_id=None):
@@ -120,7 +120,7 @@ class DbQuotaDriver(object):
         quotas = {}
         default_quotas = {}
         if CONF.use_default_quota_class:
-            default_quotas = db.quota_class_get_default(context)
+            default_quotas = db.quota_class_get_defaults(context)
 
         for resource in resources.values():
             if default_quotas:
@@ -152,7 +152,7 @@ class DbQuotaDriver(object):
         default_quotas = {}
         class_quotas = db.quota_class_get_all_by_name(context, quota_class)
         if defaults:
-            default_quotas = db.quota_class_get_default(context)
+            default_quotas = db.quota_class_get_defaults(context)
         for resource in resources.values():
             if resource.name in class_quotas:
                 quotas[resource.name] = class_quotas[resource.name]
