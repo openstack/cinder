@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The Cinder Linux SMBFS driver is now deprecated and will be removed
+    during the following release. Deployers are encouraged to use the
+    Windows SMBFS driver instead.

@@ -102,6 +102,8 @@ def update_allocation_data(delete=False):
 class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     """SMBFS based cinder volume driver."""
 
+    SUPPORTED = False
+
     driver_volume_type = 'smbfs'
     driver_prefix = 'smbfs'
     volume_backend_name = 'Generic_SMBFS'
