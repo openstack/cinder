@@ -2691,6 +2691,7 @@ class EMCVMAXUtils(object):
         :param storagegroup: the storagegroup instance name
         :param extraSpecs: extra specifications
         """
+        modifiedInstance = None
         if type(storagegroup) is pywbem.cim_obj.CIMInstance:
             storagegroupInstance = storagegroup
         else:

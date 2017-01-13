@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.objects import qos_specs
 from cinder import test
 from cinder.tests.unit import utils
 
@@ -434,6 +435,12 @@ class EMCVMAXCommonData(object):
                          six.text_type(provider_location),
                          'status': 'available',
                          'host': fake_host_v3}
+
+    test_volume_type_QOS = qos_specs.QualityOfServiceSpecs(
+        id='qosId', name='qosName', consumer=fields.QoSConsumerValues.BACK_END,
+        specs={'maxIOPS': '6000', 'maxMBPS': '6000',
+               'DistributionType': 'Always'}
+    )
 
     test_failed_volume = {'name': 'failed_vol',
                           'size': 1,
@@ -8579,6 +8586,49 @@ class EMCVMAXCommonTest(test.TestCase):
                       'slo': 'Bronze'}
         self.driver.common._extend_volume(
             volumeInstance, volumeName, new_size_gb, old_size_gbs, extraSpecs)
+
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_qos_specs',
+        return_value={'qos_specs': EMCVMAXCommonData.test_volume_type_QOS})
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_register_config_file_from_config_group',
+        return_value=None)
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'isArrayV3',
+        return_value=True)
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_ecom_connection',
+        return_value=FakeEcomConnection())
+    def test_initial_setup_qos(self, mock_conn, mock_isArrayV3,
+                               mock_register, mock_volumetype_qos,
+                               mock_volumetype_extra):
+        array_map = [
+            {'EcomCACert': None, 'Workload': None, 'EcomServerIp': u'1.1.1.1',
+             'PoolName': u'SRP_1', 'EcomPassword': u'pass',
+             'SerialNumber': u'1234567891011', 'EcomServerPort': u'10',
+             'PortGroup': u'OS-portgroup-PG', 'EcomUserName': u'user',
+             'EcomUseSSL': False, 'EcomNoVerification': False,
+             'FastPolicy': None, 'SLO': 'Bronze'}]
+        with mock.patch.object(
+                self.driver.common.utils, 'parse_file_to_get_array_map',
+                return_value=array_map):
+            with mock.patch.object(
+                    self.driver.common.utils, 'extract_record',
+                    return_value=array_map[0]):
+                extraSpecs = self.driver.common._initial_setup(
+                    EMCVMAXCommonData.test_volume_v3)
+        self.assertIsNotNone(extraSpecs)
+        self.assertEqual(
+            EMCVMAXCommonData.test_volume_type_QOS.get('specs'), extraSpecs[
+                'qos'])
 
 
 class EMCVMAXProvisionTest(test.TestCase):
