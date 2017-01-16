@@ -1054,6 +1054,14 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume)
         self.assertEqual(fake.PROVIDER_ID, volume['provider_id'])
 
+    def test_create_volume_with_admin_metadata(self):
+        with mock.patch.object(
+                self.volume.driver, 'create_volume',
+                return_value={'admin_metadata': {'foo': 'bar'}}):
+            volume = tests_utils.create_volume(self.user_context)
+            self.volume.create_volume(self.user_context, volume)
+            self.assertEqual({'foo': 'bar'}, volume['admin_metadata'])
+
     @mock.patch.object(key_manager, 'API', new=fake_keymgr.fake_api)
     def test_create_delete_volume_with_encrypted_volume_type(self):
         cipher = 'aes-xts-plain64'

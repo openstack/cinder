@@ -857,8 +857,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # Persist any model information provided on creation.
         try:
             if model_update:
-                volume.update(model_update)
-                volume.save()
+                with volume.obj_as_admin():
+                    volume.update(model_update)
+                    volume.save()
         except exception.CinderException:
             # If somehow the update failed we want to ensure that the
             # failure is logged (but not try rescheduling since the volume at
