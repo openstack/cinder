@@ -185,7 +185,7 @@ class API(base.Base):
     def create_volume_snapshot(self, context, volume_id, create_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
-        # pylint: disable-msg=E1101
+        # pylint: disable=E1101
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
@@ -193,7 +193,7 @@ class API(base.Base):
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
-        # pylint: disable-msg=E1101
+        # pylint: disable=E1101
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)
