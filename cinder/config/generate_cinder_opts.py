@@ -61,11 +61,13 @@ if __name__ == "__main__":
                      '|/|g" | sort -u')
 
     cmd_opts = common_string % REGISTER_OPTS_STR
-    output_opts = subprocess.check_output('{}'.format(cmd_opts), shell=True)
+    output_opts = subprocess.check_output(  # nosec : command is hardcoded
+        '{}'.format(cmd_opts), shell=True)
     dir_trees_list = output_opts.split()
 
     cmd_opt = common_string % REGISTER_OPT_STR
-    output_opt = subprocess.check_output('{}'.format(cmd_opt), shell=True)
+    output_opt = subprocess.check_output(  # nosec : command is hardcoded
+        '{}'.format(cmd_opt), shell=True)
     temp_list = output_opt.split()
 
     for item in temp_list:
