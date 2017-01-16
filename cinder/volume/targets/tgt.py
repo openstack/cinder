@@ -239,8 +239,8 @@ class TgtAdm(iscsi.ISCSITarget):
                 os.unlink(volume_path)
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        if old_persist_file is not None and os.path.exists(old_persist_file):
-            os.unlink(old_persist_file)
+        if old_persist_file is not None:
+            fileutils.delete_if_exists(old_persist_file)
 
         return tid
 
