@@ -78,7 +78,7 @@ class RESTCaller(object):
             data = args[1]
             kwargs['json'] = data
 
-        LOG.debug('Sending JSON data: %s, method: %s, data: %s',
+        LOG.debug('Issuing call to NS: %s, data: %s',
                   url, self.__method, data)
 
         try:
@@ -86,7 +86,7 @@ class RESTCaller(object):
                 self.__proxy.session, self.__method)(url, **kwargs)
         except requests.exceptions.ConnectionError:
             self.handle_failover()
-            LOG.debug('Sending JSON data: %s, method: %s, data: %s',
+            LOG.debug('Issuing call to NS: %s, data: %s',
                       self.__proxy.url, self.__method, data)
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)

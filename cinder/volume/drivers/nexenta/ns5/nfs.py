@@ -75,7 +75,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
-        self.vip = self.configuration.nexenta_host
+        self.vip = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -151,7 +151,13 @@ class NexentaNfsDriver(nfs.NfsDriver,
             'compressionMode': self.dataset_compression,
             'dedupMode': self.dataset_deduplication,
         }
-        self.nef.post(url, data)
+        try:
+            self.nef.post(url, data)
+        except exception.NexentaException as e:
+            if 'EEXIST' in e.args[0]:
+                LOG.info('Filesystem %s already exists, using it.', filesystem)
+            else:
+                raise
         host = self.vip or self.nef_host
         volume['provider_location'] = '%s:/%s/%s' % (
             host, self.share, volume['name'])
