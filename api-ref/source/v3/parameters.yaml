@@ -340,13 +340,13 @@ bootable:
   in: body
   required: true
   type: boolean
-bootable_1:
+bootable_response:
   description: |
     Enables or disables the bootable attribute. You
     can boot an instance from a bootable volume.
   in: body
-  required: false
-  type: boolean
+  required: true
+  type: string
 capabilities:
   description: |
     The capabilities for the back end.  The value is
