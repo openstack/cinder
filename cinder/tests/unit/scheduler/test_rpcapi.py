@@ -22,6 +22,7 @@ import mock
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit import fake_constants
@@ -227,3 +228,36 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties_list=
                                  ['fake_filter_properties_list'],
                                  version='3.0')
+
+    @ddt.data(('work_cleanup', 'myhost', None),
+              ('work_cleanup', 'myhost', 'mycluster'),
+              ('do_cleanup', 'myhost', None),
+              ('do_cleanup', 'myhost', 'mycluster'))
+    @ddt.unpack
+    @mock.patch('cinder.rpc.get_client')
+    def test_cleanup(self, method, host, cluster, get_client):
+        cleanup_request = objects.CleanupRequest(self.context,
+                                                 host=host,
+                                                 cluster_name=cluster)
+        rpcapi = scheduler_rpcapi.SchedulerAPI()
+        getattr(rpcapi, method)(self.context, cleanup_request)
+
+        prepare = get_client.return_value.prepare
+
+        prepare.assert_called_once_with(
+            version='3.4')
+        rpc_call = 'cast' if method == 'do_cleanup' else 'call'
+        getattr(prepare.return_value, rpc_call).assert_called_once_with(
+            self.context, method, cleanup_request=cleanup_request)
+
+    @ddt.data('do_cleanup', 'work_cleanup')
+    def test_cleanup_too_old(self, method):
+        cleanup_request = objects.CleanupRequest(self.context)
+        rpcapi = scheduler_rpcapi.SchedulerAPI()
+        with mock.patch.object(rpcapi.client, 'can_send_version',
+                               return_value=False) as can_send_mock:
+            self.assertRaises(exception.ServiceTooOld,
+                              getattr(rpcapi, method),
+                              self.context,
+                              cleanup_request)
+            can_send_mock.assert_called_once_with('3.4')

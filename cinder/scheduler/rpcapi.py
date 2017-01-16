@@ -66,9 +66,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.3 - Add cluster support to migrate_volume, and to
               update_service_capabilities and send the timestamp from the
               capabilities.
+        3.4 - Adds work_cleanup and do_cleanup methods.
     """
 
-    RPC_API_VERSION = '3.3'
+    RPC_API_VERSION = '3.4'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -199,3 +200,28 @@ class SchedulerAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'notify_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)
+
+    def work_cleanup(self, ctxt, cleanup_request):
+        """Generate individual service cleanup requests from user request."""
+        if not self.client.can_send_version('3.4'):
+            msg = _('One of cinder-scheduler services is too old to accept '
+                    'such request. Are you running mixed Newton-Ocata'
+                    'cinder-schedulers?')
+            raise exception.ServiceTooOld(msg)
+
+        cctxt = self.client.prepare(version='3.4')
+        # Response will have services that are receiving the cleanup request
+        # and services that couldn't receive it since they are down.
+        return cctxt.call(ctxt, 'work_cleanup',
+                          cleanup_request=cleanup_request)
+
+    def do_cleanup(self, ctxt, cleanup_request):
+        """Perform this scheduler's resource cleanup as per cleanup_request."""
+        if not self.client.can_send_version('3.4'):
+            msg = _('One of cinder-scheduler services is too old to accept '
+                    'such request. Are you running mixed Newton-Ocata'
+                    'cinder-schedulers?')
+            raise exception.ServiceTooOld(msg)
+
+        cctxt = self.client.prepare(version='3.4')
+        cctxt.cast(ctxt, 'do_cleanup', cleanup_request=cleanup_request)

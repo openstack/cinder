@@ -227,3 +227,36 @@ user documentation.
 ----
   Added support to filter snapshot list based on metadata of snapshot.
 
+3.24
+----
+  New API endpoint /workers/cleanup allows triggering cleanup for cinder-volume
+  services.  Meant for cleaning ongoing operations from failed nodes.
+
+  The cleanup will be performed by other services belonging to the same
+  cluster, so at least one of them must be up to be able to do the cleanup.
+
+  Cleanup cannot be triggered during a cloud upgrade.
+
+  If no arguments are provided cleanup will try to issue a clean message for
+  all nodes that are down, but we can restrict which nodes we want to be
+  cleaned using parameters ``service_id``, ``cluster_name``, ``host``,
+  ``binary``, and ``disabled``.
+
+  Cleaning specific resources is also possible using ``resource_type`` and
+  ``resource_id`` parameters.
+
+  We can even force cleanup on nodes that are up with ``is_up``, but that's
+  not recommended and should only used if you know what you are doing.  For
+  example if you know a specific cinder-volume is down even though it's still
+  not being reported as down when listing the services and you know the cluster
+  has at least another service to do the cleanup.
+
+  API will return a dictionary with 2 lists, one with services that have been
+  issued a cleanup request (``cleaning`` key) and another list with services
+  that cannot be cleaned right now because there is no alternative service to
+  do the cleanup in that cluster (``unavailable`` key).
+
+  Data returned for each service element in these two lists consist of the
+  ``id``, ``host``, ``binary``, and ``cluster_name``.  These are not the
+  services that will be performing the cleanup, but the services that will be
+  cleaned up or couldn't be cleaned up.

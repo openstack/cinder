@@ -26,13 +26,27 @@ from cinder.volume import rpcapi as vol_rpcapi
 
 
 class CinderCleanableObject(base.CinderPersistentObject):
-    """Base class for cleanable OVO resources."""
+    """Base class for cleanable OVO resources.
+
+    All cleanable objects must have a host property/attribute.
+    """
     worker = None
+
+    cleanable_resource_types = set()
 
     @classmethod
     def get_rpc_api(cls):
         # By default assume all resources are handled by c-vol services
         return vol_rpcapi.VolumeAPI
+
+    @classmethod
+    def cinder_ovo_cls_init(cls):
+        """Called on OVO registration, sets set of cleanable resources."""
+        # First call persistent object method to store the DB model
+        super(CinderCleanableObject, cls).cinder_ovo_cls_init()
+
+        # Add this class to the set of resources
+        cls.cleanable_resource_types.add(cls.obj_name())
 
     @classmethod
     def get_pinned_version(cls):

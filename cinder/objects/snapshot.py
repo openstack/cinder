@@ -263,6 +263,11 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
             return False
         return status == 'creating'
 
+    @property
+    def host(self):
+        """All cleanable VO must have a host property/attribute."""
+        return self.volume.host
+
 
 @base.CinderObjectRegistry.register
 class SnapshotList(base.ObjectListBase, base.CinderObject):
