@@ -92,7 +92,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                  {'name': self.backend_name,
                   'state': self.failed_over})
         self.storage_protocol = 'iSCSI'
-        self.failback_timeout = 30
+        self.failback_timeout = 60
 
     def _bytes_to_gb(self, spacestring):
         """Space is returned in a string like ...
@@ -1296,8 +1296,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 # One chance down. Warn user.
                 deadcount -= 1
                 LOG.warning(_LW('Waiting for replications to complete. '
-                                'No progress for 30 seconds. deadcount = %d'),
-                            deadcount)
+                                'No progress for %(timeout)d seconds. '
+                                'deadcount = %(cnt)d'),
+                            {'timeout': self.failback_timeout,
+                             'cnt': deadcount})
             else:
                 # Reset
                 lastremain = currentremain
@@ -1305,7 +1307,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
             # If we've used up our 5 chances we error and log..
             if deadcount == 0:
-                LOG.error(_LE('Replication progress has stopped.'))
+                LOG.error(_LE('Replication progress has stopped: '
+                              '%f remaining.'), currentremain)
                 for item in items:
                     if item['status'] == 'inprogress':
                         LOG.error(_LE('Failback failed for volume: %s. '
