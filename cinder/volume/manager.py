@@ -2212,6 +2212,13 @@ class VolumeManager(manager.CleanableManager,
         LOG.info(_LI("Extend volume completed successfully."),
                  resource=volume)
 
+    def _is_our_backend(self, host, cluster_name):
+        return ((not cluster_name and
+                 vol_utils.hosts_are_equivalent(self.driver.host, host)) or
+                (cluster_name and
+                 vol_utils.hosts_are_equivalent(self.driver.cluster_name,
+                                                cluster_name)))
+
     def retype(self, context, volume, new_type_id, host,
                migration_policy='never', reservations=None,
                old_reservations=None):
@@ -2295,11 +2302,7 @@ class VolumeManager(manager.CleanableManager,
 
         if (not retyped and
                 not diff.get('encryption') and
-                ((not host.get('cluster_name') and
-                  vol_utils.hosts_are_equivalent(self.driver.host,
-                                                 host['host'])) or
-                 (vol_utils.hosts_are_equivalent(self.driver.cluster_name,
-                                                 host.get('cluster_name'))))):
+                self._is_our_backend(host['host'], host.get('cluster_name'))):
             try:
                 new_type = volume_types.get_volume_type(context, new_type_id)
                 ret = self.driver.retype(context,
