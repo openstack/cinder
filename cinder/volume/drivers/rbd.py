@@ -1157,6 +1157,14 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             args.extend(self._ceph_args())
             self._try_execute(*args)
         self._resize(volume)
+        # We may need to re-enable replication because we have deleted the
+        # original image and created a new one using the command line import.
+        try:
+            self._enable_replication_if_needed(volume)
+        except Exception:
+            err_msg = (_('Failed to enable image replication'))
+            raise exception.ReplicationError(reason=err_msg,
+                                             volume_id=volume.id)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         tmp_dir = self._image_conversion_dir()
