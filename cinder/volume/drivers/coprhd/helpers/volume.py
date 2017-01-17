@@ -327,14 +327,11 @@ class Volume(common.CoprHDResource):
         # Filtering based on "replicaState" attribute value of Cloned volume.
         # If "replicaState" value is "SYNCHRONIZED" then only Cloned volume
         # would be in detachable state.
-        if(vol and 'protection' in vol and
-                'full_copies' in vol['protection'] and
-                'replicaState' in vol['protection']['full_copies']):
-            if(vol['protection']['full_copies']['replicaState'] ==
-               'SYNCHRONIZED'):
-                return True
+        try:
+            return vol['protection']['full_copies'][
+                'replicaState'] == 'SYNCHRONIZED'
+        except TypeError:
             return False
-        return False
 
     def volume_clone_detach(self, resource_uri, full_project_name,
                             name, sync, synctimeout=0):
@@ -491,7 +488,7 @@ class Volume(common.CoprHDResource):
         """
         namelist = []
 
-        if type(name) is list:
+        if isinstance(name, list):
             namelist = name
         else:
             namelist.append(name)
