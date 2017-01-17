@@ -5,5 +5,5 @@ upgrade:
 deprecations:
   - cinder.api.middleware.sizelimit was deprecated in kilo and compatability
     shim added to call into oslo_middleware.  Using oslo_middleware.sizelimit
-    directly will allow us to remove the compatability shim in a future
+    directly will allow us to remove the compatibility shim in a future
     release.
