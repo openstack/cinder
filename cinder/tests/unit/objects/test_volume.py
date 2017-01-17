@@ -192,8 +192,10 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                            mock_va_get_all_by_vol, mock_vt_get_by_id,
                            mock_admin_metadata_get, mock_glance_metadata_get,
                            mock_metadata_get):
+        fake_db_volume = fake_volume.fake_db_volume(
+            consistencygroup_id=fake.CONSISTENCY_GROUP_ID)
         volume = objects.Volume._from_db_object(
-            self.context, objects.Volume(), fake_volume.fake_db_volume())
+            self.context, objects.Volume(), fake_db_volume)
 
         # Test metadata lazy-loaded field
         metadata = {'foo': 'bar'}
@@ -263,6 +265,24 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         mock_admin_metadata_get.return_value = adm_metadata
         self.assertEqual(adm_metadata, volume.admin_metadata)
         mock_admin_metadata_get.assert_called_once_with(adm_context, volume.id)
+
+    @mock.patch('cinder.objects.consistencygroup.ConsistencyGroup.get_by_id')
+    def test_obj_load_attr_cgroup_not_exist(self, mock_cg_get_by_id):
+        fake_db_volume = fake_volume.fake_db_volume(consistencygroup_id=None)
+        volume = objects.Volume._from_db_object(
+            self.context, objects.Volume(), fake_db_volume)
+
+        self.assertIsNone(volume.consistencygroup)
+        mock_cg_get_by_id.assert_not_called()
+
+    @mock.patch('cinder.objects.group.Group.get_by_id')
+    def test_obj_load_attr_group_not_exist(self, mock_group_get_by_id):
+        fake_db_volume = fake_volume.fake_db_volume(group_id=None)
+        volume = objects.Volume._from_db_object(
+            self.context, objects.Volume(), fake_db_volume)
+
+        self.assertIsNone(volume.group)
+        mock_group_get_by_id.assert_not_called()
 
     def test_from_db_object_with_all_expected_attributes(self):
         expected_attrs = ['metadata', 'admin_metadata', 'glance_metadata',

@@ -281,7 +281,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                 objects.VolumeAttachment,
                 db_volume.get('volume_attachment'))
             volume.volume_attachment = attachments
-        if 'consistencygroup' in expected_attrs:
+        if volume.consistencygroup_id and 'consistencygroup' in expected_attrs:
             consistencygroup = objects.ConsistencyGroup(context)
             consistencygroup._from_db_object(context,
                                              consistencygroup,
@@ -303,7 +303,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                                                 db_cluster)
             else:
                 volume.cluster = None
-        if 'group' in expected_attrs:
+        if volume.group_id and 'group' in expected_attrs:
             group = objects.Group(context)
             group._from_db_object(context,
                                   group,
@@ -423,9 +423,12 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                 self._context, self.id)
             self.volume_attachment = attachments
         elif attrname == 'consistencygroup':
-            consistencygroup = objects.ConsistencyGroup.get_by_id(
-                self._context, self.consistencygroup_id)
-            self.consistencygroup = consistencygroup
+            if self.consistencygroup_id is None:
+                self.consistencygroup = None
+            else:
+                consistencygroup = objects.ConsistencyGroup.get_by_id(
+                    self._context, self.consistencygroup_id)
+                self.consistencygroup = consistencygroup
         elif attrname == 'snapshots':
             self.snapshots = objects.SnapshotList.get_all_for_volume(
                 self._context, self.id)
@@ -438,9 +441,12 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             else:
                 self.cluster = None
         elif attrname == 'group':
-            group = objects.Group.get_by_id(
-                self._context, self.group_id)
-            self.group = group
+            if self.group_id is None:
+                self.group = None
+            else:
+                group = objects.Group.get_by_id(
+                    self._context, self.group_id)
+                self.group = group
 
         self.obj_reset_changes(fields=[attrname])
 
