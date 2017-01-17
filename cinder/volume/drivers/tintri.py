@@ -89,10 +89,6 @@ class TintriDriver(driver.ManageableVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Tintri_CI"
 
-    # TODO(smcginnis) Either remove this if CI requirements are met, or
-    # remove this driver in the Pike release per normal deprecation
-    SUPPORTED = False
-
     REQUIRED_OPTIONS = ['tintri_server_hostname', 'tintri_server_username',
                         'tintri_server_password']
 
