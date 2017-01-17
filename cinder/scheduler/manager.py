@@ -307,10 +307,16 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                               context, ex, request_spec)
 
         try:
-            self.driver.backend_passes_filters(context,
-                                               volume.service_topic_queue,
-                                               request_spec,
-                                               filter_properties)
+            backend = self.driver.backend_passes_filters(
+                context, volume.service_topic_queue, request_spec,
+                filter_properties)
+
+            # At the API we didn't have the pool info, so the volume DB entry
+            # was created without it, now we add it.
+            volume.host = backend.host
+            volume.cluster_name = backend.cluster_name
+            volume.save()
+
         except exception.NoValidBackend as ex:
             _manage_existing_set_error(self, context, ex, request_spec)
         except Exception as ex:

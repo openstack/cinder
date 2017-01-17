@@ -468,6 +468,19 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all')
+    def test_backend_passes_filters_without_pool(self, mock_service_get_all):
+        """Do a successful pass through of with backend_passes_filters()."""
+        sched, ctx = self._backend_passes_filters_setup(mock_service_get_all)
+        request_spec = {'volume_id': fake.VOLUME_ID,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
+        ret_host = sched.backend_passes_filters(ctx, 'host1', request_spec, {})
+        self.assertEqual('host1', utils.extract_host(ret_host.host))
+        self.assertTrue(mock_service_get_all.called)
+
+    @mock.patch('cinder.db.service_get_all')
     def test_backend_passes_filters_no_capacity(self, _mock_service_get_topic):
         """Fail the host due to insufficient capacity."""
         sched, ctx = self._backend_passes_filters_setup(
