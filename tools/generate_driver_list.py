@@ -18,6 +18,11 @@ import argparse
 import os
 
 from cinder.interface import util
+from cinder import objects
+
+
+# Object loading can cause issues loading drivers, force it up front
+objects.register_all()
 
 
 parser = argparse.ArgumentParser(prog="generate_driver_list")
