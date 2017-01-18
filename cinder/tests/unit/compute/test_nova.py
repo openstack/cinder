@@ -17,6 +17,7 @@ import mock
 from cinder.compute import nova
 from cinder import context
 from cinder import test
+from novaclient import exceptions as nova_exceptions
 
 
 class NovaClientTestCase(test.TestCase):
@@ -132,6 +133,13 @@ class NovaClientTestCase(test.TestCase):
             session=p_session.return_value, region_name='farfaraway',
             insecure=False, endpoint_type='publicURL', cacert=None,
             timeout=None, extensions=nova.nova_extensions)
+
+    def test_novaclient_exceptions(self):
+        # This is to prevent regression if exceptions are
+        # removed from novaclient since the service catalog
+        # code does not have thorough tests.
+        self.assertTrue(hasattr(nova_exceptions, 'EndpointNotFound'))
+        self.assertTrue(hasattr(nova_exceptions, 'AmbiguousEndpoints'))
 
 
 class FakeNovaClient(object):

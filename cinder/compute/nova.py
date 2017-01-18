@@ -21,7 +21,6 @@ from keystoneauth1 import session as ka_session
 from novaclient import api_versions
 from novaclient import client as nova_client
 from novaclient import exceptions as nova_exceptions
-from novaclient import service_catalog
 from oslo_config import cfg
 from oslo_log import log as logging
 from requests import exceptions as request_exceptions
@@ -69,6 +68,74 @@ nova_extensions = [ext for ext in
                                    "list_extensions")]
 
 
+# TODO(dmllr): This is a copy of the ServiceCatalog class in python-novaclient
+# that got removed in 7.0.0 release. This needs to be cleaned up once we depend
+# on newer novaclient.
+class _NovaClientServiceCatalog(object):
+    """Helper methods for dealing with a Keystone Service Catalog."""
+
+    def __init__(self, resource_dict):
+        self.catalog = resource_dict
+
+    def url_for(self, attr=None, filter_value=None,
+                service_type=None, endpoint_type='publicURL',
+                service_name=None, volume_service_name=None):
+        """Fetch public URL for a particular endpoint.
+
+        If none given, return the first.
+        See tests for sample service catalog.
+        """
+        matching_endpoints = []
+        if 'endpoints' in self.catalog:
+            # We have a bastardized service catalog. Treat it special. :/
+            for endpoint in self.catalog['endpoints']:
+                if not filter_value or endpoint[attr] == filter_value:
+                    # Ignore 1.0 compute endpoints
+                    if endpoint.get("type") == 'compute' and \
+                            endpoint.get('versionId') in (None, '1.1', '2'):
+                        matching_endpoints.append(endpoint)
+            if not matching_endpoints:
+                raise nova_exceptions.EndpointNotFound()
+
+        # We don't always get a service catalog back ...
+        if 'serviceCatalog' not in self.catalog['access']:
+            return None
+
+        # Full catalog ...
+        catalog = self.catalog['access']['serviceCatalog']
+
+        for service in catalog:
+            if service.get("type") != service_type:
+                continue
+
+            if (service_name and service_type == 'compute' and
+                    service.get('name') != service_name):
+                continue
+
+            if (volume_service_name and service_type == 'volume' and
+                    service.get('name') != volume_service_name):
+                continue
+
+            endpoints = service['endpoints']
+            for endpoint in endpoints:
+                # Ignore 1.0 compute endpoints
+                if (service.get("type") == 'compute' and
+                        endpoint.get('versionId', '2') not in ('1.1', '2')):
+                    continue
+                if (not filter_value or
+                        endpoint.get(attr).lower() == filter_value.lower()):
+                    endpoint["serviceName"] = service.get("name")
+                    matching_endpoints.append(endpoint)
+
+        if not matching_endpoints:
+            raise nova_exceptions.EndpointNotFound()
+        elif len(matching_endpoints) > 1:
+            raise nova_exceptions.AmbiguousEndpoints(
+                endpoints=matching_endpoints)
+        else:
+            return matching_endpoints[0][endpoint_type]
+
+
 def novaclient(context, admin_endpoint=False, privileged_user=False,
                timeout=None):
     """Returns a Nova client
@@ -88,7 +155,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
     compat_catalog = {
         'access': {'serviceCatalog': context.service_catalog or []}
     }
-    sc = service_catalog.ServiceCatalog(compat_catalog)
+    sc = _NovaClientServiceCatalog(compat_catalog)
 
     nova_endpoint_template = CONF.nova_endpoint_template
     nova_catalog_info = CONF.nova_catalog_info
