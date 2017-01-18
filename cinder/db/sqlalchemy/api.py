@@ -5405,6 +5405,24 @@ def consistencygroup_include_in_cluster(context, cluster,
                                partial_rename, filters)
 
 
+@require_admin_context
+def migrate_add_message_prefix(context, max_count, force=False):
+    prefix = "VOLUME_"
+    session = get_session()
+    with session.begin():
+        messages = (model_query(context, models.Message.id, session=session).
+                    filter(~models.Message.event_id.like(prefix + '%')).
+                    limit(max_count))
+
+        count_all = messages.count()
+        count_hit = (model_query(context, models.Message, session=session).
+                     filter(models.Message.id.in_(messages.as_scalar())).
+                     update({'event_id': prefix + models.Message.event_id},
+                            synchronize_session=False))
+
+    return count_all, count_hit
+
+
 ###############################
 
 

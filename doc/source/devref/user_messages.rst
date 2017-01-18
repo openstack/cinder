@@ -23,7 +23,7 @@ Example message generation::
 
  self.message_api.create(
      context,
-     defined_messages.UNABLE_TO_ALLOCATE,
+     defined_messages.EventIds.UNABLE_TO_ALLOCATE,
      project_id,
      resource_type=resource_types.VOLUME,
      resource_uuid=volume_id)

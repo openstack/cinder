@@ -53,12 +53,12 @@ class MessageApiTest(test.TestCase):
             'request_id': 'fakerequestid',
             'resource_type': 'fake_resource_type',
             'resource_uuid': None,
-            'event_id': defined_messages.UNABLE_TO_ALLOCATE,
+            'event_id': defined_messages.EventIds.UNABLE_TO_ALLOCATE,
             'message_level': 'ERROR',
             'expires_at': expected_expires_at,
         }
         self.message_api.create(self.ctxt,
-                                defined_messages.UNABLE_TO_ALLOCATE,
+                                defined_messages.EventIds.UNABLE_TO_ALLOCATE,
                                 "fakeproject",
                                 resource_type="fake_resource_type")
 
@@ -70,7 +70,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(self.message_api.db, 'create',
                          side_effect=Exception())
         self.message_api.create(self.ctxt,
-                                defined_messages.UNABLE_TO_ALLOCATE,
+                                defined_messages.EventIds.UNABLE_TO_ALLOCATE,
                                 "fakeproject",
                                 "fake_resource")
 
@@ -109,18 +109,20 @@ class MessageApiTest(test.TestCase):
     def create_message_for_tests(self):
         """Create messages to test pagination functionality"""
         utils.create_message(
-            self.ctxt, event_id=defined_messages.UNKNOWN_ERROR)
+            self.ctxt, event_id=defined_messages.EventIds.UNKNOWN_ERROR)
         utils.create_message(
-            self.ctxt, event_id=defined_messages.UNABLE_TO_ALLOCATE)
+            self.ctxt, event_id=defined_messages.EventIds.UNABLE_TO_ALLOCATE)
         utils.create_message(
-            self.ctxt, event_id=defined_messages.ATTACH_READONLY_VOLUME)
+            self.ctxt,
+            event_id=defined_messages.EventIds.ATTACH_READONLY_VOLUME)
         utils.create_message(
-            self.ctxt, event_id=defined_messages.IMAGE_FROM_VOLUME_OVER_QUOTA)
+            self.ctxt,
+            event_id=defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA)
 
     def test_get_all_messages_with_limit(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?limit=1')
+        url = '/v3/messages?limit=1'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -131,7 +133,7 @@ class MessageApiTest(test.TestCase):
         res = self.controller.index(req)
         self.assertEqual(1, len(res['messages']))
 
-        url = ('/v3/messages?limit=3')
+        url = '/v3/messages?limit=3'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -145,7 +147,7 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_limit_wrong_version(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?limit=1')
+        url = '/v3/messages?limit=1'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -159,7 +161,7 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_offset(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?offset=1')
+        url = '/v3/messages?offset=1'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -173,7 +175,7 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_limit_and_offset(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?limit=2&offset=1')
+        url = '/v3/messages?limit=2&offset=1'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -187,8 +189,8 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_filter(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?'
-               'event_id=%s') % defined_messages.UNKNOWN_ERROR
+        url = '/v3/messages?event_id=%s' % (
+            defined_messages.EventIds.UNKNOWN_ERROR)
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -202,7 +204,7 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_sort(self):
         self.create_message_for_tests()
 
-        url = ('/v3/messages?sort=event_id:asc')
+        url = '/v3/messages?sort=event_id:asc'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -212,10 +214,12 @@ class MessageApiTest(test.TestCase):
 
         res = self.controller.index(req)
 
-        expect_result = [defined_messages.UNKNOWN_ERROR,
-                         defined_messages.UNABLE_TO_ALLOCATE,
-                         defined_messages.IMAGE_FROM_VOLUME_OVER_QUOTA,
-                         defined_messages.ATTACH_READONLY_VOLUME]
+        expect_result = [
+            defined_messages.EventIds.UNKNOWN_ERROR,
+            defined_messages.EventIds.UNABLE_TO_ALLOCATE,
+            defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
+            defined_messages.EventIds.ATTACH_READONLY_VOLUME
+        ]
         expect_result.sort()
 
         self.assertEqual(4, len(res['messages']))
@@ -232,7 +236,7 @@ class MessageApiTest(test.TestCase):
         self.create_message_for_tests()
 
         # first request of this test
-        url = ('/v3/fake/messages?limit=2')
+        url = '/v3/fake/messages?limit=2'
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -252,7 +256,7 @@ class MessageApiTest(test.TestCase):
         # Second request in this test
         # Test for second page using marker (res['messages][0]['id'])
         # values fetched in first request with limit 2 in this test
-        url = ('/v3/fake/messages?limit=1&marker=%s') % (
+        url = '/v3/fake/messages?limit=1&marker=%s' % (
             res['messages'][0]['id'])
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'

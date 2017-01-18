@@ -1988,6 +1988,93 @@ class DBAPIMigrateCGstoGroupsTestCase(BaseTest):
         self._assert_migrated(migrated, ())
 
 
+class DBAPIMigrateMessagePrefixTestCase(BaseTest):
+    """Tests for cinder.db.api.migrate_add_message_prefix."""
+
+    def setUp(self):
+        super(DBAPIMigrateMessagePrefixTestCase, self).setUp()
+        message_values = {
+            "project_id": "fake_project",
+            "event_id": "test_id",
+            "message_level": "ERROR",
+            "id": '1',
+        }
+
+        db.message_create(self.ctxt, message_values)
+
+        message_2_values = {
+            "project_id": "fake_project",
+            "event_id": "test_id",
+            "message_level": "ERROR",
+            "id": '2',
+        }
+
+        db.message_create(self.ctxt, message_2_values)
+
+        message_3_values = {
+            "project_id": "fake_project",
+            "event_id": "VOLUME_test_id",
+            "message_level": "ERROR",
+            "id": '3',
+        }
+
+        db.message_create(self.ctxt, message_3_values)
+
+    def tearDown(self):
+        super(DBAPIMigrateMessagePrefixTestCase, self).tearDown()
+
+        db.message_destroy(self.ctxt, {'id': '1'})
+        db.message_destroy(self.ctxt, {'id': '2'})
+        db.message_destroy(self.ctxt, {'id': '3'})
+
+    def _assert_migrated(self, migrated, not_migrated):
+        for message_id in migrated:
+            message = db.message_get(self.ctxt, message_id)
+            self.assertEqual('VOLUME_test_id', message['event_id'])
+
+        for message_id in not_migrated:
+            message = db.message_get(self.ctxt, message_id)
+            self.assertEqual('test_id', message['event_id'])
+
+    def test_migrate(self):
+
+        self._assert_migrated(['3'], ['1', '2'])
+
+        # Run migration
+        count_all, count_hit = db.migrate_add_message_prefix(self.ctxt, 50)
+        # Check counted entries
+        self.assertEqual(2, count_all)
+        self.assertEqual(2, count_hit)
+
+        self._assert_migrated(['1', '2', '3'], [])
+
+    def test_migrate_limit_force(self):
+        # Run first migration
+        count_all, count_hit = db.migrate_add_message_prefix(self.ctxt, 1,
+                                                             True)
+        # Check counted entries
+        self.assertEqual(1, count_all)
+        self.assertEqual(1, count_hit)
+
+        self._assert_migrated(['1', '3'], ['2'])
+
+        # Run second migration
+        count_all, count_hit = db.migrate_add_message_prefix(self.ctxt, 2,
+                                                             True)
+        # Check counted entries
+        self.assertEqual(1, count_all)
+        self.assertEqual(1, count_hit)
+
+        self._assert_migrated(['1', '2', '3'], [])
+
+        # Run final migration
+        count_all, count_hit = db.migrate_add_message_prefix(self.ctxt, 2,
+                                                             True)
+        # Check counted entries
+        self.assertEqual(0, count_all)
+        self.assertEqual(0, count_hit)
+
+
 class DBAPICgsnapshotTestCase(BaseTest):
     """Tests for cinder.db.api.cgsnapshot_*."""
 

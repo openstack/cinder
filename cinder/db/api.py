@@ -1333,6 +1333,19 @@ def consistencygroup_include_in_cluster(context, cluster, partial_rename=True,
                                                     **filters)
 
 
+def migrate_add_message_prefix(context, max_count, force=False):
+    """Change Message event ids to start with the VOLUME_ prefix.
+
+    :param max_count: The maximum number of messages to consider in
+                      this run.
+    :param force: Ignored in this migration
+    :returns: number of messages needing migration, number of
+              messages migrated (both will always be less than
+              max_count).
+    """
+    return IMPL.migrate_add_message_prefix(context, max_count, force)
+
+
 ###################
 
 

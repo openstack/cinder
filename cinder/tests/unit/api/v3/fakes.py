@@ -31,7 +31,7 @@ DEFAULT_AZ = "fakeaz"
 def fake_message(id, **kwargs):
     message = {
         'id': id,
-        'event_id': defined_messages.UNABLE_TO_ALLOCATE,
+        'event_id': defined_messages.EventIds.UNABLE_TO_ALLOCATE,
         'message_level': "ERROR",
         'request_id': FAKE_UUID,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,

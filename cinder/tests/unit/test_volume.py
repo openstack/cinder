@@ -2943,7 +2943,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # Assert a user message was created
         self.volume.message_api.create.assert_called_once_with(
-            self.context, defined_messages.ATTACH_READONLY_VOLUME,
+            self.context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
             self.context.project_id, resource_type=resource_types.VOLUME,
             resource_uuid=volume['id'])
 
@@ -5874,7 +5874,8 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
                               self.image_meta)
             # Assert a user message was created
             self.volume.message_api.create.assert_called_once_with(
-                self.context, defined_messages.IMAGE_FROM_VOLUME_OVER_QUOTA,
+                self.context,
+                defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
                 self.context.project_id, resource_type=resource_types.VOLUME,
                 resource_uuid=volume['id'])
 
