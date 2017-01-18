@@ -107,9 +107,7 @@ def _sizestr(size_in_g):
 
 
 @interface.volumedriver
-class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
-                 driver.LocalVD, driver.TransferVD,
-                 driver.CloneableImageVD, driver.SnapshotVD,
+class GPFSDriver(driver.CloneableImageVD,
                  driver.MigrateVD,
                  driver.BaseVD):
     """Implements volume functions using GPFS primitives.

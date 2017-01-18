@@ -69,7 +69,6 @@ CONF.register_opts(tintri_opts)
 @interface.volumedriver
 class TintriDriver(driver.ManageableVD,
                    driver.CloneableImageVD,
-                   driver.SnapshotVD,
                    nfs.NfsDriver):
     """Base class for Tintri driver.
 

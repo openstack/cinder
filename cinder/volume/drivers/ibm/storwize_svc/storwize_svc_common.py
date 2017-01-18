@@ -1875,11 +1875,8 @@ class CLIResponse(object):
 
 class StorwizeSVCCommonDriver(san.SanDriver,
                               driver.ManageableVD,
-                              driver.ExtendVD, driver.SnapshotVD,
                               driver.MigrateVD,
-                              driver.ConsistencyGroupVD,
-                              driver.CloneableImageVD,
-                              driver.TransferVD):
+                              driver.CloneableImageVD):
     """IBM Storwize V7000 SVC abstract base class for iSCSI/FC volume drivers.
 
     Version history:

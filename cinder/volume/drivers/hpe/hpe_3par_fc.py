@@ -53,13 +53,9 @@ EXISTENT_PATH = 73
 
 
 @interface.volumedriver
-class HPE3PARFCDriver(driver.TransferVD,
-                      driver.ManageableVD,
-                      driver.ExtendVD,
-                      driver.SnapshotVD,
+class HPE3PARFCDriver(driver.ManageableVD,
                       driver.ManageableSnapshotsVD,
                       driver.MigrateVD,
-                      driver.ConsistencyGroupVD,
                       driver.BaseVD):
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 

@@ -24,11 +24,7 @@ from cinder.zonemanager import utils as fczm_utils
 
 @interface.volumedriver
 class NetAppCmodeFibreChannelDriver(driver.BaseVD,
-                                    driver.ConsistencyGroupVD,
-                                    driver.ManageableVD,
-                                    driver.ExtendVD,
-                                    driver.TransferVD,
-                                    driver.SnapshotVD):
+                                    driver.ManageableVD):
     """NetApp C-mode FibreChannel volume driver."""
 
     DRIVER_NAME = 'NetApp_FibreChannel_Cluster_direct'

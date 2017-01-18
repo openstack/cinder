@@ -45,8 +45,8 @@ CONF.register_opts(volume_opts)
 
 
 @interface.volumedriver
-class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
-                        driver.CloneableImageVD, driver.TransferVD):
+class BlockDeviceDriver(driver.BaseVD,
+                        driver.CloneableImageVD):
     VERSION = '2.3.0'
 
     # ThirdPartySystems wiki page

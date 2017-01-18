@@ -133,7 +133,7 @@ def locked_volume_id_operation(f, external=False):
     return lvo_inner1
 
 
-class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
+class RemoteFSDriver(driver.BaseVD):
     """Common base for drivers that work like NFS."""
 
     driver_volume_type = None
@@ -628,7 +628,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         return nas_option
 
 
-class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
+class RemoteFSSnapDriverBase(RemoteFSDriver):
     """Base class for remotefs drivers implementing qcow2 snapshots.
 
        Driver must implement:

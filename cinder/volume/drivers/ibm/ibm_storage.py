@@ -60,12 +60,8 @@ LOG = logging.getLogger(__name__)
 @interface.volumedriver
 class IBMStorageDriver(san.SanDriver,
                        driver.ManageableVD,
-                       driver.ExtendVD,
-                       driver.SnapshotVD,
                        driver.MigrateVD,
-                       driver.ConsistencyGroupVD,
-                       driver.CloneableImageVD,
-                       driver.TransferVD):
+                       driver.CloneableImageVD):
     """IBM Storage driver
 
     IBM Storage driver is a unified Volume driver for IBM XIV, Spectrum

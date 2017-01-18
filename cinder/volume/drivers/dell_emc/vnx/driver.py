@@ -28,13 +28,9 @@ LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class VNXDriver(driver.TransferVD,
-                driver.ManageableVD,
-                driver.ExtendVD,
-                driver.SnapshotVD,
+class VNXDriver(driver.ManageableVD,
                 driver.ManageableSnapshotsVD,
                 driver.MigrateVD,
-                driver.ConsistencyGroupVD,
                 driver.BaseVD):
     """Dell EMC Cinder Driver for VNX using CLI.
 

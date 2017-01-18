@@ -23,11 +23,7 @@ from cinder.volume.drivers.netapp.dataontap import block_cmode
 
 @interface.volumedriver
 class NetAppCmodeISCSIDriver(driver.BaseVD,
-                             driver.ConsistencyGroupVD,
-                             driver.ManageableVD,
-                             driver.ExtendVD,
-                             driver.TransferVD,
-                             driver.SnapshotVD):
+                             driver.ManageableVD):
     """NetApp C-mode iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_Cluster_direct'
