@@ -200,7 +200,7 @@ class NotifyUsageTestCase(test.TestCase):
         expected_snapshot = {
             'tenant_id': fake.PROJECT_ID,
             'user_id': fake.USER_ID,
-            'availability_zone': '',
+            'availability_zone': 'nova',
             'volume_id': fake.VOLUME_ID,
             'volume_size': 1,
             'snapshot_id': fake.SNAPSHOT_ID,
