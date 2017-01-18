@@ -250,10 +250,11 @@ class HPE3PARCommon(object):
         3.0.28 - Remove un-necessary snapshot creation of source volume
                  while doing online copy in create_cloned_volume call.
                  Bug #1661541
+        3.0.29 - Fix convert snapshot volume to base volume type. bug #1656186
 
     """
 
-    VERSION = "3.0.28"
+    VERSION = "3.0.29"
 
     stats = {}
 
@@ -2237,13 +2238,15 @@ class HPE3PARCommon(object):
 
             self.client.createSnapshot(volume_name, snap_name, optional)
 
+            # Convert snapshot volume to base volume type
+            LOG.debug('Converting to base volume type: %s.',
+                      volume['id'])
+            model_update = self._convert_to_base_volume(volume)
+
             # Grow the snapshot if needed
             growth_size = volume['size'] - snapshot['volume_size']
             if growth_size > 0:
                 try:
-                    LOG.debug('Converting to base volume type: %s.',
-                              volume['id'])
-                    model_update = self._convert_to_base_volume(volume)
                     growth_size_mib = growth_size * units.Gi / units.Mi
                     LOG.debug('Growing volume: %(id)s by %(size)s GiB.',
                               {'id': volume['id'], 'size': growth_size})
