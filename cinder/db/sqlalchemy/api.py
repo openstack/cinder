@@ -44,7 +44,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
 from sqlalchemy.orm import joinedload, joinedload_all, undefer_group
 from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.schema import Table
 from sqlalchemy import sql
 from sqlalchemy.sql.expression import bindparam
 from sqlalchemy.sql.expression import desc
@@ -6161,23 +6160,11 @@ def purge_deleted_rows(context, age_in_days):
     engine = get_engine()
     session = get_session()
     metadata = MetaData()
-    metadata.bind = engine
-    tables = []
+    metadata.reflect(engine)
 
-    for model_class in models.__dict__.values():
-        if hasattr(model_class, "__tablename__") \
-                and hasattr(model_class, "deleted"):
-            tables.append(model_class.__tablename__)
-
-    # Reorder the list so the volumes and volume_types tables are last
-    # to avoid FK constraints
-    for table in ("volume_types", "quality_of_service_specs",
-                  "snapshots", "volumes", "clusters"):
-        tables.remove(table)
-        tables.append(table)
-
-    for table in tables:
-        t = Table(table, metadata, autoload=True)
+    for table in reversed(metadata.sorted_tables):
+        if 'deleted' not in table.columns.keys():
+            continue
         LOG.info(_LI('Purging deleted rows older than age=%(age)d days '
                      'from table=%(table)s'), {'age': age_in_days,
                                                'table': table})
@@ -6186,15 +6173,15 @@ def purge_deleted_rows(context, age_in_days):
             with session.begin():
                 # Delete child records first from quality_of_service_specs
                 # table to avoid FK constraints
-                if table == "quality_of_service_specs":
+                if six.text_type(table) == "quality_of_service_specs":
                     session.query(models.QualityOfServiceSpecs).filter(
                         and_(models.QualityOfServiceSpecs.specs_id.isnot(
                             None), models.QualityOfServiceSpecs.deleted == 1,
                             models.QualityOfServiceSpecs.deleted_at <
                             deleted_age)).delete()
                 result = session.execute(
-                    t.delete()
-                    .where(t.c.deleted_at < deleted_age))
+                    table.delete()
+                    .where(table.c.deleted_at < deleted_age))
         except db_exc.DBReferenceError as ex:
             LOG.error(_LE('DBError detected when purging from '
                           '%(tablename)s: %(error)s.'),
@@ -6202,8 +6189,9 @@ def purge_deleted_rows(context, age_in_days):
             raise
 
         rows_purged = result.rowcount
-        LOG.info(_LI("Deleted %(row)d rows from table=%(table)s"),
-                 {'row': rows_purged, 'table': table})
+        if rows_purged != 0:
+            LOG.info(_LI("Deleted %(row)d rows from table=%(table)s"),
+                     {'row': rows_purged, 'table': table})
 
 
 ###############################
