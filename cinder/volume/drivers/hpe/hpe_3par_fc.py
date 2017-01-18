@@ -239,7 +239,7 @@ class HPE3PARFCDriver(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -362,7 +362,7 @@ class HPE3PARFCDriver(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()

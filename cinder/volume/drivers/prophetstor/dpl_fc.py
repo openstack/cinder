@@ -218,7 +218,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
 
         return init_targ_map
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         """
@@ -339,7 +339,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         return {'driver_volume_type': 'fibre_channel',
                 'data': properties}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         """

@@ -67,10 +67,10 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
     def get_volume_stats(self, refresh=False):
         return self.fc_get_volume_stats(refresh)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         return self.fc_initialize_connection(volume, connector)
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         return self.fc_terminate_connection(volume, connector)

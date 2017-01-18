@@ -135,7 +135,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         """Removes an export for a logical volume."""
         pass
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -164,7 +164,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
 
         return {'driver_volume_type': 'fibre_channel', 'data': properties}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminates the connection (target<-->initiator)."""
 

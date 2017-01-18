@@ -118,7 +118,7 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
 
@@ -157,7 +157,7 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
             'data': properties,
         }
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""
 

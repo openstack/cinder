@@ -145,7 +145,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
@@ -193,7 +193,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {

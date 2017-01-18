@@ -836,7 +836,7 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
         return init_targ_map
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
         LOG.info(_LI('Entering initialize_connection volume=%(vol)s'
@@ -878,7 +878,7 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
         return data
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         LOG.info(_LI('Entering terminate_connection volume=%(vol)s'

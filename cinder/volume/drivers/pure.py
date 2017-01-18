@@ -1774,7 +1774,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         ports = array.list_ports()
         return [port["wwn"] for port in ports if port["wwn"]]
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     @pure_driver_debug_trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
@@ -1851,7 +1851,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
         return init_targ_map
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""

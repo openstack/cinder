@@ -82,7 +82,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     def delete_volume(self, volume):
         self.common.delete_volume(volume)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         self.common.client_login()
         try:
@@ -101,7 +101,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
         finally:
             self.common.client_logout()
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         self.common.unmap_volume(volume, connector, 'wwpns')
         info = {'driver_volume_type': 'fibre_channel', 'data': {}}

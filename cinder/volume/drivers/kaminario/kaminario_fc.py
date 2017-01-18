@@ -51,7 +51,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         self._protocol = 'FC'
         self.lookup_service = fczm_utils.create_lookup_service()
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     @kaminario_logger
     @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
@@ -84,7 +84,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                          "target_wwn": target_wwpns,
                          "initiator_target_map": init_target_map}}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     @kaminario_logger
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):

@@ -2111,7 +2111,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         return data
 
     @utils.synchronized('huawei', external=True)
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         lun_id, lun_type = self.get_lun_id_and_type(volume)
         wwns = connector['wwpns']
@@ -2252,7 +2252,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         return same_host_id
 
     @utils.synchronized('huawei', external=True)
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
         lun_id, lun_type = self.get_lun_id_and_type(volume)

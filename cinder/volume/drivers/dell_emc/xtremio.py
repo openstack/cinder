@@ -987,7 +987,7 @@ class XtremIOFCDriver(XtremIOVolumeDriver,
         seq = range(len(uniq_luns) + 1)
         return min(set(seq) - uniq_luns)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         wwpns = self._get_initiator_names(connector)
         ig_name = self._get_ig_name(connector)
@@ -1028,7 +1028,7 @@ class XtremIOFCDriver(XtremIOVolumeDriver,
                     'target_wwn': self.get_targets(),
                     'initiator_target_map': i_t_map}}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         (super(XtremIOFCDriver, self)
          .terminate_connection(volume, connector, **kwargs))
