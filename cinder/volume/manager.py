@@ -63,6 +63,7 @@ from cinder import keymgr as key_manager
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import cache as image_cache
 from cinder.image import glance
+from cinder.image import image_utils
 from cinder import manager
 from cinder.message import api as message_api
 from cinder.message import defined_messages
@@ -464,6 +465,10 @@ class VolumeManager(manager.CleanableManager,
         # NOTE(jdg): Careful though because that doesn't mean
         # that an entry exists in the service table
         self.driver.set_initialized()
+
+        # Keep the image tmp file clean when init host.
+        backend_name = vol_utils.extract_host(self.service_topic_queue)
+        image_utils.cleanup_temporary_file(backend_name)
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)

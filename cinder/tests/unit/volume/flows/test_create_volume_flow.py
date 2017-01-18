@@ -767,7 +767,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             fake_volume_manager, fake_db, fake_driver)
         volume = fake_volume.fake_volume_obj(
             self.ctxt,
-            encryption_key_id=fakes.ENCRYPTION_KEY_ID)
+            encryption_key_id=fakes.ENCRYPTION_KEY_ID,
+            host='host@backend#pool')
 
         fake_image_service = fake_image.FakeImageService()
         image_meta = {}
@@ -837,7 +838,8 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             mock.MagicMock(), fake_db, fake_driver)
         fake_image_service = mock.MagicMock()
-        volume = fake_volume.fake_volume_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
         image_volume = fake_volume.fake_volume_obj(self.ctxt,
                                                    volume_metadata={})
         image_id = fakes.IMAGE_ID
@@ -914,7 +916,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             self, mock_get_internal_context, mock_create_from_img_dl,
             mock_create_from_src, mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, True)
-        volume = fake_volume.fake_volume_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
@@ -957,7 +960,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = None
         self.mock_driver.clone_image.return_value = (None, False)
-        volume = fake_volume.fake_volume_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
         image_info = imageutils.QemuImgInfo()
         image_info.virtual_size = '1073741824'
         mock_qemu_info.return_value = image_info
@@ -1076,7 +1080,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             'volume_id': image_volume_id
         }
 
-        volume = fake_volume.fake_volume_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
 
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
@@ -1254,7 +1259,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, False)
         mock_get_internal_context.return_value = None
-        volume = fake_volume.fake_volume_obj(self.ctxt)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
         image_info = imageutils.QemuImgInfo()
         image_info.virtual_size = '1073741824'
         mock_qemu_info.return_value = image_info

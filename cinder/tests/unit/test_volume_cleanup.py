@@ -77,7 +77,8 @@ class VolumeCleanupTestCase(base.BaseVolumeTestCase):
         self.assertEqual("in-use", volume.status)
         self._assert_workers_are_removed()
 
-    def test_init_host_clears_downloads(self):
+    @mock.patch('cinder.image.image_utils.cleanup_temporary_file')
+    def test_init_host_clears_downloads(self, mock_cleanup_tmp_file):
         """Test that init_host will unwedge a volume stuck in downloading."""
         volume = tests_utils.create_volume(self.context, status='downloading',
                                            size=0, host=CONF.host)
@@ -91,11 +92,13 @@ class VolumeCleanupTestCase(base.BaseVolumeTestCase):
         self.assertEqual(volume.id, mock_clear.call_args[0][1].id)
         volume.refresh()
         self.assertEqual("error", volume['status'])
+        mock_cleanup_tmp_file.assert_called_once_with(CONF.host)
 
         self.volume.delete_volume(self.context, volume=volume)
         self._assert_workers_are_removed()
 
-    def test_init_host_resumes_deletes(self):
+    @mock.patch('cinder.image.image_utils.cleanup_temporary_file')
+    def test_init_host_resumes_deletes(self, mock_cleanup_tmp_file):
         """init_host will resume deleting volume in deleting status."""
         volume = tests_utils.create_volume(self.context, status='deleting',
                                            size=0, host=CONF.host)
@@ -108,9 +111,12 @@ class VolumeCleanupTestCase(base.BaseVolumeTestCase):
 
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           context.get_admin_context(), volume.id)
+        mock_cleanup_tmp_file.assert_called_once_with(CONF.host)
         self._assert_workers_are_removed()
 
-    def test_create_volume_fails_with_creating_and_downloading_status(self):
+    @mock.patch('cinder.image.image_utils.cleanup_temporary_file')
+    def test_create_volume_fails_with_creating_and_downloading_status(
+            self, mock_cleanup_tmp_file):
         """Test init_host_with_service in case of volume.
 
         While the status of volume is 'creating' or 'downloading',
@@ -130,6 +136,7 @@ class VolumeCleanupTestCase(base.BaseVolumeTestCase):
 
             self.assertEqual('error', volume['status'])
             self.volume.delete_volume(self.context, volume)
+            self.assertTrue(mock_cleanup_tmp_file.called)
             self._assert_workers_are_removed()
 
     def test_create_snapshot_fails_with_creating_status(self):
