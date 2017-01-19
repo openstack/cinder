@@ -5589,6 +5589,8 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                   migration_policy=policy,
                                   reservations=reservations,
                                   old_reservations=old_reservations)
+            if host_obj['host'] != CONF.host:
+                _retype.assert_not_called()
 
         # get volume/quota properties
         volume = objects.Volume.get_by_id(elevated, volume.id)
