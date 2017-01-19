@@ -573,7 +573,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
 
         pass
 
-    def _create_igroup_for_initiator(self, initiator_name, wwpn):
+    def _create_igroup_for_initiator(self, initiator_name, wwpns):
         """Creates igroup for an initiator and returns the igroup name."""
         igrp_name = 'openstack-' + self._generate_random_string(12)
         LOG.info(_LI('Creating initiator group %(grp)s '
@@ -583,7 +583,9 @@ class NimbleBaseVolumeDriver(san.SanDriver):
             self.APIExecutor.create_initiator_group(igrp_name)
             self.APIExecutor.add_initiator_to_igroup(igrp_name, initiator_name)
         elif self._storage_protocol == "FC":
-            self.APIExecutor.create_initiator_group_fc(igrp_name, wwpn)
+            self.APIExecutor.create_initiator_group_fc(igrp_name)
+            for wwpn in wwpns:
+                self.APIExecutor.add_initiator_to_igroup_fc(igrp_name, wwpn)
         return igrp_name
 
     def _get_igroupname_for_initiator_fc(self, initiator_wwpns):
@@ -1213,18 +1215,13 @@ class NimbleRestAPIExecutor(object):
         r = self.post(api, data)
         return r['data']
 
-    def create_initiator_group_fc(self, initiator_grp_name, wwpns):
+    def create_initiator_group_fc(self, initiator_grp_name):
         api = "initiator_groups"
 
         data = {}
         data["data"] = {}
         data["data"]["name"] = initiator_grp_name
         data["data"]["access_protocol"] = "fc"
-        data["data"]["fc_initiators"] = []
-        for wwpn in wwpns:
-            initiator = {}
-            initiator["wwpn"] = self._format_to_wwpn(wwpn)
-            data["data"]["fc_initiators"].append(initiator)
         r = self.post(api, data)
         return r['data']
 
@@ -1242,6 +1239,17 @@ class NimbleRestAPIExecutor(object):
             "initiator_group_id": initiator_group_id,
             "label": initiator_name,
             "iqn": initiator_name
+        }}
+        r = self.post(api, data)
+        return r['data']
+
+    def add_initiator_to_igroup_fc(self, initiator_grp_name, wwpn):
+        initiator_group_id = self.get_initiator_grp_id(initiator_grp_name)
+        api = "initiators"
+        data = {"data": {
+            "access_protocol": "fc",
+            "initiator_group_id": initiator_group_id,
+            "wwpn": self._format_to_wwpn(wwpn)
         }}
         r = self.post(api, data)
         return r['data']
