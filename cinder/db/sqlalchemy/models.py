@@ -862,6 +862,9 @@ class Worker(BASE, CinderBase):
     # Service that is currently processing the operation
     service_id = Column(Integer, nullable=True)
 
+    # To prevent claiming and updating races
+    race_preventer = Column(Integer, nullable=False, default=0)
+
     # This is a flag we don't need to store in the DB as it is only used when
     # we are doing the cleanup to let decorators know
     cleaning = False

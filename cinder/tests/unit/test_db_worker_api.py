@@ -160,7 +160,9 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         worker.service_id = 1
 
         db_worker = db.worker_get(self.ctxt, id=worker.id)
-        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        self._assertEqualObjects(worker, db_worker,
+                                 ['updated_at', 'race_preventer'])
+        self.assertEqual(worker.race_preventer + 1, db_worker.race_preventer)
 
     def test_worker_update_no_subsecond(self):
         """Test basic worker update."""
@@ -174,8 +176,10 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         worker.service_id = 1
 
         db_worker = db.worker_get(self.ctxt, id=worker.id)
-        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        self._assertEqualObjects(worker, db_worker,
+                                 ['updated_at', 'race_preventer'])
         self.assertEqual(0, db_worker.updated_at.microsecond)
+        self.assertEqual(worker.race_preventer + 1, db_worker.race_preventer)
 
     def test_worker_update_update_orm(self):
         """Test worker update updating the worker orm object."""
@@ -267,8 +271,10 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         db_worker = db.worker_get(self.ctxt, id=worker.id)
 
         self._assertEqualObjects(claimed_worker, db_worker)
-        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        self._assertEqualObjects(worker, db_worker,
+                                 ['updated_at', 'race_preventer'])
         self.assertNotEqual(worker.updated_at, db_worker.updated_at)
+        self.assertEqual(worker.race_preventer + 1, db_worker.race_preventer)
 
     def test_worker_claim_fails_this_service_claimed(self):
         """Test claim fails when worker was already claimed by this service."""
@@ -293,5 +299,7 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         self.assertEqual(0, res)
         db_worker = db.worker_get(self.ctxt, id=worker.id)
         self._assertEqualObjects(claimed_worker, db_worker)
-        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        self._assertEqualObjects(worker, db_worker,
+                                 ['updated_at', 'race_preventer'])
         self.assertNotEqual(worker.updated_at, db_worker.updated_at)
+        self.assertEqual(worker.race_preventer + 1, db_worker.race_preventer)

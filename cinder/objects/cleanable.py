@@ -153,13 +153,15 @@ class CinderCleanableObject(base.CinderPersistentObject):
         # to update DB.
         if (worker.service_id != service_id or worker.status != self.status):
             try:
-                db.worker_update(self._context, worker.id,
-                                 filters={'service_id': worker.service_id,
-                                          'status': worker.status,
-                                          'updated_at': worker.updated_at},
-                                 service_id=service_id,
-                                 status=self.status,
-                                 orm_worker=worker)
+                db.worker_update(
+                    self._context, worker.id,
+                    filters={'service_id': worker.service_id,
+                             'status': worker.status,
+                             'race_preventer': worker.race_preventer,
+                             'updated_at': worker.updated_at},
+                    service_id=service_id,
+                    status=self.status,
+                    orm_worker=worker)
             except exception.WorkerNotFound:
                 self.worker = None
                 raise exception.CleanableInUse(type=self.__class__.__name__,

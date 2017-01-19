@@ -1092,6 +1092,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(image_cache.c.cluster_name.type,
                               self.VARCHAR_TYPE)
 
+    def _check_090(self, engine, data):
+        """Test adding race_preventer to workers table."""
+        workers = db_utils.get_table(engine, 'workers')
+        self.assertIsInstance(workers.c.race_preventer.type,
+                              self.INTEGER_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 
