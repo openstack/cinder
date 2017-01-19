@@ -1200,6 +1200,8 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                 'initiator_target_map': {'1000000000000000':
                                          ['1111111111111101']}}}
 
+        self.driver._create_igroup_for_initiator("test-initiator3",
+                                                 [1111111111111101])
         self.assertEqual(
             expected_res,
             self.driver.initialize_connection(
@@ -1208,6 +1210,12 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                  'id': 12},
                 {'initiator': 'test-initiator3',
                  'wwpns': ['1000000000000000']}))
+
+        expected_calls = [mock.call.create_initiator_group_fc(
+            'openstack-abcdefghijkl'),
+            mock.call.add_initiator_to_igroup_fc('openstack-abcdefghijkl',
+                                                 1111111111111101)]
+        self.mock_client_service.assert_has_calls(expected_calls)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
