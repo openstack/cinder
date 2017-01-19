@@ -155,6 +155,14 @@ class HttpClient(object):
                           asyncTask)
                 raise exception.VolumeBackendAPIException(
                     message=_('_get_async_url: Invalid URL.'))
+
+        # Check for an odd error case
+        if url.startswith('<') and url.endswith('>'):
+            LOG.error(_LE('_get_async_url: Malformed URL '
+                          '(XML returned). (%r)'), asyncTask)
+            raise exception.VolumeBackendAPIException(
+                message=_('_get_async_url: Malformed URL.'))
+
         return url
 
     def _wait_for_async_complete(self, asyncTask):
