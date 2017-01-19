@@ -16,6 +16,7 @@
 import ddt
 import mock
 
+from cinder.common import constants
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -50,9 +51,10 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         """
         svc = utils.create_service(
             self.context,
-            host=self.host,
-            active_backend_id=svc_backend,
-            replication_status=fields.ReplicationStatus.FAILING_OVER)
+            {'host': self.host,
+             'binary': constants.VOLUME_BINARY,
+             'active_backend_id': svc_backend,
+             'replication_status': fields.ReplicationStatus.FAILING_OVER})
 
         self.manager.failover_host(self.context, new_backend)
         mock_getall.assert_called_once_with(self.context,
@@ -69,9 +71,10 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
     def test_failover_host_driver_exception(self):
         svc = utils.create_service(
             self.context,
-            host=self.host,
-            active_backend_id=None,
-            replication_status=fields.ReplicationStatus.FAILING_OVER)
+            {'host': self.host,
+             'binary': constants.VOLUME_BINARY,
+             'active_backend_id': None,
+             'replication_status': fields.ReplicationStatus.FAILING_OVER})
 
         self.manager.failover_host(self.context, mock.sentinel.backend_id)
 
