@@ -14,6 +14,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder import utils
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -63,6 +64,12 @@ class ViewBuilder(common.ViewBuilder):
         if req_version.matches("3.14", None):
             group_ref['group']['group_snapshot_id'] = group.group_snapshot_id
             group_ref['group']['source_group_id'] = group.source_group_id
+
+        # Add volumes if min version is greater than or equal to 3.25.
+        if req_version.matches("3.25", None):
+            if utils.get_bool_param('list_volume', request.params):
+                group_ref['group']['volumes'] = [volume.id
+                                                 for volume in group.volumes]
 
         return group_ref
 

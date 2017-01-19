@@ -144,6 +144,49 @@ class GroupsAPITestCase(test.TestCase):
         self.assertEqual([fake.VOLUME_TYPE_ID],
                          res_dict['group']['volume_types'])
 
+    @mock.patch('cinder.objects.volume_type.VolumeTypeList.get_all_by_group')
+    @mock.patch('cinder.objects.volume.VolumeList.get_all_by_generic_group')
+    def test_show_group_with_list_volume(self, mock_vol_get_all_by_group,
+                                         mock_vol_type_get_all_by_group):
+        volume_objs = [objects.Volume(context=self.ctxt, id=i)
+                       for i in [fake.VOLUME_ID]]
+        volumes = objects.VolumeList(context=self.ctxt, objects=volume_objs)
+        mock_vol_get_all_by_group.return_value = volumes
+
+        vol_type_objs = [objects.VolumeType(context=self.ctxt, id=i)
+                         for i in [fake.VOLUME_TYPE_ID]]
+        vol_types = objects.VolumeTypeList(context=self.ctxt,
+                                           objects=vol_type_objs)
+        mock_vol_type_get_all_by_group.return_value = vol_types
+
+        # If the microversion >= 3.25 and "list_volume=True", "volumes" should
+        # be contained in the response body.
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s?list_volume=True' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version='3.25')
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual([fake.VOLUME_ID],
+                         res_dict['group']['volumes'])
+
+        # If the microversion >= 3.25 but "list_volume" is missing, "volumes"
+        # should not be contained in the response body.
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version='3.25')
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertIsNone(res_dict['group'].get('volumes', None))
+
+        # If the microversion < 3.25, "volumes" should not be contained in the
+        # response body.
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s?list_volume=True' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version='3.24')
+        res_dict = self.controller.show(req, self.group1.id)
+        self.assertEqual(1, len(res_dict))
+        self.assertIsNone(res_dict['group'].get('volumes', None))
+
     def test_show_group_with_group_NotFound(self):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s' %
                                       (fake.PROJECT_ID,

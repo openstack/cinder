@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for querying group details with volume ids
+    which are in this group.
+    For example, "groups/{group_id}?list_volume=True".
