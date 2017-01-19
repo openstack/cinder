@@ -465,6 +465,13 @@ class ClusteredObject(object):
     def is_clustered(self):
         return bool(self.cluster_name)
 
+    def assert_not_frozen(self):
+        ctxt = self._context.elevated()
+        if db.is_backend_frozen(ctxt, self.host, self.cluster_name):
+            msg = _('Modification operations are not allowed on frozen '
+                    'storage backends.')
+            raise exception.InvalidInput(reason=msg)
+
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
     OBJ_BASE_CLASS = CinderObject

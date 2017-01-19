@@ -245,6 +245,8 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidGroup(reason=msg)
 
+        group.assert_not_frozen()
+
         if group_snapshot_id:
             self._create_group_from_group_snapshot(context, group,
                                                    group_snapshot_id)
@@ -506,6 +508,8 @@ class API(base.Base):
             group.destroy()
 
             return
+
+        group.assert_not_frozen()
 
         if not delete_volumes and group.status not in (
                 [c_fields.GroupStatus.AVAILABLE,
@@ -787,6 +791,7 @@ class API(base.Base):
         group.save()
 
     def create_group_snapshot(self, context, group, name, description):
+        group.assert_not_frozen()
         options = {'group_id': group.id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -825,6 +830,7 @@ class API(base.Base):
 
     def delete_group_snapshot(self, context, group_snapshot, force=False):
         check_policy(context, 'delete_group_snapshot')
+        group_snapshot.assert_not_frozen()
         values = {'status': 'deleting'}
         expected = {'status': ('available', 'error')}
         filters = [~db.group_creating_from_src(

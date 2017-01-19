@@ -78,6 +78,7 @@ class BaseTest(test.TestCase, test.ModelsObjectComparatorMixin):
         self.ctxt = context.get_admin_context()
 
 
+@ddt.ddt
 class DBAPIServiceTestCase(BaseTest):
 
     """Unit tests for cinder.db.api.service_*."""
@@ -150,38 +151,39 @@ class DBAPIServiceTestCase(BaseTest):
         real_service1 = db.service_get(self.ctxt, host='host1', topic='topic1')
         self._assertEqualObjects(service1, real_service1)
 
-    def test_service_get_all_disabled_by_cluster(self):
+    @ddt.data('disabled', 'frozen')
+    def test_service_get_all_boolean_by_cluster(self, field_name):
         values = [
-            # Enabled services
-            {'host': 'host1', 'binary': 'b1', 'disabled': False},
-            {'host': 'host2', 'binary': 'b1', 'disabled': False,
-             'cluster_name': 'enabled_cluster'},
-            {'host': 'host3', 'binary': 'b1', 'disabled': True,
-             'cluster_name': 'enabled_cluster'},
+            # Enabled/Unfrozen services
+            {'host': 'host1', 'binary': 'b1', field_name: False},
+            {'host': 'host2', 'binary': 'b1', field_name: False,
+             'cluster_name': 'enabled_unfrozen_cluster'},
+            {'host': 'host3', 'binary': 'b1', field_name: True,
+             'cluster_name': 'enabled_unfrozen_cluster'},
 
-            # Disabled services
-            {'host': 'host4', 'binary': 'b1', 'disabled': True},
-            {'host': 'host5', 'binary': 'b1', 'disabled': False,
-             'cluster_name': 'disabled_cluster'},
-            {'host': 'host6', 'binary': 'b1', 'disabled': True,
-             'cluster_name': 'disabled_cluster'},
+            # Disabled/Frozen services
+            {'host': 'host4', 'binary': 'b1', field_name: True},
+            {'host': 'host5', 'binary': 'b1', field_name: False,
+             'cluster_name': 'disabled_frozen_cluster'},
+            {'host': 'host6', 'binary': 'b1', field_name: True,
+             'cluster_name': 'disabled_frozen_cluster'},
         ]
 
-        db.cluster_create(self.ctxt, {'name': 'enabled_cluster',
+        db.cluster_create(self.ctxt, {'name': 'enabled_unfrozen_cluster',
                                       'binary': 'b1',
-                                      'disabled': False}),
-        db.cluster_create(self.ctxt, {'name': 'disabled_cluster',
+                                      field_name: False}),
+        db.cluster_create(self.ctxt, {'name': 'disabled_frozen_cluster',
                                       'binary': 'b1',
-                                      'disabled': True}),
+                                      field_name: True}),
         services = [utils.create_service(self.ctxt, vals) for vals in values]
 
-        enabled = db.service_get_all(self.ctxt, disabled=False)
-        disabled = db.service_get_all(self.ctxt, disabled=True)
+        false_services = db.service_get_all(self.ctxt, **{field_name: False})
+        true_services = db.service_get_all(self.ctxt, **{field_name: True})
 
         self.assertSetEqual({s.host for s in services[:3]},
-                            {s.host for s in enabled})
+                            {s.host for s in false_services})
         self.assertSetEqual({s.host for s in services[3:]},
-                            {s.host for s in disabled})
+                            {s.host for s in true_services})
 
     def test_service_get_all(self):
         expired = (datetime.datetime.utcnow()
@@ -3167,3 +3169,28 @@ class DBAPIGenericTestCase(BaseTest):
         # Admin can find it
         res = sqlalchemy_api.resource_exists(self.ctxt, model, snap.id)
         self.assertTrue(res, msg="Admin cannot find the Snapshot")
+
+
+@ddt.ddt
+class DBAPIBackendTestCase(BaseTest):
+    @ddt.data(True, False)
+    def test_is_backend_frozen_service(self, frozen):
+        service = utils.create_service(self.ctxt, {'frozen': frozen})
+        utils.create_service(self.ctxt, {'host': service.host + '2',
+                                         'frozen': not frozen})
+        self.assertEqual(frozen, db.is_backend_frozen(self.ctxt, service.host,
+                                                      service.cluster_name))
+
+    @ddt.data(True, False)
+    def test_is_backend_frozen_cluster(self, frozen):
+        cluster = utils.create_cluster(self.ctxt, frozen=frozen)
+        utils.create_service(self.ctxt, {'frozen': frozen, 'host': 'hostA',
+                                         'cluster_name': cluster.name})
+        service = utils.create_service(self.ctxt,
+                                       {'frozen': not frozen,
+                                        'host': 'hostB',
+                                        'cluster_name': cluster.name})
+        utils.create_populated_cluster(self.ctxt, 3, 0, frozen=not frozen,
+                                       name=cluster.name + '2')
+        self.assertEqual(frozen, db.is_backend_frozen(self.ctxt, service.host,
+                                                      service.cluster_name))

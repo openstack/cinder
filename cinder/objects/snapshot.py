@@ -30,7 +30,8 @@ CONF = cfg.CONF
 
 @base.CinderObjectRegistry.register
 class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
-               base.CinderObjectDictCompat, base.CinderComparableObject):
+               base.CinderObjectDictCompat, base.CinderComparableObject,
+               base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Changed 'status' field to use SnapshotStatusField
     # Version 1.2: This object is now cleanable (adds rows to workers table)
@@ -71,8 +72,8 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
     }
 
     @property
-    def service_topic_queue(self):
-        return self.volume.service_topic_queue
+    def cluster_name(self):
+        return self.volume.cluster_name
 
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):

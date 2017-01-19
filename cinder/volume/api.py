@@ -394,6 +394,9 @@ class API(base.Base):
                                'id': volume.id})
             return
 
+        if not unmanage_only:
+            volume.assert_not_frozen()
+
         # Build required conditions for conditional update
         expected = {
             'attach_status': db.Not(fields.VolumeAttachStatus.ATTACHED),
@@ -772,6 +775,7 @@ class API(base.Base):
                          force=False, metadata=None,
                          cgsnapshot_id=None,
                          group_snapshot_id=None):
+        volume.assert_not_frozen()
         snapshot = self.create_snapshot_in_db(
             context, volume, name,
             description, force, metadata, cgsnapshot_id,
@@ -993,6 +997,9 @@ class API(base.Base):
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
+        if not unmanage_only:
+            snapshot.assert_not_frozen()
+
         # Build required conditions for conditional update
         expected = {'cgsnapshot_id': None,
                     'group_snapshot_id': None}

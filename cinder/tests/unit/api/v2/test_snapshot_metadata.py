@@ -82,7 +82,10 @@ def return_snapshot(context, snapshot_id):
             'metadata': {}}
 
 
-def fake_get(context, *args, **kwargs):
+# First argument needs to be self to receive the context argument in the right
+# variable, as this'll be used to replace the original API.get method which
+# receives self as the first argument.
+def fake_get(self, context, *args, **kwargs):
     vol = {'id': fake.VOLUME_ID,
            'size': 100,
            'name': 'fake',

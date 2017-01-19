@@ -53,7 +53,7 @@ class CapacityWeigherTestCase(test.TestCase):
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
-            topic=constants.VOLUME_TOPIC, disabled=disabled)
+            topic=constants.VOLUME_TOPIC, frozen=False, disabled=disabled)
         return backend_states
 
     # If thin and thin_provisioning_support are True,

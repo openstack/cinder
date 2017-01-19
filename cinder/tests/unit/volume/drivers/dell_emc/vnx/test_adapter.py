@@ -174,7 +174,6 @@ class TestCommonAdapter(test.TestCase):
         group_snapshot = test_utils.create_group_snapshot(
             self.ctxt,
             fake_constants.CGSNAPSHOT_ID,
-            host='host@backend#unit_test_pool',
             group_type_id=fake_constants.VOLUME_TYPE_ID)
         vol = test_utils.create_volume(self.ctxt)
         snaps = [
@@ -595,7 +594,6 @@ class TestCommonAdapter(test.TestCase):
         group_snapshot = test_utils.create_group_snapshot(
             self.ctxt,
             fake_constants.GROUP_ID,
-            host='host@backend#unit_test_pool',
             group_type_id=fake_constants.VOLUME_TYPE_ID)
         vol = test_utils.create_volume(self.ctxt)
         snaps = [
@@ -629,7 +627,6 @@ class TestCommonAdapter(test.TestCase):
         group_snapshot = test_utils.create_group_snapshot(
             self.ctxt,
             fake_constants.GROUP_ID,
-            host='host@backend#unit_test_pool',
             group_type_id=fake_constants.VOLUME_TYPE_ID)
         vol = test_utils.create_volume(self.ctxt)
         snaps = [

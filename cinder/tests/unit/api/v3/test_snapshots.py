@@ -33,7 +33,7 @@ UUID = '00000000-0000-0000-0000-000000000001'
 INVALID_UUID = '00000000-0000-0000-0000-000000000002'
 
 
-def stub_get(context, *args, **kwargs):
+def stub_get(self, context, *args, **kwargs):
     vol = {'id': fake.VOLUME_ID,
            'size': 100,
            'name': 'fake',

@@ -540,9 +540,10 @@ class HostManager(object):
 
         # Get resource usage across the available volume nodes:
         topic = constants.VOLUME_TOPIC
-        volume_services = objects.ServiceList.get_all_by_topic(context,
-                                                               topic,
-                                                               disabled=False)
+        volume_services = objects.ServiceList.get_all(context,
+                                                      {'topic': topic,
+                                                       'disabled': False,
+                                                       'frozen': False})
         active_backends = set()
         active_hosts = set()
         no_capabilities_hosts = set()
