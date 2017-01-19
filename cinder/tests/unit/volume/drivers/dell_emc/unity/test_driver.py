@@ -56,6 +56,7 @@ class MockAdapter(object):
     @staticmethod
     def create_snapshot(snapshot):
         snapshot.exists = True
+        return snapshot
 
     @staticmethod
     def delete_snapshot(snapshot):
@@ -87,6 +88,14 @@ class MockAdapter(object):
     @staticmethod
     def get_pool_name(volume):
         return 'pool_0'
+
+    @staticmethod
+    def initialize_connection_snapshot(snapshot, connector):
+        return {'snapshot': snapshot, 'connector': connector}
+
+    @staticmethod
+    def terminate_connection_snapshot(snapshot, connector):
+        return {'snapshot': snapshot, 'connector': connector}
 
 
 ########################
@@ -232,3 +241,29 @@ class UnityDriverTest(unittest.TestCase):
     def test_unmanage(self):
         ret = self.driver.unmanage(None)
         self.assertIsNone(ret)
+
+    def test_backup_use_temp_snapshot(self):
+        self.assertTrue(self.driver.backup_use_temp_snapshot())
+
+    def test_create_export_snapshot(self):
+        snapshot = self.driver.create_export_snapshot(self.get_context(),
+                                                      self.get_snapshot(),
+                                                      self.get_connector())
+        self.assertTrue(snapshot.exists)
+
+    def test_remove_export_snapshot(self):
+        snapshot = self.get_snapshot()
+        self.driver.remove_export_snapshot(self.get_context(), snapshot)
+        self.assertFalse(snapshot.exists)
+
+    def test_initialize_connection_snapshot(self):
+        snapshot = self.get_snapshot()
+        conn_info = self.driver.initialize_connection_snapshot(
+            snapshot, self.get_connector())
+        self.assertEqual(snapshot, conn_info['snapshot'])
+
+    def test_terminate_connection_snapshot(self):
+        snapshot = self.get_snapshot()
+        conn_info = self.driver.terminate_connection_snapshot(
+            snapshot, self.get_connector())
+        self.assertEqual(snapshot, conn_info['snapshot'])

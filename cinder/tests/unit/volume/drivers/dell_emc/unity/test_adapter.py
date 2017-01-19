@@ -98,7 +98,7 @@ class MockClient(object):
 
     @staticmethod
     def get_snap(name=None):
-        snap = test_client.MockResource(name=name)
+        snap = test_client.MockResource(name=name, _id=name)
         if name is not None:
             ret = snap
         else:
@@ -192,6 +192,18 @@ def get_lun_pl(name):
     return 'id^%s|system^CLIENT_SERIAL|type^lun|version^None' % name
 
 
+def get_snap_pl(name):
+    return 'id^%s|system^CLIENT_SERIAL|type^snapshot|version^None' % name
+
+
+def get_connector_uids(adapter, connector):
+    return []
+
+
+def get_connection_info(adapter, hlu, host, connector):
+    return {}
+
+
 def patch_for_unity_adapter(func):
     @functools.wraps(func)
     @mock.patch('cinder.volume.drivers.dell_emc.unity.utils.'
@@ -204,6 +216,28 @@ def patch_for_unity_adapter(func):
         return func(*args, **kwargs)
 
     return func_wrapper
+
+
+def patch_for_concrete_adapter(clz_str):
+    def inner_decorator(func):
+        @functools.wraps(func)
+        @mock.patch('%s.get_connector_uids' % clz_str,
+                    new=get_connector_uids)
+        @mock.patch('%s.get_connection_info' % clz_str,
+                    new=get_connection_info)
+        def func_wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return func_wrapper
+
+    return inner_decorator
+
+
+patch_for_iscsi_adapter = patch_for_concrete_adapter(
+    'cinder.volume.drivers.dell_emc.unity.adapter.ISCSIAdapter')
+
+
+patch_for_fc_adapter = patch_for_concrete_adapter(
+    'cinder.volume.drivers.dell_emc.unity.adapter.FCAdapter')
 
 
 ########################
@@ -233,8 +267,8 @@ class CommonAdapterTest(unittest.TestCase):
         snap = mock.Mock(volume=volume)
         snap.name = 'abc-def_snap'
         result = self.adapter.create_snapshot(snap)
-        self.assertEqual('abc-def_snap', result.name)
-        self.assertEqual('lun_43', result.get_id())
+        self.assertEqual(get_snap_pl('lun_43'), result['provider_location'])
+        self.assertEqual('lun_43', result['provider_id'])
 
     def test_delete_snap(self):
         def f():
@@ -311,22 +345,7 @@ class CommonAdapterTest(unittest.TestCase):
         self.assertEqual(self.adapter.array_ca_cert_path,
                          self.adapter.verify_cert)
 
-    def test_initialize_connection_common(self):
-        volume = mock.Mock(provider_location='id^lun_43', id='id_43')
-        connector = {'host': 'host1'}
-        data = self.adapter.initialize_connection(volume, connector)['data']
-        self.assertTrue(data['target_discovered'])
-        self.assertEqual('id_43', data['volume_id'])
-
-    def test_initialize_connection_for_resource(self):
-        snap = test_client.MockResource(_id='snap_1')
-        connector = {'host': 'host1'}
-        data = self.adapter._initialize_connection(
-            snap, connector, 'snap_1')['data']
-        self.assertTrue(data['target_discovered'])
-        self.assertEqual('snap_1', data['volume_id'])
-
-    def test_terminate_connection_common(self):
+    def test_terminate_connection_volume(self):
         def f():
             volume = mock.Mock(provider_location='id^lun_43', id='id_43')
             connector = {'host': 'host1'}
@@ -334,11 +353,12 @@ class CommonAdapterTest(unittest.TestCase):
 
         self.assertRaises(ex.DetachIsCalled, f)
 
-    def test_terminate_connection_snap(self):
+    def test_terminate_connection_snapshot(self):
         def f():
             connector = {'host': 'host1'}
-            snap = test_client.MockResource(_id='snap_0')
-            self.adapter._terminate_connection(snap, connector)
+            snap = mock.Mock(id='snap_0', name='snap_0')
+            snap.name = 'snap_0'
+            self.adapter.terminate_connection_snapshot(snap, connector)
 
         self.assertRaises(ex.DetachIsCalled, f)
 
@@ -475,6 +495,25 @@ class FCAdapterTest(unittest.TestCase):
         wwns = ['8899AABBCCDDEEFF', '8899AABBCCDDFFEE']
         self.assertListEqual(wwns, ret['target_wwn'])
 
+    @patch_for_fc_adapter
+    def test_initialize_connection_volume(self):
+        volume = mock.Mock(provider_location='id^lun_43', id='id_43')
+        connector = {'host': 'host1'}
+        conn_info = self.adapter.initialize_connection(volume, connector)
+        self.assertEqual('fibre_channel', conn_info['driver_volume_type'])
+        self.assertTrue(conn_info['data']['target_discovered'])
+        self.assertEqual('id_43', conn_info['data']['volume_id'])
+
+    @patch_for_fc_adapter
+    def test_initialize_connection_snapshot(self):
+        snap = mock.Mock(id='snap_1', name='snap_1')
+        connector = {'host': 'host1'}
+        conn_info = self.adapter.initialize_connection_snapshot(
+            snap, connector)
+        self.assertEqual('fibre_channel', conn_info['driver_volume_type'])
+        self.assertTrue(conn_info['data']['target_discovered'])
+        self.assertEqual('snap_1', conn_info['data']['volume_id'])
+
     def test_terminate_connection_auto_zone_enabled(self):
         connector = {'host': 'host1', 'wwpns': 'abcdefg'}
         volume = mock.Mock(provider_location='id^lun_41', id='id_41')
@@ -514,3 +553,22 @@ class ISCSIAdapterTest(unittest.TestCase):
         self.assertEqual(hlu, info['target_lun'])
         self.assertTrue(info['target_portal'] in target_portals)
         self.assertTrue(info['target_iqn'] in target_iqns)
+
+    @patch_for_iscsi_adapter
+    def test_initialize_connection_volume(self):
+        volume = mock.Mock(provider_location='id^lun_43', id='id_43')
+        connector = {'host': 'host1'}
+        conn_info = self.adapter.initialize_connection(volume, connector)
+        self.assertEqual('iscsi', conn_info['driver_volume_type'])
+        self.assertTrue(conn_info['data']['target_discovered'])
+        self.assertEqual('id_43', conn_info['data']['volume_id'])
+
+    @patch_for_iscsi_adapter
+    def test_initialize_connection_snapshot(self):
+        snap = mock.Mock(id='snap_1', name='snap_1')
+        connector = {'host': 'host1'}
+        conn_info = self.adapter.initialize_connection_snapshot(
+            snap, connector)
+        self.assertEqual('iscsi', conn_info['driver_volume_type'])
+        self.assertTrue(conn_info['data']['target_discovered'])
+        self.assertEqual('snap_1', conn_info['data']['volume_id'])
