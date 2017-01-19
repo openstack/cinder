@@ -57,6 +57,7 @@ from cinder.common import constants
 from cinder import compute
 from cinder import context
 from cinder import coordination
+from cinder import db
 from cinder import exception
 from cinder import flow_utils
 from cinder import keymgr as key_manager
@@ -385,11 +386,14 @@ class VolumeManager(manager.CleanableManager,
             ctxt, self.cluster, host=self.host)
         num_cgs = objects.ConsistencyGroupList.include_in_cluster(
             ctxt, self.cluster, host=self.host)
-        LOG.info(_LI('%(num_vols)s volumes and %(num_cgs)s consistency groups '
-                     'from host %(host)s have been included in cluster '
-                     '%(cluster)s.'),
+        num_cache = db.image_volume_cache_include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        LOG.info(_LI('%(num_vols)s volumes, %(num_cgs)s consistency groups, '
+                     'and %(num_cache)s image volume caches from host '
+                     '%(host)s have been included in cluster %(cluster)s.'),
                  {'num_vols': num_vols, 'num_cgs': num_cgs,
-                  'host': self.host, 'cluster': self.cluster})
+                  'host': self.host, 'cluster': self.cluster,
+                  'num_cache': num_cache})
 
     def init_host(self, added_to_cluster=None, **kwargs):
         """Perform any required initialization."""
@@ -1170,14 +1174,12 @@ class VolumeManager(manager.CleanableManager,
         """
         image_volume = None
         try:
-            if not self.image_volume_cache.ensure_space(
-                    ctx,
-                    volume_ref['size'],
-                    volume_ref['host']):
+            if not self.image_volume_cache.ensure_space(ctx, volume_ref):
                 LOG.warning(_LW('Unable to ensure space for image-volume in'
                                 ' cache. Will skip creating entry for image'
-                                ' %(image)s on host %(host)s.'),
-                            {'image': image_id, 'host': volume_ref['host']})
+                                ' %(image)s on %(service)s.'),
+                            {'image': image_id,
+                             'service': volume_ref.service_topic_queue})
                 return
 
             image_volume = self._clone_image_volume(ctx,
@@ -1235,7 +1237,7 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             self.create_volume(ctx, image_volume, allow_reschedule=False)
-            image_volume = self.db.volume_get(ctx, image_volume.id)
+            image_volume = objects.Volume.get_by_id(ctx, image_volume.id)
             if image_volume.status != 'available':
                 raise exception.InvalidVolume(_('Volume is not available.'))
 

@@ -1569,11 +1569,12 @@ def driver_initiator_data_get(context, initiator, namespace):
 ###################
 
 
-def image_volume_cache_create(context, host, image_id, image_updated_at,
-                              volume_id, size):
+def image_volume_cache_create(context, host, cluster_name, image_id,
+                              image_updated_at, volume_id, size):
     """Create a new image volume cache entry."""
     return IMPL.image_volume_cache_create(context,
                                           host,
+                                          cluster_name,
                                           image_id,
                                           image_updated_at,
                                           volume_id,
@@ -1585,11 +1586,11 @@ def image_volume_cache_delete(context, volume_id):
     return IMPL.image_volume_cache_delete(context, volume_id)
 
 
-def image_volume_cache_get_and_update_last_used(context, image_id, host):
+def image_volume_cache_get_and_update_last_used(context, image_id, **filters):
     """Query for an image volume cache entry."""
     return IMPL.image_volume_cache_get_and_update_last_used(context,
                                                             image_id,
-                                                            host)
+                                                            **filters)
 
 
 def image_volume_cache_get_by_volume_id(context, volume_id):
@@ -1597,9 +1598,28 @@ def image_volume_cache_get_by_volume_id(context, volume_id):
     return IMPL.image_volume_cache_get_by_volume_id(context, volume_id)
 
 
-def image_volume_cache_get_all_for_host(context, host):
+def image_volume_cache_get_all(context, **filters):
     """Query for all image volume cache entry for a host."""
-    return IMPL.image_volume_cache_get_all_for_host(context, host)
+    return IMPL.image_volume_cache_get_all(context, **filters)
+
+
+def image_volume_cache_include_in_cluster(context, cluster,
+                                          partial_rename=True, **filters):
+    """Include in cluster image volume cache entries matching the filters.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of volumes that have been changed.
+    """
+    return IMPL.image_volume_cache_include_in_cluster(
+        context, cluster, partial_rename, **filters)
 
 
 ###################

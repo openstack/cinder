@@ -1590,7 +1590,10 @@ def _include_in_cluster(context, cluster, model, partial_rename, filters):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(model, filters):
         return None
-    query = model_query(context, model)
+
+    query = get_session().query(model)
+    if hasattr(model, 'deleted'):
+        query = query.filter_by(deleted=False)
 
     # cluster_name and host are special filter cases
     for field in {'cluster_name', 'host'}.intersection(filters):
@@ -6392,12 +6395,13 @@ PAGINATION_HELPERS = {
 
 
 @require_context
-def image_volume_cache_create(context, host, image_id, image_updated_at,
-                              volume_id, size):
+def image_volume_cache_create(context, host, cluster_name, image_id,
+                              image_updated_at, volume_id, size):
     session = get_session()
     with session.begin():
         cache_entry = models.ImageVolumeCacheEntry()
         cache_entry.host = host
+        cache_entry.cluster_name = cluster_name
         cache_entry.image_id = image_id
         cache_entry.image_updated_at = image_updated_at
         cache_entry.volume_id = volume_id
@@ -6416,12 +6420,13 @@ def image_volume_cache_delete(context, volume_id):
 
 
 @require_context
-def image_volume_cache_get_and_update_last_used(context, image_id, host):
+def image_volume_cache_get_and_update_last_used(context, image_id, **filters):
+    filters = _clean_filters(filters)
     session = get_session()
     with session.begin():
         entry = session.query(models.ImageVolumeCacheEntry).\
             filter_by(image_id=image_id).\
-            filter_by(host=host).\
+            filter_by(**filters).\
             order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
             first()
 
@@ -6441,13 +6446,23 @@ def image_volume_cache_get_by_volume_id(context, volume_id):
 
 
 @require_context
-def image_volume_cache_get_all_for_host(context, host):
+def image_volume_cache_get_all(context, **filters):
+    filters = _clean_filters(filters)
     session = get_session()
     with session.begin():
         return session.query(models.ImageVolumeCacheEntry).\
-            filter_by(host=host).\
+            filter_by(**filters).\
             order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
             all()
+
+
+@require_admin_context
+def image_volume_cache_include_in_cluster(context, cluster,
+                                          partial_rename=True, **filters):
+    """Include all volumes matching the filters into a cluster."""
+    filters = _clean_filters(filters)
+    return _include_in_cluster(context, cluster, models.ImageVolumeCacheEntry,
+                               partial_rename, filters)
 
 
 ###################
