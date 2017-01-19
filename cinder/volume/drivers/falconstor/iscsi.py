@@ -41,15 +41,18 @@ class FSSISCSIDriver(fss_common.FalconstorBaseDriver,
         1.03 -  merge source code
         1.04 -  Fixed  create_volume_from_snapshot(), create_cloned_volume()
         metadata TypeError
-        2.0.0 - Mitaka driver
-                -- fixed consisgroup commands error.
+        2.0.0 - Newton driver
+                -- fixed consisgroup commands error
         2.0.1   -- fixed bugs
         2.0.2   -- support Multipath
-        3.0.0 - Newton driver
+        3.0.0 - Ocata driver
+                -- fixed bugs
+        4.0.0 - Pike driver
+                -- extend Cinder driver to utilize multiple FSS storage pools
 
     """
 
-    VERSION = '3.0.0'
+    VERSION = '4.0.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "FalconStor_CI"

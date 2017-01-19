@@ -32,6 +32,8 @@ ISCSI_DRIVER = DRIVER_PATH + ".iscsi.FSSISCSIDriver"
 PRIMARY_IP = '10.0.0.1'
 SECONDARY_IP = '10.0.0.2'
 FAKE_ID = 123
+FAKE_SINGLE_POOLS = {'A': 1}
+FAKE_MULTIPLE_POOLS = {'P': 1, 'O': 2}
 FAKE = 'fake'
 FAKE_HOST = 'fakehost'
 API_RESPONSE = {'rc': 0}
@@ -214,7 +216,7 @@ class FSSDriverTestCase(test.TestCase):
         self.mock_config.san_ip = PRIMARY_IP
         self.mock_config.san_login = FAKE
         self.mock_config.san_password = FAKE
-        self.mock_config.fss_pool = FAKE_ID
+        self.mock_config.fss_pools = FAKE_SINGLE_POOLS
         self.mock_config.san_is_local = False
         self.mock_config.fss_debug = False
         self.mock_config.additional_retry_list = False
@@ -237,8 +239,8 @@ class TestFSSISCSIDriver(FSSDriverTestCase):
     def test_initialized_should_set_fss_info(self):
         self.assertEqual(self.driver.proxy.fss_host,
                          self.driver.configuration.san_ip)
-        self.assertEqual(self.driver.proxy.fss_defined_pool,
-                         self.driver.configuration.fss_pool)
+        self.assertEqual(self.driver.proxy.fss_defined_pools,
+                         self.driver.configuration.fss_pools)
 
     def test_check_for_setup_error(self):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -527,7 +529,7 @@ class TestRESTProxy(test.TestCase):
         configuration.san_ip = FAKE
         configuration.san_login = FAKE
         configuration.san_password = FAKE
-        configuration.fss_pool = FAKE_ID
+        configuration.fss_pools = FAKE_SINGLE_POOLS
         configuration.fss_debug = False
         configuration.additional_retry_list = None
 
@@ -545,8 +547,9 @@ class TestRESTProxy(test.TestCase):
     def test_create_volume(self):
         sizemb = self.proxy._convert_size_to_mb(VOLUME['size'])
         volume_name = self.proxy._get_fss_volume_name(VOLUME)
+        _pool_id = self.proxy._selected_pool_id(FAKE_SINGLE_POOLS, "P")
 
-        params = dict(storagepoolid=self.proxy.fss_defined_pool,
+        params = dict(storagepoolid=_pool_id,
                       sizemb=sizemb,
                       category="virtual",
                       name=volume_name)
@@ -582,11 +585,12 @@ class TestRESTProxy(test.TestCase):
     def test_clone_volume(self, mock__get_fss_vid_from_name):
         self.FSS_MOCK.create_mirror.return_value = API_RESPONSE
         self.FSS_MOCK.sync_mirror.return_value = API_RESPONSE
+        _pool_id = self.proxy._selected_pool_id(FAKE_SINGLE_POOLS, "O")
         mirror_params = dict(
             category='virtual',
             selectioncriteria='anydrive',
             mirrortarget="virtual",
-            storagepoolid=self.proxy.fss_defined_pool
+            storagepoolid=_pool_id
         )
         ret = self.proxy.clone_volume(VOLUME_NAME, SRC_VOL_NAME)
 
@@ -613,9 +617,10 @@ class TestRESTProxy(test.TestCase):
             FAKE_ID)
         sizemb = self.proxy._convert_size_to_mb(SNAPSHOT['volume_size'])
         mock_create_vdev_snapshot.assert_called_once_with(FAKE_ID, sizemb)
+        _pool_id = self.proxy._selected_pool_id(FAKE_SINGLE_POOLS, "O")
         self.FSS_MOCK.create_timemark_policy.assert_called_once_with(
             FAKE_ID,
-            storagepoolid=self.proxy.fss_defined_pool)
+            storagepoolid=_pool_id)
         self.FSS_MOCK.create_timemark.assert_called_once_with(
             FAKE_ID,
             SNAPSHOT["display_name"])
@@ -669,6 +674,7 @@ class TestRESTProxy(test.TestCase):
         self.FSS_MOCK.get_timemark.return_value = tm_info
         mock__get_timestamp.return_value = RAWTIMESTAMP
         timestamp = '%s_%s' % (FAKE_ID, RAWTIMESTAMP)
+        _pool_id = self.proxy._selected_pool_id(FAKE_SINGLE_POOLS, "O")
 
         self.proxy.create_volume_from_snapshot(VOLUME, SNAPSHOT)
         self.FSS_MOCK.get_timemark.assert_called_once_with(FAKE_ID)
@@ -676,7 +682,7 @@ class TestRESTProxy(test.TestCase):
                                                     SNAPSHOT['display_name'])
         self.FSS_MOCK.copy_timemark.assert_called_once_with(
             timestamp,
-            storagepoolid=self.proxy.fss_defined_pool,
+            storagepoolid=_pool_id,
             name=new_vol_name)
 
     @mock.patch.object(proxy.RESTProxy, '_get_group_name_from_id')
@@ -778,13 +784,14 @@ class TestRESTProxy(test.TestCase):
             CG_SNAPSHOT['consistencygroup_id'])
         mock__get_fss_gid_from_name.assert_called_once_with(group_name)
         mock__get_vdev_id_from_group_id.assert_called_once_with(FAKE_ID)
+        _pool_id = self.proxy._selected_pool_id(FAKE_SINGLE_POOLS, "O")
 
         for vid in vid_list:
             self.FSS_MOCK._check_if_snapshot_tm_exist.assert_called_with(vid)
             mock_create_vdev_snapshot.assert_called_once_with(vid, 1024)
             self.FSS_MOCK.create_timemark_policy.assert_called_once_with(
                 vid,
-                storagepoolid=self.proxy.fss_defined_pool)
+                storagepoolid=_pool_id)
 
         mock_create_group_timemark.assert_called_once_with(FAKE_ID, gsnap_name)
 

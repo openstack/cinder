@@ -1,0 +1,5 @@
+---
+features:
+  - Added ability to specify multiple storage pools in the FalconStor driver.
+deprecations:
+  - The fss_pool option is deprecated. Use fss_pools instead.
