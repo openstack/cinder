@@ -335,6 +335,10 @@ class BaseVD(object):
     # the unsupported driver started.
     SUPPORTED = True
 
+    # Methods checked to detect a driver implements a replication feature
+    REPLICATION_FEATURE_CHECKERS = {'v2.1': 'failover_host',
+                                    'a/a': 'failover_completed'}
+
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = kwargs.get('db')
@@ -346,6 +350,16 @@ class BaseVD(object):
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
+
+            # NOTE(geguileo): Don't allow to start if we are enabling
+            # replication on a cluster service with a backend that doesn't
+            # support the required mechanism for Active-Active.
+            replication_devices = self.configuration.safe_get(
+                'replication_device')
+            if (self.cluster_name and replication_devices and
+                    not self.supports_replication_feature('a/a')):
+                raise exception.Invalid(_("Driver doesn't support clustered "
+                                          "replication."))
 
         self.driver_utils = driver_utils.VolumeDriverUtils(
             self._driver_data_namespace(), self.db)
@@ -1700,6 +1714,38 @@ class BaseVD(object):
         #               'replication_status': 'failed-over',
         #               'replication_extended_status': 'whatever',...}},]
         raise NotImplementedError()
+
+    def failover(self, context, volumes, secondary_id=None):
+        """Like failover but for a host that is clustered.
+
+        Most of the time this will be the exact same behavior as failover_host,
+        so if it's not overwritten, it is assumed to be the case.
+        """
+        return self.failover_host(context, volumes, secondary_id)
+
+    def failover_completed(self, context, active_backend_id=None):
+        """This method is called after failover for clustered backends."""
+        raise NotImplementedError()
+
+    @classmethod
+    def _is_base_method(cls, method_name):
+        method = getattr(cls, method_name)
+        return method.__module__ == getattr(BaseVD, method_name).__module__
+
+    @classmethod
+    def supports_replication_feature(cls, feature):
+        """Check if driver class supports replication features.
+
+        Feature is a string that must be one of:
+            - v2.1
+            - a/a
+        """
+        if feature not in cls.REPLICATION_FEATURE_CHECKERS:
+            return False
+
+        # Check if method is being implemented/overwritten by the driver
+        method_name = cls.REPLICATION_FEATURE_CHECKERS[feature]
+        return not cls._is_base_method(method_name)
 
     def get_replication_updates(self, context):
         """Old replication update method, deprecate."""

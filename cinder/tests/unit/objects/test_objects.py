@@ -28,7 +28,7 @@ object_data = {
     'BackupImport': '1.4-c50f7a68bb4c400dd53dd219685b3992',
     'BackupList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'CleanupRequest': '1.0-e7c688b893e1d5537ccf65cc3eb10a28',
-    'Cluster': '1.0-6f06e867c073e9d31722c53b0a9329b8',
+    'Cluster': '1.1-cdb1572b250837933d950cc6662313b8',
     'ClusterList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'CGSnapshot': '1.1-3212ac2b4c2811b7134fb9ba2c49ff74',
     'CGSnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',

@@ -22,11 +22,14 @@ from cinder import utils
 
 
 CLUSTER_MICRO_VERSION = '3.7'
+REPLICATION_DATA_MICRO_VERSION = '3.26'
 
 
 class ClusterController(wsgi.Controller):
     allowed_list_keys = {'name', 'binary', 'is_up', 'disabled', 'num_hosts',
-                         'num_down_hosts', 'binary'}
+                         'num_down_hosts', 'binary', 'replication_status',
+                         'frozen', 'active_backend_id'}
+    replication_fields = {'replication_status', 'frozen', 'active_backend_id'}
 
     policy_checker = wsgi.Controller.get_policy_checker('clusters')
 
@@ -38,7 +41,9 @@ class ClusterController(wsgi.Controller):
         # Let the wsgi middleware convert NotFound exceptions
         cluster = objects.Cluster.get_by_id(context, None, binary=binary,
                                             name=id, services_summary=True)
-        return clusters_view.ViewBuilder.detail(cluster)
+        replication_data = req.api_version_request.matches(
+            REPLICATION_DATA_MICRO_VERSION)
+        return clusters_view.ViewBuilder.detail(cluster, replication_data)
 
     @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
     def index(self, req):
@@ -59,9 +64,12 @@ class ClusterController(wsgi.Controller):
     def _get_clusters(self, req, detail):
         # Let the wsgi middleware convert NotAuthorized exceptions
         context = self.policy_checker(req, 'get_all')
-
+        replication_data = req.api_version_request.matches(
+            REPLICATION_DATA_MICRO_VERSION)
         filters = dict(req.GET)
         allowed = self.allowed_list_keys
+        if not replication_data:
+            allowed = allowed.difference(self.replication_fields)
 
         # Check filters are valid
         if not allowed.issuperset(filters):
@@ -78,7 +86,8 @@ class ClusterController(wsgi.Controller):
         filters['services_summary'] = detail
 
         clusters = objects.ClusterList.get_all(context, **filters)
-        return clusters_view.ViewBuilder.list(clusters, detail)
+        return clusters_view.ViewBuilder.list(clusters, detail,
+                                              replication_data)
 
     @wsgi.Controller.api_version(CLUSTER_MICRO_VERSION)
     def update(self, req, id, body):
@@ -113,7 +122,9 @@ class ClusterController(wsgi.Controller):
         cluster.save()
 
         # We return summary data plus the disabled reason
-        ret_val = clusters_view.ViewBuilder.summary(cluster)
+        replication_data = req.api_version_request.matches(
+            REPLICATION_DATA_MICRO_VERSION)
+        ret_val = clusters_view.ViewBuilder.summary(cluster, replication_data)
         ret_val['cluster']['disabled_reason'] = disabled_reason
 
         return ret_val

@@ -32,6 +32,7 @@ from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -135,6 +136,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.assertIn('id', self.fake_volume)
 
     def _get_expected_msg(self, kwargs):
+        update = kwargs.pop('_expected_msg', {})
         expected_msg = copy.deepcopy(kwargs)
         if 'volume' in expected_msg:
             volume = expected_msg.pop('volume')
@@ -172,9 +174,11 @@ class VolumeRpcAPITestCase(test.TestCase):
         if 'new_volume' in expected_msg:
             volume = expected_msg['new_volume']
             expected_msg['new_volume_id'] = volume['id']
+        expected_msg.update(update)
         return expected_msg
 
-    def _test_volume_api(self, method, rpc_method, **kwargs):
+    def _test_volume_api(self, method, rpc_method, _expected_method=None,
+                         **kwargs):
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
         if 'rpcapi_class' in kwargs:
@@ -207,6 +211,8 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = 'fake_host'
         elif 'cgsnapshot' in kwargs:
             host = kwargs['cgsnapshot'].consistencygroup.service_topic_queue
+        elif 'service' in kwargs:
+            host = kwargs['service'].service_topic_queue
 
         target['server'] = utils.extract_host(host, 'host')
         target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC,
@@ -233,7 +239,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
         self.assertEqual(expected_retval, retval)
-        expected_args = [ctxt, method]
+        expected_args = [ctxt, _expected_method or method]
 
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(expected_arg, arg)
@@ -623,18 +629,42 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version='3.0')
 
     def test_freeze_host(self):
+        service = fake_service.fake_service_obj(self.context,
+                                                host='fake_host',
+                                                binary='cinder-volume')
         self._test_volume_api('freeze_host', rpc_method='call',
-                              host='fake_host', version='3.0')
+                              service=service, version='3.0')
 
     def test_thaw_host(self):
-        self._test_volume_api('thaw_host', rpc_method='call', host='fake_host',
+        service = fake_service.fake_service_obj(self.context,
+                                                host='fake_host',
+                                                binary='cinder-volume')
+        self._test_volume_api('thaw_host', rpc_method='call', service=service,
                               version='3.0')
 
-    def test_failover_host(self):
-        self._test_volume_api('failover_host', rpc_method='cast',
-                              host='fake_host',
+    @ddt.data('3.0', '3.8')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_failover(self, version, can_send_version):
+        can_send_version.side_effect = lambda x: x == version
+        service = objects.Service(self.context, host='fake_host',
+                                  cluster_name=None)
+        _expected_method = 'failover' if version == '3.8' else 'failover_host'
+        self._test_volume_api('failover', rpc_method='cast',
+                              service=service,
                               secondary_backend_id='fake_backend',
-                              version='3.0')
+                              version=version,
+                              _expected_method=_expected_method)
+
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI._get_cctxt')
+    def test_failover_completed(self, cctxt_mock):
+        service = objects.Service(self.context, host='fake_host',
+                                  cluster_name='cluster_name')
+        rpcapi = volume_rpcapi.VolumeAPI()
+        rpcapi.failover_completed(self.context, service, mock.sentinel.updates)
+        cctxt_mock.assert_called_once_with(service.cluster_name, '3.8',
+                                           fanout=True)
+        cctxt_mock.return_value.cast(self.context, 'failover_completed',
+                                     updates=mock.sentinel.updates)
 
     def test_create_consistencygroup_from_src_cgsnapshot(self):
         self._test_volume_api('create_consistencygroup_from_src',

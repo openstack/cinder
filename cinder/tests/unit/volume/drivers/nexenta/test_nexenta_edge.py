@@ -76,6 +76,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.cfg.nexenta_iscsi_service = NEDGE_SERVICE
         self.cfg.nexenta_blocksize = NEDGE_BLOCKSIZE
         self.cfg.nexenta_chunksize = NEDGE_CHUNKSIZE
+        self.cfg.replication_device = []
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_utils import timeutils
 
@@ -40,6 +41,7 @@ def _get_filters_sentinel():
             'num_down_hosts': mock.sentinel.num_down_hosts}
 
 
+@ddt.ddt
 class TestCluster(test_objects.BaseObjectsTestCase):
     """Test Cluster Versioned Object methods."""
     cluster = fake_cluster.fake_cluster_orm()
@@ -110,6 +112,19 @@ class TestCluster(test_objects.BaseObjectsTestCase):
         cluster = fake_cluster.fake_cluster_ovo(self.context,
                                                 last_heartbeat=expired_time)
         self.assertFalse(cluster.is_up)
+
+    @ddt.data('1.0', '1.1')
+    def tests_obj_make_compatible(self, version):
+        new_fields = {'replication_status': 'error', 'frozen': True,
+                      'active_backend_id': 'replication'}
+        cluster = objects.Cluster(self.context, **new_fields)
+        primitive = cluster.obj_to_primitive(version)
+        converted_cluster = objects.Cluster.obj_from_primitive(primitive)
+        for key, value in new_fields.items():
+            if version == '1.0':
+                self.assertFalse(converted_cluster.obj_attr_is_set(key))
+            else:
+                self.assertEqual(value, getattr(converted_cluster, key))
 
 
 class TestClusterList(test_objects.BaseObjectsTestCase):

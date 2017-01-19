@@ -1076,6 +1076,16 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                               self.VARCHAR_TYPE)
         self.assertTrue(messages.c.request_id.nullable)
 
+    def _check_088(self, engine, data):
+        """Test adding replication data to cluster table."""
+        clusters = db_utils.get_table(engine, 'clusters')
+        self.assertIsInstance(clusters.c.replication_status.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(clusters.c.active_backend_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(clusters.c.frozen.type,
+                              self.BOOL_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

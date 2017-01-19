@@ -30,6 +30,7 @@ from cinder import db
 from cinder import exception
 from cinder import manager
 from cinder import objects
+from cinder.objects import fields
 from cinder import rpc
 from cinder import service
 from cinder import test
@@ -437,8 +438,9 @@ class ServiceTestCase(test.TestCase):
 
         if cluster and added_to_cluster:
             self.assertIsNotNone(app.cluster_rpcserver)
-            expected_target_calls.append(mock.call(topic=self.topic,
-                                                   server=cluster))
+            expected_target_calls.append(mock.call(
+                topic=self.topic + '.' + cluster,
+                server=cluster.split('@')[0]))
             expected_rpc_calls.extend(expected_rpc_calls[:])
 
         # Check that we create message targets for host and cluster
@@ -465,11 +467,110 @@ class ServiceTestCase(test.TestCase):
                                              get_min_obj_mock):
         """Test that with cluster we create the rpc service."""
         get_min_obj_mock.return_value = obj_version
-        cluster = 'cluster'
+        cluster = 'cluster@backend#pool'
+        self.host = 'host@backend#pool'
         app = service.Service.create(host=self.host, binary='cinder-volume',
                                      cluster=cluster, topic=self.topic)
         self._check_rpc_servers_and_init_host(app, obj_version != '1.3',
                                               cluster)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_no_cluster(self, get_mock):
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_not_called()
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_exists_non_relicated(self,
+                                                                get_mock):
+        cluster = objects.Cluster(
+            name='cluster_name', active_backend_id=None, frozen=False,
+            replication_status=fields.ReplicationStatus.NOT_CAPABLE)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_change(self, get_mock):
+        """We copy replication fields from the cluster to the service."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+        cluster = objects.Cluster(name='cluster_name', **changes)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual(changes, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_no_change(self, get_mock):
+        """Don't copy replication fields from cluster if replication error."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+        cluster = objects.Cluster(name='cluster_name', **changes)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        svc.replication_status = fields.ReplicationStatus.ERROR
+        svc.obj_reset_changes()
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    def test_ensure_cluster_exists_cluster_create_replicated_and_non(self):
+        """We use service replication fields to create the cluster."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        for key, value in changes.items():
+            setattr(svc, key, value)
+
+        app.cluster = 'cluster_name'
+        app._ensure_cluster_exists(self.ctxt, svc)
+
+        cluster = objects.Cluster.get_by_id(self.ctxt, None, name=app.cluster)
+        for key, value in changes.items():
+            self.assertEqual(value, getattr(cluster, key))
 
 
 class TestWSGIService(test.TestCase):

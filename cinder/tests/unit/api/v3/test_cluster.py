@@ -18,6 +18,7 @@ import datetime
 import ddt
 from iso8601 import iso8601
 import mock
+from oslo_utils import versionutils
 
 from cinder.api import extensions
 from cinder.api.openstack import api_version_request as api_version
@@ -31,11 +32,17 @@ from cinder.tests.unit import fake_cluster
 CLUSTERS = [
     fake_cluster.fake_db_cluster(
         id=1,
+        replication_status='error',
+        frozen=False,
+        active_backend_id='replication1',
         last_heartbeat=datetime.datetime(2016, 6, 1, 2, 46, 28),
         updated_at=datetime.datetime(2016, 6, 1, 2, 46, 28),
         created_at=datetime.datetime(2016, 6, 1, 2, 46, 28)),
     fake_cluster.fake_db_cluster(
         id=2, name='cluster2', num_hosts=2, num_down_hosts=1, disabled=True,
+        replication_status='error',
+        frozen=True,
+        active_backend_id='replication2',
         updated_at=datetime.datetime(2016, 6, 1, 1, 46, 28),
         created_at=datetime.datetime(2016, 6, 1, 1, 46, 28))
 ]
@@ -51,6 +58,9 @@ EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
              'num_hosts': 0,
              'state': 'up',
              'status': 'enabled',
+             'replication_status': 'error',
+             'frozen': False,
+             'active_backend_id': 'replication1',
              'updated_at': datetime.datetime(2016, 6, 1, 2, 46, 28)},
             {'created_at': datetime.datetime(2016, 6, 1, 1, 46, 28),
              'disabled_reason': None,
@@ -61,6 +71,9 @@ EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
              'num_hosts': 2,
              'state': 'down',
              'status': 'disabled',
+             'replication_status': 'error',
+             'frozen': True,
+             'active_backend_id': 'replication2',
              'updated_at': datetime.datetime(2016, 6, 1, 1, 46, 28)}]
 
 
@@ -92,6 +105,21 @@ class ClustersTestCase(test.TestCase):
                     {'is_up': True, 'disabled': False, 'num_hosts': 2,
                      'num_down_hosts': 1, 'binary': 'cinder-volume'})
 
+    REPLICATION_FILTERS = ({'replication_status': 'error'}, {'frozen': True},
+                           {'active_backend_id': 'replication'})
+
+    def _get_expected(self, version='3.8'):
+        if versionutils.convert_version_to_tuple(version) >= (3, 19):
+            return EXPECTED
+
+        expect = []
+        for cluster in EXPECTED:
+            cluster = cluster.copy()
+            for key in ('replication_status', 'frozen', 'active_backend_id'):
+                cluster.pop(key)
+            expect.append(cluster)
+        return expect
+
     def setUp(self):
         super(ClustersTestCase, self).setUp()
 
@@ -101,8 +129,10 @@ class ClustersTestCase(test.TestCase):
         self.controller = clusters.ClusterController(self.ext_mgr)
 
     @mock.patch('cinder.db.cluster_get_all', return_value=CLUSTERS_ORM)
-    def _test_list(self, get_all_mock, detailed, filters, expected=None):
-        req = FakeRequest(**filters)
+    def _test_list(self, get_all_mock, detailed, filters=None, expected=None,
+                   version='3.8'):
+        filters = filters or {}
+        req = FakeRequest(version=version, **filters)
         method = getattr(self.controller, 'detail' if detailed else 'index')
         clusters = method(req)
 
@@ -119,7 +149,7 @@ class ClustersTestCase(test.TestCase):
     @ddt.data(*LIST_FILTERS)
     def test_index_detail(self, filters):
         """Verify that we get all clusters with detailed data."""
-        expected = {'clusters': EXPECTED}
+        expected = {'clusters': self._get_expected()}
         self._test_list(detailed=True, filters=filters, expected=expected)
 
     @ddt.data(*LIST_FILTERS)
@@ -135,6 +165,16 @@ class ClustersTestCase(test.TestCase):
                                   'status': 'disabled'}]}
         self._test_list(detailed=False, filters=filters, expected=expected)
 
+    @ddt.data(*REPLICATION_FILTERS)
+    def test_index_detail_fail_old(self, filters):
+        self.assertRaises(exception.InvalidInput, self._test_list,
+                          detailed=True, filters=filters)
+
+    @ddt.data(*REPLICATION_FILTERS)
+    def test_index_summary_fail_old(self, filters):
+        self.assertRaises(exception.InvalidInput, self._test_list,
+                          detailed=False, filters=filters)
+
     @ddt.data(True, False)
     def test_index_unauthorized(self, detailed):
         """Verify that unauthorized user can't list clusters."""
@@ -147,13 +187,35 @@ class ClustersTestCase(test.TestCase):
         """Verify the wrong version so that user can't list clusters."""
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self._test_list, detailed=detailed,
-                          filters={'version': '3.5'})
+                          version='3.6')
+
+    @ddt.data(*REPLICATION_FILTERS)
+    def test_index_detail_replication_new_fields(self, filters):
+        version = '3.26'
+        expected = {'clusters': self._get_expected(version)}
+        self._test_list(detailed=True, filters=filters, expected=expected,
+                        version=version)
+
+    @ddt.data(*REPLICATION_FILTERS)
+    def test_index_summary_replication_new_fields(self, filters):
+        expected = {'clusters': [{'name': 'cluster_name',
+                                  'binary': 'cinder-volume',
+                                  'state': 'up',
+                                  'replication_status': 'error',
+                                  'status': 'enabled'},
+                                 {'name': 'cluster2',
+                                  'binary': 'cinder-volume',
+                                  'state': 'down',
+                                  'replication_status': 'error',
+                                  'status': 'disabled'}]}
+        self._test_list(detailed=False, filters=filters, expected=expected,
+                        version='3.26')
 
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
                 return_value=CLUSTERS_ORM[0])
     def test_show(self, get_mock):
         req = FakeRequest()
-        expected = {'cluster': EXPECTED[0]}
+        expected = {'cluster': self._get_expected()[0]}
         cluster = self.controller.show(req, mock.sentinel.name,
                                        mock.sentinel.binary)
         self.assertEqual(expected, cluster)

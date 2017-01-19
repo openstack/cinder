@@ -78,6 +78,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
         self.cfg.nexenta_blocksize = 512
         self.cfg.nexenta_chunksize = 4096
         self.cfg.reserved_percentage = 0
+        self.cfg.replication_device = []
 
         self.ctx = context.get_admin_context()
         self.drv = nbd.NexentaEdgeNBDDriver(configuration=self.cfg)

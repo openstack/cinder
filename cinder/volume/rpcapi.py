@@ -122,9 +122,10 @@ class VolumeAPI(rpc.RPCAPI):
                of @backend suffixes in server names.
         3.7  - Adds do_cleanup method to do volume cleanups from other nodes
                that we were doing in init_host.
+        3.8  - Make failover_host cluster aware and add failover_completed.
     """
 
-    RPC_API_VERSION = '3.7'
+    RPC_API_VERSION = '3.8'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -310,21 +311,31 @@ class VolumeAPI(rpc.RPCAPI):
                    new_volume=new_volume,
                    volume_status=original_volume_status)
 
-    def freeze_host(self, ctxt, host):
+    def freeze_host(self, ctxt, service):
         """Set backend host to frozen."""
-        cctxt = self._get_cctxt(host)
+        cctxt = self._get_cctxt(service.service_topic_queue)
         return cctxt.call(ctxt, 'freeze_host')
 
-    def thaw_host(self, ctxt, host):
+    def thaw_host(self, ctxt, service):
         """Clear the frozen setting on a backend host."""
-        cctxt = self._get_cctxt(host)
+        cctxt = self._get_cctxt(service.service_topic_queue)
         return cctxt.call(ctxt, 'thaw_host')
 
-    def failover_host(self, ctxt, host, secondary_backend_id=None):
-        """Failover host to the specified backend_id (secondary)."""
-        cctxt = self._get_cctxt(host)
-        cctxt.cast(ctxt, 'failover_host',
-                   secondary_backend_id=secondary_backend_id)
+    def failover(self, ctxt, service, secondary_backend_id=None):
+        """Failover host to the specified backend_id (secondary). """
+        version = '3.8'
+        method = 'failover'
+        if not self.client.can_send_version(version):
+            version = '3.0'
+            method = 'failover_host'
+        cctxt = self._get_cctxt(service.service_topic_queue, version)
+        cctxt.cast(ctxt, method, secondary_backend_id=secondary_backend_id)
+
+    def failover_completed(self, ctxt, service, updates):
+        """Complete failover on all services of the cluster."""
+        cctxt = self._get_cctxt(service.service_topic_queue, '3.8',
+                                fanout=True)
+        cctxt.cast(ctxt, 'failover_completed', updates=updates)
 
     def manage_existing_snapshot(self, ctxt, snapshot, ref, backend):
         cctxt = self._get_cctxt(backend)

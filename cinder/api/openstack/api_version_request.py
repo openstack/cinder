@@ -75,6 +75,8 @@ REST_API_VERSION_HISTORY = """
     * 3.23 - Allow passing force parameter to volume delete.
     * 3.24 - Add workers/cleanup endpoint.
     * 3.25 - Add ``volumes`` field to group list/detail and group show.
+    * 3.26 - Add failover action and cluster listings accept new filters and
+             return new data.
 """
 
 # The minimum and maximum versions of the API supported
@@ -82,7 +84,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.25"
+_MAX_API_VERSION = "3.26"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

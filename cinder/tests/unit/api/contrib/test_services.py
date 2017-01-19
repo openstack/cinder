@@ -255,6 +255,36 @@ class ServicesTest(test.TestCase):
                                  ]}
         self.assertEqual(response, res_dict)
 
+    def test_failover_old_version(self):
+        req = FakeRequest(version='3.18')
+        self.assertRaises(exception.InvalidInput, self.controller.update, req,
+                          'failover', {'cluster': 'cluster1'})
+
+    def test_failover_no_values(self):
+        req = FakeRequest(version='3.26')
+        self.assertRaises(exception.InvalidInput, self.controller.update, req,
+                          'failover', {'backend_id': 'replica1'})
+
+    @ddt.data({'host': 'hostname'}, {'cluster': 'mycluster'})
+    @mock.patch('cinder.volume.api.API.failover')
+    def test_failover(self, body, failover_mock):
+        req = FakeRequest(version='3.26')
+        body['backend_id'] = 'replica1'
+        res = self.controller.update(req, 'failover', body)
+        self.assertEqual(202, res.status_code)
+        failover_mock.assert_called_once_with(req.environ['cinder.context'],
+                                              body.get('host'),
+                                              body.get('cluster'), 'replica1')
+
+    @ddt.data({}, {'host': 'hostname', 'cluster': 'mycluster'})
+    @mock.patch('cinder.volume.api.API.failover')
+    def test_failover_invalid_input(self, body, failover_mock):
+        req = FakeRequest(version='3.26')
+        body['backend_id'] = 'replica1'
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.update, req, 'failover', body)
+        failover_mock.assert_not_called()
+
     def test_services_list_with_cluster_name(self):
         req = FakeRequest(version='3.7')
         res_dict = self.controller.index(req)
@@ -756,11 +786,12 @@ class ServicesTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         body = {'host': mock.sentinel.host,
                 'backend_id': mock.sentinel.backend_id}
-        with mock.patch.object(self.controller.volume_api, 'failover_host') \
+        with mock.patch.object(self.controller.volume_api, 'failover') \
                 as failover_mock:
             res = self.controller.update(req, 'failover_host', body)
         failover_mock.assert_called_once_with(req.environ['cinder.context'],
                                               mock.sentinel.host,
+                                              None,
                                               mock.sentinel.backend_id)
         self.assertEqual(202, res.status_code)
 
@@ -772,7 +803,7 @@ class ServicesTest(test.TestCase):
                 as freeze_mock:
             res = self.controller.update(req, 'freeze', body)
         freeze_mock.assert_called_once_with(req.environ['cinder.context'],
-                                            mock.sentinel.host)
+                                            mock.sentinel.host, None)
         self.assertEqual(freeze_mock.return_value, res)
 
     def test_services_thaw(self):
@@ -783,12 +814,12 @@ class ServicesTest(test.TestCase):
                 as thaw_mock:
             res = self.controller.update(req, 'thaw', body)
         thaw_mock.assert_called_once_with(req.environ['cinder.context'],
-                                          mock.sentinel.host)
+                                          mock.sentinel.host, None)
         self.assertEqual(thaw_mock.return_value, res)
 
     @ddt.data('freeze', 'thaw', 'failover_host')
     def test_services_replication_calls_no_host(self, method):
         url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url)
-        self.assertRaises(exception.MissingRequired,
+        self.assertRaises(exception.InvalidInput,
                           self.controller.update, req, method, {})

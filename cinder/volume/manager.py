@@ -4154,9 +4154,8 @@ class VolumeManager(manager.CleanableManager,
                 volume.update(model_update_default)
                 volume.save()
 
-    # Replication V2.1 methods
-    def failover_host(self, context,
-                      secondary_backend_id=None):
+    # Replication V2.1 and a/a method
+    def failover(self, context, secondary_backend_id=None):
         """Failover a backend to a secondary replication target.
 
         Instructs a replication capable/configured backend to failover
@@ -4170,30 +4169,33 @@ class VolumeManager(manager.CleanableManager,
         :param context: security context
         :param secondary_backend_id: Specifies backend_id to fail over to
         """
+        updates = {}
+        repl_status = fields.ReplicationStatus
+
         svc_host = vol_utils.extract_host(self.host, 'backend')
+        service = objects.Service.get_by_args(context, svc_host,
+                                              constants.VOLUME_BINARY)
+        volumes = self._get_my_volumes(context)
 
-        service = objects.Service.get_by_args(
-            context,
-            svc_host,
-            constants.VOLUME_BINARY)
-        volumes = objects.VolumeList.get_all_by_host(context, self.host)
-
-        exception_encountered = False
+        exception_encountered = True
         try:
+            # For non clustered we can call v2.1 failover_host, but for
+            # clustered we call a/a failover method.  We know a/a method
+            # exists because BaseVD class wouldn't have started if it didn't.
+            failover = getattr(self.driver,
+                               'failover' if service.is_clustered
+                               else 'failover_host')
             # expected form of volume_update_list:
             # [{volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}},
             #  {volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}}]
-            (active_backend_id, volume_update_list) = (
-                self.driver.failover_host(
-                    context,
-                    volumes,
-                    secondary_id=secondary_backend_id))
+            active_backend_id, volume_update_list = failover(
+                context,
+                volumes,
+                secondary_id=secondary_backend_id)
+            exception_encountered = False
         except exception.UnableToFailOver:
             LOG.exception(_LE("Failed to perform replication failover"))
-            service.replication_status = (
-                fields.ReplicationStatus.FAILOVER_ERROR)
-            service.save()
-            exception_encountered = True
+            updates['replication_status'] = repl_status.FAILOVER_ERROR
         except exception.InvalidReplicationTarget:
             LOG.exception(_LE("Invalid replication target specified "
                               "for failover"))
@@ -4202,12 +4204,9 @@ class VolumeManager(manager.CleanableManager,
             # secondary to another secondary. In both cases active_backend_id
             # will be set.
             if service.active_backend_id:
-                service.replication_status = (
-                    fields.ReplicationStatus.FAILED_OVER)
+                updates['replication_status'] = repl_status.FAILED_OVER
             else:
-                service.replication_status = fields.ReplicationStatus.ENABLED
-            service.save()
-            exception_encountered = True
+                updates['replication_status'] = repl_status.ENABLED
         except exception.VolumeDriverException:
             # NOTE(jdg): Drivers need to be aware if they fail during
             # a failover sequence, we're expecting them to cleanup
@@ -4215,36 +4214,29 @@ class VolumeManager(manager.CleanableManager,
             # backend is still set as primary as per driver memory
             LOG.error(_LE("Driver reported error during "
                           "replication failover."))
-            service.replication_status = (
-                fields.ReplicationStatus.FAILOVER_ERROR)
-            service.disabled = True
-            service.save()
-            exception_encountered = True
+            updates.update(disabled=True,
+                           replication_status=repl_status.FAILOVER_ERROR)
         if exception_encountered:
             LOG.error(
                 _LE("Error encountered during failover on host: "
                     "%(host)s invalid target ID %(backend_id)s"),
                 {'host': self.host, 'backend_id':
                  secondary_backend_id})
+            self.finish_failover(context, service, updates)
             return
 
         if secondary_backend_id == "default":
-            service.replication_status = fields.ReplicationStatus.ENABLED
-            service.active_backend_id = ""
-            if service.frozen:
-                service.disabled = True
-                service.disabled_reason = "frozen"
-            else:
-                service.disabled = False
-                service.disabled_reason = ""
-            service.save()
-
+            updates['replication_status'] = repl_status.ENABLED
+            updates['active_backend_id'] = ''
+            updates['disabled'] = service.frozen
+            updates['disabled_reason'] = 'frozen' if service.frozen else ''
         else:
-            service.replication_status = fields.ReplicationStatus.FAILED_OVER
-            service.active_backend_id = active_backend_id
-            service.disabled = True
-            service.disabled_reason = "failed-over"
-            service.save()
+            updates['replication_status'] = repl_status.FAILED_OVER
+            updates['active_backend_id'] = active_backend_id
+            updates['disabled'] = True
+            updates['disabled_reason'] = 'failed-over'
+
+        self.finish_failover(context, service, updates)
 
         for update in volume_update_list:
             # Response must include an id key: {volume_id: <cinder-uuid>}
@@ -4261,6 +4253,53 @@ class VolumeManager(manager.CleanableManager,
             vobj.save()
 
         LOG.info(_LI("Failed over to replication target successfully."))
+
+    # TODO(geguileo): In P - remove this
+    failover_host = failover
+
+    def finish_failover(self, context, service, updates):
+        """Completion of the failover locally or via RPC."""
+        # If the service is clustered, broadcast the service changes to all
+        # volume services, including this one.
+        if service.is_clustered:
+            # We have to update the cluster with the same data, and we do it
+            # before broadcasting the failover_completed RPC call to prevent
+            # races with services that may be starting..
+            for key, value in updates.items():
+                setattr(service.cluster, key, value)
+            service.cluster.save()
+            rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.failover_completed(context, service, updates)
+        else:
+            service.update(updates)
+            service.save()
+
+    def failover_completed(self, context, updates):
+        """Finalize failover of this backend.
+
+        When a service is clustered and replicated the failover has 2 stages,
+        one that does the failover of the volumes and another that finalizes
+        the failover of the services themselves.
+
+        This method takes care of the last part and is called from the service
+        doing the failover of the volumes after finished processing the
+        volumes.
+        """
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+        service = objects.Service.get_by_args(context, svc_host,
+                                              constants.VOLUME_BINARY)
+        service.update(updates)
+        try:
+            self.driver.failover_completed(context, service.active_backend_id)
+        except Exception:
+            msg = _('Driver reported error during replication failover '
+                    'completion.')
+            LOG.exception(msg)
+            service.disabled = True
+            service.disabled_reason = msg
+            service.replication_status = (
+                fields.ReplicationStatus.ERROR)
+        service.save()
 
     def freeze_host(self, context):
         """Freeze management plane on this backend.

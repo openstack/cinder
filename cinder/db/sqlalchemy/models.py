@@ -122,6 +122,10 @@ class Cluster(BASE, CinderBase):
     disabled_reason = Column(String(255))
     race_preventer = Column(Integer, nullable=False, default=0)
 
+    replication_status = Column(String(36), default="not-capable")
+    active_backend_id = Column(String(255))
+    frozen = Column(Boolean, nullable=False, default=False)
+
     # Last heartbeat reported by any of the services of this cluster.  This is
     # not deferred since we always want to load this field.
     last_heartbeat = column_property(

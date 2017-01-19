@@ -28,7 +28,7 @@ class ViewBuilder(object):
         return ''
 
     @classmethod
-    def detail(cls, cluster, flat=False):
+    def detail(cls, cluster, replication_data=False, flat=False):
         """Detailed view of a cluster."""
         result = cls.summary(cluster, flat=True)
         result.update(
@@ -37,27 +37,36 @@ class ViewBuilder(object):
             last_heartbeat=cls._normalize(cluster.last_heartbeat),
             created_at=cls._normalize(cluster.created_at),
             updated_at=cls._normalize(cluster.updated_at),
-            disabled_reason=cluster.disabled_reason
+            disabled_reason=cluster.disabled_reason,
+            replication_status=cluster.replication_status,
+            frozen=cluster.frozen,
+            active_backend_id=cluster.active_backend_id,
         )
-
+        if not replication_data:
+            for field in ('replication_status', 'frozen', 'active_backend_id'):
+                del result[field]
         if flat:
             return result
         return {'cluster': result}
 
     @staticmethod
-    def summary(cluster, flat=False):
+    def summary(cluster, replication_data=False, flat=False):
         """Generic, non-detailed view of a cluster."""
         result = {
             'name': cluster.name,
             'binary': cluster.binary,
             'state': 'up' if cluster.is_up else 'down',
             'status': 'disabled' if cluster.disabled else 'enabled',
+            'replication_status': cluster.replication_status,
         }
+        if not replication_data:
+            del result['replication_status']
         if flat:
             return result
         return {'cluster': result}
 
     @classmethod
-    def list(cls, clusters, detail=False):
+    def list(cls, clusters, detail=False, replication_data=False):
         func = cls.detail if detail else cls.summary
-        return {'clusters': [func(n, flat=True) for n in clusters]}
+        return {'clusters': [func(n, replication_data, flat=True)
+                             for n in clusters]}
