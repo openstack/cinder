@@ -1075,6 +1075,52 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_initialize_connection_live_migration(self):
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
+        expected_res = {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'volume_id': 12,
+                'target_iqn': '13',
+                'target_lun': 0,
+                'target_portal': '12'}}
+
+        self.assertEqual(
+            expected_res,
+            self.driver.initialize_connection(
+                {'name': 'test-volume',
+                 'provider_location': '12 13',
+                 'id': 12},
+                {'initiator': 'test-initiator1'}))
+
+        self.driver.initialize_connection(
+            {'name': 'test-volume',
+             'provider_location': '12 13',
+             'id': 12},
+            {'initiator': 'test-initiator1'})
+
+        # 2 or more calls to initialize connection and add_acl for live
+        # migration to work
+        expected_calls = [
+            mock.call.get_initiator_grp_list(),
+            mock.call.add_acl({'name': 'test-volume',
+                               'provider_location': '12 13',
+                               'id': 12},
+                              'test-igrp1'),
+            mock.call.get_initiator_grp_list(),
+            mock.call.add_acl({'name': 'test-volume',
+                               'provider_location': '12 13',
+                               'id': 12},
+                              'test-igrp1')]
+        self.mock_client_service.assert_has_calls(expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_FC_DRIVER + ".get_lun_number")

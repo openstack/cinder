@@ -66,6 +66,8 @@ AGENT_TYPE_NONE = 'none'
 SM_SUBNET_DATA = 'data'
 SM_SUBNET_MGMT_PLUS_DATA = 'mgmt-data'
 SM_STATE_MSG = "is already in requested state"
+SM_OBJ_EXIST_MSG = "Object exists"
+SM_OBJ_ENOENT_MSG = "No such object"
 LUN_ID = '0'
 WARN_LEVEL = 80
 DEFAULT_SLEEP = 5
@@ -1304,8 +1306,18 @@ class NimbleRestAPIExecutor(object):
                          "vol_id": volume_id
                          }}
         api = 'access_control_records'
-        r = self.post(api, data)
-        return r
+        try:
+            self.post(api, data)
+        except NimbleAPIException as ex:
+            LOG.debug("add_acl_exception: %s", ex)
+            if SM_OBJ_EXIST_MSG in ex:
+                LOG.warning(_LW('Volume %(vol)s : %(state)s'),
+                            {'vol': volume['name'],
+                             'state': SM_OBJ_EXIST_MSG})
+            else:
+                msg = (_("Add access control failed with error:  %s") %
+                       six.text_type(ex))
+                raise NimbleAPIException(msg)
 
     def get_acl_record(self, volume_id, initiator_group_id):
         filter = {"vol_id": volume_id,
@@ -1328,12 +1340,22 @@ class NimbleRestAPIExecutor(object):
             initiator_group_name)
         volume_id = self.get_volume_id_by_name(volume['name'])
 
-        acl_record = self.get_acl_record(volume_id, initiator_group_id)
-        LOG.debug("ACL Record %(acl)s" % {"acl": acl_record})
-        acl_id = acl_record['id']
-        api = 'access_control_records/' + six.text_type(acl_id)
-        r = self.delete(api)
-        return r
+        try:
+            acl_record = self.get_acl_record(volume_id, initiator_group_id)
+            LOG.debug("ACL Record %(acl)s", {"acl": acl_record})
+            acl_id = acl_record['id']
+            api = 'access_control_records/' + six.text_type(acl_id)
+            self.delete(api)
+        except NimbleAPIException as ex:
+            LOG.debug("remove_acl_exception: %s", ex)
+            if SM_OBJ_ENOENT_MSG in ex:
+                LOG.warning(_LW('Volume %(vol)s : %(state)s'),
+                            {'vol': volume['name'],
+                             'state': SM_OBJ_ENOENT_MSG})
+            else:
+                msg = (_("Remove access control failed with error:  %s") %
+                       six.text_type(ex))
+                raise NimbleAPIException(msg)
 
     def get_snap_info_by_id(self, snap_id, vol_id):
         filter = {"id": snap_id, "vol_id": vol_id}
