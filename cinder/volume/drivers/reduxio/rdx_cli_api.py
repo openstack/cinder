@@ -175,7 +175,8 @@ class ReduxioAPI(object):
         for x in range(1, CONNECTION_RETRY_NUM):
             try:
                 self._reconnect_if_needed()
-                stdin, stdout, stderr = self.ssh.exec_command(
+                stdin, stdout, stderr = self.ssh.exec_command(  # nosec
+                    # command input from authorized users on command line
                     command=six.text_type(cmd), timeout=CLI_SSH_CMD_TIMEOUT)
                 success = True
                 break
