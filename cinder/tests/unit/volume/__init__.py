@@ -58,6 +58,9 @@ class BaseVolumeTestCase(test.TestCase):
         # assertions with the notification code, it's part of an
         # elastic-recheck query so don't remove it or change it.
         self.project_id = '7f265bd4-3a85-465e-a899-5dc4854a86d3'
+        self.user_context = context.RequestContext(user_id=fake.USER_ID,
+                                                   project_id=self.project_id,
+                                                   is_admin=False)
         self.context.project_id = self.project_id
         self.volume_params = {
             'status': 'creating',
