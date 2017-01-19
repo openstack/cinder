@@ -89,10 +89,6 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Quobyte_CI"
 
-    # TODO(smcginnis) Either remove this if CI requirements are met, or
-    # remove this driver in the Pike release per normal deprecation
-    SUPPORTED = False
-
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         super(QuobyteDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
