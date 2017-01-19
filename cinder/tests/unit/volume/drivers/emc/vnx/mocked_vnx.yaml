@@ -684,7 +684,7 @@ test_create_sg_name_in_use:
       create_sg:
         _raise:
           VNXStorageGroupNameInUseError: Storage group name is in use.
-      get_sg:
+      get_sg: *sg_base
 
 test_get_storage_group:
   sg: &sg_test_get_storage_group

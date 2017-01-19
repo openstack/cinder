@@ -398,13 +398,15 @@ class Client(object):
 
     def create_storage_group(self, name):
         try:
-            return self.vnx.create_sg(name)
+            self.sg_cache[name] = self.vnx.create_sg(name)
         except storops_ex.VNXStorageGroupNameInUseError as ex:
             # Ignore the failure due to retry
             LOG.warning(_LW('Storage group %(name)s already exists. '
                             'Message: %(msg)s'),
                         {'name': name, 'msg': ex.message})
-            return self.vnx.get_sg(name=name)
+            self.sg_cache[name] = self.vnx.get_sg(name=name)
+
+        return self.sg_cache[name]
 
     def get_storage_group(self, name):
         """Retrieve the storage group by name.
