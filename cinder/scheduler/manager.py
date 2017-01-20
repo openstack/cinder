@@ -110,13 +110,21 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                                 timestamp)
 
     def notify_service_capabilities(self, context, service_name,
-                                    host, capabilities):
+                                    capabilities, host=None, backend=None,
+                                    timestamp=None):
         """Process a capability update from a service node."""
+        # TODO(geguileo): On v4 remove host field.
         if capabilities is None:
             capabilities = {}
+        # If we received the timestamp we have to deserialize it
+        elif timestamp:
+            timestamp = datetime.strptime(timestamp,
+                                          timeutils.PERFECT_TIME_FORMAT)
+        backend = backend or host
         self.driver.notify_service_capabilities(service_name,
-                                                host,
-                                                capabilities)
+                                                backend,
+                                                capabilities,
+                                                timestamp)
 
     def _wait_for_scheduler(self):
         # NOTE(dulek): We're waiting for scheduler to announce that it's ready

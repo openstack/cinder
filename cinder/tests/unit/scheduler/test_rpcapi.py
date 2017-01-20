@@ -17,6 +17,8 @@
 Unit Tests for cinder.scheduler.rpcapi
 """
 
+from datetime import datetime
+
 import ddt
 import mock
 
@@ -38,17 +40,24 @@ class SchedulerRpcAPITestCase(test.TestCase):
         self.volume_id = fake_constants.VOLUME_ID
 
     def _test_scheduler_api(self, method, rpc_method,
-                            fanout=False, **kwargs):
+                            fanout=False, ignore_for_method=None,
+                            ignore_for_rpc=None, **kwargs):
         ctxt = self.context
         rpcapi = scheduler_rpcapi.SchedulerAPI()
         expected_retval = 'foo' if rpc_method == 'call' else None
+        ignore_for_method = ignore_for_method or []
+        ignore_for_rpc = ignore_for_rpc or []
 
         target = {
             "fanout": fanout,
             "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
         }
 
-        expected_msg = kwargs.copy()
+        expected_msg = {k: v for k, v in kwargs.items()
+                        if k not in ignore_for_rpc}
+
+        method_args = {k: v for k, v in kwargs.items()
+                       if k not in ignore_for_method}
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -69,7 +78,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
 
             with mock.patch.object(rpcapi.client, rpc_method) as mock_method:
                 mock_method.side_effect = _fake_rpc_method
-                retval = getattr(rpcapi, method)(ctxt, **kwargs)
+                retval = getattr(rpcapi, method)(ctxt, **method_args)
                 self.assertEqual(expected_retval, retval)
                 expected_args = [ctxt, method, expected_msg]
                 for arg, expected_arg in zip(self.fake_args, expected_args):
@@ -107,14 +116,35 @@ class SchedulerRpcAPITestCase(test.TestCase):
         create_worker_mock.assert_called_once()
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_notify_service_capabilities(self, can_send_version_mock):
+    def test_notify_service_capabilities_backend(self, can_send_version_mock):
+        """Test sending new backend by RPC instead of old host parameter."""
+        capabilities = {'host': 'fake_host',
+                        'total': '10.01', }
+        with mock.patch('oslo_utils.timeutils.utcnow',
+                        return_value=datetime(1970, 1, 1)):
+            self._test_scheduler_api('notify_service_capabilities',
+                                     rpc_method='cast',
+                                     service_name='fake_name',
+                                     backend='fake_host',
+                                     capabilities=capabilities,
+                                     timestamp='1970-01-01T00:00:00.000000',
+                                     ignore_for_method=['timestamp'],
+                                     version='3.5')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                side_effect=(True, False))
+    def test_notify_service_capabilities_host(self, can_send_version_mock):
+        """Test sending old host RPC parameter instead of backend."""
         capabilities = {'host': 'fake_host',
                         'total': '10.01', }
         self._test_scheduler_api('notify_service_capabilities',
                                  rpc_method='cast',
                                  service_name='fake_name',
                                  host='fake_host',
+                                 backend='fake_host',
                                  capabilities=capabilities,
+                                 ignore_for_method=['host'],
+                                 ignore_for_rpc=['backend'],
                                  version='3.1')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
@@ -127,7 +157,10 @@ class SchedulerRpcAPITestCase(test.TestCase):
                           'notify_service_capabilities',
                           rpc_method='cast',
                           service_name='fake_name',
+                          backend='fake_host',
                           host='fake_host',
+                          ignore_for_method=['host'],
+                          ignore_for_rpc=['backend'],
                           capabilities=capabilities,
                           version='3.1')
 

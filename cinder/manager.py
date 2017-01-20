@@ -191,7 +191,7 @@ class SchedulerDependentManager(ThreadPoolManager):
                 self.scheduler_rpcapi.notify_service_capabilities(
                     context,
                     self.service_name,
-                    self.host,
+                    self.service_topic_queue,
                     self.last_capabilities)
             except exception.ServiceTooOld as e:
                 # This means we have Newton's c-sch in the deployment, so
