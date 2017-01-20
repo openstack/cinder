@@ -2,7 +2,7 @@ Internationalization
 ====================
 
 For internationalization guidelines, see the
-`oslo.i18n documention <http://docs.openstack.org/developer/oslo.i18n/guidelines.html>`_.
+`oslo.i18n documentation <http://docs.openstack.org/developer/oslo.i18n/guidelines.html>`_.
 The information below can be used to get started.
 
 Cinder uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
