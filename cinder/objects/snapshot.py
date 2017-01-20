@@ -139,12 +139,12 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
             volume = objects.Volume(context)
             volume._from_db_object(context, volume, db_snapshot['volume'])
             snapshot.volume = volume
-        if 'cgsnapshot' in expected_attrs:
+        if snapshot.cgsnapshot_id and 'cgsnapshot' in expected_attrs:
             cgsnapshot = objects.CGSnapshot(context)
             cgsnapshot._from_db_object(context, cgsnapshot,
                                        db_snapshot['cgsnapshot'])
             snapshot.cgsnapshot = cgsnapshot
-        if 'group_snapshot' in expected_attrs:
+        if snapshot.group_snapshot_id and 'group_snapshot' in expected_attrs:
             group_snapshot = objects.GroupSnapshot(context)
             group_snapshot._from_db_object(context, group_snapshot,
                                            db_snapshot['group_snapshot'])
@@ -231,13 +231,18 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
                                                    self.volume_id)
 
         if attrname == 'cgsnapshot':
-            self.cgsnapshot = objects.CGSnapshot.get_by_id(self._context,
-                                                           self.cgsnapshot_id)
-
+            if self.cgsnapshot_id is None:
+                self.cgsnapshot = None
+            else:
+                self.cgsnapshot = objects.CGSnapshot.get_by_id(
+                    self._context, self.cgsnapshot_id)
         if attrname == 'group_snapshot':
-            self.group_snapshot = objects.GroupSnapshot.get_by_id(
-                self._context,
-                self.group_snapshot_id)
+            if self.group_snapshot_id is None:
+                self.group_snapshot = None
+            else:
+                self.group_snapshot = objects.GroupSnapshot.get_by_id(
+                    self._context,
+                    self.group_snapshot_id)
 
         self.obj_reset_changes(fields=[attrname])
 

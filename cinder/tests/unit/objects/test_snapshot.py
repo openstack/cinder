@@ -173,6 +173,24 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         cgsnapshot_get_by_id.assert_called_once_with(self.context,
                                                      snapshot.cgsnapshot_id)
 
+    @mock.patch('cinder.objects.cgsnapshot.CGSnapshot.get_by_id')
+    def test_obj_load_attr_cgroup_not_exist(self, cgsnapshot_get_by_id):
+        fake_non_cg_db_snapshot = fake_snapshot.fake_db_snapshot(
+            cgsnapshot_id=None)
+        snapshot = objects.Snapshot._from_db_object(
+            self.context, objects.Snapshot(), fake_non_cg_db_snapshot)
+        self.assertIsNone(snapshot.cgsnapshot)
+        cgsnapshot_get_by_id.assert_not_called()
+
+    @mock.patch('cinder.objects.group_snapshot.GroupSnapshot.get_by_id')
+    def test_obj_load_attr_group_not_exist(self, group_snapshot_get_by_id):
+        fake_non_cg_db_snapshot = fake_snapshot.fake_db_snapshot(
+            group_snapshot_id=None)
+        snapshot = objects.Snapshot._from_db_object(
+            self.context, objects.Snapshot(), fake_non_cg_db_snapshot)
+        self.assertIsNone(snapshot.group_snapshot)
+        group_snapshot_get_by_id.assert_not_called()
+
     @mock.patch('cinder.db.snapshot_data_get_for_project')
     def test_snapshot_data_get_for_project(self, snapshot_data_get):
         snapshot = objects.Snapshot._from_db_object(
