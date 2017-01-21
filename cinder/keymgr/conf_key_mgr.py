@@ -63,9 +63,14 @@ class ConfKeyManager(key_manager.KeyManager):
     for each method are handled as specified by the key manager interface.
     """
 
+    warning_logged = False
+
     def __init__(self, configuration):
-        LOG.warning(_LW('This key manager is insecure and is not recommended '
-                        'for production deployments'))
+        if not ConfKeyManager.warning_logged:
+            LOG.warning(_LW('This key manager is insecure and is not '
+                            'recommended for production deployments'))
+            ConfKeyManager.warning_logged = True
+
         super(ConfKeyManager, self).__init__(configuration)
 
         self.conf = configuration
