@@ -130,8 +130,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-
-        volume_name = volume['name']
+        volume_name = self._get_target_vol(volume)
 
         # Check if a host object is defined for this host name
         host_name = self._helpers.get_host_from_connector(connector)
@@ -327,7 +326,8 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        vol_name = volume['name']
+        vol_name = self._get_target_vol(volume)
+
         info = {}
         if 'host' in connector:
             # get host according to iSCSI protocol

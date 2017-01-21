@@ -15,7 +15,6 @@
 #
 
 import random
-import uuid
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
@@ -27,6 +26,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder import ssh_utils
 from cinder import utils
+from cinder.volume.drivers.ibm.storwize_svc import storwize_const
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -222,45 +222,113 @@ class StorwizeSVCReplicationGlobalMirror(
     """
 
     asyncmirror = True
-    UUID_LEN = 36
 
     def __init__(self, driver, replication_target=None, target_helpers=None):
         super(StorwizeSVCReplicationGlobalMirror, self).__init__(
             driver, replication_target)
-        self.sshpool = None
-        self.target_helpers = target_helpers(self._run_ssh)
+        self.target_helpers = target_helpers
 
-    def _partnership_validate_create(self, client, remote_name, remote_ip):
+    def volume_replication_setup(self, context, vref):
+        LOG.debug('enter: volume_replication_setup: volume %s', vref['name'])
+
+        target_vol_name = storwize_const.REPLICA_AUX_VOL_PREFIX + vref['name']
         try:
-            partnership_info = client.get_partnership_info(
-                remote_name)
-            if not partnership_info:
-                candidate_info = client.get_partnershipcandidate_info(
-                    remote_name)
-                if not candidate_info:
-                    client.mkippartnership(remote_ip)
-                else:
-                    client.mkfcpartnership(remote_name)
-            elif partnership_info['partnership'] == (
-                    'fully_configured_stopped'):
-                client.startpartnership(partnership_info['id'])
-        except Exception:
-            msg = (_('Unable to establish the partnership with '
-                     'the Storwize cluster %s.'), remote_name)
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            attr = self.target_helpers.get_vdisk_attributes(target_vol_name)
+            if not attr:
+                opts = self.driver._get_vdisk_params(vref['volume_type_id'])
+                pool = self.target.get('pool_name')
+                self.target_helpers.create_vdisk(target_vol_name,
+                                                 six.text_type(vref['size']),
+                                                 'gb', pool, opts)
 
-    def establish_target_partnership(self):
-        local_system_info = self.driver._helpers.get_system_info()
-        target_system_info = self.target_helpers.get_system_info()
-        local_system_name = local_system_info['system_name']
-        target_system_name = target_system_info['system_name']
-        local_ip = self.driver.configuration.safe_get('san_ip')
-        target_ip = self.target.get('san_ip')
-        self._partnership_validate_create(self.driver._helpers,
-                                          target_system_name, target_ip)
-        self._partnership_validate_create(self.target_helpers,
-                                          local_system_name, local_ip)
+            system_info = self.target_helpers.get_system_info()
+            self.driver._helpers.create_relationship(
+                vref['name'], target_vol_name, system_info.get('system_name'),
+                self.asyncmirror)
+        except Exception as e:
+            msg = (_("Unable to set up mirror mode replication for %(vol)s. "
+                     "Exception: %(err)s.") % {'vol': vref['id'],
+                                               'err': e.message})
+            LOG.exception(msg)
+            raise exception.VolumeDriverException(message=msg)
+        LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
+
+    def failover_volume_host(self, context, vref):
+        LOG.debug('enter: failover_volume_host: vref=%(vref)s',
+                  {'vref': vref['name']})
+        target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + vref['name']
+
+        try:
+            rel_info = self.target_helpers.get_relationship_info(target_vol)
+            # Reverse the role of the primary and secondary volumes
+            self.target_helpers.switch_relationship(rel_info['name'])
+            return {'replication_status': 'failed-over'}
+        except Exception as e:
+            LOG.exception(_LE('Unable to fail-over the volume %(id)s to the '
+                              'secondary back-end by switchrcrelationship '
+                              'command, error: %(error)s'),
+                          {"id": vref['id'], "error": e})
+            # If the switch command fail, try to make the aux volume
+            # writeable again.
+            try:
+                self.target_helpers.stop_relationship(target_vol,
+                                                      access=True)
+                return {'replication_status': 'failed-over'}
+            except Exception as e:
+                msg = (_('Unable to fail-over the volume %(id)s to the '
+                         'secondary back-end, error: %(error)s') %
+                       {"id": vref['id'], "error": e})
+                LOG.exception(msg)
+                raise exception.VolumeDriverException(message=msg)
+        LOG.debug('leave: failover_volume_host: vref=%(vref)s',
+                  {'vref': vref['name']})
+
+    def replication_failback(self, volume):
+        tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
+        rel_info = self.target_helpers.get_relationship_info(tgt_volume)
+        if rel_info:
+            try:
+                self.target_helpers.switch_relationship(rel_info['name'],
+                                                        aux=False)
+                return {'replication_status': 'enabled',
+                        'status': 'available'}
+            except Exception as e:
+                msg = (_('Unable to fail-back the volume:%(vol)s to the '
+                         'master back-end, error:%(error)s') %
+                       {"vol": volume['name'], "error": e})
+                LOG.exception(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+
+class StorwizeSVCReplicationMetroMirror(
+        StorwizeSVCReplicationGlobalMirror):
+    """Support for Storwize/SVC metro mirror mode replication.
+
+    Metro Mirror establishes a Metro Mirror relationship between
+    two volumes of equal size. The volumes in a Metro Mirror relationship
+    are referred to as the master (source) volume and the auxiliary
+    (target) volume.
+    """
+
+    asyncmirror = False
+
+    def __init__(self, driver, replication_target=None, target_helpers=None):
+        super(StorwizeSVCReplicationMetroMirror, self).__init__(
+            driver, replication_target, target_helpers)
+
+
+class StorwizeSVCReplicationManager(object):
+
+    def __init__(self, driver, replication_target=None, target_helpers=None):
+        self.sshpool = None
+        self.driver = driver
+        self.target = replication_target
+        self.target_helpers = target_helpers(self._run_ssh)
+        self._master_helpers = self.driver._master_backend_helpers
+        self.global_m = StorwizeSVCReplicationGlobalMirror(
+            self.driver, replication_target, self.target_helpers)
+        self.metro_m = StorwizeSVCReplicationMetroMirror(
+            self.driver, replication_target, self.target_helpers)
 
     def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
         utils.check_ssh_injection(cmd_list)
@@ -301,150 +369,48 @@ class StorwizeSVCReplicationGlobalMirror(
                         exit_code=-1, stdout="",
                         stderr="Error running SSH command",
                         cmd=command)
-
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error running SSH command: %s"), command)
 
-    def volume_replication_setup(self, context, vref):
-        target_vol_name = vref['name']
-        try:
-            attr = self.target_helpers.get_vdisk_attributes(target_vol_name)
-            if attr:
-                # If the volume name exists in the target pool, we need
-                # to change to a different target name.
-                vol_id = six.text_type(uuid.uuid4())
-                prefix = vref['name'][0:len(vref['name']) - len(vol_id)]
-                target_vol_name = prefix + vol_id
+    def get_target_helpers(self):
+        return self.target_helpers
 
-            opts = self.driver._get_vdisk_params(vref['volume_type_id'])
-            pool = self.target.get('pool_name')
-            self.target_helpers.create_vdisk(target_vol_name,
-                                             six.text_type(vref['size']),
-                                             'gb', pool, opts)
-
-            system_info = self.target_helpers.get_system_info()
-            self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_name'),
-                self.asyncmirror)
-        except Exception as e:
-            msg = (_("Unable to set up mirror mode replication for %(vol)s. "
-                     "Exception: %(err)s."), {'vol': vref['id'],
-                                              'err': e})
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-    def create_relationship(self, vref, target_vol_name):
-        if not target_vol_name:
-            return
-        try:
-            system_info = self.target_helpers.get_system_info()
-            self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_name'),
-                self.asyncmirror)
-        except Exception:
-            msg = (_("Unable to create the relationship for %s."),
-                   vref['name'])
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-    def extend_target_volume(self, target_vol_name, amount):
-        if not target_vol_name:
-            return
-        self.target_helpers.extend_vdisk(target_vol_name, amount)
-
-    def delete_target_volume(self, vref):
-        try:
-            rel_info = self.driver._helpers.get_relationship_info(vref)
-        except Exception as e:
-            msg = (_('Failed to get remote copy information for %(volume)s '
-                     'due to %(err)s.'), {'volume': vref['id'], 'err': e})
-            LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
-
-        if rel_info and rel_info.get('aux_vdisk_name', None):
-            try:
-                self.driver._helpers.delete_relationship(vref['name'])
-                self.driver._helpers.delete_vdisk(
-                    rel_info['aux_vdisk_name'], False)
-            except Exception as e:
-                msg = (_('Unable to delete the target volume for '
-                         'volume %(vol)s. Exception: %(err)s.'),
-                       {'vol': vref['id'], 'err': e})
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
-
-    def get_relationship_status(self, volume):
-        rel_info = {}
-        try:
-            rel_info = self.target_helpers.get_relationship_info(volume)
-        except Exception:
-            msg = (_LE('Unable to access the Storwize back-end '
-                       'for volume %s.'), volume['id'])
-            LOG.error(msg)
-
-        return rel_info.get('state') if rel_info else None
-
-    def failover_volume_host(self, context, vref, secondary):
-        if not self.target or self.target.get('backend_id') != secondary:
-            msg = _LE("A valid secondary target MUST be specified in order "
-                      "to failover.")
-            LOG.error(msg)
-            # If the admin does not provide a valid secondary, the failover
-            # will fail, but it is not severe enough to throw an exception.
-            # The admin can still issue another failover request. That is
-            # why we tentatively put return None instead of raising an
-            # exception.
-            return
-
-        try:
-            rel_info = self.target_helpers.get_relationship_info(vref)
-        except Exception:
-            msg = (_('Unable to access the Storwize back-end for volume %s.'),
-                   vref['id'])
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-        if not rel_info:
-            msg = (_('Unable to get the replication relationship for volume '
-                     '%s.'),
-                   vref['id'])
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+    def get_replica_obj(self, rep_type):
+        if rep_type == storwize_const.GLOBAL:
+            return self.global_m
+        elif rep_type == storwize_const.METRO:
+            return self.metro_m
         else:
-            try:
-                # Reverse the role of the primary and secondary volumes,
-                # because the secondary volume becomes the primary in the
-                # fail-over status.
-                self.target_helpers.switch_relationship(
-                    rel_info.get('name'))
-            except Exception as e:
-                msg = (_('Unable to fail-over the volume %(id)s to the '
-                         'secondary back-end, because the replication '
-                         'relationship is unable to switch: %(error)s'),
-                       {"id": vref['id'], "error": e})
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
+            return None
 
-    def replication_failback(self, volume):
-        rel_info = self.target_helpers.get_relationship_info(volume)
-        if rel_info:
-            self.target_helpers.switch_relationship(rel_info.get('name'),
-                                                    aux=False)
+    def _partnership_validate_create(self, client, remote_name, remote_ip):
+        try:
+            partnership_info = client.get_partnership_info(
+                remote_name)
+            if not partnership_info:
+                candidate_info = client.get_partnershipcandidate_info(
+                    remote_name)
+                if candidate_info:
+                    client.mkfcpartnership(remote_name)
+                else:
+                    client.mkippartnership(remote_ip)
+            if partnership_info['partnership'] != 'fully_configured':
+                client.chpartnership(partnership_info['id'])
+        except Exception:
+            msg = (_('Unable to establish the partnership with '
+                     'the Storwize cluster %s.'), remote_name)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
 
-
-class StorwizeSVCReplicationMetroMirror(
-        StorwizeSVCReplicationGlobalMirror):
-    """Support for Storwize/SVC metro mirror mode replication.
-
-    Metro Mirror establishes a Metro Mirror relationship between
-    two volumes of equal size. The volumes in a Metro Mirror relationship
-    are referred to as the master (source) volume and the auxiliary
-    (target) volume.
-    """
-
-    asyncmirror = False
-
-    def __init__(self, driver, replication_target=None, target_helpers=None):
-        super(StorwizeSVCReplicationMetroMirror, self).__init__(
-            driver, replication_target, target_helpers)
+    def establish_target_partnership(self):
+        local_system_info = self._master_helpers.get_system_info()
+        target_system_info = self.target_helpers.get_system_info()
+        local_system_name = local_system_info['system_name']
+        target_system_name = target_system_info['system_name']
+        local_ip = self.driver.configuration.safe_get('san_ip')
+        target_ip = self.target.get('san_ip')
+        self._partnership_validate_create(self._master_helpers,
+                                          target_system_name, target_ip)
+        self._partnership_validate_create(self.target_helpers,
+                                          local_system_name, local_ip)
