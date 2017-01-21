@@ -125,7 +125,7 @@ support consistent group snapshot:
 
 - delete_group_snapshot(context, group_snapshot, snapshots)
 
-Here is an example that add CG capabitilty to generic volume groups [3].
+Here is an example that add CG capability to generic volume groups [3].
 Details of driver interfaces are as follows.
 
 **create_group**

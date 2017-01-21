@@ -77,7 +77,7 @@ user documentation.
   Added /clusters endpoint to list/show/update clusters.
 
   Show endpoint requires the cluster name and optionally the binary as a URL
-  paramter (default is "cinder-volume").  Returns:
+  parameter (default is "cinder-volume").  Returns:
 
   .. code-block:: json
 
@@ -204,7 +204,7 @@ user documentation.
 3.17
 ----
   os-snapshot-manage and os-volume-manage now support ``cluster`` parameter on
-  listings (summay and detailed).  Both location parameters, ``cluster`` and
+  listings (summary and detailed).  Both location parameters, ``cluster`` and
   ``host`` are exclusive and only one should be provided.
 
 3.18

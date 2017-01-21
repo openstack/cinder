@@ -49,7 +49,7 @@ Online Data Migrations
 
 To make DB schema migrations less painful to execute, since Liberty, all data
 migrations are banned from schema migration scripts. Instead, the migrations
-should be done by backgroud process in a manner that doesn't interrupt running
+should be done by background process in a manner that doesn't interrupt running
 services (you can also execute online data migrations with services turned off
 if you're doing a cold upgrade). In Ocata a new ``cinder-manage db
 online-data-migrations`` utility was added for that purpose.  Before upgrading
