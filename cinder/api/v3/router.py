@@ -24,6 +24,7 @@ import cinder.api.openstack
 from cinder.api.v2 import limits
 from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import types
+from cinder.api.v3 import attachments
 from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
@@ -174,6 +175,12 @@ class APIRouter(cinder.api.openstack.APIRouter):
         mapper.resource("backup", "backups",
                         controller=self.resources['backups'],
                         collection={'detail': 'GET'})
+
+        self.resources['attachments'] = attachments.create_resource(ext_mgr)
+        mapper.resource("attachment", "attachments",
+                        controller=self.resources['attachments'],
+                        collection={'detail': 'GET', 'summary': 'GET'},
+                        member={'action': 'POST'})
 
         self.resources['workers'] = workers.create_resource()
         mapper.resource('worker', 'workers',

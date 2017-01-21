@@ -148,11 +148,13 @@ class VolumeAttachStatus(BaseCinderEnum):
     ATTACHED = 'attached'
     ATTACHING = 'attaching'
     DETACHED = 'detached'
+    RESERVED = 'reserved'
     ERROR_ATTACHING = 'error_attaching'
     ERROR_DETACHING = 'error_detaching'
+    DELETED = 'deleted'
 
     ALL = (ATTACHED, ATTACHING, DETACHED, ERROR_ATTACHING,
-           ERROR_DETACHING)
+           ERROR_DETACHING, RESERVED, DELETED)
 
 
 class VolumeAttachStatusField(BaseEnumField):

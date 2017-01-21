@@ -382,6 +382,11 @@ def volume_attachment_get_all_by_project(context, project_id, filters=None,
                                                      sort_dirs)
 
 
+def attachment_destroy(context, attachment_id):
+    """Destroy the attachment or raise if it does not exist."""
+    return IMPL.attachment_destroy(context, attachment_id)
+
+
 def volume_update_status_based_on_attachment(context, volume_id):
     """Update volume status according to attached instance id"""
     return IMPL.volume_update_status_based_on_attachment(context, volume_id)
@@ -1733,6 +1738,33 @@ class Condition(object):
         if not field:
             raise ValueError(_('Condition has no field.'))
         return field
+
+###################
+
+
+def attachment_specs_get(context, attachment_id):
+    """Get all specs for an attachment."""
+    return IMPL.attachment_specs_get(context, attachment_id)
+
+
+def attachment_specs_delete(context, attachment_id, key):
+    """Delete the given attachment specs item."""
+    return IMPL.attachment_specs_delete(context, attachment_id, key)
+
+
+def attachment_specs_update_or_create(context,
+                                      attachment_id,
+                                      specs):
+    """Create or update attachment specs.
+
+    This adds or modifies the key/value pairs specified in the attachment
+    specs dict argument.
+    """
+    return IMPL.attachment_specs_update_or_create(context,
+                                                  attachment_id,
+                                                  specs)
+
+###################
 
 
 class Not(Condition):

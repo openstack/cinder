@@ -874,3 +874,24 @@ class Worker(BASE, CinderBase):
         backref="workers",
         foreign_keys=service_id,
         primaryjoin='Worker.service_id == Service.id')
+
+
+class AttachmentSpecs(BASE, CinderBase):
+    """Represents attachment specs as k/v pairs for a volume_attachment."""
+
+    __tablename__ = 'attachment_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    attachment_id = (
+        Column(String(36),
+               ForeignKey('volume_attachment.id'),
+               nullable=False))
+    volume_attachment = relationship(
+        VolumeAttachment,
+        backref="attachment_specs",
+        foreign_keys=attachment_id,
+        primaryjoin='and_('
+        'AttachmentSpecs.attachment_id == VolumeAttachment.id,'
+        'AttachmentSpecs.deleted == False)'
+    )

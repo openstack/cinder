@@ -123,9 +123,10 @@ class VolumeAPI(rpc.RPCAPI):
         3.7  - Adds do_cleanup method to do volume cleanups from other nodes
                that we were doing in init_host.
         3.8  - Make failover_host cluster aware and add failover_completed.
+        3.9  - Adds new attach/detach methods
     """
 
-    RPC_API_VERSION = '3.8'
+    RPC_API_VERSION = '3.9'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -405,6 +406,35 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(group_snapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_group_snapshot',
                    group_snapshot=group_snapshot)
+
+    def attachment_update(self, ctxt, vref, connector, attachment_id):
+        if not self.client.can_send_version('3.9'):
+            msg = _('One of cinder-volume services is too old to accept '
+                    'such request. Are you running mixed Newton-Ocata'
+                    'cinder-schedulers?')
+            raise exception.ServiceTooOld(msg)
+
+        version = self._compat_ver('3.9')
+        cctxt = self._get_cctxt(vref.host, version=version)
+        return cctxt.call(ctxt,
+                          'attachment_update',
+                          vref=vref,
+                          connector=connector,
+                          attachment_id=attachment_id)
+
+    def attachment_delete(self, ctxt, attachment_id, vref):
+        if not self.client.can_send_version('3.9'):
+            msg = _('One of cinder-volume services is too old to accept '
+                    'such request. Are you running mixed Newton-Ocata'
+                    'cinder-schedulers?')
+            raise exception.ServiceTooOld(msg)
+
+        version = self._compat_ver('3.9')
+        cctxt = self._get_cctxt(vref.host, version=version)
+        return cctxt.call(ctxt,
+                          'attachment_delete',
+                          attachment_id=attachment_id,
+                          vref=vref)
 
     def do_cleanup(self, ctxt, cleanup_request):
         """Perform this service/cluster resource cleanup as requested."""

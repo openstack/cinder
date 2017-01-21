@@ -280,3 +280,7 @@ user documentation.
   - Cluster listing accepts ``replication_status``, ``frozen`` and
     ``active_backend_id`` as filters, and returns additional fields for each
     cluster: ``replication_status``, ``frozen``, ``active_backend_id``.
+
+3.27
+----
+  Added new attachment API's

@@ -110,6 +110,7 @@ VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_GROUP_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
+VA_LIST = objects.VolumeAttachmentList
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -1002,11 +1003,11 @@ class VolumeManager(manager.CleanableManager,
             host_name) if host_name else None
         if instance_uuid:
             attachments = (
-                objects.VolumeAttachmentList.get_all_by_instance_uuid(
+                VA_LIST.get_all_by_instance_uuid(
                     context, instance_uuid))
         else:
             attachments = (
-                objects.VolumeAttachmentList.get_all_by_host(
+                VA_LIST.get_all_by_host(
                     context, host_name_sanitized))
         if attachments:
             # check if volume<->instance mapping is already tracked in DB
@@ -1378,85 +1379,7 @@ class VolumeManager(manager.CleanableManager,
                         exc_info=True, resource={'type': 'image',
                                                  'id': image_id})
 
-    def initialize_connection(self, context, volume, connector):
-        """Prepare volume for connection from host represented by connector.
-
-        This method calls the driver initialize_connection and returns
-        it to the caller.  The connector parameter is a dictionary with
-        information about the host that will connect to the volume in the
-        following format::
-
-            {
-                'ip': ip,
-                'initiator': initiator,
-            }
-
-        ip: the ip address of the connecting machine
-
-        initiator: the iscsi initiator name of the connecting machine.
-        This can be None if the connecting machine does not support iscsi
-        connections.
-
-        driver is responsible for doing any necessary security setup and
-        returning a connection_info dictionary in the following format::
-
-            {
-                'driver_volume_type': driver_volume_type,
-                'data': data,
-            }
-
-        driver_volume_type: a string to identify the type of volume.  This
-                           can be used by the calling code to determine the
-                           strategy for connecting to the volume. This could
-                           be 'iscsi', 'rbd', 'sheepdog', etc.
-
-        data: this is the data that the calling code will use to connect
-              to the volume. Keep in mind that this will be serialized to
-              json in various places, so it should not contain any non-json
-              data types.
-        """
-
-        # NOTE(flaper87): Verify the driver is enabled
-        # before going forward. The exception will be caught
-        # and the volume status updated.
-        utils.require_driver_initialized(self.driver)
-        try:
-            self.driver.validate_connector(connector)
-        except exception.InvalidConnectorException as err:
-            raise exception.InvalidInput(reason=six.text_type(err))
-        except Exception as err:
-            err_msg = (_("Validate volume connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.exception(err_msg, resource=volume)
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        try:
-            model_update = self.driver.create_export(context.elevated(),
-                                                     volume, connector)
-        except exception.CinderException:
-            err_msg = (_("Create export for volume failed."))
-            LOG.exception(err_msg, resource=volume)
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        try:
-            if model_update:
-                volume.update(model_update)
-                volume.save()
-        except exception.CinderException as ex:
-            LOG.exception(_LE("Model update failed."), resource=volume)
-            raise exception.ExportFailure(reason=six.text_type(ex))
-
-        try:
-            conn_info = self.driver.initialize_connection(volume, connector)
-        except Exception as err:
-            err_msg = (_("Driver initialize connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.exception(err_msg, resource=volume)
-
-            self.driver.remove_export(context.elevated(), volume)
-
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
+    def _parse_connection_options(self, context, volume, conn_info):
         # Add qos_specs to connection info
         typeid = volume.volume_type_id
         specs = None
@@ -1498,6 +1421,91 @@ class VolumeManager(manager.CleanableManager,
                  resource=volume)
         return conn_info
 
+    def initialize_connection(self, context, volume, connector):
+        """Prepare volume for connection from host represented by connector.
+
+        This method calls the driver initialize_connection and returns
+        it to the caller.  The connector parameter is a dictionary with
+        information about the host that will connect to the volume in the
+        following format::
+
+            {
+                'ip': ip,
+                'initiator': initiator,
+            }
+
+        ip: the ip address of the connecting machine
+
+        initiator: the iscsi initiator name of the connecting machine.
+        This can be None if the connecting machine does not support iscsi
+        connections.
+
+        driver is responsible for doing any necessary security setup and
+        returning a connection_info dictionary in the following format::
+
+            {
+                'driver_volume_type': driver_volume_type,
+                'data': data,
+            }
+
+        driver_volume_type: a string to identify the type of volume.  This
+                           can be used by the calling code to determine the
+                           strategy for connecting to the volume. This could
+                           be 'iscsi', 'rbd', 'sheepdog', etc.
+
+        data: this is the data that the calling code will use to connect
+              to the volume. Keep in mind that this will be serialized to
+              json in various places, so it should not contain any non-json
+              data types.
+        """
+        # NOTE(flaper87): Verify the driver is enabled
+        # before going forward. The exception will be caught
+        # and the volume status updated.
+
+        # TODO(jdg): Add deprecation warning
+        utils.require_driver_initialized(self.driver)
+        try:
+            self.driver.validate_connector(connector)
+        except exception.InvalidConnectorException as err:
+            raise exception.InvalidInput(reason=six.text_type(err))
+        except Exception as err:
+            err_msg = (_("Validate volume connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        try:
+            model_update = self.driver.create_export(context.elevated(),
+                                                     volume, connector)
+        except exception.CinderException as ex:
+            msg = _("Create export of volume failed (%s)") % ex.msg
+            LOG.exception(msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            if model_update:
+                volume.update(model_update)
+                volume.save()
+        except exception.CinderException as ex:
+            LOG.exception(_LE("Model update failed."), resource=volume)
+            raise exception.ExportFailure(reason=six.text_type(ex))
+
+        try:
+            conn_info = self.driver.initialize_connection(volume, connector)
+        except Exception as err:
+            err_msg = (_("Driver initialize connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+
+            self.driver.remove_export(context.elevated(), volume)
+
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        conn_info = self._parse_connection_options(context, volume, conn_info)
+        LOG.info(_LI("Initialize volume connection completed successfully."),
+                 resource=volume)
+        return conn_info
+
     def terminate_connection(self, context, volume_id, connector, force=False):
         """Cleanup connection from host represented by connector.
 
@@ -1522,7 +1530,6 @@ class VolumeManager(manager.CleanableManager,
 
     def remove_export(self, context, volume_id):
         """Removes an export for a volume."""
-
         utils.require_driver_initialized(self.driver)
         volume_ref = self.db.volume_get(context, volume_id)
         try:
@@ -4435,3 +4442,211 @@ class VolumeManager(manager.CleanableManager,
     def secure_file_operations_enabled(self, ctxt, volume):
         secure_enabled = self.driver.secure_file_operations_enabled()
         return secure_enabled
+
+    def _connection_create(self, ctxt, volume, attachment, connector):
+        try:
+            self.driver.validate_connector(connector)
+        except exception.InvalidConnectorException as err:
+            raise exception.InvalidInput(reason=six.text_type(err))
+        except Exception as err:
+            err_msg = (_("Validate volume connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.error(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        try:
+            model_update = self.driver.create_export(ctxt.elevated(),
+                                                     volume, connector)
+        except exception.CinderException as ex:
+            err_msg = (_("Create export for volume failed (%s).") % ex.msg)
+            LOG.exception(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        try:
+            if model_update:
+                volume.update(model_update)
+                volume.save()
+        except exception.CinderException as ex:
+            LOG.exception(_LE("Model update failed."), resource=volume)
+            raise exception.ExportFailure(reason=six.text_type(ex))
+
+        try:
+            conn_info = self.driver.initialize_connection(volume, connector)
+        except Exception as err:
+            err_msg = (_("Driver initialize connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+            self.driver.remove_export(ctxt.elevated(), volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        conn_info = self._parse_connection_options(ctxt, volume, conn_info)
+
+        # NOTE(jdg): Get rid of the nested dict (data key)
+        conn_data = conn_info.pop('data', {})
+        connection_info = conn_data.copy()
+        connection_info.update(conn_info)
+        values = {'volume_id': volume.id,
+                  'attach_status': 'attaching', }
+
+        self.db.volume_attachment_update(ctxt, attachment.id, values)
+        self.db.attachment_specs_update_or_create(
+            ctxt,
+            attachment.id,
+            connector)
+
+        connection_info['attachment_id'] = attachment.id
+        return connection_info
+
+    def attachment_update(self,
+                          context,
+                          vref,
+                          connector,
+                          attachment_id):
+        """Update/Finalize an attachment.
+
+        This call updates a valid attachment record to associate with a volume
+        and provide the caller with the proper connection info.  Note that
+        this call requires an `attachment_ref`.  It's expected that prior to
+        this call that the volume and an attachment UUID has been reserved.
+
+        param: vref: Volume object to create attachment for
+        param: connector: Connector object to use for attachment creation
+        param: attachment_ref: ID of the attachment record to update
+        """
+
+        mode = connector.get('mode', 'rw')
+        self._notify_about_volume_usage(context, vref, 'attach.start')
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        connection_info = self._connection_create(context,
+                                                  vref,
+                                                  attachment_ref,
+                                                  connector)
+        # FIXME(jdg): get rid of this admin_meta option here, the only thing
+        # it does is enforce that a volume is R/O, that should be done via a
+        # type and not *more* metadata
+        volume_metadata = self.db.volume_admin_metadata_update(
+            context.elevated(),
+            attachment_ref.volume_id,
+            {'attached_mode': mode}, False)
+
+        if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+            self.db.volume_update(context, vref.id,
+                                  {'status': 'error_attaching'})
+            self.message_api.create(
+                context, defined_messages.ATTACH_READONLY_VOLUME,
+                context.project_id, resource_type=resource_types.VOLUME,
+                resource_uuid=vref.id)
+            raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                    volume_id=vref.id)
+        try:
+            utils.require_driver_initialized(self.driver)
+            self.driver.attach_volume(context,
+                                      vref,
+                                      attachment_ref.instance_uuid,
+                                      connector.get('hostname', ''),
+                                      connector.get('mountpoint', 'na'))
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.volume_attachment_update(
+                    context, attachment_ref.id,
+                    {'attach_status': 'error_attaching'})
+
+        self.db.volume_attached(context.elevated(),
+                                attachment_ref.id,
+                                attachment_ref.instance_uuid,
+                                connector.get('hostname', ''),
+                                connector.get('mountpoint', 'na'),
+                                mode)
+        vref.refresh()
+        self._notify_about_volume_usage(context, vref, "attach.end")
+        LOG.info(_LI("Attach volume completed successfully."),
+                 resource=vref)
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        return connection_info
+
+    def _connection_terminate(self, context, volume,
+                              attachment, force=False):
+        """Remove a volume connection, but leave attachment."""
+        utils.require_driver_initialized(self.driver)
+
+        # TODO(jdg): Add an object method to cover this
+        connector = self.db.attachment_specs_get(
+            context,
+            attachment.id)
+
+        try:
+            shared_connections = self.driver.terminate_connection(volume,
+                                                                  connector,
+                                                                  force=force)
+            if not isinstance(shared_connections, bool):
+                shared_connections = False
+
+        except Exception as err:
+            err_msg = (_('Terminate volume connection failed: %(err)s')
+                       % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        LOG.info(_LI("Terminate volume connection completed successfully."),
+                 resource=volume)
+        # NOTE(jdg): Return True/False if there are other outstanding
+        # attachments that share this connection.  If True should signify
+        # caller to preserve the actual host connection (work should be
+        # done in the brick connector as it has the knowledge of what's
+        # going on here.
+        return shared_connections
+
+    def attachment_delete(self, context, attachment_id, vref):
+        """Delete/Detach the specified attachment.
+
+        Notifies the backend device that we're detaching the specified
+        attachment instance.
+
+        param: vref: Volume object associated with the attachment
+        param: attachment: Attachment reference object to remove
+
+        NOTE if the attachment reference is None, we remove all existing
+        attachments for the specified volume object.
+        """
+        has_shared_connection = False
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        if not attachment_ref:
+            for attachment in VA_LIST.get_all_by_volume_id(context, vref.id):
+                if self._do_attachment_delete(context, vref, attachment):
+                    has_shared_connection = True
+        else:
+            has_shared_connection = (
+                self._do_attachment_delete(context, vref, attachment_ref))
+        return has_shared_connection
+
+    def _do_attachment_delete(self, context, vref, attachment):
+        utils.require_driver_initialized(self.driver)
+        self._notify_about_volume_usage(context, vref, "detach.start")
+        has_shared_connection = self._connection_terminate(context,
+                                                           vref,
+                                                           attachment)
+        self.driver.detach_volume(context, vref, attachment)
+        try:
+            LOG.debug('Deleting attachment %(attachment_id)s.',
+                      {'attachment_id': attachment.id},
+                      resource=vref)
+            self.driver.detach_volume(context, vref, attachment)
+            self.driver.remove_export(context.elevated(), vref)
+        except Exception:
+            # FIXME(jdg): Obviously our volume object is going to need some
+            # changes to deal with multi-attach and figuring out how to
+            # represent a single failed attach out of multiple attachments
+
+            # TODO(jdg): object method here
+            self.db.volume_attachment_update(
+                context, attachment.get('id'),
+                {'attach_status': 'error_detaching'})
+        else:
+            self.db.volume_detached(context.elevated(), vref.id,
+                                    attachment.get('id'))
+            self.db.volume_admin_metadata_delete(context.elevated(),
+                                                 vref.id,
+                                                 'attached_mode')
+        self._notify_about_volume_usage(context, vref, "detach.end")
+        return has_shared_connection
