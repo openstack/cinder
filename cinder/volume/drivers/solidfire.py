@@ -97,7 +97,15 @@ sf_opts = [
 
     cfg.BoolOpt('sf_enable_vag',
                 default=False,
-                help='Utilize volume access groups on a per-tenant basis.')]
+                help='Utilize volume access groups on a per-tenant basis.'),
+
+    cfg.BoolOpt('sf_enable_no_deleted',
+                default=False,
+                help='Delete Volume right nows '),
+
+    cfg.BoolOpt('sf_enable_delete_account',
+                default=False,
+                help='Delete SolidFire Account  when all volumes are deleted ')]
 
 CONF = cfg.CONF
 CONF.register_opts(sf_opts)
@@ -155,9 +163,10 @@ class SolidFireDriver(san.SanISCSIDriver):
                 and tflow
         2.0.6 - Add a lock decorator around the clone_image method
         2.0.7 - Add scaled IOPS
+        2.0.8 - Add auto purge and delete account
     """
 
-    VERSION = '2.0.7'
+    VERSION = '2.0.8'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "SolidFire_CI"
@@ -1394,10 +1403,40 @@ class SolidFireDriver(san.SanISCSIDriver):
                                    'parameters': params})
                         self._issue_api_request('DeleteVolume', params,
                                                 endpoint=cluster['endpoint'])
+                        if self.configuration.sf_enable_no_deleted:
+                            # NOTE(missy): After Deleted paired volume, the volume will be purged.
+                            self._issue_api_request('PurgeDeletedVolume', params,
+                                                endpoint=cluster['endpoint'])
+
+                        if self.configuration.sf_enable_delete_account:
+                            # NOTE(missy): if the account doesn't have any volumes,
+                            # the account will be deleted.
+                            for acc in accounts:
+                                vols = self._get_volumes_for_account(acc['accountID'])
+                                vollen = len(vols)
+
+                                if vollen is 0:
+                                    params = {'accountID': acc['accountID']}
+                                    self._issue_api_request('RemoveAccount', params)
 
             if sf_vol['status'] == 'active':
                 params = {'volumeID': sf_vol['volumeID']}
                 self._issue_api_request('DeleteVolume', params)
+                if self.configuration.sf_enable_no_deleted:
+                    # NOTE(missy): After Deleted the volume, the volume will be purged.
+                    self._issue_api_request('PurgeDeletedVolume', params)
+
+                if self.configuration.sf_enable_delete_account:
+                    # NOTE(missy): if the account doesn't have any volume,
+                    # the account will be deleted.
+                    for acc in accounts:
+                        vols = self._get_volumes_for_account(acc['accountID'])
+                        vollen = len(vols)
+
+                        if vollen is 0:
+                            params = {'accountID': acc['accountID']}
+                            self._issue_api_request('RemoveAccount', params)
+
             if volume.get('multiattach'):
                 self._remove_volume_from_vags(sf_vol['volumeID'])
         else:
