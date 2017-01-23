@@ -133,10 +133,14 @@ class FilterScheduler(driver.Scheduler):
         """Check if the specified backend passes the filters."""
         weighed_backends = self._get_weighted_candidates(context, request_spec,
                                                          filter_properties)
+        # If backend has no pool defined we will ignore it in the comparison
+        ignore_pool = not bool(utils.extract_host(backend, 'pool'))
         for weighed_backend in weighed_backends:
-            backend_state = weighed_backend.obj
-            if backend_state.backend_id == backend:
-                return backend_state
+            backend_id = weighed_backend.obj.backend_id
+            if ignore_pool:
+                backend_id = utils.extract_host(backend_id)
+            if backend_id == backend:
+                return weighed_backend.obj
 
         volume_id = request_spec.get('volume_id', '??volume_id missing??')
         raise exception.NoValidBackend(reason=_('Cannot place volume %(id)s '
