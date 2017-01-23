@@ -30,6 +30,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import quota
+from cinder import rpc
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -185,6 +186,31 @@ def is_public_volume_type(context, volume_type_id):
     return volume_type['is_public']
 
 
+def notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          event_suffix,
+                                          host=None):
+    """Notify about successful usage type-access-(add/remove) command.
+
+    :param context: security context
+    :param volume_type_id: volume type uuid
+    :param project_id: tenant uuid
+    :param event_suffix: name of called operation access-(add/remove)
+    :param host: hostname
+    """
+    notifier_info = {'volume_type_id': volume_type_id,
+                     'project_id': project_id}
+
+    if not host:
+        host = CONF.host
+
+    notifier = rpc.get_notifier("volume_type_project", host)
+    notifier.info(context,
+                  'volume_type_project.%s' % event_suffix,
+                  notifier_info)
+
+
 def add_volume_type_access(context, volume_type_id, project_id):
     """Add access to volume type for project_id."""
     if volume_type_id is None:
@@ -195,7 +221,13 @@ def add_volume_type_access(context, volume_type_id, project_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_add(elevated, volume_type_id, project_id)
+
+    db.volume_type_access_add(elevated, volume_type_id, project_id)
+
+    notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          'access.add')
 
 
 def remove_volume_type_access(context, volume_type_id, project_id):
@@ -208,7 +240,13 @@ def remove_volume_type_access(context, volume_type_id, project_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_remove(elevated, volume_type_id, project_id)
+
+    db.volume_type_access_remove(elevated, volume_type_id, project_id)
+
+    notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          'access.remove')
 
 
 def is_encrypted(context, volume_type_id):
