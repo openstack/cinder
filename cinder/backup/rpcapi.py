@@ -64,7 +64,7 @@ class BackupAPI(rpc.RPCAPI):
                    volume_id=volume_id)
 
     def delete_backup(self, ctxt, backup):
-        LOG.debug("delete_backup  rpcapi backup_id %s", backup.id)
+        LOG.debug("delete_backup rpcapi backup_id %s", backup.id)
         cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'delete_backup', backup=backup)
 
