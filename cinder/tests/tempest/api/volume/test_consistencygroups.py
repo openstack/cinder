@@ -38,7 +38,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
     @classmethod
     def skip_checks(cls):
         super(ConsistencyGroupsV2Test, cls).skip_checks()
-        if not CONF.cinder.consistency_group:
+        if not CONF.volume_feature_enabled.consistency_group:
             raise cls.skipException("Cinder consistency group "
                                     "feature disabled")
 
