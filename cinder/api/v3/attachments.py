@@ -52,16 +52,16 @@ class AttachmentsController(wsgi.Controller):
     @wsgi.Controller.api_version(API_VERSION)
     def index(self, req):
         """Return a summary list of attachments."""
-        attachments = self._items(req, detailed=False)
+        attachments = self._items(req)
         return attachment_views.ViewBuilder.list(attachments)
 
     @wsgi.Controller.api_version(API_VERSION)
     def detail(self, req):
         """Return a detailed list of attachments."""
         attachments = self._items(req)
-        return attachment_views.ViewBuilder.list(req, attachments)
+        return attachment_views.ViewBuilder.list(attachments, detail=True)
 
-    def _items(self, req, detailed=True):
+    def _items(self, req):
         """Return a list of attachments, transformed through view builder."""
         context = req.environ['cinder.context']
 
@@ -69,7 +69,7 @@ class AttachmentsController(wsgi.Controller):
         search_opts = req.GET.copy()
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
         marker, limit, offset = common.get_pagination_params(search_opts)
-        filters = dict(req.GET)
+        filters = search_opts
         allowed = self.allowed_filters
         if not allowed.issuperset(filters):
             invalid_keys = set(filters).difference(allowed)
@@ -83,7 +83,9 @@ class AttachmentsController(wsgi.Controller):
             search_opts['instance_uuid'] = search_opts.get('instance_id')
         utils.remove_invalid_filter_options(context, search_opts,
                                             allowed_search_options)
-        return objects.VolumeAttachmentList.get_all(context)
+        return objects.VolumeAttachmentList.get_all(
+            context, search_opts=search_opts, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_direction=sort_dirs)
 
     @wsgi.Controller.api_version(API_VERSION)
     @wsgi.response(202)
