@@ -17,8 +17,6 @@
 Test suite for VMware vCenter VMDK driver.
 """
 
-from distutils import version as ver
-
 import ddt
 import mock
 from oslo_utils import units
@@ -1557,7 +1555,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         version = self._driver._get_vc_version()
 
-        self.assertEqual(ver.LooseVersion(version_str), version)
+        self.assertEqual(version_str, version)
         get_vc_version.assert_called_once_with(session)
 
     @mock.patch('oslo_vmware.vim_util.get_vc_version')
@@ -1565,7 +1563,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         version = self._driver._get_vc_version()
 
         self.assertEqual(
-            ver.LooseVersion(self._driver.configuration.vmware_host_version),
+            self._driver.configuration.vmware_host_version,
             version)
         get_vc_version.assert_not_called()
 
@@ -1573,7 +1571,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @ddt.data('5.1', '5.5')
     def test_validate_vcenter_version(self, version, log):
         # vCenter versions 5.1 and above should pass validation.
-        self._driver._validate_vcenter_version(ver.LooseVersion(version))
+        self._driver._validate_vcenter_version(version)
         # Deprecation warning should be logged for vCenter version 5.1.
         if version == '5.1':
             log.warning.assert_called_once()
@@ -1582,11 +1580,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     def test_validate_vcenter_version_with_less_than_min_supported_version(
             self):
-        vc_version = ver.LooseVersion('5.0')
         # Validation should fail for vCenter version less than 5.1.
         self.assertRaises(exceptions.VMwareDriverException,
                           self._driver._validate_vcenter_version,
-                          vc_version)
+                          '5.0')
 
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
@@ -1606,8 +1603,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             get_pbm_wsdl_loc.return_value = pbm_wsdl
         else:
             ver_str = '5.1'
-        vc_version = ver.LooseVersion(ver_str)
-        get_vc_version.return_value = vc_version
+        get_vc_version.return_value = ver_str
 
         cls_1 = mock.sentinel.cls_1
         cls_2 = mock.sentinel.cls_2
@@ -1618,7 +1614,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         validate_params.assert_called_once_with()
         get_vc_version.assert_called_once_with()
-        validate_vc_version.assert_called_once_with(vc_version)
+        validate_vc_version.assert_called_once_with(ver_str)
         if enable_pbm:
             get_pbm_wsdl_loc.assert_called_once_with(ver_str)
             self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
@@ -1650,8 +1646,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             self, get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
             validate_params):
         ver_str = '5.5'
-        vc_version = ver.LooseVersion(ver_str)
-        get_vc_version.return_value = vc_version
+        get_vc_version.return_value = ver_str
 
         get_pbm_wsdl_loc.return_value = None
 
@@ -1661,7 +1656,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         validate_params.assert_called_once_with()
         get_vc_version.assert_called_once_with()
-        validate_vc_version.assert_called_once_with(vc_version)
+        validate_vc_version.assert_called_once_with(ver_str)
         get_pbm_wsdl_loc.assert_called_once_with(ver_str)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -1886,7 +1881,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         """Test _clone_backing with clone type - linked."""
         clone = mock.sentinel.clone
         volume_ops.clone_backing.return_value = clone
-        self._driver._vc_version = ver.LooseVersion('5.5')
+        self._driver._vc_version = '5.5'
 
         fake_size = 3
         fake_volume = {'volume_type_id': None, 'name': 'fake_name',
@@ -1931,7 +1926,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_clone_backing_linked_vc60(self, vops):
-        self._driver._vc_version = ver.LooseVersion('6.0')
+        self._driver._vc_version = '6.0'
 
         volume = self._create_volume_dict()
         snapshot_ref = mock.sentinel.snapshot_moref
