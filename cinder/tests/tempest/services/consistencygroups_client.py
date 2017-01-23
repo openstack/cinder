@@ -17,6 +17,7 @@
 import time
 
 from oslo_serialization import jsonutils as json
+from six.moves import http_client
 from tempest import exceptions
 from tempest.lib.common import rest_client
 from tempest.lib import exceptions as lib_exc
@@ -41,7 +42,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         post_body = json.dumps({'consistencygroup': post_body})
         resp, body = self.post('consistencygroups', post_body)
         body = json.loads(body)
-        self.expected_success(202, resp.status)
+        self.expected_success(http_client.ACCEPTED, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def create_consistencygroup_from_src(self, **kwargs):
@@ -58,7 +59,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         post_body = json.dumps({'consistencygroup-from-src': post_body})
         resp, body = self.post('consistencygroups/create_from_src', post_body)
         body = json.loads(body)
-        self.expected_success(202, resp.status)
+        self.expected_success(http_client.ACCEPTED, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def delete_consistencygroup(self, cg_id):
@@ -67,7 +68,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         post_body = json.dumps({'consistencygroup': post_body})
         resp, body = self.post('consistencygroups/%s/delete' % cg_id,
                                post_body)
-        self.expected_success(202, resp.status)
+        self.expected_success(http_client.ACCEPTED, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def show_consistencygroup(self, cg_id):
@@ -75,7 +76,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         url = "consistencygroups/%s" % str(cg_id)
         resp, body = self.get(url)
         body = json.loads(body)
-        self.expected_success(200, resp.status)
+        self.expected_success(http_client.OK, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def list_consistencygroups(self, detail=False):
@@ -85,7 +86,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
             url += "/detail"
         resp, body = self.get(url)
         body = json.loads(body)
-        self.expected_success(200, resp.status)
+        self.expected_success(http_client.OK, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def create_cgsnapshot(self, consistencygroup_id, **kwargs):
@@ -98,13 +99,13 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         post_body = json.dumps({'cgsnapshot': post_body})
         resp, body = self.post('cgsnapshots', post_body)
         body = json.loads(body)
-        self.expected_success(202, resp.status)
+        self.expected_success(http_client.ACCEPTED, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def delete_cgsnapshot(self, cgsnapshot_id):
         """Delete a consistency group snapshot."""
         resp, body = self.delete('cgsnapshots/%s' % (str(cgsnapshot_id)))
-        self.expected_success(202, resp.status)
+        self.expected_success(http_client.ACCEPTED, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def show_cgsnapshot(self, cgsnapshot_id):
@@ -112,7 +113,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
         url = "cgsnapshots/%s" % str(cgsnapshot_id)
         resp, body = self.get(url)
         body = json.loads(body)
-        self.expected_success(200, resp.status)
+        self.expected_success(http_client.OK, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def list_cgsnapshots(self, detail=False):
@@ -122,7 +123,7 @@ class ConsistencyGroupsClient(rest_client.RestClient):
             url += "/detail"
         resp, body = self.get(url)
         body = json.loads(body)
-        self.expected_success(200, resp.status)
+        self.expected_success(http_client.OK, resp.status)
         return rest_client.ResponseBody(resp, body)
 
     def wait_for_consistencygroup_status(self, cg_id, status):

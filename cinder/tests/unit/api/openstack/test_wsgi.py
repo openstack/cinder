@@ -15,6 +15,7 @@ import inspect
 
 import mock
 from oslo_utils import encodeutils
+from six.moves import http_client
 import webob
 
 from cinder.api.openstack import wsgi
@@ -233,7 +234,7 @@ class ResourceTest(test.TestCase):
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
         self.assertEqual(b'off', response.body)
-        self.assertEqual(200, response.status_int)
+        self.assertEqual(http_client.OK, response.status_int)
 
     def test_resource_not_authorized(self):
         class Controller(object):
@@ -243,7 +244,7 @@ class ResourceTest(test.TestCase):
         req = webob.Request.blank('/tests')
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
-        self.assertEqual(403, response.status_int)
+        self.assertEqual(http_client.FORBIDDEN, response.status_int)
 
     def test_dispatch(self):
         class Controller(object):
@@ -777,21 +778,21 @@ class ResourceTest(test.TestCase):
 class ResponseObjectTest(test.TestCase):
     def test_default_code(self):
         robj = wsgi.ResponseObject({})
-        self.assertEqual(200, robj.code)
+        self.assertEqual(http_client.OK, robj.code)
 
     def test_modified_code(self):
         robj = wsgi.ResponseObject({})
-        robj._default_code = 202
-        self.assertEqual(202, robj.code)
+        robj._default_code = http_client.ACCEPTED
+        self.assertEqual(http_client.ACCEPTED, robj.code)
 
     def test_override_default_code(self):
-        robj = wsgi.ResponseObject({}, code=404)
-        self.assertEqual(404, robj.code)
+        robj = wsgi.ResponseObject({}, code=http_client.NOT_FOUND)
+        self.assertEqual(http_client.NOT_FOUND, robj.code)
 
     def test_override_modified_code(self):
-        robj = wsgi.ResponseObject({}, code=404)
-        robj._default_code = 202
-        self.assertEqual(404, robj.code)
+        robj = wsgi.ResponseObject({}, code=http_client.NOT_FOUND)
+        robj._default_code = http_client.ACCEPTED
+        self.assertEqual(http_client.NOT_FOUND, robj.code)
 
     def test_set_header(self):
         robj = wsgi.ResponseObject({})

@@ -17,6 +17,7 @@
 import iso8601
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -56,7 +57,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions")
         response = request.get_response(app)
-        self.assertEqual(200, response.status_int)
+        self.assertEqual(http_client.OK, response.status_int)
 
         # Make sure we have all the extensions, extra extensions being OK.
         data = jsonutils.loads(response.body)
@@ -91,7 +92,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions/FOXNSOX")
         response = request.get_response(app)
-        self.assertEqual(200, response.status_int)
+        self.assertEqual(http_client.OK, response.status_int)
 
         data = jsonutils.loads(response.body)
         self.assertEqual(
@@ -105,7 +106,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions/4")
         response = request.get_response(app)
-        self.assertEqual(404, response.status_int)
+        self.assertEqual(http_client.NOT_FOUND, response.status_int)
 
 
 class StubExtensionManager(object):

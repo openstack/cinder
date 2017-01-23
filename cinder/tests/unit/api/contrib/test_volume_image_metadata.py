@@ -16,6 +16,7 @@ import uuid
 
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
+from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_image_metadata
@@ -148,14 +149,14 @@ class VolumeImageMetadataTest(test.TestCase):
         self._create_volume_and_glance_metadata()
         res = self._make_request('/v2/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          self._get_image_metadata(res.body))
 
     def test_list_detail_volumes(self):
         self._create_volume_and_glance_metadata()
         res = self._make_request('/v2/%s/volumes/detail' % fake.PROJECT_ID)
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          self._get_image_metadata_list(res.body)[0])
 
@@ -169,7 +170,7 @@ class VolumeImageMetadataTest(test.TestCase):
                          fake_volume_get_all_empty)
 
         res = self._make_request('/v2/%s/volumes/detail' % fake.PROJECT_ID)
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertFalse(fake_dont_call_this.called)
 
     def test_list_detail_volumes_with_limit(self):
@@ -183,7 +184,7 @@ class VolumeImageMetadataTest(test.TestCase):
                                          'key2', 'value2')
         res = self._make_request('/v2/%s/volumes/detail?limit=1'
                                  % fake.PROJECT_ID)
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual({'key1': 'value1', 'key2': 'value2'},
                          self._get_image_metadata_list(res.body)[0])
 
@@ -202,7 +203,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
@@ -233,7 +234,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
@@ -308,7 +309,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
 
     def test_delete_meta_not_found(self):
         data = {"os-unset_image_metadata": {
@@ -349,6 +350,6 @@ class VolumeImageMetadataTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
