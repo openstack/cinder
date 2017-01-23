@@ -60,6 +60,10 @@ class VNXMigrationError(VNXException):
     pass
 
 
+class VNXLunNotMigratingError(VNXException):
+    pass
+
+
 class VNXTargetNotReadyError(VNXMigrationError):
     message = 'The destination LUN is not available for migration'
 
@@ -125,6 +129,10 @@ class VNXLunNotFoundError(VNXLunError):
 
 
 class VNXDeleteLunError(VNXLunError):
+    pass
+
+
+class VNXLunUsedByFeatureError(VNXLunError):
     pass
 
 

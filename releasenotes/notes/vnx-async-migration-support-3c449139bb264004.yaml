@@ -1,0 +1,10 @@
+---
+features:
+  - VNX cinder driver now supports async migration during volume cloning.
+    By default, the cloned volume will be available after the migration starts
+    in the VNX instead of waiting for the completion of migration. This greatly
+    accelerates the cloning process.
+    If user wants to disable this, he could add
+    ``--metadata async_migrate=False`` when creating volume from source
+    volume/snapshot.
+

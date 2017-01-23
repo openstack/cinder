@@ -124,6 +124,7 @@ class TestCommonAdapter(test.TestCase):
     def test_create_volume_from_snapshot(
             self, vnx_common, mocked, cinder_input):
         volume = cinder_input['volume']
+        volume['metadata'] = {'async_migrate': 'False'}
         snapshot = cinder_input['snapshot']
         snapshot.volume = volume
         update = vnx_common.create_volume_from_snapshot(volume, snapshot)
@@ -388,7 +389,9 @@ class TestCommonAdapter(test.TestCase):
     @res_mock.patch_common_adapter
     def test_delete_volume_not_force(self, vnx_common, mocked, mocked_input):
         vnx_common.force_delete_lun_in_sg = False
-        vnx_common.delete_volume(mocked_input['volume'])
+        volume = mocked_input['volume']
+        volume['metadata'] = {'async_migrate': 'False'}
+        vnx_common.delete_volume(volume)
         lun = vnx_common.client.vnx.get_lun()
         lun.delete.assert_called_with(force_detach=True, detach_from_sg=False)
 
@@ -396,7 +399,32 @@ class TestCommonAdapter(test.TestCase):
     @res_mock.patch_common_adapter
     def test_delete_volume_force(self, vnx_common, mocked, mocked_input):
         vnx_common.force_delete_lun_in_sg = True
-        vnx_common.delete_volume(mocked_input['volume'])
+        volume = mocked_input['volume']
+        volume['metadata'] = {'async_migrate': 'False'}
+        vnx_common.delete_volume(volume)
+        lun = vnx_common.client.vnx.get_lun()
+        lun.delete.assert_called_with(force_detach=True, detach_from_sg=True)
+
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_delete_async_volume(self, vnx_common, mocked, mocked_input):
+        volume = mocked_input['volume']
+        volume.metadata = {'async_migrate': 'True'}
+        vnx_common.force_delete_lun_in_sg = True
+        vnx_common.delete_volume(volume)
+        lun = vnx_common.client.vnx.get_lun()
+        lun.delete.assert_called_with(force_detach=True, detach_from_sg=True)
+
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_delete_async_volume_migrating(self, vnx_common, mocked,
+                                           mocked_input):
+
+        volume = mocked_input['volume']
+        volume.metadata = {'async_migrate': 'True'}
+        vnx_common.force_delete_lun_in_sg = True
+        vnx_common.client.cleanup_async_lun = mock.Mock()
+        vnx_common.delete_volume(volume)
         lun = vnx_common.client.vnx.get_lun()
         lun.delete.assert_called_with(force_detach=True, detach_from_sg=True)
 

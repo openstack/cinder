@@ -59,6 +59,7 @@ class CommonAdapter(object):
         self.reserved_percentage = None
         self.destroy_empty_sg = None
         self.itor_auto_dereg = None
+        self.queue_path = None
 
     def do_setup(self):
         self._normalize_config()
@@ -68,7 +69,8 @@ class CommonAdapter(object):
             self.config.san_password,
             self.config.storage_vnx_authentication_type,
             self.config.naviseccli_path,
-            self.config.storage_vnx_security_file_dir)
+            self.config.storage_vnx_security_file_dir,
+            self.queue_path)
         # Replication related
         self.mirror_view = self.build_mirror_view(self.config, True)
         self.serial_number = self.client.get_serial()
@@ -86,6 +88,9 @@ class CommonAdapter(object):
         self.set_extra_spec_defaults()
 
     def _normalize_config(self):
+        self.queue_path = (
+            self.config.config_group if self.config.config_group
+            else 'DEFAULT')
         # Check option `naviseccli_path`.
         # Set to None (then pass to storops) if it is not set or set to an
         # empty string.
@@ -302,7 +307,7 @@ class CommonAdapter(object):
         tier = specs.tier
         base_lun_name = utils.get_base_lun_name(snapshot.volume)
         rep_update = dict()
-        if utils.snapcopy_enabled(volume):
+        if utils.is_snapcopy_enabled(volume):
             new_lun_id = emc_taskflow.fast_create_volume_from_snapshot(
                 client=self.client,
                 snap_name=snapshot.name,
@@ -310,26 +315,34 @@ class CommonAdapter(object):
                 lun_name=volume.name,
                 base_lun_name=base_lun_name,
                 pool_name=pool)
+
             location = self._build_provider_location(
                 lun_type='smp',
                 lun_id=new_lun_id,
                 base_lun_name=base_lun_name)
             volume_metadata['snapcopy'] = 'True'
+            volume_metadata['async_migrate'] = 'False'
         else:
+            async_migrate = utils.is_async_migrate_enabled(volume)
+            new_snap_name = (
+                utils.construct_snap_name(volume) if async_migrate else None)
             new_lun_id = emc_taskflow.create_volume_from_snapshot(
                 client=self.client,
-                snap_name=snapshot.name,
+                src_snap_name=snapshot.name,
                 lun_name=volume.name,
                 lun_size=volume.size,
                 base_lun_name=base_lun_name,
                 pool_name=pool,
                 provision=provision,
-                tier=tier)
+                tier=tier,
+                new_snap_name=new_snap_name)
+
             location = self._build_provider_location(
                 lun_type='lun',
                 lun_id=new_lun_id,
                 base_lun_name=volume.name)
             volume_metadata['snapcopy'] = 'False'
+            volume_metadata['async_migrate'] = six.text_type(async_migrate)
             rep_update = self.setup_lun_replication(volume, new_lun_id)
 
         model_update = {'provider_location': location,
@@ -350,7 +363,7 @@ class CommonAdapter(object):
         source_lun_id = self.client.get_lun_id(src_vref)
         snap_name = utils.construct_snap_name(volume)
         rep_update = dict()
-        if utils.snapcopy_enabled(volume):
+        if utils.is_snapcopy_enabled(volume):
             # snapcopy feature enabled
             new_lun_id = emc_taskflow.fast_create_cloned_volume(
                 client=self.client,
@@ -363,7 +376,10 @@ class CommonAdapter(object):
                 lun_type='smp',
                 lun_id=new_lun_id,
                 base_lun_name=base_lun_name)
+            volume_metadata['snapcopy'] = 'True'
+            volume_metadata['async_migrate'] = 'False'
         else:
+            async_migrate = utils.is_async_migrate_enabled(volume)
             new_lun_id = emc_taskflow.create_cloned_volume(
                 client=self.client,
                 snap_name=snap_name,
@@ -373,14 +389,15 @@ class CommonAdapter(object):
                 base_lun_name=base_lun_name,
                 pool_name=pool,
                 provision=provision,
-                tier=tier)
-            self.client.delete_snapshot(snap_name)
+                tier=tier,
+                async_migrate=async_migrate)
             # After migration, volume's base lun is itself
             location = self._build_provider_location(
                 lun_type='lun',
                 lun_id=new_lun_id,
                 base_lun_name=volume.name)
             volume_metadata['snapcopy'] = 'False'
+            volume_metadata['async_migrate'] = six.text_type(async_migrate)
             rep_update = self.setup_lun_replication(volume, new_lun_id)
 
         model_update = {'provider_location': location,
@@ -746,8 +763,27 @@ class CommonAdapter(object):
 
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
+        async_migrate = utils.is_async_migrate_enabled(volume)
         self.cleanup_lun_replication(volume)
-        self.client.delete_lun(volume.name, force=self.force_delete_lun_in_sg)
+        try:
+            self.client.delete_lun(volume.name,
+                                   force=self.force_delete_lun_in_sg)
+        except storops_ex.VNXLunUsedByFeatureError:
+            # Case 1. Migration not finished, cleanup related stuff.
+            if async_migrate:
+                self.client.cleanup_async_lun(
+                    name=volume.name,
+                    force=self.force_delete_lun_in_sg)
+            else:
+                raise
+        except (storops_ex.VNXLunHasSnapError,
+                storops_ex.VNXLunHasSnapMountPointError):
+            # Here, we assume no Cinder managed snaps, and add it to queue
+            # for later deletion
+            self.client.delay_delete_lun(volume.name)
+        # Case 2. Migration already finished, delete temp snap if exists.
+        if async_migrate:
+            self.client.delete_snapshot(utils.construct_snap_name(volume))
 
     def extend_volume(self, volume, new_size):
         """Extends an EMC volume."""

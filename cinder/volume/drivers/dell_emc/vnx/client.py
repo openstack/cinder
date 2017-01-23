@@ -19,9 +19,10 @@ from oslo_utils import importutils
 storops = importutils.try_import('storops')
 if storops:
     from storops import exception as storops_ex
+    from storops.lib import tasks as storops_tasks
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _, _LW, _LE, _LI
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import const
@@ -79,7 +80,7 @@ class Condition(object):
 
 class Client(object):
     def __init__(self, ip, username, password, scope,
-                 naviseccli, sec_file):
+                 naviseccli, sec_file, queue_path=None):
         self.naviseccli = naviseccli
         if not storops:
             msg = _('storops Python library is not installed.')
@@ -91,6 +92,10 @@ class Client(object):
                                      naviseccli=naviseccli,
                                      sec_file=sec_file)
         self.sg_cache = {}
+        if queue_path:
+            self.queue = storops_tasks.PQueue(path=queue_path)
+            self.queue.start()
+            LOG.info(_LI('PQueue[%s] starts now.'), queue_path)
 
     def create_lun(self, pool, name, size, provision,
                    tier, cg_id=None, ignore_thresholds=False):
@@ -138,10 +143,25 @@ class Client(object):
             if smp_attached_snap:
                 smp_attached_snap.delete()
         except storops_ex.VNXLunNotFoundError as ex:
-            LOG.warning(_LW("LUN %(name)s is already deleted. "
-                            "Message: %(msg)s"),
-                        {'name': name, 'msg': ex.message})
-            pass  # Ignore the failure that due to retry.
+            LOG.info(_LI("LUN %(name)s is already deleted. This message can "
+                         "be safely ignored. Message: %(msg)s"),
+                     {'name': name, 'msg': ex.message})
+
+    def cleanup_async_lun(self, name, force=False):
+        """Helper method to cleanup stuff for async migration.
+
+        .. note::
+           Only call it when VNXLunUsedByFeatureError occurs
+        """
+        lun = self.get_lun(name=name)
+        self.cleanup_migration(src_id=lun.lun_id)
+        lun.delete(force_detach=True, detach_from_sg=force)
+
+    def delay_delete_lun(self, name):
+        """Delay the deletion by putting it in a storops queue."""
+        self.queue.put(self.vnx.delete_lun, name=name)
+        LOG.info(_LI("VNX object has been added to queue for later"
+                     " deletion: %s"), name)
 
     @cinder_utils.retry(const.VNXLunPreparingError, retries=1,
                         backoff_rate=1)
@@ -212,7 +232,7 @@ class Client(object):
         else:
             return False
 
-    def cleanup_migration(self, src_id, dst_id):
+    def cleanup_migration(self, src_id, dst_id=None):
         """Invoke when migration meets error.
 
         :param src_id:  source LUN id
@@ -227,14 +247,20 @@ class Client(object):
                             '%(src_id)s -> %(dst_id)s.'),
                         {'src_id': src_id,
                          'dst_id': dst_id})
-            src_lun.cancel_migrate()
+            try:
+                src_lun.cancel_migrate()
+            except storops_ex.VNXLunNotMigratingError:
+                LOG.info(_LI('The LUN is not migrating, this message can be'
+                             ' safely ignored'))
 
-    def create_snapshot(self, lun_id, snap_name):
+    def create_snapshot(self, lun_id, snap_name, keep_for=None):
         """Creates a snapshot."""
 
         lun = self.get_lun(lun_id=lun_id)
         try:
-            lun.create_snap(snap_name, allow_rw=True, auto_delete=False)
+            lun.create_snap(
+                snap_name, allow_rw=True, auto_delete=False,
+                keep_for=keep_for)
         except storops_ex.VNXSnapNameInUseError as ex:
             LOG.warning(_LW('Snapshot %(name)s already exists. '
                             'Message: %(msg)s'),
@@ -292,9 +318,11 @@ class Client(object):
                             "currently attached. Message: %(msg)s"),
                         {'smp_name': smp_name, 'msg': ex.message})
 
-    def modify_snapshot(self, snap_name, allow_rw=None, auto_delete=None):
+    def modify_snapshot(self, snap_name, allow_rw=None,
+                        auto_delete=None, keep_for=None):
         snap = self.vnx.get_snap(name=snap_name)
-        snap.modify(allow_rw=allow_rw, auto_delete=auto_delete)
+        snap.modify(allow_rw=allow_rw, auto_delete=auto_delete,
+                    keep_for=None)
 
     def create_consistency_group(self, cg_name, lun_id_list=None):
         try:

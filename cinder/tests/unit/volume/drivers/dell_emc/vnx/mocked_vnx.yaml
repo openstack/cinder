@@ -378,6 +378,17 @@ test_cleanup_migration:
       get_migration_session: *session_cancel
       get_lun: *lun_cancel_migrate
 
+test_cleanup_migration_not_migrating:
+  lun: &lun_cancel_migrate_not_migrating
+    _methods:
+      cancel_migrate:
+        _raise:
+          VNXLunNotMigratingError: The LUN is not migrating
+  vnx:
+    _methods:
+      get_migration_session: *session_cancel
+      get_lun: *lun_cancel_migrate_not_migrating
+
 test_get_lun_by_name:
   lun: &lun_test_get_lun_by_name
     _properties:
@@ -463,6 +474,26 @@ test_delete_lun_exception:
       <<: *vnx_base_prop
     _methods:
       get_lun: *lun_test_delete_lun_exception
+
+test_cleanup_async_lun:
+  lun: &lun_test_cleanup_async_lun
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_cleanup_async_lun
+      is_snap_mount_point: True
+    _methods:
+      delete:
+      cancel_migrate:
+  snap: &snap_test_cleanup_async_lun
+    _methods:
+      delete:
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_cleanup_async_lun
+      get_snap: *snap_test_cleanup_async_lun
+      get_migration_session: *session_migrating
 
 test_create_cg: &test_create_cg
   cg: &cg_for_create
@@ -1211,6 +1242,29 @@ test_append_volume_stats:
 
 test_delete_volume_not_force: *test_delete_lun
 test_delete_volume_force: *test_delete_lun
+
+test_delete_async_volume:
+  snap: &snap_test_delete_async_volume
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_lun: *lun_test_delete_lun
+      get_snap: *snap_test_delete_async_volume
+
+test_delete_async_volume_migrating:
+  lun: &lun_used_by_feature
+    _properties:
+      is_snap_mount_point: false
+    _methods:
+      cancel_migrate:
+      delete:
+       _raise:
+         VNXLunUsedByFeatureError:
+  vnx:
+    _methods:
+      get_lun: *lun_used_by_feature
+      get_snap: *snap_test_delete_async_volume
 
 test_enable_compression:
   lun:
