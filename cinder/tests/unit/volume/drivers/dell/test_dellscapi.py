@@ -7804,6 +7804,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     response_bad._content = ''
     response_bad._content_consumed = True
     response_bad.reason = u'bad request'
+    response_bad._content = ''
+    response_bad._content_consumed = True
     RESPONSE_400 = response_bad
 
     APIDICT = {u'instanceId': u'0',
