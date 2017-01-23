@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -90,7 +91,7 @@ class GroupSnapshotsController(wsgi.Controller):
             LOG.exception(msg)
             raise exc.HTTPBadRequest(explanation=msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
     def index(self, req):
@@ -130,7 +131,7 @@ class GroupSnapshotsController(wsgi.Controller):
         return {'group_snapshots': new_group_snapshots}
 
     @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new group_snapshot."""
         LOG.debug('Creating new group_snapshot %s', body)
@@ -208,7 +209,7 @@ class GroupSnapshotsController(wsgi.Controller):
                            {'error_message': error.msg,
                             'id': id})
             raise exc.HTTPBadRequest(explanation=error.msg)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 def create_resource():

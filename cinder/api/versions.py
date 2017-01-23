@@ -17,6 +17,8 @@
 
 import copy
 
+from six.moves import http_client
+
 from cinder.api import extensions
 from cinder.api import openstack
 from cinder.api.openstack import api_version_request
@@ -118,7 +120,7 @@ class VersionsController(wsgi.Controller):
     # /v1, /v2, or /v3 in the URL will lead to this unversioned
     # method, which should always return info about all
     # available versions.
-    @wsgi.response(300)
+    @wsgi.response(http_client.MULTIPLE_CHOICES)
     def all(self, req):
         """Return all known versions."""
         builder = views_versions.get_view_builder(req)

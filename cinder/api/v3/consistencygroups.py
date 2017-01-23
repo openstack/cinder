@@ -14,6 +14,7 @@
 """The consistencygroups V3 api."""
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -82,7 +83,7 @@ class ConsistencyGroupsController(cg_v2.ConsistencyGroupsController):
                                                        remove_volumes)
         self._update(context, id, name, description, add_volumes,
                      remove_volumes, allow_empty)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 def create_resource():

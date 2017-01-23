@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import uuidutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -146,7 +147,7 @@ class VolumeController(volumes_v2.VolumeController):
         volumes = self.volume_api.get_volume_summary(context, filters=filters)
         return view_builder_v3.quick_summary(volumes[0], int(volumes[1]))
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Creates a new volume.
 

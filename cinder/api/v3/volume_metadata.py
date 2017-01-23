@@ -19,6 +19,7 @@ import hashlib
 
 from oslo_serialization import jsonutils
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api.openstack import wsgi
@@ -63,7 +64,7 @@ class Controller(volume_meta_v2.Controller):
     def update(self, req, volume_id, id, body):
         self._ensure_min_version(req, METADATA_MICRO_VERSION)
         if not self._validate_etag(req, volume_id):
-            return webob.Response(status_int=412)
+            return webob.Response(status_int=http_client.PRECONDITION_FAILED)
         return super(Controller, self).update(req, volume_id,
                                               id, body)
 
@@ -71,7 +72,7 @@ class Controller(volume_meta_v2.Controller):
     def update_all(self, req, volume_id, body):
         self._ensure_min_version(req, METADATA_MICRO_VERSION)
         if not self._validate_etag(req, volume_id):
-            return webob.Response(status_int=412)
+            return webob.Response(status_int=http_client.PRECONDITION_FAILED)
         return super(Controller, self).update_all(req, volume_id,
                                                   body)
 
