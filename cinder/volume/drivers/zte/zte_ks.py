@@ -116,7 +116,8 @@ class ZTEVolumeDriver(driver.VolumeDriver):
                        "Content-Type": "application/x-www-form-urlencoded"}
             req = urllib.request.Request(self.url, data, headers)
             req.get_method = lambda: 'POST'
-            response = urllib.request.urlopen(req,
+            # self.url used for req is coded to always use the HTTPS scheme
+            response = urllib.request.urlopen(req,  # nosec
                                               timeout=
                                               zte_pub.ZTE_DEFAULT_TIMEOUT
                                               ).read()

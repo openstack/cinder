@@ -80,7 +80,8 @@ class RestClient(object):
             req = urllib.request.Request(url, data, self.headers)
             if method:
                 req.get_method = lambda: method
-            res = urllib.request.urlopen(req).read().decode("utf-8")
+            # all URLs begin with hardcoded values
+            res = urllib.request.urlopen(req).read().decode("utf-8")  # nosec
 
             if "xx/sessions" not in url:
                 LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
