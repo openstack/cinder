@@ -28,6 +28,7 @@ import six
 from cinder import context
 from cinder import exception as cinder_exceptions
 from cinder import test
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import datastore as hub
@@ -261,11 +262,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_backing.return_value = None
 
         volume = self._create_volume_dict()
-        snapshot = self._create_snapshot_dict(volume)
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
         self._driver.delete_snapshot(snapshot)
 
-        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
-        self.assertFalse(vops.delete_snapshot.called)
+        vops.get_backing.assert_called_once_with(snapshot.volume_name)
+        vops.get_snapshot.assert_not_called()
+        vops.delete_snapshot.assert_not_called()
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_delete_snapshot_with_backing(self, vops):
@@ -273,19 +276,39 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_backing.return_value = backing
 
         volume = self._create_volume_dict()
-        snapshot = self._create_snapshot_dict(volume)
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
         self._driver.delete_snapshot(snapshot)
 
-        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        vops.get_backing.assert_called_once_with(snapshot.volume_name)
+        vops.get_snapshot.assert_called_once_with(backing, snapshot.name)
         vops.delete_snapshot.assert_called_once_with(
-            backing, snapshot['name'])
+            backing, snapshot.name)
 
-    def test_delete_snapshot_when_attached(self):
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_snapshot_when_attached(self, vops):
         volume = self._create_volume_dict(status='in-use')
-        snapshot = self._create_snapshot_dict(volume)
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
 
-        self.assertRaises(cinder_exceptions.InvalidVolume,
+        self.assertRaises(cinder_exceptions.InvalidSnapshot,
                           self._driver.delete_snapshot, snapshot)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_snapshot_without_backend_snapshot(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        vops.get_snapshot.return_value = None
+
+        volume = self._create_volume_dict(status='in-use')
+        snapshot = fake_snapshot.fake_snapshot_obj(self._context,
+                                                   volume=volume)
+        self._driver.delete_snapshot(snapshot)
+
+        vops.get_backing.assert_called_once_with(snapshot.volume_name)
+        vops.get_snapshot.assert_called_once_with(backing, snapshot.name)
+        vops.delete_snapshot.assert_not_called()
 
     @ddt.data('vmdk', 'VMDK', None)
     def test_validate_disk_format(self, disk_format):

@@ -670,26 +670,24 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """Delete snapshot.
 
         If the volume does not have a backing or the snapshot does not exist
-        then simply pass, else delete the snapshot.
-        Snapshot deletion of only available volume is supported.
+        then simply pass, else delete the snapshot. Snapshot deletion of only
+        available volume is supported.
 
         :param snapshot: Snapshot object
         """
-
-        volume = snapshot['volume']
-        if volume['status'] != 'available':
-            msg = _("Delete snapshot of volume not supported in "
-                    "state: %s.") % volume['status']
-            LOG.error(msg)
-            raise exception.InvalidVolume(msg)
-        backing = self.volumeops.get_backing(snapshot['volume_name'])
+        backing = self.volumeops.get_backing(snapshot.volume_name)
         if not backing:
-            LOG.info(_LI("There is no backing, and so there is no "
-                         "snapshot: %s."), snapshot['name'])
+            LOG.debug("Backing does not exist for volume.",
+                      resource=snapshot.volume)
+        elif not self.volumeops.get_snapshot(backing, snapshot.name):
+            LOG.debug("Snapshot does not exist in backend.", resource=snapshot)
+        elif snapshot.volume.status != 'available':
+            msg = _("Delete snapshot of volume not supported in "
+                    "state: %s.") % snapshot.volume.status
+            LOG.error(msg)
+            raise exception.InvalidSnapshot(reason=msg)
         else:
-            self.volumeops.delete_snapshot(backing, snapshot['name'])
-            LOG.info(_LI("Successfully deleted snapshot: %s."),
-                     snapshot['name'])
+            self.volumeops.delete_snapshot(backing, snapshot.name)
 
     def delete_snapshot(self, snapshot):
         """Delete snapshot.
