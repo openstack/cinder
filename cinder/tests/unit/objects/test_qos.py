@@ -78,7 +78,8 @@ class TestQos(test_objects.BaseObjectsTestCase):
              'consumer': 'back-end'})
         qos_fake_delete.assert_has_calls([
             mock.call(self.context, fake.OBJECT_ID, 'key_to_remove1'),
-            mock.call(self.context, fake.OBJECT_ID, 'key_to_remove2')])
+            mock.call(self.context, fake.OBJECT_ID, 'key_to_remove2')],
+            any_order=True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos',
