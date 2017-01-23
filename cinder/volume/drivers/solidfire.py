@@ -231,6 +231,42 @@ class SolidFireDriver(san.SanISCSIDriver):
         if not self.failed_over_id:
             self._set_cluster_pairs()
 
+    def locked_image_id_operation(f, external=False):
+        def lvo_inner1(inst, *args, **kwargs):
+            lock_tag = inst.driver_prefix
+            call_args = inspect.getcallargs(f, inst, *args, **kwargs)
+
+            if call_args.get('image_meta'):
+                image_id = call_args['image_meta']['id']
+            else:
+                err_msg = _('The decorated method must accept image_meta.')
+                raise exception.VolumeBackendAPIException(data=err_msg)
+
+            @utils.synchronized('%s-%s' % (lock_tag, image_id),
+                                external=external)
+            def lvo_inner2():
+                return f(inst, *args, **kwargs)
+            return lvo_inner2()
+        return lvo_inner1
+
+    def locked_source_uuid_operation(f, external=False):
+        def lvo_inner1(inst, *args, **kwargs):
+            lock_tag = inst.driver_prefix
+            call_args = inspect.getcallargs(f, inst, *args, **kwargs)
+
+            if call_args.get('src_uuid'):
+                volume_id = call_args['src_uuid']
+            else:
+                err_msg = _('The decorated method must accept src_uuid.')
+                raise exception.VolumeBackendAPIException(message=err_msg)
+
+            @utils.synchronized('%s-%s' % (lock_tag, volume_id),
+                                external=external)
+            def lvo_inner2():
+                return f(inst, *args, **kwargs)
+            return lvo_inner2()
+        return lvo_inner1
+
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
             return getattr(self.target_driver, attr)
@@ -588,10 +624,10 @@ class SolidFireDriver(san.SanISCSIDriver):
             is_clone = True
         return params, is_clone, sf_vol
 
+    @locked_source_uuid_operation
     def _do_clone_volume(self, src_uuid,
                          vref, sf_src_snap=None):
         """Create a clone of an existing volume or snapshot."""
-
         attributes = {}
         sf_account = self._get_create_account(vref['project_id'])
         params = {'name': '%(prefix)s%(id)s' %
@@ -798,24 +834,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             params = {'volumeID': sf_volid}
         return self._issue_api_request(
             'ListSnapshots', params, version='6.0')['result']['snapshots']
-
-    def locked_image_id_operation(f, external=False):
-        def lvo_inner1(inst, *args, **kwargs):
-            lock_tag = inst.driver_prefix
-            call_args = inspect.getcallargs(f, inst, *args, **kwargs)
-
-            if call_args.get('image_meta'):
-                image_id = call_args['image_meta']['id']
-            else:
-                err_msg = _('The decorated method must accept image_meta.')
-                raise exception.VolumeBackendAPIException(data=err_msg)
-
-            @utils.synchronized('%s-%s' % (lock_tag, image_id),
-                                external=external)
-            def lvo_inner2():
-                return f(inst, *args, **kwargs)
-            return lvo_inner2()
-        return lvo_inner1
 
     def _create_image_volume(self, context,
                              image_meta, image_service,
@@ -1155,6 +1173,7 @@ class SolidFireDriver(san.SanISCSIDriver):
     def clone_image(self, context,
                     volume, image_location,
                     image_meta, image_service):
+        """Clone an existing image volume."""
         public = False
         # Check out pre-requisites:
         # Is template caching enabled?
