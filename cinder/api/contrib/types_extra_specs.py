@@ -15,6 +15,7 @@
 
 """The volume types extra specs extension"""
 
+from six.moves import http_client
 import webob
 
 from cinder.api import common
@@ -123,7 +124,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         notifier.info(context,
                       'volume_type_extra_specs.delete',
                       notifier_info)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _check_key_names(self, keys):
         if not common.validate_key_names(keys):

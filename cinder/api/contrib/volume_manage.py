@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 
 from cinder.api import common
 from cinder.api.contrib import resource_common_manage
@@ -42,7 +43,7 @@ class VolumeManageController(wsgi.Controller):
         self.volume_api = cinder_volume.API()
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Instruct Cinder to manage a storage object.
 

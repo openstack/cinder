@@ -18,6 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import timeutils
+from six.moves import http_client
 import webob.exc
 
 from cinder.api import common
@@ -127,7 +128,7 @@ class ServiceController(wsgi.Controller):
         cluster_name, host = common.get_cluster_host(req, body, version)
         self.volume_api.failover(context, host, cluster_name,
                                  body.get('backend_id'))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.

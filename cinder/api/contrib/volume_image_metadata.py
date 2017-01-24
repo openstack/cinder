@@ -13,6 +13,7 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
+from six.moves import http_client
 import webob
 
 from oslo_log import log as logging
@@ -147,7 +148,7 @@ class VolumeImageMetadataController(wsgi.Controller):
                 msg = _("The key cannot be None.")
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
-            return webob.Response(status_int=200)
+            return webob.Response(status_int=http_client.OK)
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):

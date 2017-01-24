@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -84,7 +85,7 @@ class CgsnapshotsController(wsgi.Controller):
             msg = _("Failed cgsnapshot")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of cgsnapshots."""
@@ -144,7 +145,7 @@ class CgsnapshotsController(wsgi.Controller):
 
         return cgsnapshots
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new cgsnapshot."""
         LOG.debug('Creating new cgsnapshot %s', body)

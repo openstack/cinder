@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -98,7 +99,7 @@ class SnapshotActionsController(wsgi.Controller):
 
         current_snapshot.update(update_dict)
         current_snapshot.save()
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Snapshot_actions(extensions.ExtensionDescriptor):
