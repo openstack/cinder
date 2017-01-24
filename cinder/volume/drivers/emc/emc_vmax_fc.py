@@ -75,6 +75,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - Storage assisted volume migration via retype
                 (bp vmax-volume-migration)
               - Support for compression on All Flash
+              - Volume replication 2.1 (bp add-vmax-replication)
 
     """
 
@@ -86,44 +87,32 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
 
         super(EMCVMAXFCDriver, self).__init__(*args, **kwargs)
+        self.active_backend_id = kwargs.get('active_backend_id', None)
         self.common = emc_vmax_common.EMCVMAXCommon(
             'FC',
             self.VERSION,
-            configuration=self.configuration)
+            configuration=self.configuration,
+            active_backend_id=self.active_backend_id)
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a EMC(VMAX/VNX) volume."""
-        volpath = self.common.create_volume(volume)
-
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        """Creates a VMAX volume."""
+        return self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        volpath = self.common.create_volume_from_snapshot(volume, snapshot)
-
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        return self.common.create_volume_from_snapshot(
+            volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a cloned volume."""
-        volpath = self.common.create_cloned_volume(volume, src_vref)
-
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        return self.common.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
-        """Deletes an EMC volume."""
+        """Deletes an VMAX volume."""
         self.common.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
@@ -524,3 +513,14 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
     def backup_use_temp_snapshot(self):
         return True
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover volumes to a secondary host/ backend.
+
+        :param context: the context
+        :param volumes: the list of volumes to be failed over
+        :param secondary_id: the backend to be failed over to, is 'default'
+                             if fail back
+        :return: secondary_id, volume_update_list
+        """
+        return self.common.failover_host(context, volumes, secondary_id)

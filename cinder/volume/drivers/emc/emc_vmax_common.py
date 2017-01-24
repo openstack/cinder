@@ -56,7 +56,6 @@ EMC_ROOT = 'root/emc'
 POOL = 'storagetype:pool'
 ARRAY = 'storagetype:array'
 FASTPOLICY = 'storagetype:fastpolicy'
-BACKENDNAME = 'volume_backend_name'
 COMPOSITETYPE = 'storagetype:compositetype'
 MULTI_POOL_SUPPORT = 'MultiPoolSupport'
 STRIPECOUNT = 'storagetype:stripecount'
@@ -76,15 +75,26 @@ SNAPVX = 7
 DISSOLVE_SNAPVX = 9
 CREATE_NEW_TARGET = 2
 SNAPVX_REPLICATION_TYPE = 6
+# Replication
+IS_RE = 'replication_enabled'
+REPLICATION_DISABLED = fields.ReplicationStatus.DISABLED
+REPLICATION_ENABLED = fields.ReplicationStatus.ENABLED
+REPLICATION_FAILOVER = fields.ReplicationStatus.FAILED_OVER
+FAILOVER_ERROR = fields.ReplicationStatus.FAILOVER_ERROR
+REPLICATION_ERROR = fields.ReplicationStatus.ERROR
+
+SUSPEND_SRDF = 22
+DETACH_SRDF = 8
+MIRROR_SYNC_TYPE = 6
 
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
                default=CINDER_EMC_CONFIG_FILE,
-               help='use this file for cinder emc plugin '
+               help='Use this file for cinder emc plugin '
                     'config data'),
     cfg.StrOpt('multi_pool_support',
                default=False,
-               help='use this value to specify'
+               help='Use this value to specify '
                     'multi-pool support for VMAX3')]
 
 CONF.register_opts(emc_opts)
@@ -105,16 +115,20 @@ class EMCVMAXCommon(object):
              'storage_protocol': None,
              'total_capacity_gb': 0,
              'vendor_name': 'EMC',
-             'volume_backend_name': None}
+             'volume_backend_name': None,
+             'replication_enabled': False,
+             'replication_targets': None}
 
     pool_info = {'backend_name': None,
                  'config_file': None,
                  'arrays_info': {},
                  'max_over_subscription_ratio': None,
-                 'reserved_percentage': None
+                 'reserved_percentage': None,
+                 'replication_enabled': False
                  }
 
-    def __init__(self, prtcl, version, configuration=None):
+    def __init__(self, prtcl, version, configuration=None,
+                 active_backend_id=None):
 
         if not pywbemAvailable:
             LOG.info(_LI(
@@ -134,6 +148,12 @@ class EMCVMAXCommon(object):
         self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
         self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
         self.version = version
+        # replication
+        self.replication_enabled = False
+        self.extendReplicatedVolume = False
+        self.active_backend_id = active_backend_id
+        self.failover = False
+        self._get_replication_info()
         self.multiPoolSupportEnabled = False
         self._gather_info()
 
@@ -172,6 +192,30 @@ class EMCVMAXCommon(object):
             finalArrayInfoList = self._get_slo_workload_combinations(
                 arrayInfoList)
             self.pool_info['arrays_info'] = finalArrayInfoList
+
+    def _get_replication_info(self):
+        """Gather replication information, if provided."""
+        self.rep_config = None
+        self.replication_targets = None
+        if hasattr(self.configuration, 'replication_device'):
+            self.rep_devices = self.configuration.safe_get(
+                'replication_device')
+        if self.rep_devices and len(self.rep_devices) == 1:
+            self.rep_config = self.utils.get_replication_config(
+                self.rep_devices)
+            if self.rep_config:
+                self.replication_targets = [self.rep_config['array']]
+                if self.active_backend_id == self.rep_config['array']:
+                    self.failover = True
+                self.extendReplicatedVolume = self.rep_config['allow_extend']
+                # use self.replication_enabled for update_volume_stats
+                self.replication_enabled = True
+                LOG.debug("The replication configuration is %(rep_config)s.",
+                          {'rep_config': self.rep_config})
+        elif self.rep_devices and len(self.rep_devices) > 1:
+            LOG.error(_LE("More than one replication target is configured. "
+                          "EMC VMAX only suppports a single replication "
+                          "target. Replication will not be enabled."))
 
     def _get_slo_workload_combinations(self, arrayInfoList):
         """Method to query the array for SLO and Workloads.
@@ -246,8 +290,9 @@ class EMCVMAXCommon(object):
         EMCNumberOfMembers is what the user specifies.
 
         :param volume: volume Object
-        :returns: dict -- volumeDict - the volume dictionary
+        :returns:  model_update, dict
         """
+        model_update = {}
         volumeSize = int(self.utils.convert_gb_to_bits(volume['size']))
         volumeId = volume['id']
         extraSpecs = self._initial_setup(volume)
@@ -264,6 +309,21 @@ class EMCVMAXCommon(object):
             rc, volumeDict, storageSystemName = (
                 self._create_composite_volume(volume, volumeName, volumeSize,
                                               extraSpecs))
+
+        # set-up volume replication, if enabled (V3 only)
+        if self.utils.is_replication_enabled(extraSpecs):
+            try:
+                replication_status, replication_driver_data = (
+                    self.setup_volume_replication(
+                        self.conn, volume, volumeDict, extraSpecs))
+            except Exception:
+                self._cleanup_replication_source(self.conn, volumeName,
+                                                 volumeDict, extraSpecs)
+                raise
+            model_update.update(
+                {'replication_status': replication_status,
+                 'replication_driver_data': six.text_type(
+                     replication_driver_data)})
 
         # If volume is created as part of a consistency group.
         if 'consistencygroup_id' in volume and volume['consistencygroup_id']:
@@ -293,7 +353,10 @@ class EMCVMAXCommon(object):
         # Adding version information
         volumeDict['version'] = self.version
 
-        return volumeDict
+        model_update.update(
+            {'provider_location': six.text_type(volumeDict)})
+
+        return model_update
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
@@ -302,28 +365,70 @@ class EMCVMAXCommon(object):
 
         :param volume: volume Object
         :param snapshot: snapshot object
-        :returns: dict -- the cloned volume dictionary
+        :returns: model_update, dict
         :raises: VolumeBackendAPIException
         """
         LOG.debug("Entering create_volume_from_snapshot.")
         extraSpecs = self._initial_setup(snapshot, host=volume['host'])
+        model_update = {}
         self.conn = self._get_ecom_connection()
         snapshotInstance = self._find_lun(snapshot)
 
         self._sync_check(snapshotInstance, snapshot['name'], extraSpecs)
 
-        return self._create_cloned_volume(volume, snapshot, extraSpecs, False)
+        cloneDict = self._create_cloned_volume(volume, snapshot,
+                                               extraSpecs, False)
+        # set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extraSpecs):
+            try:
+                replication_status, replication_driver_data = (
+                    self.setup_volume_replication(
+                        self.conn, volume, cloneDict, extraSpecs))
+            except Exception:
+                self._cleanup_replication_source(self.conn, snapshot['name'],
+                                                 cloneDict, extraSpecs)
+                raise
+            model_update.update(
+                {'replication_status': six.text_type(replication_status),
+                 'replication_driver_data': replication_driver_data})
+
+        cloneDict['version'] = self.version
+        model_update.update(
+            {'provider_location': six.text_type(cloneDict)})
+
+        return model_update
 
     def create_cloned_volume(self, cloneVolume, sourceVolume):
         """Creates a clone of the specified volume.
 
         :param cloneVolume: clone volume Object
         :param sourceVolume: volume object
-        :returns: cloneVolumeDict -- the cloned volume dictionary
+        :returns: model_update, dict
         """
+        model_update = {}
         extraSpecs = self._initial_setup(sourceVolume)
-        return self._create_cloned_volume(cloneVolume, sourceVolume,
-                                          extraSpecs, False)
+        cloneDict = self._create_cloned_volume(cloneVolume, sourceVolume,
+                                               extraSpecs, False)
+
+        # set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extraSpecs):
+            try:
+                replication_status, replication_driver_data = (
+                    self.setup_volume_replication(
+                        self.conn, cloneVolume, cloneDict, extraSpecs))
+            except Exception:
+                self._cleanup_replication_source(
+                    self.conn, cloneVolume['name'], cloneDict, extraSpecs)
+                raise
+            model_update.update(
+                {'replication_status': six.text_type(replication_status),
+                 'replication_driver_data': replication_driver_data})
+
+        cloneDict['version'] = self.version
+        model_update.update(
+            {'provider_location': six.text_type(cloneDict)})
+
+        return model_update
 
     def delete_volume(self, volume):
         """Deletes a EMC(VMAX) volume.
@@ -393,6 +498,9 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         extraSpecs = self._initial_setup(volume)
+        if self.utils.is_volume_failed_over(volume):
+            extraSpecs = self._get_replication_extraSpecs(
+                extraSpecs, self.rep_config)
         volumename = volume['name']
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
@@ -467,6 +575,9 @@ class EMCVMAXCommon(object):
         self.conn = self._get_ecom_connection()
         deviceInfoDict = self._wrap_find_device_number(
             volume, connector['host'])
+        if self.utils.is_volume_failed_over(volume):
+            extraSpecs = self._get_replication_extraSpecs(
+                extraSpecs, self.rep_config)
         maskingViewDict = self._populate_masking_dict(
             volume, connector, extraSpecs)
 
@@ -659,20 +770,21 @@ class EMCVMAXCommon(object):
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
         return self._extend_volume(
-            volumeInstance, volumeName, newSize, originalVolumeSize,
-            extraSpecs)
+            volume, volumeInstance, volumeName, newSize,
+            originalVolumeSize, extraSpecs)
 
     def _extend_volume(
-            self, volumeInstance, volumeName, newSize, originalVolumeSize,
-            extraSpecs):
+            self, volume, volumeInstance, volumeName, newSize,
+            originalVolumeSize, extraSpecs):
         """Extends an existing volume.
 
-        :params volumeInstance: the volume Instance
-        :params volumeName: the volume name
-        :params newSize: the new size to increase the volume to
-        :params originalVolumeSize: the original size
-        :params extraSpecs: extra specifications
-        :returns: dict -- modifiedVolumeDict - the extended volume Object
+        :param volume: the volume Object
+        :param volumeInstance: the volume instance
+        :param volumeName: the volume name
+        :param newSize: the new size to increase the volume to
+        :param originalVolumeSize:
+        :param extraSpecs: extra specifications
+        :return: dict -- modifiedVolumeDict - the extended volume Object
         :raises: VolumeBackendAPIException
         """
         if int(originalVolumeSize) > int(newSize):
@@ -690,8 +802,14 @@ class EMCVMAXCommon(object):
             additionalVolumeSize)
 
         if extraSpecs[ISV3]:
-            rc, modifiedVolumeDict = self._extend_v3_volume(
-                volumeInstance, volumeName, newSize, extraSpecs)
+            if self.utils.is_replication_enabled(extraSpecs):
+                # extra logic required if volume is replicated
+                rc, modifiedVolumeDict = self.extend_volume_is_replicated(
+                    volume, volumeInstance, volumeName, newSize,
+                    extraSpecs)
+            else:
+                rc, modifiedVolumeDict = self._extend_v3_volume(
+                    volumeInstance, volumeName, newSize, extraSpecs)
         else:
             # This is V2.
             rc, modifiedVolumeDict = self._extend_composite_volume(
@@ -752,6 +870,9 @@ class EMCVMAXCommon(object):
             isV3 = self.utils.isArrayV3(self.conn,
                                         arrayInfo['SerialNumber'])
             if isV3:
+                if self.failover:
+                    arrayInfo = self.get_secondary_stats_info(
+                        self.rep_config, arrayInfo)
                 # Report only the SLO name in the pool name for
                 # backward compatibility
                 if self.multiPoolSupportEnabled is False:
@@ -792,8 +913,7 @@ class EMCVMAXCommon(object):
                             % {'poolName': arrayInfo['PoolName'],
                                'array': arrayInfo['SerialNumber']})
 
-            if (alreadyQueried
-                    is True and self.multiPoolSupportEnabled is True):
+            if alreadyQueried and self.multiPoolSupportEnabled:
                 # The dictionary will only have one key per VMAX3
                 # Construct the location info
                 temp_location_info = (
@@ -815,7 +935,8 @@ class EMCVMAXCommon(object):
                         'thin_provisioning_support': True,
                         'thick_provisioning_support': False,
                         'max_over_subscription_ratio':
-                            max_oversubscription_ratio
+                            max_oversubscription_ratio,
+                        'replication_enabled': self.replication_enabled
                         }
                 if (
                     arrays[arrayInfo['SerialNumber']][3] and
@@ -836,7 +957,8 @@ class EMCVMAXCommon(object):
                         'thin_provisioning_support': True,
                         'thick_provisioning_support': False,
                         'max_over_subscription_ratio':
-                            max_oversubscription_ratio
+                            max_oversubscription_ratio,
+                        'replication_enabled': self.replication_enabled
                         }
                 if (
                     array_reserve_percent and
@@ -862,6 +984,8 @@ class EMCVMAXCommon(object):
                 'free_capacity_gb': 0,
                 'provisioned_capacity_gb': 0,
                 'reserved_percentage': 0,
+                'replication_enabled': self.replication_enabled,
+                'replication_targets': self.replication_targets,
                 'pools': pools}
 
         return data
@@ -931,6 +1055,14 @@ class EMCVMAXCommon(object):
             return False
 
         if extraSpecs[ISV3]:
+            if self.utils.is_replication_enabled(extraSpecs):
+                LOG.error(_LE("Volume %(name)s is replicated - "
+                              "Replicated volumes are not eligible for "
+                              "storage assisted retype. Host assisted "
+                              "retype is supported."),
+                          {'name': volumeName})
+                return False
+
             return self._slo_workload_migration(volumeInstance, volume, host,
                                                 volumeName, volumeStatus,
                                                 new_type, extraSpecs)
@@ -1480,7 +1612,8 @@ class EMCVMAXCommon(object):
         :returns: dict -- the extra specs dict
         :returns: string -- configuration file
         """
-        extraSpecs = self.utils.get_volumetype_extraspecs(volume, volumeTypeId)
+        extraSpecs = self.utils.get_volumetype_extraspecs(
+            volume, volumeTypeId)
         qosSpecs = self.utils.get_volumetype_qosspecs(volume, volumeTypeId)
         configGroup = None
         # If there are no extra specs then the default case is assumed.
@@ -1491,6 +1624,8 @@ class EMCVMAXCommon(object):
         self.multiPoolSupportEnabled = (
             self._get_multi_pool_support_enabled_flag())
         extraSpecs[MULTI_POOL_SUPPORT] = self.multiPoolSupportEnabled
+        if extraSpecs.get('replication_enabled') == '<is> True':
+            extraSpecs[IS_RE] = True
         return extraSpecs, configurationFile, qosSpecs
 
     def _get_multi_pool_support_enabled_flag(self):
@@ -1965,6 +2100,8 @@ class EMCVMAXCommon(object):
             if arrayInfo is not None:
                 if extraSpecs['MultiPoolSupport'] is True:
                     poolRecord = arrayInfo[0]
+                elif len(arrayInfo) == 1:
+                    poolRecord = arrayInfo[0]
                 else:
                     poolRecord = self.utils.extract_record(arrayInfo, pool)
 
@@ -2040,8 +2177,10 @@ class EMCVMAXCommon(object):
         shortHostName = self.utils.get_host_short_name(hostName)
         if isV3:
             maskingViewDict['isCompressionDisabled'] = False
+            maskingViewDict['replication_enabled'] = False
             slo = extraSpecs[SLO]
             workload = extraSpecs[WORKLOAD]
+            rep_enabled = self.utils.is_replication_enabled(extraSpecs)
             maskingViewDict['slo'] = slo
             maskingViewDict['workload'] = workload
             maskingViewDict['pool'] = uniqueName
@@ -2065,6 +2204,9 @@ class EMCVMAXCommon(object):
                     ("OS-%(shortHostName)s-No_SLO-%(protocol)s"
                      % {'shortHostName': shortHostName,
                         'protocol': protocol}))
+            if rep_enabled:
+                prefix += "-RE"
+                maskingViewDict['replication_enabled'] = True
         else:
             maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
             if maskingViewDict['fastPolicy']:
@@ -2379,8 +2521,8 @@ class EMCVMAXCommon(object):
                 cloneInstance = self.utils.find_volume_instance(
                     self.conn, cloneDict, cloneName)
                 self._extend_volume(
-                    cloneInstance, cloneName, cloneVolume['size'],
-                    old_size_gbs, extraSpecs)
+                    cloneVolume, cloneInstance, cloneName,
+                    cloneVolume['size'], old_size_gbs, extraSpecs)
 
         LOG.debug("Leaving _create_cloned_volume: Volume: "
                   "%(cloneName)s Source Volume: %(sourceName)s "
@@ -2439,7 +2581,7 @@ class EMCVMAXCommon(object):
             cloneDict, cloneName, storageConfigService, storageSystemName,
             fastPolicyName, extraSpecs)
 
-    def _delete_volume(self, volume, host=None):
+    def _delete_volume(self, volume, isSnapshot=False, host=None):
         """Helper function to delete the specified volume.
 
         :param volume: volume object to be deleted
@@ -2469,9 +2611,14 @@ class EMCVMAXCommon(object):
         deviceId = volumeInstance['DeviceID']
 
         if extraSpecs[ISV3]:
-            rc = self._delete_from_pool_v3(
-                storageConfigService, volumeInstance, volumeName,
-                deviceId, extraSpecs)
+            if isSnapshot:
+                rc = self._delete_from_pool_v3(
+                    storageConfigService, volumeInstance, volumeName,
+                    deviceId, extraSpecs)
+            else:
+                rc = self._delete_from_pool_v3(
+                    storageConfigService, volumeInstance, volumeName,
+                    deviceId, extraSpecs, volume)
         else:
             rc = self._delete_from_pool(storageConfigService, volumeInstance,
                                         volumeName, deviceId,
@@ -2637,7 +2784,7 @@ class EMCVMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         # Delete the target device.
-        rc, snapshotname = self._delete_volume(snapshot, host)
+        rc, snapshotname = self._delete_volume(snapshot, True, host)
         LOG.info(_LI("Leaving delete_snapshot: %(ssname)s  Return code: "
                      "%(rc)lu."),
                  {'ssname': snapshotname,
@@ -3171,7 +3318,7 @@ class EMCVMAXCommon(object):
 
     def _get_or_create_storage_group_v3(
             self, poolName, slo, workload, doDisableCompression,
-            storageSystemName, extraSpecs):
+            storageSystemName, extraSpecs, is_re=False):
         """Get or create storage group_v3 (V3).
 
         :param poolName: the SRP pool nsmr
@@ -3180,12 +3327,13 @@ class EMCVMAXCommon(object):
         :param doDisableCompression: flag for compression
         :param storageSystemName: storage system name
         :param extraSpecs: extra specifications
+        :param is_re: flag for replication
         :returns: sgInstanceName
         """
         storageGroupName, controllerConfigService, sgInstanceName = (
             self.utils.get_v3_default_sg_instance_name(
                 self.conn, poolName, slo, workload, storageSystemName,
-                doDisableCompression))
+                doDisableCompression, is_re))
         if sgInstanceName is None:
             sgInstanceName = self.provisionv3.create_storage_group_v3(
                 self.conn, controllerConfigService, storageGroupName,
@@ -3726,7 +3874,7 @@ class EMCVMAXCommon(object):
         return rc
 
     def _delete_from_pool_v3(self, storageConfigService, volumeInstance,
-                             volumeName, deviceId, extraSpecs):
+                             volumeName, deviceId, extraSpecs, volume=None):
         """Delete from pool (v3).
 
         :param storageConfigService: the storage config service
@@ -3734,6 +3882,7 @@ class EMCVMAXCommon(object):
         :param volumeName: the volume Name
         :param deviceId: the device ID of the volume
         :param extraSpecs: extra specifications
+        :param volume: the cinder volume object
         :returns: int -- return code
         :raises: VolumeBackendAPIException
         """
@@ -3747,6 +3896,10 @@ class EMCVMAXCommon(object):
         self.masking.remove_and_reset_members(
             self.conn, controllerConfigurationService, volumeInstance,
             volumeName, extraSpecs, None, False)
+
+        if volume and self.utils.is_replication_enabled(extraSpecs):
+            self.cleanup_lun_replication(self.conn, volume, volumeName,
+                                         volumeInstance, extraSpecs)
 
         LOG.debug("Delete Volume: %(name)s  Method: EMCReturnToStoragePool "
                   "ConfigServic: %(service)s  TheElement: %(vol_instance)s "
@@ -4421,9 +4574,19 @@ class EMCVMAXCommon(object):
         provider_location['classname'] = volpath['CreationClassName']
         provider_location['keybindings'] = keys
 
+        # set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extraSpecs):
+            replication_status, replication_driver_data = (
+                self.setup_volume_replication(
+                    self.conn, volume, provider_location, extraSpecs))
+            model_update.update(
+                {'replication_status': six.text_type(replication_status)})
+            model_update.update(
+                {'replication_driver_data': replication_driver_data})
+
         model_update.update({'display_name': volumeElementName})
-        volume['provider_location'] = six.text_type(provider_location)
-        model_update.update({'provider_location': volume['provider_location']})
+        model_update.update(
+            {'provider_location': six.text_type(provider_location)})
         return model_update
 
     def manage_existing_get_size(self, volume, external_ref):
@@ -4843,7 +5006,7 @@ class EMCVMAXCommon(object):
         return cgName
 
     def _sync_check(self, volumeInstance, volumeName, extraSpecs):
-        """Check if volume is part of a sync process.
+        """Check if volume is part of a snapshot/clone sync process.
 
         :param volumeInstance: volume instance
         :param volumeName: volume name
@@ -4873,3 +5036,753 @@ class EMCVMAXCommon(object):
             else:
                 self.provision.delete_clone_relationship(
                     self.conn, repservice, syncInstanceName, extraSpecs, True)
+
+    def setup_volume_replication(self, conn, sourceVolume, volumeDict,
+                                 extraSpecs, targetInstance=None):
+        """Setup replication for volume, if enabled.
+
+        Called on create volume, create cloned volume,
+        create volume from snapshot, manage_existing,
+        and re-establishing a replication relationship after extending.
+
+        :param conn: the connection to the ecom server
+        :param sourceVolume: the source volume object
+        :param volumeDict: the source volume dict (the provider_location)
+        :param extraSpecs: extra specifications
+        :param targetInstance: optional, target on secondary array
+        :return: rep_update - dict
+        """
+        isTargetV3 = self.utils.isArrayV3(conn, self.rep_config['array'])
+        if not extraSpecs[ISV3] or not isTargetV3:
+            exception_message = (_("Replication is not supported on "
+                                   "VMAX 2"))
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        sourceName = sourceVolume['name']
+        sourceInstance = self.utils.find_volume_instance(
+            conn, volumeDict, sourceName)
+        LOG.debug('Starting replication setup '
+                  'for volume: %s.', sourceVolume['name'])
+        storageSystem = sourceInstance['SystemName']
+        # get rdf details
+        rdfGroupInstance, repServiceInstanceName = (
+            self.get_rdf_details(conn, storageSystem))
+        rdf_vol_size = sourceVolume['size']
+
+        # give the target volume the same Volume Element Name as the
+        # source volume
+        targetName = self.utils.get_volume_element_name(
+            sourceVolume['id'])
+
+        if not targetInstance:
+            # create a target volume on the target array
+            # target must be passed in on remote replication
+            targetInstance = self.get_target_instance(
+                sourceVolume, self.rep_config, rdf_vol_size,
+                targetName, extraSpecs)
+
+        LOG.debug("Create volume replica: Remote Volume: %(targetName)s "
+                  "Source Volume: %(sourceName)s "
+                  "Method: CreateElementReplica "
+                  "ReplicationService: %(service)s  ElementName: "
+                  "%(elementname)s  SyncType: 6  SourceElement: "
+                  "%(sourceelement)s.",
+                  {'targetName': targetName,
+                   'sourceName': sourceName,
+                   'service': repServiceInstanceName,
+                   'elementname': targetName,
+                   'sourceelement': sourceInstance.path})
+
+        # create the remote replica and establish the link
+        rc, rdfDict = self.create_remote_replica(
+            conn, repServiceInstanceName, rdfGroupInstance,
+            sourceVolume, sourceInstance, targetInstance, extraSpecs,
+            self.rep_config)
+
+        LOG.info(_LI('Successfully setup replication for %s.'),
+                 sourceVolume['name'])
+        replication_status = REPLICATION_ENABLED
+        replication_driver_data = rdfDict['keybindings']
+
+        return replication_status, replication_driver_data
+
+    # called on delete volume after remove_and_reset_members
+    def cleanup_lun_replication(self, conn, volume, volumeName,
+                                sourceInstance, extraSpecs):
+        """Cleanup target volume on delete.
+
+        Extra logic if target is last in group.
+        :param conn: the connection to the ecom server
+        :param volume: the volume object
+        :param volumeName: the volume name
+        :param sourceInstance: the source volume instance
+        :param extraSpecs: extra specification
+        """
+        LOG.debug('Starting cleanup replication from volume: '
+                  '%s.', volumeName)
+        try:
+            loc = volume['provider_location']
+            rep_data = volume['replication_driver_data']
+
+            if (isinstance(loc, six.string_types)
+                    and isinstance(rep_data, six.string_types)):
+                name = eval(loc)
+                replication_keybindings = eval(rep_data)
+                storageSystem = replication_keybindings['SystemName']
+                rdfGroupInstance, repServiceInstanceName = (
+                    self.get_rdf_details(conn, storageSystem))
+                repExtraSpecs = self._get_replication_extraSpecs(
+                    extraSpecs, self.rep_config)
+
+                targetVolumeDict = {'classname': name['classname'],
+                                    'keybindings': replication_keybindings}
+
+                targetInstance = self.utils.find_volume_instance(
+                    conn, targetVolumeDict, volumeName)
+                # Ensure element name matches openstack id.
+                volumeElementName = (self.utils.
+                                     get_volume_element_name(volume['id']))
+                if volumeElementName != targetInstance['ElementName']:
+                    targetInstance = None
+
+                if targetInstance is not None:
+                    # clean-up target
+                    targetControllerConfigService = (
+                        self.utils.find_controller_configuration_service(
+                            conn, storageSystem))
+                    self.masking.remove_and_reset_members(
+                        conn, targetControllerConfigService, targetInstance,
+                        volumeName, repExtraSpecs, None, False)
+                    self._cleanup_remote_target(
+                        conn, repServiceInstanceName, sourceInstance,
+                        targetInstance, extraSpecs, repExtraSpecs)
+                    LOG.info(_LI('Successfully destroyed replication for '
+                                 'volume: %(volume)s'),
+                             {'volume': volumeName})
+                else:
+                    LOG.warning(_LW('Replication target not found for '
+                                    'replication-enabled volume: %(volume)s'),
+                                {'volume': volumeName})
+        except Exception as e:
+            LOG.error(_LE('Cannot get necessary information to cleanup '
+                          'replication target for volume: %(volume)s. '
+                          'The exception received was: %(e)s. Manual '
+                          'clean-up may be required. Please contact '
+                          'your administrator.'),
+                      {'volume': volumeName, 'e': e})
+
+    def _cleanup_remote_target(
+            self, conn, repServiceInstanceName, sourceInstance,
+            targetInstance, extraSpecs, repExtraSpecs):
+        """Clean-up remote replication target after exception or on deletion.
+
+        :param conn: connection to the ecom server
+        :param repServiceInstanceName: the replication service
+        :param sourceInstance: the source volume instance
+        :param targetInstance: the target volume instance
+        :param extraSpecs: extra specifications
+        :param repExtraSpecs: replication extra specifications
+        """
+        storageSystem = sourceInstance['SystemName']
+        targetStorageSystem = targetInstance['SystemName']
+        syncInstanceName = self.utils.find_rdf_storage_sync_sv_sv(
+            conn, sourceInstance, storageSystem,
+            targetInstance, targetStorageSystem,
+            extraSpecs, False)
+        if syncInstanceName is not None:
+            # Break the sync relationship.
+            self.break_rdf_relationship(
+                conn, repServiceInstanceName, syncInstanceName, extraSpecs)
+        targetStorageConfigService = (
+            self.utils.find_storage_configuration_service(
+                conn, targetStorageSystem))
+        deviceId = targetInstance['DeviceID']
+        volumeName = targetInstance['Name']
+        self._delete_from_pool_v3(
+            targetStorageConfigService, targetInstance, volumeName,
+            deviceId, repExtraSpecs)
+
+    def _cleanup_replication_source(
+            self, conn, volumeName, volumeDict, extraSpecs):
+        """Cleanup a remote replication source volume on failure.
+
+        If replication setup fails at any stage on a new volume create,
+        we must clean-up the source instance as the cinder database won't
+        be updated with the provider_location. This means the volume can not
+        be properly deleted from  the array by cinder.
+
+        :param conn: the connection to the ecom server
+        :param volumeName: the name of the volume
+        :param volumeDict: the source volume dictionary
+        :param extraSpecs: the extra specifications
+        """
+        LOG.warning(_LW(
+            "Replication failed. Cleaning up the source volume. "
+            "Volume name: %(sourceName)s "),
+            {'sourceName': volumeName})
+        sourceInstance = self.utils.find_volume_instance(
+            conn, volumeDict, volumeName)
+        storageSystem = sourceInstance['SystemName']
+        deviceId = sourceInstance['DeviceID']
+        volumeName = sourceInstance['Name']
+        storageConfigService = (
+            self.utils.find_storage_configuration_service(
+                conn, storageSystem))
+        self._delete_from_pool_v3(
+            storageConfigService, sourceInstance, volumeName,
+            deviceId, extraSpecs)
+
+    def break_rdf_relationship(self, conn, repServiceInstanceName,
+                               syncInstanceName, extraSpecs):
+        # Break the sync relationship.
+        LOG.debug("Suspending the SRDF relationship...")
+        self.provisionv3.break_replication_relationship(
+            conn, repServiceInstanceName, syncInstanceName,
+            SUSPEND_SRDF, extraSpecs, True)
+        LOG.debug("Detaching the SRDF relationship...")
+        self.provisionv3.break_replication_relationship(
+            conn, repServiceInstanceName, syncInstanceName,
+            DETACH_SRDF, extraSpecs, True)
+
+    def get_rdf_details(self, conn, storageSystem):
+        """Retrieves an SRDF group instance.
+
+        :param conn: connection to the ecom server
+        :param storageSystem: the storage system name
+        :return:
+        """
+        if not self.rep_config:
+            exception_message = (_("Replication is not configured on "
+                                   "backend: %(backend)s.") %
+                                 {'backend': self.configuration.safe_get(
+                                     'volume_backend_name')})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        repServiceInstanceName = self.utils.find_replication_service(
+            conn, storageSystem)
+        RDFGroupName = self.rep_config['rdf_group_label']
+        LOG.info(_LI("Replication group: %(RDFGroup)s."),
+                 {'RDFGroup': RDFGroupName})
+        rdfGroupInstance = self.provisionv3.get_rdf_group_instance(
+            conn, repServiceInstanceName, RDFGroupName)
+        LOG.info(_LI("Found RDF group instance: %(RDFGroup)s."),
+                 {'RDFGroup': rdfGroupInstance})
+        if rdfGroupInstance is None:
+            exception_message = (_("Cannot find replication group: "
+                                   "%(RDFGroup)s.") %
+                                 {'RDFGroup': rdfGroupInstance})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        return rdfGroupInstance, repServiceInstanceName
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Fails over the volume back and forth.
+
+        Driver needs to update following info for failed-over volume:
+        1. provider_location: update array details
+        2. replication_status: new status for replication-enabled volume
+        :param context: the context
+        :param volumes: the list of volumes to be failed over
+        :param secondary_id: the target backend
+        :return: secondary_id, volume_update_list
+        """
+        volume_update_list = []
+        if not self.conn:
+            self.conn = self._get_ecom_connection()
+        if secondary_id != 'default':
+            self.failover = True
+            if self.rep_config:
+                secondary_id = self.rep_config['array']
+        else:
+            self.failover = False
+            secondary_id = None
+
+        def failover_volume(vol, failover):
+            loc = vol['provider_location']
+            rep_data = vol['replication_driver_data']
+            try:
+                name = eval(loc)
+                replication_keybindings = eval(rep_data)
+                keybindings = name['keybindings']
+                storageSystem = keybindings['SystemName']
+                sourceInstance = self._find_lun(vol)
+                volumeDict = {'classname': name['classname'],
+                              'keybindings': replication_keybindings}
+
+                targetInstance = self.utils.find_volume_instance(
+                    self.conn, volumeDict, vol['name'])
+                targetStorageSystem = (
+                    replication_keybindings['SystemName'])
+                repServiceInstanceName = (
+                    self.utils.find_replication_service(
+                        self.conn, storageSystem))
+
+                if failover:
+                    storageSynchronizationSv = (
+                        self.utils.find_rdf_storage_sync_sv_sv(
+                            self.conn, sourceInstance, storageSystem,
+                            targetInstance, targetStorageSystem,
+                            extraSpecs))
+                    self.provisionv3.failover_volume(
+                        self.conn, repServiceInstanceName,
+                        storageSynchronizationSv,
+                        extraSpecs)
+                    new_status = REPLICATION_FAILOVER
+
+                else:
+                    storageSynchronizationSv = (
+                        self.utils.find_rdf_storage_sync_sv_sv(
+                            self.conn, targetInstance, targetStorageSystem,
+                            sourceInstance, storageSystem,
+                            extraSpecs, False))
+                    self.provisionv3.failback_volume(
+                        self.conn, repServiceInstanceName,
+                        storageSynchronizationSv,
+                        extraSpecs)
+                    new_status = REPLICATION_ENABLED
+
+                # Transfer ownership to secondary_backend_id and
+                # update provider_location field
+                provider_location, replication_driver_data = (
+                    self.utils.failover_provider_location(
+                        name, replication_keybindings))
+                loc = six.text_type(provider_location)
+                rep_data = six.text_type(replication_driver_data)
+
+            except Exception as ex:
+                msg = _LE(
+                    'Failed to failover volume %(volume_id)s. '
+                    'Error: %(error)s.')
+                LOG.error(msg, {'volume_id': vol['id'],
+                                'error': ex}, )
+                new_status = FAILOVER_ERROR
+
+            model_update = {'volume_id': vol['id'],
+                            'updates':
+                                {'replication_status': new_status,
+                                 'replication_driver_data': rep_data,
+                                 'provider_location': loc}}
+            volume_update_list.append(model_update)
+
+        for volume in volumes:
+            extraSpecs = self._initial_setup(volume)
+            if self.utils.is_replication_enabled(extraSpecs):
+                failover_volume(volume, self.failover)
+            else:
+                if self.failover:
+                    # Since the array has been failed-over,
+                    # volumes without replication should be in error.
+                    volume_update_list.append({
+                        'volume_id': volume['id'],
+                        'updates': {'status': 'error'}})
+                else:
+                    # This is a failback, so we will attempt
+                    # to recover non-failed over volumes
+                    recovery = self.recover_volumes_on_failback(volume)
+                    volume_update_list.append(recovery)
+
+        LOG.info(_LI("Failover host complete"))
+
+        return secondary_id, volume_update_list
+
+    def recover_volumes_on_failback(self, volume):
+        """Recover volumes on failback.
+
+        On failback, attempt to recover non RE(replication enabled)
+        volumes from primary array.
+
+        :param volume:
+        :return: volume_update
+        """
+
+        # check if volume still exists on the primary
+        volume_update = {'volume_id': volume['id']}
+        volumeInstance = self._find_lun(volume)
+        if not volumeInstance:
+            volume_update['updates'] = {'status': 'error'}
+        else:
+            try:
+                maskingview = self._is_volume_in_masking_view(volumeInstance)
+            except Exception:
+                maskingview = None
+                LOG.debug("Unable to determine if volume is in masking view.")
+            if not maskingview:
+                volume_update['updates'] = {'status': 'available'}
+            else:
+                volume_update['updates'] = {'status': 'in-use'}
+        return volume_update
+
+    def _is_volume_in_masking_view(self, volumeInstance):
+        """Helper function to check if a volume is in a masking view.
+
+        :param volumeInstance: the volume instance
+        :return: maskingview
+        """
+        maskingView = None
+        volumeInstanceName = volumeInstance.path
+        storageGroups = self.utils.get_storage_groups_from_volume(
+            self.conn, volumeInstanceName)
+        if storageGroups:
+            for storageGroup in storageGroups:
+                maskingView = self.utils.get_masking_view_from_storage_group(
+                    self.conn, storageGroup)
+                if maskingView:
+                    break
+        return maskingView
+
+    def extend_volume_is_replicated(self, volume, volumeInstance,
+                                    volumeName, newSize, extraSpecs):
+        """Extend a replication-enabled volume.
+
+        Cannot extend volumes in a synchronization pair.
+        Must first break the relationship, extend them
+        separately, then recreate the pair
+        :param volume: the volume objcet
+        :param volumeInstance: the volume instance
+        :param volumeName: the volume name
+        :param newSize: the new size the volume should be
+        :param extraSpecs: extra specifications
+        :return: rc, volumeDict
+        """
+        if self.extendReplicatedVolume is True:
+            storageSystem = volumeInstance['SystemName']
+            loc = volume['provider_location']
+            rep_data = volume['replication_driver_data']
+            try:
+                name = eval(loc)
+                replication_keybindings = eval(rep_data)
+                targetStorageSystem = replication_keybindings['SystemName']
+                targetVolumeDict = {'classname': name['classname'],
+                                    'keybindings': replication_keybindings}
+                targetVolumeInstance = self.utils.find_volume_instance(
+                    self.conn, targetVolumeDict, volumeName)
+                repServiceInstanceName = self.utils.find_replication_service(
+                    self.conn, targetStorageSystem)
+                storageSynchronizationSv = (
+                    self.utils.find_rdf_storage_sync_sv_sv(
+                        self.conn, volumeInstance, storageSystem,
+                        targetVolumeInstance, targetStorageSystem,
+                        extraSpecs))
+
+                # volume must be removed from replication (storage) group
+                # before the replication relationship can be ended (cannot
+                # have a mix of replicated and non-replicated volumes as
+                # the SRDF groups become unmanageable).
+                controllerConfigService = (
+                    self.utils.find_controller_configuration_service(
+                        self.conn, storageSystem))
+                self.masking.remove_and_reset_members(
+                    self.conn, controllerConfigService, volumeInstance,
+                    volumeName, extraSpecs, None, False)
+
+                # repeat on target side
+                targetControllerConfigService = (
+                    self.utils.find_controller_configuration_service(
+                        self.conn, targetStorageSystem))
+                repExtraSpecs = self._get_replication_extraSpecs(
+                    extraSpecs, self.rep_config)
+                self.masking.remove_and_reset_members(
+                    self.conn, targetControllerConfigService,
+                    targetVolumeInstance, volumeName, repExtraSpecs,
+                    None, False)
+
+                LOG.info(_LI("Breaking replication relationship..."))
+                self.break_rdf_relationship(
+                    self.conn, repServiceInstanceName,
+                    storageSynchronizationSv, extraSpecs)
+
+                # extend the source volume
+
+                LOG.info(_LI("Extending source volume..."))
+                rc, volumeDict = self._extend_v3_volume(
+                    volumeInstance, volumeName, newSize, extraSpecs)
+
+                # extend the target volume
+                LOG.info(_LI("Extending target volume..."))
+                self._extend_v3_volume(targetVolumeInstance, volumeName,
+                                       newSize, repExtraSpecs)
+
+                # re-create replication relationship
+                LOG.info(_LI("Recreating replication relationship..."))
+                self.setup_volume_replication(
+                    self.conn, volume, volumeDict,
+                    extraSpecs, targetVolumeInstance)
+
+            except Exception as e:
+                exception_message = (_("Error extending volume. "
+                                       "Error received was %(e)s") %
+                                     {'e': e})
+                LOG.exception(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+            return rc, volumeDict
+
+        else:
+            exceptionMessage = (_(
+                "Extending a replicated volume is not "
+                "permitted on this backend. Please contact "
+                "your administrator."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+    def create_remote_replica(self, conn, repServiceInstanceName,
+                              rdfGroupInstance, sourceVolume, sourceInstance,
+                              targetInstance, extraSpecs, rep_config):
+        """Create a replication relationship with a target volume.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: the replication service
+        :param rdfGroupInstance: the SRDF group instance
+        :param sourceVolume: the source volume object
+        :param sourceInstance: the source volume instance
+        :param targetInstance: the target volume instance
+        :param extraSpecs: extra specifications
+        :param rep_config: the replication configuration
+        :return: rc, rdfDict - the target volume dictionary
+        """
+        # remove source and target instances from their default storage groups
+        volumeName = sourceVolume['name']
+        storageSystemName = sourceInstance['SystemName']
+        controllerConfigService = (
+            self.utils.find_controller_configuration_service(
+                conn, storageSystemName))
+        repExtraSpecs = self._get_replication_extraSpecs(extraSpecs,
+                                                         rep_config)
+        try:
+            self.masking.remove_and_reset_members(
+                conn, controllerConfigService, sourceInstance,
+                volumeName, extraSpecs, connector=None, reset=False)
+
+            targetStorageSystemName = targetInstance['SystemName']
+            targetControllerConfigService = (
+                self.utils.find_controller_configuration_service(
+                    conn, targetStorageSystemName))
+            self.masking.remove_and_reset_members(
+                conn, targetControllerConfigService, targetInstance,
+                volumeName, repExtraSpecs, connector=None, reset=False)
+
+            # establish replication relationship
+            rc, rdfDict = self._create_remote_replica(
+                conn, repServiceInstanceName, rdfGroupInstance, volumeName,
+                sourceInstance, targetInstance, extraSpecs,
+                controllerConfigService, repExtraSpecs)
+
+            # add source and target instances to their replication groups
+            LOG.debug("Adding sourceInstance to default replication group.")
+            self.add_volume_to_replication_group(conn, controllerConfigService,
+                                                 sourceInstance, volumeName,
+                                                 extraSpecs)
+            LOG.debug("Adding targetInstance to default replication group.")
+            self.add_volume_to_replication_group(
+                conn, targetControllerConfigService, targetInstance,
+                volumeName, repExtraSpecs)
+
+        except Exception as e:
+            LOG.warning(
+                _LW("Remote replication failed. Cleaning up the target "
+                    "volume and returning source volume to default storage "
+                    "group. Volume name: %(cloneName)s "),
+                {'cloneName': volumeName})
+
+            self._cleanup_remote_target(
+                conn, repServiceInstanceName, sourceInstance,
+                targetInstance, extraSpecs, repExtraSpecs)
+            # Re-throw the exception.
+            exception_message = (_("Remote replication failed with exception:"
+                                   " %(e)s")
+                                 % {'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        return rc, rdfDict
+
+    def add_volume_to_replication_group(self, conn, controllerConfigService,
+                                        volumeInstance, volumeName,
+                                        extraSpecs):
+        """Add a volume to the default replication group.
+
+        SE_ReplicationGroups are actually VMAX storage groups under
+        the covers, so we can use our normal storage group operations.
+        :param conn: the connection to the ecom served
+        :param controllerConfigService: the controller config service
+        :param volumeInstance: the volume instance
+        :param volumeName: the name of the volume
+        :param extraSpecs: extra specifications
+        :return: storageGroupInstanceName
+        """
+        storageGroupName = self.utils.get_v3_storage_group_name(
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD],
+            False, True)
+        storageSystemName = volumeInstance['SystemName']
+        doDisableCompression = self.utils.is_compression_disabled(extraSpecs)
+        try:
+            storageGroupInstanceName = self._get_or_create_storage_group_v3(
+                extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD],
+                doDisableCompression, storageSystemName, extraSpecs,
+                is_re=True)
+        except Exception as e:
+            exception_message = (_("Failed to get or create replication"
+                                   "group. Exception received: %(e)s")
+                                 % {'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        self.masking.add_volume_to_storage_group(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, storageGroupName, extraSpecs)
+
+        return storageGroupInstanceName
+
+    def _create_remote_replica(
+            self, conn, repServiceInstanceName, rdfGroupInstance,
+            volumeName, sourceInstance, targetInstance, extraSpecs,
+            controllerConfigService, repExtraSpecs):
+        """Helper function to establish a replication relationship.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: replication service instance
+        :param rdfGroupInstance: rdf group instance
+        :param volumeName: volume name
+        :param sourceInstance: the source volume instance
+        :param targetInstance: the target volume instance
+        :param extraSpecs: extra specifications
+        :param controllerConfigService: the controller config service
+        :param repExtraSpecs: replication extra specifications
+        :return: rc, rdfDict - the target volume dictionary
+        """
+        syncType = MIRROR_SYNC_TYPE
+        rc, job = self.provisionv3.create_remote_element_replica(
+            conn, repServiceInstanceName, volumeName, syncType,
+            sourceInstance, targetInstance, rdfGroupInstance, extraSpecs)
+        rdfDict = self.provisionv3.get_volume_dict_from_job(
+            self.conn, job['Job'])
+
+        return rc, rdfDict
+
+    def get_target_instance(self, sourceVolume, rep_config,
+                            rdf_vol_size, targetName, extraSpecs):
+        """Create a replication target for a given source volume.
+
+        :param sourceVolume: the source volume
+        :param rep_config: the replication configuration
+        :param rdf_vol_size: the size of the volume
+        :param targetName: the Element Name for the new volume
+        :param extraSpecs: the extra specifications
+        :return: the target instance
+        """
+        repExtraSpecs = self._get_replication_extraSpecs(
+            extraSpecs, rep_config)
+        volumeSize = int(self.utils.convert_gb_to_bits(rdf_vol_size))
+        rc, volumeDict, storageSystemName = self._create_v3_volume(
+            sourceVolume, targetName, volumeSize, repExtraSpecs)
+        targetInstance = self.utils.find_volume_instance(
+            self.conn, volumeDict, targetName)
+        return targetInstance
+
+    def _get_replication_extraSpecs(self, extraSpecs, rep_config):
+        """Get replication extra specifications.
+
+        Called when target array operations are necessary -
+        on create, extend, etc and when volume is failed over.
+        :param extraSpecs: the extra specifications
+        :param rep_config: the replication configuration
+        :return: repExtraSpecs - dict
+        """
+        repExtraSpecs = extraSpecs.copy()
+        repExtraSpecs[ARRAY] = rep_config['array']
+        repExtraSpecs[POOL] = rep_config['pool']
+        repExtraSpecs[PORTGROUPNAME] = rep_config['portgroup']
+
+        # if disable compression is set, check if target array is all flash
+        doDisableCompression = self.utils.is_compression_disabled(
+            extraSpecs)
+        if doDisableCompression:
+            if not self.utils.is_all_flash(self.conn, repExtraSpecs[ARRAY]):
+                repExtraSpecs.pop(self.utils.DISABLECOMPRESSION, None)
+
+        # Check to see if SLO and Workload are configured on the target array.
+        poolInstanceName, storageSystemName = (
+            self._get_pool_and_storage_system(repExtraSpecs))
+        storagePoolCapability = self.provisionv3.get_storage_pool_capability(
+            self.conn, poolInstanceName)
+        if extraSpecs[SLO]:
+            if storagePoolCapability:
+                try:
+                    self.provisionv3.get_storage_pool_setting(
+                        self.conn, storagePoolCapability, extraSpecs[SLO],
+                        extraSpecs[WORKLOAD])
+                except Exception:
+                    LOG.warning(
+                        _LW("The target array does not support the storage "
+                            "pool setting for SLO %(slo)s or workload "
+                            "%(workload)s. Not assigning any SLO or "
+                            "workload."),
+                        {'slo': extraSpecs[SLO],
+                         'workload': extraSpecs[WORKLOAD]})
+                    repExtraSpecs[SLO] = None
+                    if extraSpecs[WORKLOAD]:
+                        repExtraSpecs[WORKLOAD] = None
+
+            else:
+                LOG.warning(_LW("Cannot determine storage pool settings of "
+                                "target array. Not assigning any SLO or "
+                                "workload"))
+                repExtraSpecs[SLO] = None
+                if extraSpecs[WORKLOAD]:
+                    repExtraSpecs[WORKLOAD] = None
+
+        return repExtraSpecs
+
+    def get_secondary_stats_info(self, rep_config, arrayInfo):
+        """On failover, report on secondary array statistics.
+
+        :param rep_config: the replication configuration
+        :param arrayInfo: the array info
+        :return: secondaryInfo - dict
+        """
+        secondaryInfo = arrayInfo.copy()
+        secondaryInfo['SerialNumber'] = six.text_type(rep_config['array'])
+        secondaryInfo['PoolName'] = rep_config['pool']
+        pool_info_specs = {ARRAY: secondaryInfo['SerialNumber'],
+                           POOL: rep_config['pool'],
+                           ISV3: True}
+        # Check to see if SLO and Workload are configured on the target array.
+        poolInstanceName, storageSystemName = (
+            self._get_pool_and_storage_system(pool_info_specs))
+        storagePoolCapability = self.provisionv3.get_storage_pool_capability(
+            self.conn, poolInstanceName)
+        if arrayInfo['SLO']:
+            if storagePoolCapability:
+                try:
+                    self.provisionv3.get_storage_pool_setting(
+                        self.conn, storagePoolCapability, arrayInfo['SLO'],
+                        arrayInfo['Workload'])
+                except Exception:
+                    LOG.info(
+                        _LI("The target array does not support the storage "
+                            "pool setting for SLO %(slo)s or workload "
+                            "%(workload)s. SLO stats will not be reported."),
+                        {'slo': arrayInfo['SLO'],
+                         'workload': arrayInfo['Workload']})
+                    secondaryInfo['SLO'] = None
+                    if arrayInfo['Workload']:
+                        secondaryInfo['Workload'] = None
+                    if self.multiPoolSupportEnabled:
+                        self.multiPoolSupportEnabled = False
+
+            else:
+                LOG.info(_LI("Cannot determine storage pool settings of "
+                             "target array. SLO stats will not be reported."))
+                secondaryInfo['SLO'] = None
+                if arrayInfo['Workload']:
+                    secondaryInfo['Workload'] = None
+                if self.multiPoolSupportEnabled:
+                    self.multiPoolSupportEnabled = False
+        return secondaryInfo
