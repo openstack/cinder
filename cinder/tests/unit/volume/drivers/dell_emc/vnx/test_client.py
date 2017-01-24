@@ -327,10 +327,9 @@ class TestClient(test.TestCase):
 
     @res_mock.patch_client
     def test_create_sg_name_in_use(self, client, mocked):
-        self.assertRaisesRegexp(storops_ex.VNXStorageGroupNameInUseError,
-                                'Storage group sg_name already exists. '
-                                'Message: ',
-                                client.create_storage_group('sg_name'))
+        client.create_storage_group('sg_name')
+        self.assertIsNotNone(client.sg_cache['sg_name'])
+        self.assertTrue(client.sg_cache['sg_name'].existed)
 
     @res_mock.patch_client
     def test_get_storage_group(self, client, mocked):
