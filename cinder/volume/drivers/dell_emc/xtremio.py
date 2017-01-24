@@ -408,15 +408,25 @@ class XtremIOVolumeDriver(san.SanDriver):
             self.client = XtremIOClient4(self.configuration, self.cluster_id)
 
     def create_volume(self, volume):
-        "Creates a volume"
+        """Creates a volume."""
         data = {'vol-name': volume['id'],
                 'vol-size': str(volume['size']) + 'g'
                 }
         self.client.req('volumes', 'POST', data)
 
-        if volume.get('consistencygroup_id'):
+        # Add the volume to a cg in case volume requested a cgid or group_id.
+        # If both cg_id and group_id exists in a volume. group_id will take
+        # place.
+
+        consistency_group = volume.get('consistencygroup_id')
+
+        # if cg_id and group_id are both exists, we gives priority to group_id.
+        if volume.get('group_id'):
+            consistency_group = volume.get('group_id')
+
+        if consistency_group:
             self.client.add_vol_to_cg(volume['id'],
-                                      volume['consistencygroup_id'])
+                                      consistency_group)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -679,8 +689,6 @@ class XtremIOVolumeDriver(san.SanDriver):
         self.client.req('consistency-groups', 'DELETE', name=group['id'],
                         ver='v2')
 
-        volumes = self.db.volume_get_all_by_group(context, group['id'])
-
         for volume in volumes:
             self.delete_volume(volume)
             volume.status = 'deleted'
@@ -786,6 +794,94 @@ class XtremIOVolumeDriver(san.SanDriver):
                         name=self._get_cgsnap_name(cgsnapshot), ver='v2')
 
         return None, None
+
+    def create_group(self, context, group):
+        """Creates a group.
+
+        :param context: the context of the caller.
+        :param group: the group object.
+        :returns: model_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.create_consistencygroup(context, group)
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a group.
+
+        :param context: the context of the caller.
+        :param group: the group object.
+        :param volumes: a list of volume objects in the group.
+        :returns: model_update, volumes_model_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.delete_consistencygroup(context, group, volumes)
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group.
+
+        :param context: the context of the caller.
+        :param group: the group object.
+        :param add_volumes: a list of volume objects to be added.
+        :param remove_volumes: a list of volume objects to be removed.
+        :returns: model_update, add_volumes_update, remove_volumes_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.update_consistencygroup(context, group, add_volumes,
+                                            remove_volumes)
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param context: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of Volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
+        :returns: model_update, volumes_model_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.create_consistencygroup_from_src(context, group, volumes,
+                                                     group_snapshot, snapshots,
+                                                     source_group, source_vols)
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot.
+
+        :param context: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be created.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.create_cgsnapshot(context, group_snapshot, snapshots)
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group_snapshot.
+
+        :param context: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be deleted.
+        :param snapshots: a list of snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+
+        # the driver treats a group as a CG internally.
+        # We proxy the calls to the CG api.
+        return self.delete_cgsnapshot(context, group_snapshot, snapshots)
 
     def _get_ig(self, name):
         try:
