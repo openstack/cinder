@@ -63,6 +63,7 @@ RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
 VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
 SYNCHRONIZED = 4
+SMI_VERSION_83 = 830
 
 
 class EMCVMAXUtils(object):
@@ -74,6 +75,7 @@ class EMCVMAXUtils(object):
     SLO = 'storagetype:slo'
     WORKLOAD = 'storagetype:workload'
     POOL = 'storagetype:pool'
+    DISABLECOMPRESSION = 'storagetype:disablecompression'
 
     def __init__(self, prtcl):
         if not pywbemAvailable:
@@ -1571,21 +1573,31 @@ class EMCVMAXUtils(object):
 
         return isValidSLO, isValidWorkload
 
-    def get_v3_storage_group_name(self, poolName, slo, workload):
+    def get_v3_storage_group_name(self, poolName, slo, workload,
+                                  isCompressionDisabled):
         """Determine default v3 storage group from extraSpecs.
 
         :param poolName: the poolName
         :param slo: the SLO string e.g Bronze
         :param workload: the workload string e.g DSS
+        :param isCompressionDisabled: is compression disabled
         :returns: storageGroupName
         """
         if slo and workload:
-            storageGroupName = ("OS-%(poolName)s-%(slo)s-%(workload)s-SG"
-                                % {'poolName': poolName,
-                                   'slo': slo,
-                                   'workload': workload})
+            if isCompressionDisabled:
+                postfix = 'CD-SG'
+            else:
+                postfix = 'SG'
+
+            storageGroupName = (
+                "OS-%(poolName)s-%(slo)s-%(workload)s-%(postfix)s"
+                % {'poolName': poolName,
+                   'slo': slo,
+                   'workload': workload,
+                   'postfix': postfix})
         else:
             storageGroupName = ("OS-no_SLO-SG")
+
         return storageGroupName
 
     def _get_fast_settings_from_storage_group(self, storageGroupInstance):
@@ -2611,7 +2623,8 @@ class EMCVMAXUtils(object):
         return rsdInstance
 
     def get_v3_default_sg_instance_name(
-            self, conn, poolName, slo, workload, storageSystemName):
+            self, conn, poolName, slo, workload, storageSystemName,
+            isCompressionDisabled):
         """Get the V3 default instance name
 
         :param conn: the connection to the ecom server
@@ -2619,10 +2632,11 @@ class EMCVMAXUtils(object):
         :param slo: the SLO
         :param workload: the workload
         :param storageSystemName: the storage system name
+        :param isCompressionDisabled: is compression disabled
         :returns: the storage group instance name
         """
         storageGroupName = self.get_v3_storage_group_name(
-            poolName, slo, workload)
+            poolName, slo, workload, isCompressionDisabled)
         controllerConfigService = (
             self.find_controller_configuration_service(
                 conn, storageSystemName))
@@ -2823,3 +2837,74 @@ class EMCVMAXUtils(object):
                       "%(igName)s.",
                       {'igName': foundinitiatorGroupInstanceName})
         return foundinitiatorGroupInstanceName
+
+    def is_all_flash(self, conn, array):
+        """Check if array is all flash.
+
+        :param conn: connection the ecom server
+        :param array:
+        :returns: True/False
+        """
+        smi_version = self.get_smi_version(conn)
+        if smi_version >= SMI_VERSION_83:
+            return self._is_all_flash(conn, array)
+        else:
+            return False
+
+    def _is_all_flash(self, conn, array):
+        """Check if array is all flash.
+
+        :param conn: connection the ecom server
+        :param array:
+        :returns: True/False
+        """
+        is_all_flash = False
+        arrayChassisInstanceNames = conn.EnumerateInstanceNames(
+            'Symm_ArrayChassis')
+        for arrayChassisInstanceName in arrayChassisInstanceNames:
+            tag = arrayChassisInstanceName['Tag']
+            if array in tag:
+                arrayChassisInstance = (
+                    conn.GetInstance(arrayChassisInstanceName))
+                propertiesList = arrayChassisInstance.properties.items()
+                for properties in propertiesList:
+                    if properties[0] == 'Model':
+                        cimProperties = properties[1]
+                        model = cimProperties.value
+                        if re.search('^VMAX\s?[0-9]+FX?$', model):
+                            is_all_flash = True
+        return is_all_flash
+
+    def is_compression_disabled(self, extraSpecs):
+        """Check is compression is to be disabled.
+
+        :param extraSpecs: extra specifications
+        :returns: dict -- a dictionary with masking view information
+        """
+        doDisableCompression = False
+        if self.DISABLECOMPRESSION in extraSpecs:
+            if self.str2bool(extraSpecs[self.DISABLECOMPRESSION]):
+                doDisableCompression = True
+        return doDisableCompression
+
+    def change_compression_type(self, isSourceCompressionDisabled, newType):
+        """Check if volume type have different compression types.
+
+        :param isCompressionDisabled: from source
+        :param newType: from target
+        :returns: boolean
+        """
+        extraSpecs = newType['extra_specs']
+        isTargetCompressionDisabled = self.is_compression_disabled(extraSpecs)
+        if isTargetCompressionDisabled == isSourceCompressionDisabled:
+            return False
+        else:
+            return True
+
+    def str2bool(self, value):
+        """Check if value is yes or true.
+
+        :param value - string value
+        :returns: boolean
+        """
+        return value.lower() in ("yes", "true")

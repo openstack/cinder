@@ -102,6 +102,10 @@ class CIM_IPProtocolEndpoint(dict):
     pass
 
 
+class Symm_ArrayChassis(dict):
+    pass
+
+
 class SE_ReplicationSettingData(dict):
     def __init__(self, *args, **kwargs):
         self['DefaultInstance'] = self.createInstance()
@@ -598,7 +602,7 @@ class EMCVMAXCommonData(object):
                       'controller': {'host': '10.00.00.00'},
                       'hostlunid': 3}
     test_ctxt = {}
-    new_type = {}
+    new_type = {'extra_specs': {}}
     diff = {}
     extra_specs = {'storagetype:pool': u'SRP_1',
                    'volume_backend_name': 'V3_BE',
@@ -781,6 +785,8 @@ class FakeEcomConnection(object):
             result = self._enum_storageSyncSvSv()
         elif name == 'Symm_SRPStoragePool':
             result = self._enum_srpstoragepool()
+        elif name == 'Symm_ArrayChassis':
+            result = self._enum_arraychassis()
         else:
             result = self._default_enum()
         return result
@@ -1857,6 +1863,20 @@ class FakeEcomConnection(object):
         iqnprotocolendpoint.path = iqnprotocolendpoint
         ipprotocolendpoints.append(iqnprotocolendpoint)
         return ipprotocolendpoints
+
+    def _enum_arraychassis(self):
+        arraychassiss = []
+        arraychassis = Symm_ArrayChassis()
+        arraychassis['CreationClassName'] = (
+            'Symm_ArrayChassis')
+        arraychassis['SystemName'] = self.data.storage_system_v3
+        arraychassis['Tag'] = self.data.storage_system_v3
+        cimproperty = Fake_CIMProperty()
+        cimproperty.value = 'VMAX250F'
+        properties = {u'Model': cimproperty}
+        arraychassis.properties = properties
+        arraychassiss.append(arraychassis)
+        return arraychassiss
 
     def _default_enum(self):
         names = []
@@ -7271,7 +7291,8 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
         self.driver.create_snapshot(self.data.test_snapshot_1_v3)
         utils = self.driver.common.provisionv3.utils
         utils.get_v3_default_sg_instance_name.assert_called_once_with(
-            self.conn, u'SRP_1', u'Bronze', u'DSS', u'SYMMETRIX+000195900551')
+            self.conn, u'SRP_1', u'Bronze', u'DSS', u'SYMMETRIX+000195900551',
+            False)
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -7518,7 +7539,7 @@ class EMCVMAXProvisionV3Test(test.TestCase):
             return_value=self.data.default_sg_instance_name)
         newstoragegroup = provisionv3.create_storage_group_v3(
             conn, controllerConfigService, groupName, srp, slo, workload,
-            extraSpecs)
+            extraSpecs, False)
         self.assertEqual(self.data.default_sg_instance_name, newstoragegroup)
 
     def test_create_element_replica(self):
@@ -8514,6 +8535,24 @@ class EMCVMAXUtilsTest(test.TestCase):
         issynched = self.driver.common.utils._is_sync_complete(conn, syncname)
         self.assertFalse(issynched)
 
+    def test_get_v3_storage_group_name_compression_disabled(self):
+        poolName = 'SRP_1'
+        slo = 'Diamond'
+        workload = 'DSS'
+        isCompressionDisabled = True
+        storageGroupName = self.driver.utils.get_v3_storage_group_name(
+            poolName, slo, workload, isCompressionDisabled)
+        self.assertEqual("OS-SRP_1-Diamond-DSS-CD-SG", storageGroupName)
+
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_smi_version',
+        return_value=831)
+    def test_is_all_flash(self, mock_version):
+        conn = FakeEcomConnection()
+        array = '000197200056'
+        self.assertTrue(self.driver.utils.is_all_flash(conn, array))
+
 
 class EMCVMAXCommonTest(test.TestCase):
     def setUp(self):
@@ -8877,6 +8916,140 @@ class EMCVMAXCommonTest(test.TestCase):
                          maskingViewDict['sgGroupName'])
         self.assertEqual('OS-fakehost-SRP_1-Diamond-DSS-I-MV',
                          maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_v3_compression(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'COMPRESSION_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS',
+                      'storagetype:disablecompression': 'True'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-SRP_1-Diamond-DSS-I-CD-SG',
+            maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-SRP_1-Diamond-DSS-I-CD-MV',
+            maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict_v3_compression_no_slo(self, mock_find_lun):
+        # Compression is no applicable when there is no slo
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'COMPRESSION_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': None,
+                      'storagetype:workload': None,
+                      'storagetype:disablecompression': 'True'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-No_SLO-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-No_SLO-I-MV', maskingViewDict['maskingViewName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_migrate_volume_v3',
+        return_value=True)
+    def test_slo_workload_migration_compression_enabled(self, mock_migrate):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'COMPRESSION_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS',
+                      'storagetype:disablecompression': 'True'}
+        new_type_extra_specs = extraSpecs.copy()
+        new_type_extra_specs.pop('storagetype:disablecompression', None)
+        new_type = {'extra_specs': new_type_extra_specs}
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeName = 'retype_compression'
+
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+
+        self.assertTrue(self.driver.common._slo_workload_migration(
+            volumeInstance, self.data.test_source_volume_1_v3,
+            self.data.test_host_1_v3, volumeName, 'retyping', new_type,
+            extraSpecs))
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_migrate_volume_v3',
+        return_value=True)
+    def test_slo_workload_migration_compression_disabled(self, mock_migrate):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'COMPRESSION_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        new_type_extra_specs = extraSpecs.copy()
+        new_type_extra_specs['storagetype:disablecompression'] = 'True'
+        new_type = {'extra_specs': new_type_extra_specs}
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeName = 'retype_compression'
+
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+
+        self.assertTrue(self.driver.common._slo_workload_migration(
+            volumeInstance, self.data.test_source_volume_1_v3,
+            self.data.test_host_1_v3, volumeName, 'retyping', new_type,
+            extraSpecs))
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_migrate_volume_v3',
+        return_value=True)
+    def test_slo_workload_migration_compression_false(self, mock_migrate):
+        # Cannot retype because both volume types have the same slo/workload
+        # and both are false for disable compression, one by omission
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'COMPRESSION_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        new_type_extra_specs = extraSpecs.copy()
+        new_type_extra_specs['storagetype:disablecompression'] = 'false'
+        new_type = {'extra_specs': new_type_extra_specs}
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeName = 'retype_compression'
+
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+
+        self.assertFalse(self.driver.common._slo_workload_migration(
+            volumeInstance, self.data.test_source_volume_1_v3,
+            self.data.test_host_1_v3, volumeName, 'retyping', new_type,
+            extraSpecs))
 
 
 class EMCVMAXProvisionTest(test.TestCase):

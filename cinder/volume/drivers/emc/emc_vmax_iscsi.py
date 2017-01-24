@@ -80,6 +80,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - MVs and SGs not reflecting correct protocol (bug #1640222)
               - Storage assisted volume migration via retype
                 (bp vmax-volume-migration)
+              - Support for compression on All Flash
 
     """
 

@@ -256,11 +256,13 @@ class EMCVMAXProvisionV3(object):
                    'syncType': syncType,
                    'source': sourceInstance.path})
         storageSystemName = sourceInstance['SystemName']
+        doDisableCompression = self.utils.is_compression_disabled(extraSpecs)
         __, __, sgInstanceName = (
             self.utils.get_v3_default_sg_instance_name(
                 conn, extraSpecs[self.utils.POOL],
                 extraSpecs[self.utils.SLO],
-                extraSpecs[self.utils.WORKLOAD], storageSystemName))
+                extraSpecs[self.utils.WORKLOAD], storageSystemName,
+                doDisableCompression))
         try:
             storageGroupInstance = conn.GetInstance(sgInstanceName)
         except Exception:
@@ -377,7 +379,8 @@ class EMCVMAXProvisionV3(object):
             extraSpecs, force)
 
     def create_storage_group_v3(self, conn, controllerConfigService,
-                                groupName, srp, slo, workload, extraSpecs):
+                                groupName, srp, slo, workload, extraSpecs,
+                                doDisableCompression):
         """Create the volume in the specified pool.
 
         :param conn: the connection information to the ecom server
@@ -387,28 +390,40 @@ class EMCVMAXProvisionV3(object):
         :param slo: the SLO (String)
         :param workload: the workload (String)
         :param extraSpecs: additional info
+        :param doDisableCompression: disable compression flag
         :returns: storageGroupInstanceName - storage group instance name
         """
         startTime = time.time()
 
         @lockutils.synchronized(groupName, "emc-sg-", True)
         def do_create_storage_group_v3():
-            if slo and workload:
-                rc, job = conn.InvokeMethod(
-                    'CreateGroup',
-                    controllerConfigService,
-                    GroupName=groupName,
-                    Type=self.utils.get_num(4, '16'),
-                    EMCSRP=srp,
-                    EMCSLO=slo,
-                    EMCWorkload=workload)
+            if doDisableCompression:
+                if slo and workload:
+                    rc, job = conn.InvokeMethod(
+                        'CreateGroup',
+                        controllerConfigService,
+                        GroupName=groupName,
+                        Type=self.utils.get_num(4, '16'),
+                        EMCSRP=srp,
+                        EMCSLO=slo,
+                        EMCWorkload=workload,
+                        EMCDisableCompression=True)
             else:
-                rc, job = conn.InvokeMethod(
-                    'CreateGroup',
-                    controllerConfigService,
-                    GroupName=groupName,
-                    Type=self.utils.get_num(4, '16'))
-
+                if slo and workload:
+                    rc, job = conn.InvokeMethod(
+                        'CreateGroup',
+                        controllerConfigService,
+                        GroupName=groupName,
+                        Type=self.utils.get_num(4, '16'),
+                        EMCSRP=srp,
+                        EMCSLO=slo,
+                        EMCWorkload=workload)
+                else:
+                    rc, job = conn.InvokeMethod(
+                        'CreateGroup',
+                        controllerConfigService,
+                        GroupName=groupName,
+                        Type=self.utils.get_num(4, '16'))
             if rc != 0:
                 rc, errordesc = self.utils.wait_for_job_complete(
                     conn, job, extraSpecs)
