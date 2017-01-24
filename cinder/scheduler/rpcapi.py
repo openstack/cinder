@@ -20,8 +20,6 @@ from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
 from cinder.common import constants
-from cinder import exception
-from cinder.i18n import _
 from cinder import rpc
 
 
@@ -148,13 +146,10 @@ class SchedulerAPI(rpc.RPCAPI):
         }
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
+    @rpc.assert_min_rpc_version('3.2')
     def extend_volume(self, ctxt, volume, new_size, reservations,
                       request_spec, filter_properties=None):
         cctxt = self._get_cctxt()
-        if not cctxt.can_send_version('3.2'):
-            msg = _('extend_volume requires cinder-scheduler '
-                    'RPC API version >= 3.2.')
-            raise exception.ServiceTooOld(msg)
 
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {
@@ -194,14 +189,9 @@ class SchedulerAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(fanout=True, version=version)
         cctxt.cast(ctxt, 'update_service_capabilities', **msg_args)
 
+    @rpc.assert_min_rpc_version('3.1')
     def notify_service_capabilities(self, ctxt, service_name,
                                     backend, capabilities, timestamp=None):
-        version = '3.1'
-        if not self.client.can_send_version(version):
-            msg = _('notify_service_capabilities requires cinder-scheduler '
-                    'RPC API version >= 3.1.')
-            raise exception.ServiceTooOld(msg)
-
         parameters = {'service_name': service_name,
                       'capabilities': capabilities}
         if self.client.can_send_version('3.5'):
@@ -209,32 +199,23 @@ class SchedulerAPI(rpc.RPCAPI):
             parameters.update(backend=backend,
                               timestamp=self.prepare_timestamp(timestamp))
         else:
+            version = '3.1'
             parameters['host'] = backend
 
         cctxt = self._get_cctxt(version=version)
         cctxt.cast(ctxt, 'notify_service_capabilities', **parameters)
 
+    @rpc.assert_min_rpc_version('3.4')
     def work_cleanup(self, ctxt, cleanup_request):
         """Generate individual service cleanup requests from user request."""
-        if not self.client.can_send_version('3.4'):
-            msg = _('One of cinder-scheduler services is too old to accept '
-                    'such request. Are you running mixed Newton-Ocata'
-                    'cinder-schedulers?')
-            raise exception.ServiceTooOld(msg)
-
         cctxt = self.client.prepare(version='3.4')
         # Response will have services that are receiving the cleanup request
         # and services that couldn't receive it since they are down.
         return cctxt.call(ctxt, 'work_cleanup',
                           cleanup_request=cleanup_request)
 
+    @rpc.assert_min_rpc_version('3.4')
     def do_cleanup(self, ctxt, cleanup_request):
         """Perform this scheduler's resource cleanup as per cleanup_request."""
-        if not self.client.can_send_version('3.4'):
-            msg = _('One of cinder-scheduler services is too old to accept '
-                    'such request. Are you running mixed Newton-Ocata'
-                    'cinder-schedulers?')
-            raise exception.ServiceTooOld(msg)
-
         cctxt = self.client.prepare(version='3.4')
         cctxt.cast(ctxt, 'do_cleanup', cleanup_request=cleanup_request)

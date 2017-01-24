@@ -14,8 +14,6 @@
 
 
 from cinder.common import constants
-from cinder import exception
-from cinder.i18n import _
 from cinder import objects
 from cinder import quota
 from cinder import rpc
@@ -407,13 +405,8 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'delete_group_snapshot',
                    group_snapshot=group_snapshot)
 
+    @rpc.assert_min_rpc_version('3.9')
     def attachment_update(self, ctxt, vref, connector, attachment_id):
-        if not self.client.can_send_version('3.9'):
-            msg = _('One of cinder-volume services is too old to accept '
-                    'such request. Are you running mixed Newton-Ocata'
-                    'cinder-schedulers?')
-            raise exception.ServiceTooOld(msg)
-
         version = self._compat_ver('3.9')
         cctxt = self._get_cctxt(vref.host, version=version)
         return cctxt.call(ctxt,
@@ -422,13 +415,8 @@ class VolumeAPI(rpc.RPCAPI):
                           connector=connector,
                           attachment_id=attachment_id)
 
+    @rpc.assert_min_rpc_version('3.9')
     def attachment_delete(self, ctxt, attachment_id, vref):
-        if not self.client.can_send_version('3.9'):
-            msg = _('One of cinder-volume services is too old to accept '
-                    'such request. Are you running mixed Newton-Ocata'
-                    'cinder-schedulers?')
-            raise exception.ServiceTooOld(msg)
-
         version = self._compat_ver('3.9')
         cctxt = self._get_cctxt(vref.host, version=version)
         return cctxt.call(ctxt,
@@ -436,13 +424,9 @@ class VolumeAPI(rpc.RPCAPI):
                           attachment_id=attachment_id,
                           vref=vref)
 
+    @rpc.assert_min_rpc_version('3.7')
     def do_cleanup(self, ctxt, cleanup_request):
         """Perform this service/cluster resource cleanup as requested."""
-        if not self.client.can_send_version('3.7'):
-            msg = _('One of cinder-volume services is too old to accept such '
-                    'a request. Are you running mixed Newton-Ocata services?')
-            raise exception.ServiceTooOld(msg)
-
         destination = cleanup_request.service_topic_queue
         cctxt = self._get_cctxt(destination, '3.7')
         # NOTE(geguileo): This call goes to do_cleanup code in

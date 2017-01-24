@@ -31,10 +31,11 @@ from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import importutils
 profiler = importutils.try_import('osprofiler.profiler')
+import six
 
 import cinder.context
 import cinder.exception
-from cinder.i18n import _LE, _LI
+from cinder.i18n import _, _LE, _LI
 from cinder import objects
 from cinder.objects import base
 
@@ -168,6 +169,28 @@ def get_notifier(service=None, host=None, publisher_id=None):
     if not publisher_id:
         publisher_id = "%s.%s" % (service, host or CONF.host)
     return NOTIFIER.prepare(publisher_id=publisher_id)
+
+
+def assert_min_rpc_version(min_ver, exc=None):
+    """Decorator to block RPC calls when version cap is lower than min_ver."""
+
+    if exc is None:
+        exc = cinder.exception.ServiceTooOld
+
+    def decorator(f):
+        @six.wraps(f)
+        def _wrapper(self, *args, **kwargs):
+            if not self.client.can_send_version(min_ver):
+                msg = _('One of %(binary)s services is too old to accept '
+                        '%(method)s request. Required RPC API version is '
+                        '%(version)s. Are you running mixed versions of '
+                        '%(binary)ss?') % {'binary': self.BINARY,
+                                           'version': min_ver,
+                                           'method': f.__name__}
+                raise exc(msg)
+            return f(self, *args, **kwargs)
+        return _wrapper
+    return decorator
 
 
 LAST_RPC_VERSIONS = {}
