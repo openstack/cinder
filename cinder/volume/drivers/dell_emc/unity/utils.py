@@ -18,6 +18,7 @@ from __future__ import division
 import contextlib
 import functools
 from oslo_log import log as logging
+from oslo_utils import fnmatch
 from oslo_utils import units
 import six
 
@@ -261,3 +262,25 @@ def get_backend_qos_specs(volume):
         QOS_MAX_IOPS: max_iops,
         QOS_MAX_BWS: max_bws,
     }
+
+
+def remove_empty(option, value_list):
+    if value_list is not None:
+        value_list = list(filter(None, map(str.strip, value_list)))
+        if not value_list:
+            raise exception.InvalidConfigurationValue(option=option,
+                                                      value=value_list)
+    return value_list
+
+
+def match_any(full, patterns):
+    matched = list(
+        filter(lambda x: any(fnmatch.fnmatchcase(x, p) for p in patterns),
+               full))
+    unmatched = list(
+        filter(lambda x: not any(fnmatch.fnmatchcase(x, p) for p in patterns),
+               full))
+    unmatched_patterns = list(
+        filter(lambda p: not any(fnmatch.fnmatchcase(x, p) for x in full),
+               patterns))
+    return matched, unmatched, unmatched_patterns

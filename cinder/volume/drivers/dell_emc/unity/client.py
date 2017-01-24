@@ -229,13 +229,21 @@ class UnityClient(object):
     def get_host(self, name):
         return self.system.get_host(name=name)
 
-    def get_iscsi_target_info(self):
+    def get_ethernet_ports(self):
+        return self.system.get_ethernet_port()
+
+    def get_iscsi_target_info(self, allowed_ports=None):
         portals = self.system.get_iscsi_portal()
+        portals = portals.shadow_copy(port_ids=allowed_ports)
         return [{'portal': utils.convert_ip_to_portal(p.ip_address),
                  'iqn': p.iscsi_node.name}
                 for p in portals]
 
-    def get_fc_target_info(self, host=None, logged_in_only=False):
+    def get_fc_ports(self):
+        return self.system.get_fc_port()
+
+    def get_fc_target_info(self, host=None, logged_in_only=False,
+                           allowed_ports=None):
         """Get the ports WWN of FC on array.
 
         :param host: the host to which the FC port is registered.
@@ -246,15 +254,18 @@ class UnityClient(object):
         This function removes the colons and returns the last 16 bits:
         5006016C09200925.
         """
-        ports = []
         if logged_in_only:
-            for host_initiator in host.fc_host_initiators:
-                paths = host_initiator.paths or []
-                for path in paths:
-                    if path.is_logged_in:
-                        ports.append(path.fc_port)
+            ports = []
+            for paths in filter(None, host.fc_host_initiators.paths):
+                paths = paths.shadow_copy(is_logged_in=True)
+                # `paths.fc_port` is just a list, not a UnityFcPortList,
+                # so use filter instead of shadow_copy here.
+                ports.extend(filter(lambda p: (allowed_ports is None or
+                                               p.get_id() in allowed_ports),
+                                    paths.fc_port))
         else:
-            ports = self.system.get_fc_port()
+            ports = self.get_fc_ports()
+            ports = ports.shadow_copy(port_ids=allowed_ports)
         return [po.wwn.replace(':', '')[16:] for po in ports]
 
     def create_io_limit_policy(self, name, max_iops=None, max_kbps=None):

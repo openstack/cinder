@@ -32,7 +32,9 @@ from cinder.volume.drivers.dell_emc.unity import adapter
 ########################
 class MockConfig(object):
     def __init__(self):
+        self.config_group = 'test_backend'
         self.unity_storage_pool_names = ['pool1', 'pool2']
+        self.unity_io_ports = None
         self.reserved_percentage = 5
         self.max_over_subscription_ratio = 300
         self.volume_backend_name = 'backend'
@@ -129,12 +131,13 @@ class MockClient(object):
             raise ex.DetachIsCalled()
 
     @staticmethod
-    def get_iscsi_target_info():
+    def get_iscsi_target_info(allowed_ports=None):
         return [{'portal': '1.2.3.4:1234', 'iqn': 'iqn.1-1.com.e:c.a.a0'},
                 {'portal': '1.2.3.5:1234', 'iqn': 'iqn.1-1.com.e:c.a.a1'}]
 
     @staticmethod
-    def get_fc_target_info(host=None, logged_in_only=False):
+    def get_fc_target_info(host=None, logged_in_only=False,
+                           allowed_ports=None):
         if host and host.name == 'no_target':
             ret = []
         else:
@@ -154,6 +157,15 @@ class MockClient(object):
         if size_gib <= 0:
             raise ex.ExtendLunError
 
+    @staticmethod
+    def get_fc_ports():
+        return test_client.MockResourceList(ids=['spa_iom_0_fc0',
+                                                 'spa_iom_0_fc1'])
+
+    @staticmethod
+    def get_ethernet_ports():
+        return test_client.MockResourceList(ids=['spa_eth0', 'spb_eth0'])
+
 
 class MockLookupService(object):
     @staticmethod
@@ -171,7 +183,9 @@ class MockLookupService(object):
 def mock_adapter(driver_clz):
     ret = driver_clz()
     ret._client = MockClient()
-    ret.do_setup(MockDriver(), MockConfig())
+    with mock.patch('cinder.volume.drivers.dell_emc.unity.adapter.'
+                    'CommonAdapter.validate_ports'):
+        ret.do_setup(MockDriver(), MockConfig())
     ret.lookup_service = MockLookupService()
     return ret
 
@@ -440,6 +454,26 @@ class CommonAdapterTest(unittest.TestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException, f)
 
+    def test_normalize_config(self):
+        config = MockConfig()
+        config.unity_storage_pool_names = ['  pool_1  ', '', '    ']
+        config.unity_io_ports = ['  spa_eth2  ', '', '   ']
+        normalized = self.adapter.normalize_config(config)
+        self.assertEqual(['pool_1'], normalized.unity_storage_pool_names)
+        self.assertEqual(['spa_eth2'], normalized.unity_io_ports)
+
+    def test_normalize_config_raise(self):
+        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
+                                     'unity_storage_pool_names'):
+            config = MockConfig()
+            config.unity_storage_pool_names = ['', '    ']
+            self.adapter.normalize_config(config)
+        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
+                                     'unity_io_ports'):
+            config = MockConfig()
+            config.unity_io_ports = ['', '   ']
+            self.adapter.normalize_config(config)
+
 
 class FCAdapterTest(unittest.TestCase):
     def setUp(self):
@@ -526,6 +560,32 @@ class FCAdapterTest(unittest.TestCase):
         self.assertDictEqual(target_map, data['initiator_target_map'])
         target_wwn = ['100000051e55a100', '100000051e55a121']
         self.assertListEqual(target_wwn, data['target_wwn'])
+
+    def test_validate_ports_whitelist_none(self):
+        ports = self.adapter.validate_ports(None)
+        self.assertEqual(set(('spa_iom_0_fc0', 'spa_iom_0_fc1')), set(ports))
+
+    def test_validate_ports(self):
+        ports = self.adapter.validate_ports(['spa_iom_0_fc0'])
+        self.assertEqual(set(('spa_iom_0_fc0',)), set(ports))
+
+    def test_validate_ports_asterisk(self):
+        ports = self.adapter.validate_ports(['spa*'])
+        self.assertEqual(set(('spa_iom_0_fc0', 'spa_iom_0_fc1')), set(ports))
+
+    def test_validate_ports_question_mark(self):
+        ports = self.adapter.validate_ports(['spa_iom_0_fc?'])
+        self.assertEqual(set(('spa_iom_0_fc0', 'spa_iom_0_fc1')), set(ports))
+
+    def test_validate_ports_no_matched(self):
+        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
+                                     'unity_io_ports'):
+            self.adapter.validate_ports(['spc_invalid'])
+
+    def test_validate_ports_unmatched_whitelist(self):
+        with self.assertRaisesRegexp(exception.InvalidConfigurationValue,
+                                     'unity_io_ports'):
+            self.adapter.validate_ports(['spa_iom*', 'spc_invalid'])
 
 
 class ISCSIAdapterTest(unittest.TestCase):
