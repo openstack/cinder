@@ -163,6 +163,8 @@ MAPPING = {
     'cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver',
     'cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver':
     'cinder.volume.drivers.dell_emc.xtremio.XtremIOFCDriver',
+    'cinder.volume.drivers.datera.DateraDriver':
+    'cinder.volume.drivers.datera.datera_iscsi.DateraDriver',
 }
 
 
