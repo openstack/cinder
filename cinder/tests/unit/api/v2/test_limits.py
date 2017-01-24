@@ -252,17 +252,18 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
         """Test successful GET request through middleware."""
         request = webob.Request.blank("/")
         response = request.get_response(self.app)
-        self.assertEqual(200, response.status_int)
+        self.assertEqual(http_client.OK, response.status_int)
 
     def test_limited_request_json(self):
         """Test a rate-limited (413) GET request through middleware."""
         request = webob.Request.blank("/")
         response = request.get_response(self.app)
-        self.assertEqual(200, response.status_int)
+        self.assertEqual(http_client.OK, response.status_int)
 
         request = webob.Request.blank("/")
         response = request.get_response(self.app)
-        self.assertEqual(413, response.status_int)
+        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE,
+                         response.status_int)
 
         self.assertIn('Retry-After', response.headers)
         retry_after = int(response.headers['Retry-After'])
@@ -574,17 +575,18 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         response = request.get_response(self.app)
 
         if "X-Wait-Seconds" in response.headers:
-            self.assertEqual(403, response.status_int)
+            self.assertEqual(http_client.FORBIDDEN, response.status_int)
             return response.headers["X-Wait-Seconds"]
 
-        self.assertEqual(204, response.status_int)
+        self.assertEqual(http_client.NO_CONTENT, response.status_int)
 
     def test_invalid_methods(self):
         """Only POSTs should work."""
         for method in ["GET", "PUT", "DELETE", "HEAD", "OPTIONS"]:
             request = webob.Request.blank("/", method=method)
             response = request.get_response(self.app)
-            self.assertEqual(405, response.status_int)
+            self.assertEqual(http_client.METHOD_NOT_ALLOWED,
+                             response.status_int)
 
     def test_good_url(self):
         delay = self._request("GET", "/something")

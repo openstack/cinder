@@ -17,6 +17,7 @@ import uuid
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -236,7 +237,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.method = 'DELETE'
         res = self.controller.delete(req, self.req_id, 'key2')
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
 
     def test_delete_nonexistent_snapshot(self):
         self.mock_object(cinder.db, 'snapshot_get',

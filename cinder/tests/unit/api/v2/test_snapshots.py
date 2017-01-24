@@ -16,6 +16,7 @@
 import ddt
 import mock
 from oslo_config import cfg
+from six.moves import http_client
 from six.moves.urllib import parse as urllib
 import webob
 
@@ -283,7 +284,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot_id = UUID
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
         resp = self.controller.delete(req, snapshot_id)
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def test_snapshot_delete_invalid_id(self):
         self.mock_object(volume.api.API, "delete_snapshot",
