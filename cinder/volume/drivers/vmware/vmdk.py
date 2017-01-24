@@ -2017,6 +2017,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param clone_type: type of the clone
         :param src_vsize: the size of the source volume
         """
+        if (clone_type == volumeops.LINKED_CLONE_TYPE and
+                volume.size > src_vsize):
+            # Volume extend will fail if the volume is a linked clone of
+            # another volume. Use full clone if extend is needed after cloning.
+            clone_type = volumeops.FULL_CLONE_TYPE
+            LOG.debug("Linked cloning not possible for creating volume "
+                      "since volume needs to be extended after cloning.",
+                      resource=volume)
+
         datastore = None
         host = None
         rp = None
