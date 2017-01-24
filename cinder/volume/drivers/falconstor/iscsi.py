@@ -69,7 +69,7 @@ class FSSISCSIDriver(fss_common.FalconstorBaseDriver,
 
         if multipath:
             if self._check_multipath():
-                fss_hosts.append(self.configuration.san_secondary_ip)
+                fss_hosts.append(self.configuration.fss_san_secondary_ip)
             else:
                 multipath = False
 

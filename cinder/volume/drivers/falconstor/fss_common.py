@@ -38,6 +38,10 @@ FSS_OPTS = [
     cfg.IntOpt('fss_pool',
                default='',
                help='FSS pool id in which FalconStor volumes are stored.'),
+    cfg.StrOpt('fss_san_secondary_ip',
+               default='',
+               help='Specifies FSS secondary management IP to be used '
+                    'if san_ip is invalid or becomes inaccessible.'),
     cfg.BoolOpt('fss_debug',
                 default=False,
                 help="Enable HTTP debugging to FSS"),
@@ -60,7 +64,7 @@ class FalconstorBaseDriver(san.SanDriver):
         self.proxy = rest_proxy.RESTProxy(self.configuration)
         self._backend_name = (
             self.configuration.safe_get('volume_backend_name') or 'FalconStor')
-        self._storage_protocol = 'iSCSI'
+        self._storage_protocol = ''
 
     def do_setup(self, context):
         self.proxy.do_setup()
@@ -97,7 +101,7 @@ class FalconstorBaseDriver(san.SanDriver):
 
     def _check_multipath(self):
         if self.configuration.use_multipath_for_image_xfer:
-            if not self.configuration.san_secondary_ip:
+            if not self.configuration.fss_san_secondary_ip:
                 msg = (_('The san_secondary_ip param is null.'))
                 raise exception.VolumeBackendAPIException(data=msg)
             output = self.proxy._check_iocluster_state()
@@ -191,7 +195,8 @@ class FalconstorBaseDriver(san.SanDriver):
         try:
             self.proxy.delete_vdev(volume)
         except rest_proxy.FSSHTTPError as err:
-            with excutils.save_and_reraise_exception(reraise=False):
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = False
                 LOG.warning(_LW("Volume deletion failed with message: %s"),
                             err.reason)
 
@@ -207,7 +212,8 @@ class FalconstorBaseDriver(san.SanDriver):
         try:
             self.proxy.delete_snapshot(snapshot)
         except rest_proxy.FSSHTTPError as err:
-            with excutils.save_and_reraise_exception(reraise=False):
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = False
                 LOG.error(
                     _LE("Snapshot deletion failed with message: %s"),
                     err.reason)
@@ -224,7 +230,8 @@ class FalconstorBaseDriver(san.SanDriver):
                 extend_volume_name = self.proxy._get_fss_volume_name(volume)
                 self.proxy.extend_vdev(extend_volume_name, snap_size, vol_size)
             except rest_proxy.FSSHTTPError as err:
-                with excutils.save_and_reraise_exception(reraise=False):
+                with excutils.save_and_reraise_exception() as ctxt:
+                    ctxt.reraise = False
                     LOG.error(_LE(
                         "Resizing %(id)s failed with message: %(msg)s. "
                         "Cleaning volume."), {'id': volume["id"],
