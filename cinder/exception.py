@@ -877,8 +877,11 @@ ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
 
 
 class CappedVersionUnknown(CinderException):
-    message = _('Unrecoverable Error: Versioned Objects in DB are capped to '
-                'unknown version %(version)s.')
+    message = _("Unrecoverable Error: Versioned Objects in DB are capped to "
+                "unknown version %(version)s. Most likely your environment "
+                "contains only new services and you're trying to start an "
+                "older one. Use `cinder-manage service list` to check that "
+                "and upgrade this service.")
 
 
 class VolumeGroupNotFound(CinderException):
