@@ -20,9 +20,11 @@ import os.path
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import re
 import six
 
 from cinder import exception
+from cinder import utils as cinder_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import fields
 from cinder.volume.drivers.emc import emc_vmax_fast
@@ -56,6 +58,7 @@ ARRAY = 'storagetype:array'
 FASTPOLICY = 'storagetype:fastpolicy'
 BACKENDNAME = 'volume_backend_name'
 COMPOSITETYPE = 'storagetype:compositetype'
+MULTI_POOL_SUPPORT = 'MultiPoolSupport'
 STRIPECOUNT = 'storagetype:stripecount'
 MEMBERCOUNT = 'storagetype:membercount'
 STRIPED = 'striped'
@@ -79,7 +82,11 @@ emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
                default=CINDER_EMC_CONFIG_FILE,
                help='use this file for cinder emc plugin '
-                    'config data'), ]
+                    'config data'),
+    cfg.StrOpt('multi_pool_support',
+               default=False,
+               help='use this value to specify'
+                    'multi-pool support for VMAX3')]
 
 CONF.register_opts(emc_opts)
 
@@ -128,6 +135,7 @@ class EMCVMAXCommon(object):
         self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
         self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
         self.version = version
+        self.multiPoolSupportEnabled = False
         self._gather_info()
 
     def _gather_info(self):
@@ -138,7 +146,11 @@ class EMCVMAXCommon(object):
         else:
             self.pool_info['config_file'] = (
                 self.configuration.safe_get('cinder_emc_config_file'))
-
+        if hasattr(self.configuration, 'multi_pool_support'):
+            tempMultiPoolSupported = cinder_utils.get_bool_param(
+                'multi_pool_support', self.configuration)
+            if tempMultiPoolSupported:
+                self.multiPoolSupportEnabled = True
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
         self.pool_info['max_over_subscription_ratio'] = (
@@ -151,9 +163,75 @@ class EMCVMAXCommon(object):
             {'emcConfigFileName': self.pool_info['config_file'],
              'backendName': self.pool_info['backend_name']})
 
-        self.pool_info['arrays_info'] = (
-            self.utils.parse_file_to_get_array_map(
-                self.pool_info['config_file']))
+        arrayInfoList = self.utils.parse_file_to_get_array_map(
+            self.pool_info['config_file'])
+        # Assuming that there is a single array info object always
+        # Check if Multi pool support is enabled
+        if self.multiPoolSupportEnabled is False:
+            self.pool_info['arrays_info'] = arrayInfoList
+        else:
+            finalArrayInfoList = self._get_slo_workload_combinations(
+                arrayInfoList)
+            self.pool_info['arrays_info'] = finalArrayInfoList
+
+    def _get_slo_workload_combinations(self, arrayInfoList):
+        """Method to query the array for SLO and Workloads.
+
+        Takes the arrayInfoList object and generates a set which has
+        all available SLO & Workload combinations
+
+        :param arrayInfoList:
+        :return: finalArrayInfoList
+        :raises: Exception
+        """
+        try:
+            sloWorkloadSet = set()
+            # Pattern for extracting the SLO & Workload String
+            pattern = re.compile("^-S[A-Z]+")
+            for arrayInfo in arrayInfoList:
+                self._set_ecom_credentials(arrayInfo)
+                isV3 = self.utils.isArrayV3(self.conn,
+                                            arrayInfo['SerialNumber'])
+                # Only if the array is VMAX3
+                if isV3:
+                    poolInstanceName, storageSystemStr = (
+                        self._find_pool_in_array(arrayInfo['SerialNumber'],
+                                                 arrayInfo['PoolName'], isV3))
+                    # Get the pool capability
+                    storagePoolCapability = (
+                        self.provisionv3.get_storage_pool_capability(
+                            self.conn, poolInstanceName))
+                    # Get the pool settings
+                    storagePoolSettings = self.conn.AssociatorNames(
+                        storagePoolCapability,
+                        ResultClass='CIM_storageSetting')
+                    for storagePoolSetting in storagePoolSettings:
+                        settingInstanceID = storagePoolSetting['InstanceID']
+                        settingInstanceDetails = settingInstanceID.split('+')
+                        sloWorkloadString = settingInstanceDetails[2]
+                        if pattern.match(sloWorkloadString):
+                            length = len(sloWorkloadString)
+                            tempSloWorkloadString = (
+                                sloWorkloadString[2:length - 1])
+                            sloWorkloadSet.add(tempSloWorkloadString)
+            # Assuming that there is always a single arrayInfo object
+            finalArrayInfoList = []
+            for sloWorkload in sloWorkloadSet:
+                # Doing a shallow copy will work as we are modifying
+                # only strings
+                temparrayInfo = arrayInfoList[0].copy()
+                slo, workload = sloWorkload.split(':')
+                if temparrayInfo['SLO'] is None:
+                    temparrayInfo['SLO'] = slo
+                    temparrayInfo['Workload'] = workload
+                finalArrayInfoList.append(temparrayInfo)
+        except Exception:
+            exceptionMessage = (_(
+                "Unable to get the SLO/Workload combinations from the array"))
+            LOG.exception(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        return finalArrayInfoList
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX) volume from a pre-existing storage pool.
@@ -230,14 +308,12 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         LOG.debug("Entering create_volume_from_snapshot.")
-        snapshot['host'] = volume['host']
-        extraSpecs = self._initial_setup(snapshot)
+        extraSpecs = self._initial_setup(snapshot, host=volume['host'])
         self.conn = self._get_ecom_connection()
         snapshotInstance = self._find_lun(snapshot)
 
         self._sync_check(snapshotInstance, snapshot['name'], extraSpecs)
 
-        snapshot['host'] = volume['host']
         return self._create_cloned_volume(volume, snapshot, extraSpecs, False)
 
     def create_cloned_volume(self, cloneVolume, sourceVolume):
@@ -285,8 +361,7 @@ class EMCVMAXCommon(object):
         """
         LOG.info(_LI("Delete Snapshot: %(snapshotName)s."),
                  {'snapshotName': snapshot['name']})
-        snapshot['host'] = volume['host']
-        self._delete_snapshot(snapshot)
+        self._delete_snapshot(snapshot, volume['host'])
 
     def _remove_members(self, controllerConfigService,
                         volumeInstance, connector, extraSpecs):
@@ -662,6 +737,10 @@ class EMCVMAXCommon(object):
     def update_volume_stats(self):
         """Retrieve stats info."""
         pools = []
+        # Dictionary to hold the VMAX3 arrays for which the SRP details
+        # have already been queried
+        # This only applies to the arrays for which WLP is not enabled
+        arrays = {}
         backendName = self.pool_info['backend_name']
         max_oversubscription_ratio = (
             self.pool_info['max_over_subscription_ratio'])
@@ -669,17 +748,43 @@ class EMCVMAXCommon(object):
         array_max_over_subscription = None
         array_reserve_percent = None
         for arrayInfo in self.pool_info['arrays_info']:
+            alreadyQueried = False
             self._set_ecom_credentials(arrayInfo)
             # Check what type of array it is
-            isV3 = self.utils.isArrayV3(self.conn, arrayInfo['SerialNumber'])
+            isV3 = self.utils.isArrayV3(self.conn,
+                                        arrayInfo['SerialNumber'])
             if isV3:
-                (location_info, total_capacity_gb, free_capacity_gb,
-                 provisioned_capacity_gb,
-                 array_reserve_percent) = self._update_srp_stats(arrayInfo)
-                poolName = ("%(slo)s+%(poolName)s+%(array)s"
-                            % {'slo': arrayInfo['SLO'],
-                               'poolName': arrayInfo['PoolName'],
-                               'array': arrayInfo['SerialNumber']})
+                # Report only the SLO name in the pool name for
+                # backward compatibility
+                if self.multiPoolSupportEnabled is False:
+                    (location_info, total_capacity_gb, free_capacity_gb,
+                     provisioned_capacity_gb,
+                     array_reserve_percent,
+                     wlpEnabled) = self._update_srp_stats(arrayInfo)
+                    poolName = ("%(slo)s+%(poolName)s+%(array)s"
+                                % {'slo': arrayInfo['SLO'],
+                                   'poolName': arrayInfo['PoolName'],
+                                   'array': arrayInfo['SerialNumber']})
+                else:
+                    # Add both SLO & Workload name in the pool name
+                    # Query the SRP only once if WLP is not enabled
+                    # Only insert the array details in the dict once
+                    if arrayInfo['SerialNumber'] not in arrays:
+                        (location_info, total_capacity_gb, free_capacity_gb,
+                         provisioned_capacity_gb,
+                         array_reserve_percent,
+                         wlpEnabled) = self._update_srp_stats(arrayInfo)
+                    else:
+                        alreadyQueried = True
+                    poolName = ("%(slo)s+%(workload)s+%(poolName)s+%(array)s"
+                                % {'slo': arrayInfo['SLO'],
+                                   'workload': arrayInfo['Workload'],
+                                   'poolName': arrayInfo['PoolName'],
+                                   'array': arrayInfo['SerialNumber']})
+                    if wlpEnabled is False:
+                        arrays[arrayInfo['SerialNumber']] = (
+                            [total_capacity_gb, free_capacity_gb,
+                             provisioned_capacity_gb, array_reserve_percent])
             else:
                 # This is V2
                 (location_info, total_capacity_gb, free_capacity_gb,
@@ -689,28 +794,64 @@ class EMCVMAXCommon(object):
                             % {'poolName': arrayInfo['PoolName'],
                                'array': arrayInfo['SerialNumber']})
 
-            pool = {'pool_name': poolName,
-                    'total_capacity_gb': total_capacity_gb,
-                    'free_capacity_gb': free_capacity_gb,
-                    'provisioned_capacity_gb': provisioned_capacity_gb,
-                    'QoS_support': False,
-                    'location_info': location_info,
-                    'consistencygroup_support': True,
-                    'thin_provisioning_support': True,
-                    'thick_provisioning_support': False,
-                    'max_over_subscription_ratio': max_oversubscription_ratio
-                    }
+            if (alreadyQueried
+                    is True and self.multiPoolSupportEnabled is True):
+                # The dictionary will only have one key per VMAX3
+                # Construct the location info
+                temp_location_info = (
+                    ("%(arrayName)s#%(poolName)s#%(slo)s#%(workload)s"
+                     % {'arrayName': arrayInfo['SerialNumber'],
+                        'poolName': arrayInfo['PoolName'],
+                        'slo': arrayInfo['SLO'],
+                        'workload': arrayInfo['Workload']}))
+                pool = {'pool_name': poolName,
+                        'total_capacity_gb':
+                            arrays[arrayInfo['SerialNumber']][0],
+                        'free_capacity_gb':
+                            arrays[arrayInfo['SerialNumber']][1],
+                        'provisioned_capacity_gb':
+                            arrays[arrayInfo['SerialNumber']][2],
+                        'QoS_support': True,
+                        'location_info': temp_location_info,
+                        'consistencygroup_support': True,
+                        'thin_provisioning_support': True,
+                        'thick_provisioning_support': False,
+                        'max_over_subscription_ratio':
+                            max_oversubscription_ratio
+                        }
+                if (
+                    arrays[arrayInfo['SerialNumber']][3] and
+                    (arrays[arrayInfo['SerialNumber']][3] >
+                        reservedPercentage)):
+                    pool['reserved_percentage'] = (
+                        arrays[arrayInfo['SerialNumber']][3])
+                else:
+                    pool['reserved_percentage'] = reservedPercentage
+            else:
+                pool = {'pool_name': poolName,
+                        'total_capacity_gb': total_capacity_gb,
+                        'free_capacity_gb': free_capacity_gb,
+                        'provisioned_capacity_gb': provisioned_capacity_gb,
+                        'QoS_support': False,
+                        'location_info': location_info,
+                        'consistencygroup_support': True,
+                        'thin_provisioning_support': True,
+                        'thick_provisioning_support': False,
+                        'max_over_subscription_ratio':
+                            max_oversubscription_ratio
+                        }
+                if (
+                    array_reserve_percent and
+                        (array_reserve_percent > reservedPercentage)):
+                    pool['reserved_percentage'] = array_reserve_percent
+                else:
+                    pool['reserved_percentage'] = reservedPercentage
+
             if array_max_over_subscription:
                 pool['max_over_subscription_ratio'] = (
                     self.utils.override_ratio(
                         max_oversubscription_ratio,
                         array_max_over_subscription))
-
-            if array_reserve_percent and (
-                    array_reserve_percent > reservedPercentage):
-                pool['reserved_percentage'] = array_reserve_percent
-            else:
-                pool['reserved_percentage'] = reservedPercentage
             pools.append(pool)
 
         data = {'vendor_name': "EMC",
@@ -736,10 +877,11 @@ class EMCVMAXCommon(object):
         :returns: remainingManagedSpaceGbs
         :returns: provisionedManagedSpaceGbs
         :returns: array_reserve_percent
+        :returns: wlpEnabled
         """
 
         (totalManagedSpaceGbs, remainingManagedSpaceGbs,
-         provisionedManagedSpaceGbs, array_reserve_percent) = (
+         provisionedManagedSpaceGbs, array_reserve_percent, wlpEnabled) = (
             self.provisionv3.get_srp_pool_stats(self.conn, arrayInfo))
 
         LOG.info(_LI(
@@ -761,7 +903,7 @@ class EMCVMAXCommon(object):
 
         return (location_info, totalManagedSpaceGbs,
                 remainingManagedSpaceGbs, provisionedManagedSpaceGbs,
-                array_reserve_percent)
+                array_reserve_percent, wlpEnabled)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.
@@ -1338,13 +1480,30 @@ class EMCVMAXCommon(object):
         extraSpecs = self.utils.get_volumetype_extraspecs(volume, volumeTypeId)
         qosSpecs = self.utils.get_volumetype_qosspecs(volume, volumeTypeId)
         configGroup = None
-
         # If there are no extra specs then the default case is assumed.
         if extraSpecs:
             configGroup = self.configuration.config_group
         configurationFile = self._register_config_file_from_config_group(
             configGroup)
+        self.multiPoolSupportEnabled = (
+            self._get_multi_pool_support_enabled_flag())
+        extraSpecs[MULTI_POOL_SUPPORT] = self.multiPoolSupportEnabled
         return extraSpecs, configurationFile, qosSpecs
+
+    def _get_multi_pool_support_enabled_flag(self):
+        """Reads the configuration fpr multi pool support flag.
+
+        :returns: MultiPoolSupportEnabled flag
+        """
+
+        confString = (
+            self.configuration.safe_get('multi_pool_support'))
+        retVal = False
+        stringTrue = "True"
+        if confString:
+            if confString.lower() == stringTrue.lower():
+                retVal = True
+        return retVal
 
     def _get_ecom_connection(self):
         """Get the ecom connection.
@@ -1774,7 +1933,7 @@ class EMCVMAXCommon(object):
                         % {'ip_port': ip_port})
         self.conn = self._get_ecom_connection()
 
-    def _initial_setup(self, volume, volumeTypeId=None):
+    def _initial_setup(self, volume, volumeTypeId=None, host=None):
         """Necessary setup to accumulate the relevant information.
 
         The volume object has a host in which we can parse the
@@ -1794,13 +1953,17 @@ class EMCVMAXCommon(object):
             extraSpecs, configurationFile, qosSpecs = (
                 self._set_config_file_and_get_extra_specs(
                     volume, volumeTypeId))
-
-            pool = self._validate_pool(volume)
+            pool = self._validate_pool(volume, extraSpecs=extraSpecs,
+                                       host=host)
             LOG.debug("Pool returned is %(pool)s.",
                       {'pool': pool})
             arrayInfo = self.utils.parse_file_to_get_array_map(
                 configurationFile)
-            poolRecord = self.utils.extract_record(arrayInfo, pool)
+            if arrayInfo is not None:
+                if extraSpecs['MultiPoolSupport'] is True:
+                    poolRecord = arrayInfo[0]
+                else:
+                    poolRecord = self.utils.extract_record(arrayInfo, pool)
 
             if not poolRecord:
                 exceptionMessage = (_(
@@ -2148,7 +2311,6 @@ class EMCVMAXCommon(object):
              'sourceName': sourceName})
 
         self.conn = self._get_ecom_connection()
-
         sourceInstance = self._find_lun(sourceVolume)
         storageSystem = sourceInstance['SystemName']
         repServCapabilityInstanceName = (
@@ -2267,7 +2429,7 @@ class EMCVMAXCommon(object):
             cloneDict, cloneName, storageConfigService, storageSystemName,
             fastPolicyName, extraSpecs)
 
-    def _delete_volume(self, volume):
+    def _delete_volume(self, volume, host=None):
         """Helper function to delete the specified volume.
 
         :param volume: volume object to be deleted
@@ -2278,7 +2440,7 @@ class EMCVMAXCommon(object):
         rc = -1
         errorRet = (rc, volumeName)
 
-        extraSpecs = self._initial_setup(volume)
+        extraSpecs = self._initial_setup(volume, host=host)
         self.conn = self._get_ecom_connection()
 
         volumeInstance = self._find_lun(volume)
@@ -2454,7 +2616,7 @@ class EMCVMAXCommon(object):
 
         return numVolumesMapped
 
-    def _delete_snapshot(self, snapshot):
+    def _delete_snapshot(self, snapshot, host=None):
         """Helper function to delete the specified snapshot.
 
         :param snapshot: snapshot object to be deleted
@@ -2465,7 +2627,7 @@ class EMCVMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         # Delete the target device.
-        rc, snapshotname = self._delete_volume(snapshot)
+        rc, snapshotname = self._delete_volume(snapshot, host)
         LOG.info(_LI("Leaving delete_snapshot: %(ssname)s  Return code: "
                      "%(rc)lu."),
                  {'ssname': snapshotname,
@@ -2486,7 +2648,7 @@ class EMCVMAXCommon(object):
         cgName = self._update_consistency_group_name(group)
         volumeTypeId = group['volume_type_id'].replace(",", "")
 
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+        extraSpecs = self._initial_setup(None, volumeTypeId=volumeTypeId)
 
         _poolInstanceName, storageSystem = (
             self._get_pool_and_storage_system(extraSpecs))
@@ -2522,8 +2684,8 @@ class EMCVMAXCommon(object):
                  {'group': group['id']})
 
         cgName = self._update_consistency_group_name(group)
-
         modelUpdate = {}
+        volumes_model_update = {}
         if not self.conn:
             self.conn = self._get_ecom_connection()
 
@@ -2547,7 +2709,6 @@ class EMCVMAXCommon(object):
 
             memberInstanceNames = self._get_members_of_replication_group(
                 cgInstanceName)
-
             self.provision.delete_consistency_group(self.conn,
                                                     replicationService,
                                                     cgInstanceName, cgName,
@@ -3177,23 +3338,9 @@ class EMCVMAXCommon(object):
                 "belonging to any storage group."),
                 {'volumeName': volumeName})
         else:
-            self.provision.remove_device_from_storage_group(
-                self.conn,
-                controllerConfigService,
-                foundStorageGroupInstanceName,
-                volumeInstance.path,
-                volumeName, extraSpecs)
-            # Check that it has been removed.
-            sgFromVolRemovedInstanceName = (
-                self.utils.wrap_get_storage_group_from_volume(
-                    self.conn, volumeInstance.path, defaultSgName))
-            if sgFromVolRemovedInstanceName is not None:
-                LOG.error(_LE(
-                    "Volume : %(volumeName)s has not been "
-                    "removed from source storage group %(storageGroup)s."),
-                    {'volumeName': volumeName,
-                     'storageGroup': sgFromVolRemovedInstanceName})
-                return False
+            self.masking.remove_and_reset_members(
+                self.conn, controllerConfigService, volumeInstance,
+                volumeName, extraSpecs, None, False)
 
         storageGroupName = self.utils.get_v3_storage_group_name(
             poolName, targetSlo, targetWorkload)
@@ -3385,8 +3532,33 @@ class EMCVMAXCommon(object):
         :param poolRecord: pool record
         :returns: dict -- the extra specifications dictionary
         """
-        extraSpecs[SLO] = poolRecord['SLO']
-        extraSpecs[WORKLOAD] = poolRecord['Workload']
+        if extraSpecs['MultiPoolSupport'] is True:
+            sloFromExtraSpec = None
+            workloadFromExtraSpec = None
+            if 'pool_name' in extraSpecs:
+                try:
+                    poolDetails = extraSpecs['pool_name'].split('+')
+                    sloFromExtraSpec = poolDetails[0]
+                    workloadFromExtraSpec = poolDetails[1]
+                except KeyError:
+                    LOG.error(_LE("Error parsing SLO, workload from "
+                                  "the provided extra_specs."))
+            else:
+                # Throw an exception as it is compulsory to have
+                # pool_name in the extra specs
+                exceptionMessage = (_(
+                    "Pool_name is not present in the extraSpecs "
+                    "and MultiPoolSupport is enabled"))
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+            # If MultiPoolSupport is enabled, we completely
+            # ignore any entry for SLO & Workload in the poolRecord
+            extraSpecs[SLO] = sloFromExtraSpec
+            extraSpecs[WORKLOAD] = workloadFromExtraSpec
+        else:
+            extraSpecs[SLO] = poolRecord['SLO']
+            extraSpecs[WORKLOAD] = poolRecord['Workload']
+
         extraSpecs[ISV3] = True
         extraSpecs = self._set_common_extraSpecs(extraSpecs, poolRecord)
         LOG.debug("Pool is: %(pool)s "
@@ -4021,7 +4193,7 @@ class EMCVMAXCommon(object):
                                     extraSpecs)
         return rc
 
-    def _validate_pool(self, volume):
+    def _validate_pool(self, volume, extraSpecs=None, host=None):
         """Get the pool from volume['host'].
 
         There may be backward compatibiliy concerns, so putting in a
@@ -4030,6 +4202,7 @@ class EMCVMAXCommon(object):
         assume it was created pre 'Pool Aware Scheduler' feature.
 
         :param volume: the volume Object
+        :param extraSpecs: extraSpecs provided in the volume type
         :returns: string -- pool
         :raises: VolumeBackendAPIException
         """
@@ -4037,6 +4210,9 @@ class EMCVMAXCommon(object):
         # Volume is None in CG ops.
         if volume is None:
             return pool
+
+        if host is None:
+            host = volume['host']
 
         # This check is for all operations except a create.
         # On a create provider_location is None
@@ -4049,10 +4225,21 @@ class EMCVMAXCommon(object):
         except KeyError:
             return pool
         try:
-            pool = volume_utils.extract_host(volume['host'], 'pool')
+            pool = volume_utils.extract_host(host, 'pool')
             if pool:
                 LOG.debug("Pool from volume['host'] is %(pool)s.",
                           {'pool': pool})
+                # Check if it matches with the poolname if it is provided
+                #  in the extra specs
+                if extraSpecs is not None:
+                    if 'pool_name' in extraSpecs:
+                        if extraSpecs['pool_name'] != pool:
+                            exceptionMessage = (_(
+                                "Pool from volume['host'] %(host)s doesn't"
+                                " match with pool_name in extraSpecs.")
+                                % {'host': volume['host']})
+                            raise exception.VolumeBackendAPIException(
+                                data=exceptionMessage)
             else:
                 exceptionMessage = (_(
                     "Pool from volume['host'] %(host)s not found.")
