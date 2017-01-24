@@ -387,7 +387,20 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
                    '"%s"' % pool, '-iogrp', six.text_type(opts['iogrp']),
                    '-size', size, '-unit', units] + params
-        return self.run_ssh_check_created(ssh_cmd)
+        try:
+            return self.run_ssh_check_created(ssh_cmd)
+        except Exception as ex:
+            if hasattr(ex, 'msg') and 'CMMVC6372W' in ex.msg:
+                vdisk = self.lsvdisk(name)
+                if vdisk:
+                    LOG.warning(_LW('CMMVC6372W The virtualized storage '
+                                    'capacity that the cluster is using is '
+                                    'approaching the virtualized storage '
+                                    'capacity that is licensed.'))
+                    return vdisk['id']
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Failed to create vdisk %(vol)s.'),
+                              {'vol': name})
 
     def rmvdisk(self, vdisk, force=True):
         ssh_cmd = ['svctask', 'rmvdisk']

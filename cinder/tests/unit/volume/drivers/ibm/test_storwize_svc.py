@@ -5674,6 +5674,7 @@ class StorwizeHelpersTestCase(test.TestCase):
             self.assertTrue(self.storwize_svc_common.replication_licensed())
 
 
+@ddt.ddt
 class StorwizeSSHTestCase(test.TestCase):
     def setUp(self):
         super(StorwizeSSHTestCase, self).setUp()
@@ -5713,6 +5714,28 @@ class StorwizeSSHTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.storwize_ssh.mkvdiskhostmap,
                               'HOST3', '9999', 511, True)
+
+    @ddt.data((exception.VolumeBackendAPIException(data='CMMVC6372W'), None),
+              (exception.VolumeBackendAPIException(data='CMMVC6372W'),
+               {'name': 'fakevol', 'id': '0', 'uid': '0', 'IO_group_id': '0',
+                'IO_group_name': 'fakepool'}),
+              (exception.VolumeBackendAPIException(data='error'), None))
+    @ddt.unpack
+    def test_mkvdisk_with_warning(self, run_ssh_check, lsvol):
+        opt = {'iogrp': 0}
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'run_ssh_check_created',
+                               side_effect=run_ssh_check),\
+            mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdisk',
+                              return_value=lsvol):
+            if lsvol:
+                ret = self.storwize_ssh.mkvdisk('fakevol', '1', 'gb',
+                                                'fakepool', opt, [])
+                self.assertEqual('0', ret)
+            else:
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.storwize_ssh.mkvdisk,
+                                  'fakevol', '1', 'gb', 'fakepool', opt, [])
 
 
 class StorwizeSVCReplicationTestCase(test.TestCase):
