@@ -289,7 +289,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type_id: volume_type_id
    - project_id: project_id_path
 
 
@@ -335,7 +335,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type_id: volume_type_id
    - project_id: project_id_path
    - encryption_id: encryption_id
 
@@ -358,7 +358,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type_id: volume_type_id
    - project_id: project_id_path
    - encryption: encryption
    - key_size: key_size
@@ -411,7 +411,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - volume_type: volume_type
+   - volume_type_id: volume_type_id
    - project_id: project_id_path
    - encryption_id: encryption_id
    - encryption: encryption

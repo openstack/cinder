@@ -69,6 +69,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - tenant_id: tenant_id
    - description: description_6
    - availability_zone: availability_zone
    - volume_types: volume_types_2
