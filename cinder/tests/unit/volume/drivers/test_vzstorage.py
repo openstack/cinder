@@ -314,3 +314,39 @@ class VZStorageTestCase(test.TestCase):
             drv._delete.assert_any_call(
                 self._FAKE_VOLUME_PATH)
             drv._delete.assert_any_call(fake_vol_info)
+
+    def test_delete_snapshot_ploop(self):
+        fake_snap_info = {
+            'active': self._FAKE_VOLUME_NAME,
+            self._FAKE_SNAPSHOT_ID: self._FAKE_SNAPSHOT_PATH,
+        }
+        self._vz_driver.get_volume_format = mock.Mock(
+            return_value=vzstorage.DISK_FORMAT_PLOOP)
+        self._vz_driver._read_info_file = mock.Mock(
+            return_value=fake_snap_info
+        )
+        self._vz_driver._get_desc_path = mock.Mock(
+            return_value='%s/DiskDescriptor.xml' % self._FAKE_VOLUME_PATH
+        )
+        self._vz_driver.delete_snapshot(self.snap)
+        self._vz_driver._execute.assert_called_once_with(
+            'ploop', 'snapshot-delete', '-u',
+            '{%s}' % self._FAKE_SNAPSHOT_ID,
+            '%s/DiskDescriptor.xml' % self._FAKE_VOLUME_PATH,
+            run_as_root=True
+        )
+
+    @mock.patch('cinder.volume.drivers.remotefs.RemoteFSSnapDriverBase.'
+                '_delete_snapshot')
+    def test_delete_snapshot_qcow2_invalid_snap_info(self,
+                                                     mock_delete_snapshot):
+        fake_snap_info = {
+            'active': self._FAKE_VOLUME_NAME,
+        }
+        self._vz_driver.get_volume_format = mock.Mock(
+            return_value=vzstorage.DISK_FORMAT_QCOW2)
+        self._vz_driver._read_info_file = mock.Mock(
+            return_value=fake_snap_info
+        )
+        self._vz_driver.delete_snapshot(self.snap)
+        self.assertFalse(mock_delete_snapshot.called)
