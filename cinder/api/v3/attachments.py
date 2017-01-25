@@ -152,9 +152,15 @@ class AttachmentsController(wsgi.Controller):
                 explanation=_("Must specify 'instance_uuid' "
                               "to create attachment."))
 
+        volume_uuid = body['attachment'].get('volume_uuid', None)
+        if not volume_uuid:
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Must specify 'volume_uuid' "
+                              "to create attachment."))
+
         volume_ref = objects.Volume.get_by_id(
             context,
-            body['attachment']['volume_uuid'])
+            volume_uuid)
         connector = body['attachment'].get('connector', None)
         err_msg = None
         try:
