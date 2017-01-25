@@ -21,6 +21,7 @@ import math
 import mock
 from oslo_utils import units
 import requests
+from six.moves import http_client
 from six import string_types
 
 from cinder import context
@@ -148,8 +149,8 @@ class MockResponse(object):
 
 
 class SynoSessionTestCase(test.TestCase):
-    @mock.patch('requests.post', return_value=
-                MockResponse({'data': {'sid': 'sid'}, 'success': True}, 200))
+    @mock.patch('requests.post', return_value=MockResponse(
+        {'data': {'sid': 'sid'}, 'success': True}, http_client.OK))
     def setUp(self, _mock_post):
         super(SynoSessionTestCase, self).setUp()
 
@@ -190,12 +191,12 @@ class SynoSessionTestCase(test.TestCase):
                     FAKE_API: out
                 },
                 'success': True
-            }, 200),
+            }, http_client.OK),
             MockResponse({
                 'data': {
                     FAKE_API: out
                 }
-            }, 200),
+            }, http_client.OK),
         ])
 
         result = self.session.query(FAKE_API)
@@ -289,18 +290,21 @@ class SynoAPIRequestTestCase(test.TestCase):
         self.request._encode_param = mock.Mock(side_effect=lambda x: x)
         self.request.new_session = mock.Mock()
         requests.post = mock.Mock(side_effect=[
-            MockResponse({'success': True}, 200),
-            MockResponse({'error': {'code': 101}, 'success': False}, 200),
-            MockResponse({'error': {'code': 101}}, 200),
-            MockResponse({}, 500)
+            MockResponse({'success': True}, http_client.OK),
+            MockResponse({'error': {'code': http_client.SWITCHING_PROTOCOLS},
+                          'success': False}, http_client.OK),
+            MockResponse({'error': {'code': http_client.SWITCHING_PROTOCOLS}},
+                         http_client.OK),
+            MockResponse({}, http_client.INTERNAL_SERVER_ERROR)
         ])
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
         self.assertDictEqual({'success': True}, result)
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
-        self.assertDictEqual({'error': {'code': 101}, 'success': False},
-                             result)
+        self.assertDictEqual(
+            {'error': {'code': http_client.SWITCHING_PROTOCOLS},
+             'success': False}, result)
 
         self.assertRaises(exception.MalformedResponse,
                           self.request.request,
@@ -309,7 +313,8 @@ class SynoAPIRequestTestCase(test.TestCase):
                           version)
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
-        self.assertDictEqual({'http_status': 500}, result)
+        self.assertDictEqual(
+            {'http_status': http_client.INTERNAL_SERVER_ERROR}, result)
 
     @mock.patch.object(common.LOG, 'debug')
     def test_request_auth_error(self, _log):
@@ -322,7 +327,7 @@ class SynoAPIRequestTestCase(test.TestCase):
                                   MockResponse({
                                       'error': {'code': 105},
                                       'success': False
-                                  }, 200))
+                                  }, http_client.OK))
 
         self.assertRaises(exception.SynoAuthError,
                           self.request.request,
@@ -1141,7 +1146,7 @@ class SynoCommonTestCase(test.TestCase):
         version = 1
         resp = {}
         bad_resp = {
-            'http_status': 500
+            'http_status': http_client.INTERNAL_SERVER_ERROR
         }
         expected = copy.deepcopy(resp)
         expected.update(api_info={'api': api,

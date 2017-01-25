@@ -21,6 +21,7 @@ import ddt
 import json
 import mock
 from simplejson import scanner
+from six.moves import http_client
 
 from cinder import exception
 from cinder import test
@@ -48,11 +49,13 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.my_client._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
 
         fake_response = mock.Mock()
-        fake_response.status_code = 200
+        fake_response.status_code = http_client.OK
         self.my_client.invoke_service = mock.Mock(return_value=fake_response)
         self.my_client.api_version = '01.52.9000.1'
 
-    @ddt.data(200, 201, 203, 204)
+    @ddt.data(http_client.OK, http_client.CREATED,
+              http_client.NON_AUTHORITATIVE_INFORMATION,
+              http_client.NO_CONTENT)
     def test_eval_response_success(self, status_code):
         fake_resp = mock.Mock()
         fake_resp.status_code = status_code
@@ -76,7 +79,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
               ('unknown', None))
     @ddt.unpack
     def test_eval_response_422(self, ret_code, exc_regex):
-        status_code = 422
+        status_code = http_client.UNPROCESSABLE_ENTITY
         fake_resp = mock.Mock()
         fake_resp.text = "fakeError"
         fake_resp.json = mock.Mock(return_value={'retcode': ret_code})
@@ -89,7 +92,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
             self.assertEqual(status_code, exc.status_code)
 
     def test_eval_response_424(self):
-        status_code = 424
+        status_code = http_client.FAILED_DEPENDENCY
         fake_resp = mock.Mock()
         fake_resp.status_code = status_code
         fake_resp.text = "Fake Error Message"
@@ -567,7 +570,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.assertEqual(fake_volume, volume)
 
     def test_list_volume_v2_not_found(self):
-        status_code = 404
+        status_code = http_client.NOT_FOUND
         url = client.RestClient.RESOURCE_PATHS['ssc_volume']
         self.my_client.features = mock.Mock()
         self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
@@ -586,7 +589,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                                           mock.ANY})
 
     def test_list_volume_v2_failure(self):
-        status_code = 422
+        status_code = http_client.UNPROCESSABLE_ENTITY
         url = client.RestClient.RESOURCE_PATHS['ssc_volume']
         self.my_client.features = mock.Mock()
         self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
@@ -1145,7 +1148,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         fake_response = mock.Mock()
         fake_response.json = mock.Mock(side_effect=scanner.JSONDecodeError(
             '', '{}', 1))
-        fake_response.status_code = 424
+        fake_response.status_code = http_client.FAILED_DEPENDENCY
         fake_response.text = "Fake Response"
         self.mock_object(self.my_client, 'invoke_service',
                          return_value=fake_response)

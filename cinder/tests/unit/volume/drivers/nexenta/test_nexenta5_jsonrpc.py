@@ -23,6 +23,7 @@ from mock import patch
 from oslo_serialization import jsonutils
 import requests
 from requests import adapters
+from six.moves import http_client
 
 from cinder import exception
 from cinder import test
@@ -33,7 +34,7 @@ USERNAME = 'user'
 PASSWORD = 'pass'
 
 
-def gen_response(code=200, json=None):
+def gen_response(code=http_client.OK, json=None):
     r = requests.Response()
     r.headers['Content-Type'] = 'application/json'
     r.encoding = 'utf8'
@@ -80,7 +81,7 @@ class TestNexentaJSONProxyAuth(test.TestCase):
                 # an url is being requested for the second time
                 if self.counter == 1:
                     # make the fake backend respond 401
-                    r = gen_response(401)
+                    r = gen_response(http_client.UNAUTHORIZED)
                     r._content = ''
                     r.connection = mock.Mock()
                     r_ = gen_response(json={'data': []})
@@ -147,31 +148,36 @@ class TestNexentaJSONProxy(test.TestCase):
     def test_post(self):
         random_dict = {'data': uuid.uuid4().hex}
         rnd_url = 'some/random/url'
-        self._mount_adapter(rnd_url, self.gen_adapter(201, random_dict))
+        self._mount_adapter(rnd_url, self.gen_adapter(http_client.CREATED,
+                                                      random_dict))
         self.assertEqual(random_dict, self.nef.post(rnd_url))
 
     def test_delete(self):
         random_dict = {'data': uuid.uuid4().hex}
         rnd_url = 'some/random/url'
-        self._mount_adapter(rnd_url, self.gen_adapter(201, random_dict))
+        self._mount_adapter(rnd_url, self.gen_adapter(http_client.CREATED,
+                                                      random_dict))
         self.assertEqual(random_dict, self.nef.delete(rnd_url))
 
     def test_put(self):
         random_dict = {'data': uuid.uuid4().hex}
         rnd_url = 'some/random/url'
-        self._mount_adapter(rnd_url, self.gen_adapter(201, random_dict))
+        self._mount_adapter(rnd_url, self.gen_adapter(http_client.CREATED,
+                                                      random_dict))
         self.assertEqual(random_dict, self.nef.put(rnd_url))
 
     def test_get_200(self):
         random_dict = {'data': uuid.uuid4().hex}
         rnd_url = 'some/random/url'
-        self._mount_adapter(rnd_url, self.gen_adapter(200, random_dict))
+        self._mount_adapter(rnd_url, self.gen_adapter(http_client.OK,
+                                                      random_dict))
         self.assertEqual(random_dict, self.nef.get(rnd_url))
 
     def test_get_201(self):
         random_dict = {'data': uuid.uuid4().hex}
         rnd_url = 'some/random/url'
-        self._mount_adapter(rnd_url, self.gen_adapter(201, random_dict))
+        self._mount_adapter(rnd_url, self.gen_adapter(http_client.CREATED,
+                                                      random_dict))
         self.assertEqual(random_dict, self.nef.get(rnd_url))
 
     def test_get_500(self):
@@ -185,7 +191,7 @@ class TestNexentaJSONProxy(test.TestCase):
                     'code': 'NEF_ERROR',
                     'message': 'Some error'
                 }
-                r = gen_response(500, json)
+                r = gen_response(http_client.INTERNAL_SERVER_ERROR, json)
                 r.request = request
                 return r
 
@@ -201,7 +207,7 @@ class TestNexentaJSONProxy(test.TestCase):
                 super(TestAdapter, self).__init__()
 
             def send(self, request, *args, **kwargs):
-                r = gen_response(404)
+                r = gen_response(http_client.NOT_FOUND)
                 r._content = 'Page Not Found'
                 r.request = request
                 return r
@@ -219,7 +225,7 @@ class TestNexentaJSONProxy(test.TestCase):
                 super(TestAdapter, self).__init__()
 
             def send(self, request, *args, **kwargs):
-                r = gen_response(404)
+                r = gen_response(http_client.NOT_FOUND)
                 r.request = request
                 return r
 
@@ -241,11 +247,12 @@ class TestNexentaJSONProxy(test.TestCase):
                 json = {
                     'links': [{'href': redirect_url}]
                 }
-                r = gen_response(202, json)
+                r = gen_response(http_client.ACCEPTED, json)
                 r.request = request
                 return r
 
         rnd_url = 'some/random/url'
         self._mount_adapter(rnd_url, RedirectTestAdapter())
-        self._mount_adapter(redirect_url, self.gen_adapter(201))
+        self._mount_adapter(redirect_url, self.gen_adapter(
+            http_client.CREATED))
         self.assertIsNone(self.nef.get(rnd_url))

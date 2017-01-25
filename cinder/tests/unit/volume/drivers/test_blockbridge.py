@@ -76,7 +76,7 @@ def common_mocks(f):
             inst.mock_response = mock.Mock()
 
             inst.mock_response.read.return_value = '{}'
-            inst.mock_response.status = 200
+            inst.mock_response.status = http_client.OK
 
             inst.mock_conn.request.return_value = True
             inst.mock_conn.getresponse.return_value = inst.mock_response
@@ -150,28 +150,28 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
     @common_mocks
     def test_http_mock_success(self):
         self.mock_response.read.return_value = '{}'
-        self.mock_response.status = 200
+        self.mock_response.status = http_client.OK
 
         conn = http_client.HTTPSConnection('whatever', None)
         conn.request('GET', '/blah', '{}', {})
         rsp = conn.getresponse()
 
         self.assertEqual('{}', rsp.read())
-        self.assertEqual(200, rsp.status)
+        self.assertEqual(http_client.OK, rsp.status)
 
     @common_mocks
     def test_http_mock_failure(self):
         mock_body = '{"error": "no results matching query", "status": 413}'
 
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         conn = http_client.HTTPSConnection('whatever', None)
         conn.request('GET', '/blah', '{}', {})
         rsp = conn.getresponse()
 
         self.assertEqual(mock_body, rsp.read())
-        self.assertEqual(413, rsp.status)
+        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE, rsp.status)
 
     @common_mocks
     def test_cfg_api_host(self):
@@ -264,7 +264,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         mock_body = '{"message": "no results matching query", "status": 413}'
 
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                "no results matching query",
@@ -310,7 +310,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         mock_body = '{"message": "over quota", "status": 413}'
 
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                "over quota",
@@ -363,7 +363,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         mock_body = '{"message": "over quota", "status": 413}'
 
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         src_vref = dict(
             name='cloned_volume_source',
@@ -409,7 +409,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
     def test_extend_volume_overquota(self):
         mock_body = '{"message": "over quota", "status": 413}'
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                "over quota",
@@ -459,7 +459,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
     def test_create_snapshot_overquota(self):
         mock_body = '{"message": "over quota", "status": 413}'
         self.mock_response.read.return_value = mock_body
-        self.mock_response.status = 413
+        self.mock_response.status = http_client.REQUEST_ENTITY_TOO_LARGE
 
         self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                "over quota",
@@ -501,7 +501,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         mock_generate_password.return_value = 'mock-password-abcdef123456'
 
         self.mock_response.read.return_value = FIXTURE_VOL_EXPORT_OK
-        self.mock_response.status = 200
+        self.mock_response.status = http_client.OK
 
         props = self.driver.initialize_connection(self.volume, self.connector)
 
@@ -563,7 +563,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
 
     @common_mocks
     def test_get_volume_stats_forbidden(self):
-        self.mock_response.status = 403
+        self.mock_response.status = http_client.FORBIDDEN
         self.assertRaisesRegex(exception.NotAuthorized,
                                "Insufficient privileges",
                                self.driver.get_volume_stats,
@@ -571,7 +571,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
 
     @common_mocks
     def test_get_volume_stats_unauthorized(self):
-        self.mock_response.status = 401
+        self.mock_response.status = http_client.UNAUTHORIZED
         self.assertRaisesRegex(exception.NotAuthorized,
                                "Invalid credentials",
                                self.driver.get_volume_stats,

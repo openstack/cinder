@@ -15,6 +15,7 @@
 
 
 import mock
+from six.moves import http_client
 import sys
 
 from cinder import context
@@ -215,7 +216,7 @@ class NimbleDriverBaseTestCase(test.TestCase):
                     configuration=configuration)
                 mock_login_response = mock_urllib2.post.return_value
                 mock_login_response = mock.MagicMock()
-                mock_login_response.status_code.return_value = 200
+                mock_login_response.status_code.return_value = http_client.OK
                 mock_login_response.json.return_value = (
                     FAKE_LOGIN_POST_RESPONSE)
                 self.driver.do_setup(context.get_admin_context())
@@ -237,7 +238,7 @@ class NimbleDriverBaseTestCase(test.TestCase):
                     configuration=configuration)
                 mock_login_response = mock_urllib2.post.return_value
                 mock_login_response = mock.MagicMock()
-                mock_login_response.status_code.return_value = 200
+                mock_login_response.status_code.return_value = http_client.OK
                 mock_login_response.json.return_value = (
                     FAKE_LOGIN_POST_RESPONSE)
                 self.driver.do_setup(context.get_admin_context())

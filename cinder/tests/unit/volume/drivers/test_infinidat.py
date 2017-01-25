@@ -21,6 +21,7 @@ import mock
 from oslo_utils import units
 import requests
 import six
+from six.moves import http_client
 
 from cinder import exception
 from cinder import test
@@ -129,7 +130,7 @@ class InfiniboxDriverTestCase(test.TestCase):
             response.status_code = result
             response.raw = six.BytesIO(six.b(json.dumps(dict())))
         else:
-            response.status_code = 200
+            response.status_code = http_client.OK
             response.raw = six.BytesIO(six.b(json.dumps(dict(result=result))))
         return response
 
@@ -225,7 +226,8 @@ class InfiniboxDriverTestCase(test.TestCase):
         self.driver.delete_volume(test_volume)
 
     def test_delete_volume_doesnt_exist_on_delete(self):
-        self._responses["DELETE"][VOLUME_URL + APPROVAL] = 404
+        self._responses["DELETE"][VOLUME_URL + APPROVAL] = (
+            http_client.NOT_FOUND)
         # due to a possible race condition (get+delete is not atomic) the
         # GET may return the volume but it may still be deleted before
         # the DELETE request
@@ -309,7 +311,8 @@ class InfiniboxDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(test_snapshot)
 
     def test_delete_snapshot_doesnt_exist_on_delete(self):
-        self._responses["DELETE"][SNAPSHOT_URL + APPROVAL] = 404
+        self._responses["DELETE"][SNAPSHOT_URL + APPROVAL] = (
+            http_client.NOT_FOUND)
         # due to a possible race condition (get+delete is not atomic) the
         # GET may return the snapshot but it may still be deleted before
         # the DELETE request
