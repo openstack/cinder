@@ -315,7 +315,9 @@ class VZStorageTestCase(test.TestCase):
                 self._FAKE_VOLUME_PATH)
             drv._delete.assert_any_call(fake_vol_info)
 
-    def test_delete_snapshot_ploop(self):
+    @mock.patch('cinder.volume.drivers.remotefs.RemoteFSSnapDriverBase.'
+                '_write_info_file')
+    def test_delete_snapshot_ploop(self, _mock_write_info_file):
         fake_snap_info = {
             'active': self._FAKE_VOLUME_NAME,
             self._FAKE_SNAPSHOT_ID: self._FAKE_SNAPSHOT_PATH,
