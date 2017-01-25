@@ -696,7 +696,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                  return_value=
                                  {'nimble:perfpol-name': 'default',
                                   'nimble:encryption': 'yes',
-                                  'nimble:multi-initiator': 'false'}))
+                                  'nimble:multi-initiator': 'false',
+                                  'nimble:iops-limit': '1024'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host')
@@ -744,7 +745,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                  'volume_size': src_volume['size'],
                                  'display_name': volume['display_name'],
                                  'display_description': ''},
-                                True, False, 'iSCSI')]
+                                True, False, 'iSCSI', 'default')]
 
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -1033,7 +1034,8 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                  'volume_size': 1},
                 False,
                 False,
-                'iSCSI'),
+                'iSCSI',
+                'default'),
             mock.call.edit_vol('clone-testvolume',
                                {'data': {'size': 2048,
                                          'snap_limit': sys.maxsize,
