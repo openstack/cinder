@@ -5540,12 +5540,14 @@ def migrate_add_message_prefix(context, max_count, force=False):
         messages = (model_query(context, models.Message.id, session=session).
                     filter(~models.Message.event_id.like(prefix + '%')).
                     limit(max_count))
-
+        ids = [msg[0] for msg in messages.all()]
         count_all = messages.count()
-        count_hit = (model_query(context, models.Message, session=session).
-                     filter(models.Message.id.in_(messages.as_scalar())).
-                     update({'event_id': prefix + models.Message.event_id},
-                            synchronize_session=False))
+        count_hit = 0
+        if ids:
+            count_hit = (model_query(context, models.Message, session=session).
+                         filter(models.Message.id.in_(ids)).
+                         update({'event_id': prefix + models.Message.event_id},
+                                synchronize_session=False))
 
     return count_all, count_hit
 
