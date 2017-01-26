@@ -12,7 +12,7 @@ Shows, updates, and deletes quotas for a tenant.
 Show quota details for user (v1)
 ================================
 
-.. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}/detail/{user_id}
+.. rest_method::  GET /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}/detail/{user_id}
 
 Shows details for quotas for a tenant and user.
 
@@ -24,6 +24,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
    - user_id: user_id
 
@@ -109,7 +110,7 @@ Response Example
 Show quotas (v1)
 ================
 
-.. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}
+.. rest_method::  GET /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
 Shows quotas for a tenant.
 
@@ -123,6 +124,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
    - usage: usage
 
@@ -160,7 +162,7 @@ Response Example
 Update quotas (v1)
 ==================
 
-.. rest_method::  PUT /v1/{tenant_id}/os-quota-sets/{tenant_id}
+.. rest_method::  PUT /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
 Updates quotas for a tenant.
 
@@ -188,6 +190,7 @@ Request
    - fixed_ips: fixed_ips
    - injected_file_path_bytes: injected_file_path_bytes
    - security_groups: security_groups
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
 
 Request Example
@@ -230,7 +233,7 @@ Response Example
 Delete quotas (v1)
 ==================
 
-.. rest_method::  DELETE /v1/{tenant_id}/os-quota-sets/{tenant_id}
+.. rest_method::  DELETE /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
 Deletes quotas for a tenant so the quotas revert to default values.
 
@@ -242,6 +245,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
 
 Response Example
@@ -253,7 +257,7 @@ Response Example
 Show quotas for user (v1)
 =========================
 
-.. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
+.. rest_method::  GET /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
 Enables an admin user to show quotas for a tenant and user.
 
@@ -267,6 +271,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
    - user_id: user_id
 
@@ -307,7 +312,7 @@ Response Example
 Update quotas for user (v1)
 ===========================
 
-.. rest_method::  POST /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
+.. rest_method::  POST /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
 Updates quotas for a tenant and user.
 
@@ -335,6 +340,7 @@ Request
    - fixed_ips: fixed_ips
    - injected_file_path_bytes: injected_file_path_bytes
    - security_groups: security_groups
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
    - user_id: user_id
 
@@ -378,7 +384,7 @@ Response Example
 Delete quotas for user (v1)
 ===========================
 
-.. rest_method::  DELETE /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
+.. rest_method::  DELETE /v1/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
 Deletes quotas for a user so that the quotas revert to default values.
 
@@ -391,6 +397,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - admin_tenant_id: admin_tenant_id
    - tenant_id: tenant_id
    - user_id: user_id
 

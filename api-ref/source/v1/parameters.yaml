@@ -7,6 +7,12 @@ x-openstack-request-id:
   type: string
 
 # variables in path
+admin_tenant_id:
+  description: |
+    The UUID of the administrative tenant.
+  in: path
+  required: false
+  type: string
 snapshot_id_1:
   description: |
     The UUID of the snapshot.
