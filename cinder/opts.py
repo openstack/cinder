@@ -135,8 +135,10 @@ from cinder.volume.drivers.ibm import flashsystem_fc as \
 from cinder.volume.drivers.ibm import flashsystem_iscsi as \
     cinder_volume_drivers_ibm_flashsystemiscsi
 from cinder.volume.drivers.ibm import gpfs as cinder_volume_drivers_ibm_gpfs
-from cinder.volume.drivers.ibm import ibm_storage as \
-    cinder_volume_drivers_ibm_ibmstorage
+from cinder.volume.drivers.ibm.ibm_storage import ds8k_proxy as \
+    cinder_volume_drivers_ibm_ibm_storage_ds8kproxy
+from cinder.volume.drivers.ibm.ibm_storage import ibm_storage as \
+    cinder_volume_drivers_ibm_ibm_storage_ibmstorage
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
@@ -310,7 +312,8 @@ def list_opts():
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
-                cinder_volume_drivers_ibm_ibmstorage.driver_opts,
+                cinder_volume_drivers_ibm_ibm_storage_ds8kproxy.ds8k_opts,
+                cinder_volume_drivers_ibm_ibm_storage_ibmstorage.driver_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon.
                 storwize_svc_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvcfc.

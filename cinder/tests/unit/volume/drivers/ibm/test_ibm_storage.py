@@ -25,7 +25,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.ibm import ibm_storage
+from cinder.volume.drivers.ibm.ibm_storage import ibm_storage
 from cinder.volume import volume_types
 
 FAKE = "fake"
@@ -439,7 +439,7 @@ class IBMStorageVolumeDriverTest(test.TestCase):
         return_size = self.driver.manage_existing_get_size(
             VOLUME,
             existing_ref)
-        self.assertEqual(return_size, MANAGED_VOLUME['size'])
+        self.assertEqual(MANAGED_VOLUME['size'], return_size)
 
         # cover both case, whether driver renames the volume or not
         self.driver.delete_volume(VOLUME)
@@ -463,7 +463,7 @@ class IBMStorageVolumeDriverTest(test.TestCase):
         self.driver.create_volume(MANAGED_VOLUME)
         existing_ref = {'source-name': MANAGED_VOLUME['name']}
         self.driver.manage_existing(VOLUME, existing_ref)
-        self.assertEqual(VOLUME['size'], MANAGED_VOLUME['size'])
+        self.assertEqual(MANAGED_VOLUME['size'], VOLUME['size'])
 
         # cover both case, whether driver renames the volume or not
         self.driver.delete_volume(VOLUME)
@@ -492,10 +492,7 @@ class IBMStorageVolumeDriverTest(test.TestCase):
             CONTEXT,
             replicated_volume
         )
-        self.assertEqual(
-            model_update['replication_status'],
-            'active'
-        )
+        self.assertEqual('active', model_update['replication_status'])
 
     def test_get_replication_status_fail_on_exception(self):
         """Test that get_replication_status fails on exception"""
