@@ -769,6 +769,27 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(2, mock_delete_replications.call_count)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_delete_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_replication_specs',
+                       return_value={'enabled': True,
+                                     'live': False})
+    def test_delete_volume_migrating(self,
+                                     mock_get_replication_specs,
+                                     mock_delete_volume,
+                                     mock_delete_replications,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        volume = {'id': fake.VOLUME_ID, '_name_id': fake.VOLUME2_ID,
+                  'provider_id': '12345.100', 'migration_status': 'deleting'}
+        self.driver.delete_volume(volume)
+        mock_delete_volume.assert_called_once_with(fake.VOLUME2_ID, None)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_delete_live_volume')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume',
