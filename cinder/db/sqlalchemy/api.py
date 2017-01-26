@@ -754,12 +754,11 @@ def _dict_with_extra_specs_if_authorized(context, inst_type_query):
     """
 
     inst_type_dict = dict(inst_type_query)
-    if not is_admin_context(context):
-        del(inst_type_dict['extra_specs'])
-    else:
-        extra_specs = {x['key']: x['value']
-                       for x in inst_type_query['extra_specs']}
-        inst_type_dict['extra_specs'] = extra_specs
+
+    extra_specs = {x['key']: x['value']
+                   for x in inst_type_query['extra_specs']}
+    inst_type_dict['extra_specs'] = extra_specs
+
     return inst_type_dict
 
 
