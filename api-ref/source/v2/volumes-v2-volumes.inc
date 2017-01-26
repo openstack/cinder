@@ -88,7 +88,7 @@ Response Parameters
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
    - metadata: metadata
-   - status: status
+   - status: status_3
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid
@@ -197,7 +197,7 @@ Response Parameters
    - size: size
    - user_id: user_id
    - metadata: metadata
-   - status: status
+   - status: status_3
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid
@@ -302,7 +302,7 @@ Response Parameters
    - os-vol-tenant-attr:tenant_id: os-vol-tenant-attr:tenant_id
    - os-vol-mig-status-attr:migstat: os-vol-mig-status-attr:migstat
    - metadata: metadata
-   - status: status
+   - status: status_3
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid
@@ -375,7 +375,7 @@ Response Parameters
    - size: size
    - user_id: user_id
    - metadata: metadata
-   - status: status
+   - status: status_3
    - description: description
    - multiattach: multiattach
    - source_volid: source_volid

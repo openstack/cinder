@@ -52,7 +52,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
    - description: description
    - created_at: created_at
@@ -103,7 +103,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - description: description
    - created_at: created_at
    - name: name
@@ -143,7 +143,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - description: description
    - created_at: created_at
    - name: name
@@ -185,7 +185,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
    - description: description
    - created_at: created_at
@@ -268,7 +268,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - os-extended-snapshot-attributes:progress: os-extended-snapshot-attributes:progress
    - description: description
    - created_at: created_at
@@ -323,7 +323,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_2
    - description: description
    - created_at: created_at
    - name: name

@@ -110,7 +110,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_8
    - description: description
    - availability_zone: availability_zone
    - created_at: created_at
@@ -211,7 +211,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_8
    - description: description
    - availability_zone: availability_zone
    - created_at: created_at

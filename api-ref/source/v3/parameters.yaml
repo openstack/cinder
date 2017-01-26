@@ -1582,6 +1582,18 @@ status_6:
   in: body
   required: false
   type: string
+status_7:
+  description: |
+    The ``status`` of the generic group snapshot.
+  in: body
+  required: false
+  type: string
+status_8:
+  description: |
+    The status of the generic group.
+  in: body
+  required: true
+  type: string
 storage_protocol:
   description: |
     The storage back end for the back-end volume. For
