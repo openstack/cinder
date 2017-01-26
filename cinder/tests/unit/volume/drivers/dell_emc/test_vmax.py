@@ -604,6 +604,13 @@ class VMAXCommonData(object):
                              'BlockSize': block_size
                              }
 
+    test_snapshot_re = {'name': 'mySnap',
+                        'id': '1',
+                        'status': 'available',
+                        'host': fake_host,
+                        'volume': test_source_volume,
+                        'provider_location': six.text_type(provider_location)}
+
     test_CG = consistencygroup.ConsistencyGroup(
         context=None, name='myCG1', id='12345abcde',
         volume_type_id='abc', status=fields.ConsistencyGroupStatus.AVAILABLE)
@@ -9378,13 +9385,13 @@ class EMCV3ReplicationTest(test.TestCase):
     def setUp(self):
         self.data = VMAXCommonData()
 
-        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
-
         self.tempdir = tempfile.mkdtemp()
         super(EMCV3ReplicationTest, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file_v3()
         self.addCleanup(self._cleanup)
+        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
+
         self.set_configuration()
 
     def set_configuration(self):
@@ -9864,7 +9871,40 @@ class EMCV3ReplicationTest(test.TestCase):
         rep_data = model_update['replication_driver_data']
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          rep_status)
+        self.assertTrue(isinstance(rep_data, six.text_type))
         self.assertIsNotNone(rep_data)
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        'setup_volume_replication',
+        return_value=(fields.ReplicationStatus.ENABLED,
+                      {'provider_location':
+                          VMAXCommonData.provider_location}))
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_initial_setup',
+        return_value=(VMAXCommonData.extra_specs_is_re))
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_sync_check')
+    @mock.patch.object(
+        common.VMAXCommon,
+        'add_volume_to_replication_group')
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_create_cloned_volume',
+        return_value=VMAXCommonData.provider_location)
+    def test_create_replicated_volume_from_snap_success(
+            self, mock_create, mock_add, mock_sync_check, mock_setup,
+            mock_vol_rep):
+        model_update = self.driver.create_volume_from_snapshot(
+            self.data.test_volume_re, self.data.test_snapshot_re)
+        rep_status = model_update['replication_status']
+        rep_data = model_update['replication_driver_data']
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         rep_status)
+        self.assertTrue(isinstance(rep_data, six.text_type))
+        self.assertTrue(rep_data)
 
     @mock.patch.object(
         volume_types,
