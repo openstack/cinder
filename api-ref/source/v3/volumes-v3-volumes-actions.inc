@@ -73,7 +73,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_3
    - migration_status: migration_status
    - os-reset_status: os-reset_status
    - attach_status: attach_status

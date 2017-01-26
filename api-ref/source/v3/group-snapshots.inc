@@ -54,7 +54,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_7
    - description: description
    - created_at: created_at
    - group_id: group_id
@@ -92,7 +92,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_7
    - description: description
    - created_at: created_at
    - group_id: group_id
@@ -173,7 +173,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_7
    - description: description
    - created_at: created_at
    - group_id: group_id

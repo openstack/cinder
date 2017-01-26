@@ -67,7 +67,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_4
    - object_count: object_count
    - fail_reason: fail_reason
    - description: description
@@ -117,7 +117,7 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
+   - status: status_4
    - object_count: object_count
    - container: container
    - description: description
