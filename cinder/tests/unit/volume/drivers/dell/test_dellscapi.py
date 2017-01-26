@@ -8034,6 +8034,21 @@ class DellHttpClientTestCase(test.TestCase):
         url = self.httpclient._get_async_url(badTask)
         self.assertEqual('api/rest/ApiConnection/AsyncTask/1418394170395', url)
 
+    def test_get_async_url_xml_returnvalue(self):
+        badTask = self.ASYNCTASK.copy()
+        badTask['returnValue'] = ('<compapi><ApiMethodReturn><Error></Error>'
+                                  '<ErrorCode>1</ErrorCode>'
+                                  '<ErrorDetail></ErrorDetail>'
+                                  '<Locale>1</Locale>'
+                                  '<LocalizedError></LocalizedError>'
+                                  '<ObjectType>ApiMethodReturn</ObjectType>'
+                                  '<ReturnObjectEncode>1</ReturnObjectEncode>'
+                                  '<Successful>True</Successful>'
+                                  '</ApiMethodReturn>'
+                                  '<ReturnBool>false</ReturnBool></compapi>')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.httpclient._get_async_url, badTask)
+
     def test_rest_ret(self):
         rest_response = self.RESPONSE_200
         response = self.httpclient._rest_ret(rest_response, False)
