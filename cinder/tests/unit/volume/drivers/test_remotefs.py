@@ -221,9 +221,12 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                     '-b', self._fake_volume.name,
                     '-F', mock.sentinel.backing_fmt,
                     self._fake_snapshot_path]
-
-        self._driver._execute.assert_any_call(*command1, run_as_root=True)
-        self._driver._execute.assert_any_call(*command2, run_as_root=True)
+        command3 = ['chown', '--reference=%s' % fake_backing_path,
+                    self._fake_snapshot_path]
+        calls = [mock.call(*command1, run_as_root=True),
+                 mock.call(*command2, run_as_root=True),
+                 mock.call(*command3, run_as_root=True)]
+        self._driver._execute.assert_has_calls(calls)
 
     def _test_create_snapshot(self, volume_in_use=False):
         fake_snapshot_info = {}

@@ -1179,14 +1179,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             self._local_volume_dir(snapshot.volume),
             backing_filename)
 
-        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
-                   'backing_file=%s' % backing_path_full_path, new_snap_path]
-
-        # qemu-img create must run as root, because it reads from the
-        # backing file, which will be owned by qemu:qemu if attached to an
-        # instance.   (TODO(eharney): sanity check this)
-        self._execute(*command, run_as_root=self._execute_as_root)
-
         info = self._qemu_img_info(backing_path_full_path,
                                    snapshot.volume.name)
         backing_fmt = info.file_format
