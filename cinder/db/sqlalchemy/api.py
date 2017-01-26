@@ -4047,6 +4047,7 @@ def volume_type_get_all_by_group(context, group_id):
                              read_deleted='no').
                  filter(models.VolumeTypes.id.in_(volume_type_ids)).
                  options(joinedload('extra_specs')).
+                 options(joinedload('projects')).
                  all())
         return query
 
