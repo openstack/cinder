@@ -145,7 +145,8 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     if duration < 1:
         duration = 1
     try:
-        image_size = qemu_img_info(source, run_as_root=True).virtual_size
+        image_size = qemu_img_info(source,
+                                   run_as_root=run_as_root).virtual_size
     except ValueError as e:
         msg = _LI("The image was successfully converted, but image size "
                   "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
