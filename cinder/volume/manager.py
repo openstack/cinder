@@ -2475,7 +2475,7 @@ class VolumeManager(manager.CleanableManager,
         return self._get_my_resources(ctxt, objects.SnapshotList)
 
     def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
-                               sort_dirs):
+                               sort_dirs, want_objects=False):
         try:
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
@@ -2487,6 +2487,9 @@ class VolumeManager(manager.CleanableManager,
         try:
             driver_entries = self.driver.get_manageable_volumes(
                 cinder_volumes, marker, limit, offset, sort_keys, sort_dirs)
+            if want_objects:
+                driver_entries = (objects.ManageableVolumeList.
+                                  from_primitives(ctxt, driver_entries))
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Listing manageable volumes failed, due "
@@ -4402,7 +4405,7 @@ class VolumeManager(manager.CleanableManager,
         return snapshot.id
 
     def get_manageable_snapshots(self, ctxt, marker, limit, offset,
-                                 sort_keys, sort_dirs):
+                                 sort_keys, sort_dirs, want_objects=False):
         try:
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
@@ -4414,6 +4417,9 @@ class VolumeManager(manager.CleanableManager,
         try:
             driver_entries = self.driver.get_manageable_snapshots(
                 cinder_snapshots, marker, limit, offset, sort_keys, sort_dirs)
+            if want_objects:
+                driver_entries = (objects.ManageableSnapshotList.
+                                  from_primitives(ctxt, driver_entries))
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Listing manageable snapshots failed, due "

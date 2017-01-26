@@ -40,3 +40,4 @@ def register_all():
     __import__('cinder.objects.group_type')
     __import__('cinder.objects.group')
     __import__('cinder.objects.group_snapshot')
+    __import__('cinder.objects.manageableresources')

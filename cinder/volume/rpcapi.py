@@ -124,9 +124,11 @@ class VolumeAPI(rpc.RPCAPI):
                that we were doing in init_host.
         3.8  - Make failover_host cluster aware and add failover_completed.
         3.9  - Adds new attach/detach methods
+        3.10 -  Returning objects instead of raw dictionaries in
+               get_manageable_volumes & get_manageable_snapshots
     """
 
-    RPC_API_VERSION = '3.9'
+    RPC_API_VERSION = '3.10'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -366,17 +368,37 @@ class VolumeAPI(rpc.RPCAPI):
 
     def get_manageable_volumes(self, ctxt, service, marker, limit, offset,
                                sort_keys, sort_dirs):
-        cctxt = self._get_cctxt(service.service_topic_queue)
-        return cctxt.call(ctxt, 'get_manageable_volumes', marker=marker,
-                          limit=limit, offset=offset, sort_keys=sort_keys,
-                          sort_dirs=sort_dirs)
+        version = ('3.10', '3.0')
+        cctxt = self._get_cctxt(service.service_topic_queue, version=version)
+
+        msg_args = {'marker': marker,
+                    'limit': limit,
+                    'offset': offset,
+                    'sort_keys': sort_keys,
+                    'sort_dirs': sort_dirs,
+                    }
+
+        if cctxt.can_send_version('3.10'):
+            msg_args['want_objects'] = True
+
+        return cctxt.call(ctxt, 'get_manageable_volumes', **msg_args)
 
     def get_manageable_snapshots(self, ctxt, service, marker, limit, offset,
                                  sort_keys, sort_dirs):
-        cctxt = self._get_cctxt(service.service_topic_queue)
-        return cctxt.call(ctxt, 'get_manageable_snapshots', marker=marker,
-                          limit=limit, offset=offset, sort_keys=sort_keys,
-                          sort_dirs=sort_dirs)
+        version = ('3.10', '3.0')
+        cctxt = self._get_cctxt(service.service_topic_queue, version=version)
+
+        msg_args = {'marker': marker,
+                    'limit': limit,
+                    'offset': offset,
+                    'sort_keys': sort_keys,
+                    'sort_dirs': sort_dirs,
+                    }
+
+        if cctxt.can_send_version('3.10'):
+            msg_args['want_objects'] = True
+
+        return cctxt.call(ctxt, 'get_manageable_snapshots', **msg_args)
 
     def create_group(self, ctxt, group):
         cctxt = self._get_cctxt(group.service_topic_queue)
