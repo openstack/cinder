@@ -823,6 +823,18 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertEqual(99.0, sfv.cluster_stats['free_capacity_gb'])
         self.assertEqual(100.0, sfv.cluster_stats['total_capacity_gb'])
 
+    def test_update_cluster_status_mvip_unreachable(self):
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=self.fake_issue_api_request_fails):
+            sfv._update_cluster_status()
+            self.assertEqual(0, sfv.cluster_stats['free_capacity_gb'])
+            self.assertEqual(0, sfv.cluster_stats['total_capacity_gb'])
+
     def test_manage_existing_volume(self):
         external_ref = {'name': 'existing volume', 'source-id': 5}
         testvol = {'project_id': 'testprjid',

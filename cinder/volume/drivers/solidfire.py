@@ -1696,14 +1696,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Retrieve status info for the Cluster."""
         params = {}
 
-        # NOTE(jdg): The SF api provides an UNBELIEVABLE amount
-        # of stats data, this is just one of the calls
-        results = self._issue_api_request('GetClusterCapacity', params)
-
-        results = results['result']['clusterCapacity']
-        free_capacity = (
-            results['maxProvisionedSpace'] - results['usedSpace'])
-
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or self.__class__.__name__
@@ -1711,19 +1703,29 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
         data['consistencygroup_support'] = True
-        # TODO(jdg):  should we have a "replication_status" that includes
-        # enabled, disabled, failed-over, error ?
         data['replication_enabled'] = self.replication_enabled
         if self.replication_enabled:
             data['replication'] = 'enabled'
         data['active_cluster_mvip'] = self.active_cluster_info['mvip']
+        data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['QoS_support'] = True
+
+        try:
+            results = self._issue_api_request('GetClusterCapacity', params)
+        except exception.SolidFireAPIException:
+            data['total_capacity_gb'] = 0
+            data['free_capacity_gb'] = 0
+            self.cluster_stats = data
+            return
+
+        results = results['result']['clusterCapacity']
+        free_capacity = (
+            results['maxProvisionedSpace'] - results['usedSpace'])
 
         data['total_capacity_gb'] = (
             float(results['maxProvisionedSpace'] / units.Gi))
 
         data['free_capacity_gb'] = float(free_capacity / units.Gi)
-        data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = True
         data['compression_percent'] = (
             results['compressionPercent'])
         data['deduplicaton_percent'] = (
