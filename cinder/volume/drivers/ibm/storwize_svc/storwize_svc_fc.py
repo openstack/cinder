@@ -93,7 +93,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
     VERSION = "2.1.1"
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "IBM_STORWIZE_CI"
+    CI_WIKI_NAME = "IBM_STORAGE_CI"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCFCDriver, self).__init__(*args, **kwargs)
