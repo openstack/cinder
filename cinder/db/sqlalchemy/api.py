@@ -2029,15 +2029,19 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
         return query.all()
 
 
-@require_admin_context
-def get_volume_summary_all(context):
+@require_context
+def get_volume_summary(context, project_only):
     """Retrieves all volumes summary.
 
     :param context: context to query under
-    :returns: volume summary of all projects
+    :param project_only: limit summary to project volumes
+    :returns: volume summary
     """
+    if not (project_only or is_admin_context(context)):
+        raise exception.AdminRequired()
     query = model_query(context, func.count(models.Volume.id),
-                        func.sum(models.Volume.size), read_deleted="no")
+                        func.sum(models.Volume.size), read_deleted="no",
+                        project_only=project_only)
 
     if query is None:
         return []
@@ -2376,25 +2380,6 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
             result_dirs.append(default_dir_value)
 
     return result_keys, result_dirs
-
-
-@require_context
-def get_volume_summary_by_project(context, project_id):
-    """Retrieves all volumes summary in a project.
-
-    :param context: context to query under
-    :param project_id: project for all volumes being retrieved
-    :returns: volume summary of a project
-    """
-    query = model_query(context, func.count(models.Volume.id),
-                        func.sum(models.Volume.size), read_deleted="no").\
-        filter_by(project_id=project_id)
-
-    if query is None:
-        return []
-
-    result = query.first()
-    return (result[0] or 0, result[1] or 0)
 
 
 @handle_db_data_error

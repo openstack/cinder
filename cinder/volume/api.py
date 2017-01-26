@@ -574,14 +574,10 @@ class API(base.Base):
         if filters is None:
             filters = {}
 
-        allTenants = utils.get_bool_param('all_tenants', filters)
-
-        if context.is_admin and allTenants:
-            del filters['all_tenants']
-            volumes = objects.VolumeList.get_volume_summary_all(context)
-        else:
-            volumes = objects.VolumeList.get_volume_summary_by_project(
-                context, context.project_id)
+        all_tenants = utils.get_bool_param('all_tenants', filters)
+        filters.pop('all_tenants', None)
+        project_only = not (all_tenants and context.is_admin)
+        volumes = objects.VolumeList.get_volume_summary(context, project_only)
 
         LOG.info(_LI("Get summary completed successfully."))
         return volumes
