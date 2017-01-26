@@ -64,14 +64,14 @@ common_opts = [
         default='FULL',
         choices=['FULL', 'THIN'],
         help='Method of volume copy. FULL indicates full data copy by '
-             'ShadowImage and THIN indicates differential data copy by Thin '
+             'Shadow Image and THIN indicates differential data copy by Thin '
              'Image.'),
     cfg.IntOpt(
         'vsp_copy_speed',
         min=1,
         max=15,
         default=3,
-        help='Speed at which data is copied by ShadowImage. 1 or 2 indicates '
+        help='Speed at which data is copied by Shadow Image. 1 or 2 indicates '
              'low speed, 3 indicates middle speed, and a value between 4 and '
              '15 indicates high speed.'),
     cfg.IntOpt(
@@ -90,8 +90,14 @@ common_opts = [
              'is checked when volume pairs are deleted.'),
     cfg.ListOpt(
         'vsp_target_ports',
-        help='IDs of the storage ports. To specify multiple ports, connect '
-             'them by commas (e.g. CL1-A,CL2-A).'),
+        help='IDs of the storage ports used to attach volumes to the '
+             'controller node. To specify multiple ports, connect them by '
+             'commas (e.g. CL1-A,CL2-A).'),
+    cfg.ListOpt(
+        'vsp_compute_target_ports',
+        help='IDs of the storage ports used to attach volumes to compute '
+             'nodes. To specify multiple ports, connect them by commas '
+             '(e.g. CL1-A,CL2-A).'),
     cfg.BoolOpt(
         'vsp_group_request',
         default=False,
@@ -102,7 +108,6 @@ common_opts = [
 _REQUIRED_COMMON_OPTS = [
     'vsp_storage_id',
     'vsp_pool',
-    'vsp_target_ports',
 ]
 
 CONF = cfg.CONF
@@ -141,7 +146,9 @@ class VSPCommon(object):
             'protocol': driverinfo['proto'],
             'pool_id': None,
             'ldev_range': [],
-            'ports': [],
+            'controller_ports': [],
+            'compute_ports': [],
+            'pair_ports': [],
             'wwns': {},
             'portals': {},
             'output_first': True,
@@ -617,6 +624,12 @@ class VSPCommon(object):
         if self.conf.vsp_ldev_range:
             self.storage_info['ldev_range'] = self._range2list(
                 'vsp_ldev_range')
+        if (not self.conf.vsp_target_ports and
+                not self.conf.vsp_compute_target_ports):
+            msg = utils.output_log(MSG.INVALID_PARAMETER,
+                                   param='vsp_target_ports or '
+                                   'vsp_compute_target_ports')
+            raise exception.VSPError(msg)
         for opt in _REQUIRED_COMMON_OPTS:
             if not self.conf.safe_get(opt):
                 msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
@@ -666,12 +679,20 @@ class VSPCommon(object):
     def check_ports_info(self):
         """Check if available storage ports exist."""
         if (self.conf.vsp_target_ports and
-                not self.storage_info['ports']):
+                not self.storage_info['controller_ports']):
             msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
                                    resource="Target ports")
             raise exception.VSPError(msg)
+        if (self.conf.vsp_compute_target_ports and
+                not self.storage_info['compute_ports']):
+            msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
+                                   resource="Compute target ports")
+            raise exception.VSPError(msg)
         utils.output_log(MSG.SET_CONFIG_VALUE, object='target port list',
-                         value=self.storage_info['ports'])
+                         value=self.storage_info['controller_ports'])
+        utils.output_log(MSG.SET_CONFIG_VALUE,
+                         object='compute target port list',
+                         value=self.storage_info['compute_ports'])
 
     def get_pool_id(self):
         """Return the storage pool ID as integer."""
@@ -686,7 +707,7 @@ class VSPCommon(object):
         connector = cinder_utils.brick_get_connector_properties(
             multipath=self.conf.use_multipath_for_image_xfer,
             enforce_multipath=self.conf.enforce_multipath_for_image_xfer)
-        target_ports = self.storage_info['ports']
+        target_ports = self.storage_info['controller_ports']
 
         if target_ports:
             if (self.find_targets_from_storage(
@@ -796,15 +817,16 @@ class VSPCommon(object):
                                    volume_id=volume['id'])
             raise exception.VSPError(msg)
 
+        target_ports = self.get_target_ports(connector)
         if (self.find_targets_from_storage(
-                targets, connector, self.storage_info['ports']) and
+                targets, connector, target_ports) and
                 self.conf.vsp_group_request):
             self.create_mapping_targets(targets, connector)
 
         utils.require_target_existed(targets)
 
         targets['list'].sort()
-        for port in self.storage_info['ports']:
+        for port in target_ports:
             targets['lun'][port] = False
         target_lun = int(self.map_ldev(targets, ldev))
 
@@ -812,6 +834,13 @@ class VSPCommon(object):
             'driver_volume_type': self.driver_info['volume_type'],
             'data': self.get_properties(targets, connector, target_lun),
         }
+
+    def get_target_ports(self, connector):
+        """Return a list of ports corresponding to the specified connector."""
+        if 'ip' in connector and connector['ip'] == CONF.my_ip:
+            return self.storage_info['controller_ports']
+        return (self.storage_info['compute_ports'] or
+                self.storage_info['controller_ports'])
 
     @abc.abstractmethod
     def map_ldev(self, targets, ldev):
@@ -885,12 +914,12 @@ class VSPCommon(object):
             utils.output_log(MSG.INVALID_LDEV_FOR_UNMAPPING,
                              volume_id=volume['id'])
             return
-        self.find_targets_from_storage(targets, connector,
-                                       self.storage_info['ports'])
+        target_ports = self.get_target_ports(connector)
+        self.find_targets_from_storage(targets, connector, target_ports)
         if not targets['list']:
             utils.output_log(MSG.NO_CONNECTED_TARGET)
         self.find_mapped_targets_from_storage(
-            mapped_targets, ldev, self.storage_info['ports'])
+            mapped_targets, ldev, target_ports)
 
         unmap_targets['list'] = self.get_unmap_targets_list(
             targets['list'], mapped_targets['list'])
