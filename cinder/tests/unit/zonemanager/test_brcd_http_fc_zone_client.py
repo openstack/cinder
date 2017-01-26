@@ -73,31 +73,32 @@ nameserver_info = """
 </HTML>
 """
 mocked_zone_string = 'zonecfginfo=openstack_cfg zone1;zone2 '\
-    'zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 '\
     'zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 '\
+    'zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 '\
     'alia1 10:00:00:05:1e:7c:64:96;10:21:10:05:33:0e:96:12 '\
     'qlp 10:11:f4:ce:46:ae:68:6c;20:11:f4:ce:46:ae:68:6c '\
     'fa1 20:15:f4:ce:96:ae:68:6c;20:11:f4:ce:46:ae:68:6c '\
     'openstack_cfg null &saveonly=false'
 mocked_zone_string_no_activate = 'zonecfginfo=openstack_cfg zone1;zone2 '\
-    'zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 '\
     'zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 '\
+    'zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 '\
     'alia1 10:00:00:05:1e:7c:64:96;10:21:10:05:33:0e:96:12 '\
     'qlp 10:11:f4:ce:46:ae:68:6c;20:11:f4:ce:46:ae:68:6c '\
     'fa1 20:15:f4:ce:96:ae:68:6c;20:11:f4:ce:46:ae:68:6c &saveonly=true'
 zone_string_to_post = "zonecfginfo=openstack_cfg "\
     "openstack50060b0000c26604201900051ee8e329;zone1;zone2 "\
-    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
-    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
     "openstack50060b0000c26604201900051ee8e329 "\
     "50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29 "\
+    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
+    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
     "openstack_cfg null &saveonly=false"
 zone_string_to_post_no_activate = "zonecfginfo=openstack_cfg "\
     "openstack50060b0000c26604201900051ee8e329;zone1;zone2 "\
-    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
-    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
     "openstack50060b0000c26604201900051ee8e329 "\
-    "50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29 &saveonly=true"
+    "50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29 " \
+    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
+    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
+    "&saveonly=true"
 zone_string_to_post_invalid_request = "zonecfginfo=openstack_cfg "\
     "openstack50060b0000c26604201900051ee8e32900000000000000000000000000;"\
     "zone1;zone2 openstack50060b0000c26604201900051ee8e329000000000000000000000"\
@@ -105,12 +106,13 @@ zone_string_to_post_invalid_request = "zonecfginfo=openstack_cfg "\
     "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
     "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 &saveonly=true"
 zone_string_del_to_post = "zonecfginfo=openstack_cfg zone1;zone2"\
-    " zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
-    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
+    " zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
+    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
     "openstack_cfg null &saveonly=false"
 zone_string_del_to_post_no_active = "zonecfginfo=openstack_cfg zone1;zone2"\
-    " zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
-    "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 &saveonly=true"
+    " zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 " \
+    "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 "\
+    "&saveonly=true"
 zone_post_page = """
 <BODY>
 <PRE>
@@ -783,11 +785,17 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
             valid_zone_name:
             '50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29',
             'test4': '20:06:0b:00:00:b2:66:07;20:10:00:05:1e:b8:c3:19'}
-        self.assertEqual(
-            (updated_zones, updated_cfgs, active_cfg),
-            self.add_zones_cfgs(
-                cfgs.copy(), zones.copy(), add_zones_info,
-                active_cfg, "openstack_cfg"))
+
+        result = self.add_zones_cfgs(cfgs.copy(), zones.copy(), add_zones_info,
+                                     active_cfg, "openstack_cfg")
+        self.assertEqual(updated_zones, result[0])
+        self.assertEqual(active_cfg, result[2])
+
+        result_cfg = result[1]['openstack_cfg']
+        self.assertIn('test4', result_cfg)
+        self.assertIn('openstack50060b0000c26604201900051ee8e329', result_cfg)
+        self.assertIn('zone1', result_cfg)
+        self.assertIn('zone2', result_cfg)
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'connect')
     def test_get_zone_info(self, connect_mock):

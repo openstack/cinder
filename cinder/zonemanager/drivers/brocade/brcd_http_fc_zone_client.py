@@ -620,19 +620,19 @@ class BrcdHTTPFCZoneClient(object):
             saveonly = "false" if activate is True else "true"
 
             # Form the zone string based on the dictionary of each items
-            for cfg in cfgs.keys():
+            for cfg in sorted(cfgs.keys()):
                 zoneString += (zone_constant.CFG_DELIM +
                                cfg + " " + cfgs.get(cfg) + " ")
-            for zone in zones.keys():
+            for zone in sorted(zones.keys()):
                 zoneString += (zone_constant.ZONE_DELIM +
                                zone + " " + zones.get(zone) + " ")
-            for al in alias.keys():
+            for al in sorted(alias.keys()):
                 zoneString += (zone_constant.ALIAS_DELIM +
                                al + " " + alias.get(al) + " ")
-            for qlp in qlps.keys():
+            for qlp in sorted(qlps.keys()):
                 zoneString += (zone_constant.QLP_DELIM +
                                qlp + " " + qlps.get(qlp) + " ")
-            for ifa in ifas.keys():
+            for ifa in sorted(ifas.keys()):
                 zoneString += (zone_constant.IFA_DELIM +
                                ifa + " " + ifas.get(ifa) + " ")
             # append the active_cfg string only if it is not null and activate
