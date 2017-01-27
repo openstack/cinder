@@ -1321,7 +1321,7 @@ class NimbleRestAPIExecutor(object):
             self.post(api, data)
         except NimbleAPIException as ex:
             LOG.debug("add_acl_exception: %s", ex)
-            if SM_OBJ_EXIST_MSG in ex:
+            if SM_OBJ_EXIST_MSG in six.text_type(ex):
                 LOG.warning(_LW('Volume %(vol)s : %(state)s'),
                             {'vol': volume['name'],
                              'state': SM_OBJ_EXIST_MSG})
@@ -1359,7 +1359,7 @@ class NimbleRestAPIExecutor(object):
             self.delete(api)
         except NimbleAPIException as ex:
             LOG.debug("remove_acl_exception: %s", ex)
-            if SM_OBJ_ENOENT_MSG in ex:
+            if SM_OBJ_ENOENT_MSG in six.text_type(ex):
                 LOG.warning(_LW('Volume %(vol)s : %(state)s'),
                             {'vol': volume['name'],
                              'state': SM_OBJ_ENOENT_MSG})
