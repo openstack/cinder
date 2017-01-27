@@ -354,10 +354,6 @@ class RBDDriver(driver.CloneableImageVD,
             ports.append(port)
         return hosts, ports
 
-    def _iterate_cb(self, offset, length, exists):
-        if exists:
-            self._total_usage += length
-
     def _get_usage_info(self):
         with RADOSClient(self) as client:
             for t in self.RBDProxy().list(client.ioctx):
@@ -366,7 +362,7 @@ class RBDDriver(driver.CloneableImageVD,
                     # non-default volume_name_template settings.  Template
                     # must start with "volume".
                     with RBDVolumeProxy(self, t, read_only=True) as v:
-                        v.diff_iterate(0, v.size(), None, self._iterate_cb)
+                        self._total_usage += v.size()
 
     def _update_volume_stats(self):
         stats = {
