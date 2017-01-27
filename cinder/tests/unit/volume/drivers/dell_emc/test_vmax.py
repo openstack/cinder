@@ -6882,9 +6882,6 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
         self.mock_object(common.VMAXCommon,
                          '_get_multi_pool_support_enabled_flag',
                          return_value=True)
-        volume_types.get_volume_type_extra_specs = mock.Mock(
-            return_value={'volume_backend_name': 'MULTI_POOL_BE',
-                          'pool_name': 'Bronze+DSS+SRP_1+1234567891011'})
         driver = fc.VMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -7053,7 +7050,12 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
                  'SLO': u'Silver',
                  'Workload': u'OLTP'}]
 
-    def test_initial_setup(self):
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'MULTI_POOL_BE',
+                      'pool_name': 'Bronze+DSS+SRP_1+1234567891011'})
+    def test_initial_setup(self, mock_vol_types):
         tempdir = tempfile.mkdtemp()
         config_file_path = self.create_fake_config_file_multi_pool_v3(tempdir)
         with mock.patch.object(
@@ -7071,7 +7073,12 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
                          extraSpecs['pool_name'])
         self._cleanup(tempdir, config_file_path)
 
-    def test_initial_setup_with_legacy_file(self):
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'MULTI_POOL_BE',
+                      'pool_name': 'Bronze+DSS+SRP_1+1234567891011'})
+    def test_initial_setup_with_legacy_file(self, mock_vol_types):
         # Test with legacy config file and verify
         # if the values for SLO and workload are used from
         # the pool_name and not the config file
@@ -9353,8 +9360,6 @@ class EMCV3ReplicationTest(test.TestCase):
                          instancename.fake_getinstancename)
         self.mock_object(utils.VMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
-        self.mock_object(volume_types, 'get_volume_type_extra_specs',
-                         self.fake_volume_type_extra_specs)
         self.mock_object(common.VMAXCommon,
                          '_get_multi_pool_support_enabled_flag',
                          self.fake_get_multi_pool)
@@ -9444,11 +9449,6 @@ class EMCV3ReplicationTest(test.TestCase):
 
     def fake_is_v3(self, conn, serialNumber):
         return True
-
-    def fake_volume_type_extra_specs(self, volume_type):
-        extraSpecs = {'volume_backend_name': 'VMAXReplication',
-                      'replication_enabled': '<is> True'}
-        return extraSpecs
 
     def fake_get_multi_pool(self):
         return False
@@ -9542,10 +9542,15 @@ class EMCV3ReplicationTest(test.TestCase):
                              'EMC_ReplicationService')[0])
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         provision_v3.VMAXProvisionV3,
         '_check_sync_state',
         return_value=6)
-    def test_failover_volume_success(self, mock_sync):
+    def test_failover_volume_success(self, mock_sync, mock_vol_types):
         volumes = [self.data.test_volume_re]
         rep_data = self.data.replication_driver_data
         loc = six.text_type(self.data.provider_location)
@@ -9560,7 +9565,12 @@ class EMCV3ReplicationTest(test.TestCase):
             self.driver.failover_host('context', volumes, 'default'))
         self.assertEqual(check_update_list, volume_update_list)
 
-    def test_failover_volume_failed(self):
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    def test_failover_volume_failed(self, mock_vol_types):
         fake_vol = self.data.test_failed_re_volume
         fake_location = six.text_type(
             {'keybindings': 'fake_keybindings'})
@@ -9577,10 +9587,15 @@ class EMCV3ReplicationTest(test.TestCase):
         self.assertEqual(check_update_list, volume_update_list)
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         provision_v3.VMAXProvisionV3,
         '_check_sync_state',
         return_value=12)
-    def test_failback_volume_success(self, mock_sync):
+    def test_failback_volume_success(self, mock_sync, mock_vol_types):
         volumes = [self.data.test_volume_re]
         provider_location = self.data.provider_location
         loc = six.text_type(provider_location)
@@ -9595,7 +9610,12 @@ class EMCV3ReplicationTest(test.TestCase):
             self.driver.failover_host('context', volumes, 'default'))
         self.assertEqual(check_update_list, volume_update_list)
 
-    def test_failback_volume_failed(self):
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    def test_failback_volume_failed(self, mock_vol_types):
         fake_vol = self.data.test_failed_re_volume
         fake_location = six.text_type(
             {'keybindings': 'fake_keybindings'})
@@ -9612,6 +9632,11 @@ class EMCV3ReplicationTest(test.TestCase):
         self.assertEqual(check_update_list, volume_update_list)
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         utils.VMAXUtils,
         'compare_size',
         return_value=0)
@@ -9624,7 +9649,7 @@ class EMCV3ReplicationTest(test.TestCase):
         '_create_remote_replica',
         return_value=(0, VMAXCommonData.provider_location))
     def test_extend_volume_is_replicated_success(
-            self, mock_replica, mock_sg, mock_size):
+            self, mock_replica, mock_sg, mock_size, mock_vol_types):
         common = self.driver.common
         common.conn = self.fake_ecom_connection()
         volume = self.data.test_volume_re
@@ -9769,6 +9794,11 @@ class EMCV3ReplicationTest(test.TestCase):
                               volumeInstance, volumeName, extraSpecs)
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         common.VMAXCommon,
         'add_volume_to_replication_group')
     @mock.patch.object(
@@ -9776,7 +9806,8 @@ class EMCV3ReplicationTest(test.TestCase):
         '_create_v3_volume',
         return_value=(0, VMAXCommonData.provider_location,
                       VMAXCommonData.storage_system))
-    def test_create_replicated_volume_success(self, mock_create, mock_add):
+    def test_create_replicated_volume_success(self, mock_create, mock_add,
+                                              mock_vol_types):
         model_update = self.driver.create_volume(
             self.data.test_volume_re)
         rep_status = model_update['replication_status']
@@ -9786,6 +9817,11 @@ class EMCV3ReplicationTest(test.TestCase):
         self.assertIsNotNone(rep_data)
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         common.VMAXCommon,
         '_cleanup_replication_source')
     @mock.patch.object(
@@ -9793,7 +9829,8 @@ class EMCV3ReplicationTest(test.TestCase):
         '_create_v3_volume',
         return_value=(0, VMAXCommonData.provider_location,
                       VMAXCommonData.storage_system))
-    def test_create_replicated_volume_failed(self, mock_create, mock_cleanup):
+    def test_create_replicated_volume_failed(self, mock_create, mock_cleanup,
+                                             mock_vol_types):
         common = self.driver.common
         common.conn = self.fake_ecom_connection()
         volumeName = self.data.test_volume_re['id']
@@ -9856,9 +9893,14 @@ class EMCV3ReplicationTest(test.TestCase):
             deviceId, repExtraSpecs)
 
     @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'VMAXReplication',
+                      'replication_enabled': '<is> True'})
+    @mock.patch.object(
         common.VMAXCommon,
         'cleanup_lun_replication')
-    def test_delete_re_volume(self, mock_cleanup):
+    def test_delete_re_volume(self, mock_cleanup, mock_vol_types):
         common = self.driver.common
         common.conn = self.fake_ecom_connection()
         volume = self.data.test_volume_re
