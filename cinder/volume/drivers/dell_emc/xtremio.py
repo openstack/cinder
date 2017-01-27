@@ -41,6 +41,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
 import six
+from six.moves import http_client
 
 from cinder import context
 from cinder import exception
@@ -143,7 +144,8 @@ class XtremIOClient(object):
                 msg = (_('Exception: %s') % six.text_type(exc))
                 raise exception.VolumeDriverException(message=msg)
 
-            if 200 <= response.status_code < 300:
+            if (http_client.OK <= response.status_code <
+                    http_client.MULTIPLE_CHOICES):
                 if method in ('GET', 'POST'):
                     return response.json()
                 else:
@@ -153,7 +155,7 @@ class XtremIOClient(object):
         return _do_req(object_type, method, data, name, idx, ver)
 
     def handle_errors(self, response, key, object_type):
-        if response.status_code == 400:
+        if response.status_code == http_client.BAD_REQUEST:
             error = response.json()
             err_msg = error.get('message')
             if err_msg.endswith(OBJ_NOT_FOUND_ERR):

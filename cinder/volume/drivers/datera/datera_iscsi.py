@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import requests
 import six
+from six.moves import http_client
 
 from cinder import context
 from cinder import exception
@@ -628,7 +629,7 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
                            cert_data,
                            sensitive=False,
                            conflict_ok=False):
-        if (response.status_code == 400 and
+        if (response.status_code == http_client.BAD_REQUEST and
                 connection_string.endswith("api_versions")):
             # Raise the exception, but don't log any error.  We'll just fall
             # back to the old style of determining API version.  We make this
@@ -641,14 +642,15 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
                       response.url,
                       payload,
                       vars(response))
-        if response.status_code == 404:
+        if response.status_code == http_client.NOT_FOUND:
             raise exception.NotFound(response.json()['message'])
-        elif response.status_code in [403, 401]:
+        elif response.status_code in [http_client.FORBIDDEN,
+                                      http_client.UNAUTHORIZED]:
             raise exception.NotAuthorized()
-        elif response.status_code == 409 and conflict_ok:
+        elif response.status_code == http_client.CONFLICT and conflict_ok:
             # Don't raise, because we're expecting a conflict
             pass
-        elif response.status_code == 503:
+        elif response.status_code == http_client.SERVICE_UNAVAILABLE:
             current_retry = 0
             while current_retry <= self.retry_attempts:
                 LOG.debug("Datera 503 response, trying request again")
@@ -660,7 +662,7 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
                                      cert_data)
                 if resp.ok:
                     return response.json()
-                elif resp.status_code != 503:
+                elif resp.status_code != http_client.SERVICE_UNAVAILABLE:
                     self._raise_response(resp)
         else:
             self._raise_response(response)

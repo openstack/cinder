@@ -22,6 +22,7 @@ from oslo_utils import excutils
 import requests
 from simplejson import scanner
 import six
+from six.moves import http_client
 import uuid
 
 from cinder import exception
@@ -208,7 +209,7 @@ class HttpClient(object):
         # If we made an async call and it was accepted
         # we wait for our response.
         if async:
-            if rest_response.status_code == 202:
+            if rest_response.status_code == http_client.ACCEPTED:
                 asyncTask = rest_response.json()
                 return self._wait_for_async_complete(asyncTask)
             else:
@@ -231,8 +232,9 @@ class HttpClient(object):
                                          headers=self.header,
                                          verify=self.verify)
 
-        if rest_response and rest_response.status_code == 400 and (
-                'Unhandled Exception' in rest_response.text):
+        if (rest_response and rest_response.status_code == (
+                http_client.BAD_REQUEST)) and (
+                    'Unhandled Exception' in rest_response.text):
             raise exception.DellDriverRetryableException()
         return rest_response
 
@@ -467,7 +469,8 @@ class SCApi(object):
         :returns: ``True`` if success, ``False`` otherwise.
         """
         if rest_response is not None:
-            if 200 <= rest_response.status_code < 300:
+            if http_client.OK <= rest_response.status_code < (
+                    http_client.MULTIPLE_CHOICES):
                 # API call was a normal success
                 return True
 

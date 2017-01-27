@@ -28,6 +28,7 @@ from oslo_utils import units
 import requests
 from requests import exceptions
 import six
+from six.moves import http_client
 
 from cinder import exception
 from cinder.i18n import _
@@ -137,21 +138,21 @@ def service_json_request(ip_addr, port, http_method, uri, body,
                               (_("Unknown/Unsupported HTTP method: %s") %
                                http_method))
 
-        if (response.status_code == requests.codes['ok'] or
-                response.status_code == 202):
+        if (response.status_code == http_client.OK or
+                response.status_code == http_client.ACCEPTED):
             return (response.text, response.headers)
 
         error_msg = None
-        if response.status_code == 500:
+        if response.status_code == http_client.INTERNAL_SERVER_ERROR:
             response_text = json_decode(response.text)
             error_details = ""
             if 'details' in response_text:
                 error_details = response_text['details']
             error_msg = (_("CoprHD internal server error. Error details: %s"),
                          error_details)
-        elif response.status_code == 401:
+        elif response.status_code == http_client.UNAUTHORIZED:
             error_msg = _("Access forbidden: Authentication required")
-        elif response.status_code == 403:
+        elif response.status_code == http_client.FORBIDDEN:
             error_msg = ""
             error_details = ""
             error_description = ""
@@ -177,11 +178,11 @@ def service_json_request(ip_addr, port, http_method, uri, body,
                               " sufficient privileges to perform this"
                               " operation")
 
-        elif response.status_code == 404:
+        elif response.status_code == http_client.NOT_FOUND:
             error_msg = "Requested resource not found"
-        elif response.status_code == 405:
+        elif response.status_code == http_client.METHOD_NOT_ALLOWED:
             error_msg = six.text_type(response.text)
-        elif response.status_code == 503:
+        elif response.status_code == http_client.SERVICE_UNAVAILABLE:
             error_msg = ""
             error_details = ""
             error_description = ""
