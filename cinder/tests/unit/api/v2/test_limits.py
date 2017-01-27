@@ -246,7 +246,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
 
     def test_limit_class(self):
         """Test that middleware selected correct limiter class."""
-        assert isinstance(self.app._limiter, TestLimiter)
+        self.assertIsInstance(self.app._limiter, TestLimiter)
 
     def test_good_request(self):
         """Test successful GET request through middleware."""
@@ -304,6 +304,10 @@ class LimitTest(BaseLimitTestSuite):
         self.assertEqual(4, limit.next_request)
         self.assertEqual(4, limit.last_request)
 
+    def test_invalid_limit(self):
+        """Test that invalid limits are properly checked on construction."""
+        self.assertRaises(ValueError, limits.Limit, "GET", "*", ".*", 0, 1)
+
 
 class ParseLimitsTest(BaseLimitTestSuite):
 
@@ -342,7 +346,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                                             '(POST, /bar*, /bar.*, 5, second);'
                                             '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            assert False, six.text_type(e)
+            self.assertFalse(six.text_type(e))
 
         # Make sure the number of returned limits are correct
         self.assertEqual(4, len(l))
