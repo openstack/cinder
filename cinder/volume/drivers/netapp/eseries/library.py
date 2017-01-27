@@ -438,7 +438,7 @@ class NetAppESeriesLibrary(object):
         try:
             return self._client.list_snapshot_image(
                 snapshot.get('provider_id'))
-        except (eseries_exc.WebServiceException or
+        except (eseries_exc.WebServiceException,
                 exception.NetAppDriverException):
             try:
                 LOG.debug('Unable to locate snapshot by its id, falling '
