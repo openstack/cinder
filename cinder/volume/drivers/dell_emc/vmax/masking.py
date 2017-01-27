@@ -19,10 +19,10 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.volume.drivers.emc import emc_vmax_fast
-from cinder.volume.drivers.emc import emc_vmax_provision
-from cinder.volume.drivers.emc import emc_vmax_provision_v3
-from cinder.volume.drivers.emc import emc_vmax_utils
+from cinder.volume.drivers.dell_emc.vmax import fast
+from cinder.volume.drivers.dell_emc.vmax import provision
+from cinder.volume.drivers.dell_emc.vmax import provision_v3
+from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ FASTPOLICY = 'storagetype:fastpolicy'
 ISV3 = 'isV3'
 
 
-class EMCVMAXMasking(object):
+class VMAXMasking(object):
     """Masking class for SMI-S based EMC volume drivers.
 
     Masking code to dynamically create a masking view
@@ -47,10 +47,10 @@ class EMCVMAXMasking(object):
     """
     def __init__(self, prtcl):
         self.protocol = prtcl
-        self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
-        self.fast = emc_vmax_fast.EMCVMAXFast(prtcl)
-        self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
-        self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
+        self.utils = utils.VMAXUtils(prtcl)
+        self.fast = fast.VMAXFast(prtcl)
+        self.provision = provision.VMAXProvision(prtcl)
+        self.provisionv3 = provision_v3.VMAXProvisionV3(prtcl)
 
     def setup_masking_view(self, conn, maskingViewDict, extraSpecs):
 

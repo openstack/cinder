@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2012 - 2015 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,24 +12,28 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+"""
+ISCSI Drivers for EMC VMAX arrays based on SMI-S.
 
-import ast
-
+"""
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LW
+from cinder import exception
+from cinder.i18n import _, _LE, _LI
 from cinder import interface
 from cinder.volume import driver
-from cinder.volume.drivers.emc import emc_vmax_common
-from cinder.zonemanager import utils as fczm_utils
+from cinder.volume.drivers.dell_emc.vmax import common
+
 
 LOG = logging.getLogger(__name__)
 
+CINDER_CONF = '/etc/cinder/cinder.conf'
+
 
 @interface.volumedriver
-class EMCVMAXFCDriver(driver.FibreChannelDriver):
-    """EMC FC Drivers for VMAX using SMI-S.
+class VMAXISCSIDriver(driver.ISCSIDriver):
+    """EMC ISCSI Drivers for VMAX using SMI-S.
 
     Version history:
 
@@ -70,12 +74,15 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - SnapVX licensing checks for VMAX3 (bug #1587017)
               - VMAX oversubscription Support (blueprint vmax-oversubscription)
               - QoS support (blueprint vmax-qos)
+              - VMAX2/VMAX3 iscsi multipath support (iscsi only)
+              https://blueprints.launchpad.net/cinder/+spec/vmax-iscsi-multipath
         2.5.0 - Attach and detach snapshot (blueprint vmax-attach-snapshot)
               - MVs and SGs not reflecting correct protocol (bug #1640222)
               - Storage assisted volume migration via retype
                 (bp vmax-volume-migration)
               - Support for compression on All Flash
               - Volume replication 2.1 (bp add-vmax-replication)
+              - rename and restructure driver (bp vmax-rename-dell-emc)
 
     """
 
@@ -86,14 +93,14 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
     def __init__(self, *args, **kwargs):
 
-        super(EMCVMAXFCDriver, self).__init__(*args, **kwargs)
+        super(VMAXISCSIDriver, self).__init__(*args, **kwargs)
         self.active_backend_id = kwargs.get('active_backend_id', None)
-        self.common = emc_vmax_common.EMCVMAXCommon(
-            'FC',
-            self.VERSION,
-            configuration=self.configuration,
-            active_backend_id=self.active_backend_id)
-        self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
+        self.common = (
+            common.VMAXCommon(
+                'iSCSI',
+                self.VERSION,
+                configuration=self.configuration,
+                active_backend_id=self.active_backend_id))
 
     def check_for_setup_error(self):
         pass
@@ -147,222 +154,141 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
-        Assign any created volume to a compute node/host so that it can be
-        used from that host.
+        The iscsi driver returns a driver_volume_type of 'iscsi'.
+        the format of the driver data is defined in smis_get_iscsi_properties.
+        Example return value:
 
-        The  driver returns a driver_volume_type of 'fibre_channel'.
-        The target_wwn can be a single entry or a list of wwns that
-        correspond to the list of remote wwn(s) that will export the volume.
-        Example return values:
+        .. code-block:: json
+
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'iscsi'
                 'data': {
                     'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': '1234567890123',
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                    'target_portal': '127.0.0.0.1:3260',
+                    'volume_id': '12345678-1234-4321-1234-123456789012',
                 }
             }
-
-            or
-
+        Example return value (multipath is enabled)::
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'iscsi'
                 'data': {
                     'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': ['1234567890123', '0987654321321'],
+                    'target_iqns': ['iqn.2010-10.org.openstack:volume-00001',
+                                    'iqn.2010-10.org.openstack:volume-00002'],
+                    'target_portals': ['127.0.0.1:3260', '127.0.1.1:3260'],
+                    'target_luns': [1, 1],
                 }
             }
         """
         device_info = self.common.initialize_connection(
             volume, connector)
-        return self.populate_data(device_info, volume, connector)
+        return self.get_iscsi_dict(
+            device_info, volume, connector)
 
-    def populate_data(self, device_info, volume, connector):
-        """Populate data dict.
+    def get_iscsi_dict(self, device_info, volume, connector):
+        """Populate iscsi dict to pass to nova.
 
-        Add relevant data to data dict, target_lun, target_wwn and
-        initiator_target_map.
-
-        :param device_info: device_info
-        :param volume: the volume object
-        :param connector: the connector object
-        :returns: dict -- the target_wwns and initiator_target_map
+        :param device_info: device info dict
+        :param volume: volume object
+        :param connector: connector object
+        :return: iscsi dict
         """
-        device_number = device_info['hostlunid']
-        storage_system = device_info['storagesystem']
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, volume, connector)
+        try:
+            ip_and_iqn = device_info['ip_and_iqn']
+            is_multipath = device_info['is_multipath']
+        except KeyError as ex:
+            exception_message = (_("Cannot get iSCSI ipaddresses or "
+                                   "multipath flag. Exception is %(ex)s. ")
+                                 % {'ex': ex})
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_lun': device_number,
-                         'target_discovered': True,
-                         'target_wwn': target_wwns,
-                         'initiator_target_map': init_targ_map}}
+        iscsi_properties = self.smis_get_iscsi_properties(
+            volume, connector, ip_and_iqn, is_multipath)
 
-        LOG.debug("Return FC data for zone addition: %(data)s.",
-                  {'data': data})
+        LOG.info(_LI("iSCSI properties are: %s"), iscsi_properties)
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': iscsi_properties
+        }
 
-        return data
+    def smis_get_iscsi_properties(self, volume, connector, ip_and_iqn,
+                                  is_multipath):
+        """Gets iscsi configuration.
 
-    @fczm_utils.remove_fc_zone
+        We ideally get saved information in the volume entity, but fall back
+        to discovery if need be. Discovery may be completely removed in future
+        The properties are:
+        :target_discovered:    boolean indicating whether discovery was used
+        :target_iqn:    the IQN of the iSCSI target
+        :target_portal:    the portal of the iSCSI target
+        :target_lun:    the lun of the iSCSI target
+        :volume_id:    the UUID of the volume
+        :auth_method:, :auth_username:, :auth_password:
+            the authentication details. Right now, either auth_method is not
+            present meaning no authentication, or auth_method == `CHAP`
+            meaning use CHAP with the specified credentials.
+        """
+
+        device_info = self.common.find_device_number(
+            volume, connector['host'])
+
+        isError = False
+        if device_info:
+            try:
+                lun_id = device_info['hostlunid']
+            except KeyError:
+                isError = True
+        else:
+            isError = True
+
+        if isError:
+            LOG.error(_LE("Unable to get the lun id"))
+            exception_message = (_("Cannot find device number for volume "
+                                 "%(volumeName)s.")
+                                 % {'volumeName': volume['name']})
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        properties = {}
+        if len(ip_and_iqn) > 1 and is_multipath:
+            properties['target_portals'] = ([t['ip'] + ":3260" for t in
+                                             ip_and_iqn])
+            properties['target_iqns'] = ([t['iqn'].split(",")[0] for t in
+                                          ip_and_iqn])
+            properties['target_luns'] = [lun_id] * len(ip_and_iqn)
+        properties['target_discovered'] = True
+        properties['target_iqn'] = ip_and_iqn[0]['iqn'].split(",")[0]
+        properties['target_portal'] = ip_and_iqn[0]['ip'] + ":3260"
+        properties['target_lun'] = lun_id
+        properties['volume_id'] = volume['id']
+
+        LOG.info(_LI(
+            "ISCSI properties: %(properties)s."), {'properties': properties})
+        LOG.info(_LI(
+            "ISCSI volume is: %(volume)s."), {'volume': volume})
+
+        if 'provider_auth' in volume:
+            auth = volume['provider_auth']
+            LOG.info(_LI(
+                "AUTH properties: %(authProps)s."), {'authProps': auth})
+
+            if auth is not None:
+                (auth_method, auth_username, auth_secret) = auth.split()
+
+                properties['auth_method'] = auth_method
+                properties['auth_username'] = auth_username
+                properties['auth_password'] = auth_secret
+
+                LOG.info(_LI("AUTH properties: %s."), properties)
+
+        return properties
+
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector.
-
-        Return empty data if other volumes are in the same zone.
-        The FibreChannel ZoneManager doesn't remove zones
-        if there isn't an initiator_target_map in the
-        return of terminate_connection.
-
-        :param volume: the volume object
-        :param connector: the connector object
-        :returns: dict -- the target_wwns and initiator_target_map if the
-            zone is to be removed, otherwise empty
-        """
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {}}
-        zoning_mappings = (
-            self._get_zoning_mappings(volume, connector))
-
-        if zoning_mappings:
-            self.common.terminate_connection(volume, connector)
-            data = self._cleanup_zones(zoning_mappings)
-        return data
-
-    def _get_zoning_mappings(self, volume, connector):
-        """Get zoning mappings by building up initiator/target map.
-
-        :param volume: the volume object
-        :param connector: the connector object
-        :returns: dict -- the target_wwns and initiator_target_map if the
-            zone is to be removed, otherwise empty
-        """
-        zoning_mappings = {'port_group': None,
-                           'initiator_group': None,
-                           'target_wwns': None,
-                           'init_targ_map': None}
-        loc = volume['provider_location']
-        name = ast.literal_eval(loc)
-        storage_system = name['keybindings']['SystemName']
-        LOG.debug("Start FC detach process for volume: %(volume)s.",
-                  {'volume': volume['name']})
-
-        mvInstanceName = self.common.get_masking_view_by_volume(
-            volume, connector)
-        if mvInstanceName:
-            portGroupInstanceName = (
-                self.common.get_port_group_from_masking_view(
-                    mvInstanceName))
-            initiatorGroupInstanceName = (
-                self.common.get_initiator_group_from_masking_view(
-                    mvInstanceName))
-
-            LOG.debug("Found port group: %(portGroup)s "
-                      "in masking view %(maskingView)s.",
-                      {'portGroup': portGroupInstanceName,
-                       'maskingView': mvInstanceName})
-            # Map must be populated before the terminate_connection
-            target_wwns, init_targ_map = self._build_initiator_target_map(
-                storage_system, volume, connector)
-            zoning_mappings = {'port_group': portGroupInstanceName,
-                               'initiator_group': initiatorGroupInstanceName,
-                               'target_wwns': target_wwns,
-                               'init_targ_map': init_targ_map}
-        else:
-            LOG.warning(_LW("Volume %(volume)s is not in any masking view."),
-                        {'volume': volume['name']})
-        return zoning_mappings
-
-    def _cleanup_zones(self, zoning_mappings):
-        """Cleanup zones after terminate connection.
-
-        :param zoning_mappings: zoning mapping dict
-        :returns: data - dict
-        """
-        LOG.debug("Looking for masking views still associated with "
-                  "Port Group %s.", zoning_mappings['port_group'])
-        if zoning_mappings['initiator_group']:
-            checkIgInstanceName = (
-                self.common.check_ig_instance_name(
-                    zoning_mappings['initiator_group']))
-        else:
-            checkIgInstanceName = None
-
-        # if it has not been deleted, check for remaining masking views
-        if checkIgInstanceName:
-            mvInstances = self._get_common_masking_views(
-                zoning_mappings['port_group'],
-                zoning_mappings['initiator_group'])
-
-            if len(mvInstances) > 0:
-                LOG.debug("Found %(numViews)lu MaskingViews.",
-                          {'numViews': len(mvInstances)})
-                data = {'driver_volume_type': 'fibre_channel',
-                        'data': {}}
-            else:  # no masking views found
-                LOG.debug("No MaskingViews were found. Deleting zone.")
-                data = {'driver_volume_type': 'fibre_channel',
-                        'data': {'target_wwn': zoning_mappings['target_wwns'],
-                                 'initiator_target_map':
-                                     zoning_mappings['init_targ_map']}}
-
-                LOG.debug("Return FC data for zone removal: %(data)s.",
-                          {'data': data})
-
-        else:  # The initiator group has been deleted
-            LOG.debug("Initiator Group has been deleted. Deleting zone.")
-            data = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_wwn': zoning_mappings['target_wwns'],
-                             'initiator_target_map':
-                                 zoning_mappings['init_targ_map']}}
-
-            LOG.debug("Return FC data for zone removal: %(data)s.",
-                      {'data': data})
-        return data
-
-    def _get_common_masking_views(
-            self, portGroupInstanceName, initiatorGroupInstanceName):
-        """Check to see the existence of mv in list"""
-        mvInstances = []
-        mvInstancesByPG = self.common.get_masking_views_by_port_group(
-            portGroupInstanceName)
-
-        mvInstancesByIG = self.common.get_masking_views_by_initiator_group(
-            initiatorGroupInstanceName)
-
-        for mvInstanceByPG in mvInstancesByPG:
-            if mvInstanceByPG in mvInstancesByIG:
-                mvInstances.append(mvInstanceByPG)
-        return mvInstances
-
-    def _build_initiator_target_map(self, storage_system, volume, connector):
-        """Build the target_wwns and the initiator target map."""
-        target_wwns = []
-        init_targ_map = {}
-        initiator_wwns = connector['wwpns']
-
-        if self.zonemanager_lookup_service:
-            fc_targets = self.common.get_target_wwns_from_masking_view(
-                storage_system, volume, connector)
-            mapping = (
-                self.zonemanager_lookup_service.
-                get_device_mapping_from_network(initiator_wwns, fc_targets))
-            for entry in mapping:
-                map_d = mapping[entry]
-                target_wwns.extend(map_d['target_port_wwn_list'])
-                for initiator in map_d['initiator_port_wwn_list']:
-                    init_targ_map[initiator] = map_d['target_port_wwn_list']
-        else:  # No lookup service, pre-zoned case.
-            target_wwns = self.common.get_target_wwns(storage_system,
-                                                      connector)
-            for initiator in initiator_wwns:
-                init_targ_map[initiator] = target_wwns
-
-        return list(set(target_wwns)), init_targ_map
+        """Disallow connection from connector."""
+        self.common.terminate_connection(volume, connector)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
@@ -371,8 +297,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 
-        :param refresh: boolean -- If True, run update the stats first.
-        :returns: dict -- the stats dict
+        If 'refresh' is True, run update the stats first.
         """
         if refresh:
             self.update_volume_stats()
@@ -383,7 +308,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
-        data['storage_protocol'] = 'FC'
+        data['storage_protocol'] = 'iSCSI'
         data['driver_version'] = self.VERSION
         self._stats = data
 
@@ -392,8 +317,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
         :param ctxt: context
         :param volume: the volume object including the volume_type_id
-        :param host: the host dict holding the relevant target(destination)
-            information
+        :param host: the host dict holding the relevant target information
         :returns: boolean -- Always returns True
         :returns: dict -- Empty dict {}
         """
@@ -405,9 +329,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
-        :param diff: Unused parameter.
-        :param host: the host dict holding the relevant
-            target(destination) information
+        :param diff: Unused parameter in common.retype
+        :param host: the host dict holding the relevant target information
         :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
@@ -493,12 +416,14 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :param snapshot: the snapshot object
         :param connector: the connector object
         :param kwargs: additional parameters
-        :returns: data dict
+        :returns: iscsi dict
         """
         src_volume = snapshot['volume']
         snapshot['host'] = src_volume['host']
-
-        return self.initialize_connection(snapshot, connector)
+        device_info = self.common.initialize_connection(
+            snapshot, connector)
+        return self.get_iscsi_dict(
+            device_info, snapshot, connector)
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Disallows connection to snapshot.
@@ -509,7 +434,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         """
         src_volume = snapshot['volume']
         snapshot['host'] = src_volume['host']
-        return self.terminate_connection(snapshot, connector, **kwargs)
+        return self.common.terminate_connection(snapshot,
+                                                connector)
 
     def backup_use_temp_snapshot(self):
         return True

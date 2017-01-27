@@ -21,7 +21,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.volume.drivers.emc import emc_vmax_utils
+from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ RDF_SYNCHRONIZED = 6
 RDF_FAILEDOVER = 12
 
 
-class EMCVMAXProvisionV3(object):
+class VMAXProvisionV3(object):
     """Provisioning Class for SMI-S based EMC volume drivers.
 
     This Provisioning class is for EMC volume drivers based on SMI-S.
@@ -51,7 +51,7 @@ class EMCVMAXProvisionV3(object):
     """
     def __init__(self, prtcl):
         self.protocol = prtcl
-        self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
+        self.utils = utils.VMAXUtils(prtcl)
 
     def delete_volume_from_pool(
             self, conn, storageConfigservice, volumeInstanceName, volumeName,
