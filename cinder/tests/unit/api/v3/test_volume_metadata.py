@@ -18,7 +18,6 @@ import uuid
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 
 from cinder.api import extensions
 from cinder.api.v3 import volume_metadata
@@ -162,10 +161,8 @@ class volumeMetaDataTest(test.TestCase):
                 'key3': 'value3',
             },
         }
-        expected = jsonutils.dumps(expected)
-        if six.PY3:
-            expected = expected.encode('utf-8')
-        self.assertEqual(expected, data.body)
+        result = jsonutils.loads(data.body)
+        self.assertDictEqual(expected, result)
 
     def test_index_nonexistent_volume(self):
         self.mock_object(db, 'volume_metadata_get',
@@ -180,10 +177,8 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url, version="3.15")
         data = self.controller.index(req, self.req_id)
         expected = {'metadata': {}}
-        expected = jsonutils.dumps(expected)
-        if six.PY3:
-            expected = expected.encode('utf-8')
-        self.assertEqual(expected, data.body)
+        result = jsonutils.loads(data.body)
+        self.assertDictEqual(expected, result)
 
     def test_validate_etag_true(self):
         self.mock_object(db, 'volume_metadata_get',
