@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 DotHill Systems
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -35,6 +36,10 @@ resp_login = '''<RESPONSE><OBJECT basetype="status" name="status" oid="1">
              <PROPERTY name="response-type-numeric">0</PROPERTY>
              <PROPERTY name="response">12a1626754554a21d85040760c81b</PROPERTY>
              <PROPERTY name="return-code">1</PROPERTY></OBJECT></RESPONSE>'''
+
+resp_fw = '''<RESPONSE><PROPERTY name="sc-fw">GLS220R001</PROPERTY>
+                       <PROPERTY name="return-code">0</PROPERTY></RESPONSE>'''
+
 resp_badlogin = '''<RESPONSE><OBJECT basetype="status" name="status" oid="1">
              <PROPERTY name="response-type">error</PROPERTY>
              <PROPERTY name="response-type-numeric">1</PROPERTY>
@@ -109,13 +114,18 @@ test_host = {'capabilities': {'location_info':
                               'DotHillVolumeDriver:xxxxx:dg02:A'}}
 test_snap = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
              'volume': {'name_id': None},
-             'volume_id': vol_id,
-             'display_name': 'test volume', 'name': 'volume', 'size': 10}
+             'volume_id': vol_id, 'display_name': 'test volume',
+             'name': 'volume', 'volume_size': 10}
 encoded_volid = 'v_O7DDpi8TOWF_9cwnMF'
 encoded_snapid = 's_O7DDpi8TOWF_9cwnMF'
 dest_volume = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
                'source_volid': vol_id,
                'display_name': 'test volume', 'name': 'volume', 'size': 10}
+dest_volume_larger = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                      'name_id': None,
+                      'source_volid': vol_id,
+                      'display_name': 'test volume',
+                      'name': 'volume', 'size': 20}
 attached_volume = {'id': vol_id,
                    'display_name': 'test volume', 'name': 'volume',
                    'size': 10, 'status': 'in-use',
@@ -155,13 +165,15 @@ class TestDotHillClient(test.TestCase):
     @mock.patch('requests.get')
     def test_login(self, mock_requests_get):
         m = mock.Mock()
-        m.text.encode.side_effect = [resp_login]
         mock_requests_get.return_value = m
-        self.client.login()
-        self.assertEqual(session_key, self.client._session_key)
-        m.text.encode.side_effect = [resp_badlogin]
+
+        m.text.encode.side_effect = [resp_badlogin, resp_badlogin]
         self.assertRaises(exception.DotHillAuthenticationError,
                           self.client.login)
+
+        m.text.encode.side_effect = [resp_login, resp_fw]
+        self.client.login()
+        self.assertEqual(session_key, self.client._session_key)
 
     def test_build_request_url(self):
         url = self.client._build_request_url('/path')
@@ -187,13 +199,13 @@ class TestDotHillClient(test.TestCase):
                                      requests.exceptions.
                                      RequestException("error")]
         mock_requests_get.return_value = m
-        ret = self.client._request('/path')
+        ret = self.client._api_request('/path')
         self.assertTrue(type(ret) == etree._Element)
         self.assertRaises(exception.DotHillConnectionError,
-                          self.client._request,
+                          self.client._api_request,
                           '/path')
         self.assertRaises(exception.DotHillConnectionError,
-                          self.client._request,
+                          self.client._api_request,
                           '/path')
 
     def test_assert_response_ok(self):
@@ -379,7 +391,7 @@ class TestFCDotHillCommon(test.TestCase):
         ret = self.common.create_volume(test_volume)
         self.assertIsNone(ret)
         mock_create.assert_called_with(encoded_volid,
-                                       "%sGB" % test_volume['size'],
+                                       "%sGiB" % test_volume['size'],
                                        self.common.backend_name,
                                        self.common.backend_type)
 
@@ -421,7 +433,38 @@ class TestFCDotHillCommon(test.TestCase):
 
     @mock.patch.object(dothill.DotHillClient, 'copy_volume')
     @mock.patch.object(dothill.DotHillClient, 'backend_stats')
-    def test_create_volume_from_snapshot(self, mock_stats, mock_copy):
+    @mock.patch.object(dothill_common.DotHillCommon, 'extend_volume')
+    def test_create_cloned_volume_larger(self, mock_extend, mock_stats,
+                                         mock_copy):
+        mock_stats.side_effect = [stats_low_space, stats_large_space,
+                                  stats_large_space]
+
+        self.assertRaises(exception.DotHillNotEnoughSpace,
+                          self.common.create_cloned_volume,
+                          dest_volume_larger, detached_volume)
+        self.assertFalse(mock_copy.called)
+
+        mock_copy.side_effect = [exception.DotHillRequestError, None]
+        self.assertRaises(exception.Invalid,
+                          self.common.create_cloned_volume,
+                          dest_volume_larger, detached_volume)
+
+        ret = self.common.create_cloned_volume(dest_volume_larger,
+                                               detached_volume)
+        self.assertIsNone(ret)
+        mock_copy.assert_called_with(encoded_volid,
+                                     'vqqqqqqqqqqqqqqqqqqq',
+                                     self.common.backend_name,
+                                     self.common.backend_type)
+        mock_extend.assert_called_once_with(dest_volume_larger,
+                                            dest_volume_larger['size'])
+
+    @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
+    @mock.patch.object(dothill.DotHillClient, 'extend_volume')
+    @mock.patch.object(dothill.DotHillClient, 'copy_volume')
+    @mock.patch.object(dothill.DotHillClient, 'backend_stats')
+    def test_create_volume_from_snapshot(self, mock_stats, mock_copy,
+                                         mock_extend, mock_get_size):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
@@ -430,26 +473,30 @@ class TestFCDotHillCommon(test.TestCase):
                           dest_volume, test_snap)
 
         mock_copy.side_effect = [exception.DotHillRequestError, None]
+        mock_get_size.return_value = test_snap['volume_size']
         self.assertRaises(exception.Invalid,
                           self.common.create_volume_from_snapshot,
                           dest_volume, test_snap)
 
-        ret = self.common.create_volume_from_snapshot(dest_volume, test_snap)
+        ret = self.common.create_volume_from_snapshot(dest_volume_larger,
+                                                      test_snap)
         self.assertIsNone(ret)
         mock_copy.assert_called_with('sqqqqqqqqqqqqqqqqqqq',
                                      'vqqqqqqqqqqqqqqqqqqq',
                                      self.common.backend_name,
                                      self.common.backend_type)
+        mock_extend.assert_called_with('vqqqqqqqqqqqqqqqqqqq', '10GiB')
 
+    @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
     @mock.patch.object(dothill.DotHillClient, 'extend_volume')
-    def test_extend_volume(self, mock_extend):
+    def test_extend_volume(self, mock_extend, mock_size):
         mock_extend.side_effect = [exception.DotHillRequestError, None]
-
+        mock_size.side_effect = [10, 10]
         self.assertRaises(exception.Invalid, self.common.extend_volume,
                           test_volume, 20)
         ret = self.common.extend_volume(test_volume, 20)
         self.assertIsNone(ret)
-        mock_extend.assert_called_with(encoded_volid, '10GB')
+        mock_extend.assert_called_with(encoded_volid, '10GiB')
 
     @mock.patch.object(dothill.DotHillClient, 'create_snapshot')
     def test_create_snapshot(self, mock_create):
@@ -622,14 +669,12 @@ class TestDotHillFC(test.TestCase):
     @mock.patch.object(dothill_common.DotHillCommon, 'unmap_volume')
     @mock.patch.object(dothill.DotHillClient, 'list_luns_for_host')
     def test_terminate_connection(self, mock_list, mock_unmap):
-        mock_unmap.side_effect = [exception.Invalid, 1]
+        mock_unmap.side_effect = [1]
         mock_list.side_effect = ['yes']
         actual = {'driver_volume_type': 'fibre_channel', 'data': {}}
-        self.assertRaises(exception.Invalid,
-                          self.driver.terminate_connection, test_volume,
-                          connector)
+        ret = self.driver.terminate_connection(test_volume, connector)
+        self.assertEqual(actual, ret)
         mock_unmap.assert_called_with(test_volume, connector, 'wwpns')
-
         ret = self.driver.terminate_connection(test_volume, connector)
         self.assertEqual(actual, ret)
 

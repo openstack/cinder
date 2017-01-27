@@ -51,7 +51,7 @@ CONF.register_opts(iscsi_opts)
 
 
 class HPMSACommon(dothill_common.DotHillCommon):
-    VERSION = "1.0"
+    VERSION = "1.6"
 
     def __init__(self, config):
         self.config = config

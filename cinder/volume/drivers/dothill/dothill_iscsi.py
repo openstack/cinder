@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -45,10 +46,11 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                      - added support for retype volume
                      - added support for manage/unmanage volume
                      - added https support
-
+        1.6    - Add management path redundancy and reduce load placed
+                 on management controller.
     """
 
-    VERSION = "1.0"
+    VERSION = "1.6"
 
     # ThirdPartySystems CI wiki
     CI_WIKI_NAME = "Vedams_DotHillDriver_CI"
@@ -162,7 +164,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                         self.__class__.__name__)
         return stats
 
-    def create_export(self, context, volume, connector):
+    def create_export(self, context, volume, connector=None):
         pass
 
     def ensure_export(self, context, volume):
