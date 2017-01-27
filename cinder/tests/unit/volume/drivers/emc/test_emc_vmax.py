@@ -4084,34 +4084,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                          volumes_model_update)
 
     @mock.patch.object(
-        emc_vmax_utils.EMCVMAXUtils,
-        'find_group_sync_rg_by_target',
-        return_value="")
-    @mock.patch.object(
-        emc_vmax_common.EMCVMAXCommon,
-        '_find_consistency_group',
-        return_value=(EMCVMAXCommonData.test_CG, EMCVMAXCommonData.test_CG))
-    @mock.patch.object(
-        emc_vmax_common.EMCVMAXCommon,
-        '_get_pool_and_storage_system',
-        return_value=(None, EMCVMAXCommonData.storage_system))
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSINoFAST'})
-    def test_create_consistencygroup_from_source_cg(
-            self, _mock_volume_type, _mock_storage, _mock_cg, _mock_rg):
-        volumes = [self.data.test_source_volume]
-        model_update, volumes_model_update = (
-            self.driver.create_consistencygroup_from_src(
-                self.data.test_ctxt, self.data.test_CG, volumes,
-                source_cg=self.data.test_CG, source_vols=volumes))
-        self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
-                         model_update)
-        self.assertEqual([{'status': 'available', 'id': '2'}],
-                         volumes_model_update)
-
-    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_update_pool_stats',
         return_value={1, 2, 3, 4, 5})
@@ -7618,6 +7590,27 @@ class EMCVMAXProvisionV3Test(test.TestCase):
         keybindings = volumeDict['keybindings']
         self.assertEqual('1', keybindings['DeviceID'])
         self.assertEqual(0, rc)
+
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'wait_for_job_complete',
+        return_value=(-1, 'error'))
+    def test_create_volume_from_sg_failed(self, mock_devices):
+        provisionv3 = self.driver.common.provisionv3
+        conn = FakeEcomConnection()
+        storageConfigService = {
+            'CreationClassName': 'EMC_StorageConfigurationService',
+            'SystemName': 'SYMMETRIX+000195900551'}
+        sgInstanceName = self.data.default_sg_instance_name
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': True}
+        volumeName = 'failed_vol'
+        volumeSize = 3
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            provisionv3.create_volume_from_sg,
+            conn, storageConfigService, volumeName,
+            sgInstanceName, volumeSize, extraSpecs)
 
     def test_create_storage_group_v3(self):
         provisionv3 = self.driver.common.provisionv3
