@@ -18,7 +18,7 @@ from tempest.api.volume import base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
+from tempest.lib import decorators
 
 from cinder.tests.tempest import cinder_clients
 
@@ -65,7 +65,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self.consistencygroups_adm_client.wait_for_cgsnapshot_deletion(
             cgsnapshot_id)
 
-    @test.idempotent_id('3fe776ba-ec1f-4e6c-8d78-4b14c3a7fc44')
+    @decorators.idempotent_id('3fe776ba-ec1f-4e6c-8d78-4b14c3a7fc44')
     def test_consistencygroup_create_delete(self):
         # Create volume type
         name = data_utils.rand_name("volume-type")
@@ -109,7 +109,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self._delete_consistencygroup(cg['id'])
         self.admin_volume_types_client.delete_volume_type(volume_type['id'])
 
-    @test.idempotent_id('2134dd52-f333-4456-bb05-6cb0f009a44f')
+    @decorators.idempotent_id('2134dd52-f333-4456-bb05-6cb0f009a44f')
     def test_consistencygroup_cgsnapshot_create_delete(self):
         # Create volume type
         name = data_utils.rand_name("volume-type")
@@ -169,7 +169,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self._delete_consistencygroup(cg['id'])
         self.admin_volume_types_client.delete_volume_type(volume_type['id'])
 
-    @test.idempotent_id('3a6a5525-25ca-4a6c-aac4-cac6fa8f5b43')
+    @decorators.idempotent_id('3a6a5525-25ca-4a6c-aac4-cac6fa8f5b43')
     def test_create_consistencygroup_from_cgsnapshot(self):
         # Create volume type
         name = data_utils.rand_name("volume-type")
@@ -235,7 +235,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self._delete_consistencygroup(cg['id'])
         self.admin_volume_types_client.delete_volume_type(volume_type['id'])
 
-    @test.idempotent_id('556121ae-de9c-4342-9897-e54260447a19')
+    @decorators.idempotent_id('556121ae-de9c-4342-9897-e54260447a19')
     def test_create_consistencygroup_from_consistencygroup(self):
         # Create volume type
         name = data_utils.rand_name("volume-type")
