@@ -282,19 +282,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         current_array.create_volume(vol_name, vol_size)
 
-        if volume['consistencygroup_id']:
-            self._add_volume_to_consistency_group(
-                volume['consistencygroup_id'],
-                vol_name
-            )
-
+        self._add_to_group_if_needed(volume, vol_name)
         self._enable_replication_if_needed(current_array, volume)
 
     @pure_driver_debug_trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         vol_name = self._get_vol_name(volume)
-        if snapshot['cgsnapshot_id']:
+        if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
@@ -312,11 +307,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                snapshot["volume_size"],
                                volume["size"])
 
-        if volume['consistencygroup_id']:
-            self._add_volume_to_consistency_group(
-                volume['consistencygroup_id'],
-                vol_name)
-
+        self._add_to_group_if_needed(volume, vol_name)
         self._enable_replication_if_needed(current_array, volume)
 
     def _enable_replication_if_needed(self, array, volume):
@@ -352,11 +343,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                src_vref["size"],
                                volume["size"])
 
-        if volume['consistencygroup_id']:
-            self._add_volume_to_consistency_group(
-                volume['consistencygroup_id'],
-                vol_name)
-
+        self._add_to_group_if_needed(volume, vol_name)
         self._enable_replication_if_needed(current_array, volume)
 
     def _extend_if_needed(self, array, vol_name, src_size, vol_size):
@@ -633,8 +620,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         new_size = new_size * units.Gi
         current_array.extend_volume(vol_name, new_size)
 
-    def _add_volume_to_consistency_group(self, consistencygroup_id, vol_name):
-        pgroup_name = self._get_pgroup_name_from_id(consistencygroup_id)
+    def _add_volume_to_consistency_group(self, group_id, vol_name):
+        pgroup_name = self._get_pgroup_name_from_id(group_id)
         current_array = self._get_current_array()
         current_array.set_pgroup(pgroup_name, addvollist=[vol_name])
 
@@ -754,7 +741,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
 
-        cg_id = cgsnapshot.consistencygroup_id
+        cg_id = self._get_group_id_from_snap(cgsnapshot)
         pgroup_name = self._get_pgroup_name_from_id(cg_id)
         pgsnap_suffix = self._get_pgroup_snap_suffix(cgsnapshot)
         current_array = self._get_current_array()
@@ -832,6 +819,129 @@ class PureBaseVolumeDriver(san.SanDriver):
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
             reason=_("Unable to find Purity ref with name=%s") % ref_vol_name)
+
+    def _add_to_group_if_needed(self, volume, vol_name):
+        if volume['group_id']:
+            # If the query blows up just let it raise up the stack, the volume
+            # should be put into an error state
+            group = volume_utils.group_get_by_id(volume['group_id'])
+            if volume_utils.is_group_a_cg_snapshot_type(group):
+                self._add_volume_to_consistency_group(
+                    volume['group_id'],
+                    vol_name
+                )
+        elif volume['consistencygroup_id']:
+            self._add_volume_to_consistency_group(
+                volume['consistencygroup_id'],
+                vol_name
+            )
+
+    def create_group(self, ctxt, group):
+        """Creates a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be created.
+        :returns: model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self.create_consistencygroup(ctxt, group)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def delete_group(self, ctxt, group, volumes):
+        """Deletes a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be deleted.
+        :param volumes: a list of Volume objects in the group.
+        :returns: model_update, volumes_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self.delete_consistencygroup(ctxt, group, volumes)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def update_group(self, ctxt, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be updated.
+        :param add_volumes: a list of Volume objects to be added.
+        :param remove_volumes: a list of Volume objects to be removed.
+        :returns: model_update, add_volumes_update, remove_volumes_update
+        """
+
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self.update_consistencygroup(ctxt,
+                                                group,
+                                                add_volumes,
+                                                remove_volumes)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def create_group_from_src(self, ctxt, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of Volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
+        :returns: model_update, volumes_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self.create_consistencygroup_from_src(ctxt,
+                                                         group,
+                                                         volumes,
+                                                         group_snapshot,
+                                                         snapshots,
+                                                         source_group,
+                                                         source_vols)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
+        """Creates a group_snapshot.
+
+        :param ctxt: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be created.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self.create_cgsnapshot(ctxt, group_snapshot, snapshots)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def delete_group_snapshot(self, ctxt, group_snapshot, snapshots):
+        """Deletes a group_snapshot.
+
+        :param ctxt: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be deleted.
+        :param snapshots: a list of snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self.delete_cgsnapshot(ctxt, group_snapshot, snapshots)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
 
     @pure_driver_debug_trace
     def manage_existing(self, volume, existing_ref):
@@ -1098,15 +1208,31 @@ class PureBaseVolumeDriver(san.SanDriver):
         return "consisgroup-%s-cinder" % id
 
     @staticmethod
-    def _get_pgroup_snap_suffix(cgsnapshot):
-        return "cgsnapshot-%s-cinder" % cgsnapshot.id
+    def _get_pgroup_snap_suffix(group_snapshot):
+        return "cgsnapshot-%s-cinder" % group_snapshot['id']
+
+    @staticmethod
+    def _get_group_id_from_snap(group_snap):
+        # We don't really care what kind of group it is, if we are calling
+        # this look for a group_id and fall back to using a consistencygroup_id
+        id = None
+        try:
+            id = group_snap['group_id']
+        except AttributeError:
+            pass
+        if id is None:
+            try:
+                id = group_snap['consistencygroup_id']
+            except AttributeError:
+                pass
+        return id
 
     @classmethod
-    def _get_pgroup_snap_name(cls, cgsnapshot):
+    def _get_pgroup_snap_name(cls, group_snapshot):
         """Return the name of the pgroup snapshot that Purity will use"""
-        cg_id = cgsnapshot.consistencygroup_id
-        return "%s.%s" % (cls._get_pgroup_name_from_id(cg_id),
-                          cls._get_pgroup_snap_suffix(cgsnapshot))
+        group_id = cls._get_group_id_from_snap(group_snapshot)
+        return "%s.%s" % (cls._get_pgroup_name_from_id(group_id),
+                          cls._get_pgroup_snap_suffix(group_snapshot))
 
     @staticmethod
     def _get_pgroup_vol_snap_name(pg_name, pgsnap_suffix, volume_name):
@@ -1119,13 +1245,14 @@ class PureBaseVolumeDriver(san.SanDriver):
     def _get_pgroup_snap_name_from_snapshot(self, snapshot):
         """Return the name of the snapshot that Purity will use."""
 
-        # TODO(patrickeast): Remove DB calls once the cgsnapshot objects are
-        # available to use and can be associated with the snapshot objects.
-        ctxt = context.get_admin_context()
-        cgsnapshot = self.db.cgsnapshot_get(ctxt, snapshot.cgsnapshot_id)
+        group_snap = None
+        if snapshot.group_snapshot:
+            group_snap = snapshot.group_snapshot
+        elif snapshot.cgsnapshot:
+            group_snap = snapshot.cgsnapshot
 
         pg_vol_snap_name = "%(group_snap)s.%(volume_name)s-cinder" % {
-            'group_snap': self._get_pgroup_snap_name(cgsnapshot),
+            'group_snap': self._get_pgroup_snap_name(group_snap),
             'volume_name': snapshot.volume_name
         }
         return pg_vol_snap_name

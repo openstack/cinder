@@ -23,6 +23,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 
@@ -91,10 +92,12 @@ VOLUME = {
     "volume_type_id": VOLUME_TYPE_ID,
     "replication_status": None,
     "consistencygroup_id": None,
-    "provider_location": GET_ARRAY_PRIMARY["id"]
+    "provider_location": GET_ARRAY_PRIMARY["id"],
+    "group_id": None,
 }
 VOLUME_PURITY_NAME = VOLUME['name'] + '-cinder'
 VOLUME_WITH_CGROUP = VOLUME.copy()
+VOLUME_WITH_CGROUP['group_id'] = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
 VOLUME_WITH_CGROUP['consistencygroup_id'] = \
     "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
 SRC_VOL_ID = "dc7a294d-5964-4379-a15f-ce5554734efc"
@@ -107,6 +110,7 @@ SRC_VOL = {
     "volume_type": None,
     "volume_type_id": None,
     "consistencygroup_id": None,
+    "group_id": None,
 }
 SNAPSHOT_ID = "04fe2f9a-d0c4-4564-a30d-693cc3657b47"
 SNAPSHOT = {
@@ -117,11 +121,15 @@ SNAPSHOT = {
     "volume_size": 2,
     "display_name": "fake_snapshot",
     "cgsnapshot_id": None,
+    "cgsnapshot": None,
+    "group_snapshot_id": None,
+    "group_snapshot": None,
 }
 SNAPSHOT_PURITY_NAME = SRC_VOL["name"] + '-cinder.' + SNAPSHOT["name"]
 SNAPSHOT_WITH_CGROUP = SNAPSHOT.copy()
-SNAPSHOT_WITH_CGROUP['cgsnapshot_id'] = \
-    "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+SNAPSHOT_WITH_CGROUP['group_snapshot'] = {
+    "group_id": "4a2f7e3a-312a-40c5-96a8-536b8a0fe044",
+}
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
 INITIATOR_WWN = "5001500150015081abc"
 ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
@@ -624,32 +632,23 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(49, len(result))
         self.assertTrue(pure.GENERATED_NAME.match(result))
 
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
-    def test_create_volume(self, mock_is_replicated_type):
+    def test_create_volume(self, mock_is_replicated_type, mock_add_to_group):
         mock_is_replicated_type.return_value = False
         self.driver.create_volume(VOLUME)
+        vol_name = VOLUME["name"] + "-cinder"
         self.array.create_volume.assert_called_with(
-            VOLUME["name"] + "-cinder", 2 * units.Gi)
+            vol_name, 2 * units.Gi)
+        mock_add_to_group.assert_called_once_with(VOLUME,
+                                                  vol_name)
         self.assert_error_propagates([self.array.create_volume],
                                      self.driver.create_volume, VOLUME)
 
-    @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group",
-                autospec=True)
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
-    def test_create_volume_with_cgroup(self, mock_is_replicated_type,
-                                       mock_add_to_cgroup):
-        vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
-        mock_is_replicated_type.return_value = False
-
-        self.driver.create_volume(VOLUME_WITH_CGROUP)
-
-        mock_add_to_cgroup\
-            .assert_called_with(self.driver,
-                                VOLUME_WITH_CGROUP['consistencygroup_id'],
-                                vol_name)
-
-    @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
-    def test_create_volume_from_snapshot(self, mock_is_replicated_type):
+    def test_create_volume_from_snapshot(self, mock_is_replicated_type,
+                                         mock_add_to_group):
         vol_name = VOLUME["name"] + "-cinder"
         snap_name = SNAPSHOT["volume_name"] + "-cinder." + SNAPSHOT["name"]
         mock_is_replicated_type.return_value = False
@@ -658,21 +657,32 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.create_volume_from_snapshot(VOLUME, SNAPSHOT)
         self.array.copy_volume.assert_called_with(snap_name, vol_name)
         self.assertFalse(self.array.extend_volume.called)
+        mock_add_to_group.assert_called_once_with(VOLUME,
+                                                  vol_name)
         self.assert_error_propagates(
             [self.array.copy_volume],
             self.driver.create_volume_from_snapshot, VOLUME, SNAPSHOT)
         self.assertFalse(self.array.extend_volume.called)
 
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
+    @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type",
+                autospec=True)
+    def test_create_volume_from_snapshot_with_extend(self,
+                                                     mock_is_replicated_type,
+                                                     mock_add_to_group):
+        vol_name = VOLUME["name"] + "-cinder"
+        snap_name = SNAPSHOT["volume_name"] + "-cinder." + SNAPSHOT["name"]
+        mock_is_replicated_type.return_value = False
+
         # Branch where extend needed
-        SNAPSHOT["volume_size"] = 1  # resize so smaller than VOLUME
-        self.driver.create_volume_from_snapshot(VOLUME, SNAPSHOT)
+        src = deepcopy(SNAPSHOT)
+        src["volume_size"] = 1  # resize so smaller than VOLUME
+        self.driver.create_volume_from_snapshot(VOLUME, src)
         expected = [mock.call.copy_volume(snap_name, vol_name),
                     mock.call.extend_volume(vol_name, 2 * units.Gi)]
         self.array.assert_has_calls(expected)
-        self.assert_error_propagates(
-            [self.array.copy_volume, self.array.extend_volume],
-            self.driver.create_volume_from_snapshot, VOLUME, SNAPSHOT)
-        SNAPSHOT["volume_size"] = 2  # reset size
+        mock_add_to_group.assert_called_once_with(VOLUME,
+                                                  vol_name)
 
     @mock.patch(BASE_DRIVER_OBJ + "._get_snap_name")
     def test_create_volume_from_snapshot_cant_get_name(self, mock_get_name):
@@ -688,15 +698,14 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           self.driver.create_volume_from_snapshot,
                           VOLUME, SNAPSHOT_WITH_CGROUP)
 
-    @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group",
-                autospec=True)
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._extend_if_needed", autospec=True)
     @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_snap_name_from_snapshot")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
     def test_create_volume_from_cgsnapshot(self, mock_is_replicated_type,
                                            mock_get_snap_name,
                                            mock_extend_if_needed,
-                                           mock_add_to_cgroup):
+                                           mock_add_to_group):
         vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
         snap_name = "consisgroup-4a2f7e3a-312a-40c5-96a8-536b8a0f" \
                     "e074-cinder.4a2f7e3a-312a-40c5-96a8-536b8a0fe075."\
@@ -713,14 +722,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
         self.driver.create_volume_from_snapshot(VOLUME_WITH_CGROUP,
                                                 SNAPSHOT_WITH_CGROUP)
-        mock_add_to_cgroup\
-            .assert_called_with(self.driver,
-                                VOLUME_WITH_CGROUP['consistencygroup_id'],
+        mock_add_to_group\
+            .assert_called_with(VOLUME_WITH_CGROUP,
                                 vol_name)
 
     # Tests cloning a volume that is not replicated type
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
-    def test_create_cloned_volume(self, mock_is_replicated_type):
+    def test_create_cloned_volume(self, mock_is_replicated_type,
+                                  mock_add_to_group):
         vol_name = VOLUME["name"] + "-cinder"
         src_name = SRC_VOL["name"] + "-cinder"
         mock_is_replicated_type.return_value = False
@@ -728,36 +738,41 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.create_cloned_volume(VOLUME, SRC_VOL)
         self.array.copy_volume.assert_called_with(src_name, vol_name)
         self.assertFalse(self.array.extend_volume.called)
+        mock_add_to_group.assert_called_once_with(VOLUME,
+                                                  vol_name)
         self.assert_error_propagates(
             [self.array.copy_volume],
             self.driver.create_cloned_volume, VOLUME, SRC_VOL)
         self.assertFalse(self.array.extend_volume.called)
-        # Branch where extend needed
-        SRC_VOL["size"] = 1  # resize so smaller than VOLUME
-        self.driver.create_cloned_volume(VOLUME, SRC_VOL)
+
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
+    @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type",
+                autospec=True)
+    def test_create_cloned_volume_and_extend(self, mock_is_replicated_type,
+                                             mock_add_to_group):
+        vol_name = VOLUME["name"] + "-cinder"
+        src_name = SRC_VOL["name"] + "-cinder"
+        src = deepcopy(SRC_VOL)
+        src["size"] = 1  # resize so smaller than VOLUME
+        self.driver.create_cloned_volume(VOLUME, src)
         expected = [mock.call.copy_volume(src_name, vol_name),
                     mock.call.extend_volume(vol_name, 2 * units.Gi)]
         self.array.assert_has_calls(expected)
-        self.assert_error_propagates(
-            [self.array.copy_volume, self.array.extend_volume],
-            self.driver.create_cloned_volume, VOLUME, SRC_VOL)
-        SRC_VOL["size"] = 2  # reset size
+        mock_add_to_group.assert_called_once_with(VOLUME,
+                                                  vol_name)
 
     # Tests cloning a volume that is part of a consistency group
-    @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group",
-                autospec=True)
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._is_volume_replicated_type", autospec=True)
     def test_create_cloned_volume_with_cgroup(self, mock_is_replicated_type,
-                                              mock_add_to_cgroup):
+                                              mock_add_to_group):
         vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
         mock_is_replicated_type.return_value = False
 
         self.driver.create_cloned_volume(VOLUME_WITH_CGROUP, SRC_VOL)
 
-        mock_add_to_cgroup\
-            .assert_called_with(self.driver,
-                                VOLUME_WITH_CGROUP['consistencygroup_id'],
-                                vol_name)
+        mock_add_to_group.assert_called_with(VOLUME_WITH_CGROUP,
+                                             vol_name)
 
     def test_delete_volume_already_deleted(self):
         self.array.list_volume_private_connections.side_effect = \
@@ -964,9 +979,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(expected_name, actual_name)
 
     def test_get_pgroup_snap_suffix(self):
-        cgsnap = mock.Mock()
-        cgsnap.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
-        expected_suffix = "cgsnapshot-%s-cinder" % cgsnap.id
+        cgsnap = {
+            'id': "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        }
+        expected_suffix = "cgsnapshot-%s-cinder" % cgsnap['id']
         actual_suffix = self.driver._get_pgroup_snap_suffix(cgsnap)
         self.assertEqual(expected_suffix, actual_suffix)
 
@@ -974,33 +990,35 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         cg_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
         cgsnap_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
 
-        mock_cgsnap = mock.Mock()
-        mock_cgsnap.consistencygroup_id = cg_id
-        mock_cgsnap.id = cgsnap_id
+        cgsnap = {
+            'id': cgsnap_id,
+            'group_id': cg_id
+        }
         expected_name = "consisgroup-%(cg)s-cinder.cgsnapshot-%(snap)s-cinder"\
                         % {"cg": cg_id, "snap": cgsnap_id}
 
-        actual_name = self.driver._get_pgroup_snap_name(mock_cgsnap)
+        actual_name = self.driver._get_pgroup_snap_name(cgsnap)
 
         self.assertEqual(expected_name, actual_name)
 
     def test_get_pgroup_snap_name_from_snapshot(self):
 
-        cgsnapshot_id = 'b919b266-23b4-4b83-9a92-e66031b9a921'
+        groupsnapshot_id = 'b919b266-23b4-4b83-9a92-e66031b9a921'
         volume_name = 'volume-a3b8b294-8494-4a72-bec7-9aadec561332'
         cg_id = '0cfc0e4e-5029-4839-af20-184fbc42a9ed'
         pgsnap_name_base = (
             'consisgroup-%s-cinder.cgsnapshot-%s-cinder.%s-cinder')
-        pgsnap_name = pgsnap_name_base % (cg_id, cgsnapshot_id, volume_name)
+        pgsnap_name = pgsnap_name_base % (cg_id, groupsnapshot_id, volume_name)
 
         self.driver.db = mock.MagicMock()
-        mock_cgsnap = mock.MagicMock()
-        mock_cgsnap.id = cgsnapshot_id
-        mock_cgsnap.consistencygroup_id = cg_id
-        self.driver.db.cgsnapshot_get.return_value = mock_cgsnap
+        cgsnap = {
+            'id': groupsnapshot_id,
+            'group_id': cg_id
+        }
+        self.driver.db.group_snapshot_get.return_value = cgsnap
 
-        mock_snap = mock.Mock()
-        mock_snap.cgsnapshot_id = cgsnapshot_id
+        mock_snap = mock.MagicMock()
+        mock_snap.group_snapshot = cgsnap
         mock_snap.volume_name = volume_name
 
         actual_name = self.driver._get_pgroup_snap_name_from_snapshot(
@@ -1252,17 +1270,17 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         )
 
     def test_create_cgsnapshot(self):
-        mock_cgsnap = mock.Mock()
-        mock_cgsnap.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
-        mock_cgsnap.consistencygroup_id = \
-            "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+        mock_cgsnap = {
+            'id': "4a2f7e3a-312a-40c5-96a8-536b8a0fe074",
+            'group_id': "4a2f7e3a-312a-40c5-96a8-536b8a0fe075",
+        }
         mock_context = mock.Mock()
         mock_snap = mock.MagicMock()
 
         model_update, snapshots = self.driver.create_cgsnapshot(mock_context,
                                                                 mock_cgsnap,
                                                                 [mock_snap])
-        cg_id = mock_cgsnap.consistencygroup_id
+        cg_id = mock_cgsnap["group_id"]
         expected_pgroup_name = self.driver._get_pgroup_name_from_id(cg_id)
         expected_snap_suffix = self.driver._get_pgroup_snap_suffix(mock_cgsnap)
         self.array.create_pgroup_snapshot\
@@ -2719,3 +2737,226 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         self.assertFalse(self.array.list_volumes.called)
         self.assertFalse(self.array.list_hosts.called)
         self.assertFalse(self.array.list_pgroups.called)
+
+
+class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
+    def setUp(self):
+        super(PureVolumeGroupsTestCase, self).setUp()
+        self.array.get.side_effect = self.fake_get_array
+        self.mock_context = mock.Mock()
+        self.driver.db = mock.Mock()
+        self.driver.db.group_get = mock.Mock()
+
+    @mock.patch('cinder.db.group_get')
+    @mock.patch(BASE_DRIVER_OBJ + '._add_volume_to_consistency_group')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_add_to_group_if_needed(self, mock_is_cg, mock_add_to_cg,
+                                    mock_db_group_get):
+        mock_is_cg.return_value = False
+        vol_name = 'foo'
+        group_id = fake.GROUP_ID
+        volume = fake_volume.fake_volume_obj(None, group_id=group_id)
+        group = mock.MagicMock()
+        mock_db_group_get.return_value = group
+
+        self.driver._add_to_group_if_needed(volume, vol_name)
+
+        mock_is_cg.assert_called_once_with(group)
+        mock_add_to_cg.assert_not_called()
+
+    @mock.patch('cinder.db.group_get')
+    @mock.patch(BASE_DRIVER_OBJ + '._add_volume_to_consistency_group')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_add_to_group_if_needed_with_cg(self, mock_is_cg, mock_add_to_cg,
+                                            mock_db_group_get):
+        mock_is_cg.return_value = True
+        vol_name = 'foo'
+        group_id = fake.GROUP_ID
+        volume = fake_volume.fake_volume_obj(None, group_id=group_id)
+        group = mock.MagicMock()
+        mock_db_group_get.return_value = group
+
+        self.driver._add_to_group_if_needed(volume, vol_name)
+
+        mock_is_cg.assert_called_once_with(group)
+        mock_add_to_cg.assert_called_once_with(
+            group_id,
+            vol_name
+        )
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = fake_group.fake_group_type_obj(None)
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group,
+            self.mock_context, group
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.delete_group,
+            self.mock_context, group, volumes
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = mock.MagicMock()
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.update_group,
+            self.mock_context, group
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_src(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group_from_src,
+            self.mock_context, group, volumes
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group_snapshot = mock.MagicMock()
+        snapshots = [fake_snapshot.fake_snapshot_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group_snapshot,
+            self.mock_context, group_snapshot, snapshots
+        )
+        mock_is_cg.assert_called_once_with(group_snapshot)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group_snapshot(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group_snapshot = mock.MagicMock()
+        snapshots = [fake_snapshot.fake_snapshot_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group_snapshot,
+            self.mock_context, group_snapshot, snapshots
+        )
+        mock_is_cg.assert_called_once_with(group_snapshot)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.create_consistencygroup')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_with_cg(self, mock_get_specs, mock_create_cg):
+        mock_get_specs.return_value = '<is> True'
+        group = mock.MagicMock()
+        self.driver.create_group(self.mock_context, group)
+        mock_create_cg.assert_called_once_with(self.mock_context, group)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.delete_consistencygroup')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_delete_group_with_cg(self, mock_get_specs, mock_delete_cg):
+        mock_get_specs.return_value = '<is> True'
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.driver.delete_group(self.mock_context, group, volumes)
+        mock_delete_cg.assert_called_once_with(self.mock_context,
+                                               group,
+                                               volumes)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.update_consistencygroup')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_update_group_with_cg(self, mock_get_specs, mock_update_cg):
+        mock_get_specs.return_value = '<is> True'
+        group = mock.MagicMock()
+        addvollist = [mock.Mock()]
+        remvollist = [mock.Mock()]
+        self.driver.update_group(
+            self.mock_context,
+            group,
+            addvollist,
+            remvollist
+        )
+        mock_update_cg.assert_called_once_with(
+            self.mock_context,
+            group,
+            addvollist,
+            remvollist
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '.create_consistencygroup_from_src')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_from_src_with_cg(self, mock_get_specs, mock_create):
+        mock_get_specs.return_value = '<is> True'
+        group = mock.MagicMock()
+        volumes = [mock.Mock()]
+        group_snapshot = mock.Mock()
+        snapshots = [mock.Mock()]
+        source_group = mock.MagicMock()
+        source_vols = [mock.Mock()]
+
+        self.driver.create_group_from_src(
+            self.mock_context,
+            group,
+            volumes,
+            group_snapshot,
+            snapshots,
+            source_group,
+            source_vols
+        )
+        mock_create.assert_called_once_with(
+            self.mock_context,
+            group,
+            volumes,
+            group_snapshot,
+            snapshots,
+            source_group,
+            source_vols
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '.create_cgsnapshot')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_snapshot_with_cg(self, mock_get_specs,
+                                           mock_create_cgsnap):
+        mock_get_specs.return_value = '<is> True'
+        group_snapshot = mock.MagicMock()
+        snapshots = [mock.Mock()]
+
+        self.driver.create_group_snapshot(
+            self.mock_context,
+            group_snapshot,
+            snapshots
+        )
+        mock_create_cgsnap.assert_called_once_with(
+            self.mock_context,
+            group_snapshot,
+            snapshots
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '.delete_cgsnapshot')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_delete_group_snapshot_with_cg(self, mock_get_specs,
+                                           mock_delete_cg):
+        mock_get_specs.return_value = '<is> True'
+        group_snapshot = mock.MagicMock()
+        snapshots = [mock.Mock()]
+
+        self.driver.delete_group_snapshot(
+            self.mock_context,
+            group_snapshot,
+            snapshots
+        )
+        mock_delete_cg.assert_called_once_with(
+            self.mock_context,
+            group_snapshot,
+            snapshots
+        )

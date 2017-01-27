@@ -35,6 +35,7 @@ from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -1010,3 +1011,38 @@ class VolumeUtilsTestCase(test.TestCase):
     def test_is_replicated_spec_false(self, enabled):
         res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
         self.assertFalse(res)
+
+    @mock.patch('cinder.db.group_get')
+    def test_group_get_by_id(self, mock_db_group_get):
+        expected = mock.Mock()
+        mock_db_group_get.return_value = expected
+        group_id = fake.GROUP_ID
+        actual = volume_utils.group_get_by_id(group_id)
+        self.assertEqual(expected, actual)
+
+    @mock.patch('cinder.db.group_get')
+    def test_group_get_by_id_group_not_found(self, mock_db_group_get):
+        group_id = fake.GROUP_ID
+        mock_db_group_get.side_effect = exception.GroupNotFound(
+            group_id=group_id)
+        self.assertRaises(
+            exception.GroupNotFound,
+            volume_utils.group_get_by_id,
+            group_id
+        )
+
+    @ddt.data('<is> False', None, 'notASpecValueWeCareAbout')
+    def test_is_group_a_cg_snapshot_type_is_false(self, spec_value):
+        with mock.patch('cinder.volume.group_types'
+                        '.get_group_type_specs') as mock_get_specs:
+            mock_get_specs.return_value = spec_value
+            group = fake_group.fake_group_obj(
+                None, group_type_id=fake.GROUP_TYPE_ID)
+            self.assertFalse(volume_utils.is_group_a_cg_snapshot_type(group))
+
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_is_group_a_cg_snapshot_type_is_true(self, mock_get_specs):
+        mock_get_specs.return_value = '<is> True'
+        group = fake_group.fake_group_obj(
+            None, group_type_id=fake.GROUP_TYPE_ID)
+        self.assertTrue(volume_utils.is_group_a_cg_snapshot_type(group))

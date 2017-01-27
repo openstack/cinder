@@ -43,6 +43,7 @@ from cinder.i18n import _, _LI, _LW, _LE
 from cinder import objects
 from cinder import rpc
 from cinder import utils
+from cinder.volume import group_types
 from cinder.volume import throttling
 from cinder.volume import volume_types
 
@@ -888,3 +889,21 @@ def is_replicated_str(str):
 def is_replicated_spec(extra_specs):
     return (extra_specs and
             is_replicated_str(extra_specs.get('replication_enabled')))
+
+
+def group_get_by_id(group_id):
+    ctxt = context.get_admin_context()
+    group = db.group_get(ctxt, group_id)
+    return group
+
+
+def is_group_a_cg_snapshot_type(group_or_snap):
+    LOG.debug("Checking if %s is a consistent snapshot group",
+              group_or_snap)
+    if group_or_snap["group_type_id"] is not None:
+        spec = group_types.get_group_type_specs(
+            group_or_snap["group_type_id"],
+            key="consistent_group_snapshot_enabled"
+        )
+        return spec == "<is> True"
+    return False
