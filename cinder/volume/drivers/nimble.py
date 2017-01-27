@@ -68,6 +68,7 @@ SM_SUBNET_MGMT_PLUS_DATA = 'mgmt-data'
 SM_STATE_MSG = "is already in requested state"
 SM_OBJ_EXIST_MSG = "Object exists"
 SM_OBJ_ENOENT_MSG = "No such object"
+IOPS_ERR_MSG = "Please set valid IOPS limit in the range"
 LUN_ID = '0'
 WARN_LEVEL = 80
 DEFAULT_SLEEP = 5
@@ -242,9 +243,11 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         Extend the volume if the size of the volume is more than the snapshot.
         """
         reserve = not self.configuration.san_thin_provision
+        pool_name = self.configuration.nimble_pool_name
         self.APIExecutor.clone_vol(volume, snapshot, reserve,
                                    self._group_target_enabled,
-                                   self._storage_protocol)
+                                   self._storage_protocol,
+                                   pool_name)
         if(volume['size'] > snapshot['volume_size']):
             vol_size = volume['size'] * units.Ki
             reserve_size = 100 if reserve else 0
@@ -1181,10 +1184,11 @@ class NimbleRestAPIExecutor(object):
         if iops_limit is not None:
             if not iops_limit.isdigit() or (
                int(iops_limit) < MIN_IOPS) or (int(iops_limit) > MAX_IOPS):
-                raise NimbleAPIException(_("Please set valid IOPS limit"
-                                         " in the range [%(min)s, %(max)s]") %
-                                         {'min': MIN_IOPS,
+                raise NimbleAPIException(_("%(err)s [%(min)s, %(max)s]") %
+                                         {'err': IOPS_ERR_MSG,
+                                          'min': MIN_IOPS,
                                           'max': MAX_IOPS})
+
             data['data']['limit_iops'] = iops_limit
 
         LOG.debug("Volume metadata :%s", volume.metadata)
@@ -1194,10 +1198,9 @@ class NimbleRestAPIExecutor(object):
             if key == EXTRA_SPEC_IOPS_LIMIT and value.isdigit():
                 if type(value) == int or int(value) < MIN_IOPS or (
                    int(value) > MAX_IOPS):
-                    raise NimbleAPIException(_("Please enter valid IOPS "
-                                               "limit in the range ["
-                                               "%(min)s, %(max)s]") %
-                                             {'min': MIN_IOPS,
+                    raise NimbleAPIException(_("%(err)s [%(min)s, %(max)s]") %
+                                             {'err': IOPS_ERR_MSG,
+                                              'min': MIN_IOPS,
                                               'max': MAX_IOPS})
                 LOG.debug("IOPS Limit %s", value)
                 data['data']['limit_iops'] = value
@@ -1478,7 +1481,7 @@ class NimbleRestAPIExecutor(object):
         return r['data']
 
     def clone_vol(self, volume, snapshot, reserve, is_gst_enabled,
-                  protocol):
+                  protocol, pool_name):
         api = "volumes"
         volume_name = snapshot['volume_name']
         snap_name = snapshot['name']
@@ -1493,6 +1496,9 @@ class NimbleRestAPIExecutor(object):
         perf_policy_id = self.get_performance_policy_id(perf_policy_name)
         encrypt = extra_specs_map.get(EXTRA_SPEC_ENCRYPTION)
         multi_initiator = extra_specs_map.get(EXTRA_SPEC_MULTI_INITIATOR)
+        iops_limit = extra_specs_map[EXTRA_SPEC_IOPS_LIMIT]
+        folder_name = extra_specs_map[EXTRA_SPEC_FOLDER]
+        pool_id = self.get_pool_id(pool_name)
         # default value of cipher for encryption
         cipher = DEFAULT_CIPHER
         if encrypt.lower() == 'yes':
@@ -1534,6 +1540,66 @@ class NimbleRestAPIExecutor(object):
                 }
         if protocol == "iSCSI":
             data['data']['multi_initiator'] = multi_initiator
+
+        folder_id = None
+        if folder_name is not None:
+            # validate if folder exists in pool_name
+            pool_info = self.get_pool_info(pool_id)
+            if 'folder_list' in pool_info and (pool_info['folder_list'] is
+                                               not None):
+                for folder_list in pool_info['folder_list']:
+                    LOG.debug("folder_list : %s", folder_list)
+                    if folder_list['fqn'] == "/" + folder_name:
+                        LOG.debug("Folder %(folder)s present in pool "
+                                  "%(pool)s",
+                                  {'folder': folder_name,
+                                   'pool': pool_name})
+                        folder_id = self.get_folder_id(folder_name)
+                        if folder_id is not None:
+                            data['data']["folder_id"] = folder_id
+                if folder_id is None:
+                    raise NimbleAPIException(_("Folder '%(folder)s' not "
+                                               "present in pool '%(pool)s'") %
+                                             {'folder': folder_name,
+                                              'pool': pool_name})
+            else:
+                raise NimbleAPIException(_("Folder '%(folder)s' not present in"
+                                           " pool '%(pool)s'") %
+                                         {'folder': folder_name,
+                                          'pool': pool_name})
+
+        if iops_limit is not None:
+            if not iops_limit.isdigit() or (
+               int(iops_limit) < MIN_IOPS) or (int(iops_limit) > MAX_IOPS):
+                raise NimbleAPIException(_("%(err)s [%(min)s, %(max)s]") %
+                                         {'err': IOPS_ERR_MSG,
+                                          'min': MIN_IOPS,
+                                          'max': MAX_IOPS})
+
+            data['data']['limit_iops'] = iops_limit
+        if iops_limit is not None:
+            if not iops_limit.isdigit() or (
+               int(iops_limit) < MIN_IOPS) or (int(iops_limit) > MAX_IOPS):
+                raise NimbleAPIException(_("Please set valid IOPS limit"
+                                         " in the range [%(min)s, %(max)s]") %
+                                         {'min': MIN_IOPS,
+                                          'max': MAX_IOPS})
+            data['data']['limit_iops'] = iops_limit
+
+        LOG.debug("Volume metadata :%s", volume.metadata)
+        for key, value in volume.metadata.items():
+            LOG.debug("Key %(key)s Value %(value)s",
+                      {'key': key, 'value': value})
+            if key == EXTRA_SPEC_IOPS_LIMIT and value.isdigit():
+                if type(value) == int or int(value) < MIN_IOPS or (
+                   int(value) > MAX_IOPS):
+                    raise NimbleAPIException(_("Please enter valid IOPS "
+                                               "limit in the range ["
+                                               "%(min)s, %(max)s]") %
+                                             {'min': MIN_IOPS,
+                                              'max': MAX_IOPS})
+                LOG.debug("IOPS Limit %s", value)
+                data['data']['limit_iops'] = value
 
         r = self.post(api, data)
         return r['data']
