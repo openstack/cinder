@@ -1794,8 +1794,6 @@ class API(base.Base):
 
         return cluster, services
 
-    # FIXME(jdg): Move these Cheesecake methods (freeze, thaw and failover)
-    # to a services API because that's what they are
     def failover(self, ctxt, host, cluster_name, secondary_id=None):
         check_policy(ctxt, 'failover_host')
         ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
