@@ -238,7 +238,7 @@ class ManageExistingTask(flow_utils.CinderTask):
             existing_ref=manage_existing_ref)
         if not model_update:
             model_update = {}
-        model_update.update({'size': size})
+        model_update['volume_size'] = size
         try:
             snapshot_object = objects.Snapshot.get_by_id(context,
                                                          snapshot_ref['id'])
