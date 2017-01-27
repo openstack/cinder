@@ -17,6 +17,7 @@
 import os
 import sys
 
+from os_brick.remotefs import windows_remotefs as remotefs_brick
 from os_win import utilsfactory
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -29,7 +30,6 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume.drivers import smbfs
-from cinder.volume.drivers.windows import remotefs
 
 VERSION = '1.1.0'
 
@@ -60,9 +60,9 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         opts = getattr(self.configuration,
                        'smbfs_mount_options',
                        CONF.smbfs_mount_options)
-        self._remotefsclient = remotefs.WindowsRemoteFsClient(
+        self._remotefsclient = remotefs_brick.WindowsRemoteFsClient(
             'cifs', root_helper=None, smbfs_mount_point_base=self.base,
-            smbfs_mount_options=opts)
+            smbfs_mount_options=opts, local_path_for_loopback=True)
 
         self._vhdutils = utilsfactory.get_vhdutils()
         self._pathutils = utilsfactory.get_pathutils()
@@ -95,11 +95,10 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         self._vhdutils.create_dynamic_vhd(volume_path, volume_size_bytes)
 
     def _ensure_share_mounted(self, smbfs_share):
-        mnt_options = {}
+        mnt_flags = None
         if self.shares.get(smbfs_share) is not None:
             mnt_flags = self.shares[smbfs_share]
-            mnt_options = self.parse_options(mnt_flags)[1]
-        self._remotefsclient.mount(smbfs_share, mnt_options)
+        self._remotefsclient.mount(smbfs_share, mnt_flags)
 
     def _delete(self, path):
         fileutils.delete_if_exists(path)
