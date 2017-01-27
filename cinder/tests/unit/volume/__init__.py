@@ -69,6 +69,8 @@ class BaseVolumeTestCase(test.TestCase):
         fake_image.mock_image_service(self)
         self.mock_object(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.mock_object(os.path, 'exists', lambda x: True)
+        self.mock_object(image_utils, 'check_available_space',
+                         lambda x, y, z: True)
         self.volume.driver.set_initialized()
         self.volume.stats = {'allocated_capacity_gb': 0,
                              'pools': {}}
@@ -140,6 +142,7 @@ class BaseVolumeTestCase(test.TestCase):
             request_spec = {
                 'volume_properties': self.volume_params,
                 'image_id': image_id,
+                'image_size': 1
             }
             self.volume.create_volume(self.context, volume, request_spec)
         finally:

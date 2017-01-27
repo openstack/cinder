@@ -1660,8 +1660,10 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
             # cleanup
             volume.destroy()
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch.object(cinder.image.glance, 'get_default_image_service')
-    def test_create_vol_from_image_status_available(self, mock_gdis):
+    def test_create_vol_from_image_status_available(self, mock_gdis,
+                                                    mock_check_space):
         """Clone raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
@@ -1682,11 +1684,12 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
                 self.assertFalse(mock_create.called)
                 self.assertTrue(mock_gdis.called)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch.object(cinder.image.glance, 'get_default_image_service')
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_vol_from_non_raw_image_status_available(
-            self, mock_qemu_info, mock_fetch, mock_gdis):
+            self, mock_qemu_info, mock_fetch, mock_gdis, mock_check_space):
         """Clone non-raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
@@ -1712,8 +1715,10 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
                 self.assertTrue(mock_create.called)
                 self.assertTrue(mock_gdis.called)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch.object(cinder.image.glance, 'get_default_image_service')
-    def test_create_vol_from_image_status_error(self, mock_gdis):
+    def test_create_vol_from_image_status_error(self, mock_gdis,
+                                                mock_check_space):
         """Fail to clone raw image then verify volume is in error state."""
         with mock.patch.object(self.volume.driver, 'clone_image') as \
                 mock_clone_image:
