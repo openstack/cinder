@@ -60,7 +60,7 @@ class RestClient(object):
         }
 
     def do_call(self, url=None, data=None, method=None,
-                calltimeout=constants.SOCKET_TIMEOUT):
+                calltimeout=constants.SOCKET_TIMEOUT, log_filter_flag=False):
         """Send requests to Huawei storage server.
 
         Send HTTPS call, get response in JSON.
@@ -82,14 +82,15 @@ class RestClient(object):
                 req.get_method = lambda: method
             res = urllib.request.urlopen(req).read().decode("utf-8")
 
-            if "xx/sessions" not in url:
+            if not log_filter_flag:
                 LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
                              'Call Method: %(method)s\n\n'
                              'Request Data: %(data)s\n\n'
-                             'Response Data:%(res)s\n\n'), {'url': url,
-                                                            'method': method,
-                                                            'data': data,
-                                                            'res': res})
+                             'Response Data:%(res)s\n\n'),
+                         {'url': url,
+                          'method': method,
+                          'data': data,
+                          'res': res})
 
         except Exception as err:
             LOG.error(_LE('Bad response from server: %(url)s.'
@@ -117,7 +118,8 @@ class RestClient(object):
                     "scope": "0"}
             self.init_http_head()
             result = self.do_call(url, data,
-                                  calltimeout=constants.LOGIN_SOCKET_TIMEOUT)
+                                  calltimeout=constants.LOGIN_SOCKET_TIMEOUT,
+                                  log_filter_flag=True)
 
             if (result['error']['code'] != 0) or ("data" not in result):
                 LOG.error(_LE("Login error. URL: %(url)s\n"
@@ -153,14 +155,15 @@ class RestClient(object):
             LOG.warning(_LW('Login failed. Error: %s.'), err)
 
     @utils.synchronized('huawei_cinder_call')
-    def call(self, url, data=None, method=None):
+    def call(self, url, data=None, method=None, log_filter_flag=False):
         """Send requests to server.
 
         If fail, try another RestURL.
         """
         device_id = None
         old_url = self.url
-        result = self.do_call(url, data, method)
+        result = self.do_call(url, data, method,
+                              log_filter_flag=log_filter_flag)
         error_code = result['error']['code']
         if (error_code == constants.ERROR_CONNECT_TO_SERVER
                 or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
@@ -173,7 +176,8 @@ class RestClient(object):
                       'New URL: %(new_url)s\n.',
                       {'old_url': old_url,
                        'new_url': self.url})
-            result = self.do_call(url, data, method)
+            result = self.do_call(url, data, method,
+                                  log_filter_flag=log_filter_flag)
             if result['error']['code'] in constants.RELOGIN_ERROR_PASS:
                 result['error']['code'] = 0
         return result
@@ -235,7 +239,7 @@ class RestClient(object):
 
     def get_all_pools(self):
         url = "/storagepool"
-        result = self.call(url, None)
+        result = self.call(url, None, log_filter_flag=True)
         msg = _('Query resource pool error.')
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
@@ -860,7 +864,7 @@ class RestClient(object):
                 "ID": initiator_name,
                 "PARENTTYPE": "21",
                 "PARENTID": host_id}
-        result = self.call(url, data, "PUT")
+        result = self.call(url, data, "PUT", log_filter_flag=True)
         msg = _('Use CHAP to associate initiator to host error. '
                 'Please check the CHAP username and password.')
         self._assert_rest_result(result, msg)
@@ -1714,7 +1718,7 @@ class RestClient(object):
 
     def get_array_info(self):
         url = "/system/"
-        result = self.call(url, None, "GET")
+        result = self.call(url, None, "GET", log_filter_flag=True)
         self._assert_rest_result(result, _('Get array info error.'))
         return result.get('data', None)
 
@@ -2259,7 +2263,7 @@ class RestClient(object):
 
     def get_remote_devices(self):
         url = "/remote_device"
-        result = self.call(url, None, "GET")
+        result = self.call(url, None, "GET", log_filter_flag=True)
         self._assert_rest_result(result, _('Get remote devices error.'))
         return result.get('data', [])
 
@@ -2342,7 +2346,7 @@ class RestClient(object):
 
     def _get_object_count(self, obj_name):
         url = "/" + obj_name + "/count"
-        result = self.call(url, None, "GET")
+        result = self.call(url, None, "GET", log_filter_flag=True)
 
         if result['error']['code'] != 0:
             raise

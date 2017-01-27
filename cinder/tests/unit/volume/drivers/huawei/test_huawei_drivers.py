@@ -2109,7 +2109,8 @@ class FakeClient(rest_client.RestClient):
     def add_lun_to_cache(self, lunid, cache_id):
         pass
 
-    def do_call(self, url=False, data=None, method=None, calltimeout=4):
+    def do_call(self, url=False, data=None, method=None, calltimeout=4,
+                log_filter_flag=False):
         url = url.replace('http://192.0.2.69:8082/deviceManager/rest', '')
         command = url.replace('/210235G7J20000000000/', '')
         data = json.dumps(data) if data else None
