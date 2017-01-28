@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
 # Copyright (c) 2016 Mike Rooney. All rights reserved.
+# Copyright (c) 2017 Jose Porrua. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -60,6 +61,7 @@ class Client(client_base.Client):
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
         ontapi_1_100 = ontapi_version >= (1, 100)
+        ontapi_1_1xx = (1, 100) <= ontapi_version < (1, 200)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('USER_CAPABILITY_LIST',
@@ -73,6 +75,7 @@ class Client(client_base.Client):
                                   supported=ontapi_1_30)
         self.features.add_feature('BACKUP_CLONE_PARAM', supported=ontapi_1_100)
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
+        self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_1xx)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1155,6 +1158,41 @@ class Client(client_base.Client):
             result = self.send_iter_request('snapmirror-get-iter', api_args)
         except netapp_api.NaApiError:
             msg = _LE('Failed to get SnapMirror info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return False
+
+        if not self._has_records(result):
+            return False
+
+        return True
+
+    def is_flexvol_encrypted(self, flexvol_name, vserver_name):
+        """Check if a flexvol is encrypted."""
+
+        if not self.features.FLEXVOL_ENCRYPTION:
+            return False
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': flexvol_name,
+                        'owning-vserver-name': vserver_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                },
+            },
+        }
+
+        try:
+            result = self.send_iter_request('volume-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get Encryption info for volume %s.')
             LOG.exception(msg, flexvol_name)
             return False
 

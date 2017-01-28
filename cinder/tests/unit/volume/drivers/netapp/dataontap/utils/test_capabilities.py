@@ -134,6 +134,10 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.ssc_library, '_get_ssc_aggregate_info',
             side_effect=[fake.SSC_AGGREGATE_INFO['volume1'],
                          fake.SSC_AGGREGATE_INFO['volume2']])
+        mock_get_ssc_encryption_info = self.mock_object(
+            self.ssc_library, '_get_ssc_encryption_info',
+            side_effect=[fake.SSC_ENCRYPTION_INFO['volume1'],
+                         fake.SSC_ENCRYPTION_INFO['volume2']])
         ordered_ssc = collections.OrderedDict()
         ordered_ssc['volume1'] = fake.SSC_VOLUME_MAP['volume1']
         ordered_ssc['volume2'] = fake.SSC_VOLUME_MAP['volume2']
@@ -150,6 +154,8 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             mock.call('volume1'), mock.call('volume2')])
         mock_get_ssc_aggregate_info.assert_has_calls([
             mock.call('aggr1'), mock.call('aggr2')])
+        mock_get_ssc_encryption_info.assert_has_calls([
+            mock.call('volume1'), mock.call('volume2')])
 
     def test__update_for_failover(self):
         self.mock_object(self.ssc_library, 'update_ssc')
@@ -281,6 +287,22 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.assertEqual(expected, result)
         self.zapi_client.get_flexvol_dedupe_info.assert_called_once_with(
             fake_client.VOLUME_NAMES[0])
+
+    def test_get_ssc_encryption_info(self):
+
+        self.mock_object(
+            self.ssc_library.zapi_client, 'is_flexvol_encrypted',
+            return_value=True)
+
+        result = self.ssc_library._get_ssc_encryption_info(
+            fake_client.VOLUME_NAMES[0])
+
+        expected = {
+            'netapp_flexvol_encryption': 'true',
+        }
+        self.assertEqual(expected, result)
+        self.zapi_client.is_flexvol_encrypted.assert_called_once_with(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
 
     @ddt.data(True, False)
     def test_get_ssc_mirror_info(self, mirrored):
