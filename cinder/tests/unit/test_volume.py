@@ -6310,6 +6310,19 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         self.flags(glance_api_version=2)
         self.volume.driver.configuration.image_upload_use_cinder_backend = True
         image_service = fake_image.FakeImageService()
+
+        def add_location_wrapper(ctx, id, uri, metadata):
+            try:
+                volume = db.volume_get(ctx, id)
+                self.assertEqual(ctx.project_id,
+                                 volume['metadata']['image_owner'])
+            except exception.VolumeNotFound:
+                pass
+            return image_service.add_location_orig(ctx, id, uri, metadata)
+
+        image_service.add_location_orig = image_service.add_location
+        image_service.add_location = add_location_wrapper
+
         image_id = '5c6eec33-bab4-4e7d-b2c9-88e2d0a5f6f2'
         self.image_meta['id'] = image_id
         self.image_meta['status'] = 'queued'

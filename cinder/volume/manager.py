@@ -1284,6 +1284,14 @@ class VolumeManager(manager.CleanableManager,
         if not image_volume:
             return False
 
+        # The image_owner metadata should be set before uri is added to
+        # the image so glance cinder store can check its owner.
+        image_volume_meta = {'image_owner': ctx.project_id}
+        self.db.volume_metadata_update(image_volume_context,
+                                       image_volume.id,
+                                       image_volume_meta,
+                                       False)
+
         uri = 'cinder://%s' % image_volume.id
         image_registered = None
         try:
@@ -1305,8 +1313,7 @@ class VolumeManager(manager.CleanableManager,
                                   '%(id)s.'), {'id': image_volume.id})
             return False
 
-        image_volume_meta = {'glance_image_id': image_meta['id'],
-                             'image_owner': ctx.project_id}
+        image_volume_meta['glance_image_id'] = image_meta['id']
         self.db.volume_metadata_update(image_volume_context,
                                        image_volume.id,
                                        image_volume_meta,
