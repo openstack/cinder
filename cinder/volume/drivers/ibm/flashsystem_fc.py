@@ -86,7 +86,7 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
     VERSION = "1.0.12"
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "IBM_FlashSystem_CI"
+    CI_WIKI_NAME = "IBM_STORAGE_CI"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)
