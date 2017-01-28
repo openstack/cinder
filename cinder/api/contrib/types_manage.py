@@ -39,12 +39,14 @@ class VolumeTypesManageController(wsgi.Controller):
 
     _view_builder_class = views_types.ViewBuilder
 
+    @utils.if_notifications_enabled
     def _notify_volume_type_error(self, context, method, err,
                                   volume_type=None, id=None, name=None):
         payload = dict(
             volume_types=volume_type, name=name, id=id, error_message=err)
         rpc.get_notifier('volumeType').error(context, method, payload)
 
+    @utils.if_notifications_enabled
     def _notify_volume_type_info(self, context, method, volume_type):
         payload = dict(volume_types=volume_type)
         rpc.get_notifier('volumeType').info(context, method, payload)

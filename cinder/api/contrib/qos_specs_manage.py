@@ -47,6 +47,7 @@ class QoSSpecsController(wsgi.Controller):
     _view_builder_class = view_qos_specs.ViewBuilder
 
     @staticmethod
+    @utils.if_notifications_enabled
     def _notify_qos_specs_error(context, method, payload):
         rpc.get_notifier('QoSSpecs').error(context,
                                            method,

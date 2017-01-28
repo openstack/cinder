@@ -99,6 +99,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
             LOG.error(_LE("Failed to run task %(name)s: %(cause)s"),
                       {'cause': cause, 'name': self.name})
 
+    @utils.if_notifications_enabled
     def _notify_failure(self, context, request_spec, cause):
         """When scheduling fails send out an event that it failed."""
         payload = {

@@ -22,6 +22,7 @@ from oslo_utils import timeutils
 from cinder.i18n import _LW
 from cinder import objects
 from cinder import rpc
+from cinder import utils
 
 CONF = cfg.CONF
 
@@ -182,15 +183,19 @@ class ImageVolumeCache(object):
 
         return True
 
+    @utils.if_notifications_enabled
     def _notify_cache_hit(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'hit')
 
+    @utils.if_notifications_enabled
     def _notify_cache_miss(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'miss')
 
+    @utils.if_notifications_enabled
     def _notify_cache_eviction(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'evict')
 
+    @utils.if_notifications_enabled
     def _notify_cache_action(self, context, image_id, host, action):
         data = {
             'image_id': image_id,

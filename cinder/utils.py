@@ -1072,3 +1072,28 @@ def validate_dictionary_string_length(specs):
 def service_expired_time(with_timezone=False):
     return (timeutils.utcnow(with_timezone=with_timezone) -
             datetime.timedelta(seconds=CONF.service_down_time))
+
+
+class DoNothing(str):
+    """Class that literrally does nothing.
+
+    We inherit from str in case it's called with json.dumps.
+    """
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, name):
+        return self
+
+
+DO_NOTHING = DoNothing()
+
+
+def if_notifications_enabled(f):
+    """Calls decorated method only if notifications are enabled."""
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if CONF.oslo_messaging_notifications.transport_url:
+            return f(*args, **kwargs)
+        return DO_NOTHING
+    return wrapped

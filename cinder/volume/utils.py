@@ -123,6 +123,7 @@ def _usage_from_backup(backup, **kw):
     return usage_info
 
 
+@utils.if_notifications_enabled
 def notify_about_volume_usage(context, volume, event_suffix,
                               extra_usage_info=None, host=None):
     if not host:
@@ -137,6 +138,7 @@ def notify_about_volume_usage(context, volume, event_suffix,
                                           usage_info)
 
 
+@utils.if_notifications_enabled
 def notify_about_backup_usage(context, backup, event_suffix,
                               extra_usage_info=None,
                               host=None):
@@ -183,6 +185,7 @@ def _usage_from_snapshot(snapshot, **extra_usage_info):
     return usage_info
 
 
+@utils.if_notifications_enabled
 def notify_about_snapshot_usage(context, snapshot, event_suffix,
                                 extra_usage_info=None, host=None):
     if not host:
@@ -214,6 +217,7 @@ def _usage_from_capacity(capacity, **extra_usage_info):
     return capacity_info
 
 
+@utils.if_notifications_enabled
 def notify_about_capacity_usage(context, capacity, suffix,
                                 extra_usage_info=None, host=None):
     if not host:
@@ -229,6 +233,7 @@ def notify_about_capacity_usage(context, capacity, suffix,
                                             usage_info)
 
 
+@utils.if_notifications_enabled
 def notify_about_replication_usage(context, volume, suffix,
                                    extra_usage_info=None, host=None):
     if not host:
@@ -245,6 +250,7 @@ def notify_about_replication_usage(context, volume, suffix,
                                                usage_info)
 
 
+@utils.if_notifications_enabled
 def notify_about_replication_error(context, volume, suffix,
                                    extra_error_info=None, host=None):
     if not host:
@@ -274,6 +280,7 @@ def _usage_from_consistencygroup(group_ref, **kw):
     return usage_info
 
 
+@utils.if_notifications_enabled
 def notify_about_consistencygroup_usage(context, group, event_suffix,
                                         extra_usage_info=None, host=None):
     if not host:
@@ -305,6 +312,7 @@ def _usage_from_group(group_ref, **kw):
     return usage_info
 
 
+@utils.if_notifications_enabled
 def notify_about_group_usage(context, group, event_suffix,
                              extra_usage_info=None, host=None):
     if not host:
@@ -351,6 +359,7 @@ def _usage_from_group_snapshot(group_snapshot, **kw):
     return usage_info
 
 
+@utils.if_notifications_enabled
 def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
                                   extra_usage_info=None, host=None):
     if not host:
@@ -368,6 +377,7 @@ def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
         usage_info)
 
 
+@utils.if_notifications_enabled
 def notify_about_group_snapshot_usage(context, group_snapshot, event_suffix,
                                       extra_usage_info=None, host=None):
     if not host:
