@@ -263,7 +263,7 @@ class VMAXProvisionV3(object):
     def create_element_replica(
             self, conn, repServiceInstanceName,
             cloneName, syncType, sourceInstance, extraSpecs,
-            targetInstance=None, rsdInstance=None):
+            targetInstance=None, rsdInstance=None, copyState=None):
         """Make SMI-S call to create replica for source element.
 
         :param conn: the connection to the ecom server
@@ -312,7 +312,7 @@ class VMAXProvisionV3(object):
                 rc, job = self._create_element_replica_extra_params(
                     conn, repServiceInstanceName, cloneName, syncType,
                     sourceInstance, targetInstance, rsdInstance,
-                    sgInstanceName)
+                    sgInstanceName, copyState=copyState)
 
             if rc != 0:
                 rc, errordesc = self.utils.wait_for_job_complete(conn, job,
@@ -382,7 +382,7 @@ class VMAXProvisionV3(object):
     def _create_element_replica_extra_params(
             self, conn, repServiceInstanceName, cloneName, syncType,
             sourceInstance, targetInstance, rsdInstance, sgInstanceName,
-            rdfGroupInstance=None):
+            rdfGroupInstance=None, copyState=None):
         """CreateElementReplica using extra parameters.
 
         :param conn: the connection to the ecom server
@@ -422,6 +422,14 @@ class VMAXProvisionV3(object):
                 SourceElement=sourceInstance.path,
                 ReplicationSettingData=rsdInstance,
                 Collections=[sgInstanceName])
+        elif targetInstance and copyState:
+            rc, job = conn.InvokeMethod(
+                'CreateElementReplica', repServiceInstanceName,
+                ElementName=cloneName,
+                SyncType=syncType,
+                SourceElement=sourceInstance.path,
+                TargetElement=targetInstance.path,
+                WaitForCopyState=copyState)
         elif targetInstance:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,
