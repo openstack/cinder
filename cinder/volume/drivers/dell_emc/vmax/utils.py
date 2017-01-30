@@ -1272,6 +1272,8 @@ class VMAXUtils(object):
         for syncInstanceName in syncInstanceNames:
             syncSvTarget = syncInstanceName['SyncedElement']
             syncSvSource = syncInstanceName['SystemElement']
+            if storageSystem != syncSvTarget['SystemName']:
+                continue
             if syncSvTarget['DeviceID'] == volumeInstance['DeviceID'] or (
                     syncSvSource['DeviceID'] == volumeInstance['DeviceID']):
                 # Check that it hasn't recently been deleted.
@@ -2941,8 +2943,8 @@ class VMAXUtils(object):
         """
 
         foundSyncInstanceName = None
-        syncInstanceNames = conn.EnumerateInstanceNames(
-            'SE_StorageSynchronized_SV_SV')
+        syncInstanceNames = conn.ReferenceNames(
+            sourceInstance.path, ResultClass='SE_StorageSynchronized_SV_SV')
         for syncInstanceName in syncInstanceNames:
             syncSvTarget = syncInstanceName['SyncedElement']
             syncSvSource = syncInstanceName['SystemElement']
