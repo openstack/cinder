@@ -389,8 +389,9 @@ class VMAXCommon(object):
                                                  cloneDict, extraSpecs)
                 raise
             model_update.update(
-                {'replication_status': six.text_type(replication_status),
-                 'replication_driver_data': replication_driver_data})
+                {'replication_status': replication_status,
+                 'replication_driver_data': six.text_type(
+                     replication_driver_data)})
 
         cloneDict['version'] = self.version
         model_update.update(
@@ -421,8 +422,9 @@ class VMAXCommon(object):
                     self.conn, cloneVolume['name'], cloneDict, extraSpecs)
                 raise
             model_update.update(
-                {'replication_status': six.text_type(replication_status),
-                 'replication_driver_data': replication_driver_data})
+                {'replication_status': replication_status,
+                 'replication_driver_data': six.text_type(
+                     replication_driver_data)})
 
         cloneDict['version'] = self.version
         model_update.update(
@@ -4601,9 +4603,10 @@ class VMAXCommon(object):
                 self.setup_volume_replication(
                     self.conn, volume, provider_location, extraSpecs))
             model_update.update(
-                {'replication_status': six.text_type(replication_status)})
+                {'replication_status': replication_status})
             model_update.update(
-                {'replication_driver_data': replication_driver_data})
+                {'replication_driver_data': six.text_type(
+                    replication_driver_data)})
 
         model_update.update({'display_name': volumeElementName})
         model_update.update(
