@@ -1,4 +1,4 @@
-#    Copyright (c) 2013 Dell Inc.
+#    Copyright (c) 2013-2017 Dell Inc, or its subsidiaries.
 #    Copyright 2013 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Volume driver for Dell EqualLogic Storage."""
+"""Volume driver for Dell EMC PS Series Storage."""
 
 import functools
 import math
@@ -79,11 +79,11 @@ def with_timeout(f):
 
 
 @interface.volumedriver
-class DellEQLSanISCSIDriver(san.SanISCSIDriver):
-    """Implements commands for Dell EqualLogic SAN ISCSI management.
+class PSSeriesISCSIDriver(san.SanISCSIDriver):
+    """Implements commands for Dell EMC PS Series ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
-        volume_driver=cinder.volume.drivers.eqlx.DellEQLSanISCSIDriver
+        volume_driver=cinder.volume.drivers.dell_emc.ps.PSSeriesISCSIDriver
 
     Driver's prerequisites are:
         - a separate volume group set up and running on the SAN
@@ -133,16 +133,17 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         1.3.0 - Added support for manage/unmanage volume
         1.4.0 - Removed deprecated options eqlx_cli_timeout, eqlx_use_chap,
                 eqlx_chap_login, and eqlx_chap_password.
+        1.4.1 - Rebranded driver to Dell EMC.
 
     """
 
-    VERSION = "1.4.0"
+    VERSION = "1.4.1"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
 
     def __init__(self, *args, **kwargs):
-        super(DellEQLSanISCSIDriver, self).__init__(*args, **kwargs)
+        super(PSSeriesISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(eqlx_opts)
         self._group_ip = None
         self.sshpool = None
@@ -155,9 +156,9 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             if len(ret) == 0:
                 # According to paramiko.channel.Channel documentation, which
                 # says "If a string of length zero is returned, the channel
-                # stream has closed". So we can confirm that the EQL server
+                # stream has closed". So we can confirm that the PS server
                 # has closed the connection.
-                msg = _("The EQL array has closed the connection.")
+                msg = _("The PS array has closed the connection.")
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
             out += ret
@@ -195,7 +196,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             completed = True
 
             if any(ln.startswith(('% Error', 'Error:')) for ln in out):
-                desc = _("Error executing EQL command")
+                desc = _("Error executing PS command")
                 cmdout = '\n'.join(out)
                 LOG.error(_LE("%s"), cmdout)
                 raise processutils.ProcessExecutionError(
@@ -230,7 +231,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        LOG.info(_LI('EQL-driver: executing "%s".'), command)
+                        LOG.info(_LI('PS-driver: executing "%s".'), command)
                         return self._ssh_execute(
                             ssh, command,
                             timeout=self.configuration.ssh_conn_timeout)
@@ -248,7 +249,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                 LOG.error(_LE('Error running SSH command: "%s".'), command)
 
     def check_for_setup_error(self):
-        super(DellEQLSanISCSIDriver, self).check_for_setup_error()
+        super(PSSeriesISCSIDriver, self).check_for_setup_error()
 
     def _eql_execute(self, *args, **kwargs):
         return self._run_ssh(
@@ -289,7 +290,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         if self.configuration:
             backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'eqlx'
-        data["vendor_name"] = 'Dell'
+        data["vendor_name"] = 'Dell EMC'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
@@ -396,11 +397,11 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                     out_tup = line.rstrip().partition(' ')
                     self._group_ip = out_tup[-1]
 
-            LOG.info(_LI('EQL-driver: Setup is complete, group IP is "%s".'),
+            LOG.info(_LI('PS-driver: Setup is complete, group IP is "%s".'),
                      self._group_ip)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to setup the Dell EqualLogic driver.'))
+                LOG.error(_LE('Failed to setup the Dell EMC PS driver.'))
 
     def create_volume(self, volume):
         """Create a volume."""
