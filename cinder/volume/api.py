@@ -215,7 +215,7 @@ class API(base.Base):
                cgsnapshot=None, multiattach=False, source_cg=None,
                group=None, group_snapshot=None, source_group=None):
 
-        check_policy(context, 'create')
+        check_policy(context, 'create_from_image' if image_id else 'create')
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
