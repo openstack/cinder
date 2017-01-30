@@ -455,10 +455,13 @@ def check_virtual_size(virtual_size, volume_size, image_id):
 def check_available_space(dest, image_size, image_id):
     # TODO(e0ne): replace psutil with shutil.disk_usage when we drop
     # Python 2.7 support.
+    if not os.path.isdir(dest):
+        dest = os.path.dirname(dest)
+
     free_space = psutil.disk_usage(dest).free
     if free_space <= image_size:
         msg = ('There is no space to convert image. '
-               'Requested: %(image_size), available: %(free_space)'
+               'Requested: %(image_size)s, available: %(free_space)s'
                ) % {'image_size': image_size, 'free_space': free_space}
         raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
