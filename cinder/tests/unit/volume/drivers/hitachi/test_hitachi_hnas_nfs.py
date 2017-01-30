@@ -302,6 +302,17 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.assertEqual('hnas', out['provider_location'])
 
+    def test_create_cloned_volume_invalid_volume_type(self):
+        self.volume.volume_type_id = fake.VOLUME_TYPE_ID
+        self.clone.volume_type_id = fake.VOLUME_TYPE2_ID
+
+        self.mock_object(self.driver, 'extend_volume')
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+
+        self.assertRaises(exception.InvalidVolumeType,
+                          self.driver.create_cloned_volume, self.volume,
+                          self.clone)
+
     def test_get_volume_stats(self):
         self.driver.pools = [{'pool_name': 'default',
                               'service_label': 'default',

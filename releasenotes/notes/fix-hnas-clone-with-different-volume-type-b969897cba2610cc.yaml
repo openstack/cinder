@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed HNAS bug that placed a cloned volume in the same pool as its
+    source, even if the clone had a different pool specification. Driver will
+    not allow to make clones using a different volume type anymore.

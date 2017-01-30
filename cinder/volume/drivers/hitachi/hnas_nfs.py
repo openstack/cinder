@@ -284,6 +284,16 @@ class HNASNFSDriver(nfs.NfsDriver):
         :param src_vref: reference to the source volume
         :returns: the provider_location of the cloned volume
         """
+
+        # HNAS always creates cloned volumes in the same pool as the source
+        # volumes. So, it is not allowed to use different volume types for
+        # clone operations.
+        if volume.volume_type_id != src_vref.volume_type_id:
+            msg = _("Source and cloned volumes should have the same "
+                    "volume type.")
+            LOG.error(msg)
+            raise exception.InvalidVolumeType(msg)
+
         vol_size = volume.size
         src_vol_size = src_vref.size
 
