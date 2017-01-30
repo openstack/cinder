@@ -15,10 +15,10 @@
 
 import time
 
-from oslo_concurrency import lockutils
 from oslo_log import log as logging
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.dell_emc.vmax import utils
@@ -126,10 +126,10 @@ class VMAXProvisionV3(object):
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
+        sgName = storageGroupInstance['ElementName']
 
-        @lockutils.synchronized(storageGroupInstance['ElementName'],
-                                "emc-sg-", True)
-        def do_create_volume_from_sg():
+        @coordination.synchronized("emc-sg-{storageGroup}")
+        def do_create_volume_from_sg(storageGroup):
             startTime = time.time()
 
             rc, job = conn.InvokeMethod(
@@ -166,7 +166,7 @@ class VMAXProvisionV3(object):
             volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
             return volumeDict, rc
 
-        return do_create_volume_from_sg()
+        return do_create_volume_from_sg(sgName)
 
     def _find_new_storage_group(
             self, conn, maskingGroupDict, storageGroupName):
@@ -298,9 +298,8 @@ class VMAXProvisionV3(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
 
-        @lockutils.synchronized(storageGroupInstance['ElementName'],
-                                "emc-sg-", True)
-        def do_create_element_replica():
+        @coordination.synchronized("emc-sg-{storageGroupName}")
+        def do_create_element_replica(storageGroupName):
             if targetInstance is None and rsdInstance is None:
                 rc, job = conn.InvokeMethod(
                     'CreateElementReplica', repServiceInstanceName,
@@ -333,7 +332,7 @@ class VMAXProvisionV3(object):
                       {'delta': self.utils.get_time_delta(startTime,
                                                           time.time())})
             return rc, job
-        return do_create_element_replica()
+        return do_create_element_replica(storageGroupInstance['ElementName'])
 
     def create_remote_element_replica(
             self, conn, repServiceInstanceName, cloneName, syncType,
@@ -474,8 +473,8 @@ class VMAXProvisionV3(object):
         """
         startTime = time.time()
 
-        @lockutils.synchronized(groupName, "emc-sg-", True)
-        def do_create_storage_group_v3():
+        @coordination.synchronized("emc-sg-{sgGroupName}")
+        def do_create_storage_group_v3(sgGroupName):
             if doDisableCompression:
                 if slo and workload:
                     rc, job = conn.InvokeMethod(
@@ -524,7 +523,7 @@ class VMAXProvisionV3(object):
                 conn, job, groupName)
             return foundStorageGroupInstanceName
 
-        return do_create_storage_group_v3()
+        return do_create_storage_group_v3(groupName)
 
     def get_storage_pool_capability(self, conn, poolInstanceName):
         """Get the pool capability.
