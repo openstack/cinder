@@ -74,15 +74,7 @@ script_opts = [
 CONF.register_cli_opts(script_opts)
 
 
-def main():
-    objects.register_all()
-    admin_context = context.get_admin_context()
-    CONF(sys.argv[1:], project='cinder',
-         version=version.version_string())
-    logging.setup(CONF, "cinder")
-    LOG = logging.getLogger("cinder")
-    rpc.init(CONF)
-    begin, end = utils.last_completed_audit_period()
+def _time_error(LOG, begin, end):
     if CONF.start_time:
         begin = datetime.datetime.strptime(CONF.start_time,
                                            "%Y-%m-%d %H:%M:%S")
@@ -97,6 +89,123 @@ def main():
                                         'end': end}
         LOG.error(msg)
         sys.exit(-1)
+    return begin, end
+
+
+def _vol_notify_usage(LOG, volume_ref, extra_info, admin_context):
+    """volume_ref notify usage"""
+    try:
+        LOG.debug("Send exists notification for <volume_id: "
+                  "%(volume_id)s> <project_id %(project_id)s> "
+                  "<%(extra_info)s>",
+                  {'volume_id': volume_ref.id,
+                   'project_id': volume_ref.project_id,
+                   'extra_info': extra_info})
+        cinder.volume.utils.notify_about_volume_usage(
+            admin_context, volume_ref, 'exists', extra_usage_info=extra_info)
+    except Exception as exc_msg:
+        LOG.error(_LE("Exists volume notification failed: %s"),
+                  exc_msg, resource=volume_ref)
+
+
+def _snap_notify_usage(LOG, snapshot_ref, extra_info, admin_context):
+    """snapshot_ref notify usage"""
+    try:
+        LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "
+                  "<project_id %(project_id)s> <%(extra_info)s>",
+                  {'snapshot_id': snapshot_ref.id,
+                   'project_id': snapshot_ref.project_id,
+                   'extra_info': extra_info})
+        cinder.volume.utils.notify_about_snapshot_usage(
+            admin_context, snapshot_ref, 'exists', extra_info)
+    except Exception as exc_msg:
+        LOG.error(_LE("Exists snapshot notification failed: %s"),
+                  exc_msg, resource=snapshot_ref)
+
+
+def _backup_notify_usage(LOG, backup_ref, extra_info, admin_context):
+    """backup_ref notify usage"""
+    try:
+        cinder.volume.utils.notify_about_backup_usage(
+            admin_context, backup_ref, 'exists', extra_info)
+        LOG.debug("Sent notification for <backup_id: %(backup_id)s> "
+                  "<project_id %(project_id)s> <%(extra_info)s>",
+                  {'backup_id': backup_ref.id,
+                   'project_id': backup_ref.project_id,
+                   'extra_info': extra_info})
+    except Exception as exc_msg:
+        LOG.error(_LE("Exists backups notification failed: %s"), exc_msg)
+
+
+def _create_action(obj_ref, admin_context, LOG, notify_about_usage,
+                   type_id_str, type_name):
+    try:
+        local_extra_info = {
+            'audit_period_beginning': str(obj_ref.created_at),
+            'audit_period_ending': str(obj_ref.created_at),
+        }
+        LOG.debug("Send create notification for <%(type_id_str)s: %(_id)s> "
+                  "<project_id %(project_id)s> <%(extra_info)s>",
+                  {'type_id_str': type_id_str,
+                   '_id': obj_ref.id,
+                   'project_id': obj_ref.project_id,
+                   'extra_info': local_extra_info})
+        notify_about_usage(admin_context, obj_ref,
+                           'create.start', extra_usage_info=local_extra_info)
+        notify_about_usage(admin_context, obj_ref,
+                           'create.end', extra_usage_info=local_extra_info)
+    except Exception as exc_msg:
+        LOG.error(_LE("Create %(type)s notification failed: %(exc_msg)s"),
+                  {'type': type_name, 'exc_msg': exc_msg}, resource=obj_ref)
+
+
+def _delete_action(obj_ref, admin_context, LOG, notify_about_usage,
+                   type_id_str, type_name):
+    try:
+        local_extra_info = {
+            'audit_period_beginning': str(obj_ref.deleted_at),
+            'audit_period_ending': str(obj_ref.deleted_at),
+        }
+        LOG.debug("Send delete notification for <%(type_id_str)s: %(_id)s> "
+                  "<project_id %(project_id)s> <%(extra_info)s>",
+                  {'type_id_str': type_id_str,
+                   '_id': obj_ref.id,
+                   'project_id': obj_ref.project_id,
+                   'extra_info': local_extra_info})
+        notify_about_usage(admin_context, obj_ref,
+                           'delete.start', extra_usage_info=local_extra_info)
+        notify_about_usage(admin_context, obj_ref,
+                           'delete.end', extra_usage_info=local_extra_info)
+    except Exception as exc_msg:
+        LOG.error(_LE("Delete %(type)s notification failed: %(exc_msg)s"),
+                  {'type': type_name, 'exc_msg': exc_msg}, resource=obj_ref)
+
+
+def _obj_ref_action(_notify_usage, LOG, obj_ref, extra_info, admin_context,
+                    begin, end, notify_about_usage, type_id_str, type_name):
+    _notify_usage(LOG, obj_ref, extra_info, admin_context)
+    if CONF.send_actions:
+        if begin < obj_ref.created_at < end:
+            _create_action(obj_ref, admin_context, LOG,
+                           notify_about_usage, type_id_str, type_name)
+
+        if obj_ref.deleted_at and begin < obj_ref.deleted_at < end:
+            _delete_action(obj_ref, admin_context, LOG,
+                           notify_about_usage, type_id_str, type_name)
+
+
+def main():
+    objects.register_all()
+    admin_context = context.get_admin_context()
+    CONF(sys.argv[1:], project='cinder',
+         version=version.version_string())
+    logging.setup(CONF, "cinder")
+    LOG = logging.getLogger("cinder")
+    rpc.init(CONF)
+
+    begin, end = utils.last_completed_audit_period()
+    begin, end = _time_error(LOG, begin, end)
+
     LOG.info(_LI("Starting volume usage audit"))
     msg = _LI("Creating usages for %(begin_period)s until %(end_period)s")
     LOG.info(msg, {"begin_period": str(begin), "end_period": str(end)})
@@ -109,214 +218,30 @@ def main():
     volumes = objects.VolumeList.get_all_active_by_window(admin_context,
                                                           begin,
                                                           end)
+
     LOG.info(_LI("Found %d volumes"), len(volumes))
     for volume_ref in volumes:
-        try:
-            cinder.volume.utils.notify_about_volume_usage(
-                admin_context,
-                volume_ref,
-                'exists', extra_usage_info=extra_info)
-            LOG.debug("Sent exists notification for <volume_id: "
-                      "%(volume_id)s> <project_id %(project_id)s> "
-                      "<%(extra_info)s>",
-                      {'volume_id': volume_ref.id,
-                       'project_id': volume_ref.project_id,
-                       'extra_info': extra_info})
-        except Exception as exc_msg:
-            LOG.exception(_LE("Exists volume notification failed: %s"),
-                          exc_msg, resource=volume_ref)
-
-        if (CONF.send_actions and
-                volume_ref.created_at > begin and
-                volume_ref.created_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(volume_ref.created_at),
-                    'audit_period_ending': str(volume_ref.created_at),
-                }
-                cinder.volume.utils.notify_about_volume_usage(
-                    admin_context,
-                    volume_ref,
-                    'create.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_volume_usage(
-                    admin_context,
-                    volume_ref,
-                    'create.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent create notification for "
-                          "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'volume_id': volume_ref.id,
-                           'project_id': volume_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.exception(_LE("Create volume notification failed: %s"),
-                              exc_msg, resource=volume_ref)
-
-        if (CONF.send_actions and volume_ref.deleted_at and
-                volume_ref.deleted_at > begin and
-                volume_ref.deleted_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(volume_ref.deleted_at),
-                    'audit_period_ending': str(volume_ref.deleted_at),
-                }
-                cinder.volume.utils.notify_about_volume_usage(
-                    admin_context,
-                    volume_ref,
-                    'delete.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_volume_usage(
-                    admin_context,
-                    volume_ref,
-                    'delete.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent delete notification for "
-                          "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'volume_id': volume_ref.id,
-                           'project_id': volume_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.exception(_LE("Delete volume notification failed: %s"),
-                              exc_msg, resource=volume_ref)
+        _obj_ref_action(_vol_notify_usage, LOG, volume_ref, extra_info,
+                        admin_context, begin, end,
+                        cinder.volume.utils.notify_about_volume_usage,
+                        "volume_id", "volume")
 
     snapshots = objects.SnapshotList.get_all_active_by_window(admin_context,
                                                               begin, end)
     LOG.info(_LI("Found %d snapshots"), len(snapshots))
     for snapshot_ref in snapshots:
-        try:
-            cinder.volume.utils.notify_about_snapshot_usage(admin_context,
-                                                            snapshot_ref,
-                                                            'exists',
-                                                            extra_info)
-            LOG.debug("Sent notification for <snapshot_id: %(snapshot_id)s> "
-                      "<project_id %(project_id)s> <%(extra_info)s>",
-                      {'snapshot_id': snapshot_ref.id,
-                       'project_id': snapshot_ref.project_id,
-                       'extra_info': extra_info})
-        except Exception as exc_msg:
-            LOG.exception(_LE("Exists snapshot notification failed: %s"),
-                          exc_msg, resource=snapshot_ref)
-
-        if (CONF.send_actions and
-                snapshot_ref.created_at > begin and
-                snapshot_ref.created_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(snapshot_ref.created_at),
-                    'audit_period_ending': str(snapshot_ref.created_at),
-                }
-                cinder.volume.utils.notify_about_snapshot_usage(
-                    admin_context,
-                    snapshot_ref,
-                    'create.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_snapshot_usage(
-                    admin_context,
-                    snapshot_ref,
-                    'create.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent create notification for "
-                          "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'snapshot_id': snapshot_ref.id,
-                           'project_id': snapshot_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.exception(_LE("Create snapshot notification failed: %s"),
-                              exc_msg, resource=snapshot_ref)
-
-        if (CONF.send_actions and snapshot_ref.deleted_at and
-                snapshot_ref.deleted_at > begin and
-                snapshot_ref.deleted_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(snapshot_ref.deleted_at),
-                    'audit_period_ending': str(snapshot_ref.deleted_at),
-                }
-                cinder.volume.utils.notify_about_snapshot_usage(
-                    admin_context,
-                    snapshot_ref,
-                    'delete.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_snapshot_usage(
-                    admin_context,
-                    snapshot_ref,
-                    'delete.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent delete notification for "
-                          "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'snapshot_id': snapshot_ref.id,
-                           'project_id': snapshot_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.exception(_LE("Delete snapshot notification failed: %s"),
-                              exc_msg, resource=snapshot_ref)
+        _obj_ref_action(_snap_notify_usage, LOG, snapshot_ref, extra_info,
+                        admin_context, begin,
+                        end, cinder.volume.utils.notify_about_snapshot_usage,
+                        "snapshot_id", "snapshot")
 
     backups = objects.BackupList.get_all_active_by_window(admin_context,
                                                           begin, end)
 
     LOG.info(_LI("Found %d backups"), len(backups))
     for backup_ref in backups:
-        try:
-            cinder.volume.utils.notify_about_backup_usage(admin_context,
-                                                          backup_ref,
-                                                          'exists',
-                                                          extra_info)
-            LOG.debug("Sent notification for <backup_id: %(backup_id)s> "
-                      "<project_id %(project_id)s> <%(extra_info)s>",
-                      {'backup_id': backup_ref.id,
-                       'project_id': backup_ref.project_id,
-                       'extra_info': extra_info})
-        except Exception as exc_msg:
-            LOG.error(_LE("Exists backups notification failed: %s"),
-                      exc_msg)
-
-        if (CONF.send_actions and
-                backup_ref.created_at > begin and
-                backup_ref.created_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(backup_ref.created_at),
-                    'audit_period_ending': str(backup_ref.created_at),
-                }
-                cinder.volume.utils.notify_about_backup_usage(
-                    admin_context,
-                    backup_ref,
-                    'create.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_backup_usage(
-                    admin_context,
-                    backup_ref,
-                    'create.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent create notification for "
-                          "<backup_id: %(backup_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'backup_id': backup_ref.id,
-                           'project_id': backup_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.error(_LE("Create backup notification failed: %s"),
-                          exc_msg)
-
-        if (CONF.send_actions and backup_ref.deleted_at and
-                backup_ref.deleted_at > begin and
-                backup_ref.deleted_at < end):
-            try:
-                local_extra_info = {
-                    'audit_period_beginning': str(backup_ref.deleted_at),
-                    'audit_period_ending': str(backup_ref.deleted_at),
-                }
-                cinder.volume.utils.notify_about_backup_usage(
-                    admin_context,
-                    backup_ref,
-                    'delete.start', extra_usage_info=local_extra_info)
-                cinder.volume.utils.notify_about_backup_usage(
-                    admin_context,
-                    backup_ref,
-                    'delete.end', extra_usage_info=local_extra_info)
-                LOG.debug("Sent delete notification for "
-                          "<backup_id: %(backup_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>",
-                          {'backup_id': backup_ref.id,
-                           'project_id': backup_ref.project_id,
-                           'extra_info': local_extra_info})
-            except Exception as exc_msg:
-                LOG.error(_LE("Delete backup notification failed: %s"),
-                          exc_msg)
-
+        _obj_ref_action(_backup_notify_usage, LOG, backup_ref, extra_info,
+                        admin_context, begin,
+                        end, cinder.volume.utils.notify_about_backup_usage,
+                        "backup_id", "backup")
     LOG.info(_LI("Volume usage audit completed"))
