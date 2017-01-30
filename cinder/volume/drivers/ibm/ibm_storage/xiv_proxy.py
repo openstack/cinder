@@ -619,7 +619,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         try:
             volume_replication_mgr.delete_mirror(
-                mirror_name=volume['name'])
+                resource_id=volume['name'])
         except Exception as e:
             details = self._get_code_and_status_or_message(e)
             msg = (_("Failed deleting replica for %(vol)s: '%(details)s'"),
