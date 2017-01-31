@@ -174,10 +174,14 @@ class API(base.Base):
         return tuple(azs)
 
     def _retype_is_possible(self, context,
-                            first_type_id, second_type_id,
-                            first_type=None, second_type=None):
+                            source_type_id, target_type_id):
         safe = False
         elevated = context.elevated()
+        # If encryptions are different, it is not allowed
+        # to create volume from source volume or snapshot.
+        if volume_types.volume_types_encryption_changed(
+                elevated, source_type_id, target_type_id):
+            return False
         services = objects.ServiceList.get_all_by_topic(
             elevated,
             constants.VOLUME_TOPIC,
@@ -185,14 +189,14 @@ class API(base.Base):
         if len(services.objects) == 1:
             safe = True
         else:
-            type_a = first_type or volume_types.get_volume_type(
+            source_type = volume_types.get_volume_type(
                 elevated,
-                first_type_id)
-            type_b = second_type or volume_types.get_volume_type(
+                source_type_id)
+            target_type = volume_types.get_volume_type(
                 elevated,
-                second_type_id)
-            if (volume_utils.matching_backend_name(type_a['extra_specs'],
-                                                   type_b['extra_specs'])):
+                target_type_id)
+            if (volume_utils.matching_backend_name(
+                    source_type['extra_specs'], target_type['extra_specs'])):
                 safe = True
         return safe
 
@@ -266,9 +270,8 @@ class API(base.Base):
             if volume_type['id'] != source_volume['volume_type_id']:
                 if not self._retype_is_possible(
                         context,
-                        volume_type['id'],
                         source_volume['volume_type_id'],
-                        volume_type):
+                        volume_type['id']):
                     msg = _("Invalid volume_type provided: %s (requested type "
                             "is not compatible; either match source volume, "
                             "or omit type argument).") % volume_type['id']
@@ -283,9 +286,8 @@ class API(base.Base):
         if snapshot and volume_type:
             if volume_type['id'] != snapshot.volume_type_id:
                 if not self._retype_is_possible(context,
-                                                volume_type['id'],
                                                 snapshot.volume_type_id,
-                                                volume_type):
+                                                volume_type['id']):
                     msg = _("Invalid volume_type provided: %s (requested "
                             "type is not compatible; recommend omitting "
                             "the type argument).") % volume_type['id']

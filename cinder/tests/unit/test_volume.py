@@ -1512,6 +1512,54 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                               volume_type=foo_type,
                               snapshot=snapshot_obj)
 
+    def _test_create_from_source_snapshot_encryptions(
+            self, is_snapshot=False):
+        volume_api = cinder.volume.api.API()
+        foo_type = {
+            'name': 'foo',
+            'extra_specs': {'volume_backend_name': 'dev_1'},
+            'id': fake.VOLUME_TYPE_ID,
+            'description': None}
+
+        biz_type = {
+            'name': 'foo',
+            'extra_specs': {'volume_backend_name': 'dev_1'},
+            'id': fake.VOLUME_TYPE2_ID,
+            'description': None}
+        source_vol = {'id': fake.VOLUME_ID,
+                      'status': 'available',
+                      'volume_size': 1,
+                      'volume_type': biz_type,
+                      'volume_type_id': biz_type['id']}
+
+        snapshot = {'id': fake.SNAPSHOT_ID,
+                    'status': fields.SnapshotStatus.AVAILABLE,
+                    'volume_size': 1,
+                    'volume_type_id': biz_type['id']}
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
+                                                       **snapshot)
+
+        with mock.patch.object(
+                cinder.volume.volume_types,
+                'volume_types_encryption_changed') as mock_encryption_changed:
+            mock_encryption_changed.return_value = True
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create,
+                              self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              source_volume=(
+                                  source_vol if not is_snapshot else None),
+                              snapshot=snapshot_obj if is_snapshot else None)
+
+    def test_create_from_source_encryption_changed(self):
+        self._test_create_from_source_snapshot_encryptions()
+
+    def test_create_from_snapshot_encryption_changed(self):
+        self._test_create_from_source_snapshot_encryptions(is_snapshot=True)
+
     def test_create_snapshot_driver_not_initialized(self):
         volume_src = tests_utils.create_volume(self.context,
                                                **self.volume_params)
