@@ -1432,8 +1432,6 @@ class VolumeManager(manager.CleanableManager,
             if discard_supported:
                 conn_info['data']['discard'] = True
 
-        LOG.info(_LI("Initialize volume connection completed successfully."),
-                 resource=volume)
         return conn_info
 
     def initialize_connection(self, context, volume, connector):
