@@ -1,0 +1,9 @@
+---
+upgrades:
+  - The Dell Storage Center driver is moved to the dell_emc directory
+    and has been rebranded to its current Dell EMC SC name. The
+    volume_driver entry in cinder.conf needs to be changed to
+    ``cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver``
+    for FC or
+    ``cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.SCISCSIDriver``
+    for ISCSI.

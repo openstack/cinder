@@ -1,4 +1,4 @@
-#    Copyright 2016 Dell Inc.
+#    Copyright (c) 2015-2017 Dell Inc, or its subsidiaries.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -23,11 +23,10 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import driver
-from cinder.volume.drivers.dell import dell_storagecenter_api
+from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-
 
 common_opts = [
     cfg.IntOpt('dell_sc_ssn',
@@ -74,12 +73,12 @@ CONF = cfg.CONF
 CONF.register_opts(common_opts)
 
 
-class DellCommonDriver(driver.ManageableVD,
-                       driver.ManageableSnapshotsVD,
-                       driver.BaseVD):
+class SCCommonDriver(driver.ManageableVD,
+                     driver.ManageableSnapshotsVD,
+                     driver.BaseVD):
 
     def __init__(self, *args, **kwargs):
-        super(DellCommonDriver, self).__init__(*args, **kwargs)
+        super(SCCommonDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(common_opts)
         self.configuration.append_config_values(san_opts)
         self.backend_name =\
@@ -120,7 +119,7 @@ class DellCommonDriver(driver.ManageableVD,
         Sets up clients, check licenses, sets up protocol
         specific helpers.
         """
-        self._client = dell_storagecenter_api.StorageCenterApiHelper(
+        self._client = storagecenter_api.SCApiHelper(
             self.configuration, self.active_backend_id, self.storage_protocol)
 
     def check_for_setup_error(self):
@@ -358,7 +357,7 @@ class DellCommonDriver(driver.ManageableVD,
     def _delete_live_volume(self, api, volume):
         """Delete live volume associated with volume.
 
-        :param api:Dell REST API object.
+        :param api: Dell REST API object.
         :param volume: Cinder Volume object
         :return: True if we actually deleted something. False for everything
                  else.
@@ -704,7 +703,7 @@ class DellCommonDriver(driver.ManageableVD,
             # Static stats.
             data = {}
             data['volume_backend_name'] = self.backend_name
-            data['vendor_name'] = 'Dell'
+            data['vendor_name'] = 'Dell EMC'
             data['driver_version'] = self.VERSION
             data['storage_protocol'] = self.storage_protocol
             data['reserved_percentage'] = 0
@@ -1391,7 +1390,7 @@ class DellCommonDriver(driver.ManageableVD,
     def _parse_secondary(self, api, secondary):
         """Find the replication destination associated with secondary.
 
-        :param api: Dell StorageCenterApi
+        :param api: Dell SCApi
         :param secondary: String indicating the secondary to failover to.
         :return: Destination SSN for the given secondary.
         """
@@ -1950,7 +1949,7 @@ class DellCommonDriver(driver.ManageableVD,
         with self._client.open_connection() as api:
             screplay = self._get_unmanaged_replay(api, volume_name,
                                                   provider_id, existing_ref)
-            sz, rem = dell_storagecenter_api.StorageCenterApi.size_to_gb(
+            sz, rem = storagecenter_api.SCApi.size_to_gb(
                 screplay['size'])
             if rem > 0:
                 raise exception.VolumeBackendAPIException(
