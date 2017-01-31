@@ -1634,16 +1634,26 @@ class XIVProxy(proxy.IBMStorageProxy):
         cgname = self._cg_name_from_group(group)
         LOG.info(_LI("Creating consistency group %(name)s."),
                  {'name': cgname})
-        specs = self._get_extra_specs(
-            group['volume_type_id'].replace(",", ""))
-        replication_info = self._get_replication_info(specs)
-
-        if replication_info.get('enabled'):
-            # An unsupported illegal configuration
-            msg = _("Unable to create consistency group: "
-                    "Replication of consistency group is not supported")
+        if isinstance(group, objects.Group):
+            volume_type_ids = group.volume_type_ids
+        elif isinstance(group, objects.ConsistencyGroup):
+            volume_type_ids = [group.volume_type_id]
+        else:
+            msg = (_("Consistency group %(group)s has no volume_type_ids") %
+                   {'group': cgname})
             LOG.error(msg)
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
+        for volume_type_id in volume_type_ids:
+            specs = self._get_extra_specs(volume_type_id)
+            replication_info = self._get_replication_info(specs)
+
+            if replication_info.get('enabled'):
+                # An unsupported illegal configuration
+                msg = _("Unable to create consistency group: "
+                        "Replication of consistency group is not supported")
+                LOG.error(msg)
+                raise self.meta['exception'].VolumeBackendAPIException(
+                    data=msg)
 
         # call XCLI
         try:

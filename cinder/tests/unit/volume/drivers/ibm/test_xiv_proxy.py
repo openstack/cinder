@@ -19,6 +19,8 @@ from xml.etree import ElementTree
 
 from cinder import context
 from cinder import exception
+from cinder.objects import consistencygroup
+from cinder.objects import fields
 from cinder.tests.unit.volume.drivers.ibm import fake_pyxcli
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import cryptish
@@ -50,7 +52,7 @@ TEST_CLONED_VOLUME = {
 TEST_CONS_GROUP = {
     'name': 'WTF32',
     'id': 'WTF32',
-    'volume_type_id': 'WTF32',
+    'volume_type_ids': ['WTF32'],
 }
 TEST_CG_SNAPSHOT = {
     'id': 'WTF',
@@ -131,6 +133,10 @@ REPLICA_PARAMS = {
 class XIVProxyTest(unittest.TestCase):
 
     """Tests the main Proxy driver"""
+
+    test_cg = consistencygroup.ConsistencyGroup(
+        context=None, name='WTF32', id='WTF32', volume_type_id='WTF32',
+        status=fields.ConsistencyGroupStatus.AVAILABLE)
 
     def setUp(self):
         """import at setup to ensure module patchers are in place"""
@@ -1113,7 +1119,7 @@ class XIVProxyTest(unittest.TestCase):
 
         p.ibm_storage_cli = mock.MagicMock()
 
-        model_update = p.create_consistencygroup({}, TEST_CONS_GROUP)
+        model_update = p.create_consistencygroup({}, self.test_cg)
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
             cg='cg_WTF32',
@@ -1203,7 +1209,7 @@ class XIVProxyTest(unittest.TestCase):
         p.ibm_storage_cli.cmd.create_volume_from_snapshot.return_value = []
 
         model_update, vols_model_update = p.create_consistencygroup_from_src(
-            {}, TEST_CONS_GROUP, [TEST_VOLUME],
+            {}, self.test_cg, [TEST_VOLUME],
             TEST_CG_SNAPSHOT, [TEST_SNAPSHOT], None, None)
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
@@ -1230,7 +1236,7 @@ class XIVProxyTest(unittest.TestCase):
         p.ibm_storage_cli.cmd.create_volume_from_snapshot.return_value = []
 
         model_update, vols_model_update = p.create_consistencygroup_from_src(
-            {}, TEST_CONS_GROUP, [TEST_VOLUME],
+            {}, self.test_cg, [TEST_VOLUME],
             None, None, TEST_CONS_GROUP, [TEST_CLONED_VOLUME])
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
