@@ -1919,8 +1919,11 @@ class VolumeManager(manager.CleanableManager,
         # Detach the source volume (if it fails, don't fail the migration)
         # As after detach and refresh, volume_attchments will be None.
         # We keep volume_attachment for later attach.
+        volume_attachments = []
         if orig_volume_status == 'in-use':
             for attachment in volume.volume_attachment:
+                # Save the attachments the volume currently have
+                volume_attachments.append(attachment)
                 try:
                     self.detach_volume(ctxt, volume.id, attachment.id)
                 except Exception as ex:
@@ -1948,12 +1951,14 @@ class VolumeManager(manager.CleanableManager,
                    'previous_status': volume.status,
                    'migration_status': 'success'}
 
+        # Restore the attachmens
         if orig_volume_status == 'in-use':
-            for attachment in volume.volume_attachment:
+            for attachment in volume_attachments:
+                LOG.debug('Re-attaching: %s', attachment)
                 rpcapi.attach_volume(ctxt, volume,
-                                     attachment['instance_uuid'],
-                                     attachment['attached_host'],
-                                     attachment['mountpoint'],
+                                     attachment.instance_uuid,
+                                     attachment.attached_host,
+                                     attachment.mountpoint,
                                      'rw')
         volume.update(updates)
         volume.save()
