@@ -5319,12 +5319,34 @@ class VMAXCommon(object):
         if not self.conn:
             self.conn = self._get_ecom_connection()
         if secondary_id != 'default':
-            self.failover = True
-            if self.rep_config:
-                secondary_id = self.rep_config['array']
+            if not self.failover:
+                self.failover = True
+                if self.rep_config:
+                    secondary_id = self.rep_config['array']
+            else:
+                exception_message = (_(
+                    "Backend %(backend)s is already failed over. "
+                    "If you wish to failback, please append "
+                    "'--backend_id default' to your command.")
+                    % {'backend': self.configuration.safe_get(
+                       'volume_backend_name')})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
         else:
-            self.failover = False
-            secondary_id = None
+            if self.failover:
+                self.failover = False
+                secondary_id = None
+            else:
+                exception_message = (_(
+                    "Cannot failback backend %(backend)s- backend not "
+                    "in failed over state. If you meant to failover, please "
+                    "omit the '--backend_id default' from the command")
+                    % {'backend': self.configuration.safe_get(
+                       'volume_backend_name')})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
 
         def failover_volume(vol, failover):
             loc = vol['provider_location']
