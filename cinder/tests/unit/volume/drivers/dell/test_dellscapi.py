@@ -2564,10 +2564,10 @@ class DellSCSanAPITestCase(test.TestCase):
                        'delete',
                        return_value=RESPONSE_200)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_search_for_volume',
+                       'find_volume',
                        return_value=VOLUME)
     def test_delete_volume(self,
-                           mock_search_for_volume,
+                           mock_find_volume,
                            mock_delete,
                            mock_get_json,
                            mock_close_connection,
@@ -2575,7 +2575,7 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_init):
         res = self.scapi.delete_volume(self.volume_name)
         self.assertTrue(mock_delete.called)
-        mock_search_for_volume.assert_called_once_with(self.volume_name)
+        mock_find_volume.assert_called_once_with(self.volume_name, None)
         self.assertTrue(mock_get_json.called)
         self.assertTrue(res)
 
@@ -2585,7 +2585,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
                        return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
     def test_delete_volume_with_provider_id(self,
+                                            mock_find_volume,
                                             mock_delete,
                                             mock_get_json,
                                             mock_close_connection,
@@ -2593,6 +2597,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_init):
         provider_id = str(self.scapi.ssn) + '.1'
         res = self.scapi.delete_volume(self.volume_name, provider_id)
+        mock_find_volume.assert_called_once_with(self.volume_name, provider_id)
         self.assertTrue(mock_delete.called)
         self.assertTrue(mock_get_json.called)
         self.assertTrue(res)
@@ -2600,7 +2605,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
                        return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
     def test_delete_volume_failure(self,
+                                   mock_find_volume,
                                    mock_delete,
                                    mock_close_connection,
                                    mock_open_connection,
@@ -2609,18 +2618,19 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.scapi.delete_volume, self.volume_name,
                           provider_id)
+        mock_find_volume.assert_called_once_with(self.volume_name, provider_id)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_search_for_volume',
+                       'find_volume',
                        return_value=None)
     def test_delete_volume_no_vol_found(self,
-                                        mock_search_for_volume,
+                                        mock_find_volume,
                                         mock_close_connection,
                                         mock_open_connection,
                                         mock_init):
         # Test case where volume to be deleted does not exist
         res = self.scapi.delete_volume(self.volume_name, None)
-        mock_search_for_volume.assert_called_once_with(self.volume_name)
+        mock_find_volume.assert_called_once_with(self.volume_name, None)
         self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,

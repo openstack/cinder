@@ -1292,11 +1292,8 @@ class StorageCenterApi(object):
         :param provider_id: This is the instanceId
         :returns: Boolean indicating success or failure.
         """
-        # No provider id? Then do a search.
-        if not provider_id:
-            vol = self._search_for_volume(name)
-            if vol:
-                provider_id = self._get_id(vol)
+        vol = self.find_volume(name, provider_id)
+        provider_id = None if not vol else self._get_id(vol)
 
         # If we have an id then delete the volume.
         if provider_id:
