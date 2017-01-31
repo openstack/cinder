@@ -532,19 +532,19 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                         retyping=False,
                                         previous_status='available'):
 
-        initial_status = 'retyping' if retyping else status
+        initial_status = retyping and 'retyping' or status
         old_volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host,
                                                status=initial_status,
                                                migration_status='migrating',
                                                previous_status=previous_status)
-        attachment_id = None
+        attachment = None
         if status == 'in-use':
             vol = tests_utils.attach_volume(self.context, old_volume.id,
                                             instance_uuid, attached_host,
                                             '/dev/vda')
             self.assertEqual('in-use', vol['status'])
-            attachment_id = vol['volume_attachment'][0]['id']
+            attachment = vol['volume_attachment'][0]
         target_status = 'target:%s' % old_volume.id
         new_host = CONF.host + 'new'
         new_volume = tests_utils.create_volume(self.context, size=0,
@@ -571,9 +571,17 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             if status == 'in-use':
                 mock_detach_volume.assert_called_with(self.context,
                                                       old_volume.id,
-                                                      attachment_id)
+                                                      attachment['id'])
                 attachments = db.volume_attachment_get_all_by_instance_uuid(
                     self.context, instance_uuid)
+                mock_attach_volume.assert_called_once_with(
+                    self.context,
+                    old_volume,
+                    attachment['instance_uuid'],
+                    attachment['attached_host'],
+                    attachment['mountpoint'],
+                    'rw'
+                )
                 self.assertIsNotNone(attachments)
                 self.assertEqual(attached_host,
                                  attachments[0]['attached_host'])
