@@ -1903,28 +1903,31 @@ class EMCVMAXMasking(object):
         instance = conn.GetInstance(storageGroupInstanceName, LocalOnly=False)
         storageGroupName = instance['ElementName']
 
-        volumeInstanceNames = self.get_devices_from_storage_group(
-            conn, storageGroupInstanceName)
+        @lockutils.synchronized(storageGroupName + 'remove',
+                                "emc-remove-sg", True)
+        def do_remove_volume_from_sg():
+            volumeInstanceNames = self.get_devices_from_storage_group(
+                conn, storageGroupInstanceName)
+            numVolInStorageGroup = len(volumeInstanceNames)
+            LOG.debug(
+                "There are %(numVol)d volumes in the storage group "
+                "%(maskingGroup)s.",
+                {'numVol': numVolInStorageGroup,
+                 'maskingGroup': storageGroupInstanceName})
 
-        numVolInStorageGroup = len(volumeInstanceNames)
-        LOG.debug(
-            "There are %(numVol)d volumes in the storage group "
-            "%(maskingGroup)s.",
-            {'numVol': numVolInStorageGroup,
-             'maskingGroup': storageGroupInstanceName})
-
-        if numVolInStorageGroup == 1:
-            # Last volume in the storage group.
-            self._last_vol_in_SG(
-                conn, controllerConfigService, storageGroupInstanceName,
-                storageGroupName, volumeInstance,
-                volumeInstance['ElementName'], extraSpecs)
-        else:
-            # Not the last volume so remove it from storage group
-            self._multiple_vols_in_SG(
-                conn, controllerConfigService, storageGroupInstanceName,
-                volumeInstance, volumeInstance['ElementName'],
-                numVolInStorageGroup, extraSpecs)
+            if numVolInStorageGroup == 1:
+                # Last volume in the storage group.
+                self._last_vol_in_SG(
+                    conn, controllerConfigService, storageGroupInstanceName,
+                    storageGroupName, volumeInstance,
+                    volumeInstance['ElementName'], extraSpecs)
+            else:
+                # Not the last volume so remove it from storage group
+                self._multiple_vols_in_SG(
+                    conn, controllerConfigService, storageGroupInstanceName,
+                    volumeInstance, volumeInstance['ElementName'],
+                    numVolInStorageGroup, extraSpecs)
+        return do_remove_volume_from_sg()
 
     def _last_vol_in_SG(
             self, conn, controllerConfigService, storageGroupInstanceName,
@@ -1958,12 +1961,14 @@ class EMCVMAXMasking(object):
             LOG.debug("Unable to get masking view %(maskingView)s "
                       "from storage group.",
                       {'maskingView': mvInstanceName})
+            # Remove the volume from the storage group and delete the SG.
+            self._remove_last_vol_and_delete_sg(
+                conn, controllerConfigService,
+                storageGroupInstanceName,
+                storageGroupName, volumeInstance.path,
+                volumeName, extraSpecs)
+            status = True
         else:
-            maskingViewInstance = conn.GetInstance(
-                mvInstanceName, LocalOnly=False)
-            maskingViewName = maskingViewInstance['ElementName']
-
-        if mvInstanceName:
             maskingViewInstance = conn.GetInstance(
                 mvInstanceName, LocalOnly=False)
             maskingViewName = maskingViewInstance['ElementName']
@@ -1977,14 +1982,6 @@ class EMCVMAXMasking(object):
                     storageGroupName, volumeInstance, volumeName,
                     extraSpecs)
             do_delete_mv_ig_and_sg()
-            status = True
-        else:
-            # Remove the volume from the storage group and delete the SG.
-            self._remove_last_vol_and_delete_sg(
-                conn, controllerConfigService,
-                storageGroupInstanceName,
-                storageGroupName, volumeInstance.path,
-                volumeName, extraSpecs)
             status = True
         return status
 

@@ -7860,7 +7860,7 @@ class EMCVMAXMaskingTest(test.TestCase):
             volumeInstance, volumeName, sgGroupName, extraSpecs)
         self.assertIsNone(msg)
 
-    def test_remove_volume_from_sg(self):
+    def test_cleanup_deletion_v3(self):
         masking = self.driver.common.masking
         conn = self.fake_ecom_connection()
         volumeInstanceName = (
@@ -7988,6 +7988,30 @@ class EMCVMAXMaskingTest(test.TestCase):
             _check_if_rollback_action_for_masking_required(conn,
                                                            rollbackDict))
         self.assertEqual(expectedmessage, message)
+
+    def test_remove_volume_from_sg(self):
+        extraSpecs = self.data.extra_specs
+        conn = self.fake_ecom_connection()
+        common = self.driver.common
+        masking = common.masking
+        controllerConfigService = (
+            common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            self.driver.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+        volumeInstanceNames = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume"))
+        volumeInstanceName = volumeInstanceNames[0]
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        masking.get_devices_from_storage_group = (
+            mock.Mock(return_value=volumeInstanceNames))
+        masking._remove_volume_from_sg(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, extraSpecs)
+        masking.get_devices_from_storage_group.assert_called_with(
+            conn, storageGroupInstanceName)
 
 
 class EMCVMAXFCTest(test.TestCase):
