@@ -5152,8 +5152,8 @@ class VMAXCommon(object):
 
             if (isinstance(loc, six.string_types)
                     and isinstance(rep_data, six.string_types)):
-                name = eval(loc)
-                replication_keybindings = eval(rep_data)
+                name = ast.literal_eval(loc)
+                replication_keybindings = ast.literal_eval(rep_data)
                 storageSystem = replication_keybindings['SystemName']
                 rdfGroupInstance, repServiceInstanceName = (
                     self.get_rdf_details(conn, storageSystem))
@@ -5352,8 +5352,8 @@ class VMAXCommon(object):
             loc = vol['provider_location']
             rep_data = vol['replication_driver_data']
             try:
-                name = eval(loc)
-                replication_keybindings = eval(rep_data)
+                name = ast.literal_eval(loc)
+                replication_keybindings = ast.literal_eval(rep_data)
                 keybindings = name['keybindings']
                 storageSystem = keybindings['SystemName']
                 sourceInstance = self._find_lun(vol)
@@ -5500,8 +5500,8 @@ class VMAXCommon(object):
             loc = volume['provider_location']
             rep_data = volume['replication_driver_data']
             try:
-                name = eval(loc)
-                replication_keybindings = eval(rep_data)
+                name = ast.literal_eval(loc)
+                replication_keybindings = ast.literal_eval(rep_data)
                 targetStorageSystem = replication_keybindings['SystemName']
                 targetVolumeDict = {'classname': name['classname'],
                                     'keybindings': replication_keybindings}

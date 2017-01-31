@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
 import datetime
 import hashlib
 import os
@@ -2917,9 +2918,10 @@ class VMAXUtils(object):
         :return: updated provider_location
         """
         if isinstance(provider_location, six.text_type):
-            provider_location = eval(provider_location)
+            provider_location = ast.literal_eval(provider_location)
         if isinstance(replication_keybindings, six.text_type):
-            replication_keybindings = eval(replication_keybindings)
+            replication_keybindings = ast.literal_eval(
+                replication_keybindings)
 
         keybindings = provider_location['keybindings']
         provider_location['keybindings'] = replication_keybindings
