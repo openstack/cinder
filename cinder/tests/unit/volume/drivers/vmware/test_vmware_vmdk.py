@@ -2512,8 +2512,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertFalse(ds_sel.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_relocate_backing_nop(self, ds_sel, vops):
+    def test_relocate_backing_nop(self, ds_sel, get_profile, vops):
         self._driver._storage_policy_enabled = True
         volume = {'name': 'vol-1', 'size': 1}
 
@@ -2521,7 +2522,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_datastore.return_value = datastore
 
         profile = mock.sentinel.profile
-        vops.get_profile.return_value = profile
+        get_profile.return_value = profile
 
         vops.is_datastore_accessible.return_value = True
         ds_sel.is_datastore_compliant.return_value = True
@@ -2530,20 +2531,22 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         host = mock.sentinel.host
         self._driver._relocate_backing(volume, backing, host)
 
+        get_profile.assert_called_once_with(volume)
         vops.is_datastore_accessible.assert_called_once_with(datastore, host)
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               profile)
         self.assertFalse(vops.relocate_backing.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing_with_no_datastore(
-            self, ds_sel, vops):
+            self, ds_sel, get_profile, vops):
         self._driver._storage_policy_enabled = True
         volume = {'name': 'vol-1', 'size': 1}
 
         profile = mock.sentinel.profile
-        vops.get_profile.return_value = profile
+        get_profile.return_value = profile
 
         vops.is_datastore_accessible.return_value = True
         ds_sel.is_datastore_compliant.return_value = False
@@ -2558,6 +2561,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           volume,
                           backing,
                           host)
+        get_profile.assert_called_once_with(volume)
         ds_sel.select_datastore.assert_called_once_with(
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.PROFILE_NAME: profile}, hosts=[host])
