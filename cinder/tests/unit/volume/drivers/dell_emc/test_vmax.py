@@ -347,6 +347,9 @@ class VMAXCommonData(object):
     fake_host_2_v3 = 'HostY@Backend#SRP_1+1234567891011'
     fake_host_3_v3 = 'HostX@Backend#Bronze+DSS+SRP_1+1234567891011'
     fake_host_4_v3 = 'HostX@Backend#Silver+None+SRP_1+1234567891011'
+    poolInstanceName = {
+        'InstanceID': 'SRP_1',
+        'CreationClassName': 'Symm_StorageSystem'}
 
     unit_creationclass = 'CIM_ProtocolControllerForUnit'
     storage_type = 'gold'
@@ -1771,11 +1774,18 @@ class FakeEcomConnection(object):
 
     def _enum_storagesettings(self):
         storagesettings = []
-        storagesetting = {}
-        storagesetting['CreationClassName'] = 'CIM_StoragePoolSetting'
-        storagesetting['InstanceID'] = ('SYMMETRIX-+-000197200056-+-SBronze:'
-                                        'DSS-+-F-+-0-+-SR-+-SRP_1')
-        storagesettings.append(storagesetting)
+        storagesetting_bronze = {}
+        storagesetting_bronze['CreationClassName'] = 'CIM_StoragePoolSetting'
+        storagesetting_bronze['InstanceID'] = (
+            'SYMMETRIX-+-000197200056-+-SBronze:'
+            'DSS-+-F-+-0-+-SR-+-SRP_1')
+        storagesettings.append(storagesetting_bronze)
+        storagesetting_silver = {}
+        storagesetting_silver['CreationClassName'] = 'CIM_StoragePoolSetting'
+        storagesetting_silver['InstanceID'] = (
+            'SYMMETRIX-+-000197200056-+-SSilver:'
+            'DSS-+-F-+-0-+-SR-+-SRP_1')
+        storagesettings.append(storagesetting_silver)
         return storagesettings
 
     def _enum_targetMaskingGroup(self):
@@ -7044,6 +7054,15 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
                  'SLO': u'Bronze',
                  'Workload': u'DSS'}]
 
+    def array_info_list_without_slo(self):
+        return [{'EcomServerIp': u'1.1.1.1',
+                 'EcomServerPort': 10,
+                 'EcomUserName': u'user',
+                 'EcomPassword': u'pass',
+                 'PoolName': u'SRP_1',
+                 'PortGroup': u'OS-portgroup-PG',
+                 'SerialNumber': 1234567891011}]
+
     def multiple_array_info_list(self):
         return [{'EcomServerIp': u'1.1.1.1',
                  'EcomServerPort': 10,
@@ -7474,6 +7493,42 @@ class EMCV3MultiPoolDriverTestCase(test.TestCase):
                          pools[1]['pool_name'])
         self.assertEqual("1234567891011#SRP_1#Silver#OLTP",
                          pools[1]['location_info'])
+        self._cleanup_pool_info()
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_find_pool_in_array',
+        return_value=(VMAXCommonData.poolInstanceName,
+                      VMAXCommonData.storage_system))
+    def test_get_slo_workload_combinations_with_slo(self, mock_pool):
+        self.driver.common.multiPoolSupportEnabled = True
+        final_array_info_list = (
+            self.driver.common._get_slo_workload_combinations(
+                self.default_array_info_list()))
+        bCheckForSilver = False
+        for array_info in final_array_info_list:
+            # Check if 'Silver' is present in the final list
+            if array_info['SLO'] == 'Silver':
+                bCheckForSilver = True
+        self.assertTrue(bCheckForSilver)
+        self._cleanup_pool_info()
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_find_pool_in_array',
+        return_value=(VMAXCommonData.poolInstanceName,
+                      VMAXCommonData.storage_system))
+    def test_get_slo_workload_combinations_without_slo(self, mock_pool):
+        self.driver.common.multiPoolSupportEnabled = True
+        final_array_info_list = (
+            self.driver.common._get_slo_workload_combinations(
+                self.array_info_list_without_slo()))
+        bCheckForSilver = False
+        for array_info in final_array_info_list:
+            # Check if 'Silver' is present in the final list
+            if array_info['SLO'] == 'Silver':
+                bCheckForSilver = True
+        self.assertTrue(bCheckForSilver)
         self._cleanup_pool_info()
 
     def _cleanup(self, tempdir, config_file_path):
