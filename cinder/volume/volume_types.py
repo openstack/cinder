@@ -31,6 +31,7 @@ from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import quota
 from cinder import rpc
+from cinder import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -186,6 +187,7 @@ def is_public_volume_type(context, volume_type_id):
     return volume_type['is_public']
 
 
+@utils.if_notifications_enabled
 def notify_about_volume_type_access_usage(context,
                                           volume_type_id,
                                           project_id,

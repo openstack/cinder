@@ -42,12 +42,14 @@ class GroupTypesController(wsgi.Controller):
         }
         policy.enforce(context, 'group:group_types_manage', target)
 
+    @utils.if_notifications_enabled
     def _notify_group_type_error(self, context, method, err,
                                  group_type=None, id=None, name=None):
         payload = dict(
             group_types=group_type, name=name, id=id, error_message=err)
         rpc.get_notifier('groupType').error(context, method, payload)
 
+    @utils.if_notifications_enabled
     def _notify_group_type_info(self, context, method, group_type):
         payload = dict(group_types=group_type)
         rpc.get_notifier('groupType').info(context, method, payload)

@@ -83,3 +83,18 @@ class RPCAPITestCase(test.TestCase):
 
         self.assertFalse(get_min_obj.called)
         self.assertFalse(get_min_rpc.called)
+
+    @mock.patch('oslo_messaging.JsonPayloadSerializer', wraps=True)
+    def test_init_no_notifications(self, serializer_mock):
+        self.override_config('transport_url', '',
+                             group='oslo_messaging_notifications')
+        rpc.init(test.CONF)
+        self.assertEqual(rpc.utils.DO_NOTHING, rpc.NOTIFIER)
+        serializer_mock.assert_not_called()
+
+    @mock.patch.object(rpc, 'messaging')
+    def test_init_notifications(self, messaging_mock):
+        rpc.init(test.CONF)
+        self.assertTrue(messaging_mock.JsonPayloadSerializer.called)
+        self.assertTrue(messaging_mock.Notifier.called)
+        self.assertEqual(rpc.NOTIFIER, messaging_mock.Notifier.return_value)

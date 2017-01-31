@@ -51,6 +51,7 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import utils
 
 
@@ -232,6 +233,8 @@ class TestCase(testtools.TestCase):
                              group='coordination')
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
+
+        test_utils.set_normal_rpc_notifier(self)
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \

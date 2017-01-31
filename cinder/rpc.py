@@ -38,6 +38,7 @@ import cinder.exception
 from cinder.i18n import _, _LE, _LI
 from cinder import objects
 from cinder.objects import base
+from cinder import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -74,9 +75,15 @@ def init(conf):
         allowed_remote_exmods=exmods,
         aliases=TRANSPORT_ALIASES)
 
-    serializer = RequestContextSerializer(messaging.JsonPayloadSerializer())
-    NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
-                                  serializer=serializer)
+    # get_notification_transport has loaded oslo_messaging_notifications config
+    # group, so we can now check if notifications are actually enabled.
+    if conf.oslo_messaging_notifications.transport_url:
+        json_serializer = messaging.JsonPayloadSerializer()
+        serializer = RequestContextSerializer(json_serializer)
+        NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
+                                      serializer=serializer)
+    else:
+        NOTIFIER = utils.DO_NOTHING
 
 
 def initialized():
@@ -164,6 +171,7 @@ def get_server(target, endpoints, serializer=None):
                                     serializer=serializer)
 
 
+@utils.if_notifications_enabled
 def get_notifier(service=None, host=None, publisher_id=None):
     assert NOTIFIER is not None
     if not publisher_id:
