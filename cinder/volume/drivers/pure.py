@@ -1697,8 +1697,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
 @interface.volumedriver
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
+    """OpenStack Volume Driver to support Pure Storage FlashArray.
 
-    VERSION = "5.0.0"
+    This version of the driver enables the use of iSCSI for
+    the underlying storage connectivity with the FlashArray.
+    """
+
+    VERSION = "6.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -1879,8 +1884,14 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
 @interface.volumedriver
 class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
+    """OpenStack Volume Driver to support Pure Storage FlashArray.
 
-    VERSION = "3.0.0"
+    This version of the driver enables the use of Fibre Channel for
+    the underlying storage connectivity with the FlashArray. It fully
+    supports the Cinder Fibre Channel Zone Manager.
+    """
+
+    VERSION = "4.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
