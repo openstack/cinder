@@ -6860,6 +6860,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     def test__create_temp_volume_from_snapshot(self):
         volume_dict = {'id': fake.SNAPSHOT_ID,
                        'host': 'fakehost',
+                       'cluster_name': 'fakecluster',
                        'availability_zone': 'fakezone',
                        'size': 1}
         vol = fake_volume.fake_volume_obj(self.context, **volume_dict)
@@ -6874,6 +6875,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             self.assertEqual(fields.VolumeAttachStatus.DETACHED,
                              temp_vol.attach_status)
             self.assertEqual('fakezone', temp_vol.availability_zone)
+            self.assertEqual('fakecluster', temp_vol.cluster_name)
 
     @mock.patch.object(utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')
