@@ -60,10 +60,11 @@ will create the attachment and perform the update on the attachment to set the
 connector info and return the connection data needed to make a connection.
 
 The attachment_create call can be used in one of two ways:
-1. Create an empty Attachment object (reserve)
-   attachment_create call.  In this case the attachment_create call requires
-   an instance_uuid and a volume_uuid, and just creates an empty attachment
-   object and returns the UUID of said attachment to the caller.
+
+1. Create an empty Attachment object (reserve) attachment_create call. In this
+   case the attachment_create call requires an instance_uuid and a volume_uuid,
+   and just creates an empty attachment object and returns the UUID of said
+   attachment to the caller.
 
 2. Create and Complete the Attachment process in one call.  The Reserve process
    is only needed in certain cases, in many cases Nova actually has enough
