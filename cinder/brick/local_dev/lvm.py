@@ -71,6 +71,7 @@ class LVM(executor.Executor):
         self.vg_thin_pool_free_space = 0.0
         self._supports_snapshot_lv_activation = None
         self._supports_lvchange_ignoreskipactivation = None
+        self._supports_pvs_ignoreskippedcluster = None
         self.vg_provisioned_capacity = 0.0
 
         # Ensure LVM_SYSTEM_DIR has been added to LVM.LVM_CMD_PREFIX
@@ -257,6 +258,22 @@ class LVM(executor.Executor):
 
         return self._supports_lvchange_ignoreskipactivation
 
+    @property
+    def supports_pvs_ignoreskippedcluster(self):
+        """Property indicating whether pvs supports --ignoreskippedcluster
+
+        Check for LVM version >= 2.02.103.
+        (LVM2 git: baf95bbff cmdline: Add --ignoreskippedcluster.
+        """
+
+        if self._supports_pvs_ignoreskippedcluster is not None:
+            return self._supports_pvs_ignoreskippedcluster
+
+        self._supports_pvs_ignoreskippedcluster = (
+            self.get_lvm_version(self._root_helper) >= (2, 2, 103))
+
+        return self._supports_pvs_ignoreskippedcluster
+
     @staticmethod
     def get_lv_info(root_helper, vg_name=None, lv_name=None):
         """Retrieve info about LVs (all, in a VG, or a single LV).
@@ -334,6 +351,9 @@ class LVM(executor.Executor):
                                     '-o', 'vg_name,name,size,free',
                                     '--separator', field_sep,
                                     '--nosuffix']
+        if LVM.supports_pvs_ignoreskippedcluster:
+            cmd.append('--ignoreskippedcluster')
+
         (out, _err) = putils.execute(*cmd,
                                      root_helper=root_helper,
                                      run_as_root=True)
