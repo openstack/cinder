@@ -224,6 +224,6 @@ ploop: CommandFilter, ploop, root
 drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
 
 # cinder/volume/drivers/quobyte.py
-getfattr: CommandFilter, getfattr, root
-mount.quobyte: CommandFilter, getfattr, root
+mount.quobyte: CommandFilter, mount.quobyte, root
+umount.quobyte: CommandFilter, umount.quobyte, root
 
