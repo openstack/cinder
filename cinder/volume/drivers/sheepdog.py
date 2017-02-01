@@ -442,10 +442,6 @@ class SheepdogDriver(driver.VolumeDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
 
-    # TODO(smcginnis) Remove this driver in Pike if license issues are not
-    # resolved and third party CI requirements are not met
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(sheepdog_opts)
