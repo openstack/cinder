@@ -4113,7 +4113,8 @@ class HPE3PARBaseDriver(object):
                     mock.ANY,
                     self.VOLUME_NAME_3PAR,
                     HPE3PAR_CPG,
-                    {'snapCPG': HPE3PAR_CPG, 'online': True}),
+                    {'snapCPG': HPE3PAR_CPG, 'online': True,
+                     'tpvv': mock.ANY, 'tdvv': mock.ANY}),
                 mock.call.addVolumeToVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     self.VOLUME_NAME_3PAR)]
