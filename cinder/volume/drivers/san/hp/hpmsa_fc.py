@@ -32,6 +32,10 @@ class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
 
     VERSION = "1.6"
 
+    CI_WIKI_NAME = "Vedams-HPMSA_FCISCSIDriver_CI"
+
+    SUPPORTED = True
+
     def __init__(self, *args, **kwargs):
         super(HPMSAFCDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(hpmsa_common.common_opts)
