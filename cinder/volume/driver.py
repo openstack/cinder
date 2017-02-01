@@ -1424,9 +1424,10 @@ class BaseVD(object):
 
     def _create_temp_volume(self, context, volume):
         kwargs = {
-            'size': volume['size'],
-            'display_name': 'backup-vol-%s' % volume['id'],
-            'host': volume['host'],
+            'size': volume.size,
+            'display_name': 'backup-vol-%s' % volume.id,
+            'host': volume.host,
+            'cluster_name': volume.cluster_name,
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'creating',
