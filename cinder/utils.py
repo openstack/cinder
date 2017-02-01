@@ -1089,11 +1089,17 @@ class DoNothing(str):
 DO_NOTHING = DoNothing()
 
 
+def notifications_enabled(conf):
+    """Check if oslo notifications are enabled."""
+    notifications_driver = set(conf.oslo_messaging_notifications.driver)
+    return notifications_driver and notifications_driver != {'noop'}
+
+
 def if_notifications_enabled(f):
     """Calls decorated method only if notifications are enabled."""
     @functools.wraps(f)
     def wrapped(*args, **kwargs):
-        if CONF.oslo_messaging_notifications.transport_url:
+        if notifications_enabled(CONF):
             return f(*args, **kwargs)
         return DO_NOTHING
     return wrapped

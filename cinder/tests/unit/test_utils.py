@@ -1416,6 +1416,7 @@ class TestValidateInteger(test.TestCase):
                           value, 'limit', min_value=-1, max_value=(2 ** 31))
 
 
+@ddt.ddt
 class TestNotificationShortCircuit(test.TestCase):
     def test_do_nothing_getter(self):
         """Test any attribute will always return the same instance (self)."""
@@ -1441,9 +1442,10 @@ class TestNotificationShortCircuit(test.TestCase):
         result = self._decorated_method()
         self.assertEqual(mock.sentinel.success, result)
 
-    def test_if_notification_enabled_when_disabled(self):
+    @ddt.data([], ['noop'], ['noop', 'noop'])
+    def test_if_notification_enabled_when_disabled(self, driver):
         """Test method is not called when notifications are disabled."""
-        self.override_config('transport_url', '',
+        self.override_config('driver', driver,
                              group='oslo_messaging_notifications')
         result = self._decorated_method()
         self.assertEqual(utils.DO_NOTHING, result)

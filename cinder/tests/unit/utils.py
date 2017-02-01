@@ -28,7 +28,6 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
-from cinder import rpc
 from cinder.tests.unit import fake_constants as fake
 
 
@@ -504,13 +503,3 @@ def create_populated_cluster(ctxt, num_services, num_down_svcs=0, **values):
         for i in range(num_services)
     ]
     return cluster, svcs
-
-
-def set_normal_rpc_notifier(test_case):
-    """Instead of shortcircuiting notifications, user Oslo's notifier."""
-    test_case.override_config('transport_url', 'fake_transport',
-                              group='oslo_messaging_notifications')
-    json_serializer = rpc.messaging.JsonPayloadSerializer()
-    serializer = rpc.RequestContextSerializer(json_serializer)
-    rpc.NOTIFIER = rpc.messaging.Notifier(rpc.NOTIFICATION_TRANSPORT,
-                                          serializer=serializer)

@@ -77,7 +77,7 @@ def init(conf):
 
     # get_notification_transport has loaded oslo_messaging_notifications config
     # group, so we can now check if notifications are actually enabled.
-    if conf.oslo_messaging_notifications.transport_url:
+    if utils.notifications_enabled(conf):
         json_serializer = messaging.JsonPayloadSerializer()
         serializer = RequestContextSerializer(json_serializer)
         NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
