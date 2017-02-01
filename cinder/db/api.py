@@ -117,7 +117,9 @@ def service_get(context, service_id=None, backend_match_level=None, **filters):
 def service_get_all(context, backend_match_level=None, **filters):
     """Get all services that match the criteria.
 
-    A possible filter is is_up=True and it will filter nodes that are down.
+    A possible filter is is_up=True and it will filter nodes that are down,
+    as well as host_or_cluster, that lets you look for services using both
+    of these properties.
 
     :param filters: Filters for the query in the form of key/value arguments.
     :param backend_match_level: 'pool', 'backend', or 'host' for host and

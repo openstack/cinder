@@ -44,16 +44,18 @@ class CapabilitiesController(wsgi.Controller):
         """Return capabilities list of given backend."""
         context = req.environ['cinder.context']
         authorize(context, 'capabilities')
-        filters = {'host': id, 'binary': 'cinder-volume'}
-        service = objects.ServiceList.get_all(context, filters)
-        if not service:
+        filters = {'host_or_cluster': id, 'binary': 'cinder-volume'}
+        services = objects.ServiceList.get_all(context, filters)
+        if not services:
             msg = (_("Can't find service: %s") % id)
             raise exception.NotFound(msg)
+        topic = services[0].service_topic_queue
         try:
-            capabilities = self.volume_api.get_capabilities(context, id, False)
+            capabilities = self.volume_api.get_capabilities(context, topic,
+                                                            False)
         except oslo_messaging.MessagingTimeout:
-            raise exception.RPCTimeout(service=id)
-        return self._view_builder.summary(req, capabilities, id)
+            raise exception.RPCTimeout(service=topic)
+        return self._view_builder.summary(req, capabilities, topic)
 
 
 class Capabilities(extensions.ExtensionDescriptor):
