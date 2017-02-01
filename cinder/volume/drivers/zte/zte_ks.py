@@ -87,6 +87,9 @@ class ZTEVolumeDriver(driver.VolumeDriver):
 
     VERSION = "1.0.0"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "ZTE_cinder2_CI"
+
     def __init__(self, *args, **kwargs):
         super(ZTEVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(zte_opts)
