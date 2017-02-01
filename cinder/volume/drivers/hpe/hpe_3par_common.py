@@ -244,10 +244,13 @@ class HPE3PARCommon(object):
         3.0.24 - Fix terminate connection on failover
         3.0.25 - Fix delete volume when online clone is active. bug #1349639
         3.0.26 - Fix concurrent snapshot delete conflict. bug #1600104
+        3.0.27 - Fix snapCPG error during backup of attached volume.
+                 Bug #1646396 and also ,Fix backup of attached ISCSI
+                 and CHAP enabled volume.bug #1644238.
 
     """
 
-    VERSION = "3.0.26"
+    VERSION = "3.0.27"
 
     stats = {}
 
@@ -1626,11 +1629,18 @@ class HPE3PARCommon(object):
     def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
         vol = self.client.getVolume(volume_name)
+        # Search for 'userCPG' in the get volume REST API,
+        # if found return userCPG , else search for snapCPG attribute
+        # when allowSnap=True. For the cases where 3PAR REST call for
+        # get volume doesn't have either userCPG or snapCPG ,
+        # take the default value of cpg from 'host' attribute from volume param
+        LOG.debug("get volume response is: %s", vol)
         if 'userCPG' in vol:
             return vol['userCPG']
-        elif allowSnap:
+        elif allowSnap and 'snapCPG' in vol:
             return vol['snapCPG']
-        return None
+        else:
+            return volume_utils.extract_host(volume['host'], 'pool')
 
     def _get_3par_vol_comment(self, volume_name):
         vol = self.client.getVolume(volume_name)
@@ -1983,13 +1993,31 @@ class HPE3PARCommon(object):
         try:
             vol_name = self._get_3par_vol_name(volume['id'])
             src_vol_name = self._get_3par_vol_name(src_vref['id'])
+            back_up_process = False
+            vol_chap_enabled = False
 
-            # if the sizes of the 2 volumes are the same
+            # Check whether a volume is ISCSI and CHAP enabled on it.
+            if self._client_conf['hpe3par_iscsi_chap_enabled']:
+                try:
+                    vol_chap_enabled = self.client.getVolumeMetaData(
+                        src_vol_name, 'HPQ-cinder-CHAP-name')['value']
+                except hpeexceptions.HTTPNotFound:
+                    LOG.debug("CHAP is not enabled on volume %(vol)s ",
+                              {'vol': src_vref['id']})
+                    vol_chap_enabled = False
+
+            # Check whether a process is a backup
+            if str(src_vref['status']) == 'backing-up':
+                back_up_process = True
+
+            # if the sizes of the 2 volumes are the same and except backup
+            # process for ISCSI volume with chap enabled on it.
             # we can do an online copy, which is a background process
             # on the 3PAR that makes the volume instantly available.
             # We can't resize a volume, while it's being copied.
-            if volume['size'] == src_vref['size']:
-                LOG.debug("Creating a clone of same size, using online copy.")
+            if volume['size'] == src_vref['size'] and not (
+               back_up_process and vol_chap_enabled):
+                LOG.debug("Creating a clone of volume, using online copy.")
                 # create a temporary snapshot
                 snapshot = self._create_temp_snapshot(src_vref)
 
@@ -2016,8 +2044,7 @@ class HPE3PARCommon(object):
                 # The size of the new volume is different, so we have to
                 # copy the volume and wait.  Do the resize after the copy
                 # is complete.
-                LOG.debug("Clone a volume with a different target size. "
-                          "Using non-online copy.")
+                LOG.debug("Creating a clone of volume, using non-online copy.")
 
                 # we first have to create the destination volume
                 model_update = self.create_volume(volume)
