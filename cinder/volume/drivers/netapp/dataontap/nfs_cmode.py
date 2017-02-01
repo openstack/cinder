@@ -522,7 +522,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 LOG.debug("Copied image from cache to volume %s using "
                           "cloning.", volume['id'])
                 copied = True
-            elif cache_copy:
+            elif (cache_copy and
+                  self.configuration.netapp_copyoffload_tool_path):
                 self._copy_from_remote_cache(volume, image_id, cache_copy)
                 copied = True
 

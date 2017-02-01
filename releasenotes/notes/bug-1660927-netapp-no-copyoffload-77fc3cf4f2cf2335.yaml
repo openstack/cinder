@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed misleading error message when NetApp copyoffload tool is not in place
+    during image cloning.
