@@ -20,7 +20,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
@@ -212,46 +212,40 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 LOG.exception(_LE('Error extending volume'))
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        try:
-            self.restapi.put(
-                'service/' + self.iscsi_service + '/iscsi/snapshot/clone',
-                {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
-                    'clonePath': self.bucket_path + '/' + volume['name'],
-                    'snapName': snapshot['name']
-                })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error cloning volume'))
+        self.restapi.put(
+            'service/' + self.iscsi_service + '/iscsi/snapshot/clone',
+            {
+                'objectPath': self.bucket_path + '/' +
+                snapshot['volume_name'],
+                'clonePath': self.bucket_path + '/' + volume['name'],
+                'snapName': snapshot['name']
+            })
 
     def create_snapshot(self, snapshot):
-        try:
-            self.restapi.post(
-                'service/' + self.iscsi_service + '/iscsi/snapshot',
-                {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
-                    'snapName': snapshot['name']
-                })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error creating snapshot'))
+        self.restapi.post(
+            'service/' + self.iscsi_service + '/iscsi/snapshot',
+            {
+                'objectPath': self.bucket_path + '/' +
+                snapshot['volume_name'],
+                'snapName': snapshot['name']
+            })
 
     def delete_snapshot(self, snapshot):
-        try:
-            self.restapi.delete(
-                'service/' + self.iscsi_service + '/iscsi/snapshot',
-                {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
-                    'snapName': snapshot['name']
-                })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error deleting snapshot'))
+        self.restapi.delete(
+            'service/' + self.iscsi_service + '/iscsi/snapshot',
+            {
+                'objectPath': self.bucket_path + '/' +
+                snapshot['volume_name'],
+                'snapName': snapshot['name']
+            })
+
+    @staticmethod
+    def _get_clone_snapshot_name(volume):
+        """Return name for snapshot that will be used to clone the volume."""
+        return 'cinder-clone-snapshot-%(id)s' % volume
 
     def create_cloned_volume(self, volume, src_vref):
+        """
         vol_url = (self.bucket_url + '/objects/' +
                    src_vref['name'] + '/clone')
         clone_body = {
@@ -270,6 +264,30 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating cloned volume'))
+        if volume['size'] > src_vref['size']:
+            self.extend_volume(volume, volume['size'])
+        """
+
+        snapshot = {'volume_name': src_vref['name'],
+                    'volume_id': src_vref['id'],
+                    'volume_size': src_vref['size'],
+                    'name': self._get_clone_snapshot_name(volume)}
+        LOG.debug('Creating temp snapshot of the original volume: '
+                  '%s@%s', snapshot['volume_name'], snapshot['name'])
+        self.create_snapshot(snapshot)
+        try:
+            self.create_volume_from_snapshot(volume, snapshot)
+        except exception.NexentaException:
+            LOG.error(_LE('Volume creation failed, deleting created snapshot '
+                          '%s'), '@'.join(
+                [snapshot['volume_name'], snapshot['name']]))
+            try:
+                self.delete_snapshot(snapshot)
+            except (exception.NexentaException, exception.SnapshotIsBusy):
+                LOG.warning(_LW('Failed to delete zfs snapshot '
+                                '%s'), '@'.join(
+                    [snapshot['volume_name'], snapshot['name']]))
+            raise
         if volume['size'] > src_vref['size']:
             self.extend_volume(volume, volume['size'])
 

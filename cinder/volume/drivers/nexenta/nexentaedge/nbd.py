@@ -23,7 +23,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils as cinder_utils
@@ -207,47 +207,41 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         LOG.debug('Create snapshot')
-        try:
-            self.restapi.post('nbd/snapshot', {
-                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
-                'snapName': snapshot['name']
-            })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error creating snapshot'))
+        self.restapi.post('nbd/snapshot', {
+            'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+            'snapName': snapshot['name']
+        })
 
     def delete_snapshot(self, snapshot):
         LOG.debug('Delete snapshot')
         # There is no way to figure out whether a snapshot exists in current
         # version of the API. This REST function always reports OK even a
         # snapshot doesn't exist.
-        try:
-            self.restapi.delete('nbd/snapshot', {
-                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
-                'snapName': snapshot['name']
-            })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error deleting snapshot'))
+        self.restapi.delete('nbd/snapshot', {
+            'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+            'snapName': snapshot['name']
+        })
 
     def create_volume_from_snapshot(self, volume, snapshot):
         LOG.debug('Create volume from snapshot')
         host = volutils.extract_host(volume['host'], 'host')
         remotehost = self._get_remote_url(host)
-        try:
-            self.restapi.put('nbd/snapshot/clone' + remotehost, {
-                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
-                'snapName': snapshot['name'],
-                'clonePath': self.bucket_path + '/' + volume['name']
-            })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error cloning snapshot'))
+        self.restapi.put('nbd/snapshot/clone' + remotehost, {
+            'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+            'snapName': snapshot['name'],
+            'clonePath': self.bucket_path + '/' + volume['name']
+        })
         if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
 
+    @staticmethod
+    def _get_clone_snapshot_name(volume):
+        """Return name for snapshot that will be used to clone the volume."""
+        return 'cinder-clone-snapshot-%(id)s' % volume
+
     def create_cloned_volume(self, volume, src_vref):
         LOG.debug('Create cloned volume')
+        '''
         vol_url = (self.bucket_url + '/objects/' +
                    src_vref['name'] + '/clone')
         clone_body = {
@@ -268,7 +262,28 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error creating cloned volume'))
+                LOG.exception(_LE('Error creating cloned volume'))'''
+
+        snapshot = {'volume_name': src_vref['name'],
+                    'volume_id': src_vref['id'],
+                    'volume_size': src_vref['size'],
+                    'name': self._get_clone_snapshot_name(volume)}
+        LOG.debug('Creating temp snapshot of the original volume: '
+                  '%s@%s', snapshot['volume_name'], snapshot['name'])
+        self.create_snapshot(snapshot)
+        try:
+            self.create_volume_from_snapshot(volume, snapshot)
+        except exception.NexentaException:
+            LOG.error(_LE('Volume creation failed, deleting created snapshot '
+                          '%s'), '@'.join(
+                [snapshot['volume_name'], snapshot['name']]))
+            try:
+                self.delete_snapshot(snapshot)
+            except (exception.NexentaException, exception.SnapshotIsBusy):
+                LOG.warning(_LW('Failed to delete zfs snapshot '
+                                '%s'), '@'.join(
+                    [snapshot['volume_name'], snapshot['name']]))
+            raise
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         raise NotImplementedError
