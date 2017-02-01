@@ -5,6 +5,7 @@
     "admin_api": "is_admin:True or (role:admin and is_admin_project:True)",
 
     "volume:create": "",
+    "volume:create_from_image": "",
     "volume:delete": "rule:admin_or_owner",
     "volume:force_delete": "rule:admin_api",
     "volume:get": "rule:admin_or_owner",
