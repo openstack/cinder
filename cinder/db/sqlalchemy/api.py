@@ -449,8 +449,9 @@ def _clustered_bool_field_filter(query, field_name, filter_value):
 
 
 def _service_query(context, session=None, read_deleted='no', host=None,
-                   cluster_name=None, is_up=None, backend_match_level=None,
-                   disabled=None, frozen=None, **filters):
+                   cluster_name=None, is_up=None, host_or_cluster=None,
+                   backend_match_level=None, disabled=None, frozen=None,
+                   **filters):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
         return None
@@ -467,6 +468,13 @@ def _service_query(context, session=None, read_deleted='no', host=None,
     if cluster_name:
         query = query.filter(_filter_host(models.Service.cluster_name,
                                           cluster_name, backend_match_level))
+    if host_or_cluster:
+        query = query.filter(or_(
+            _filter_host(models.Service.host, host_or_cluster,
+                         backend_match_level),
+            _filter_host(models.Service.cluster_name, host_or_cluster,
+                         backend_match_level),
+        ))
 
     query = _clustered_bool_field_filter(query, 'disabled', disabled)
     query = _clustered_bool_field_filter(query, 'frozen', frozen)

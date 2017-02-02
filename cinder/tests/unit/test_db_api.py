@@ -277,6 +277,18 @@ class DBAPIServiceTestCase(BaseTest):
         real = db.service_get_all(self.ctxt, cluster_name='cluster')
         self._assertEqualListsOfObjects(expected, real)
 
+    def test_service_get_all_by_host_or_cluster(self):
+        values = [
+            {'host': 'host1', 'cluster_name': 'cluster'},
+            {'host': 'host2', 'cluster_name': 'host1'},
+            {'host': 'host3', 'cluster_name': 'cluster@backend'},
+            {'host': 'host4', 'cluster_name': 'cluster2'},
+        ]
+        services = [utils.create_service(self.ctxt, vals) for vals in values]
+        expected = services[0:2]
+        real = db.service_get_all(self.ctxt, host_or_cluster='host1')
+        self._assertEqualListsOfObjects(expected, real)
+
     def test_service_get_by_args_not_found_exception(self):
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get,

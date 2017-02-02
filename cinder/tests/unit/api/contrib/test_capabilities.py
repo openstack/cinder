@@ -70,13 +70,13 @@ class CapabilitiesAPITest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
                 rpcapi_get_capabilities)
     def test_capabilities_summary(self, mock_services):
-        mock_services.return_value = [{'name': 'fake'}]
+        mock_services.return_value = [{'name': 'fake', 'host': 'fake_host'}]
         req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.show(req, 'fake')
 
         expected = {
-            'namespace': 'OS::Storage::Capabilities::fake',
+            'namespace': 'OS::Storage::Capabilities::fake_host',
             'vendor_name': 'OpenStack',
             'volume_backend_name': 'lvm',
             'pool_name': 'pool',
