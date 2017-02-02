@@ -126,6 +126,10 @@ Cinder Backup
 
     Displays a list of all backups (including ones in progress) and the host on which the backup operation is running.
 
+``cinder-manage backup update_backup_host --currenthost <current host> --newhost <new host>``
+
+    Updates the host name of all backups currently associated with a specified host.
+
 Cinder Version
 ~~~~~~~~~~~~~~
 
