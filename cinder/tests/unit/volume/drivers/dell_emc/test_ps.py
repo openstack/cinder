@@ -419,7 +419,7 @@ class PSSeriesISCSIDriverTestCase(test.TestCase):
             self.assertEqual(not thin_enabled,
                              stats['thick_provisioning_support'])
             self.assertEqual('Dell EMC', stats['vendor_name'])
-            self.assertTrue(stats['multiattach'])
+            self.assertFalse(stats['multiattach'])
 
     def test_get_space_in_gb(self):
         self.assertEqual(123.0, self.driver._get_space_in_gb('123.0GB'))

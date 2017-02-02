@@ -519,7 +519,7 @@ class VSPCommon(object):
         data['free_capacity_gb'] = free_gb
         data['reserved_percentage'] = self.conf.safe_get('reserved_percentage')
         data['QoS_support'] = False
-        data['multiattach'] = True
+        data['multiattach'] = False
         LOG.debug("Updating volume status. (%s)", data)
         self._stats = data
 

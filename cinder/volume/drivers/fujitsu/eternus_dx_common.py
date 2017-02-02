@@ -903,7 +903,7 @@ class FJDXCommon(object):
             self.stats['total_capacity_gb'] = 0
             self.stats['free_capacity_gb'] = 0
 
-        self.stats['multiattach'] = True
+        self.stats['multiattach'] = False
 
         LOG.debug('update_volume_stats, '
                   'eternus_pool:%(eternus_pool)s, '

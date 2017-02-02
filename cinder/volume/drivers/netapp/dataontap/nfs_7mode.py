@@ -156,7 +156,7 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             pool = dict()
             pool['pool_name'] = nfs_share
             pool['QoS_support'] = False
-            pool['multiattach'] = True
+            pool['multiattach'] = False
             pool.update(capacity)
 
             thick = not self.configuration.nfs_sparsed_volumes

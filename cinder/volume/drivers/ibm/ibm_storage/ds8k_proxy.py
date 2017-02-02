@@ -386,7 +386,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
             "reserved_percentage": self.configuration.reserved_percentage,
             "consistencygroup_support": True,
             "consistent_group_snapshot_enabled": True,
-            "multiattach": True
+            "multiattach": False
         }
 
         if self._replication_enabled:

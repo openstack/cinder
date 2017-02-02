@@ -269,7 +269,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             # Add driver capabilities and config info
             pool['QoS_support'] = True
             pool['consistencygroup_support'] = True
-            pool['multiattach'] = True
+            pool['multiattach'] = False
 
             # Add up-to-date capacity info
             nfs_share = ssc_vol_info['pool_name']

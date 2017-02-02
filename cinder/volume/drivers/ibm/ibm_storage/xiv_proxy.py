@@ -1460,7 +1460,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         self.meta['stat']["vendor_name"] = 'IBM'
         self.meta['stat']["driver_version"] = self.full_version
         self.meta['stat']["storage_protocol"] = connection_type
-        self.meta['stat']['multiattach'] = True  # XIV xupports multiattach
+        self.meta['stat']['multiattach'] = False
         self.meta['stat']['QoS_support'] = (
             self._check_storage_version_for_qos_support())
 

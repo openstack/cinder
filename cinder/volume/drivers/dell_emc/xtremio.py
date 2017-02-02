@@ -523,7 +523,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                        'reserved_percentage':
                        self.configuration.reserved_percentage,
                        'QoS_support': False,
-                       'multiattach': True,
+                       'multiattach': False,
                        }
         self._stats.update(self.client.get_extra_capabilities())
 
