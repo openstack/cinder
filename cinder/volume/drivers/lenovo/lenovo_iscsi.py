@@ -32,8 +32,10 @@ class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
 
     VERSION = "1.6"
 
+    SUPPORTED = True
+
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Vedams-LenovoStorage_FCISCSI_CI"
+    CI_WIKI_NAME = "Lenovo_Storage_CI"
 
     def __init__(self, *args, **kwargs):
         super(LenovoISCSIDriver, self).__init__(*args, **kwargs)
