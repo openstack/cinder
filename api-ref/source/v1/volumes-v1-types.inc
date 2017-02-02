@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============
 Volume types
 ============
 
@@ -9,7 +8,7 @@ types.
 
 
 List volume types (v1)
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/types
 
@@ -35,7 +34,7 @@ Response Example
 
 
 Create volume type (v1)
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v1/{tenant_id}/types
 
@@ -79,7 +78,7 @@ Response Example
 
 
 Update volume type (v1)
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v1/{tenant_id}/types/{volume_type_id}
 
@@ -126,7 +125,7 @@ Response Example
 
 
 Update extra specs for a volume type (v1)
-=========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v1/{tenant_id}/types/{volume_type_id}
 
@@ -172,7 +171,7 @@ Response Example
 
 
 Show volume type details (v1)
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/types/{volume_type_id}
 
@@ -200,7 +199,7 @@ Response Example
 
 
 Delete volume type (v1)
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v1/{tenant_id}/types/{volume_type_id}
 

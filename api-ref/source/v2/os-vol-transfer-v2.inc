@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============
 Volume transfer
 ===============
 
@@ -8,7 +7,7 @@ Transfers a volume from one user to another user.
 
 
 Accept volume transfer
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/os-volume-transfer/{transfer_id}/accept
 
@@ -46,7 +45,7 @@ Response Parameters
 
 
 Create volume transfer
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/os-volume-transfer
 
@@ -85,7 +84,7 @@ Response Parameters
 
 
 List volume transfers
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/os-volume-transfer
 
@@ -123,7 +122,7 @@ Response Example
 
 
 Show volume transfer details
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/os-volume-transfer/{transfer_id}
 
@@ -163,7 +162,7 @@ Response Example
 
 
 Delete volume transfer
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{tenant_id}/os-volume-transfer/{transfer_id}
 
@@ -182,7 +181,7 @@ Request
 
 
 List volume transfers, with details
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/os-volume-transfer/detail
 

@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============================
 Volume type access (volumes)
 ============================
 
@@ -15,7 +14,7 @@ users with the administrative role and context.
 
 
 Add private volume type access to project
-=========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/types/{volume_type}/action
 
@@ -41,7 +40,7 @@ Request Example
 
 
 Remove private volume type access from project
-==============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/types/{volume_type}/action
 
@@ -67,7 +66,7 @@ Request Example
 
 
 List private volume type access detail
-======================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/types/{volume_type}/os-volume-type-access
 

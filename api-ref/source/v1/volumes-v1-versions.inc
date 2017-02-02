@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============
 API versions
 ============
 
@@ -8,7 +7,7 @@ Lists information about API versions.
 
 
 Show API v1 details
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1
 
@@ -31,7 +30,7 @@ Response Example
 
 
 List API versions (v1)
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /
 

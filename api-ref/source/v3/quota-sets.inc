@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-====================================
 Quota sets extension (os-quota-sets)
 ====================================
 
@@ -10,7 +9,7 @@ Shows, updates, and deletes quotas for a project.
 
 
 Show quotas for a user
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}/{user_id}
 
@@ -60,7 +59,7 @@ Response Example
 
 
 Update quotas for a user
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{admin_project_id}/os-quota-sets/{project_id}/{user_id}
 
@@ -131,7 +130,7 @@ Response Example
    :language: javascript
 
 Delete quotas for a user
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{admin_project_id}/os-quota-sets/{project_id}/{user_id}
 
@@ -159,7 +158,7 @@ Response Example
 
 
 Show quotas for a project
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}
 
@@ -210,7 +209,7 @@ Response Example
    :language: javascript
 
 Update quotas for a project
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{admin_project_id}/os-quota-sets/{project_id}
 
@@ -281,7 +280,7 @@ Response Example
    :language: javascript
 
 Delete quotas for a project
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{admin_project_id}/os-quota-sets/{project_id}
 
@@ -307,7 +306,7 @@ Response Example
    :language: javascript
 
 Show quota details for a user
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{admin_project_id}/os-quota-sets/{project_id}/detail/{user_id}
 
@@ -358,7 +357,7 @@ Response Example
 
 
 Get default quotas for a project
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/os-quota-sets/defaults
 

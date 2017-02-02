@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=========
 Snapshots
 =========
 
@@ -9,7 +8,7 @@ and updates snapshot metadata.
 
 
 Show snapshot details (v1)
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/snapshots/{snapshot_id}
 
@@ -35,7 +34,7 @@ Response Example
 
 
 Delete snapshot (v1)
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v1/{tenant_id}/snapshots/{snapshot_id}
 
@@ -54,7 +53,7 @@ Request
 
 
 List snapshots with details (v1)
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/snapshots/detail
 
@@ -79,7 +78,7 @@ Response Example
 
 
 Create snapshot (v1)
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v1/{tenant_id}/snapshots
 
@@ -102,7 +101,7 @@ Request Example
    :language: javascript
 
 List snapshots (v1)
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/snapshots
 
@@ -129,7 +128,7 @@ Response Example
 
 
 Show snapshot metadata (v1)
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/snapshots/{snapshot_id}/metadata
 
@@ -157,7 +156,7 @@ Response Example
 
 
 Update snapshot metadata (v1)
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v1/{tenant_id}/snapshots/{snapshot_id}/metadata
 

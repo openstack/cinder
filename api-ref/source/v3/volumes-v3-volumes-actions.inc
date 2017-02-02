@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-================================
 Volume actions (volumes, action)
 ================================
 
@@ -12,7 +11,7 @@ storage object associated with it.
 
 
 Extend a volume size
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -59,7 +58,7 @@ Request Example
 
 
 Reset a volume's statuses
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -93,7 +92,7 @@ Request Example
 
 
 Set image metadata for a volume
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -125,7 +124,7 @@ Request Example
 
 
 Remove image metadata from a volume
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -157,7 +156,7 @@ Request Example
 
 
 Attach volume to a server
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -197,7 +196,7 @@ Request Example
 
 
 Unmanage a volume
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
@@ -232,7 +231,7 @@ Request Example
 
 
 Force detach a volume
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 

@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============
 Limits (limits)
 ===============
 
@@ -11,7 +10,7 @@ for the item is infinite.
 
 
 Show absolute limits for project
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/limits
 

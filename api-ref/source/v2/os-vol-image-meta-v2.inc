@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===================================================
 Volume image metadata extension (os-vol-image-meta)
 ===================================================
 
@@ -8,7 +7,7 @@ Shows image metadata that is associated with a volume.
 
 
 Show image metadata for volume
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/os-vol-image-meta
 

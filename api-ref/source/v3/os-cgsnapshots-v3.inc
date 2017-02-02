@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===========================
 Consistency group snapshots
 ===========================
 
@@ -9,7 +8,7 @@ deletes consistency group snapshots.
 
 
 Delete a consistency group snapshot
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/cgsnapshots/{cgsnapshot_id}
 
@@ -28,7 +27,7 @@ Request
 
 
 Show consistency group snapshot detail
-======================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/cgsnapshots/{cgsnapshot_id}
 
@@ -68,7 +67,7 @@ Response Example
 
 
 List all consistency group snapshots with details
-=================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/cgsnapshots/detail
 
@@ -105,7 +104,7 @@ Response Example
    :language: javascript
 
 List all consistency group snapshots
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/cgsnapshots
 
@@ -144,7 +143,7 @@ Response Example
 
 
 Create a consistency group snapshot
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/cgsnapshots
 

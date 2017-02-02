@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==================
 Consistency groups
 ==================
 
@@ -16,7 +15,7 @@ to limit roles.
 
 
 List consistency groups
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/consistencygroups
 
@@ -55,7 +54,7 @@ Response Example
 
 
 Create consistency group
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/consistencygroups
 
@@ -101,7 +100,7 @@ Response Example
    :language: javascript
 
 Show consistency group details
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/consistencygroups/{consistencygroup_id}
 
@@ -139,7 +138,7 @@ Response Example
 
 
 Create consistency group from source
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/consistencygroups/create_from_src
 
@@ -170,7 +169,7 @@ Request Example
 
 
 Delete consistency group
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/consistencygroups/{consistencygroup_id}/delete
 
@@ -196,7 +195,7 @@ Request Example
 
 
 List consistency groups with details
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/consistencygroups/detail
 
@@ -240,7 +239,7 @@ Response Example
 
 
 Update consistency group
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{tenant_id}/consistencygroups/{consistencygroup_id}/update
 

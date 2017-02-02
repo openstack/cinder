@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===================================================
 Quality of service (QoS) specifications (qos-specs)
 ===================================================
 
@@ -12,7 +11,7 @@ specifications.
 
 
 Disassociate QoS specification from all associations
-====================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs/{qos_id}/disassociate_all
 
@@ -31,7 +30,7 @@ Request
 
 
 Unset keys in QoS specification
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{tenant_id}/qos-specs/{qos_id}/delete_keys
 
@@ -67,7 +66,7 @@ Response Example
 
 
 Get all associations for QoS specification
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs/{qos_id}/associations
 
@@ -95,7 +94,7 @@ Response Example
 
 
 Associate QoS specification with volume type
-============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs/{qos_id}/associate
 
@@ -114,7 +113,7 @@ Request
 
 
 Disassociate QoS specification from volume type
-===============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs/{qos_id}/disassociate
 
@@ -133,7 +132,7 @@ Request
 
 
 Show QoS specification details
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs/{qos_id}
 
@@ -174,7 +173,7 @@ Response Example
 
 
 Set keys in QoS specification
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{tenant_id}/qos-specs/{qos_id}
 
@@ -210,7 +209,7 @@ Response Example
 
 
 Delete QoS specification
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{tenant_id}/qos-specs/{qos_id}
 
@@ -230,7 +229,7 @@ Request
 
 
 Create QoS specification
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/qos-specs
 
@@ -273,7 +272,7 @@ Response Parameters
 
 
 List QoS specs
-==============
+~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/qos-specs
 

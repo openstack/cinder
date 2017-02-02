@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============================
 Volume snapshots (snapshots)
 ============================
 
@@ -28,7 +27,7 @@ possible:
 
 
 List snapshots and details
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/snapshots/detail
 
@@ -71,7 +70,7 @@ Response Example
 
 
 Create a snapshot
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/snapshots
 
@@ -115,7 +114,7 @@ Response Parameters
 
 
 List accessible snapshots
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/snapshots
 
@@ -160,7 +159,7 @@ Response Example
 
 
 Show a snapshot's metadata
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/snapshots/{snapshot_id}/metadata
 
@@ -205,7 +204,7 @@ Response Example
 
 
 Update a snapshot's metadata
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/snapshots/{snapshot_id}/metadata
 
@@ -243,7 +242,7 @@ Response Example
 
 
 Show a snapshot's details
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/snapshots/{snapshot_id}
 
@@ -288,7 +287,7 @@ Response Example
 
 
 Update a snapshot
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/snapshots/{snapshot_id}
 
@@ -341,7 +340,7 @@ Response Example
 
 
 Delete a snapshot
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/snapshots/{snapshot_id}
 

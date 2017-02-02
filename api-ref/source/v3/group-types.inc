@@ -1,12 +1,11 @@
 .. -*- rst -*-
 
-===========
 Group types
 ===========
 
 
 Update group type
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/group_types/{group_type_id}
 
@@ -54,7 +53,7 @@ Response Example
 
 
 Create group specs for a group type
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/group_types/{group_type_id}/group_specs
 
@@ -103,7 +102,7 @@ Response Example
 
 
 Show group type details
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_types/{group_type_id}
 
@@ -142,7 +141,7 @@ Response Example
 
 
 Delete group type
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/group_types/{group_type_id}
 
@@ -162,7 +161,7 @@ Request
 
 
 List group types
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_types
 
@@ -203,7 +202,7 @@ Response Example
 
 
 Create group type
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/group_types
 

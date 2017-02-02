@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================
 Volumes (volumes)
 =================
 
@@ -45,7 +44,7 @@ status values are:
 
 
 List volumes with details
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/volumes/detail
 
@@ -113,7 +112,7 @@ Response Example
 
 
 Create volume
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/volumes
 
@@ -213,7 +212,7 @@ Response Parameters
 
 
 List volumes
-============
+~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/volumes
 
@@ -257,7 +256,7 @@ Response Example
 
 
 Show volume details
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/volumes/{volume_id}
 
@@ -327,7 +326,7 @@ Response Example
 
 
 Update volume
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{tenant_id}/volumes/{volume_id}
 
@@ -398,7 +397,7 @@ Response Example
 
 
 Delete volume
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{tenant_id}/volumes/{volume_id}
 
@@ -446,7 +445,7 @@ Request
 
 
 Create volume metadata
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/volumes/{volume_id}/metadata
 
@@ -489,7 +488,7 @@ Response Example
 
 
 Show volume metadata
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/volumes/{volume_id}/metadata
 
@@ -528,7 +527,7 @@ Response Example
 
 
 Update volume metadata
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{tenant_id}/volumes/{volume_id}/metadata
 
