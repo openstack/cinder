@@ -67,7 +67,7 @@ class BrickLvmTestCase(test.TestCase):
                 cmd_string):
             data = "  fake-vg\n"
         elif _lvm_prefix + 'vgs, --version' in cmd_string:
-            data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
+            data = "  LVM version:     2.02.103(2) (2012-03-06)\n"
         elif(_lvm_prefix + 'vgs, --noheadings, -o, uuid, fake-vg' in
              cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
@@ -289,17 +289,19 @@ class BrickLvmTestCase(test.TestCase):
     def test_pvs_ignoreskippedcluster_support(self):
         """Tests if lvm support ignoreskippedcluster option."""
 
-        self.vg._supports_pvs_ignoreskippedcluster = None
+        brick.LVM._supports_pvs_ignoreskippedcluster = None
         with mock.patch.object(processutils, 'execute',
                                self.fake_pretend_lvm_version):
-            self.assertTrue(self.vg.supports_pvs_ignoreskippedcluster)
+            self.assertTrue(brick.LVM.supports_pvs_ignoreskippedcluster(
+                'sudo'))
 
-        self.vg._supports_pvs_ignoreskippedcluster = None
+        brick.LVM._supports_pvs_ignoreskippedcluster = None
         with mock.patch.object(processutils, 'execute',
                                self.fake_old_lvm_version):
-            self.assertFalse(self.vg.supports_pvs_ignoreskippedcluster)
+            self.assertFalse(brick.LVM.supports_pvs_ignoreskippedcluster(
+                'sudo'))
 
-        self.vg._supports_pvs_ignoreskippedcluster = None
+        brick.LVM._supports_pvs_ignoreskippedcluster = None
 
     def test_thin_pool_creation(self):
 
