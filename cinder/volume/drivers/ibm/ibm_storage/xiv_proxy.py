@@ -1842,21 +1842,20 @@ class XIVProxy(proxy.IBMStorageProxy):
                 self._call_xiv_xcli(
                     "cg_delete", cg=cgname).as_list
                 model_update['status'] = 'deleted'
-            except errors.CgDoesNotExistError as e:
-                error = (_("consistency group %s does not exist on backend") %
-                         cgname)
+            except (errors.CgDoesNotExistError, errors.CgBadNameError):
+                error = (_LW("consistency group %(cgname)s does not "
+                             "exist on backend") %
+                         {'cgname': cgname})
+                LOG.warning(error)
+                # if the object was already deleted on the backend, we can
+                # continue and delete the openstack object
+                model_update['status'] = 'deleted'
+            except errors.CgHasMirrorError:
+                error = (_("consistency group %s is being mirrored") % cgname)
                 LOG.error(error)
                 raise self._get_exception()(error)
-            except errors.CgHasMirrorError as e:
-                error = (_("consistency group %s is being mirrored ") % cgname)
-                LOG.error(error)
-                raise self._get_exception()(error)
-            except errors.CgNotEmptyError as e:
-                error = (_("consistency group %s is not empty ") % cgname)
-                LOG.error(error)
-                raise self._get_exception()(error)
-            except errors.CgBadNameError as e:
-                error = (_("consistency group %s does not exist ") % cgname)
+            except errors.CgNotEmptyError:
+                error = (_("consistency group %s is not empty") % cgname)
                 LOG.error(error)
                 raise self._get_exception()(error)
             except errors.XCLIError as e:
