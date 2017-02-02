@@ -31,6 +31,7 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
+import oslo_messaging
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
@@ -51,7 +52,6 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
-from cinder.tests.unit import utils as test_utils
 from cinder.volume import utils
 
 
@@ -154,6 +154,14 @@ class TestCase(testtools.TestCase):
         self.messaging_conf.transport_driver = 'fake'
         self.messaging_conf.response_timeout = 15
         self.useFixture(self.messaging_conf)
+
+        # Load oslo_messaging_notifications config group so we can set an
+        # override to prevent notifications from being ignored due to the
+        # short-circuit mechanism.
+        oslo_messaging.get_notification_transport(CONF)
+        #  We need to use a valid driver for the notifications, so we use test.
+        self.override_config('driver', ['test'],
+                             group='oslo_messaging_notifications')
         rpc.init(CONF)
 
         # NOTE(geguileo): This is required because _determine_obj_version_cap
@@ -233,8 +241,6 @@ class TestCase(testtools.TestCase):
                              group='coordination')
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
-
-        test_utils.set_normal_rpc_notifier(self)
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \

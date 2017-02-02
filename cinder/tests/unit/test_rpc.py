@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 
 from cinder.objects import base
@@ -25,6 +26,7 @@ class FakeAPI(rpc.RPCAPI):
     BINARY = 'cinder-scheduler'
 
 
+@ddt.ddt
 class RPCAPITestCase(test.TestCase):
     """Tests RPCAPI mixin aggregating stuff related to RPC compatibility."""
 
@@ -84,9 +86,11 @@ class RPCAPITestCase(test.TestCase):
         self.assertFalse(get_min_obj.called)
         self.assertFalse(get_min_rpc.called)
 
+    @ddt.data([], ['noop'], ['noop', 'noop'])
     @mock.patch('oslo_messaging.JsonPayloadSerializer', wraps=True)
-    def test_init_no_notifications(self, serializer_mock):
-        self.override_config('transport_url', '',
+    def test_init_no_notifications(self, driver, serializer_mock):
+        """Test short-circuiting notifications with default and noop driver."""
+        self.override_config('driver', driver,
                              group='oslo_messaging_notifications')
         rpc.init(test.CONF)
         self.assertEqual(rpc.utils.DO_NOTHING, rpc.NOTIFIER)
