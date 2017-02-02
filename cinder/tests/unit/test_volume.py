@@ -4947,6 +4947,30 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         gigabytes_in_use_new = usage.in_use
         self.assertEqual(gigabytes_in_use, gigabytes_in_use_new)
 
+    @mock.patch('cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+                'SUPPORTS_ACTIVE_ACTIVE', True)
+    def test_set_resource_host_different(self):
+        manager = vol_manager.VolumeManager(host='localhost-1@ceph',
+                                            cluster='mycluster@ceph')
+        volume = tests_utils.create_volume(self.user_context,
+                                           host='localhost-2@ceph#ceph',
+                                           cluster_name='mycluster@ceph')
+        manager._set_resource_host(volume)
+        volume.refresh()
+        self.assertEqual('localhost-1@ceph#ceph', volume.host)
+
+    @mock.patch('cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+                'SUPPORTS_ACTIVE_ACTIVE', True)
+    def test_set_resource_host_equal(self):
+        manager = vol_manager.VolumeManager(host='localhost-1@ceph',
+                                            cluster='mycluster@ceph')
+        volume = tests_utils.create_volume(self.user_context,
+                                           host='localhost-1@ceph#ceph',
+                                           cluster_name='mycluster@ceph')
+        with mock.patch.object(volume, 'save') as save_mock:
+            manager._set_resource_host(volume)
+            save_mock.assert_not_called()
+
 
 @ddt.ddt
 class VolumeMigrationTestCase(base.BaseVolumeTestCase):

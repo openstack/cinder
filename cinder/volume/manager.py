@@ -576,8 +576,10 @@ class VolumeManager(manager.CleanableManager,
 
     def _set_resource_host(self, resource):
         """Set the host field on the DB to our own when we are clustered."""
-        if resource.is_clustered and resource.host != self.host:
-            resource.host = self.host
+        if (resource.is_clustered and
+                not vol_utils.hosts_are_equivalent(resource.host, self.host)):
+            pool = vol_utils.extract_host(resource.host, 'pool')
+            resource.host = vol_utils.append_host(self.host, pool)
             resource.save()
 
     @objects.Volume.set_workers
