@@ -1758,3 +1758,55 @@ class XIVProxyTest(unittest.TestCase):
 
         # check no assertion occurs
         p._silent_delete_volume(TEST_VOLUME)
+
+    def test_create_cloned_volume_calls_vol_create_and_copy(self):
+        """test create_cloned_volume
+
+        check if calls the appropriate xiv_backend functions
+        are being called
+        """
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        vol_src = {'name': 'bla', 'size': 17}
+        vol_trg = {'name': 'bla', 'size': 17}
+        p.ibm_storage_cli = mock.MagicMock()
+        p._cg_name_from_volume = mock.MagicMock(return_value="cg")
+
+        p.create_cloned_volume(vol_trg, vol_src)
+        p._create_volume = test_mock.MagicMock()
+
+        p.ibm_storage_cli.cmd.vol_create.assert_called_once_with(
+            pool='WTF32',
+            size_blocks=storage.gigabytes_to_blocks(17),
+            vol=vol_trg['name'])
+
+        p.ibm_storage_cli.cmd.vol_copy.assert_called_once_with(
+            vol_src=vol_src['name'],
+            vol_trg=vol_trg['name'])
+
+    def test_handle_created_vol_properties_returns_vol_update(self):
+        """test handle_created_vol_props
+
+        returns replication enables if replication info is True
+        """
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p._replication_create = test_mock.MagicMock(return_value=None)
+        ret_val = p.handle_created_vol_properties(
+            None, {'enabled': True}, {'name': 'bla'})
+
+        self.assertEqual(ret_val, {'replication_status': 'enabled'})
