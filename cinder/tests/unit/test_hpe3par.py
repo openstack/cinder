@@ -2690,6 +2690,30 @@ class HPE3PARBaseDriver(object):
 
             mock_client.assert_has_calls(expected)
 
+    def test_terminate_connection_from_primary_when_failed_over(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getHostVLUNs.side_effect = hpeexceptions.HTTPNotFound(
+            error={'desc': 'The host does not exist.'})
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            self.driver._active_backend_id = 'some_id'
+            self.driver.terminate_connection(
+                self.volume,
+                self.connector,
+                force=True)
+
+            # When the volume is still attached to the primary array after a
+            # fail-over, there should be no call to delete the VLUN(s) or the
+            # host. We can assert these methods were not called to make sure
+            # the proper exceptions are being raised.
+            self.assertEqual(0, mock_client.deleteVLUN.call_count)
+            self.assertEqual(0, mock_client.deleteHost.call_count)
+
     def test_extend_volume(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
