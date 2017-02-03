@@ -15,6 +15,7 @@
 
 import mock
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 try:
     from urllib import urlencode
@@ -259,6 +260,15 @@ class SnapshotManageTest(test.TestCase):
             sort_keys=['reference'])
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
+                side_effect=messaging.RemoteError(
+                    exc_type='InvalidInput', value='marker not found: 1234'))
+    def test_get_manageable_snapshots_non_existent_marker(
+            self, mock_api_manageable):
+        res = self._get_resp_get('fakehost', detailed=False, paging=True)
+        self.assertEqual(400, res.status_int)
+        self.assertTrue(mock_api_manageable.called)
+
+    @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
                 wraps=api_get_manageable_snapshots)
     def test_get_manageable_snapshots_detailed_ok(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', True, True)
@@ -279,6 +289,15 @@ class SnapshotManageTest(test.TestCase):
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', None, limit=10, marker='1234',
             offset=4, sort_dirs=['asc'], sort_keys=['reference'])
+
+    @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
+                side_effect=messaging.RemoteError(
+                    exc_type='InvalidInput', value='marker not found: 1234'))
+    def test_get_manageable_snapshots_non_existent_marker_detailed(
+            self, mock_api_manageable):
+        res = self._get_resp_get('fakehost', detailed=True, paging=True)
+        self.assertEqual(400, res.status_int)
+        self.assertTrue(mock_api_manageable.called)
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True)
     @mock.patch('cinder.db.sqlalchemy.api.service_get')

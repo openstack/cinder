@@ -12,6 +12,8 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+import oslo_messaging as messaging
+
 from cinder.api import common
 from cinder import exception
 from cinder.i18n import _
@@ -39,10 +41,16 @@ def get_manageable_resources(req, is_detail, function_get_manageable,
         msg = _("Invalid sort dirs passed: %s") % ', '.join(invalid_dirs)
         raise exception.InvalidParameterValue(err=msg)
 
-    resources = function_get_manageable(context, host, cluster_name,
-                                        marker=marker, limit=limit,
-                                        offset=offset, sort_keys=sort_keys,
-                                        sort_dirs=sort_dirs)
+    try:
+        resources = function_get_manageable(context, host, cluster_name,
+                                            marker=marker, limit=limit,
+                                            offset=offset, sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+    except messaging.RemoteError as err:
+        if err.exc_type == "InvalidInput":
+            raise exception.InvalidInput(err.value)
+        raise
+
     resource_count = len(resources)
 
     if is_detail:

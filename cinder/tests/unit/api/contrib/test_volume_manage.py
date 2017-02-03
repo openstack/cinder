@@ -16,6 +16,7 @@
 import ddt
 import mock
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 try:
     from urllib import urlencode
@@ -415,6 +416,15 @@ class VolumeManageTest(test.TestCase):
             offset=4, sort_dirs=['asc'], sort_keys=['reference'])
 
     @mock.patch('cinder.volume.api.API.get_manageable_volumes',
+                side_effect=messaging.RemoteError(
+                    exc_type='InvalidInput', value='marker not found: 1234'))
+    def test_get_manageable_volumes_non_existent_marker(self,
+                                                        mock_api_manageable):
+        res = self._get_resp_get('fakehost', detailed=False, paging=True)
+        self.assertEqual(400, res.status_int)
+        self.assertTrue(mock_api_manageable.called)
+
+    @mock.patch('cinder.volume.api.API.get_manageable_volumes',
                 wraps=api_get_manageable_volumes)
     def test_get_manageable_volumes_detailed_ok(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', True, False)
@@ -432,6 +442,15 @@ class VolumeManageTest(test.TestCase):
             self._admin_ctxt, 'fakehost', None, limit=CONF.osapi_max_limit,
             marker=None, offset=0, sort_dirs=['desc'],
             sort_keys=['reference'])
+
+    @mock.patch('cinder.volume.api.API.get_manageable_volumes',
+                side_effect=messaging.RemoteError(
+                    exc_type='InvalidInput', value='marker not found: 1234'))
+    def test_get_manageable_volumes_non_existent_marker_detailed(
+            self, mock_api_manageable):
+        res = self._get_resp_get('fakehost', detailed=True, paging=True)
+        self.assertEqual(400, res.status_int)
+        self.assertTrue(mock_api_manageable.called)
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
