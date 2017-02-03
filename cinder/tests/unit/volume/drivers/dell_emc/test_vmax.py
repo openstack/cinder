@@ -8663,6 +8663,20 @@ class VMAXUtilsTest(test.TestCase):
         array = '000197200056'
         self.assertTrue(self.driver.utils.is_all_flash(conn, array))
 
+    def test_find_sync_sv_sv(self):
+        conn = FakeEcomConnection()
+        storageSystem = self.data.storage_system
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        extraSpecs = self.data.extra_specs
+        syncInstance = (conn.ReferenceNames(
+            volumeInstance.path,
+            ResultClass='SE_StorageSynchronized_SV_SV'))[0]
+        foundSyncInstance = self.driver.utils.find_sync_sv_by_volume(
+            conn, storageSystem, volumeInstance, extraSpecs)
+        self.assertEqual(syncInstance, foundSyncInstance)
+
 
 class VMAXCommonTest(test.TestCase):
     def setUp(self):
