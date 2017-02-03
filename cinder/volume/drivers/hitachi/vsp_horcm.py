@@ -196,7 +196,7 @@ horcm_opts = [
         item_type=types.Integer(min=0, max=2047),
         default=[200, 201],
         help='Command Control Interface instance numbers in the format of '
-             '\'xxx,yyy\'. The second one is for ShadowImage operation and '
+             '\'xxx,yyy\'. The second one is for Shadow Image operation and '
              'the first one is for other purposes.'),
     cfg.StrOpt(
         'vsp_horcm_user',
@@ -210,6 +210,11 @@ horcm_opts = [
         default=True,
         help='If True, the driver will create or update the Command Control '
              'Interface configuration file as needed.'),
+    cfg.ListOpt(
+        'vsp_horcm_pair_target_ports',
+        help='IDs of the storage ports used to copy volumes by Shadow Image '
+             'or Thin Image. To specify multiple ports, connect them by '
+             'commas (e.g. CL1-A,CL2-A).'),
 ]
 
 _REQUIRED_HORCM_OPTS = [
@@ -659,7 +664,7 @@ class VSPHORCM(common.VSPCommon):
         raise exception.VSPBusy()
 
     def _get_vol_type_and_pair_info(self, ldev):
-        """Return a tuple of the LDEV's ShadowImage pair status and info."""
+        """Return a tuple of the LDEV's Shadow Image pair status and info."""
         ldev_info = self.get_ldev_info(['sts', 'vol_attr'], '-ldev_id', ldev)
         if ldev_info['sts'] != NORMAL_STS:
             return (SMPL, None)
@@ -680,7 +685,7 @@ class VSPHORCM(common.VSPCommon):
         return (SMPL, None)
 
     def _get_full_copy_info(self, ldev):
-        """Return a tuple of P-VOL and S-VOL's info of a ShadowImage pair."""
+        """Return a tuple of P-VOL and S-VOL's info of a Shadow Image pair."""
         vol_type, pair_info = self._get_vol_type_and_pair_info(ldev)
         svol_info = []
 
@@ -854,7 +859,7 @@ class VSPHORCM(common.VSPCommon):
                 {'ldev': ldev, 'info': ldev_info['vol_attr']})
             return
         self._find_mapped_targets_from_storage(
-            targets, ldev, self.storage_info['ports'], is_pair=True)
+            targets, ldev, self.storage_info['controller_ports'], is_pair=True)
         self.unmap_ldev(targets, ldev)
 
     def check_param(self):
@@ -866,6 +871,12 @@ class VSPHORCM(common.VSPCommon):
             msg = utils.output_log(MSG.INVALID_PARAMETER,
                                    param='vsp_horcm_numbers')
             raise exception.VSPError(msg)
+        if (not self.conf.vsp_target_ports and
+                not self.conf.vsp_horcm_pair_target_ports):
+            msg = utils.output_log(MSG.INVALID_PARAMETER,
+                                   param='vsp_target_ports or '
+                                   'vsp_horcm_pair_target_ports')
+            raise exception.VSPError(msg)
         utils.output_log(MSG.SET_CONFIG_VALUE, object='LDEV range',
                          value=self.storage_info['ldev_range'])
         for opt in _REQUIRED_HORCM_OPTS:
@@ -874,7 +885,7 @@ class VSPHORCM(common.VSPCommon):
                 raise exception.VSPError(msg)
 
     def _set_copy_groups(self, host_ip):
-        """Initialize an instance variable for ShadowImage copy groups."""
+        """Initialize an instance variable for Shadow Image copy groups."""
         serial = self.conf.vsp_storage_id
         inst = self.conf.vsp_horcm_numbers[_PAIR_HORCMGR]
 
@@ -1118,6 +1129,11 @@ HORCM_CMD
             'iqns': {},
         }
         super(VSPHORCM, self).init_cinder_hosts(targets=targets)
+        if self.storage_info['pair_ports']:
+            targets['info'] = {}
+            ports = self._get_pair_ports()
+            for port in ports:
+                targets['info'][port] = True
         self._init_pair_targets(targets['info'])
 
     def _init_pair_targets(self, targets_info):
@@ -1170,7 +1186,7 @@ HORCM_CMD
         self.run_raidcom('delete', 'ldev', '-ldev_id', ldev)
 
     def _run_pairdisplay(self, *args):
-        """Execute ShadowImage pairdisplay command."""
+        """Execute Shadow Image pairdisplay command."""
         result = self._run_pair_cmd(
             'pairdisplay', '-CLI', *args, do_raise=False,
             success_code=HORCM_EXIT_CODE.union(_NO_SUCH_DEVICE))
@@ -1210,7 +1226,7 @@ HORCM_CMD
         return stdout.splitlines()[2].split()[9] in _SMPL_STAUS
 
     def _get_full_copy_pair_info(self, ldev, mun):
-        """Return info of the ShadowImage volume pair."""
+        """Return info of the Shadow Image volume pair."""
         stdout = self._run_pairdisplay(
             '-d', self.conf.vsp_storage_id, ldev, mun)
         if not stdout:
@@ -1279,6 +1295,11 @@ HORCM_CMD
 
         return pair_info
 
+    def _get_pair_ports(self):
+        """Return a list of ports used for volume pair management."""
+        return (self.storage_info['pair_ports'] or
+                self.storage_info['controller_ports'])
+
     def _add_pair_config(self, pvol, svol, copy_group, ldev_name, mun):
         """Create device groups and a copy group for the SI volume pair."""
         pvol_group = copy_group + 'P'
@@ -1302,7 +1323,7 @@ HORCM_CMD
                 success_code=HORCM_EXIT_CODE)
 
     def _delete_pair_config(self, pvol, svol, copy_group, ldev_name):
-        """Delete specified LDEVs from ShadowImage device groups."""
+        """Delete specified LDEVs from Shadow Image device groups."""
         pvol_group = copy_group + 'P'
         svol_group = copy_group + 'S'
         if self._check_device_grp(pvol_group, pvol, ldev_name=ldev_name):
@@ -1336,7 +1357,7 @@ HORCM_CMD
             raise exception.VSPError(msg)
 
     def wait_full_copy_completion(self, pvol, svol):
-        """Wait until the ShadowImage volume copy has finished."""
+        """Wait until the Shadow Image volume copy has finished."""
         self._wait_full_copy(svol, set([PSUS, PSUE]),
                              timeout=utils.MAX_PROCESS_WAITTIME)
         if self._run_pairevtwait(svol) == PSUE:
@@ -1346,7 +1367,7 @@ HORCM_CMD
             raise exception.VSPError(msg)
 
     def _run_pairevtwait(self, ldev):
-        """Execute ShadowImage pairevtwait command."""
+        """Execute Shadow Image pairevtwait command."""
         result = self._run_pair_cmd(
             'pairevtwait', '-d', self.conf.vsp_storage_id,
             ldev, '-nowaits')

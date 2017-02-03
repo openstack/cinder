@@ -54,7 +54,7 @@ CONFIG_MAP = {
 # CCI instance numbers
 INST_NUMS = (200, 201)
 
-# ShadowImage copy group names
+# Shadow Image copy group names
 CG_MAP = {'cg%s' % x: vsp_horcm._COPY_GROUP % (
     CONFIG_MAP['my_ip'], CONFIG_MAP['serial'], INST_NUMS[1], x)
     for x in range(3)
@@ -694,7 +694,7 @@ def _snapshot_metadata_update(context, snapshot_id, metadata, delete):
 
 
 def _fake_is_smpl(*args):
-    """Assume the ShadowImage pair status is SMPL."""
+    """Assume the Shadow Image pair status is SMPL."""
     return True
 
 
@@ -783,6 +783,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.configuration.vsp_copy_check_interval = 1
         self.configuration.vsp_async_copy_check_interval = 1
         self.configuration.vsp_target_ports = "CL1-A"
+        self.configuration.vsp_compute_target_ports = "CL1-A"
+        self.configuration.vsp_horcm_pair_target_ports = "CL1-A"
         self.configuration.vsp_group_request = True
 
         self.configuration.vsp_zoning_request = False
@@ -809,7 +811,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def _setup_driver(self, *args):
+    def _setup_driver(self, execute, brick_get_connector_properties):
         """Set up the driver environment."""
         self.driver = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -824,7 +826,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(utils, 'execute', side_effect=_cinder_execute)
-    def test_do_setup(self, *args):
+    def test_do_setup(self, execute, brick_get_connector_properties):
         """Normal case: The host group exists beforehand."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -839,7 +841,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_raidqry_h_invalid(self, *args):
+    def test_do_setup_raidqry_h_invalid(
+            self, execute, brick_get_connector_properties):
         """Error case: 'raidqry -h' returns nothing. This error is ignored."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -857,7 +860,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_specify_pool_name(self, *args):
+    def test_do_setup_specify_pool_name(
+            self, execute, brick_get_connector_properties):
         """Normal case: Specify pool name rather than pool number."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -870,7 +874,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_create_hostgrp(self, *args):
+    def test_do_setup_create_hostgrp(
+            self, execute, brick_get_connector_properties):
         """Normal case: The host groups does not exist beforehand."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -884,7 +889,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_create_hostgrp_error(self, *args):
+    def test_do_setup_create_hostgrp_error(
+            self, execute, brick_get_connector_properties):
         """Error case: 'add hba_wwn' fails(MSGID0614-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -894,7 +900,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_thin_pool_not_specified(self, *args):
+    def test_do_setup_thin_pool_not_specified(self, execute):
         """Error case: Parameter error(vsp_thin_pool).(MSGID0601-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -907,7 +913,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_ldev_range_not_specified(self, *args):
+    def test_do_setup_ldev_range_not_specified(
+            self, execute, brick_get_connector_properties):
         """Normal case: Not specify LDEV range."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -917,7 +924,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         drv.do_setup(None)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_storage_id_not_specified(self, *args):
+    def test_do_setup_storage_id_not_specified(self, execute):
         """Error case: Parameter error(vsp_storage_id).(MSGID0601-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -927,7 +934,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_horcm_numbers_invalid(self, *args):
+    def test_do_setup_horcm_numbers_invalid(self, execute):
         """Error case: Parameter error(vsp_horcm_numbers).(MSGID0601-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -937,12 +944,76 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_horcm_user_not_specified(self, *args):
+    def test_do_setup_horcm_user_not_specified(self, execute):
         """Error case: Parameter error(vsp_horcm_user).(MSGID0601-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
         self._setup_config()
         self.configuration.vsp_horcm_user = None
+
+        self.assertRaises(exception.VSPError, drv.do_setup, None)
+
+    @mock.patch.object(
+        utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_only_target_ports_not_specified(
+            self, execute, brick_get_connector_properties):
+        """Normal case: Only target_ports is not specified."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+
+        drv.do_setup(None)
+
+    @mock.patch.object(
+        utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_only_compute_target_ports_not_specified(
+            self, execute, brick_get_connector_properties):
+        """Normal case: Only compute_target_ports is not specified."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_compute_target_ports = None
+
+        drv.do_setup(None)
+
+    @mock.patch.object(
+        utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_only_pair_target_ports_not_specified(
+            self, execute, brick_get_connector_properties):
+        """Normal case: Only pair_target_ports is not specified."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_horcm_pair_target_ports = None
+
+        drv.do_setup(None)
+
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_compute_target_ports_not_specified(self, execute):
+        """Error case: Parameter error(compute_target_ports).(MSGID0601-E)."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+        self.configuration.vsp_compute_target_ports = None
+
+        self.assertRaises(exception.VSPError, drv.do_setup, None)
+
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_pair_target_ports_not_specified(self, execute):
+        """Error case: Parameter error(pair_target_ports).(MSGID0601-E)."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+        self.configuration.vsp_horcm_pair_target_ports = None
 
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
@@ -954,7 +1025,9 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(os.path, 'exists', side_effect=_fake_exists)
     @mock.patch.object(os, 'access', side_effect=_access)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_failed_to_create_conf(self, *args):
+    def test_do_setup_failed_to_create_conf(
+            self, vsp_utils_execute, access, exists, processutils_execute,
+            brick_get_connector_properties):
         """Error case: Writing into horcmxxx.conf fails.(MSGID0632-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -969,7 +1042,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_failed_to_login(self, *args):
+    def test_do_setup_failed_to_login(
+            self, execute, brick_get_connector_properties):
         """Error case: 'raidcom -login' fails with EX_ENAUTH(MSGID0600-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -985,7 +1059,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_failed_to_command(self, *args):
+    def test_do_setup_failed_to_command(
+            self, execute, brick_get_connector_properties):
         """Error case: 'raidcom -login' fails with EX_COMERR(MSGID0600-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1002,7 +1077,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(
         vsp_horcm, '_run_horcmgr', side_effect=_fake_run_horcmgr)
-    def test_do_setup_failed_to_horcmshutdown(self, *args):
+    def test_do_setup_failed_to_horcmshutdown(
+            self, _run_horcmgr, execute, brick_get_connector_properties):
         """Error case: CCI's status is always RUNNING(MSGID0608-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1016,7 +1092,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(
         vsp_horcm, '_run_horcmstart', side_effect=_fake_run_horcmstart)
-    def test_do_setup_failed_to_horcmstart(self, *args):
+    def test_do_setup_failed_to_horcmstart(
+            self, _run_horcmstart, execute, brick_get_connector_properties):
         """Error case: _run_horcmstart() returns an error(MSGID0609-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1031,7 +1108,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
         utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties_error)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_wwn_not_found(self, *args):
+    def test_do_setup_wwn_not_found(
+            self, execute, brick_get_connector_properties):
         """Error case: The connector does not have 'wwpns'(MSGID0650-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1039,11 +1117,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
 
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
-    @mock.patch.object(
-        utils, 'brick_get_connector_properties',
-        side_effect=_brick_get_connector_properties_error)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_do_setup_port_not_found(self, *args):
+    def test_do_setup_port_not_found(self, execute):
         """Error case: The target port does not exist(MSGID0650-E)."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1053,24 +1128,46 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertRaises(exception.VSPError, drv.do_setup, None)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_extend_volume(self, *args):
+    def test_do_setup_compute_target_ports_not_found(self, execute):
+        """Error case: Compute target port does not exist(MSGID0650-E)."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+        self.configuration.vsp_compute_target_ports = ["CL4-A"]
+
+        self.assertRaises(exception.VSPError, drv.do_setup, None)
+
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_do_setup_pair_target_ports_not_found(self, execute):
+        """Error case: Pair target port does not exist(MSGID0650-E)."""
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+        self.configuration.vsp_horcm_pair_target_ports = ["CL5-A"]
+
+        self.assertRaises(exception.VSPError, drv.do_setup, None)
+
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_extend_volume(self, execute):
         """Normal case: Extend volume succeeds."""
         self.driver.extend_volume(TEST_VOLUME[0], 256)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_extend_volume_volume_provider_location_is_none(self, *args):
+    def test_extend_volume_volume_provider_location_is_none(self, execute):
         """Error case: The volume's provider_location is None(MSGID0613-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.extend_volume, TEST_VOLUME[2], 256)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_extend_volume_volume_ldev_is_vvol(self, *args):
+    def test_extend_volume_volume_ldev_is_vvol(self, execute):
         """Error case: The volume is a V-VOL(MSGID0618-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.extend_volume, TEST_VOLUME[5], 256)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_extend_volume_volume_is_busy(self, *args):
+    def test_extend_volume_volume_is_busy(self, execute):
         """Error case: The volume is in a THIN volume pair(MSGID0616-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.extend_volume, TEST_VOLUME[4], 256)
@@ -1078,26 +1175,26 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(utils, 'execute', side_effect=_cinder_execute)
     @mock.patch.object(vsp_horcm, '_EXTEND_WAITTIME', 1)
     @mock.patch.object(vsp_horcm, '_EXEC_RETRY_INTERVAL', 1)
-    def test_extend_volume_raidcom_error(self, *args):
+    def test_extend_volume_raidcom_error(self, execute,):
         """Error case: 'extend ldev' returns an error(MSGID0600-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.extend_volume, TEST_VOLUME[3], 256)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_get_volume_stats(self, *args):
+    def test_get_volume_stats(self, execute):
         """Normal case: Refreshing data required."""
         stats = self.driver.get_volume_stats(True)
         self.assertEqual('Hitachi', stats['vendor_name'])
         self.assertTrue(stats['multiattach'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_get_volume_stats_no_refresh(self, *args):
+    def test_get_volume_stats_no_refresh(self, execute):
         """Normal case: Refreshing data not required."""
         stats = self.driver.get_volume_stats()
         self.assertEqual({}, stats)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_error_execute)
-    def test_get_volume_stats_failed_to_get_dp_pool(self, *args):
+    def test_get_volume_stats_failed_to_get_dp_pool(self, execute):
         """Error case: The pool does not exist(MSGID0640-E, MSGID0620-E)."""
         self.driver.common.storage_info['pool_id'] = 29
 
@@ -1105,13 +1202,13 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertEqual({}, stats)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume(self, *args):
+    def test_create_volume(self, execute):
         """Normal case: Available LDEV range is 0-1."""
         ret = self.driver.create_volume(fake_volume.fake_volume_obj(self.ctxt))
         self.assertEqual('1', ret['provider_location'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume_free_ldev_not_found_on_storage(self, *args):
+    def test_create_volume_free_ldev_not_found_on_storage(self, execute):
         """Error case: No unused LDEV exists(MSGID0648-E)."""
         self.driver.common.storage_info['ldev_range'] = [0, 0]
 
@@ -1119,7 +1216,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             exception.VSPError, self.driver.create_volume, TEST_VOLUME[0])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume_no_setting_ldev_range(self, *args):
+    def test_create_volume_no_setting_ldev_range(self, execute):
         """Normal case: Available LDEV range is unlimited."""
         self.driver.common.storage_info['ldev_range'] = None
 
@@ -1130,22 +1227,22 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         vsp_horcm.VSPHORCM,
         '_check_ldev_status', side_effect=_fake_check_ldev_status)
-    def test_delete_volume(self, *args):
+    def test_delete_volume(self, _check_ldev_status, execute):
         """Normal case: Delete a volume."""
         self.driver.delete_volume(TEST_VOLUME[0])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_volume_provider_location_is_none(self, *args):
+    def test_delete_volume_provider_location_is_none(self, execute):
         """Error case: The volume's provider_location is None(MSGID0304-W)."""
         self.driver.delete_volume(TEST_VOLUME[2])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_volume_ldev_not_found_on_storage(self, *args):
+    def test_delete_volume_ldev_not_found_on_storage(self, execute):
         """Unusual case: The volume's LDEV does not exist.(MSGID0319-W)."""
         self.driver.delete_volume(TEST_VOLUME[3])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_volume_volume_is_busy(self, *args):
+    def test_delete_volume_volume_is_busy(self, execute):
         """Error case: The volume is a P-VOL of a THIN pair(MSGID0616-E)."""
         self.assertRaises(
             exception.VolumeIsBusy, self.driver.delete_volume, TEST_VOLUME[4])
@@ -1155,7 +1252,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         db, 'snapshot_metadata_update', side_effect=_snapshot_metadata_update)
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
-    def test_create_snapshot_full(self, *args):
+    def test_create_snapshot_full(
+            self, volume_get, snapshot_metadata_update, execute):
         """Normal case: copy_method=FULL."""
         self.driver.common.storage_info['ldev_range'] = [0, 9]
 
@@ -1167,7 +1265,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         db, 'snapshot_metadata_update', side_effect=_snapshot_metadata_update)
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
-    def test_create_snapshot_thin(self, *args):
+    def test_create_snapshot_thin(
+            self, volume_get, snapshot_metadata_update, execute):
         """Normal case: copy_method=THIN."""
         self.driver.common.storage_info['ldev_range'] = [0, 9]
         self.configuration.vsp_thin_pool = 31
@@ -1178,49 +1277,51 @@ class VSPHORCMFCDriverTest(test.TestCase):
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
-    def test_create_snapshot_provider_location_is_none(self, *args):
+    def test_create_snapshot_provider_location_is_none(
+            self, volume_get, execute):
         """Error case: Source vol's provider_location is None(MSGID0624-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_snapshot, TEST_SNAPSHOT[2])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
-    def test_create_snapshot_ldev_not_found_on_storage(self, *args):
+    def test_create_snapshot_ldev_not_found_on_storage(
+            self, volume_get, execute):
         """Error case: The src-vol's LDEV does not exist.(MSGID0612-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_snapshot, TEST_SNAPSHOT[3])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_snapshot_full(self, *args):
+    def test_delete_snapshot_full(self, execute):
         """Normal case: Delete a snapshot."""
         self.driver.delete_snapshot(TEST_SNAPSHOT[5])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(
         vsp_horcm.VSPHORCM, '_is_smpl', side_effect=_fake_is_smpl)
-    def test_delete_snapshot_full_smpl(self, *args):
+    def test_delete_snapshot_full_smpl(self, _is_smpl, execute):
         """Normal case: The LDEV in an SI volume pair becomes SMPL."""
         self.driver.delete_snapshot(TEST_SNAPSHOT[7])
 
     @mock.patch.object(vsp_utils, 'DEFAULT_PROCESS_WAITTIME', 1)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_snapshot_vvol_timeout(self, *args):
+    def test_delete_snapshot_vvol_timeout(self, execute):
         """Error case: V-VOL is not deleted from a snapshot(MSGID0611-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.delete_snapshot, TEST_SNAPSHOT[6])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_snapshot_provider_location_is_none(self, *args):
+    def test_delete_snapshot_provider_location_is_none(self, execute):
         """Error case: Snapshot's provider_location is None(MSGID0304-W)."""
         self.driver.delete_snapshot(TEST_SNAPSHOT[2])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_snapshot_ldev_not_found_on_storage(self, *args):
+    def test_delete_snapshot_ldev_not_found_on_storage(self, execute):
         """Unusual case: The snapshot's LDEV does not exist.(MSGID0319-W)."""
         self.driver.delete_snapshot(TEST_SNAPSHOT[3])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_delete_snapshot_snapshot_is_busy(self, *args):
+    def test_delete_snapshot_snapshot_is_busy(self, execute):
         """Error case: The snapshot is a P-VOL of a THIN pair(MSGID0616-E)."""
         self.assertRaises(
             exception.SnapshotIsBusy, self.driver.delete_snapshot,
@@ -1240,7 +1341,9 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         brick_connector.FibreChannelConnector,
         'disconnect_volume', _disconnect_volume)
-    def test_create_cloned_volume_with_dd_same_size(self, *args):
+    def test_create_cloned_volume_with_dd_same_size(
+            self, execute, brick_get_connector, brick_get_connector_properties,
+            copy_volume):
         """Normal case: The source volume is a V-VOL and copied by dd."""
         vol = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[5])
         self.assertEqual('1', vol['provider_location'])
@@ -1259,27 +1362,29 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         brick_connector.FibreChannelConnector,
         'disconnect_volume', _disconnect_volume)
-    def test_create_cloned_volume_with_dd_extend_size(self, *args):
+    def test_create_cloned_volume_with_dd_extend_size(
+            self, execute, brick_get_connector, brick_get_connector_properties,
+            copy_volume):
         """Normal case: Copy with dd and extend the size afterward."""
         vol = self.driver.create_cloned_volume(TEST_VOLUME[1], TEST_VOLUME[5])
         self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_cloned_volume_provider_location_is_none(self, *args):
+    def test_create_cloned_volume_provider_location_is_none(self, execute):
         """Error case: Source vol's provider_location is None(MSGID0624-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_cloned_volume,
             TEST_VOLUME[0], TEST_VOLUME[2])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_cloned_volume_invalid_size(self, *args):
+    def test_create_cloned_volume_invalid_size(self, execute):
         """Error case: src-size > clone-size(MSGID0617-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_cloned_volume,
             TEST_VOLUME[0], TEST_VOLUME[1])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_cloned_volume_extend_size_thin(self, *args):
+    def test_create_cloned_volume_extend_size_thin(self, execute):
         """Error case: clone > src and copy_method=THIN(MSGID0621-E)."""
         self.configuration.vsp_thin_pool = 31
         test_vol_obj = copy.copy(TEST_VOLUME[1])
@@ -1289,15 +1394,15 @@ class VSPHORCMFCDriverTest(test.TestCase):
             test_vol_obj, TEST_VOLUME[0])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume_from_snapshot_same_size(self, *args):
-        """Normal case: Copy with ShadowImage."""
+    def test_create_volume_from_snapshot_same_size(self, execute):
+        """Normal case: Copy with Shadow Image."""
         vol = self.driver.create_volume_from_snapshot(
             TEST_VOLUME[0], TEST_SNAPSHOT[0])
         self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute2)
-    def test_create_volume_from_snapshot_full_extend_normal(self, *args):
-        """Normal case: Copy with ShadowImage and extend the size afterward."""
+    def test_create_volume_from_snapshot_full_extend_normal(self, execute):
+        """Normal case: Copy with Shadow Image and extend the size."""
         test_vol_obj = copy.copy(TEST_VOLUME[1])
         test_vol_obj.metadata.update({'copy_method': 'FULL'})
         vol = self.driver.create_volume_from_snapshot(
@@ -1305,7 +1410,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute3)
-    def test_create_volume_from_snapshot_full_extend_PSUE(self, *args):
+    def test_create_volume_from_snapshot_full_extend_PSUE(self, execute):
         """Error case: SI copy -> pair status: PSUS -> PSUE(MSGID0722-E)."""
         test_vol_obj = copy.copy(TEST_VOLUME[1])
         test_vol_obj.metadata.update({'copy_method': 'FULL'})
@@ -1315,7 +1420,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
 
     @mock.patch.object(vsp_utils, 'DEFAULT_PROCESS_WAITTIME', 1)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute4)
-    def test_create_volume_from_snapshot_full_PSUE(self, *args):
+    def test_create_volume_from_snapshot_full_PSUE(self, execute):
         """Error case: SI copy -> pair status becomes PSUE(MSGID0610-E)."""
         test_vol_obj = copy.copy(TEST_VOLUME[0])
         test_vol_obj.metadata.update({'copy_method': 'FULL'})
@@ -1328,7 +1433,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(vsp_horcm, '_LDEV_STATUS_WAITTIME', 1)
     @mock.patch.object(vsp_utils, 'DEFAULT_PROCESS_WAITTIME', 1)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute5)
-    def test_create_volume_from_snapshot_full_SMPL(self, *args):
+    def test_create_volume_from_snapshot_full_SMPL(
+            self, execute, _run_horcmstart):
         """Error case: SI copy -> pair status becomes SMPL(MSGID0610-E)."""
         test_vol_obj = copy.copy(TEST_VOLUME[0])
         test_vol_obj.metadata.update({'copy_method': 'FULL'})
@@ -1337,14 +1443,14 @@ class VSPHORCMFCDriverTest(test.TestCase):
             test_vol_obj, TEST_SNAPSHOT[0])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume_from_snapshot_invalid_size(self, *args):
+    def test_create_volume_from_snapshot_invalid_size(self, execute):
         """Error case: volume-size < snapshot-size(MSGID0617-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_volume_from_snapshot,
             TEST_VOLUME[0], TEST_SNAPSHOT[1])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_create_volume_from_snapshot_thin_extend(self, *args):
+    def test_create_volume_from_snapshot_thin_extend(self, execute):
         """Error case: volume > snapshot and copy_method=THIN(MSGID0621-E)."""
         self.configuration.vsp_thin_pool = 31
         test_vol_obj = copy.copy(TEST_VOLUME[1])
@@ -1355,7 +1461,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     def test_create_volume_from_snapshot_provider_location_is_none(
-            self, *args):
+            self, execute):
         """Error case: Snapshot's provider_location is None(MSGID0624-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.create_volume_from_snapshot,
@@ -1365,7 +1471,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         db, 'volume_admin_metadata_get',
         side_effect=_volume_admin_metadata_get)
-    def test_initialize_connection(self, *args):
+    def test_initialize_connection(self, volume_admin_metadata_get, execute):
         """Normal case: Initialize connection."""
         self.configuration.vsp_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
@@ -1383,7 +1489,9 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         db, 'volume_admin_metadata_get',
         side_effect=_volume_admin_metadata_get)
-    def test_initialize_connection_multipath(self, *args):
+    def test_initialize_connection_multipath(
+            self, volume_admin_metadata_get, execute,
+            brick_get_connector_properties):
         """Normal case: Initialize connection in multipath environment."""
         drv = vsp_fc.VSPFCDriver(
             configuration=self.configuration, db=db)
@@ -1399,7 +1507,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertEqual(0, ret['data']['target_lun'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_initialize_connection_provider_location_is_none(self, *args):
+    def test_initialize_connection_provider_location_is_none(self, execute):
         """Error case: The volume's provider_location is None(MSGID0619-E)."""
         self.assertRaises(
             exception.VSPError, self.driver.initialize_connection,
@@ -1409,7 +1517,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(
         db, 'volume_admin_metadata_get',
         side_effect=_volume_admin_metadata_get)
-    def test_initialize_connection_already_attached(self, *args):
+    def test_initialize_connection_already_attached(
+            self, volume_admin_metadata_get, execute):
         """Unusual case: 'add lun' returns 'already defined' error."""
         ret = self.driver.initialize_connection(
             TEST_VOLUME[6], DEFAULT_CONNECTOR)
@@ -1417,23 +1526,69 @@ class VSPHORCMFCDriverTest(test.TestCase):
         self.assertEqual(['0123456789abcdef'], ret['data']['target_wwn'])
         self.assertEqual(255, ret['data']['target_lun'])
 
+    @mock.patch.object(
+        utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_terminate_connection(self, *args):
+    @mock.patch.object(
+        db, 'volume_admin_metadata_get',
+        side_effect=_volume_admin_metadata_get)
+    def test_initialize_connection_target_port_not_specified(
+            self, volume_admin_metadata_get, execute,
+            brick_get_connector_properties):
+        """Normal case: target_port is not specified."""
+        compute_connector = DEFAULT_CONNECTOR.copy()
+        compute_connector['ip'] = '127.0.0.2'
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_target_ports = None
+        drv.do_setup(None)
+        ret = drv.initialize_connection(TEST_VOLUME[0], compute_connector)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        self.assertEqual(['0123456789abcdef'], ret['data']['target_wwn'])
+        self.assertEqual(0, ret['data']['target_lun'])
+
+    @mock.patch.object(
+        utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    @mock.patch.object(
+        db, 'volume_admin_metadata_get',
+        side_effect=_volume_admin_metadata_get)
+    def test_initialize_connection_compute_port_not_specified(
+            self, volume_admin_metadata_get, execute,
+            brick_get_connector_properties):
+        """Normal case: compute_target_port is not specified."""
+        compute_connector = DEFAULT_CONNECTOR.copy()
+        compute_connector['ip'] = '127.0.0.2'
+        drv = vsp_fc.VSPFCDriver(
+            configuration=self.configuration, db=db)
+        self._setup_config()
+        self.configuration.vsp_compute_target_ports = None
+        drv.do_setup(None)
+        ret = drv.initialize_connection(TEST_VOLUME[0], compute_connector)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        self.assertEqual(['0123456789abcdef'], ret['data']['target_wwn'])
+        self.assertEqual(0, ret['data']['target_lun'])
+
+    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
+    def test_terminate_connection(self, execute):
         """Normal case: Terminate connection."""
         self.driver.terminate_connection(TEST_VOLUME[6], DEFAULT_CONNECTOR)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_terminate_connection_provider_location_is_none(self, *args):
+    def test_terminate_connection_provider_location_is_none(self, execute):
         """Unusual case: Volume's provider_location is None(MSGID0302-W)."""
         self.driver.terminate_connection(TEST_VOLUME[2], DEFAULT_CONNECTOR)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_terminate_connection_no_port_mapped_to_ldev(self, *args):
+    def test_terminate_connection_no_port_mapped_to_ldev(self, execute):
         """Unusual case: No port is mapped to the LDEV."""
         self.driver.terminate_connection(TEST_VOLUME[3], DEFAULT_CONNECTOR)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_terminate_connection_initiator_iqn_not_found(self, *args):
+    def test_terminate_connection_initiator_iqn_not_found(self, execute):
         """Error case: The connector does not have 'wwpns'(MSGID0650-E)."""
         connector = dict(DEFAULT_CONNECTOR)
         del connector['wwpns']
@@ -1443,7 +1598,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             TEST_VOLUME[0], connector)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_copy_volume_to_image(self, *args):
+    def test_copy_volume_to_image(self, execute):
         """Normal case: Copy a volume to an image."""
         image_service = 'fake_image_service'
         image_meta = 'fake_image_meta'
@@ -1457,20 +1612,20 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.ctxt, TEST_VOLUME[0], image_service, image_meta)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing(self, *args):
+    def test_manage_existing(self, execute):
         """Normal case: Bring an existing volume under Cinder's control."""
         ret = self.driver.manage_existing(
             TEST_VOLUME[0], self.test_existing_ref)
         self.assertEqual('0', ret['provider_location'])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_normal(self, *args):
+    def test_manage_existing_get_size_normal(self, execute):
         """Normal case: Return an existing LDEV's size."""
         self.driver.manage_existing_get_size(
             TEST_VOLUME[0], self.test_existing_ref)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_none_ldev_ref(self, *args):
+    def test_manage_existing_get_size_none_ldev_ref(self, execute):
         """Error case: Source LDEV's properties do not exist(MSGID0707-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1478,7 +1633,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_none_ldev_ref)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_invalid_ldev_ref(self, *args):
+    def test_manage_existing_get_size_invalid_ldev_ref(self, execute):
         """Error case: Source LDEV's ID is an invalid decimal(MSGID0707-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1486,7 +1641,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_invalid_ldev_ref)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_value_error_ref(self, *args):
+    def test_manage_existing_get_size_value_error_ref(self, execute):
         """Error case: Source LDEV's ID is an invalid hex(MSGID0707-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1494,7 +1649,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_value_error_ref)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_no_ldev_ref(self, *args):
+    def test_manage_existing_get_size_no_ldev_ref(self, execute):
         """Error case: Source LDEV's ID is not specified(MSGID0707-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1502,7 +1657,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_no_ldev_ref)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_invalid_sts_ldev(self, *args):
+    def test_manage_existing_get_size_invalid_sts_ldev(self, execute):
         """Error case: Source LDEV's STS is invalid(MSGID0707-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1510,7 +1665,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_invalid_sts_ldev)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_invalid_vol_attr(self, *args):
+    def test_manage_existing_get_size_invalid_vol_attr(self, execute):
         """Error case: Source LDEV's VOL_ATTR is invalid(MSGID0702-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1518,7 +1673,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_invalid_vol_attr)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_invalid_size_ref(self, *args):
+    def test_manage_existing_get_size_invalid_size_ref(self, execute):
         """Error case: Source LDEV's VOL_Capacity is invalid(MSGID0703-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1526,7 +1681,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.test_existing_invalid_size)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_manage_existing_get_size_invalid_port_cnt(self, *args):
+    def test_manage_existing_get_size_invalid_port_cnt(self, execute):
         """Error case: Source LDEV's NUM_PORT is invalid(MSGID0704-E)."""
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1536,7 +1691,8 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
     @mock.patch.object(
         vsp_horcm, '_run_horcmstart', side_effect=_fake_run_horcmstart2)
-    def test_manage_existing_get_size_failed_to_start_horcmgr(self, *args):
+    def test_manage_existing_get_size_failed_to_start_horcmgr(
+            self, _run_horcmstart, execute):
         """Error case: _start_horcmgr() returns an error(MSGID0320-W)."""
         global run_horcmstart_returns_error2
         run_horcmstart_returns_error2 = True
@@ -1547,28 +1703,28 @@ class VSPHORCMFCDriverTest(test.TestCase):
         run_horcmstart_returns_error2 = False
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_unmanage(self, *args):
+    def test_unmanage(self, execute):
         """Normal case: Take out a volume from Cinder's control."""
         self.driver.unmanage(TEST_VOLUME[0])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_unmanage_provider_location_is_none(self, *args):
+    def test_unmanage_provider_location_is_none(self, execute):
         """Error case: The volume's provider_location is None(MSGID0304-W)."""
         self.driver.unmanage(TEST_VOLUME[2])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_unmanage_volume_invalid_sts_ldev(self, *args):
+    def test_unmanage_volume_invalid_sts_ldev(self, execute):
         """Unusual case: The volume's STS is BLK."""
         self.driver.unmanage(TEST_VOLUME[13])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_unmanage_volume_is_busy(self, *args):
+    def test_unmanage_volume_is_busy(self, execute):
         """Error case: The volume is in a THIN volume pair(MSGID0616-E)."""
         self.assertRaises(
             exception.VolumeIsBusy, self.driver.unmanage, TEST_VOLUME[4])
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_copy_image_to_volume(self, *args):
+    def test_copy_image_to_volume(self, execute):
         """Normal case: Copy an image to a volume."""
         image_service = 'fake_image_service'
         image_id = 'fake_image_id'
@@ -1583,7 +1739,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.ctxt, TEST_VOLUME[0], image_service, image_id)
 
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_restore_backup(self, *args):
+    def test_restore_backup(self, execute):
         """Normal case: Restore a backup volume."""
         backup = 'fake_backup'
         backup_service = 'fake_backup_service'
@@ -1597,7 +1753,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
             self.ctxt, backup, TEST_VOLUME[0], backup_service)
 
     @mock.patch.object(utils, 'execute', side_effect=_cinder_execute)
-    def test_update_migrated_volume_success(self, *args):
+    def test_update_migrated_volume_success(self, execute):
         """Normal case: 'modify ldev -status discard_zero_page' succeeds."""
         self.assertRaises(
             NotImplementedError,
@@ -1610,7 +1766,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
     @mock.patch.object(vsp_horcm, '_EXEC_RETRY_INTERVAL', 1)
     @mock.patch.object(vsp_horcm, '_EXEC_MAX_WAITTIME', 1)
     @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_update_migrated_volume_error(self, *args):
+    def test_update_migrated_volume_error(self, execute):
         """Error case: 'modify ldev' fails(MSGID0315-W)."""
         self.assertRaises(
             NotImplementedError,
@@ -1620,11 +1776,11 @@ class VSPHORCMFCDriverTest(test.TestCase):
             TEST_VOLUME[3],
             "available")
 
-    def test_get_ldev_volume_is_none(self, *args):
+    def test_get_ldev_volume_is_none(self):
         """Error case: The volume is None."""
         self.assertIsNone(vsp_utils.get_ldev(None))
 
-    def test_check_ignore_error_string(self, *args):
+    def test_check_ignore_error_string(self):
         """Normal case: ignore_error is a string."""
         ignore_error = 'SSB=0xB980,0xB902'
         stderr = ('raidcom: [EX_CMDRJE] An order to the control/command device'
@@ -1633,20 +1789,20 @@ class VSPHORCMFCDriverTest(test.TestCase):
                   'The specified port can not be operated.')
         self.assertTrue(vsp_utils.check_ignore_error(ignore_error, stderr))
 
-    def test_check_opts_parameter_specified(self, *args):
+    def test_check_opts_parameter_specified(self):
         """Normal case: A valid parameter is specified."""
         cfg.CONF.paramAAA = 'aaa'
         vsp_utils.check_opts(conf.Configuration(None),
                              [cfg.StrOpt('paramAAA')])
 
-    def test_check_opt_value_parameter_not_set(self, *args):
+    def test_check_opt_value_parameter_not_set(self):
         """Error case: A parameter is not set(MSGID0601-E)."""
         self.assertRaises(cfg.NoSuchOptError,
                           vsp_utils.check_opt_value,
                           conf.Configuration(None),
                           ['paramCCC'])
 
-    def test_build_initiator_target_map_no_lookup_service(self, *args):
+    def test_build_initiator_target_map_no_lookup_service(self):
         """Normal case: None is specified for lookup_service."""
         connector = {'wwpns': ['0000000000000000', '1111111111111111']}
         target_wwns = ['2222222222222222', '3333333333333333']
@@ -1658,7 +1814,7 @@ class VSPHORCMFCDriverTest(test.TestCase):
              '1111111111111111': ['2222222222222222', '3333333333333333']},
             init_target_map)
 
-    def test_update_conn_info_not_update_conn_info(self, *args):
+    def test_update_conn_info_not_update_conn_info(self):
         """Normal case: Not update connection info."""
         vsp_utils.update_conn_info(dict({'data': dict({'target_wwn': []})}),
                                    dict({'wwpns': []}),

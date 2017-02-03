@@ -1,0 +1,16 @@
+---
+features:
+  - Hitachi VSP drivers have a new config option
+    ``vsp_compute_target_ports`` to specify IDs
+    of the storage ports used to attach volumes
+    to compute nodes. The default is the value
+    specified for the existing ``vsp_target_ports``
+    option. Either or both of ``vsp_compute_target_ports``
+    and ``vsp_target_ports`` must be specified.
+  - Hitachi VSP drivers have a new config option
+    ``vsp_horcm_pair_target_ports`` to specify IDs of the
+    storage ports used to copy volumes by Shadow Image or
+    Thin Image. The default is the value specified for
+    the existing ``vsp_target_ports`` option. Either
+    or both of ``vsp_horcm_pair_target_ports`` and
+    ``vsp_target_ports`` must be specified.
