@@ -247,10 +247,13 @@ class HPE3PARCommon(object):
         3.0.27 - Fix snapCPG error during backup of attached volume.
                  Bug #1646396 and also ,Fix backup of attached ISCSI
                  and CHAP enabled volume.bug #1644238.
+        3.0.28 - Remove un-necessary snapshot creation of source volume
+                 while doing online copy in create_cloned_volume call.
+                 Bug #1661541
 
     """
 
-    VERSION = "3.0.27"
+    VERSION = "3.0.28"
 
     stats = {}
 
@@ -2021,15 +2024,13 @@ class HPE3PARCommon(object):
             if volume['size'] == src_vref['size'] and not (
                back_up_process and vol_chap_enabled):
                 LOG.debug("Creating a clone of volume, using online copy.")
-                # create a temporary snapshot
-                snapshot = self._create_temp_snapshot(src_vref)
 
                 type_info = self.get_volume_settings_from_type(volume)
                 cpg = type_info['cpg']
 
                 # make the 3PAR copy the contents.
                 # can't delete the original until the copy is done.
-                self._copy_volume(snapshot['name'], vol_name, cpg=cpg,
+                self._copy_volume(src_vol_name, vol_name, cpg=cpg,
                                   snap_cpg=type_info['snap_cpg'],
                                   tpvv=type_info['tpvv'],
                                   tdvv=type_info['tdvv'])
