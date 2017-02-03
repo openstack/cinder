@@ -2002,6 +2002,42 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                                        usage_id=self.usages['gigabytes'],
                                        delta=2 * 1024), ])
 
+    def test_quota_reserve_max_age_negative(self):
+        max_age = 3600
+        record_created = (timeutils.utcnow() +
+                          datetime.timedelta(seconds=max_age))
+        self.init_usage('test_project', 'volumes', 3, 0,
+                        created_at=record_created, updated_at=record_created)
+        self.init_usage('test_project', 'gigabytes', 3, 0,
+                        created_at=record_created, updated_at=record_created)
+        context = FakeContext('test_project', 'test_class')
+        quotas = dict(volumes=5, gigabytes=10 * 1024, )
+        deltas = dict(volumes=2, gigabytes=2 * 1024, )
+        self._mock_allocated_get_all_by_project()
+        result = sqa_api.quota_reserve(context, self.resources, quotas,
+                                       deltas, self.expire, 0, max_age)
+
+        self.assertEqual(set(), self.sync_called)
+        self.compare_usage(self.usages, [dict(resource='volumes',
+                                              project_id='test_project',
+                                              in_use=3,
+                                              reserved=2,
+                                              until_refresh=None),
+                                         dict(resource='gigabytes',
+                                              project_id='test_project',
+                                              in_use=3,
+                                              reserved=2 * 1024,
+                                              until_refresh=None), ])
+        self.assertEqual({}, self.usages_created)
+        self.compare_reservation(result,
+                                 [dict(resource='volumes',
+                                       usage_id=self.usages['volumes'],
+                                       project_id='test_project',
+                                       delta=2),
+                                  dict(resource='gigabytes',
+                                       usage_id=self.usages['gigabytes'],
+                                       delta=2 * 1024), ])
+
     def test_quota_reserve_no_refresh(self):
         self.init_usage('test_project', 'volumes', 3, 0)
         self.init_usage('test_project', 'gigabytes', 3, 0)
