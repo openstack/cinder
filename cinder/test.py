@@ -110,9 +110,8 @@ class TestCase(testtools.TestCase):
 
         # Mock rpc get notifier with fake notifier method that joins all
         # notifications with the default notifier
-        p = mock.patch('cinder.rpc.get_notifier',
-                       side_effect=self._get_joined_notifier)
-        p.start()
+        self.patch('cinder.rpc.get_notifier',
+                   side_effect=self._get_joined_notifier)
 
         if self.MOCK_WORKER:
             # Mock worker creation for all tests that don't care about it
