@@ -45,6 +45,10 @@ CONF.set_default('smbfs_default_volume_format', 'vhd')
 
 @interface.volumedriver
 class WindowsSmbfsDriver(smbfs.SmbfsDriver):
+    # NOTE(lpetrut): This driver is currently inhering the Linux SMBFS driver,
+    # which is being deprecated. This dependency will be removed along with
+    # the Linux SMBFS driver during Pike.
+    SUPPORTED = True
     VERSION = VERSION
 
     # ThirdPartySystems wiki page
