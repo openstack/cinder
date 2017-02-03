@@ -1434,10 +1434,40 @@ class XIVProxyTest(unittest.TestCase):
             errors.CgDoesNotExistError(
                 'bla', 'bla', ElementTree.Element('bla')))
 
-        ex = getattr(p, "_get_exception")()
-        with self.assertRaises(ex):
-            model_update, volumes = p.delete_consistencygroup(
-                {}, TEST_CONS_GROUP, [])
+        model_update, volumes = p.delete_consistencygroup(
+            {}, TEST_CONS_GROUP, [])
+
+        p.ibm_storage_cli.cmd.cg_delete.assert_called_once_with(
+            cg='cg_WTF32')
+
+        self.assertEqual('deleted', model_update['status'])
+
+    @mock.patch("cinder.db.volume_get_all_by_group", new=mock.MagicMock(
+        return_value=[]))
+    def test_delete_consistencygroup_already_exists_2(self):
+        """test delete_consistenygroup when CG does not exist bad name"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+
+        p.ibm_storage_cli.cmd.cg_delete.side_effect = (
+            errors.CgBadNameError(
+                'bla', 'bla', ElementTree.Element('bla')))
+
+        model_update, volumes = p.delete_consistencygroup(
+            {}, TEST_CONS_GROUP, [])
+
+        p.ibm_storage_cli.cmd.cg_delete.assert_called_once_with(
+            cg='cg_WTF32')
+
+        self.assertEqual('deleted', model_update['status'])
 
     @mock.patch("cinder.db.volume_get_all_by_group", new=mock.MagicMock(
         return_value=[]))
