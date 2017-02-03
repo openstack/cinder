@@ -433,7 +433,8 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         image_utils.upload_volume(context,
                                   image_service,
                                   image_meta,
-                                  self.local_path(volume))
+                                  self.local_path(volume),
+                                  run_as_root=self._execute_as_root)
 
     def _read_config_file(self, config_file):
         # Returns list of lines in file
