@@ -53,10 +53,12 @@ class QuotaSetsController(wsgi.Controller):
         if QUOTAS.using_nested_quotas():
             used += v.get('allocated', 0)
         if value < used:
-            # TODO(mc_nair): after N opens, update error message to include
-            # the current usage and requested limit
-            msg = _("Quota %s limit must be equal or greater than existing "
-                    "resources.") % key
+            msg = (_("Quota %(key)s limit must be equal or greater than "
+                     "existing resources. Current usage is %(usage)s "
+                     "and the requested limit is %(limit)s.")
+                   % {'key': key,
+                      'usage': used,
+                      'limit': value})
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _get_quotas(self, context, id, usages=False):
