@@ -340,8 +340,11 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         updates = self.cinder_obj_get_changes()
         if updates:
             if 'consistencygroup' in updates:
-                raise exception.ObjectActionError(
-                    action='save', reason=_('consistencygroup changed'))
+                # NOTE(xyang): Allow this to pass if 'consistencygroup'is
+                # set to None. This is to support backward compatibility.
+                if updates.get('consistencygroup'):
+                    raise exception.ObjectActionError(
+                        action='save', reason=_('consistencygroup changed'))
             if 'group' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('group changed'))

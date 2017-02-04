@@ -2831,7 +2831,7 @@ class VolumeManager(manager.CleanableManager,
                         group, volumes)
                     cgsnapshot, sorted_snapshots = (
                         self._convert_group_snapshot_to_cgsnapshot(
-                            group_snapshot, sorted_snapshots))
+                            group_snapshot, sorted_snapshots, context))
                     source_cg, sorted_source_vols = (
                         self._convert_group_to_cg(source_group,
                                                   sorted_source_vols))
@@ -3294,7 +3294,7 @@ class VolumeManager(manager.CleanableManager,
         for vol in volumes:
             vol.consistencygroup_id = vol.group_id
 
-        return group, volumes
+        return cg, volumes
 
     def _remove_consistencygroup_id_from_volumes(self, volumes):
         if not volumes:
@@ -3302,13 +3302,19 @@ class VolumeManager(manager.CleanableManager,
         for vol in volumes:
             vol.consistencygroup_id = None
 
-    def _convert_group_snapshot_to_cgsnapshot(self, group_snapshot, snapshots):
+    def _convert_group_snapshot_to_cgsnapshot(self, group_snapshot, snapshots,
+                                              ctxt):
         if not group_snapshot:
             return None, None
         cgsnap = cgsnapshot.CGSnapshot()
         cgsnap.from_group_snapshot(group_snapshot)
         for snap in snapshots:
             snap.cgsnapshot_id = snap.group_snapshot_id
+
+        # Populate consistencygroup object
+        grp = objects.Group.get_by_id(ctxt, group_snapshot.group_id)
+        cg, __ = self._convert_group_to_cg(grp, [])
+        cgsnap.consistencygroup = cg
 
         return cgsnap, snapshots
 
@@ -3791,7 +3797,7 @@ class VolumeManager(manager.CleanableManager,
                 else:
                     cgsnapshot, snapshots = (
                         self._convert_group_snapshot_to_cgsnapshot(
-                            group_snapshot, snapshots))
+                            group_snapshot, snapshots, context))
                     model_update, snapshots_model_update = (
                         self.driver.create_cgsnapshot(context, cgsnapshot,
                                                       snapshots))
@@ -4055,7 +4061,7 @@ class VolumeManager(manager.CleanableManager,
                 else:
                     cgsnapshot, snapshots = (
                         self._convert_group_snapshot_to_cgsnapshot(
-                            group_snapshot, snapshots))
+                            group_snapshot, snapshots, context))
                     model_update, snapshots_model_update = (
                         self.driver.delete_cgsnapshot(context, cgsnapshot,
                                                       snapshots))
