@@ -9235,6 +9235,7 @@ class VMAXCommonTest(test.TestCase):
         self.assertEqual(verify_update_fo, volume_update)
         # Path 2: Failback non replicated volume
         # Path 2a: Volume still available on primary
+        common.failover = True
         verify_update_fb1 = [{'volume_id': volumes[0]['id'],
                               'updates': {'status': 'available'}}]
         secondary_id, volume_update_1 = (
@@ -9243,6 +9244,7 @@ class VMAXCommonTest(test.TestCase):
         # Path 2a: Volume not still available on primary
         with mock.patch.object(common, '_find_lun',
                                return_value=None):
+            common.failover = True
             secondary_id, volume_update_2 = (
                 common.failover_host('context', volumes, 'default'))
             self.assertEqual(verify_update_fo, volume_update_2)
@@ -9632,6 +9634,7 @@ class EMCV3ReplicationTest(test.TestCase):
                   {'replication_status': fields.ReplicationStatus.ENABLED,
                    'provider_location': loc,
                    'replication_driver_data': rep_data}}])
+        self.driver.common.failover = True
         secondary_id, volume_update_list = (
             self.driver.failover_host('context', volumes, 'default'))
         self.assertEqual(check_update_list, volume_update_list)
@@ -9677,6 +9680,7 @@ class EMCV3ReplicationTest(test.TestCase):
                   {'replication_status': fields.ReplicationStatus.ENABLED,
                    'replication_driver_data': rep_data,
                    'provider_location': loc}}])
+        self.driver.common.failover = True
         secondary_id, volume_update_list = (
             self.driver.failover_host('context', volumes, 'default'))
         self.assertEqual(check_update_list, volume_update_list)
@@ -9698,6 +9702,7 @@ class EMCV3ReplicationTest(test.TestCase):
                       fields.ReplicationStatus.FAILOVER_ERROR),
                       'provider_location': fake_location,
                       'replication_driver_data': 'fake_data'}}])
+        self.driver.common.failover = True
         secondary_id, volume_update_list = (
             self.driver.failover_host('context', fake_volumes, 'default'))
         self.assertEqual(check_update_list, volume_update_list)
@@ -10016,3 +10021,17 @@ class EMCV3ReplicationTest(test.TestCase):
         self.driver.delete_volume(volume)
         common.cleanup_lun_replication.assert_called_once_with(
             common.conn, volume, volumeName, volumeInstance, extraSpecs)
+
+    def test_failback_failover_wrong_state(self):
+        common = self.driver.common
+        volumes = [self.data.test_volume_re]
+        # failover command, backend already failed over
+        common.failover = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.failover_host,
+                          'context', volumes, None)
+        # failback command, backend not failed over
+        common.failover = False
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.failover_host,
+                          'context', volumes, 'default')
