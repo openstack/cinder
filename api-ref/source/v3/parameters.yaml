@@ -13,6 +13,12 @@ admin_project_id:
   in: path
   required: false
   type: string
+all_tenants:
+  description: |
+    Shows details for all projects.
+  in: path
+  required: false
+  type: string
 backup_id:
   description: |
     The UUID for a backup.
@@ -1610,6 +1616,18 @@ total_capacity:
   in: body
   required: true
   type: string
+total_count:
+  description: |
+    Total number of volumes.
+  in: body
+  required: true
+  type: integer
+total_size:
+  description: |
+    Total size of volumes in GB.
+  in: body
+  required: true
+  type: integer
 totalBackupGigabytesUsed:
   description: |
     The total number of backups gibibytes (GiB) used.
@@ -1696,6 +1714,12 @@ visibility:
 volume:
   description: |
     A ``volume`` object.
+  in: body
+  required: true
+  type: object
+volume-summary:
+  description: |
+    Dictionary of ``volume-summary`` objects.
   in: body
   required: true
   type: object
