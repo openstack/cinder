@@ -10,7 +10,7 @@ Transfers a volume from one user to another user.
 Accept a volume transfer
 ========================
 
-.. rest_method::  POST /v3/{tenant_id}/os-volume-transfer/{transfer_id}/accept
+.. rest_method::  POST /v3/{project_id}/os-volume-transfer/{transfer_id}/accept
 
 Accepts a volume transfer.
 
@@ -24,7 +24,7 @@ Request
 
    - auth_key: auth_key
    - transfer_id: transfer_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -48,7 +48,7 @@ Response Parameters
 Create a volume transfer
 ========================
 
-.. rest_method::  POST /v3/{tenant_id}/os-volume-transfer
+.. rest_method::  POST /v3/{project_id}/os-volume-transfer
 
 Creates a volume transfer.
 
@@ -62,7 +62,7 @@ Request
 
    - name: name
    - volume_id: volume_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -84,10 +84,10 @@ Response Parameters
    - name: name
 
 
-List volume transfers for a tenant
-==================================
+List volume transfers for a project
+===================================
 
-.. rest_method::  GET /v3/{tenant_id}/os-volume-transfer
+.. rest_method::  GET /v3/{project_id}/os-volume-transfer
 
 Lists volume transfers.
 
@@ -101,7 +101,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -125,7 +125,7 @@ Response Example
 Show volume transfer detail
 ===========================
 
-.. rest_method::  GET /v3/{tenant_id}/os-volume-transfer/{transfer_id}
+.. rest_method::  GET /v3/{project_id}/os-volume-transfer/{transfer_id}
 
 Shows details for a volume transfer.
 
@@ -140,7 +140,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - transfer_id: transfer_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 Response Parameters
@@ -165,7 +165,7 @@ Response Example
 Delete a volume transfer
 ========================
 
-.. rest_method::  DELETE /v3/{tenant_id}/os-volume-transfer/{transfer_id}
+.. rest_method::  DELETE /v3/{project_id}/os-volume-transfer/{transfer_id}
 
 Deletes a volume transfer.
 
@@ -178,13 +178,13 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - transfer_id: transfer_id
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 
 List volume transfers and details
 =================================
 
-.. rest_method::  GET /v3/{tenant_id}/os-volume-transfer/detail
+.. rest_method::  GET /v3/{project_id}/os-volume-transfer/detail
 
 Lists volume transfers, with details.
 
@@ -197,7 +197,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Response Parameters
 -------------------

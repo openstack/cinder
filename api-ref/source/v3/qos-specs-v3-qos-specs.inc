@@ -14,7 +14,7 @@ specifications.
 Disassociate a QoS specification from all associations
 ======================================================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs/{qos_id}/disassociate_all
+.. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/disassociate_all
 
 Disassociates a QoS specification from all associations.
 
@@ -26,14 +26,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 
 Unset keys in a QoS specification
 =================================
 
-.. rest_method::  PUT /v3/{tenant_id}/qos-specs/{qos_id}/delete_keys
+.. rest_method::  PUT /v3/{project_id}/qos-specs/{qos_id}/delete_keys
 
 Unsets keys in a QoS specification.
 
@@ -48,7 +48,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - keys: keys
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 Request Example
@@ -69,7 +69,7 @@ Response Example
 Get all associations for a QoS specification
 ============================================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs/{qos_id}/associations
+.. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/associations
 
 Lists all associations for a QoS specification.
 
@@ -83,7 +83,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 
@@ -97,7 +97,7 @@ Response Example
 Associate QoS specification with a volume type
 ==============================================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs/{qos_id}/associate
+.. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/associate
 
 Associates a QoS specification with a volume type.
 
@@ -109,14 +109,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 
 Disassociate QoS specification from a volume type
 =================================================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs/{qos_id}/disassociate
+.. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/disassociate
 
 Disassociates a QoS specification from a volume type.
 
@@ -128,14 +128,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 
 Show a QoS specification details
 ================================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs/{qos_id}
+.. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}
 
 Shows details for a QoS specification.
 
@@ -149,7 +149,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 
@@ -176,7 +176,7 @@ Response Example
 Set keys in a QoS specification
 ===============================
 
-.. rest_method::  PUT /v3/{tenant_id}/qos-specs/{qos_id}
+.. rest_method::  PUT /v3/{project_id}/qos-specs/{qos_id}
 
 Sets keys in a QoS specification.
 
@@ -192,7 +192,7 @@ Request
 
    - qos_specs: qos_specs
    - specs: specs
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
 
 Request Example
@@ -212,7 +212,7 @@ Response Example
 Delete a QoS specification
 ==========================
 
-.. rest_method::  DELETE /v3/{tenant_id}/qos-specs/{qos_id}
+.. rest_method::  DELETE /v3/{project_id}/qos-specs/{qos_id}
 
 Deletes a QoS specification.
 
@@ -224,7 +224,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - qos_id: qos_id
    - force: force
 
@@ -232,7 +232,7 @@ Request
 Create a QoS specification
 ==========================
 
-.. rest_method::  POST /v3/{tenant_id}/qos-specs
+.. rest_method::  POST /v3/{project_id}/qos-specs
 
 Creates a QoS specification.
 
@@ -249,7 +249,7 @@ Request
    - qos_specs: qos_specs
    - consumer: consumer
    - name: name
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Request Example
 ---------------
@@ -275,7 +275,7 @@ Response Parameters
 List QoS Specifications
 =======================
 
-.. rest_method::  GET /v3/{tenant_id}/qos-specs
+.. rest_method::  GET /v3/{project_id}/qos-specs
 
 Lists quality of service (QoS) specifications.
 
@@ -289,7 +289,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - sort_key: sort_key
    - sort_dir: sort_dir
    - limit: limit

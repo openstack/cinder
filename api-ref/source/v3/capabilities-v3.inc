@@ -10,7 +10,7 @@ Shows capabilities for a storage back end.
 Show all back-end capabilities
 ==============================
 
-.. rest_method::  GET /v3/{tenant_id}/capabilities/{hostname}
+.. rest_method::  GET /v3/{project_id}/capabilities/{hostname}
 
 Shows capabilities for a storage back end on the host.
 The ``hostname`` takes the form of ``hostname@volume_backend_name``.
@@ -23,7 +23,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - hostname: hostname
 
 Response Parameters
