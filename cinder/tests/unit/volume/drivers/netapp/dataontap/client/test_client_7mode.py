@@ -449,11 +449,20 @@ class NetApp7modeClientTestCase(test.TestCase):
         actual_request = _args[0]
         lun_info_args = actual_request.get_children()
 
+        # The children list is not generated in a stable order,
+        # so figure out which entry is which.
+        if lun_info_args[0].get_name() == 'path':
+            path_arg = lun_info_args[0]
+            enable_arg = lun_info_args[1]
+        else:
+            path_arg = lun_info_args[1]
+            enable_arg = lun_info_args[0]
+
         # Assert request is made with correct arguments
-        self.assertEqual('path', lun_info_args[0].get_name())
-        self.assertEqual(path, lun_info_args[0].get_content())
-        self.assertEqual('enable', lun_info_args[1].get_name())
-        self.assertEqual('true', lun_info_args[1].get_content())
+        self.assertEqual('path', path_arg.get_name())
+        self.assertEqual(path, path_arg.get_content())
+        self.assertEqual('enable', enable_arg.get_name())
+        self.assertEqual('true', enable_arg.get_content())
 
     def test_get_actual_path_for_export(self):
         fake_export_path = 'fake_export_path'
