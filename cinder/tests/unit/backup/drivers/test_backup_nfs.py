@@ -671,7 +671,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         fake_data = bytearray(size)
         if six.PY2:
             # On Python 2, zlib.compressor() accepts buffer, but not bytearray
-            fake_data = buffer(fake_data)
+            # NOTE(jsbryant): Pep8 fails on py3 based installations as buffer()
+            # was removed. 'noqa' used here to avoid that failure.
+            fake_data = buffer(fake_data)  # noqa
         return fake_data
 
     def test_prepare_output_data_effective_compression(self):
