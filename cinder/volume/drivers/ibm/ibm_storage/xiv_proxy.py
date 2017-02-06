@@ -461,9 +461,13 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(msg)
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
 
-        volume_update = {}
         self._create_volume(volume)
+        return self.handle_created_vol_properties(cg,
+                                                  replication_info,
+                                                  volume)
 
+    def handle_created_vol_properties(self, cg, replication_info, volume):
+        volume_update = {}
         if cg:
             volume_update['consistencygroup_id'] = (
                 volume.get('consistencygroup_id', None))
@@ -1513,6 +1517,10 @@ class XIVProxy(proxy.IBMStorageProxy):
     @proxy._trace_time
     def create_cloned_volume(self, volume, src_vref):
         """Create cloned volume."""
+        cg = self._cg_name_from_volume(volume)
+        # read replication information
+        specs = self._get_extra_specs(volume.get('volume_type_id', None))
+        replication_info = self._get_replication_info(specs)
 
         # TODO(alonma): Refactor to use more common code
         src_vref_size = float(src_vref['size'])
@@ -1524,7 +1532,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(error)
             raise self._get_exception()(error)
 
-        self.create_volume(volume)
+        self._create_volume(volume)
         try:
             self._call_xiv_xcli(
                 "vol_copy",
@@ -1542,20 +1550,20 @@ class XIVProxy(proxy.IBMStorageProxy):
         # A side effect of vol_copy is the resizing of the destination volume
         # to the size of the source volume. If the size is different we need
         # to get it back to the desired size
-        if src_vref_size == volume_size:
-            return
-        size = storage.gigabytes_to_blocks(volume_size)
-        try:
-            self._call_xiv_xcli(
-                "vol_resize",
-                vol=volume['name'],
-                size_blocks=size)
-        except errors.XCLIError as e:
-            error = (_("Fatal error in vol_resize: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
-            LOG.error(error)
-            self._silent_delete_volume(volume=volume)
-            raise self._get_exception()(error)
+        if src_vref_size != volume_size:
+            size = storage.gigabytes_to_blocks(volume_size)
+            try:
+                self._call_xiv_xcli(
+                    "vol_resize",
+                    vol=volume['name'],
+                    size_blocks=size)
+            except errors.XCLIError as e:
+                error = (_("Fatal error in vol_resize: %(details)s"),
+                         {'details': self._get_code_and_status_or_message(e)})
+                LOG.error(error)
+                self._silent_delete_volume(volume=volume)
+                raise self._get_exception()(error)
+        self.handle_created_vol_properties(cg, replication_info, volume)
 
     @proxy._trace_time
     def volume_exists(self, volume):
