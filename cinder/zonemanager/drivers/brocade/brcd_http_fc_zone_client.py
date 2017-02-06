@@ -20,6 +20,7 @@ HTTP or HTTPS protocol.
 
 from oslo_log import log as logging
 from oslo_serialization import base64
+from oslo_utils import encodeutils
 import requests
 import six
 import time
@@ -647,7 +648,8 @@ class BrcdHTTPFCZoneClient(object):
                    % six.text_type(e))
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)
-        return zoneString
+        # Reconstruct the zoneString to type base string for OpenSSL
+        return encodeutils.safe_encode(zoneString)
 
     def add_zones_cfgs(self, cfgs, zones, add_zones_info,
                        active_cfg, cfg_name):

@@ -17,8 +17,11 @@
 """Unit tests for brcd fc zone client http(s)."""
 import time
 
+from oslo_utils import encodeutils
+
 import mock
 from mock import patch
+import six
 
 from cinder import exception
 from cinder import test
@@ -604,13 +607,20 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
 
     def test_form_zone_string(self):
         new_alias = {
-            'alia1': '10:00:00:05:1e:7c:64:96;10:21:10:05:33:0e:96:12'}
-        new_qlps = {'qlp': '10:11:f4:ce:46:ae:68:6c;20:11:f4:ce:46:ae:68:6c'}
-        new_ifas = {'fa1': '20:15:f4:ce:96:ae:68:6c;20:11:f4:ce:46:ae:68:6c'}
-        self.assertEqual(mocked_zone_string, self.form_zone_string(
-            cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, True))
-        self.assertEqual(mocked_zone_string_no_activate, self.form_zone_string(
-            cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, False))
+            'alia1': u'10:00:00:05:1e:7c:64:96;10:21:10:05:33:0e:96:12'}
+        new_qlps = {'qlp': u'10:11:f4:ce:46:ae:68:6c;20:11:f4:ce:46:ae:68:6c'}
+        new_ifas = {'fa1': u'20:15:f4:ce:96:ae:68:6c;20:11:f4:ce:46:ae:68:6c'}
+        self.assertEqual(type(self.form_zone_string(
+            cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, True)),
+            six.binary_type)
+        self.assertEqual(
+            encodeutils.safe_encode(mocked_zone_string),
+            self.form_zone_string(
+                cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, True))
+        self.assertEqual(
+            encodeutils.safe_encode(mocked_zone_string_no_activate),
+            self.form_zone_string(
+                cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, False))
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'post_zone_data')
     def test_add_zones_activate(self, post_zone_data_mock):
@@ -626,7 +636,8 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
                               '20:19:00:05:1e:e8:e3:29']
                           }
         self.add_zones(add_zones_info, True)
-        post_zone_data_mock.assert_called_once_with(zone_string_to_post)
+        post_zone_data_mock.assert_called_once_with(
+            encodeutils.safe_encode(zone_string_to_post))
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'post_zone_data')
     def test_add_zones_invalid_zone_name(self, post_zone_data_mock):
@@ -661,7 +672,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
                           }
         self.add_zones(add_zones_info, False)
         post_zone_data_mock.assert_called_once_with(
-            zone_string_to_post_no_activate)
+            encodeutils.safe_encode(zone_string_to_post_no_activate))
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'post_zone_data')
     def test_delete_zones_activate(self, post_zone_data_mock):
@@ -675,7 +686,8 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         delete_zones_info = valid_zone_name
 
         self.delete_zones(delete_zones_info, True)
-        post_zone_data_mock.assert_called_once_with(zone_string_del_to_post)
+        post_zone_data_mock.assert_called_once_with(
+            encodeutils.safe_encode(zone_string_del_to_post))
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'post_zone_data')
     def test_delete_zones_no_activate(self, post_zone_data_mock):
@@ -689,7 +701,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         delete_zones_info = valid_zone_name
         self.delete_zones(delete_zones_info, False)
         post_zone_data_mock.assert_called_once_with(
-            zone_string_del_to_post_no_active)
+            encodeutils.safe_encode(zone_string_del_to_post_no_active))
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'post_zone_data')
     def test_delete_zones_invalid_zone_name(self, post_zone_data_mock):
