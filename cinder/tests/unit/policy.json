@@ -103,9 +103,6 @@
     "backup:update": "rule:admin_or_owner",
     "backup:backup_project_attribute": "rule:admin_api",
 
-    "volume_extension:replication:promote": "rule:admin_api",
-    "volume_extension:replication:reenable": "rule:admin_api",
-
     "consistencygroup:create" : "",
     "consistencygroup:delete": "",
     "consistencygroup:update": "",
