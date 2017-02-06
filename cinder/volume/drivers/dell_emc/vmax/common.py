@@ -264,8 +264,12 @@ class VMAXCommon(object):
                 # only strings
                 temparrayInfo = arrayInfoList[0].copy()
                 slo, workload = sloWorkload.split(':')
-                if temparrayInfo['SLO'] is None:
+                # Check if we got SLO and workload from the set (from array)
+                # The previous check was done by mistake against the value
+                # from XML file
+                if slo:
                     temparrayInfo['SLO'] = slo
+                if workload:
                     temparrayInfo['Workload'] = workload
                 finalArrayInfoList.append(temparrayInfo)
         except Exception:
