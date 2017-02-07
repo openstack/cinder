@@ -71,7 +71,7 @@ release = version_info.release_string()
 version = version_info.version_string()
 
 # Config logABug feature
-giturl = u'http://git.openstack.org/cgit/openstack/cinder/tree/api-ref/source'
+giturl = u'https://git.openstack.org/cgit/openstack/cinder/tree/api-ref/source'
 # source tree
 # html_context allows us to pass arbitrary values into the html template
 html_context = {"bug_tag": "api-ref",
