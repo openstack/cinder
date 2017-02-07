@@ -1400,3 +1400,14 @@ VSERVER_DATA_LIST_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'vserver': VSERVER_NAME})
+
+SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node>%s</node>
+      </node-details-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % NODE_NAME)

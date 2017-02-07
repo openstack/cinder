@@ -72,6 +72,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         self.zapi_client = dot_utils.get_client_for_backend(
             self.failed_over_backend_name or self.backend_name)
         self.vserver = self.zapi_client.vserver
+        self.using_cluster_credentials = \
+            self.zapi_client.check_for_cluster_credentials()
 
         # Performance monitoring library
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
@@ -275,12 +277,18 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         if not ssc:
             return pools
 
-        # Get up-to-date node utilization metrics just once
-        self.perf_library.update_performance_cache(ssc)
+        # Utilization and performance metrics require cluster-scoped
+        # credentials
+        if self.using_cluster_credentials:
+            # Get up-to-date node utilization metrics just once
+            self.perf_library.update_performance_cache(ssc)
 
-        # Get up-to-date aggregate capacities just once
-        aggregates = self.ssc_library.get_ssc_aggregates()
-        aggr_capacities = self.zapi_client.get_aggregate_capacities(aggregates)
+            # Get up-to-date aggregate capacities just once
+            aggregates = self.ssc_library.get_ssc_aggregates()
+            aggr_capacities = self.zapi_client.get_aggregate_capacities(
+                aggregates)
+        else:
+            aggr_capacities = {}
 
         for ssc_vol_name, ssc_vol_info in ssc.items():
 
@@ -310,8 +318,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             pool['provisioned_capacity_gb'] = round(
                 pool['total_capacity_gb'] - pool['free_capacity_gb'], 2)
 
-            dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
-                ssc_vol_name)
+            if self.using_cluster_credentials:
+                dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
+                    ssc_vol_name)
+            else:
+                dedupe_used = 0.0
             pool['netapp_dedupe_used_percent'] = na_utils.round_down(
                 dedupe_used)
 
