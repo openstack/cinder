@@ -18,7 +18,7 @@ DB_PW=openstack_citest
 sudo -H mysqladmin -u root password $DB_ROOT_PW
 
 # It's best practice to remove anonymous users from the database.  If
-# a anonymous user exists, then it matches first for connections and
+# an anonymous user exists, then it matches first for connections and
 # other connections from that host will not work.
 sudo -H mysql -u root -p$DB_ROOT_PW -h localhost -e "
     DELETE FROM mysql.user WHERE User='';
@@ -33,9 +33,6 @@ mysql -u $DB_USER -p$DB_PW -h 127.0.0.1 -e "
     CREATE DATABASE openstack_citest CHARACTER SET utf8;"
 
 # Same for PostgreSQL
-# The root password for the PostgreSQL database; pass it in via
-# POSTGRES_ROOT_PW.
-DB_ROOT_PW=${POSTGRES_ROOT_PW:-insecure_slave}
 
 # Setup user
 root_roles=$(sudo -H -u postgres psql -t -c "
