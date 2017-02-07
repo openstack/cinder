@@ -1814,6 +1814,19 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
                          result)
 
+    def test_get_flexvol_dedupe_info_api_insufficient_privileges(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPIPRIVILEGE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         side_effect=api_error)
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
     def test_get_flexvol_dedupe_used_percent(self):
 
         self.client.features.add_feature('CLONE_SPLIT_STATUS')
@@ -2199,6 +2212,70 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual({}, result)
 
+    def test_get_aggregate_api_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         side_effect=api_error)
+
+        result = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_list_cluster_nodes(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SYSTEM_NODE_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_cluster_nodes()
+
+        self.assertListEqual([fake_client.NODE_NAME], result)
+
+    def test_list_cluster_nodes_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_cluster_nodes()
+
+        self.assertListEqual([], result)
+
+    def test_check_for_cluster_credentials(self):
+
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake_client.NODE_NAMES))
+
+        result = self.client.check_for_cluster_credentials()
+
+        self.assertTrue(result)
+
+    def test_check_for_cluster_credentials_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         side_effect=api_error)
+
+        result = self.client.check_for_cluster_credentials()
+
+        self.assertFalse(result)
+
+    def test_check_for_cluster_credentials_api_error(self):
+
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.check_for_cluster_credentials)
+
     @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
               {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
     @ddt.unpack
@@ -2225,6 +2302,18 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertIsNone(result)
         mock_get_aggregate_disk_types.assert_called_once_with(
             fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_api_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         side_effect=api_error)
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
 
     def test_get_aggregate_disk_types_shared(self):
 
@@ -2445,6 +2534,16 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client,
                          'send_request',
                          side_effect=self._mock_api_error())
+
+        result = self.client.get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate_capacity_api_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
 
         result = self.client.get_aggregate_capacity(
             fake_client.VOLUME_AGGREGATE_NAME)
