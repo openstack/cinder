@@ -13,6 +13,7 @@
 #    under the License.
 
 import ddt
+import eventlet
 import mock
 import requests
 from requests import models
@@ -1645,6 +1646,14 @@ class DellSCSanAPITestCase(test.TestCase):
     response_bad._content = ''
     response_bad._content_consumed = True
     RESPONSE_400 = response_bad
+
+    # Create a Response object is a pure error.
+    response_bad = models.Response()
+    response_bad.status_code = 404
+    response_bad.reason = u'not found'
+    response_bad._content = ''
+    response_bad._content_consumed = True
+    RESPONSE_404 = response_bad
 
     def setUp(self):
         super(DellSCSanAPITestCase, self).setUp()
@@ -4661,61 +4670,556 @@ class DellSCSanAPITestCase(test.TestCase):
                           'name', screplay, 'replay_profile_string',
                           'volume_qos', 'group_qos', 'datareductionprofile')
 
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'create_view_volume',
-                       return_value=VOLUME)
+                       '_get_json')
+    def test__expire_all_replays(self,
+                                 mock_get_json,
+                                 mock_get,
+                                 mock_post,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        scvolume = {'instanceId': '12345.1'}
+        mock_get.return_value = self.RESPONSE_200
+        mock_get_json.return_value = [{'instanceId': '12345.100',
+                                       'active': False},
+                                      {'instanceId': '12345.101',
+                                       'active': True}]
+        self.scapi._expire_all_replays(scvolume)
+        mock_get.assert_called_once_with(
+            'StorageCenter/ScVolume/12345.1/ReplayList')
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScReplay/12345.100/Expire', {}, True)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    def test__expire_all_replays_error(self,
+                                       mock_get,
+                                       mock_post,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        scvolume = {'instanceId': '12345.1'}
+        mock_get.return_value = self.RESPONSE_400
+        self.scapi._expire_all_replays(scvolume)
+        mock_get.assert_called_once_with(
+            'StorageCenter/ScVolume/12345.1/ReplayList')
+        self.assertFalse(mock_post.called)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'create_replay',
-                       return_value=RPLAY)
-    def test_create_cloned_volume(self,
-                                  mock_create_replay,
-                                  mock_create_view_volume,
-                                  mock_close_connection,
-                                  mock_open_connection,
-                                  mock_init):
-        vol_name = u'Test_create_clone_vol'
-        res = self.scapi.create_cloned_volume(
-            vol_name, self.VOLUME, ['Daily'],
-            'volume_qos', 'group_qos', 'dr_profile')
-        mock_create_replay.assert_called_once_with(self.VOLUME,
-                                                   'Cinder Clone Replay',
-                                                   60)
-        mock_create_view_volume.assert_called_once_with(
-            vol_name, self.RPLAY, ['Daily'],
-            'volume_qos', 'group_qos', 'dr_profile')
-        self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
+                       '_get_json')
+    def test__expire_all_replays_no_replays(self,
+                                            mock_get_json,
+                                            mock_get,
+                                            mock_post,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        scvolume = {'instanceId': '12345.1'}
+        mock_get.return_value = self.RESPONSE_200
+        mock_get_json.return_value = None
+        self.scapi._expire_all_replays(scvolume)
+        mock_get.assert_called_once_with(
+            'StorageCenter/ScVolume/12345.1/ReplayList')
+        self.assertFalse(mock_post.called)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    def test__wait_for_cmm(
+            self,
+            mock_get_json,
+            mock_get,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        cmm = {'instanceId': '12345.300'}
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1'}
+        replayid = '12345.200'
+        mock_get.return_value = self.RESPONSE_200
+        mock_get_json.return_value = {'instanceId': '12345.300',
+                                      'state': 'Finished'}
+        ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
+        self.assertTrue(ret)
+        mock_get_json.return_value['state'] = 'Erred'
+        ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
+        self.assertFalse(ret)
+        mock_get_json.return_value['state'] = 'Paused'
+        ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
+        self.assertFalse(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay')
+    def test__wait_for_cmm_404(
+            self,
+            mock_find_replay,
+            mock_get,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        cmm = {'instanceId': '12345.300'}
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1'}
+        replayid = '12345.200'
+        mock_get.return_value = self.RESPONSE_404
+        mock_find_replay.return_value = {'instanceId': '12345.200'}
+        ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
+        self.assertTrue(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay')
+    @mock.patch.object(eventlet, 'sleep')
+    def test__wait_for_cmm_timeout(
+            self,
+            mock_sleep,
+            mock_find_replay,
+            mock_get,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        cmm = {'instanceId': '12345.300'}
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1'}
+        replayid = '12345.200'
+        mock_get.return_value = self.RESPONSE_404
+        mock_find_replay.return_value = None
+        ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
+        self.assertFalse(ret)
+        self.assertEqual(21, mock_sleep.call_count)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'create_view_volume',
-                       return_value=None)
+                       'create_volume')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_replay')
-    def test_create_cloned_volume_failure(self,
-                                          mock_create_replay,
-                                          mock_create_view_volume,
-                                          mock_close_connection,
-                                          mock_open_connection,
-                                          mock_init):
-        # Test case where create cloned volumes fails because create_replay
-        # fails
-        vol_name = u'Test_create_clone_vol'
-        mock_create_replay.return_value = None
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_wait_for_cmm')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_expire_all_replays')
+    def test_create_cloned_volume(
+            self,
+            mock_expire_all_replays,
+            mock_wait_for_cmm,
+            mock_get_json,
+            mock_post,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+        cmm = {'state': 'Running'}
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = cmm
+        mock_create_replay.return_value = {'instanceId': '12345.100'}
+        mock_create_volume.return_value = newvol
+        mock_wait_for_cmm.return_value = True
+
+        # our call
         res = self.scapi.create_cloned_volume(
-            vol_name, self.VOLUME, ['Daily'], None, None, None)
-        mock_create_replay.assert_called_once_with(self.VOLUME,
-                                                   'Cinder Clone Replay',
-                                                   60)
-        self.assertFalse(mock_create_view_volume.called)
-        self.assertIsNone(res, 'Expected None')
-        # Again buy let create_view_volume fail.
-        mock_create_replay.return_value = self.RPLAY
+            vol_name, scvolume, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        expected_payload = {}
+        expected_payload['CopyReplays'] = True
+        expected_payload['DestinationVolume'] = '12345.2'
+        expected_payload['SourceVolume'] = '12345.1'
+        expected_payload['StorageCenter'] = 12345
+        expected_payload['Priority'] = 'High'
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScCopyMirrorMigrate/Copy', expected_payload, True)
+        mock_wait_for_cmm.assert_called_once_with(cmm, newvol, str(replayuuid))
+        mock_expire_all_replays.assert_called_once_with(newvol)
+        self.assertEqual(newvol, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    def test_create_cloned_volume_create_vol_fail(
+            self,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = None
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+
+        # our call returns
+        mock_create_volume.return_value = newvol
+
+        # our call
         res = self.scapi.create_cloned_volume(
-            vol_name, self.VOLUME, ['Daily'],
-            'volume_qos', 'group_qos', 'dr_profile')
-        mock_create_view_volume.assert_called_once_with(
-            vol_name, self.RPLAY, ['Daily'],
-            'volume_qos', 'group_qos', 'dr_profile')
+            vol_name, scvolume, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
         self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_replay')
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_replay_fail(
+            self,
+            mock_delete_volume,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_create_replay.return_value = None
+        mock_create_volume.return_value = newvol
+
+        # our call
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_cloned_volume, vol_name,
+                          scvolume, storage_profile, replay_profile_list,
+                          volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        mock_delete_volume.assert_called_once_with(vol_name, '12345.2')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_replay')
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_copy_fail(
+            self,
+            mock_delete_volume,
+            mock_post,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_post.return_value = self.RESPONSE_400
+        mock_create_replay.return_value = {'instanceId': '12345.100'}
+        mock_create_volume.return_value = newvol
+
+        # our call
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_cloned_volume, vol_name,
+                          scvolume, storage_profile, replay_profile_list,
+                          volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        expected_payload = {}
+        expected_payload['CopyReplays'] = True
+        expected_payload['DestinationVolume'] = '12345.2'
+        expected_payload['SourceVolume'] = '12345.1'
+        expected_payload['StorageCenter'] = 12345
+        expected_payload['Priority'] = 'High'
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScCopyMirrorMigrate/Copy', expected_payload, True)
+        mock_delete_volume.assert_called_once_with(vol_name, '12345.2')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_replay')
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_cmm_erred(
+            self,
+            mock_delete_volume,
+            mock_get_json,
+            mock_post,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+        cmm = {'state': 'Erred'}
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = cmm
+        mock_create_replay.return_value = {'instanceId': '12345.100'}
+        mock_create_volume.return_value = newvol
+
+        # our call
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_cloned_volume, vol_name,
+                          scvolume, storage_profile, replay_profile_list,
+                          volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        expected_payload = {}
+        expected_payload['CopyReplays'] = True
+        expected_payload['DestinationVolume'] = '12345.2'
+        expected_payload['SourceVolume'] = '12345.1'
+        expected_payload['StorageCenter'] = 12345
+        expected_payload['Priority'] = 'High'
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScCopyMirrorMigrate/Copy', expected_payload, True)
+        mock_delete_volume.assert_called_once_with(vol_name, '12345.2')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_replay')
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_cmm_paused(
+            self,
+            mock_delete_volume,
+            mock_get_json,
+            mock_post,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+        cmm = {'state': 'Paused'}
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = cmm
+        mock_create_replay.return_value = {'instanceId': '12345.100'}
+        mock_create_volume.return_value = newvol
+
+        # our call
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_cloned_volume, vol_name,
+                          scvolume, storage_profile, replay_profile_list,
+                          volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        expected_payload = {}
+        expected_payload['CopyReplays'] = True
+        expected_payload['DestinationVolume'] = '12345.2'
+        expected_payload['SourceVolume'] = '12345.1'
+        expected_payload['StorageCenter'] = 12345
+        expected_payload['Priority'] = 'High'
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScCopyMirrorMigrate/Copy', expected_payload, True)
+        mock_delete_volume.assert_called_once_with(vol_name, '12345.2')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_replay')
+    @mock.patch.object(uuid, 'uuid4')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_wait_for_cmm')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_cmm_wait_for_cmm_fail(
+            self,
+            mock_delete_volume,
+            mock_wait_for_cmm,
+            mock_get_json,
+            mock_post,
+            mock_uuid4,
+            mock_create_replay,
+            mock_create_volume,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # our state.
+        vol_name = fake.VOLUME_ID
+        scvolume = {'name': fake.VOLUME2_ID,
+                    'instanceId': '12345.1',
+                    'configuredSize': '1073741824 Bytes'}
+        newvol = {'instanceId': '12345.2',
+                  'configuredSize': '1073741824 Bytes'}
+        storage_profile = 'profile1'
+        replay_profile_list = ['profile2']
+        volume_qos = 'vqos'
+        group_qos = 'gqos'
+        dr_profile = 'dqos'
+        cmm = {'state': 'Running'}
+
+        # our call returns
+        replayuuid = uuid.uuid4()
+        mock_uuid4.return_value = replayuuid
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = cmm
+        mock_create_replay.return_value = {'instanceId': '12345.100'}
+        mock_create_volume.return_value = newvol
+        mock_wait_for_cmm.return_value = False
+
+        # our call
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_cloned_volume, vol_name,
+                          scvolume, storage_profile, replay_profile_list,
+                          volume_qos, group_qos, dr_profile)
+
+        # assert expected
+        mock_create_volume.assert_called_once_with(
+            vol_name, 1, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        mock_create_replay.assert_called_once_with(
+            scvolume, str(replayuuid), 60)
+        expected_payload = {}
+        expected_payload['CopyReplays'] = True
+        expected_payload['DestinationVolume'] = '12345.2'
+        expected_payload['SourceVolume'] = '12345.1'
+        expected_payload['StorageCenter'] = 12345
+        expected_payload['Priority'] = 'High'
+        mock_post.assert_called_once_with(
+            'StorageCenter/ScCopyMirrorMigrate/Copy', expected_payload, True)
+        mock_wait_for_cmm.assert_called_once_with(cmm, newvol, str(replayuuid))
+        mock_delete_volume.assert_called_once_with(vol_name, '12345.2')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
