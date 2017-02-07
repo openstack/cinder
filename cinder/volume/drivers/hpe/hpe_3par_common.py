@@ -237,11 +237,12 @@ class HPE3PARCommon(object):
         3.0.18.3 - Fix delete volume when online clone is active. bug #1349639.
                    (backported from Newton)
         3.0.18.4 - Fix concurrent snapshot delete conflict. bug #1600104
-        3.0.19 - Fix terminate connection on failover
+        3.0.18.5 - Fix terminate connection on failover
+        3.0.18.6 - Corrected driver version. bug #1662422
 
     """
 
-    VERSION = "3.0.19"
+    VERSION = "3.0.18.6"
 
     stats = {}
 
