@@ -125,8 +125,6 @@ from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
     cinder_volume_drivers_hpe_hpelefthandiscsi
-from cinder.volume.drivers.hpe import hpe_xp_opts as \
-    cinder_volume_drivers_hpe_hpexpopts
 from cinder.volume.drivers.huawei import huawei_driver as \
     cinder_volume_drivers_huawei_huaweidriver
 from cinder.volume.drivers.ibm import flashsystem_common as \
@@ -304,9 +302,6 @@ def list_opts():
                 cinder_volume_drivers_hitachi_vspiscsi.iscsi_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_hpelefthandiscsi.hpelefthand_opts,
-                cinder_volume_drivers_hpe_hpexpopts.FC_VOLUME_OPTS,
-                cinder_volume_drivers_hpe_hpexpopts.COMMON_VOLUME_OPTS,
-                cinder_volume_drivers_hpe_hpexpopts.HORCM_VOLUME_OPTS,
                 cinder_volume_drivers_huawei_huaweidriver.huawei_opts,
                 cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
                 cinder_volume_drivers_ibm_flashsystemfc.flashsystem_fc_opts,
