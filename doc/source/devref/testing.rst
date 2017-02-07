@@ -83,6 +83,13 @@ execution. To ensure the Cinder tests are picked up when running tempest, run::
 More information about tempest can be found in the `Tempest Documentation
 <http://docs.openstack.org/developer/tempest/overview.html>`_.
 
+Database Setup
+~~~~~~~~~~~~~~~
+
+Some unit and functional tests will use a local database. You can use
+``tools/test-setup.sh`` to set up your local system the same way as
+it's setup in the CI environment.
+
 Running a subset of tests using tox
 -----------------------------------
 One common activity is to just run a single test, you can do this with tox
