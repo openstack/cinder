@@ -289,7 +289,7 @@ def monkey_patch():
     Example: 'cinder.api.ec2.cloud:' \
      cinder.openstack.common.notifier.api.notify_decorator'
 
-    Parameters of the decorator is as follows.
+    Parameters of the decorator are as follows.
     (See cinder.openstack.common.notifier.api.notify_decorator)
 
     :param name: name of the function
@@ -933,7 +933,7 @@ def setup_tracing(trace_flags):
     """Set global variables for each trace flag.
 
     Sets variables TRACE_METHOD and TRACE_API, which represent
-    whether to log method and api traces.
+    whether to log methods or api traces.
 
     :param trace_flags: a list of strings
     """
