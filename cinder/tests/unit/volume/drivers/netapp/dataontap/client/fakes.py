@@ -1301,3 +1301,14 @@ SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
     <result-status>succeeded</result-status>
   </results>
 """)
+
+SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node>%s</node>
+      </node-details-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % NODE_NAME)
