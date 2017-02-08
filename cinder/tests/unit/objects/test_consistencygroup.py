@@ -48,6 +48,18 @@ fake_cgsnapshot = {
     'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
 }
 
+fake_group = {
+    'id': fake.GROUP_ID,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
+    'host': 'fake_host',
+    'availability_zone': 'fake_az',
+    'name': 'fake_name',
+    'description': 'fake_description',
+    'group_type_id': fake.GROUP_TYPE_ID,
+    'status': fields.GroupStatus.CREATING,
+}
+
 
 class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
@@ -76,6 +88,24 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
                                                     **fake_cg)
         consistencygroup.create()
         self._compare(self, fake_consistencygroup, consistencygroup)
+
+    @mock.patch('cinder.db.group_create',
+                return_value=fake_group)
+    def test_create_from_group(self, group_create):
+        fake_grp = fake_group.copy()
+        del fake_grp['id']
+        group = objects.Group(context=self.context,
+                              **fake_grp)
+        group.create()
+        volumes_objs = [objects.Volume(context=self.context, id=i)
+                        for i in [fake.VOLUME_ID, fake.VOLUME2_ID,
+                                  fake.VOLUME3_ID]]
+        volumes = objects.VolumeList(objects=volumes_objs)
+        group.volumes = volumes
+        consistencygroup = objects.ConsistencyGroup()
+        consistencygroup.from_group(group)
+        self.assertEqual(group.id, consistencygroup.id)
+        self.assertEqual(group.name, consistencygroup.name)
 
     def test_create_with_id_except_exception(self, ):
         consistencygroup = objects.ConsistencyGroup(
