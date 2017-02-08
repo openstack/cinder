@@ -179,7 +179,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                   {'vol': volume['id'], 'conn': connector,
                    'lun_id': lun_id})
 
-        volume_name = volume.name
+        volume_name = self._get_target_vol(volume)
         volume_attributes = self._helpers.get_vdisk_attributes(volume_name)
         if volume_attributes is None:
             msg = (_('_get_single_iscsi_data: Failed to get attributes'

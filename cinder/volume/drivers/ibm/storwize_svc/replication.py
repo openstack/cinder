@@ -395,6 +395,7 @@ class StorwizeSVCReplicationManager(object):
                     client.mkfcpartnership(remote_name)
                 else:
                     client.mkippartnership(remote_ip)
+                partnership_info = client.get_partnership_info(remote_name)
             if partnership_info['partnership'] != 'fully_configured':
                 client.chpartnership(partnership_info['id'])
         except Exception:
@@ -410,7 +411,10 @@ class StorwizeSVCReplicationManager(object):
         target_system_name = target_system_info['system_name']
         local_ip = self.driver.configuration.safe_get('san_ip')
         target_ip = self.target.get('san_ip')
-        self._partnership_validate_create(self._master_helpers,
-                                          target_system_name, target_ip)
-        self._partnership_validate_create(self.target_helpers,
-                                          local_system_name, local_ip)
+        # Establish partnership only when the local system and the replication
+        # target system is different.
+        if target_system_name != local_system_name:
+            self._partnership_validate_create(self._master_helpers,
+                                              target_system_name, target_ip)
+            self._partnership_validate_create(self.target_helpers,
+                                              local_system_name, local_ip)

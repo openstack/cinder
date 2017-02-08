@@ -622,12 +622,12 @@ class StorwizeHelpers(object):
 
     def replication_licensed(self):
         """Return whether or not replication is enabled for this system."""
-        # Uses license_scheme as an indicator to check
+        # Uses product_key as an indicator to check
         # whether replication is supported in storage.
         try:
             resp = self.ssh.lsguicapabilities()
-            license_scheme = resp.get('license_scheme', '0')
-            if license_scheme in storwize_const.REP_CAP_DEVS:
+            product_key = resp.get('product_key', '0')
+            if product_key in storwize_const.REP_CAP_DEVS:
                 return True
         except exception.VolumeBackendAPIException as war:
             LOG.warning(_LW("Failed to run lsguicapability. "
