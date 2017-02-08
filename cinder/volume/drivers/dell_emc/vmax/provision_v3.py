@@ -421,7 +421,8 @@ class VMAXProvisionV3(object):
                 SyncType=syncType,
                 SourceElement=sourceInstance.path,
                 ReplicationSettingData=rsdInstance,
-                Collections=[sgInstanceName])
+                Collections=[sgInstanceName],
+                WaitForCopyState=copyState)
         elif targetInstance and copyState:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,

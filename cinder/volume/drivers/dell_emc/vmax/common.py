@@ -4293,7 +4293,7 @@ class VMAXCommon(object):
         operation = self.utils.get_num(DISSOLVE_SNAPVX, '16')
         rsdInstance = None
         targetInstance = None
-        copyState = None
+        copyState = self.utils.get_num(4, '16')
         if isSnapshot:
             rsdInstance = self.utils.set_target_element_supplier_in_rsd(
                 self.conn, repServiceInstanceName, SNAPVX_REPLICATION_TYPE,
@@ -4301,7 +4301,6 @@ class VMAXCommon(object):
         else:
             targetInstance = self._create_duplicate_volume(
                 sourceInstance, cloneName, extraSpecs)
-            copyState = self.utils.get_num(4, '16')
 
         try:
             rc, job = (
