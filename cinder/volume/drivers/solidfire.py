@@ -1466,6 +1466,19 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from the specified snapshot."""
+        if snapshot.get('cgsnapshot_id'):
+            # We're creating a volume from a snapshot that resulted from a
+            # consistency group snapshot. Because of the way that SolidFire
+            # creates cgsnaps, we have to search for the correct snapshot.
+            cgsnapshot_id = snapshot.get('cgsnapshot_id')
+            snapshot_id = snapshot.get('volume_id')
+            sf_name = self.configuration.sf_volume_prefix + cgsnapshot_id
+            sf_group_snap = self._get_group_snapshot_by_name(sf_name)
+            return self._create_clone_from_sf_snapshot(snapshot_id,
+                                                       cgsnapshot_id,
+                                                       sf_group_snap,
+                                                       volume)
+
         (_data, _sfaccount, model) = self._do_clone_volume(
             snapshot['id'],
             volume)
