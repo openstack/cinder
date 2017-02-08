@@ -34,8 +34,8 @@ from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit import test_volume
 from cinder.tests.unit import utils
+from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
 from cinder.volume.flows.manager import create_volume
@@ -1609,7 +1609,7 @@ class RBDTestCase(test.TestCase):
                                           'mirror_image_promote', False)
 
 
-class ManagedRBDTestCase(test_volume.DriverTestCase):
+class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"
 
     def setUp(self):
