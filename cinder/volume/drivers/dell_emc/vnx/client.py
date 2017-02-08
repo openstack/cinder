@@ -250,8 +250,12 @@ class Client(object):
             try:
                 src_lun.cancel_migrate()
             except storops_ex.VNXLunNotMigratingError:
-                LOG.info(_LI('The LUN is not migrating, this message can be'
-                             ' safely ignored'))
+                LOG.info(_LI('The LUN is not migrating or completed, '
+                             'this message can be safely ignored'))
+            except (storops_ex.VNXLunSyncCompletedError,
+                    storops_ex.VNXMigrationError):
+                # Wait until session finishes
+                self.verify_migration(src_id, session.dest_lu_id, None)
 
     def create_snapshot(self, lun_id, snap_name, keep_for=None):
         """Creates a snapshot."""
