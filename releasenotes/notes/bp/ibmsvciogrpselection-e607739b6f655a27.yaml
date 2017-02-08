@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    In IBM Storwize_SVC driver, user could specify only one IO
+    group per backend definition. The user now may specify a comma separated
+    list of IO groups, and at the time of creating the volume, the driver will
+    select an IO group which has the least number of volumes associated with
+    it. The change is backward compatible, meaning single value is still
+    supported.
