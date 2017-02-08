@@ -164,6 +164,10 @@ class TestClient(test.TestCase):
         client.cleanup_migration(1, 2)
 
     @res_mock.patch_client
+    def test_cleanup_migration_cancel_failed(self, client, mocked):
+        client.cleanup_migration(1, 2)
+
+    @res_mock.patch_client
     def test_get_lun_by_name(self, client, mocked):
         lun = client.get_lun(name='lun_name_test_get_lun_by_name')
         self.assertEqual(888, lun.lun_id)
