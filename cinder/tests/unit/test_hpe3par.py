@@ -1750,6 +1750,83 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_get_cpg_with_volume_return_usercpg(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY,
+                                              'userCPG': HPE3PAR_CPG2}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            volume = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                      'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2)}
+            common = self.driver._login()
+            user_cpg = common.get_cpg(volume)
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            self.assertEqual(HPE3PAR_CPG2, user_cpg)
+            expected = [mock.call.getVolume(vol_name)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected)
+
+    def test_get_cpg_with_volume_return_snapcpg(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY,
+                                              'snapCPG': HPE3PAR_CPG2}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            volume = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                      'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2)}
+            common = self.driver._login()
+            snap_cpg = common.get_cpg(volume, allowSnap=True)
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            self.assertEqual(HPE3PAR_CPG2, snap_cpg)
+            expected = [mock.call.getVolume(vol_name)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected)
+
+    def test_get_cpg_with_volume_return_no_cpg(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            volume = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                      'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2)}
+            common = self.driver._login()
+            cpg_name = common.get_cpg(volume)
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            self.assertEqual(HPE3PAR_CPG2, cpg_name)
+            expected = [mock.call.getVolume(vol_name)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected)
+
     def test_create_cloned_volume(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -1769,7 +1846,7 @@ class HPE3PARBaseDriver(object):
                       'source_volid': HPE3PARBaseDriver.VOLUME_ID}
             src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
                         'name': HPE3PARBaseDriver.VOLUME_NAME,
-                        'size': 2}
+                        'size': 2, 'status': 'available'}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
@@ -1788,6 +1865,153 @@ class HPE3PARBaseDriver(object):
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
                      'tdvv': False, 'online': True})]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    def test_backup_iscsi_volume_with_chap_disabled(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        mock_client.copyVolume.return_value = {'taskid': 1}
+        mock_client.getVolumeMetaData.side_effect = hpeexceptions.HTTPNotFound
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'id': HPE3PARBaseDriver.CLONE_ID,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2)}
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME,
+                        'size': 2, 'status': 'backing-up'}
+            model_update = self.driver.create_cloned_volume(volume, src_vref)
+            self.assertIsNone(model_update)
+
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            # snapshot name is random
+            snap_name = mock.ANY
+            optional = mock.ANY
+
+            expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
+                mock.call.copyVolume(
+                    snap_name,
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    HPE3PAR_CPG2,
+                    {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
+                     'tdvv': False, 'online': True})]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    def test_create_clone_iscsi_volume_with_chap_disabled(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hpe3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        mock_client.copyVolume.return_value = {'taskid': 1}
+        mock_client.getVolumeMetaData.side_effect = hpeexceptions.HTTPNotFound
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'id': HPE3PARBaseDriver.CLONE_ID,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2)}
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME,
+                        'size': 2, 'status': 'available'}
+            model_update = self.driver.create_cloned_volume(volume, src_vref)
+            self.assertIsNone(model_update)
+
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            # snapshot name is random
+            snap_name = mock.ANY
+            optional = mock.ANY
+
+            expected = [
+                mock.call.getVolumeMetaData(vol_name,
+                                            'HPQ-cinder-CHAP-name'),
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
+                mock.call.copyVolume(
+                    snap_name,
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    HPE3PAR_CPG2,
+                    {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
+                     'tdvv': False, 'online': True})]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    def test_backup_iscsi_volume_with_chap_enabled(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hpe3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        task_id = 1
+        mock_client.copyVolume.return_value = {'taskid': task_id}
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-key'}
+        mock_client.getTask.return_value = {'status': 1}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'id': HPE3PARBaseDriver.CLONE_ID,
+                      'display_name': 'Foo Volume',
+                      'size': 5,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2),
+                      'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME,
+                        'size': 5, 'status': 'backing-up'}
+            model_update = self.driver.create_cloned_volume(volume, src_vref)
+            self.assertIsNone(model_update)
+
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            src_vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = {'priority': 1}
+            comment = mock.ANY
+
+            expected = [
+                mock.call.getVolumeMetaData(src_vol_name,
+                                            'HPQ-cinder-CHAP-name'),
+                mock.call.createVolume(vol_name, 'fakepool',
+                                       5120, comment),
+                mock.call.copyVolume(
+                    src_vol_name,
+                    vol_name,
+                    None,
+                    optional=optional),
+                mock.call.getTask(task_id),
+            ]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -1815,7 +2039,7 @@ class HPE3PARBaseDriver(object):
                       'source_volid': HPE3PARBaseDriver.VOLUME_ID}
             src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
                         'name': HPE3PARBaseDriver.VOLUME_NAME,
-                        'size': 2}
+                        'size': 2, 'status': 'available'}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
@@ -1853,7 +2077,7 @@ class HPE3PARBaseDriver(object):
 
             src_vref = {'id': HPE3PARBaseDriver.CLONE_ID,
                         'name': HPE3PARBaseDriver.VOLUME_NAME,
-                        'size': 2}
+                        'size': 2, 'status': 'available'}
             volume = self.volume_qos.copy()
             host = "TEST_HOST"
             pool = "TEST_POOL"
