@@ -112,13 +112,21 @@ class ServiceController(wsgi.Controller):
 
         return True
 
+    def _volume_api_proxy(self, fun, *args):
+        try:
+            return fun(*args)
+        except exception.ServiceNotFound as ex:
+            raise exception.InvalidInput(ex.msg)
+
     def _freeze(self, context, req, body):
         cluster_name, host = common.get_cluster_host(req, body, '3.26')
-        return self.volume_api.freeze_host(context, host, cluster_name)
+        return self._volume_api_proxy(self.volume_api.freeze_host, context,
+                                      host, cluster_name)
 
     def _thaw(self, context, req, body):
         cluster_name, host = common.get_cluster_host(req, body, '3.26')
-        return self.volume_api.thaw_host(context, host, cluster_name)
+        return self._volume_api_proxy(self.volume_api.thaw_host, context,
+                                      host, cluster_name)
 
     def _failover(self, context, req, body, clustered):
         # We set version to None to always get the cluster name from the body,
@@ -126,8 +134,8 @@ class ServiceController(wsgi.Controller):
         # it if the requested version is 3.26 or higher.
         version = '3.26' if clustered else False
         cluster_name, host = common.get_cluster_host(req, body, version)
-        self.volume_api.failover(context, host, cluster_name,
-                                 body.get('backend_id'))
+        self._volume_api_proxy(self.volume_api.failover, context, host,
+                               cluster_name, body.get('backend_id'))
         return webob.Response(status_int=http_client.ACCEPTED)
 
     def update(self, req, id, body):

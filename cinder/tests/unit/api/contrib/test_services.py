@@ -795,6 +795,40 @@ class ServicesTest(test.TestCase):
                                               mock.sentinel.backend_id)
         self.assertEqual(202, res.status_code)
 
+    @ddt.data(('failover_host', {'host': mock.sentinel.host,
+                                 'backend_id': mock.sentinel.backend_id}),
+              ('freeze', {'host': mock.sentinel.host}),
+              ('thaw', {'host': mock.sentinel.host}))
+    @ddt.unpack
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    def test_services_action_host_not_found(self, method, body,
+                                            mock_get_all_services):
+        url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
+        req = fakes.HTTPRequest.blank(url)
+        mock_get_all_services.return_value = []
+        msg = 'No service found with host=%s' % mock.sentinel.host
+        result = self.assertRaises(exception.InvalidInput,
+                                   self.controller.update,
+                                   req, method, body)
+        self.assertEqual(msg, result.msg)
+
+    @ddt.data(('failover', {'cluster': mock.sentinel.cluster,
+                            'backend_id': mock.sentinel.backend_id}),
+              ('freeze', {'cluster': mock.sentinel.cluster}),
+              ('thaw', {'cluster': mock.sentinel.cluster}))
+    @ddt.unpack
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    def test_services_action_cluster_not_found(self, method, body,
+                                               mock_get_all_services):
+        url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
+        req = fakes.HTTPRequest.blank(url, version='3.26')
+        mock_get_all_services.return_value = []
+        msg = 'No service found with cluster=%s' % mock.sentinel.cluster
+        result = self.assertRaises(exception.InvalidInput,
+                                   self.controller.update, req,
+                                   method, body)
+        self.assertEqual(msg, result.msg)
+
     def test_services_freeze(self):
         url = '/v2/%s/os-services/freeze' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
