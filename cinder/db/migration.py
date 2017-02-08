@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 
 
-INIT_VERSION = 60
+INIT_VERSION = 72
 
 _IMPL = None
 _LOCK = threading.Lock()
