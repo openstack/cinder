@@ -16,6 +16,7 @@
 from __future__ import division
 
 import contextlib
+from distutils import version
 import functools
 from oslo_log import log as logging
 from oslo_utils import fnmatch
@@ -284,3 +285,7 @@ def match_any(full, patterns):
         filter(lambda p: not any(fnmatch.fnmatchcase(x, p) for x in full),
                patterns))
     return matched, unmatched, unmatched_patterns
+
+
+def is_before_4_1(ver):
+    return version.LooseVersion(ver) < version.LooseVersion('4.1')
