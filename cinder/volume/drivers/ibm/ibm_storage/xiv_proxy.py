@@ -1645,12 +1645,13 @@ class XIVProxy(proxy.IBMStorageProxy):
         if isinstance(group, objects.Group):
             volume_type_ids = group.volume_type_ids
         elif isinstance(group, objects.ConsistencyGroup):
-            volume_type_ids = [group.volume_type_id]
+            volume_type_ids = [filter(None, group.volume_type_id.split(","))]
         else:
             msg = (_("Consistency group %(group)s has no volume_type_ids") %
                    {'group': cgname})
             LOG.error(msg)
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
+        LOG.debug("volume_type_ids: %s", volume_type_ids)
         for volume_type_id in volume_type_ids:
             specs = self._get_extra_specs(volume_type_id)
             replication_info = self._get_replication_info(specs)
