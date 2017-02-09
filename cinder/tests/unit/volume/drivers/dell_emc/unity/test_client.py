@@ -202,6 +202,7 @@ class MockResourceList(object):
 class MockSystem(object):
     def __init__(self):
         self.serial_number = 'SYSTEM_SERIAL'
+        self.system_version = '4.1.0'
 
     @staticmethod
     def get_lun(_id=None, name=None):

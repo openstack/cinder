@@ -74,6 +74,12 @@ class CommonAdapter(object):
         self.array_cert_verify = False
         self.array_ca_cert_path = self.config.driver_ssl_cert_path
 
+        sys_version = self.client.system.system_version
+        if utils.is_before_4_1(sys_version):
+            raise exception.VolumeBackendAPIException(
+                data=_('Unity driver does not support array OE version: %s. '
+                       'Upgrade to 4.1 or later.') % sys_version)
+
         self.storage_pools_map = self.get_managed_pools()
 
         self.allowed_ports = self.validate_ports(self.config.unity_io_ports)
