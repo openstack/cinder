@@ -107,23 +107,39 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show, req, snapshot_id)
 
-    def _create_snapshot_with_metadata(self, metadata):
+    def _create_snapshot(self, name=None, metadata=None):
         """Creates test snapshopt with provided metadata"""
         req = fakes.HTTPRequest.blank('/v3/snapshots')
         snap = {"volume_size": 200,
                 "volume_id": fake.VOLUME_ID,
-                "display_name": "Volume Test Name",
+                "display_name": name or "Volume Test Name",
                 "display_description": "Volume Test Desc",
                 "availability_zone": "zone1:host1",
-                "host": "fake-host",
-                "metadata": metadata}
+                "host": "fake-host"}
+        if metadata:
+            snap["metadata"] = metadata
         body = {"snapshot": snap}
         self.controller.create(req, body)
+
+    def test_snapshot_list_with_sort_name(self):
+        self._create_snapshot(name='test1')
+        self._create_snapshot(name='test2')
+
+        req = fakes.HTTPRequest.blank('/v3/snapshots?sort_key=name',
+                                      version='3.29')
+        self.assertRaises(exception.InvalidInput, self.controller.detail, req)
+
+        req = fakes.HTTPRequest.blank('/v3/snapshots?sort_key=name',
+                                      version='3.30')
+        res_dict = self.controller.detail(req)
+        self.assertEqual(2, len(res_dict['snapshots']))
+        self.assertEqual('test2', res_dict['snapshots'][0]['name'])
+        self.assertEqual('test1', res_dict['snapshots'][1]['name'])
 
     def test_snapshot_list_with_one_metadata_in_filter(self):
         # Create snapshot with metadata key1: value1
         metadata = {"key1": "val1"}
-        self._create_snapshot_with_metadata(metadata)
+        self._create_snapshot(metadata=metadata)
 
         # Create request with metadata filter key1: value1
         req = create_snapshot_query_with_metadata('{"key1":"val1"}', '3.22')
@@ -150,7 +166,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_list_with_multiple_metadata_in_filter(self):
         # Create snapshot with metadata key1: value1, key11: value11
         metadata = {"key1": "val1", "key11": "val11"}
-        self._create_snapshot_with_metadata(metadata)
+        self._create_snapshot(metadata=metadata)
 
         # Create request with metadata filter key1: value1, key11: value11
         req = create_snapshot_query_with_metadata(
@@ -182,7 +198,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_list_with_metadata_unsupported_microversion(self):
         # Create snapshot with metadata key1: value1
         metadata = {"key1": "val1"}
-        self._create_snapshot_with_metadata(metadata)
+        self._create_snapshot(metadata=metadata)
 
         # Create request with metadata filter key2: value2
         req = create_snapshot_query_with_metadata('{"key2":"val2"}', '3.21')
