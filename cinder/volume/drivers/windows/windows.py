@@ -88,7 +88,7 @@ class WindowsDriver(driver.ISCSIDriver):
 
         # Note(lpetrut): the WT_Host CHAPSecret field cannot be accessed
         # for security reasons.
-        auth = volume['provider_auth']
+        auth = volume.provider_auth
         if auth:
             (auth_method, auth_username, auth_secret) = auth.split()
             properties['auth_method'] = auth_method
@@ -98,14 +98,14 @@ class WindowsDriver(driver.ISCSIDriver):
         properties['target_discovered'] = False
         properties['target_portal'] = available_portal_location
         properties['target_lun'] = 0
-        properties['volume_id'] = volume['id']
+        properties['volume_id'] = volume.id
 
         return properties
 
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
         initiator_name = connector['initiator']
-        target_name = volume['provider_location']
+        target_name = volume.provider_location
 
         self._tgt_utils.associate_initiator_with_iscsi_target(initiator_name,
                                                               target_name)
@@ -124,14 +124,14 @@ class WindowsDriver(driver.ISCSIDriver):
         longer access it.
         """
         initiator_name = connector['initiator']
-        target_name = volume['provider_location']
+        target_name = volume.provider_location
         self._tgt_utils.deassociate_initiator(initiator_name, target_name)
 
     def create_volume(self, volume):
         """Driver entry point for creating a new volume."""
         vhd_path = self.local_path(volume)
-        vol_name = volume['name']
-        vol_size_mb = volume['size'] * 1024
+        vol_name = volume.name
+        vol_size_mb = volume.size * 1024
 
         self._tgt_utils.create_wt_disk(vhd_path, vol_name,
                                        size_mb=vol_size_mb)
@@ -141,12 +141,12 @@ class WindowsDriver(driver.ISCSIDriver):
         if not disk_format:
             disk_format = self._tgt_utils.get_supported_disk_format()
 
-        disk_fname = "%s.%s" % (volume['name'], disk_format)
+        disk_fname = "%s.%s" % (volume.name, disk_format)
         return os.path.join(base_vhd_folder, disk_fname)
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
-        vol_name = volume['name']
+        vol_name = volume.name
         vhd_path = self.local_path(volume)
 
         self._tgt_utils.remove_wt_disk(vol_name)
@@ -155,15 +155,15 @@ class WindowsDriver(driver.ISCSIDriver):
     def create_snapshot(self, snapshot):
         """Driver entry point for creating a snapshot."""
         # Getting WT_Snapshot class
-        vol_name = snapshot['volume_name']
-        snapshot_name = snapshot['name']
+        vol_name = snapshot.volume_name
+        snapshot_name = snapshot.name
 
         self._tgt_utils.create_snapshot(vol_name, snapshot_name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Driver entry point for exporting snapshots as volumes."""
-        snapshot_name = snapshot['name']
-        vol_name = volume['name']
+        snapshot_name = snapshot.name
+        vol_name = volume.name
         vhd_path = self.local_path(volume)
 
         self._tgt_utils.export_snapshot(snapshot_name, vhd_path)
@@ -171,7 +171,7 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        snapshot_name = snapshot['name']
+        snapshot_name = snapshot.name
         self._tgt_utils.delete_snapshot(snapshot_name)
 
     def ensure_export(self, context, volume):
@@ -180,7 +180,7 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def _get_target_name(self, volume):
         return "%s%s" % (self.configuration.iscsi_target_prefix,
-                         volume['name'])
+                         volume.name)
 
     def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
@@ -206,7 +206,7 @@ class WindowsDriver(driver.ISCSIDriver):
                                                      chap_password))
 
         # This operation is idempotent
-        self._tgt_utils.add_disk_to_target(volume['name'], target_name)
+        self._tgt_utils.add_disk_to_target(volume.name, target_name)
 
         return updates
 
@@ -225,15 +225,15 @@ class WindowsDriver(driver.ISCSIDriver):
                                      self.configuration.volume_dd_blocksize)
             # The vhd must be disabled and deleted before being replaced with
             # the desired image.
-            self._tgt_utils.change_wt_disk_status(volume['name'],
+            self._tgt_utils.change_wt_disk_status(volume.name,
                                                   enabled=False)
             os.unlink(volume_path)
             self._vhdutils.convert_vhd(tmp, volume_path,
                                        vhd_type)
             self._vhdutils.resize_vhd(volume_path,
-                                      volume['size'] << 30,
+                                      volume.size << 30,
                                       is_file_max_size=False)
-            self._tgt_utils.change_wt_disk_status(volume['name'],
+            self._tgt_utils.change_wt_disk_status(volume.name,
                                                   enabled=True)
 
     @contextlib.contextmanager
@@ -253,7 +253,7 @@ class WindowsDriver(driver.ISCSIDriver):
                                      str(image_meta['id']) + '.' + disk_format)
 
         try:
-            with self._temporary_snapshot(volume['name']) as tmp_snap_name:
+            with self._temporary_snapshot(volume.name) as tmp_snap_name:
                 # qemu-img cannot access VSS snapshots, for which reason it
                 # must be exported first.
                 self._tgt_utils.export_snapshot(tmp_snap_name, temp_vhd_path)
@@ -264,9 +264,9 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        src_vol_name = src_vref['name']
-        vol_name = volume['name']
-        vol_size = volume['size']
+        src_vol_name = src_vref.name
+        vol_name = volume.name
+        vol_size = volume.size
 
         new_vhd_path = self.local_path(volume)
 
@@ -306,9 +306,9 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an Existing Volume."""
-        old_size = volume['size']
+        old_size = volume.size
         LOG.debug("Extend volume from %(old_size)s GB to %(new_size)s GB.",
                   {'old_size': old_size, 'new_size': new_size})
         additional_size_mb = (new_size - old_size) * 1024
 
-        self._tgt_utils.extend_wt_disk(volume['name'], additional_size_mb)
+        self._tgt_utils.extend_wt_disk(volume.name, additional_size_mb)

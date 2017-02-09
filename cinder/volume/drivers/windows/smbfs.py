@@ -85,7 +85,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     def _do_create_volume(self, volume):
         volume_path = self.local_path(volume)
         volume_format = self.get_volume_format(volume)
-        volume_size_bytes = volume['size'] * units.Gi
+        volume_size_bytes = volume.size * units.Gi
 
         if os.path.exists(volume_path):
             err_msg = _('File already exists at: %s') % volume_path
@@ -155,7 +155,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
 
     def _do_create_snapshot(self, snapshot, backing_file, new_snap_path):
         backing_file_full_path = os.path.join(
-            self._local_volume_dir(snapshot['volume']),
+            self._local_volume_dir(snapshot.volume),
             backing_file)
         self._vhdutils.create_differencing_vhd(new_snap_path,
                                                backing_file_full_path)
@@ -181,7 +181,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         try:
             if backing_file or root_file_fmt == self._DISK_FORMAT_VHDX:
                 temp_file_name = '%s.temp_image.%s.%s' % (
-                    volume['id'],
+                    volume.id,
                     image_meta['id'],
                     self._DISK_FORMAT_VHD)
                 temp_path = os.path.join(self._local_volume_dir(volume),
@@ -213,7 +213,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
             self.configuration.volume_dd_blocksize)
 
         self._vhdutils.resize_vhd(self.local_path(volume),
-                                  volume['size'] * units.Gi,
+                                  volume.size * units.Gi,
                                   is_file_max_size=False)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
@@ -221,15 +221,15 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
                   "volume_size: %(size)s",
-                  {'snap': snapshot['id'],
-                   'vol': volume['id'],
-                   'size': snapshot['volume_size']})
+                  {'snap': snapshot.id,
+                   'vol': volume.id,
+                   'size': snapshot.volume_size})
 
-        info_path = self._local_path_volume_info(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        vol_dir = self._local_volume_dir(snapshot['volume'])
+        vol_dir = self._local_volume_dir(snapshot.volume)
 
-        forward_file = snap_info[snapshot['id']]
+        forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_dir, forward_file)
 
         # Find the file which backs this file, which represents the point
