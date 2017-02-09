@@ -134,10 +134,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         1.4.0 - Removed deprecated options eqlx_cli_timeout, eqlx_use_chap,
                 eqlx_chap_login, and eqlx_chap_password.
         1.4.1 - Rebranded driver to Dell EMC.
+        1.4.2 - Enable report discard support.
 
     """
 
-    VERSION = "1.4.1"
+    VERSION = "1.4.2"
 
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Dell_Storage_CI"
@@ -540,6 +541,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                             self.configuration.chap_username])
             self._eql_execute(*cmd)
             iscsi_properties = self._get_iscsi_properties(volume)
+            iscsi_properties['discard'] = True
             return {
                 'driver_volume_type': 'iscsi',
                 'data': iscsi_properties
