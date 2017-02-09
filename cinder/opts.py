@@ -63,8 +63,6 @@ from cinder.volume.drivers import block_device as \
     cinder_volume_drivers_blockdevice
 from cinder.volume.drivers import blockbridge as \
     cinder_volume_drivers_blockbridge
-from cinder.volume.drivers.cloudbyte import options as \
-    cinder_volume_drivers_cloudbyte_options
 from cinder.volume.drivers import coho as cinder_volume_drivers_coho
 from cinder.volume.drivers.coprhd import common as \
     cinder_volume_drivers_coprhd_common
@@ -260,14 +258,6 @@ def list_opts():
                 cinder_volume_driver.iser_opts,
                 cinder_volume_drivers_blockdevice.volume_opts,
                 cinder_volume_drivers_blockbridge.blockbridge_opts,
-                cinder_volume_drivers_cloudbyte_options.
-                cloudbyte_add_qosgroup_opts,
-                cinder_volume_drivers_cloudbyte_options.
-                cloudbyte_create_volume_opts,
-                cinder_volume_drivers_cloudbyte_options.
-                cloudbyte_connection_opts,
-                cinder_volume_drivers_cloudbyte_options.
-                cloudbyte_update_volume_opts,
                 cinder_volume_drivers_coho.coho_opts,
                 cinder_volume_drivers_coprhd_common.volume_opts,
                 cinder_volume_drivers_coprhd_scaleio.scaleio_opts,
