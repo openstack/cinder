@@ -215,13 +215,6 @@ class TestCinderManageCmd(test.TestCase):
             db_cmds.version()
             self.assertEqual(1, db_version.call_count)
 
-    @mock.patch('oslo_db.sqlalchemy.migration.db_version')
-    def test_db_commands_downgrade_fails(self, db_version):
-        db_version.return_value = 2
-        db_cmds = cinder_manage.DbCommands()
-        with mock.patch('sys.stdout', new=six.StringIO()):
-            self.assertRaises(exception.InvalidInput, db_cmds.sync, 1)
-
     @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
                 (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))
     def test_db_commands_online_data_migrations(self):
