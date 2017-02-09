@@ -6946,7 +6946,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
         self.assertEqual(sclivevol, ret)
-        # Make sure sync flipped and that we set HighAvailablity.
+        # Make sure sync flipped and that we set HighAvailability.
         expected = {'SyncMode': 'HighAvailability',
                     'SwapRolesAutomaticallyEnabled': False,
                     'SecondaryStorageCenter': 102,
