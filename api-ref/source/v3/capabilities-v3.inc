@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================================================
 Capabilities for storage back ends (capabilities)
 =================================================
 
@@ -8,7 +7,7 @@ Shows capabilities for a storage back end.
 
 
 Show all back-end capabilities
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/capabilities/{hostname}
 

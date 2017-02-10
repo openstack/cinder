@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-================================
 Backup actions (backups, action)
 ================================
 
@@ -8,7 +7,7 @@ Force-deletes a backup.
 
 
 Force-delete a backup
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/backups/{backup_id}/action
 

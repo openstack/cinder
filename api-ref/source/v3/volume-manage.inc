@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==========================================
 Volume manage extension (os-volume-manage)
 ==========================================
 
@@ -9,7 +8,7 @@ storage.
 
 
 Manage an existing volume
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/os-volume-manage
 

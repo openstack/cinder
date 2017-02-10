@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================
 Volumes (volumes)
 =================
 
@@ -45,7 +44,7 @@ status values are:
 
 
 List accessbile volumes with details
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes/detail
 
@@ -113,7 +112,7 @@ Response Example
 
 
 Create a volume
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes
 
@@ -213,7 +212,7 @@ Response Parameters
 
 
 List accessible volumes
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes
 
@@ -257,7 +256,7 @@ Response Example
 
 
 Show a volume's details
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes/{volume_id}
 
@@ -327,7 +326,7 @@ Response Example
 
 
 Update a volume
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}
 
@@ -398,7 +397,7 @@ Response Example
 
 
 Delete a volume
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/volumes/{volume_id}
 
@@ -446,7 +445,7 @@ Request
 
 
 Create metadata for volume
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/metadata
 
@@ -490,7 +489,7 @@ Response Example
 
 
 Show a volume's metadata
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes/{volume_id}/metadata
 
@@ -529,7 +528,7 @@ Response Example
 
 
 Update a volume's metadata
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}/metadata
 
@@ -578,7 +577,7 @@ Response Example
 
 
 Get volumes summary
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes/summary
 

@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===================================================
 Quality of service (QoS) specifications (qos-specs)
 ===================================================
 
@@ -12,7 +11,7 @@ specifications.
 
 
 Disassociate a QoS specification from all associations
-======================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/disassociate_all
 
@@ -31,7 +30,7 @@ Request
 
 
 Unset keys in a QoS specification
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/qos-specs/{qos_id}/delete_keys
 
@@ -67,7 +66,7 @@ Response Example
 
 
 Get all associations for a QoS specification
-============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/associations
 
@@ -95,7 +94,7 @@ Response Example
 
 
 Associate QoS specification with a volume type
-==============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/associate
 
@@ -114,7 +113,7 @@ Request
 
 
 Disassociate QoS specification from a volume type
-=================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}/disassociate
 
@@ -133,7 +132,7 @@ Request
 
 
 Show a QoS specification details
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs/{qos_id}
 
@@ -174,7 +173,7 @@ Response Example
 
 
 Set keys in a QoS specification
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/qos-specs/{qos_id}
 
@@ -210,7 +209,7 @@ Response Example
 
 
 Delete a QoS specification
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/qos-specs/{qos_id}
 
@@ -230,7 +229,7 @@ Request
 
 
 Create a QoS specification
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/qos-specs
 
@@ -273,7 +272,7 @@ Response Parameters
 
 
 List QoS Specifications
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/qos-specs
 

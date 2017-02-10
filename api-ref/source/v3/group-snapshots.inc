@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============
 Group snapshots
 ===============
 
@@ -9,7 +8,7 @@ deletes group snapshots.
 
 
 Delete group snapshot
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v3/{project_id}/group_snapshots/{group_snapshot_id}
 
@@ -29,7 +28,7 @@ Request
 
 
 Show group snapshot details
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_snapshots/{group_snapshot_id}
 
@@ -69,7 +68,7 @@ Response Example
 
 
 List group snapshots with details
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_snapshots/detail
 
@@ -106,7 +105,7 @@ Response Example
    :language: javascript
 
 List group snapshots
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/group_snapshots
 
@@ -142,7 +141,7 @@ Response Example
 
 
 Create group snapshot
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/group_snapshots
 

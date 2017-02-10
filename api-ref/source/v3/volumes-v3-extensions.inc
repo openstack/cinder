@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===========================
 API extensions (extensions)
 ===========================
 
@@ -8,7 +7,7 @@ API extensions (extensions)
 
 
 List Known API extensions
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/extensions
 

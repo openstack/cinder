@@ -5,7 +5,7 @@ Block Storage API
 Contents:
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
     v1/index
     v2/index

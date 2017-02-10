@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============
 API versions
 ============
 
@@ -8,7 +7,7 @@ API versions
 
 
 List Known API versions
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /
 
@@ -33,7 +32,7 @@ Response Example
 
 
 Show API v3 details
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3
 

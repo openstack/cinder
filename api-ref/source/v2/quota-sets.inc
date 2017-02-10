@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-====================================
 Quota sets extension (os-quota-sets)
 ====================================
 
@@ -10,7 +9,7 @@ Shows, updates, and deletes quotas for a tenant.
 
 
 Show quotas for user
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
@@ -60,7 +59,7 @@ Response Example
 
 
 Update quotas for user
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
@@ -131,7 +130,7 @@ Response Example
    :language: javascript
 
 Delete quotas for user
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
@@ -159,7 +158,7 @@ Response Example
 
 
 Show quotas
-===========
+~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
@@ -210,7 +209,7 @@ Response Example
    :language: javascript
 
 Update quotas
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
@@ -281,7 +280,7 @@ Response Example
    :language: javascript
 
 Delete quotas
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}
 
@@ -307,7 +306,7 @@ Response Example
    :language: javascript
 
 Show quota details for user
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}/detail/{user_id}
 
@@ -358,7 +357,7 @@ Response Example
 
 
 Get default quotas
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/os-quota-sets/defaults
 

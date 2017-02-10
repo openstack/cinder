@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-======================
 Back-end storage pools
 ======================
 
@@ -9,7 +8,7 @@ to the scheduler service.
 
 
 List all back-end storage pools
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/scheduler-stats/get_pools
 

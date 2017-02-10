@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=======
 Volumes
 =======
 
@@ -11,7 +10,7 @@ values are null.
 
 
 List volumes, with details (v1)
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/volumes/detail
 
@@ -66,7 +65,7 @@ Response Example
 
 
 Create volume (v1)
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v1/{tenant_id}/volumes
 
@@ -123,7 +122,7 @@ Response Parameters
 
 
 List volumes (v1)
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/volumes
 
@@ -161,7 +160,7 @@ Response Example
 
 
 Show volume details (v1)
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v1/{tenant_id}/volumes/{volume_id}
 
@@ -216,7 +215,7 @@ Response Example
    :language: javascript
 
 Delete volume (v1)
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v1/{tenant_id}/volumes/{volume_id}
 

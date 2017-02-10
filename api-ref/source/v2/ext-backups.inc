@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================
 Backups (backups)
 =================
 
@@ -39,7 +38,7 @@ in the ``fail_reason`` field for the backup.
 
 
 List backups with details
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/backups/detail
 
@@ -92,7 +91,7 @@ Response Example
 
 
 Show backup details
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/backups/{backup_id}
 
@@ -142,7 +141,7 @@ Response Example
 
 
 Delete backup
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/{tenant_id}/backups/{backup_id}
 
@@ -161,7 +160,7 @@ Request
 
 
 Restore backup
-==============
+~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/backups/{backup_id}/restore
 
@@ -200,7 +199,7 @@ Response Parameters
    - volume_id: volume_id
 
 Create backup
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/backups
 
@@ -239,7 +238,7 @@ Response Parameters
    - name: name
 
 List backups
-============
+~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/backups
 

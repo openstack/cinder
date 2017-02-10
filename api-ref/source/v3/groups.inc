@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=====================
 Generic volume groups
 =====================
 
@@ -19,7 +18,7 @@ groups can be extended to support other features in the future.
 
 
 List groups
-===========
+~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/groups
 
@@ -58,7 +57,7 @@ Response Example
 
 
 Create group
-============
+~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/groups
 
@@ -88,7 +87,7 @@ Request Example
 
 
 Show group details
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/groups/{group_id}
 
@@ -127,7 +126,7 @@ Response Example
 
 
 Create group from source
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/groups/action
 
@@ -156,7 +155,7 @@ Request Example
 
 
 Delete group
-============
+~~~~~~~~~~~~
 
 .. rest_method::  POST /v3/{project_id}/groups/{group_id}/action
 
@@ -183,7 +182,7 @@ Request Example
 
 
 List groups with details
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/groups/detail
 
@@ -228,7 +227,7 @@ Response Example
 
 
 Update group
-============
+~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/groups/{group_id}
 
