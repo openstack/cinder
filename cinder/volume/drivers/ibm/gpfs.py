@@ -972,44 +972,6 @@ class GPFSDriver(driver.CloneableImageVD,
                                   image_meta,
                                   self.local_path(volume))
 
-    def _create_backup_source(self, volume, backup):
-        src_path = self._get_volume_path(volume)
-        dest_path = '%s_%s' % (src_path, backup['id'])
-        self._create_gpfs_clone(src_path, dest_path)
-        self._gpfs_redirect(src_path)
-        return dest_path
-
-    def _do_backup(self, backup_path, backup, backup_service):
-        with utils.temporary_chown(backup_path):
-            with open(backup_path) as backup_file:
-                backup_service.backup(backup, backup_file)
-
-    def backup_volume(self, context, backup, backup_service):
-        """Create a new backup from an existing volume."""
-        volume = self.db.volume_get(context, backup['volume_id'])
-        volume_path = self.local_path(volume)
-        backup_path = '%s_%s' % (volume_path, backup['id'])
-        # create a snapshot that will be used as the backup source
-        self._create_backup_source(volume, backup)
-        try:
-            LOG.debug('Begin backup of volume %s.', volume['name'])
-            self._do_backup(backup_path, backup, backup_service)
-        finally:
-            # clean up snapshot file.  If it is a clone parent, delete
-            # will fail silently, but be cleaned up when volume is
-            # eventually removed.  This ensures we do not accumulate
-            # more than gpfs_max_clone_depth snap files.
-            self._delete_gpfs_file(backup_path)
-
-    def restore_backup(self, context, backup, volume, backup_service):
-        """Restore an existing backup to a new or existing volume."""
-        LOG.debug('Begin restore of backup %s.', backup['id'])
-
-        volume_path = self.local_path(volume)
-        with utils.temporary_chown(volume_path):
-            with open(volume_path, 'wb') as volume_file:
-                backup_service.restore(backup, volume['id'], volume_file)
-
     def _migrate_volume(self, volume, host):
         """Migrate vol if source and dest are managed by same GPFS cluster."""
         LOG.debug('Migrate volume request %(vol)s to %(host)s.',
@@ -1531,21 +1493,3 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
         volume['provider_location'] = self._find_share(volume['size'])
         self._resize_volume_file(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
-
-    def backup_volume(self, context, backup, backup_service):
-        """Create a new backup from an existing volume."""
-        volume = self.db.volume_get(context, backup['volume_id'])
-        volume_path = self.local_path(volume)
-        backup_path = '%s_%s' % (volume_path, backup['id'])
-        # create a snapshot that will be used as the backup source
-        backup_remote_path = self._create_backup_source(volume, backup)
-        try:
-            LOG.debug('Begin backup of volume %s.', volume['name'])
-            self._do_backup(backup_path, backup, backup_service)
-        finally:
-            # clean up snapshot file.  If it is a clone parent, delete
-            # will fail silently, but be cleaned up when volume is
-            # eventually removed.  This ensures we do not accumulate
-            # more than gpfs_max_clone_depth snap files.
-            backup_mount_path = os.path.dirname(backup_path)
-            self._delete_gpfs_file(backup_remote_path, backup_mount_path)

@@ -1832,20 +1832,6 @@ class VSPHORCMISCSIDriverTest(test.TestCase):
         mock_copy_image.assert_called_with(
             self.ctxt, TEST_VOLUME[0], image_service, image_id)
 
-    @mock.patch.object(vsp_utils, 'execute', side_effect=_execute)
-    def test_restore_backup(self, execute):
-        """Normal case: Restore a backup volume."""
-        backup = 'fake_backup'
-        backup_service = 'fake_backup_service'
-
-        with mock.patch.object(driver.VolumeDriver, 'restore_backup') \
-                as mock_restore_backup:
-            self.driver.restore_backup(
-                self.ctxt, backup, TEST_VOLUME[0], backup_service)
-
-        mock_restore_backup.assert_called_with(
-            self.ctxt, backup, TEST_VOLUME[0], backup_service)
-
     @mock.patch.object(utils, 'execute', side_effect=_cinder_execute)
     def test_update_migrated_volume_success(self, execute):
         """Normal case: 'modify ldev -status discard_zero_page' succeeds."""

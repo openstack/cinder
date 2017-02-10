@@ -20,7 +20,6 @@ import os
 import tempfile
 
 from eventlet import tpool
-from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
@@ -1174,34 +1173,6 @@ class RBDDriver(driver.CloneableImageVD,
             image_utils.upload_volume(context, image_service,
                                       image_meta, tmp_file)
         os.unlink(tmp_file)
-
-    def backup_volume(self, context, backup, backup_service):
-        """Create a new backup from an existing volume."""
-        volume = self.db.volume_get(context, backup.volume_id)
-
-        with RBDVolumeProxy(self, volume.name,
-                            self.configuration.rbd_pool) as rbd_image:
-            rbd_meta = linuxrbd.RBDImageMetadata(
-                rbd_image, self.configuration.rbd_pool,
-                self.configuration.rbd_user,
-                self.configuration.rbd_ceph_conf)
-            rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
-            backup_service.backup(backup, rbd_fd)
-
-        LOG.debug("volume backup complete.")
-
-    def restore_backup(self, context, backup, volume, backup_service):
-        """Restore an existing backup to a new or existing volume."""
-        with RBDVolumeProxy(self, volume.name,
-                            self.configuration.rbd_pool) as rbd_image:
-            rbd_meta = linuxrbd.RBDImageMetadata(
-                rbd_image, self.configuration.rbd_pool,
-                self.configuration.rbd_user,
-                self.configuration.rbd_ceph_conf)
-            rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
-            backup_service.restore(backup, volume.id, rbd_fd)
-
-        LOG.debug("volume restore complete.")
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
