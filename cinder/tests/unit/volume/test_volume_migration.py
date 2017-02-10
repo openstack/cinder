@@ -532,7 +532,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                         retyping=False,
                                         previous_status='available'):
 
-        initial_status = retyping and 'retyping' or status
+        initial_status = 'retyping' if retyping else status
         old_volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host,
                                                status=initial_status,
