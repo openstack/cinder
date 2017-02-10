@@ -11,12 +11,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-"""
-Chance Weigher.  Assign random weights to hosts.
-
-Used to spread volumes randomly across a list of equally suitable hosts.
-"""
-
 
 import random
 
@@ -24,5 +18,9 @@ from cinder.scheduler import weights
 
 
 class ChanceWeigher(weights.BaseHostWeigher):
+    """Chance Weigher assigns random weights to hosts.
+
+    Used to spread volumes randomly across a list of equally suitable hosts.
+    """
     def _weigh_object(self, host_state, weight_properties):
         return random.random()
