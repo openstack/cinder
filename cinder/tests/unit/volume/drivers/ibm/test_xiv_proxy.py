@@ -21,6 +21,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import consistencygroup
 from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.volume.drivers.ibm import fake_pyxcli
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import cryptish
@@ -43,6 +44,7 @@ TEST_VOLUME = {
     'name': 'BLA',
     'id': 23,
     'size': 17,
+    'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
 }
 TEST_CLONED_VOLUME = {
     'name': 'CLONE',
@@ -135,7 +137,8 @@ class XIVProxyTest(unittest.TestCase):
     """Tests the main Proxy driver"""
 
     test_cg = consistencygroup.ConsistencyGroup(
-        context=None, name='WTF32', id='WTF32', volume_type_id='WTF32',
+        context=None, name='WTF32', id=fake.CONSISTENCY_GROUP_ID,
+        volume_type_id=fake.VOLUME_TYPE_ID,
         status=fields.ConsistencyGroupStatus.AVAILABLE)
 
     def setUp(self):
@@ -1122,7 +1125,7 @@ class XIVProxyTest(unittest.TestCase):
         model_update = p.create_consistencygroup({}, self.test_cg)
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
-            cg='cg_WTF32',
+            cg=p._cg_name_from_id(fake.CONSISTENCY_GROUP_ID),
             pool='WTF32')
 
         self.assertEqual('available', model_update['status'])
@@ -1213,7 +1216,7 @@ class XIVProxyTest(unittest.TestCase):
             TEST_CG_SNAPSHOT, [TEST_SNAPSHOT], None, None)
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
-            cg='cg_WTF32',
+            cg=p._cg_name_from_volume(TEST_VOLUME),
             pool='WTF32')
 
         self.assertEqual('available', model_update['status'])
@@ -1240,7 +1243,7 @@ class XIVProxyTest(unittest.TestCase):
             None, None, TEST_CONS_GROUP, [TEST_CLONED_VOLUME])
 
         p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
-            cg='cg_WTF32',
+            cg=p._cg_name_from_volume(TEST_VOLUME),
             pool='WTF32')
 
         self.assertEqual('available', model_update['status'])
