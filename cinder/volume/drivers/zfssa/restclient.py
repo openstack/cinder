@@ -285,11 +285,15 @@ class RestClientURL(object):
         while retry < maxreqretries:
             try:
                 if context:
-                    response = urllib.request.urlopen(req,
+                    # only schemes that can be used will be http or https if it
+                    # is given in the path variable, or the path will begin
+                    # with the rest API location meaning invalid or unwanted
+                    # schemes cannot be used
+                    response = urllib.request.urlopen(req,  # nosec
                                                       timeout=self.timeout,
                                                       context=context)
                 else:
-                    response = urllib.request.urlopen(req,
+                    response = urllib.request.urlopen(req,  # nosec : see above
                                                       timeout=self.timeout)
             except urllib.error.HTTPError as err:
                 if err.code == http_client.NOT_FOUND:

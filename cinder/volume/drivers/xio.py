@@ -247,7 +247,8 @@ class XIOISEDriver(driver.VolumeDriver):
         # Override method to allow GET, PUT, POST, DELETE
         req.get_method = lambda: method
         try:
-            resp = urllib.request.urlopen(req)
+            # IP addr formed from code and cinder.conf so URL can be trusted
+            resp = urllib.request.urlopen(req)  # nosec
         except urllib.error.HTTPError as err:
             # HTTP error. Return HTTP status and content and let caller
             # handle retries.
