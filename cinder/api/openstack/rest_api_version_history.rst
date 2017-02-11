@@ -281,6 +281,6 @@ user documentation.
     ``active_backend_id`` as filters, and returns additional fields for each
     cluster: ``replication_status``, ``frozen``, ``active_backend_id``.
 
-3.27
-----
+3.27 (Maximum in Ocata)
+-----------------------
   Added new attachment API's
