@@ -821,11 +821,12 @@ class SolidFireDriver(san.SanISCSIDriver):
             tvol['provider_location'] = template_vol['provider_location']
             tvol['provider_auth'] = template_vol['provider_auth']
 
-            connector = {'multipath': False}
-            conn = self.initialize_connection(tvol, connector)
-            attach_info = super(SolidFireDriver, self)._connect_device(conn)
-            properties = 'na'
             try:
+                connector = {'multipath': False}
+                conn = self.initialize_connection(tvol, connector)
+                attach_info = super(SolidFireDriver, self)._connect_device(
+                    conn)
+                properties = 'na'
                 image_utils.convert_image(tmp_image,
                                           attach_info['device']['path'],
                                           'raw',
@@ -848,6 +849,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                           vol['volumeID'])
                 self._detach_volume(context, attach_info, tvol, properties)
                 self._issue_api_request('DeleteVolume', params)
+                self._issue_api_request('PurgeDeletedVolume', params)
                 return
 
         self._detach_volume(context, attach_info, tvol, properties)
