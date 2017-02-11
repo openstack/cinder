@@ -433,12 +433,13 @@ class StorwizeSVCManagementSimulator(object):
         return self._print_info_cmd(rows=rows, **kwargs)
 
     def _cmd_lsguicapabilities(self, **kwargs):
-        rows = [None]
+        rows = [None] * 2
         if self._next_cmd_error['lsguicapabilities'] == 'no_compression':
             self._next_cmd_error['lsguicapabilities'] = ''
             rows[0] = ['license_scheme', '0']
         else:
-            rows[0] = ['license_scheme', storwize_const.DEV_MODEL_SVC]
+            rows[0] = ['license_scheme', 'flex']
+        rows[1] = ['product_key', storwize_const.DEV_MODEL_SVC]
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax
@@ -5648,24 +5649,24 @@ class StorwizeHelpersTestCase(test.TestCase):
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsguicapabilities')
     def test_replication_licensed(self, lsguicapabilities):
         lsguicapabilities.side_effect = [
-            {'license_scheme': '0000'},
-            {'license_scheme':
+            {'product_key': '0000'},
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V3500},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V3700},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_SVC},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V7000},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V5000},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V5000_1YR},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_FLASH_V9000},
-            {'license_scheme':
+            {'product_key':
                 storwize_const.DEV_MODEL_FLEX}]
         for i in range(3):
             self.assertFalse(self.storwize_svc_common.replication_licensed())
@@ -6652,6 +6653,19 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(non_replica_vol1)
         self.driver.delete_volume(non_replica_vol2)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    @mock.patch.object(storwize_rep.StorwizeSVCReplicationManager,
+                       '_partnership_validate_create')
+    def test_establish_partnership_with_local_sys(self, partnership_create,
+                                                  get_system_info):
+        get_system_info.side_effect = [{'system_name': 'storwize-svc-sim'},
+                                       {'system_name': 'storwize-svc-sim'}]
+
+        rep_mgr = self.driver._get_replica_mgr()
+        rep_mgr.establish_target_partnership()
+        self.assertFalse(partnership_create.called)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_system_info')
