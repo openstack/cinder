@@ -20,7 +20,7 @@ lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 pvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
 vgs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
 lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
-lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+lvdisplay2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 
 # -LVM related show commands conf var
