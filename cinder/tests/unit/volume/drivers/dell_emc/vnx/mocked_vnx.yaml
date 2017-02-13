@@ -373,6 +373,8 @@ test_cleanup_migration:
   lun: &lun_cancel_migrate
     _methods:
       cancel_migrate:
+    _properties:
+      dest_lu_id: 2
   vnx:
     _methods:
       get_migration_session: *session_cancel
@@ -387,6 +389,20 @@ test_cleanup_migration_not_migrating:
   vnx:
     _methods:
       get_migration_session: *session_cancel
+      get_lun: *lun_cancel_migrate_not_migrating
+
+test_cleanup_migration_cancel_failed:
+  lun: &lun_cancel_migrate_cancle_failed
+    _methods:
+      cancel_migrate:
+        _raise:
+          VNXLunSyncCompletedError: The LUN is not migrating
+    _properties:
+      wwn: test
+  vnx:
+    _methods:
+      get_migration_session:
+        _side_effect: [*session_cancel, *session_verify]
       get_lun: *lun_cancel_migrate_not_migrating
 
 test_get_lun_by_name:

@@ -64,6 +64,10 @@ class VNXLunNotMigratingError(VNXException):
     pass
 
 
+class VNXLunSyncCompletedError(VNXMigrationError):
+    error_code = 0x714a8021
+
+
 class VNXTargetNotReadyError(VNXMigrationError):
     message = 'The destination LUN is not available for migration'
 
