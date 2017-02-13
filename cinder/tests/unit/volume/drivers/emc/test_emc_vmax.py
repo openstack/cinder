@@ -5853,7 +5853,7 @@ class EMCV3DriverTestCase(test.TestCase):
     def set_configuration(self):
         configuration = mock.Mock()
         configuration.cinder_emc_config_file = self.config_file_path
-        configuration.safe_get.return_value = 3
+        configuration.safe_get.return_value = 'EMCV3DriverTests'
         configuration.config_group = 'V3'
 
         self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
@@ -6073,8 +6073,8 @@ class EMCV3DriverTestCase(test.TestCase):
         emc_vmax_utils.EMCVMAXUtils,
         'find_storageSystem',
         return_value={'Name': EMCVMAXCommonData.storage_system_v3})
-    def test_get_volume_stats_v3(
-            self, mock_storage_system):
+    def test_get_volume_stats_v3(self, mock_storage_system):
+        self.driver.common.pool_info['reserved_percentage'] = 5
         self.driver.get_volume_stats(True)
 
     @mock.patch.object(
@@ -8759,3 +8759,91 @@ class EMCVMAXISCSITest(test.TestCase):
                          properties['target_iqns'])
         self.assertEqual(['10.10.0.50:3260', '10.10.0.51:3260'],
                          properties['target_portals'])
+
+
+class VMAXInitiatorCheckFalseTest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(VMAXInitiatorCheckFalseTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'initiatorCheckTest'
+        configuration.config_group = 'initiatorCheckTest'
+
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        instancename = FakeCIMInstanceName()
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         FakeEcomConnection())
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils,
+                         'find_controller_configuration_service',
+                         return_value=None)
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'INITIATOR_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertFalse(maskingViewDict['initiatorCheck'])
+
+
+class VMAXInitiatorCheckTrueTest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(VMAXInitiatorCheckTrueTest, self).setUp()
+
+        self.configuration = mock.Mock(
+            initiator_check='True',
+            config_group='initiatorCheckTest')
+
+        def safe_get(key):
+            return getattr(self.configuration, key)
+        self.configuration.safe_get = safe_get
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        instancename = FakeCIMInstanceName()
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         FakeEcomConnection())
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils,
+                         'find_controller_configuration_service',
+                         return_value=None)
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(
+            configuration=self.configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': EMCVMAXCommonData.storage_system}))
+    def test_populate_masking_dict(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'INITIATOR_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertTrue(maskingViewDict['initiatorCheck'])

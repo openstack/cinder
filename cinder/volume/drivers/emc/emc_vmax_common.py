@@ -77,8 +77,12 @@ SNAPVX_REPLICATION_TYPE = 6
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
                default=CINDER_EMC_CONFIG_FILE,
-               help='use this file for cinder emc plugin '
-                    'config data'), ]
+               help='Use this file for cinder emc plugin '
+                    'config data'),
+    cfg.StrOpt('initiator_check',
+               default=False,
+               help='Use this value to enable '
+                    'the initiator_check')]
 
 CONF.register_opts(emc_opts)
 
@@ -127,6 +131,7 @@ class EMCVMAXCommon(object):
         self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
         self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
         self.version = version
+        self.initiatorCheck = False
         self._gather_info()
 
     def _gather_info(self):
@@ -1355,6 +1360,21 @@ class EMCVMAXCommon(object):
             configGroup)
         return extraSpecs, configurationFile, qosSpecs
 
+    def _get_initiator_check_flag(self):
+        """Reads the configuration for initator_check flag.
+
+        :returns:  flag
+        """
+
+        confString = (
+            self.configuration.safe_get('initiator_check'))
+        retVal = False
+        stringTrue = "True"
+        if confString:
+            if confString.lower() == stringTrue.lower():
+                retVal = True
+        return retVal
+
     def _get_ecom_connection(self):
         """Get the ecom connection.
 
@@ -1925,6 +1945,10 @@ class EMCVMAXCommon(object):
         maskingViewDict['volumeInstance'] = volumeInstance
         maskingViewDict['volumeName'] = volumeName
         maskingViewDict['storageSystemName'] = storageSystemName
+        if self._get_initiator_check_flag():
+            maskingViewDict['initiatorCheck'] = True
+        else:
+            maskingViewDict['initiatorCheck'] = False
 
         return maskingViewDict
 
