@@ -10195,3 +10195,91 @@ class EMCV3ReplicationTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.failover_host,
                           'context', volumes, 'default')
+
+
+class VMAXInitiatorCheckFalseTest(test.TestCase):
+    def setUp(self):
+        self.data = VMAXCommonData()
+
+        super(VMAXInitiatorCheckFalseTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'initiatorCheckTest'
+        configuration.config_group = 'initiatorCheckTest'
+
+        common.VMAXCommon._gather_info = mock.Mock()
+        instancename = FakeCIMInstanceName()
+        self.mock_object(utils.VMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(common.VMAXCommon, '_get_ecom_connection',
+                         FakeEcomConnection())
+        self.mock_object(utils.VMAXUtils,
+                         'find_controller_configuration_service',
+                         return_value=None)
+        driver = iscsi.VMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': VMAXCommonData.storage_system}))
+    def test_populate_masking_dict(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'INITIATOR_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertFalse(maskingViewDict['initiatorCheck'])
+
+
+class VMAXInitiatorCheckTrueTest(test.TestCase):
+    def setUp(self):
+        self.data = VMAXCommonData()
+
+        super(VMAXInitiatorCheckTrueTest, self).setUp()
+
+        self.configuration = mock.Mock(
+            replication_device={},
+            initiator_check='True',
+            config_group='initiatorCheckTest')
+
+        def safe_get(key):
+            return getattr(self.configuration, key)
+        self.configuration.safe_get = safe_get
+        common.VMAXCommon._gather_info = mock.Mock()
+        instancename = FakeCIMInstanceName()
+        self.mock_object(utils.VMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(common.VMAXCommon, '_get_ecom_connection',
+                         FakeEcomConnection())
+        self.mock_object(utils.VMAXUtils,
+                         'find_controller_configuration_service',
+                         return_value=None)
+        driver = iscsi.VMAXISCSIDriver(configuration=self.configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_find_lun',
+        return_value=(
+            {'SystemName': VMAXCommonData.storage_system}))
+    def test_populate_masking_dict(self, mock_find_lun):
+        extraSpecs = {'storagetype:pool': u'SRP_1',
+                      'volume_backend_name': 'INITIATOR_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': True,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:slo': u'Diamond',
+                      'storagetype:workload': u'DSS'}
+        connector = self.data.connector
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertTrue(maskingViewDict['initiatorCheck'])
