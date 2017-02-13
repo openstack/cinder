@@ -21,7 +21,8 @@ This driver requires VPSA with API version 15.07 or higher.
 from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
-from six.moves import http_client
+import requests
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -43,6 +44,10 @@ zadara_opts = [
     cfg.BoolOpt('zadara_vpsa_use_ssl',
                 default=False,
                 help='VPSA - Use SSL connection'),
+    cfg.BoolOpt('zadara_ssl_cert_verify',
+                default=True,
+                help='If set to True the http client will validate the SSL '
+                     'certificate of the VPSA endpoint.'),
     cfg.StrOpt('zadara_user',
                default=None,
                help='VPSA - Username'),
@@ -234,22 +239,35 @@ class ZadaraVPSAConnection(object):
         LOG.debug('Invoking %(cmd)s using %(method)s request.',
                   {'cmd': cmd, 'method': method})
 
-        if self.conf.zadara_vpsa_use_ssl:
-            connection = (http_client.HTTPSConnection(
-                          self.conf.zadara_vpsa_host,
-                          self.conf.zadara_vpsa_port))
+        host = self.conf.zadara_vpsa_host
+        port = int(self.conf.zadara_vpsa_port)
+
+        protocol = "https" if self.conf.zadara_vpsa_use_ssl else "http"
+        if protocol == "https":
+            if not self.conf.zadara_ssl_cert_verify:
+                verify = False
+            else:
+                cert = ((self.conf.driver_ssl_cert_path) or None)
+                verify = cert if cert else True
         else:
-            connection = http_client.HTTPConnection(self.conf.zadara_vpsa_host,
-                                                    self.conf.zadara_vpsa_port)
-        connection.request(method, url, body)
-        response = connection.getresponse()
+            verify = False
 
-        if response.status != 200:
-            connection.close()
-            raise exception.BadHTTPResponseStatus(status=response.status)
-        data = response.read()
-        connection.close()
+        if port:
+            api_url = "%s://%s:%d%s" % (protocol, host, port, url)
+        else:
+            api_url = "%s://%s%s" % (protocol, host, url)
 
+        try:
+            response = requests.request(method, api_url, data=body,
+                                        verify=verify)
+        except requests.exceptions.RequestException as e:
+            message = (_('Exception: %s') % six.text_type(e))
+            raise exception.VolumeDriverException(message=message)
+
+        if response.status_code != 200:
+            raise exception.BadHTTPResponseStatus(status=response.status_code)
+
+        data = response.content
         xml_tree = etree.fromstring(data)
         status = xml_tree.findtext('status')
         if status != '0':
@@ -263,9 +281,14 @@ class ZadaraVPSAConnection(object):
 
 @interface.volumedriver
 class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
-    """Zadara VPSA iSCSI/iSER volume driver."""
+    """Zadara VPSA iSCSI/iSER volume driver.
 
-    VERSION = '15.07'
+    Version history:
+        15.07 - Initial driver
+        16.05 - Move from httplib to requests
+    """
+
+    VERSION = '16.05'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "ZadaraStorage_VPSA_CI"
