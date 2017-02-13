@@ -256,7 +256,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         lun = fake.FAKE_LUN
         self.library._get_lun_by_args = mock.Mock(return_value=[lun])
         self.library._add_lun_to_table = mock.Mock()
-        self.library._update_stale_vols = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
 
@@ -279,7 +278,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         lun = fake.FAKE_LUN
         self.library._get_lun_by_args = mock.Mock(return_value=[lun])
         self.library._add_lun_to_table = mock.Mock()
-        self.library._update_stale_vols = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
                                 block_count=block_count, src_block=src_block,
@@ -303,7 +301,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         lun = fake.FAKE_LUN
         self.library._get_lun_by_args = mock.Mock(return_value=[lun])
         self.library._add_lun_to_table = mock.Mock()
-        self.library._update_stale_vols = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', is_snapshot=True)
 
