@@ -304,13 +304,16 @@ class CommonData(object):
              'name': 'cg1',
              'status': 'OK',
              }
-    cgsnapshot = mock.Mock(id='192eb39b-6c2f-420c-bae3-3cfd117f9876',
-                           consistencygroup_id=group['id'])
 
-    def cgsnap_getitem(self, val):
-        return self.__dict__[val]
+    cgsnapshot = {
+        'id': '192eb39b-6c2f-420c-bae3-3cfd117f9876',
+        'consistencygroup_id': group['id'],
+        'group_id': None, }
 
-    cgsnapshot.__getitem__ = cgsnap_getitem
+    cgsnapshot_as_group_id = {
+        'id': '192eb39b-6c2f-420c-bae3-3cfd117f9876',
+        'consistencygroup_id': None,
+        'group_id': group['id'], }
 
 
 class BaseXtremIODriverTestCase(test.TestCase):
@@ -1065,12 +1068,47 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
                                                 [snapshot_obj])
         self.assertEqual((None, None), res)
 
+    def test_group_snapshot_with_generic_group(self, req):
+        """test group snapshot shot with generic group ."""
+        req.side_effect = xms_request
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        self.driver.create_group(d.context, d.group)
+        self.driver.update_group(d.context, d.group,
+                                 add_volumes=[d.test_volume,
+                                              d.test_volume2])
+
+        snapset_name = self.driver._get_cgsnap_name(d.cgsnapshot_as_group_id)
+        self.assertEqual(snapset_name,
+                         '192eb39b6c2f420cbae33cfd117f0345192eb39b6c2f420cbae'
+                         '33cfd117f9876')
+        snapset1 = {'ancestor-vol-id': ['', d.test_volume['id'], 2],
+                    'consistencygroup_id': d.group['id'],
+                    'name': snapset_name,
+                    'index': 1}
+        xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
+        res = self.driver.delete_group_snapshot(d.context, d.cgsnapshot,
+                                                [snapshot_obj])
+        self.assertEqual((None, None), res)
+
     def test_delete_group_snapshot(self, req):
         """test delete group snapshot."""
         d = self.data
         snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
         snapshot_obj.consistencygroup_id = d.group['id']
         self.driver.delete_group_snapshot(d.context, d.cgsnapshot,
+                                          [snapshot_obj])
+        req.assert_called_once_with('snapshot-sets', 'DELETE', None,
+                                    '192eb39b6c2f420cbae33cfd117f0345192eb39'
+                                    'b6c2f420cbae33cfd117f9876', None, 'v2')
+
+    def test_delete_group_snapshot_with_generic_group(self, req):
+        """test delete group snapshot."""
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        self.driver.delete_group_snapshot(d.context, d.cgsnapshot_as_group_id,
                                           [snapshot_obj])
         req.assert_called_once_with('snapshot-sets', 'DELETE', None,
                                     '192eb39b6c2f420cbae33cfd117f0345192eb39'

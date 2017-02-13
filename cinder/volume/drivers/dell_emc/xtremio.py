@@ -787,13 +787,23 @@ class XtremIOVolumeDriver(san.SanDriver):
         return None, None, None
 
     def _get_cgsnap_name(self, cgsnapshot):
-        return '%(cg)s%(snap)s' % {'cg': cgsnapshot['consistencygroup_id']
+
+        group_id = cgsnapshot.get('group_id')
+        if group_id is None:
+            group_id = cgsnapshot.get('consistencygroup_id')
+
+        return '%(cg)s%(snap)s' % {'cg': group_id
                                    .replace('-', ''),
                                    'snap': cgsnapshot['id'].replace('-', '')}
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
-        data = {'consistency-group-id': cgsnapshot['consistencygroup_id'],
+
+        group_id = cgsnapshot.get('group_id')
+        if group_id is None:
+            group_id = cgsnapshot.get('consistencygroup_id')
+
+        data = {'consistency-group-id': group_id,
                 'snapshot-set-name': self._get_cgsnap_name(cgsnapshot)}
         self.client.req('snapshots', 'POST', data, ver='v2')
 
