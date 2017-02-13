@@ -165,6 +165,8 @@ class GroupsController(wsgi.Controller):
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
+        filters.pop('list_volume', None)
+
         groups = self.group_api.get_all(
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
