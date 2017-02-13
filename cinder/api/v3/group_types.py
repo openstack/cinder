@@ -68,7 +68,7 @@ class GroupTypesController(wsgi.Controller):
         name = grp_type.get('name', None)
         description = grp_type.get('description')
         specs = grp_type.get('group_specs', {})
-        is_public = grp_type.get('is_public', True)
+        is_public = utils.get_bool_param('is_public', grp_type, True)
 
         if name is None or len(name.strip()) == 0:
             msg = _("Group type name can not be empty.")
@@ -127,10 +127,8 @@ class GroupTypesController(wsgi.Controller):
                     "a combination thereof.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if is_public is not None and not strutils.is_valid_boolstr(is_public):
-            msg = _("Invalid value '%s' for is_public. Accepted values: "
-                    "True or False.") % is_public
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if is_public is not None:
+            is_public = utils.get_bool_param('is_public', grp_type)
 
         if name:
             utils.check_string_length(name, 'Type name',

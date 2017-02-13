@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed issue where ``create`` and ``update`` api's of ``volume-type`` and
+    ``group_type`` were returning 500 error if boolean 'is_public' value
+    passed in the form of string. Now user can pass following valid boolean
+    values to these api's:
+    '0', 'f', 'false', 'off', 'n', 'no', '1', 't', 'true', 'on', 'y', 'yes'

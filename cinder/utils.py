@@ -592,11 +592,11 @@ def _get_disk_of_partition(devpath, st=None):
     return (devpath, st)
 
 
-def get_bool_param(param_string, params):
-    param = params.get(param_string, False)
+def get_bool_param(param_string, params, default=False):
+    param = params.get(param_string, default)
     if not strutils.is_valid_boolstr(param):
-        msg = _('Value %(param)s for %(param_string)s is not a '
-                'boolean.') % {'param': param, 'param_string': param_string}
+        msg = _("Value '%(param)s' for '%(param_string)s' is not "
+                "a boolean.") % {'param': param, 'param_string': param_string}
         raise exception.InvalidParameterValue(err=msg)
 
     return strutils.bool_from_string(param, strict=True)
