@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Removed deprecated option ``kaminario_nodedup_substring``
+    in Kaminario FC and iSCSI Cinder drivers.
+

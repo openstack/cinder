@@ -17,6 +17,7 @@
 import mock
 
 from oslo_concurrency import processutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
@@ -35,7 +36,7 @@ class HGSTTestCase(test.TestCase):
     def setUp(self, mock_ghn, mock_grnam, mock_pwnam):
         """Set up UUT and all the flags required for later fake_executes."""
         super(HGSTTestCase, self).setUp()
-        self.stubs.Set(processutils, 'execute', self._fake_execute)
+        self.mock_object(processutils, 'execute', self._fake_execute)
         self._fail_vgc_cluster = False
         self._fail_ip = False
         self._fail_network_list = False
@@ -229,6 +230,8 @@ class HGSTTestCase(test.TestCase):
             for p in cmdlist:
                 if 'count=' in p:
                     self.dd_count = int(p[6:])
+                elif 'bs=' in p:
+                    self.bs = p[3:]
             return DD_OUTPUT, ''
         else:
             return '', ''
@@ -443,10 +446,10 @@ class HGSTTestCase(test.TestCase):
                     'user': 'kane', 'net': 'net1',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
-        self.assertDictMatch(expected, self.created)
+        self.assertDictEqual(expected, self.created)
         # Check the returned provider, note that provider_id is hashed
         expected_pid = {'provider_id': 'volume10'}
-        self.assertDictMatch(expected_pid, ret)
+        self.assertDictEqual(expected_pid, ret)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_create_volume_name_creation_fail(self, mock_ghn):
@@ -472,17 +475,18 @@ class HGSTTestCase(test.TestCase):
                     'volume': {'provider_id': 'space10'}}
         ret = self.driver.create_snapshot(snapshot)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': snapshot['display_name'], 'mode': '0777',
                     'user': 'kane', 'net': 'net1',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
-        self.assertDictMatch(expected, self.created)
+        self.assertDictEqual(expected, self.created)
         # Check the returned provider
         expected_pid = {'provider_id': 'snap10'}
-        self.assertDictMatch(expected_pid, ret)
+        self.assertDictEqual(expected_pid, ret)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_create_cloned_volume(self, mock_ghn):
@@ -497,17 +501,18 @@ class HGSTTestCase(test.TestCase):
                  'volume_type_id': type_ref['id'], 'size': 10}
         pid = self.driver.create_cloned_volume(clone, orig)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': 'clone1', 'mode': '0777',
                     'user': 'kane', 'net': 'net1',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
-        self.assertDictMatch(expected, self.created)
+        self.assertDictEqual(expected, self.created)
         # Check the returned provider
         expected_pid = {'provider_id': 'clone1'}
-        self.assertDictMatch(expected_pid, pid)
+        self.assertDictEqual(expected_pid, pid)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_add_cinder_apphosts_fails(self, mock_ghn):
@@ -537,17 +542,18 @@ class HGSTTestCase(test.TestCase):
                   'volume_type_id': type_ref['id'], 'size': 10}
         pid = self.driver.create_volume_from_snapshot(volume, snap)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': 'volume2', 'mode': '0777',
                     'user': 'kane', 'net': 'net1',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
-        self.assertDictMatch(expected, self.created)
+        self.assertDictEqual(expected, self.created)
         # Check the returned provider
         expected_pid = {'provider_id': 'volume2'}
-        self.assertDictMatch(expected_pid, pid)
+        self.assertDictEqual(expected_pid, pid)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_create_volume_blocked(self, mock_ghn):
@@ -571,10 +577,10 @@ class HGSTTestCase(test.TestCase):
                     'user': 'kane', 'net': 'net1',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
-        self.assertDictMatch(expected, self.created)
+        self.assertDictEqual(expected, self.created)
         # Check the returned provider
         expected_pid = {'provider_id': 'volume10'}
-        self.assertDictMatch(expected_pid, ret)
+        self.assertDictEqual(expected_pid, ret)
         self.assertTrue(self._request_cancel)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
@@ -609,7 +615,7 @@ class HGSTTestCase(test.TestCase):
                   'provider_id': 'volume10'}
         self.driver.delete_volume(volume)
         expected = {'name': 'volume10'}
-        self.assertDictMatch(expected, self.deleted)
+        self.assertDictEqual(expected, self.deleted)
 
     def test_delete_volume_failure_modes(self):
         """Test cases where space-delete fails, but OS delete is still OK."""
@@ -641,7 +647,7 @@ class HGSTTestCase(test.TestCase):
                     'provider_id': 'snap10'}
         self.driver.delete_snapshot(snapshot)
         expected = {'name': 'snap10'}
-        self.assertDictMatch(expected, self.deleted)
+        self.assertDictEqual(expected, self.deleted)
 
     def test_extend_volume(self):
         """Test extending a volume, check the size in GB vs. GiB."""
@@ -658,7 +664,7 @@ class HGSTTestCase(test.TestCase):
         self.driver.extend_volume(volume, 12)
         expected = {'name': 'volume10', 'size': '2',
                     'storageserver': 'stor1:gbd0,stor2:gbd0,'}
-        self.assertDictMatch(expected, self.extended)
+        self.assertDictEqual(expected, self.extended)
 
     def test_extend_volume_noextend(self):
         """Test extending a volume where Space does not need to be enlarged.
@@ -682,7 +688,7 @@ class HGSTTestCase(test.TestCase):
         self.driver.extend_volume(volume, 10)
         expected = {'name': '', 'size': '0',
                     'storageserver': ''}
-        self.assertDictMatch(expected, self.extended)
+        self.assertDictEqual(expected, self.extended)
 
     def test_space_list_fails(self):
         """Test exception is thrown when we can't call space-list."""
@@ -729,7 +735,7 @@ class HGSTTestCase(test.TestCase):
         volume = {'name': '123', 'provider_id': 'spacey'}
         conn = self.driver.initialize_connection(volume, None)
         expected = {'name': 'spacey', 'noremovehost': 'thisserver'}
-        self.assertDictMatch(expected, conn['data'])
+        self.assertDictEqual(expected, conn['data'])
 
 # Below are some command outputs we emulate
 IP_OUTPUT = """

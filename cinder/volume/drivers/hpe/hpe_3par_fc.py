@@ -35,9 +35,12 @@ except ImportError:
     hpeexceptions = None
 
 from oslo_log import log as logging
+from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LI, _LW, _LE
+from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
@@ -45,18 +48,21 @@ from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
+# EXISTENT_PATH error code returned from hpe3parclient
+EXISTENT_PATH = 73
 
-class HPE3PARFCDriver(driver.TransferVD,
-                      driver.ManageableVD,
-                      driver.ExtendVD,
-                      driver.SnapshotVD,
+
+@interface.volumedriver
+class HPE3PARFCDriver(driver.ManageableVD,
                       driver.ManageableSnapshotsVD,
                       driver.MigrateVD,
-                      driver.ConsistencyGroupVD,
                       driver.BaseVD):
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 
     Version history:
+
+    .. code-block:: none
+
         1.0   - Initial driver
         1.1   - QoS, extend volume, multiple iscsi ports, remove domain,
                 session changes, faster clone, requires 3.1.2 MU2 firmware,
@@ -97,10 +103,19 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.4 - Adding manage/unmanage snapshot support
         3.0.5 - Optimize array ID retrieval
         3.0.6 - Update replication to version 2.1
+        3.0.7 - Remove metadata that tracks the instance ID. bug #1572665
+        3.0.8 - NSP feature, creating FC Vlun as match set instead of
+                host sees. bug #1577993
+        3.0.9 - Handling HTTP conflict 409, host WWN/iSCSI name already used
+                by another host, while creating 3PAR FC Host. bug #1597454
+        3.0.10 - Added Entry point tracing
 
     """
 
-    VERSION = "3.0.6"
+    VERSION = "3.0.10"
+
+    # The name of the CI wiki page.
+    CI_WIKI_NAME = "HPE_Storage_CI"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
@@ -171,6 +186,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
+    @utils.trace
     def create_volume(self, volume):
         common = self._login()
         try:
@@ -178,6 +194,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         common = self._login()
         try:
@@ -185,6 +202,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_volume(self, volume):
         common = self._login()
         try:
@@ -192,6 +210,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot.
 
@@ -203,6 +222,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -210,6 +230,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -217,7 +238,8 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    @fczm_utils.AddFCZone
+    @utils.trace
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -261,26 +283,69 @@ class HPE3PARFCDriver(driver.TransferVD,
         try:
             # we have to make sure we have a host
             host = self._create_host(common, volume, connector)
-
             target_wwns, init_targ_map, numPaths = \
                 self._build_initiator_target_map(common, connector)
-
             # check if a VLUN already exists for this host
             existing_vlun = common.find_existing_vlun(volume, host)
 
             vlun = None
             if existing_vlun is None:
                 # now that we have a host, create the VLUN
-                if self.lookup_service is not None and numPaths == 1:
-                    nsp = None
-                    active_fc_port_list = common.get_active_fc_target_ports()
-                    for port in active_fc_port_list:
-                        if port['portWWN'].lower() == target_wwns[0].lower():
-                            nsp = port['nsp']
-                            break
-                    vlun = common.create_vlun(volume, host, nsp)
+                nsp = None
+                lun_id = None
+                active_fc_port_list = common.get_active_fc_target_ports()
+
+                if self.lookup_service:
+                    if not init_targ_map:
+                        msg = _("Setup is incomplete. Device mapping "
+                                "not found from FC network. "
+                                "Cannot perform VLUN creation.")
+                        LOG.error(msg)
+                        raise exception.FCSanLookupServiceException(msg)
+
+                    for target_wwn in target_wwns:
+                        for port in active_fc_port_list:
+                            if port['portWWN'].lower() == target_wwn.lower():
+                                nsp = port['nsp']
+                                vlun = common.create_vlun(volume,
+                                                          host,
+                                                          nsp,
+                                                          lun_id=lun_id)
+                                if lun_id is None:
+                                    lun_id = vlun['lun']
+                                break
                 else:
-                    vlun = common.create_vlun(volume, host)
+                    init_targ_map.clear()
+                    del target_wwns[:]
+                    host_connected_nsp = []
+                    for fcpath in host['FCPaths']:
+                        if 'portPos' in fcpath:
+                            host_connected_nsp.append(
+                                common.build_nsp(fcpath['portPos']))
+                    for port in active_fc_port_list:
+                        if (
+                            port['type'] == common.client.PORT_TYPE_HOST and
+                            port['nsp'] in host_connected_nsp
+                        ):
+                            nsp = port['nsp']
+                            vlun = common.create_vlun(volume,
+                                                      host,
+                                                      nsp,
+                                                      lun_id=lun_id)
+                            target_wwns.append(port['portWWN'])
+                            if vlun['remoteName'] in init_targ_map:
+                                init_targ_map[vlun['remoteName']].append(
+                                    port['portWWN'])
+                            else:
+                                init_targ_map[vlun['remoteName']] = [
+                                    port['portWWN']]
+                            if lun_id is None:
+                                lun_id = vlun['lun']
+                if lun_id is None:
+                    # New vlun creation failed
+                    msg = _('No new vlun(s) were created')
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(msg)
             else:
                 vlun = existing_vlun
 
@@ -292,12 +357,12 @@ class HPE3PARFCDriver(driver.TransferVD,
 
             encryption_key_id = volume.get('encryption_key_id', None)
             info['data']['encrypted'] = encryption_key_id is not None
-
             return info
         finally:
             self._logout(common)
 
-    @fczm_utils.RemoveFCZone
+    @utils.trace
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
@@ -385,16 +450,41 @@ class HPE3PARFCDriver(driver.TransferVD,
             return host_found
         else:
             persona_id = int(persona_id)
-            common.client.createHost(hostname, FCWwns=wwns,
-                                     optional={'domain': domain,
-                                               'persona': persona_id})
+            try:
+                common.client.createHost(hostname, FCWwns=wwns,
+                                         optional={'domain': domain,
+                                                   'persona': persona_id})
+            except hpeexceptions.HTTPConflict as path_conflict:
+                msg = _LE("Create FC host caught HTTP conflict code: %s")
+                LOG.exception(msg, path_conflict.get_code())
+                with save_and_reraise_exception(reraise=False) as ctxt:
+                    if path_conflict.get_code() is EXISTENT_PATH:
+                        # Handle exception : EXISTENT_PATH - host WWN/iSCSI
+                        # name already used by another host
+                        hosts = common.client.queryHost(wwns=wwns)
+                        if hosts and hosts['members'] and (
+                                'name' in hosts['members'][0]):
+                            hostname = hosts['members'][0]['name']
+                        else:
+                            # re rasise last caught exception
+                            ctxt.reraise = True
+                    else:
+                        # re rasise last caught exception
+                        # for other HTTP conflict
+                        ctxt.reraise = True
             return hostname
 
     def _modify_3par_fibrechan_host(self, common, hostname, wwn):
         mod_request = {'pathOperation': common.client.HOST_EDIT_ADD,
                        'FCWWNs': wwn}
-
-        common.client.modifyHost(hostname, mod_request)
+        try:
+            common.client.modifyHost(hostname, mod_request)
+        except hpeexceptions.HTTPConflict as path_conflict:
+            msg = _LE("Modify FC Host %(hostname)s caught "
+                      "HTTP conflict code: %(code)s")
+            LOG.exception(msg,
+                          {'hostname': hostname,
+                           'code': path_conflict.get_code()})
 
     def _create_host(self, common, volume, connector):
         """Creates or modifies existing 3PAR host."""
@@ -414,8 +504,9 @@ class HPE3PARFCDriver(driver.TransferVD,
                                                         domain,
                                                         persona_id)
             host = common._get_3par_host(hostname)
-
-        return self._add_new_wwn_to_host(common, host, connector['wwpns'])
+            return host
+        else:
+            return self._add_new_wwn_to_host(common, host, connector['wwpns'])
 
     def _add_new_wwn_to_host(self, common, host, wwns):
         """Add wwns to a host if one or more don't exist.
@@ -455,6 +546,7 @@ class HPE3PARFCDriver(driver.TransferVD,
     def remove_export(self, context, volume):
         pass
 
+    @utils.trace
     def extend_volume(self, volume, new_size):
         common = self._login()
         try:
@@ -462,6 +554,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup(self, context, group):
         common = self._login()
         try:
@@ -469,6 +562,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
@@ -480,6 +574,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_consistencygroup(self, context, group, volumes):
         common = self._login()
         try:
@@ -487,6 +582,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         common = self._login()
@@ -496,6 +592,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -503,6 +600,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -510,6 +608,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing(self, volume, existing_ref):
         common = self._login()
         try:
@@ -517,6 +616,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -524,6 +624,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         common = self._login()
         try:
@@ -531,6 +632,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -539,6 +641,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage(self, volume):
         common = self._login()
         try:
@@ -546,6 +649,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -553,21 +657,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        common = self._login()
-        try:
-            common.attach_volume(volume, instance_uuid)
-        finally:
-            self._logout(common)
-
-    def detach_volume(self, context, volume, attachment=None):
-        common = self._login()
-        try:
-            common.detach_volume(volume, attachment)
-        finally:
-            self._logout(common)
-
+    @utils.trace
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         common = self._login()
@@ -576,6 +666,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
             protocol = host['capabilities']['storage_protocol']
@@ -590,6 +681,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
@@ -600,6 +692,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def get_pool(self, volume):
         common = self._login()
         try:
@@ -611,13 +704,14 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    @utils.trace
+    def failover_host(self, context, volumes, secondary_id=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
         try:
             # Update the active_backend_id in the driver and return it.
             active_backend_id, volume_updates = common.failover_host(
-                context, volumes, secondary_backend_id)
+                context, volumes, secondary_id)
             self._active_backend_id = active_backend_id
             return active_backend_id, volume_updates
         finally:

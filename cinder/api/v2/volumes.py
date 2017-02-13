@@ -25,9 +25,9 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
-from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
+from cinder import group as group_api
 from cinder.i18n import _, _LI
 from cinder.image import glance
 from cinder import utils
@@ -38,122 +38,6 @@ from cinder.volume import volume_types
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-SCHEDULER_HINTS_NAMESPACE =\
-    "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
-
-
-def make_attachment(elem):
-    elem.set('id')
-    elem.set('attachment_id')
-    elem.set('server_id')
-    elem.set('host_name')
-    elem.set('volume_id')
-    elem.set('device')
-
-
-def make_volume(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('size')
-    elem.set('availability_zone')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('bootable')
-    elem.set('description')
-    elem.set('volume_type')
-    elem.set('snapshot_id')
-    elem.set('source_volid')
-    elem.set('consistencygroup_id')
-    elem.set('multiattach')
-
-    attachments = xmlutil.SubTemplateElement(elem, 'attachments')
-    attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
-                                            selector='attachments')
-    make_attachment(attachment)
-
-    # Attach metadata node
-    elem.append(common.MetadataTemplate())
-
-
-volume_nsmap = {None: xmlutil.XMLNS_VOLUME_V2, 'atom': xmlutil.XMLNS_ATOM}
-
-
-class VolumeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume', selector='volume')
-        make_volume(root)
-        return xmlutil.MasterTemplate(root, 1, nsmap=volume_nsmap)
-
-
-class VolumesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volumes')
-        elem = xmlutil.SubTemplateElement(root, 'volume', selector='volumes')
-        make_volume(elem)
-        return xmlutil.MasterTemplate(root, 1, nsmap=volume_nsmap)
-
-
-class CommonDeserializer(wsgi.MetadataXMLDeserializer):
-    """Common deserializer to handle xml-formatted volume requests.
-
-       Handles standard volume attributes as well as the optional metadata
-       attribute
-    """
-
-    metadata_deserializer = common.MetadataXMLDeserializer()
-
-    def _extract_scheduler_hints(self, volume_node):
-        """Marshal the scheduler hints attribute of a parsed request."""
-        node =\
-            self.find_first_child_named_in_namespace(volume_node,
-                                                     SCHEDULER_HINTS_NAMESPACE,
-                                                     "scheduler_hints")
-        if node:
-            scheduler_hints = {}
-            for child in self.extract_elements(node):
-                scheduler_hints.setdefault(child.nodeName, [])
-                value = self.extract_text(child).strip()
-                scheduler_hints[child.nodeName].append(value)
-            return scheduler_hints
-        else:
-            return None
-
-    def _extract_volume(self, node):
-        """Marshal the volume attribute of a parsed request."""
-        volume = {}
-        volume_node = self.find_first_child_named(node, 'volume')
-
-        attributes = ['name', 'description', 'size',
-                      'volume_type', 'availability_zone', 'imageRef',
-                      'image_id', 'snapshot_id', 'source_volid',
-                      'consistencygroup_id']
-        for attr in attributes:
-            if volume_node.getAttribute(attr):
-                volume[attr] = volume_node.getAttribute(attr)
-
-        metadata_node = self.find_first_child_named(volume_node, 'metadata')
-        if metadata_node is not None:
-            volume['metadata'] = self.extract_metadata(metadata_node)
-
-        scheduler_hints = self._extract_scheduler_hints(volume_node)
-        if scheduler_hints:
-            volume['scheduler_hints'] = scheduler_hints
-
-        return volume
-
-
-class CreateDeserializer(CommonDeserializer):
-    """Deserializer to handle xml-formatted create volume requests.
-
-       Handles standard volume attributes as well as the optional metadata
-       attribute
-    """
-
-    def default(self, string):
-        """Deserialize an xml-formatted volume create request."""
-        dom = utils.safe_minidom_parse_string(string)
-        volume = self._extract_volume(dom)
-        return {'body': {'volume': volume}}
 
 
 class VolumeController(wsgi.Controller):
@@ -164,19 +48,17 @@ class VolumeController(wsgi.Controller):
     def __init__(self, ext_mgr):
         self.volume_api = cinder_volume.API()
         self.consistencygroup_api = consistencygroupAPI.API()
+        self.group_api = group_api.API()
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
 
-    @wsgi.serializers(xml=VolumeTemplate)
     def show(self, req, id):
         """Return data about the given volume."""
         context = req.environ['cinder.context']
 
-        try:
-            vol = self.volume_api.get(context, id, viewable_admin_meta=True)
-            req.cache_db_volume(vol)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        vol = self.volume_api.get(context, id, viewable_admin_meta=True)
+        req.cache_db_volume(vol)
 
         utils.add_visible_admin_metadata(vol)
 
@@ -188,21 +70,17 @@ class VolumeController(wsgi.Controller):
 
         cascade = utils.get_bool_param('cascade', req.params)
 
-        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id)
 
-        try:
-            volume = self.volume_api.get(context, id)
-            self.volume_api.delete(context, volume, cascade=cascade)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
+        self.volume_api.delete(context, volume, cascade=cascade)
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=VolumesTemplate)
     def index(self, req):
         """Returns a summary list of volumes."""
         return self._get_volumes(req, is_detail=False)
 
-    @wsgi.serializers(xml=VolumesTemplate)
     def detail(self, req):
         """Returns a detailed list of volumes."""
         return self._get_volumes(req, is_detail=True)
@@ -217,6 +95,9 @@ class VolumeController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
 
+        # NOTE(wanghao): Always removing glance_metadata since we support it
+        # only in API version >= 3.4.
+        filters.pop('glance_metadata', None)
         utils.remove_invalid_filter_options(context,
                                             filters,
                                             self._get_volume_filter_options())
@@ -226,8 +107,7 @@ class VolumeController(wsgi.Controller):
             sort_keys[sort_keys.index('name')] = 'display_name'
 
         if 'name' in filters:
-            filters['display_name'] = filters['name']
-            del filters['name']
+            filters['display_name'] = filters.pop('name')
 
         self.volume_api.check_volume_filters(filters)
         volumes = self.volume_api.get_all(context, marker, limit,
@@ -292,8 +172,6 @@ class VolumeController(wsgi.Controller):
         raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=VolumeTemplate)
-    @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Creates a new volume."""
         self.assert_valid_body(body, 'volume')
@@ -315,68 +193,59 @@ class VolumeController(wsgi.Controller):
             volume['display_description'] = volume.pop('description')
 
         if 'image_id' in volume:
-            volume['imageRef'] = volume.get('image_id')
-            del volume['image_id']
+            volume['imageRef'] = volume.pop('image_id')
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
-            try:
-                if not uuidutils.is_uuid_like(req_volume_type):
-                    kwargs['volume_type'] = \
-                        volume_types.get_volume_type_by_name(
-                            context, req_volume_type)
-                else:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
-                        context, req_volume_type)
-            except exception.VolumeTypeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found exception will be handled at the wsgi level
+            kwargs['volume_type'] = (
+                volume_types.get_by_name_or_id(context, req_volume_type))
 
         kwargs['metadata'] = volume.get('metadata', None)
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
-            try:
-                kwargs['snapshot'] = self.volume_api.get_snapshot(context,
-                                                                  snapshot_id)
-            except exception.SnapshotNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            if not uuidutils.is_uuid_like(snapshot_id):
+                msg = _("Snapshot ID must be in UUID form.")
+                raise exc.HTTPBadRequest(explanation=msg)
+            # Not found exception will be handled at the wsgi level
+            kwargs['snapshot'] = self.volume_api.get_snapshot(context,
+                                                              snapshot_id)
         else:
             kwargs['snapshot'] = None
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
-            try:
-                kwargs['source_volume'] = \
-                    self.volume_api.get_volume(context,
-                                               source_volid)
-            except exception.VolumeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found exception will be handled at the wsgi level
+            kwargs['source_volume'] = \
+                self.volume_api.get_volume(context,
+                                           source_volid)
         else:
             kwargs['source_volume'] = None
 
         source_replica = volume.get('source_replica')
         if source_replica is not None:
-            try:
-                src_vol = self.volume_api.get_volume(context,
-                                                     source_replica)
-                if src_vol['replication_status'] == 'disabled':
-                    explanation = _('source volume id:%s is not'
-                                    ' replicated') % source_replica
-                    raise exc.HTTPBadRequest(explanation=explanation)
-                kwargs['source_replica'] = src_vol
-            except exception.VolumeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found exception will be handled at the wsgi level
+            src_vol = self.volume_api.get_volume(context,
+                                                 source_replica)
+            if src_vol['replication_status'] == 'disabled':
+                explanation = _('source volume id:%s is not'
+                                ' replicated') % source_replica
+                raise exc.HTTPBadRequest(explanation=explanation)
+            kwargs['source_replica'] = src_vol
         else:
             kwargs['source_replica'] = None
 
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
             try:
-                kwargs['consistencygroup'] = \
+                kwargs['consistencygroup'] = (
                     self.consistencygroup_api.get(context,
-                                                  consistencygroup_id)
-            except exception.ConsistencyGroupNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+                                                  consistencygroup_id))
+            except exception.ConsistencyGroupNotFound:
+                # Not found exception will be handled at the wsgi level
+                kwargs['group'] = self.group_api.get(
+                    context, consistencygroup_id)
         else:
             kwargs['consistencygroup'] = None
 
@@ -388,7 +257,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_replica'] is not None:
             size = kwargs['source_replica']['size']
 
-        LOG.info(_LI("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_ref = volume.get('imageRef')
@@ -398,8 +267,7 @@ class VolumeController(wsgi.Controller):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
-        multiattach = volume.get('multiattach', False)
-        kwargs['multiattach'] = multiattach
+        kwargs['multiattach'] = utils.get_bool_param('multiattach', volume)
 
         new_volume = self.volume_api.create(context,
                                             size,
@@ -415,7 +283,6 @@ class VolumeController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return CONF.query_volume_filters
 
-    @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):
         """Update a volume."""
         context = req.environ['cinder.context']
@@ -454,13 +321,14 @@ class VolumeController(wsgi.Controller):
         if 'description' in update_dict:
             update_dict['display_description'] = update_dict.pop('description')
 
+        # Not found and Invalid exceptions will be handled at the wsgi level
         try:
             volume = self.volume_api.get(context, id, viewable_admin_meta=True)
             volume_utils.notify_about_volume_usage(context, volume,
                                                    'update.start')
             self.volume_api.update(context, volume, update_dict)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.InvalidVolumeMetadataSize as error:
+            raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
         volume.update(update_dict)
 

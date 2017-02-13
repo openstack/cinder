@@ -20,11 +20,13 @@ import random
 import threading
 import uuid
 
+import decorator
 import eventlet
 from eventlet import tpool
 import itertools
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import timeutils
 import six
 from tooz import coordination
 from tooz import locking
@@ -113,8 +115,10 @@ class Coordinator(object):
         :param str name: The lock name that is used to identify it
             across all nodes.
         """
+        # NOTE(bluex): Tooz expects lock name as a byte string.
+        lock_name = (self.prefix + name).encode('ascii')
         if self.coordinator is not None:
-            return self.coordinator.get_lock(self.prefix + name)
+            return self.coordinator.get_lock(lock_name)
         else:
             raise exception.LockCreationFailed(_('Coordinator uninitialized.'))
 
@@ -139,7 +143,8 @@ class Coordinator(object):
                 self._dead.wait(cfg.CONF.coordination.heartbeat)
 
     def _start(self):
-        member_id = self.prefix + self.agent_id
+        # NOTE(bluex): Tooz expects member_id as a byte string.
+        member_id = (self.prefix + self.agent_id).encode('ascii')
         self.coordinator = coordination.get_coordinator(
             cfg.CONF.coordination.backend_url, member_id)
         self.coordinator.start()
@@ -208,7 +213,12 @@ class Lock(locking.Lock):
     def _prepare_lock(self, lock_name, lock_data):
         if not isinstance(lock_name, six.string_types):
             raise ValueError(_('Not a valid string: %s') % lock_name)
-        return self.coordinator.get_lock(lock_name.format(**lock_data))
+        self._name = lock_name.format(**lock_data)
+        return self.coordinator.get_lock(self._name)
+
+    @property
+    def name(self):
+        return self._name
 
     def acquire(self, blocking=None):
         """Attempts to acquire lock.
@@ -227,8 +237,6 @@ class Lock(locking.Lock):
 
         The behavior of releasing a lock which was not acquired in the first
         place is undefined.
-        :return: returns true if released (false if not)
-        :rtype: bool
         """
         self.lock.release()
 
@@ -274,13 +282,33 @@ def synchronized(lock_name, blocking=True, coordinator=None):
     Available field names are: decorated function parameters and
     `f_name` as a decorated function name.
     """
-    def wrap(f):
-        @six.wraps(f)
-        def wrapped(*a, **k):
-            call_args = inspect.getcallargs(f, *a, **k)
-            call_args['f_name'] = f.__name__
-            lock = Lock(lock_name, call_args, coordinator)
+
+    @decorator.decorator
+    def _synchronized(f, *a, **k):
+        call_args = inspect.getcallargs(f, *a, **k)
+        call_args['f_name'] = f.__name__
+        lock = Lock(lock_name, call_args, coordinator)
+        t1 = timeutils.now()
+        t2 = None
+        try:
             with lock(blocking):
+                t2 = timeutils.now()
+                LOG.debug('Lock "%(name)s" acquired by "%(function)s" :: '
+                          'waited %(wait_secs)0.3fs',
+                          {'name': lock.name,
+                           'function': f.__name__,
+                           'wait_secs': (t2 - t1)})
                 return f(*a, **k)
-        return wrapped
-    return wrap
+        finally:
+            t3 = timeutils.now()
+            if t2 is None:
+                held_secs = "N/A"
+            else:
+                held_secs = "%0.3fs" % (t3 - t2)
+            LOG.debug('Lock "%(name)s" released by "%(function)s" :: held '
+                      '%(held_secs)s',
+                      {'name': lock.name,
+                       'function': f.__name__,
+                       'held_secs': held_secs})
+
+    return _synchronized

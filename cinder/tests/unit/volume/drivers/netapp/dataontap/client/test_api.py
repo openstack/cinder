@@ -64,7 +64,7 @@ class NetAppApiServerTests(test.TestCase):
 
         expected_call_args = zapi_fakes.FAKE_CALL_ARGS_LIST
 
-        self.assertTrue(mock_invoke.call_args in expected_call_args)
+        self.assertIn(mock_invoke.call_args, expected_call_args)
 
     @ddt.data('stor', 'STORE', '')
     def test_set_server_type_value_error(self, server_type):
@@ -95,8 +95,7 @@ class NetAppApiServerTests(test.TestCase):
 
         expected_call_args_list = [mock.call('20'), mock.call(1)]
 
-        mock_invoke = self.mock_object(six, 'text_type',
-                                       mock.Mock(return_value='str'))
+        mock_invoke = self.mock_object(six, 'text_type', return_value='str')
         self.root.set_api_version(**args)
 
         self.assertEqual(expected_call_args_list, mock_invoke.call_args_list)
@@ -108,7 +107,7 @@ class NetAppApiServerTests(test.TestCase):
     def test_invoke_successfully_naapi_error(self, params):
         """Tests invoke successfully raising NaApiError"""
         self.mock_object(self.root, 'send_http_request',
-                         mock.Mock(return_value=params['result']))
+                         return_value=params['result'])
 
         self.assertRaises(netapp_api.NaApiError,
                           self.root.invoke_successfully,
@@ -116,8 +115,8 @@ class NetAppApiServerTests(test.TestCase):
 
     def test_invoke_successfully_no_error(self):
         """Tests invoke successfully with no errors"""
-        self.mock_object(self.root, 'send_http_request', mock.Mock(
-            return_value=zapi_fakes.FAKE_RESULT_SUCCESS))
+        self.mock_object(self.root, 'send_http_request',
+                         return_value=zapi_fakes.FAKE_RESULT_SUCCESS)
 
         self.assertEqual(zapi_fakes.FAKE_RESULT_SUCCESS.to_string(),
                          self.root.invoke_successfully(
@@ -130,7 +129,7 @@ class NetAppApiServerTests(test.TestCase):
         self.mock_object(self.root, '_enable_tunnel_request')
         self.mock_object(netapp_api.NaElement, 'add_child_elem')
         self.mock_object(netapp_api.NaElement, 'to_string',
-                         mock.Mock(return_value=zapi_fakes.FAKE_XML_STR))
+                         return_value=zapi_fakes.FAKE_XML_STR)
         mock_invoke = self.mock_object(urllib.request, 'Request')
 
         self.root._create_request(zapi_fakes.FAKE_NA_ELEMENT, True)
@@ -165,8 +164,7 @@ class NetAppApiServerTests(test.TestCase):
 
     def test__parse_response_no_error(self):
         """Tests parse function with appropriate response"""
-        mock_invoke = self.mock_object(etree, 'XML', mock.Mock(
-            return_value='xml'))
+        mock_invoke = self.mock_object(etree, 'XML', return_value='xml')
 
         self.root._parse_response(zapi_fakes.FAKE_XML_STR)
 
@@ -196,15 +194,16 @@ class NetAppApiServerTests(test.TestCase):
     def test_send_http_request_http_error(self):
         """Tests handling of HTTPError"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
-        self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT)))
+        self.mock_object(self.root, '_create_request',
+                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
         self.mock_object(netapp_api, 'LOG')
         self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
         self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', mock.Mock(
-            side_effect=urllib.error.HTTPError(url='', hdrs='',
-                                               fp=None, code='401',
-                                               msg='httperror')))
+        self.mock_object(self.root._opener, 'open',
+                         side_effect=urllib.error.HTTPError(url='', hdrs='',
+                                                            fp=None,
+                                                            code='401',
+                                                            msg='httperror'))
 
         self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
@@ -212,30 +211,29 @@ class NetAppApiServerTests(test.TestCase):
     def test_send_http_request_unknown_exception(self):
         """Tests handling of Unknown Exception"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
-        self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT)))
-        self.mock_object(netapp_api, 'LOG')
+        self.mock_object(self.root, '_create_request',
+                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
+        mock_log = self.mock_object(netapp_api, 'LOG')
         self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
         self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', mock.Mock(
-            side_effect=Exception))
+        self.mock_object(self.root._opener, 'open', side_effect=Exception)
 
         self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
+        self.assertEqual(1, mock_log.exception.call_count)
 
     def test_send_http_request_valid(self):
         """Tests the method send_http_request with valid parameters"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.root._trace = True
-        self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT)))
+        self.mock_object(self.root, '_create_request',
+                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
         self.mock_object(netapp_api, 'LOG')
         self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
         self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root, '_get_result', mock.Mock(
-            return_value=zapi_fakes.FAKE_NA_ELEMENT))
-        opener_mock = self.mock_object(
-            self.root._opener, 'open', mock.Mock())
+        self.mock_object(self.root, '_get_result',
+                         return_value=zapi_fakes.FAKE_NA_ELEMENT)
+        opener_mock = self.mock_object(self.root._opener, 'open')
         opener_mock.read.side_effect = ['resp1', 'resp2']
 
         self.root.send_http_request(na_element)
@@ -243,9 +241,6 @@ class NetAppApiServerTests(test.TestCase):
 
 class NetAppApiElementTransTests(test.TestCase):
     """Test case for NetApp API element translations."""
-
-    def setUp(self):
-        super(NetAppApiElementTransTests, self).setUp()
 
     def test_translate_struct_dict_unique_key(self):
         """Tests if dict gets properly converted to NaElements."""
@@ -373,10 +368,8 @@ class NetAppApiElementTransTests(test.TestCase):
     def test_getter_key_error(self):
         """Tests invalid key raises exception"""
         root = netapp_api.NaElement('root')
-        self.mock_object(root, 'get_child_by_name',
-                         mock.Mock(return_value=None))
-        self.mock_object(root, 'has_attr',
-                         mock.Mock(return_value=None))
+        self.mock_object(root, 'get_child_by_name', return_value=None)
+        self.mock_object(root, 'has_attr', return_value=None)
 
         self.assertRaises(KeyError,
                           netapp_api.NaElement.__getitem__,
@@ -394,8 +387,7 @@ class NetAppApiElementTransTests(test.TestCase):
         """Tests NaElement having no children"""
         root = netapp_api.NaElement('root')
         root.set_content('FAKE_CONTENT')
-        self.mock_object(root, 'get_child_by_name',
-                         mock.Mock(return_value=root))
+        self.mock_object(root, 'get_child_by_name', return_value=root)
 
         self.assertEqual('FAKE_CONTENT',
                          root.__getitem__('root'))
@@ -413,7 +405,7 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         self.mock_object(netapp_api.NaElement,
                          'create_node_with_children',
-                         mock.Mock(return_value=zapi_fakes.FAKE_INVOKE_DATA))
+                         return_value=zapi_fakes.FAKE_INVOKE_DATA)
         mock_invoke = self.mock_object(root, 'add_child_elem')
 
         root.add_node_with_children('options')
@@ -423,7 +415,7 @@ class NetAppApiElementTransTests(test.TestCase):
     def test_create_node_with_children(self):
         """Tests adding a child node with its own children"""
         root = netapp_api.NaElement('root')
-        self.mock_object(root, 'add_new_child', mock.Mock(return_value='abc'))
+        self.mock_object(root, 'add_new_child', return_value='abc')
 
         self.assertEqual(zapi_fakes.FAKE_XML1, root.create_node_with_children(
             'options', test1=zapi_fakes.FAKE_XML_STR,
@@ -434,7 +426,7 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         self.mock_object(netapp_api.NaElement,
                          '_convert_entity_refs',
-                         mock.Mock(return_value=zapi_fakes.FAKE_INVOKE_DATA))
+                         return_value=zapi_fakes.FAKE_INVOKE_DATA)
 
         root.add_new_child('options', zapi_fakes.FAKE_INVOKE_DATA)
 
@@ -456,61 +448,6 @@ class NetAppApiElementTransTests(test.TestCase):
 
 
 @ddt.ddt
-class NetAppApiInvokeTests(test.TestCase):
-    """Test Cases for api request creation and invocation"""
-
-    def setUp(self):
-        super(NetAppApiInvokeTests, self).setUp()
-
-    @ddt.data(None, zapi_fakes.FAKE_XML_STR)
-    def test_invoke_api_invalid_input(self, na_server):
-        """Tests Zapi Invocation Type Error"""
-        na_server = None
-        api_name = zapi_fakes.FAKE_API_NAME
-        invoke_generator = netapp_api.invoke_api(na_server, api_name)
-
-        self.assertRaises(exception.InvalidInput, next, invoke_generator)
-
-    @ddt.data({'params': {'na_server': zapi_fakes.FAKE_NA_SERVER,
-                          'api_name': zapi_fakes.FAKE_API_NAME}},
-              {'params': {'na_server': zapi_fakes.FAKE_NA_SERVER,
-                          'api_name': zapi_fakes.FAKE_API_NAME,
-                          'api_family': 'cm',
-                          'query': zapi_fakes.FAKE_QUERY,
-                          'des_result': zapi_fakes.FAKE_DES_ATTR,
-                          'additional_elems': None,
-                          'is_iter': True}})
-    @ddt.unpack
-    def test_invoke_api_valid(self, params):
-        """Test invoke_api with valid naserver"""
-        self.mock_object(netapp_api, 'create_api_request', mock.Mock(
-            return_value='success'))
-        self.mock_object(netapp_api.NaServer, 'invoke_successfully',
-                         mock.Mock(
-                             return_value=netapp_api.NaElement('success')))
-
-        invoke_generator = netapp_api.invoke_api(**params)
-
-        self.assertEqual(netapp_api.NaElement('success').to_string(),
-                         next(invoke_generator).to_string())
-
-    def test_create_api_request(self):
-        """"Tests creating api request"""
-        self.mock_object(netapp_api.NaElement, 'translate_struct')
-        self.mock_object(netapp_api.NaElement, 'add_child_elem')
-
-        params = {'api_name': zapi_fakes.FAKE_API_NAME,
-                  'query': zapi_fakes.FAKE_QUERY,
-                  'des_result': zapi_fakes.FAKE_DES_ATTR,
-                  'additional_elems': zapi_fakes.FAKE_XML_STR,
-                  'is_iter': True,
-                  'tag': 'tag'}
-
-        self.assertEqual(zapi_fakes.FAKE_API_NAME_ELEMENT.to_string(),
-                         netapp_api.create_api_request(**params).to_string())
-
-
-@ddt.ddt
 class SSHUtilTests(test.TestCase):
     """Test Cases for SSH API invocation."""
 
@@ -526,13 +463,10 @@ class SSHUtilTests(test.TestCase):
         stdin, stdout, stderr = self._mock_ssh_channel_files(
             paramiko.ChannelFile)
         self.mock_object(ssh, 'exec_command',
-                         mock.Mock(return_value=(stdin,
-                                                 stdout,
-                                                 stderr)))
+                         return_value=(stdin, stdout, stderr))
 
         wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
-        stdout_read = self.mock_object(stdout, 'read',
-                                       mock.Mock(return_value=''))
+        stdout_read = self.mock_object(stdout, 'read', return_value='')
         self.sshutil.execute_command(ssh, 'ls')
 
         wait_on_stdout.assert_called_once_with(stdout,
@@ -556,12 +490,10 @@ class SSHUtilTests(test.TestCase):
         ssh = mock.Mock(paramiko.SSHClient)
         stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
         stdout_read = self.mock_object(stdout.channel, 'recv',
-                                       mock.Mock(return_value=response))
+                                       return_value=response)
         stdin_write = self.mock_object(stdin, 'write')
         self.mock_object(ssh, 'exec_command',
-                         mock.Mock(return_value=(stdin,
-                                                 stdout,
-                                                 stderr)))
+                         return_value=(stdin, stdout, stderr))
 
         wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
         self.sshutil.execute_command_with_prompt(ssh, 'sudo ls',
@@ -576,11 +508,9 @@ class SSHUtilTests(test.TestCase):
         ssh = mock.Mock(paramiko.SSHClient)
         stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
         stdout_read = self.mock_object(stdout.channel, 'recv',
-                                       mock.Mock(return_value='bad response'))
+                                       return_value='bad response')
         self.mock_object(ssh, 'exec_command',
-                         mock.Mock(return_value=(stdin,
-                                                 stdout,
-                                                 stderr)))
+                         return_value=(stdin, stdout, stderr))
 
         wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -596,10 +526,10 @@ class SSHUtilTests(test.TestCase):
         stdout.channel = mock.Mock(paramiko.Channel)
 
         exit_status = self.mock_object(stdout.channel, 'exit_status_ready',
-                                       mock.Mock(return_value=False))
+                                       return_value=False)
         self.sshutil._wait_on_stdout(stdout, 1)
         exit_status.assert_any_call()
-        self.assertTrue(exit_status.call_count > 2)
+        self.assertGreater(exit_status.call_count, 2)
 
     def _mock_ssh_channel_files(self, channel):
         stdin = mock.Mock()

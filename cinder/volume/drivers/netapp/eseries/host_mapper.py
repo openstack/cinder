@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 # Copyright (c) 2015 Yogesh Kshirsagar.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,6 +25,7 @@ from six.moves import range
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import exception as eseries_exc
 from cinder.volume.drivers.netapp.eseries import utils
@@ -66,7 +67,7 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
 
         # If volume is not currently attached according to Cinder, it is
         # safe to delete the mapping
-        if not (volume['attach_status'] == 'attached'):
+        if not (volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED):
             LOG.debug("Volume %(vol)s is not currently attached, moving "
                       "existing mapping to host %(host)s.",
                       {'vol': volume['id'], 'host': host['label']})

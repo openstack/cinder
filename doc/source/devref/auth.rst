@@ -20,33 +20,20 @@
 Authentication and Authorization
 ================================
 
+The :mod:`cinder.api.middleware.auth` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: cinder.api.middleware.auth
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 The :mod:`cinder.quota` Module
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.quota
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`cinder.auth.signer` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.signer
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Auth Manager
-------------
-
-The :mod:`cinder.auth.manager` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.manager
     :noindex:
     :members:
     :undoc-members:
@@ -57,30 +44,30 @@ Tests
 -----
 
 
-The :mod:`auth_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`middleware.test_auth` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.auth_unittest
+.. automodule:: cinder.tests.unit.api.middleware.test_auth
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`access_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`test_quota` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.access_unittest
+.. automodule:: cinder.tests.unit.test_quota
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`quota_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`test_quota_utils` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.quota_unittest
+.. automodule:: cinder.tests.unit.test_quota_utils
     :noindex:
     :members:
     :undoc-members:
@@ -109,9 +96,9 @@ Relationship of US eAuth to RBAC
 Typical implementations of US eAuth authentication systems are structured as follows::
 
   [ MS Active Directory or other federated LDAP user store ]
-  	--> backends to…
+        --> backends to…
   [ SUN Identity Manager or other SAML Policy Controller ]
-  	--> maps URLs to groups…
+        --> maps URLs to groups…
   [ Apache Policy Agent in front of eAuth-secured Web Application ]
 
 In more ideal implementations, the remainder of the application-specific account information is stored either in extended schema on the LDAP server itself, via the use of a translucent LDAP proxy, or in an independent datastore keyed off of the UID provided via SAML assertion.

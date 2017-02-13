@@ -14,6 +14,7 @@
 #    under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -21,77 +22,11 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import transfers as transfer_view
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import transfer as transferAPI
-from cinder import utils
 
 LOG = logging.getLogger(__name__)
-
-
-def make_transfer(elem):
-    elem.set('id')
-    elem.set('volume_id')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('auth_key')
-
-
-class TransferTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('transfer', selector='transfer')
-        make_transfer(root)
-        alias = Volume_transfer.alias
-        namespace = Volume_transfer.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class TransfersTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('transfers')
-        elem = xmlutil.SubTemplateElement(root, 'transfer',
-                                          selector='transfers')
-        make_transfer(elem)
-        alias = Volume_transfer.alias
-        namespace = Volume_transfer.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class CreateDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        transfer = self._extract_transfer(dom)
-        return {'body': {'transfer': transfer}}
-
-    def _extract_transfer(self, node):
-        transfer = {}
-        transfer_node = self.find_first_child_named(node, 'transfer')
-
-        attributes = ['volume_id', 'name']
-
-        for attr in attributes:
-            if transfer_node.getAttribute(attr):
-                transfer[attr] = transfer_node.getAttribute(attr)
-        return transfer
-
-
-class AcceptDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        transfer = self._extract_transfer(dom)
-        return {'body': {'accept': transfer}}
-
-    def _extract_transfer(self, node):
-        transfer = {}
-        transfer_node = self.find_first_child_named(node, 'accept')
-
-        attributes = ['auth_key']
-
-        for attr in attributes:
-            if transfer_node.getAttribute(attr):
-                transfer[attr] = transfer_node.getAttribute(attr)
-        return transfer
 
 
 class VolumeTransferController(wsgi.Controller):
@@ -103,24 +38,19 @@ class VolumeTransferController(wsgi.Controller):
         self.transfer_api = transferAPI.API()
         super(VolumeTransferController, self).__init__()
 
-    @wsgi.serializers(xml=TransferTemplate)
     def show(self, req, id):
         """Return data about active transfers."""
         context = req.environ['cinder.context']
 
-        try:
-            transfer = self.transfer_api.get(context, transfer_id=id)
-        except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        transfer = self.transfer_api.get(context, transfer_id=id)
 
         return self._view_builder.detail(req, transfer)
 
-    @wsgi.serializers(xml=TransfersTemplate)
     def index(self, req):
         """Returns a summary list of transfers."""
         return self._get_transfers(req, is_detail=False)
 
-    @wsgi.serializers(xml=TransfersTemplate)
     def detail(self, req):
         """Returns a detailed list of transfers."""
         return self._get_transfers(req, is_detail=True)
@@ -143,9 +73,7 @@ class VolumeTransferController(wsgi.Controller):
 
         return transfers
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=TransferTemplate)
-    @wsgi.deserializers(xml=CreateDeserializer)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
@@ -168,23 +96,19 @@ class VolumeTransferController(wsgi.Controller):
             name = name.strip()
 
         LOG.info(_LI("Creating transfer of volume %s"),
-                 volume_id,
-                 context=context)
+                 volume_id)
 
         try:
             new_transfer = self.transfer_api.create(context, volume_id, name)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
 
         transfer = self._view_builder.create(req,
                                              dict(new_transfer))
         return transfer
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=TransferTemplate)
-    @wsgi.deserializers(xml=AcceptDeserializer)
+    @wsgi.response(http_client.ACCEPTED)
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
         transfer_id = id
@@ -200,8 +124,7 @@ class VolumeTransferController(wsgi.Controller):
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI("Accepting transfer %s"), transfer_id,
-                 context=context)
+        LOG.info(_LI("Accepting transfer %s"), transfer_id)
 
         try:
             accepted_transfer = self.transfer_api.accept(context, transfer_id,
@@ -221,13 +144,11 @@ class VolumeTransferController(wsgi.Controller):
         """Delete a transfer."""
         context = req.environ['cinder.context']
 
-        LOG.info(_LI("Delete transfer with id: %s"), id, context=context)
+        LOG.info(_LI("Delete transfer with id: %s"), id)
 
-        try:
-            self.transfer_api.delete(context, transfer_id=id)
-        except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
-        return webob.Response(status_int=202)
+        # Not found exception will be handled at the wsgi level
+        self.transfer_api.delete(context, transfer_id=id)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Volume_transfer(extensions.ExtensionDescriptor):
@@ -235,8 +156,6 @@ class Volume_transfer(extensions.ExtensionDescriptor):
 
     name = "VolumeTransfer"
     alias = "os-volume-transfer"
-    namespace = "http://docs.openstack.org/volume/ext/volume-transfer/" + \
-                "api/v1.1"
     updated = "2013-05-29T00:00:00+00:00"
 
     def get_resources(self):

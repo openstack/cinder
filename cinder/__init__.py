@@ -1,6 +1,3 @@
-# Copyright 2010 United States Government as represented by the
-# Administrator of the National Aeronautics and Space Administration.
-# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,12 +10,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+"""Root Cinder module."""
 
-"""
-:mod:`cinder` -- Cloud IaaS Platform
-===================================
+import os
 
-.. automodule:: cinder
-   :platform: Unix
-   :synopsis: Infrastructure-as-a-Service Cloud platform.
-"""
+# Ensure compatibility issues are covered with pythondsn
+os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
+
+# Make sure eventlet is loaded
+import eventlet  # noqa

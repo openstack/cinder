@@ -1,0 +1,4 @@
+---
+upgrade:
+  - The VMware VMDK driver supports a new config option ``vmware_host_port``
+    to specify the port number to connect to vCenter server.

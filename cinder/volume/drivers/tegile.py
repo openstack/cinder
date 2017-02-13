@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LI, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -150,6 +151,9 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
     REQUIRED_OPTIONS = ['san_ip', 'san_login',
                         'san_password', 'tegile_default_pool']
     SNAPSHOT_PREFIX = 'Manual-V-'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Tegile_Storage_CI"
 
     _api_executor = None
 
@@ -472,6 +476,7 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
                                                       'set.') % {'attr': attr})
 
 
+@interface.volumedriver
 class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
     """Tegile ISCSI Driver."""
 
@@ -488,12 +493,8 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
         """Driver entry point to attach a volume to an instance."""
 
         if getattr(self.configuration, 'use_chap_auth', False):
-                chap_username = getattr(self.configuration,
-                                        'chap_username',
-                                        '')
-                chap_password = getattr(self.configuration,
-                                        'chap_password',
-                                        '')
+            chap_username = getattr(self.configuration, 'chap_username', '')
+            chap_password = getattr(self.configuration, 'chap_password', '')
         else:
             chap_username = ''
             chap_password = ''
@@ -525,7 +526,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
         connection_data = dict()
         connection_data['target_portal'] = target_portal
         connection_data['target_iqn'] = target_iqn
-        connection_data['target_lun'] = target_lun
+        connection_data['target_lun'] = int(target_lun)
         connection_data['target_discovered'] = False,
         connection_data['volume_id'] = volume['id'],
         connection_data['discard'] = False
@@ -569,7 +570,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
             params=params)
         target_portal = mapping_info['target_portal']
         target_iqn = mapping_info['target_iqn']
-        target_lun = mapping_info['target_lun']
+        target_lun = int(mapping_info['target_lun'])
 
         provider_location = '%s %s %s' % (target_portal,
                                           target_iqn,
@@ -584,6 +585,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
              'provider_auth': provider_auth})
 
 
+@interface.volumedriver
 class TegileFCDriver(TegileIntelliFlashVolumeDriver,
                      driver.FibreChannelDriver):
     """Tegile FC driver."""
@@ -596,7 +598,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
     def do_setup(self, context):
         super(TegileFCDriver, self).do_setup(context)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     @debugger
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
@@ -621,7 +623,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
             'data': {
                 'encrypted': False,
                 'target_discovered': False,
-                'target_lun': target_info['target_lun'],
+                'target_lun': int(target_info['target_lun']),
                 'target_wwn': ast.literal_eval(target_info['target_wwn']),
                 'initiator_target_map': ast.literal_eval(initiator_target_map)
             }
@@ -629,7 +631,7 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
 
         return connection_data
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     @debugger
     def terminate_connection(self, volume, connector, force=False, **kwargs):
 

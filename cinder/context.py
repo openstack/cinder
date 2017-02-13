@@ -49,11 +49,9 @@ class RequestContext(context.RequestContext):
     Represents the user taking a given action within the system.
 
     """
-    def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
-                 roles=None, project_name=None, remote_address=None,
-                 timestamp=None, request_id=None, auth_token=None,
-                 overwrite=True, quota_class=None, service_catalog=None,
-                 domain=None, user_domain=None, project_domain=None,
+    def __init__(self, user_id=None, project_id=None, is_admin=None,
+                 read_deleted="no", project_name=None, remote_address=None,
+                 timestamp=None, quota_class=None, service_catalog=None,
                  **kwargs):
         """Initialize RequestContext.
 
@@ -63,21 +61,15 @@ class RequestContext(context.RequestContext):
 
         :param overwrite: Set to False to ensure that the greenthread local
             copy of the index is not overwritten.
-
-        :param kwargs: Extra arguments that might be present, but we ignore
-            because they possibly came in from older rpc messages.
         """
+        # NOTE(jamielennox): oslo.context still uses some old variables names.
+        # These arguments are maintained instead of passed as kwargs to
+        # maintain the interface for tests.
+        kwargs.setdefault('user', user_id)
+        kwargs.setdefault('tenant', project_id)
 
-        super(RequestContext, self).__init__(auth_token=auth_token,
-                                             user=user_id,
-                                             tenant=project_id,
-                                             domain=domain,
-                                             user_domain=user_domain,
-                                             project_domain=project_domain,
-                                             is_admin=is_admin,
-                                             request_id=request_id,
-                                             overwrite=overwrite)
-        self.roles = roles or []
+        super(RequestContext, self).__init__(is_admin=is_admin, **kwargs)
+
         self.project_name = project_name
         self.read_deleted = read_deleted
         self.remote_address = remote_address
@@ -128,7 +120,6 @@ class RequestContext(context.RequestContext):
         result['project_name'] = self.project_name
         result['domain'] = self.domain
         result['read_deleted'] = self.read_deleted
-        result['roles'] = self.roles
         result['remote_address'] = self.remote_address
         result['timestamp'] = self.timestamp.isoformat()
         result['quota_class'] = self.quota_class
@@ -138,7 +129,28 @@ class RequestContext(context.RequestContext):
 
     @classmethod
     def from_dict(cls, values):
-        return cls(**values)
+        return cls(user_id=values.get('user_id'),
+                   project_id=values.get('project_id'),
+                   project_name=values.get('project_name'),
+                   domain=values.get('domain'),
+                   read_deleted=values.get('read_deleted'),
+                   remote_address=values.get('remote_address'),
+                   timestamp=values.get('timestamp'),
+                   quota_class=values.get('quota_class'),
+                   service_catalog=values.get('service_catalog'),
+                   request_id=values.get('request_id'),
+                   is_admin=values.get('is_admin'),
+                   roles=values.get('roles'),
+                   auth_token=values.get('auth_token'),
+                   user_domain=values.get('user_domain'),
+                   project_domain=values.get('project_domain'))
+
+    def to_policy_values(self):
+        policy = super(RequestContext, self).to_policy_values()
+
+        policy['is_admin'] = self.is_admin
+
+        return policy
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""

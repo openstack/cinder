@@ -23,16 +23,21 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
+from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import quota
+from cinder import rpc
+from cinder import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
+ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
+                             'deleted_at']
 
 
 def create(context,
@@ -90,9 +95,8 @@ def destroy(context, id):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    else:
-        elevated = context if context.is_admin else context.elevated()
-        db.volume_type_destroy(elevated, id)
+    elevated = context if context.is_admin else context.elevated()
+    return db.volume_type_destroy(elevated, id)
 
 
 def get_all_types(context, inactive=0, filters=None, marker=None,
@@ -111,6 +115,12 @@ def get_all_types(context, inactive=0, filters=None, marker=None,
     return vol_types
 
 
+def get_all_types_by_group(context, group_id):
+    """Get all volume_types in a group."""
+    vol_types = db.volume_type_get_all_by_group(context, group_id)
+    return vol_types
+
+
 def get_volume_type(ctxt, id, expected_fields=None):
     """Retrieves single volume type by id."""
     if id is None:
@@ -121,6 +131,13 @@ def get_volume_type(ctxt, id, expected_fields=None):
         ctxt = context.get_admin_context()
 
     return db.volume_type_get(ctxt, id, expected_fields=expected_fields)
+
+
+def get_by_name_or_id(context, identity):
+    """Retrieves volume type by id or name"""
+    if not uuidutils.is_uuid_like(identity):
+        return get_volume_type_by_name(context, identity)
+    return get_volume_type(context, identity)
 
 
 def get_volume_type_by_name(context, name):
@@ -170,6 +187,32 @@ def is_public_volume_type(context, volume_type_id):
     return volume_type['is_public']
 
 
+@utils.if_notifications_enabled
+def notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          event_suffix,
+                                          host=None):
+    """Notify about successful usage type-access-(add/remove) command.
+
+    :param context: security context
+    :param volume_type_id: volume type uuid
+    :param project_id: tenant uuid
+    :param event_suffix: name of called operation access-(add/remove)
+    :param host: hostname
+    """
+    notifier_info = {'volume_type_id': volume_type_id,
+                     'project_id': project_id}
+
+    if not host:
+        host = CONF.host
+
+    notifier = rpc.get_notifier("volume_type_project", host)
+    notifier.info(context,
+                  'volume_type_project.%s' % event_suffix,
+                  notifier_info)
+
+
 def add_volume_type_access(context, volume_type_id, project_id):
     """Add access to volume type for project_id."""
     if volume_type_id is None:
@@ -180,7 +223,13 @@ def add_volume_type_access(context, volume_type_id, project_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_add(elevated, volume_type_id, project_id)
+
+    db.volume_type_access_add(elevated, volume_type_id, project_id)
+
+    notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          'access.add')
 
 
 def remove_volume_type_access(context, volume_type_id, project_id):
@@ -193,7 +242,13 @@ def remove_volume_type_access(context, volume_type_id, project_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_remove(elevated, volume_type_id, project_id)
+
+    db.volume_type_access_remove(elevated, volume_type_id, project_id)
+
+    notify_about_volume_type_access_usage(context,
+                                          volume_type_id,
+                                          project_id,
+                                          'access.remove')
 
 
 def is_encrypted(context, volume_type_id):
@@ -209,6 +264,7 @@ def get_volume_type_encryption(context, volume_type_id):
 
 
 def get_volume_type_qos_specs(volume_type_id):
+    """Get all qos specs for given volume type."""
     ctxt = context.get_admin_context()
     res = db.volume_type_qos_specs_get(ctxt,
                                        volume_type_id)
@@ -221,15 +277,26 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
     whether there is any difference, and 'diff' is a dictionary with the
     following format:
-    {'extra_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                     'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                     ...}
-     'qos_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   ...}
-     'encryption': {'cipher': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   {'key_size': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                    ...}
+
+    .. code-block:: json
+
+        {
+            'extra_specs': {'key1': (value_in_1st_vol_type,
+                                     value_in_2nd_vol_type),
+                            'key2': (value_in_1st_vol_type,
+                                     value_in_2nd_vol_type),
+                            {...}}
+            'qos_specs': {'key1': (value_in_1st_vol_type,
+                                   value_in_2nd_vol_type),
+                          'key2': (value_in_1st_vol_type,
+                                   value_in_2nd_vol_type),
+                          {...}}
+            'encryption': {'cipher': (value_in_1st_vol_type,
+                                      value_in_2nd_vol_type),
+                          {'key_size': (value_in_1st_vol_type,
+                                        value_in_2nd_vol_type),
+                           {...}}
+        }
     """
     def _fix_qos_specs(qos_specs):
         if qos_specs:
@@ -240,8 +307,7 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     def _fix_encryption_specs(encryption):
         if encryption:
             encryption = dict(encryption)
-            for param in ['volume_type_id', 'created_at', 'updated_at',
-                          'deleted_at']:
+            for param in ENCRYPTION_IGNORED_FIELDS:
                 encryption.pop(param, None)
         return encryption
 
@@ -296,3 +362,19 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
         all_equal = False
 
     return (diff, all_equal)
+
+
+def volume_types_encryption_changed(context, vol_type_id1, vol_type_id2):
+    """Return whether encryptions of two volume types are same."""
+    def _get_encryption(enc):
+        enc = dict(enc)
+        for param in ENCRYPTION_IGNORED_FIELDS:
+            enc.pop(param, None)
+        return enc
+
+    enc1 = get_volume_type_encryption(context, vol_type_id1)
+    enc2 = get_volume_type_encryption(context, vol_type_id2)
+
+    enc1_filtered = _get_encryption(enc1) if enc1 else None
+    enc2_filtered = _get_encryption(enc2) if enc2 else None
+    return enc1_filtered != enc2_filtered

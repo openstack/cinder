@@ -1,0 +1,6 @@
+---
+features:
+  - Configuration options for the DRBD driver that will be
+    applied to DRBD resources; the default values should
+    be okay for most installations.
+

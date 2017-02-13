@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed Non-WAN port filter issue in Kaminario iSCSI driver.
+

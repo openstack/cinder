@@ -1,0 +1,9 @@
+---
+features:
+  - Added support for oversubscription in thin provisioning in the
+    ScaleIO driver.
+    Volumes should have extra_specs with the key ``provisioning:type`` with value
+    equals to either ``thick`` or ``thin``.
+    ``max_oversubscription_ratio`` can be defined by the global config or for
+    ScaleIO specific with the config option ``sio_max_over_subscription_ratio``.
+    The maximum oversubscription ratio supported at the moment is 10.0.

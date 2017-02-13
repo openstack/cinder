@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -26,6 +27,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE
+from cinder.objects import fields
 from cinder.volume.drivers.dothill import dothill_client as dothill
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +63,7 @@ CONF.register_opts(iscsi_opts)
 
 
 class DotHillCommon(object):
-    VERSION = "1.0"
+    VERSION = "1.6"
 
     stats = {}
 
@@ -92,7 +94,6 @@ class DotHillCommon(object):
         self.client_logout()
 
     def client_login(self):
-        LOG.debug("Connecting to %s Array.", self.vendor_name)
         try:
             self.client.login()
         except exception.DotHillConnectionError as ex:
@@ -123,7 +124,6 @@ class DotHillCommon(object):
 
     def client_logout(self):
         self.client.logout()
-        LOG.debug("Disconnected from %s Array.", self.vendor_name)
 
     def _get_vol_name(self, volume_id):
         volume_name = self._encode_name(volume_id)
@@ -163,7 +163,7 @@ class DotHillCommon(object):
         self.client_login()
         # Use base64 to encode the volume name (UUID is too long for DotHill)
         volume_name = self._get_vol_name(volume['id'])
-        volume_size = "%dGB" % volume['size']
+        volume_size = "%dGiB" % volume['size']
         LOG.debug("Create Volume having display_name: %(display_name)s "
                   "name: %(name)s id: %(id)s size: %(size)s",
                   {'display_name': volume['display_name'],
@@ -200,7 +200,7 @@ class DotHillCommon(object):
         Make sure that the volume is not in use when trying to copy it.
         """
         if (volume['status'] != "available" or
-                volume['attach_status'] == "attached"):
+                volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED):
             LOG.error(_LE("Volume must be detached for clone operation."))
             raise exception.VolumeAttached(volume_id=volume['id'])
 
@@ -229,6 +229,9 @@ class DotHillCommon(object):
         finally:
             self.client_logout()
 
+        if volume['size'] > src_vref['size']:
+            self.extend_volume(volume, volume['size'])
+
     def create_volume_from_snapshot(self, volume, snapshot):
         self.get_volume_stats(True)
         self._assert_enough_space_for_copy(volume['size'])
@@ -248,6 +251,9 @@ class DotHillCommon(object):
             raise exception.Invalid(ex)
         finally:
             self.client_logout()
+
+        if volume['size'] > snapshot['volume_size']:
+            self.extend_volume(volume, volume['size'])
 
     def delete_volume(self, volume):
         LOG.debug("Deleting Volume: %s", volume['id'])
@@ -408,17 +414,19 @@ class DotHillCommon(object):
             volume_name = self._get_vol_name(volume['name_id'])
         else:
             volume_name = self._get_vol_name(volume['id'])
-        old_size = volume['size']
+        old_size = self.client.get_volume_size(volume_name)
         growth_size = int(new_size) - old_size
         LOG.debug("Extending Volume %(volume_name)s from %(old_size)s to "
-                  "%(new_size)s, by %(growth_size)s GB.",
+                  "%(new_size)s, by %(growth_size)s GiB.",
                   {'volume_name': volume_name,
                    'old_size': old_size,
                    'new_size': new_size,
                    'growth_size': growth_size, })
+        if growth_size < 1:
+            return
         self.client_login()
         try:
-            self.client.extend_volume(volume_name, "%dGB" % growth_size)
+            self.client.extend_volume(volume_name, "%dGiB" % growth_size)
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Extension of volume %s failed."), volume['id'])
             raise exception.Invalid(ex)
@@ -451,7 +459,7 @@ class DotHillCommon(object):
 
         """
         false_ret = (False, None)
-        if volume['attach_status'] == "attached":
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             return false_ret
         if 'location_info' not in host['capabilities']:
             return false_ret

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - The RBD driver no longer uses the "volume_tmp_dir"
+    option to set where temporary files for image conversion
+    are stored.  Set "image_conversion_dir" to configure this
+    in Ocata.
+

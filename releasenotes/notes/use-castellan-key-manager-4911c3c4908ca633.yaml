@@ -1,0 +1,15 @@
+---
+prelude: >
+    The default key manager interface in Cinder was
+    deprecated and the Castellan key manager interface
+    library is now used instead. For more information
+    about Castellan, please see
+    http://docs.openstack.org/developer/castellan/ .
+upgrade:
+  - If using the key manager, the configuration details
+    should be updated to reflect the Castellan-specific
+    configuration options.
+deprecations:
+  - All barbican and keymgr config options in Cinder are
+    now deprecated. All of these options are moved to
+    the ``key_manager`` section for the Castellan library.

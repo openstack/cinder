@@ -13,12 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
-
 from cinder.api import common
-
-
-LOG = logging.getLogger(__name__)
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -49,11 +44,16 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, consistencygroup):
         """Detailed view of a single consistency group."""
-        if consistencygroup.volume_type_id:
-            volume_types = consistencygroup.volume_type_id.split(",")
+        try:
+            volume_types = (consistencygroup.volume_type_id.split(",")
+                            if consistencygroup.volume_type_id else [])
             volume_types = [type_id for type_id in volume_types if type_id]
-        else:
-            volume_types = []
+        except AttributeError:
+            try:
+                volume_types = [v_type.id for v_type in
+                                consistencygroup.volume_types]
+            except AttributeError:
+                volume_types = []
 
         return {
             'consistencygroup': {

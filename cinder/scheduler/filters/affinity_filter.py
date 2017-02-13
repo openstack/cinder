@@ -14,24 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oslo_log import log as logging
 from oslo_utils import uuidutils
 
 from cinder.scheduler import filters
 from cinder.volume import api as volume
 
-LOG = logging.getLogger(__name__)
 
-
-class AffinityFilter(filters.BaseHostFilter):
+class AffinityFilter(filters.BaseBackendFilter):
     def __init__(self):
         self.volume_api = volume.API()
+
+    def _get_volumes(self, context, affinity_uuids, backend_state):
+        filters = {'id': affinity_uuids, 'deleted': False}
+        if backend_state.cluster_name:
+            filters['cluster_name'] = backend_state.cluster_name
+        else:
+            filters['host'] = backend_state.host
+        return self.volume_api.get_all(context, filters=filters)
 
 
 class DifferentBackendFilter(AffinityFilter):
     """Schedule volume on a different back-end from a set of volumes."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
 
@@ -56,11 +61,8 @@ class DifferentBackendFilter(AffinityFilter):
             return False
 
         if affinity_uuids:
-            return not self.volume_api.get_all(
-                context, filters={'host': host_state.host,
-                                  'id': affinity_uuids,
-                                  'deleted': False})
-
+            return not self._get_volumes(context, affinity_uuids,
+                                         backend_state)
         # With no different_host key
         return True
 
@@ -68,7 +70,7 @@ class DifferentBackendFilter(AffinityFilter):
 class SameBackendFilter(AffinityFilter):
     """Schedule volume on the same back-end as another volume."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
 
@@ -93,10 +95,7 @@ class SameBackendFilter(AffinityFilter):
             return False
 
         if affinity_uuids:
-            return self.volume_api.get_all(
-                context, filters={'host': host_state.host,
-                                  'id': affinity_uuids,
-                                  'deleted': False})
+            return self._get_volumes(context, affinity_uuids, backend_state)
 
         # With no same_host key
         return True

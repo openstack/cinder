@@ -40,6 +40,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
@@ -103,6 +104,8 @@ class NetAppBlockStorageLibrary(object):
         self.lun_space_reservation = 'true'
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
+        self.host = kwargs.get('host')
+        self.backend_name = self.host.split('@')[1]
 
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
@@ -114,6 +117,7 @@ class NetAppBlockStorageLibrary(object):
         self.max_over_subscription_ratio = (
             self.configuration.max_over_subscription_ratio)
         self.reserved_percentage = self._get_reserved_percentage()
+        self.loopingcalls = loopingcalls.LoopingCalls()
 
     def _get_reserved_percentage(self):
         # If the legacy config option if it is set to the default
@@ -166,6 +170,36 @@ class NetAppBlockStorageLibrary(object):
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
+        self.loopingcalls.start_tasks()
+
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval.
+
+        Inheriting class overrides and then explicitly calls this method.
+        """
+
+        # Add the task that deletes snapshots marked for deletion.
+        self.loopingcalls.add_task(
+            self._delete_snapshots_marked_for_deletion,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
+
+        # Add the task that logs EMS messages
+        self.loopingcalls.add_task(
+            self._handle_ems_logging,
+            loopingcalls.ONE_HOUR)
+
+    def _delete_snapshots_marked_for_deletion(self):
+        volume_list = self._get_backing_flexvol_names()
+        snapshots = self.zapi_client.get_snapshots_marked_for_deletion(
+            volume_list)
+        for snapshot in snapshots:
+            self.zapi_client.delete_snapshot(
+                snapshot['volume_name'], snapshot['name'])
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+        raise NotImplementedError()
 
     def get_pool(self, volume):
         """Return pool name where volume resides.
@@ -225,8 +259,16 @@ class NetAppBlockStorageLibrary(object):
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, lun_name, size, metadata))
 
+        model_update = self._get_volume_model_update(volume)
+
+        return model_update
+
     def _setup_qos_for_volume(self, volume, extra_specs):
         return None
+
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
+        raise NotImplementedError
 
     def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
         return
@@ -275,7 +317,8 @@ class NetAppBlockStorageLibrary(object):
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
         lun = self._get_lun_from_table(vol_name)
-        self._clone_lun(lun.name, snapshot_name, space_reserved='false')
+        self._clone_lun(lun.name, snapshot_name, space_reserved='false',
+                        is_snapshot=True)
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
@@ -323,6 +366,8 @@ class NetAppBlockStorageLibrary(object):
                             _LE("Resizing %s failed. Cleaning volume."),
                             destination_volume['id'])
                         self.delete_volume(destination_volume)
+
+            return self._get_volume_model_update(destination_volume)
 
         except Exception:
             LOG.exception(_LE("Exception cloning volume %(name)s from source "
@@ -453,7 +498,7 @@ class NetAppBlockStorageLibrary(object):
 
     def _clone_lun(self, name, new_name, space_reserved='true',
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None):
+                   block_count=0, source_snapshot=None, is_snapshot=False):
         """Clone LUN with the given name to the new name."""
         raise NotImplementedError()
 
@@ -638,8 +683,7 @@ class NetAppBlockStorageLibrary(object):
 
     def _check_volume_type_for_lun(self, volume, lun, existing_ref,
                                    extra_specs):
-        """Checks if lun satifies the volume type."""
-        raise NotImplementedError()
+        """Checks if LUN satisfies the volume type."""
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing storage object under Cinder management.
@@ -670,6 +714,7 @@ class NetAppBlockStorageLibrary(object):
             self.zapi_client.move_lun(path, new_path)
             lun = self._get_existing_vol_with_manage_ref(
                 {'source-name': new_path})
+
         if qos_policy_group_name is not None:
             self.zapi_client.set_lun_qos_policy_group(new_path,
                                                       qos_policy_group_name)
@@ -678,6 +723,8 @@ class NetAppBlockStorageLibrary(object):
                      " %(path)s and uuid %(uuid)s."),
                  {'path': lun.get_metadata_property('Path'),
                   'uuid': lun.get_metadata_property('UUID')})
+
+        return self._get_volume_model_update(volume)
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
@@ -689,30 +736,33 @@ class NetAppBlockStorageLibrary(object):
 
     def _get_existing_vol_with_manage_ref(self, existing_ref):
         """Get the corresponding LUN from the storage server."""
+
         uuid = existing_ref.get('source-id')
         path = existing_ref.get('source-name')
-        if not (uuid or path):
-            reason = _('Reference must contain either source-id'
-                       ' or source-name element.')
+
+        lun_info = {}
+        if path:
+            lun_info['path'] = path
+        elif uuid:
+            if not hasattr(self, 'vserver'):
+                reason = _('Volume manage identifier with source-id is only '
+                           'supported with clustered Data ONTAP.')
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=existing_ref, reason=reason)
+            lun_info['uuid'] = uuid
+        else:
+            reason = _('Volume manage identifier must contain either '
+                       'source-id or source-name element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
-        lun_info = {}
-        lun_info.setdefault('path', path if path else None)
-        if hasattr(self, 'vserver') and uuid:
-            lun_info['uuid'] = uuid
+
         luns = self.zapi_client.get_lun_by_args(**lun_info)
-        if luns:
-            for lun in luns:
-                netapp_lun = self._extract_lun_info(lun)
-                storage_valid = self._is_lun_valid_on_storage(netapp_lun)
-                uuid_valid = True
-                if uuid:
-                    if netapp_lun.get_metadata_property('UUID') == uuid:
-                        uuid_valid = True
-                    else:
-                        uuid_valid = False
-                if storage_valid and uuid_valid:
-                    return netapp_lun
+
+        for lun in luns:
+            netapp_lun = self._extract_lun_info(lun)
+            if self._is_lun_valid_on_storage(netapp_lun):
+                return netapp_lun
+
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
             reason=(_('LUN not found with given ref %s.') % existing_ref))
@@ -842,6 +892,9 @@ class NetAppBlockStorageLibrary(object):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -872,6 +925,7 @@ class NetAppBlockStorageLibrary(object):
                     }
                 }
             }
+
         """
 
         initiators = [fczm_utils.get_formatted_wwn(wwpn)
@@ -998,7 +1052,7 @@ class NetAppBlockStorageLibrary(object):
         """Driver entry point for deleting a consistency group.
 
         :return: Updated consistency group model and list of volume models
-        for the volumes that were deleted.
+                 for the volumes that were deleted.
         """
         model_update = {'status': 'deleted'}
         volumes_model_update = []
@@ -1040,7 +1094,8 @@ class NetAppBlockStorageLibrary(object):
         backing the Cinder volumes in the Cinder CG.
 
         :return: An implicit update for cgsnapshot and snapshots models that
-        is interpreted by the manager to set their models to available.
+                 is interpreted by the manager to set their models to
+                 available.
         """
         flexvols = set()
         for snapshot in snapshots:
@@ -1054,37 +1109,22 @@ class NetAppBlockStorageLibrary(object):
                             source_snapshot=cgsnapshot['id'])
 
         for flexvol in flexvols:
-            self._handle_busy_snapshot(flexvol, cgsnapshot['id'])
-            self.zapi_client.delete_snapshot(flexvol, cgsnapshot['id'])
+            try:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol, cgsnapshot['id'])
+                self.zapi_client.delete_snapshot(
+                    flexvol, cgsnapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.zapi_client.mark_snapshot_for_deletion(
+                    flexvol, cgsnapshot['id'])
 
         return None, None
-
-    @utils.retry(exception.SnapshotIsBusy)
-    def _handle_busy_snapshot(self, flexvol, snapshot_name):
-        """Checks for and handles a busy snapshot.
-
-        If a snapshot is not busy, take no action.  If a snapshot is busy for
-        reasons other than a clone dependency, raise immediately.  Otherwise,
-        since we always start a clone split operation after cloning a share,
-        wait up to a minute for a clone dependency to clear before giving up.
-        """
-        snapshot = self.zapi_client.get_snapshot(flexvol, snapshot_name)
-        if not snapshot['busy']:
-            LOG.info(_LI("Backing consistency group snapshot %s "
-                         "available for deletion"), snapshot_name)
-            return
-        else:
-            LOG.debug('Snapshot %(snap)s for vol %(vol)s is busy, waiting '
-                      'for volume clone dependency to clear.',
-                      {'snap': snapshot_name, 'vol': flexvol})
-
-            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
 
     def delete_cgsnapshot(self, cgsnapshot, snapshots):
         """Delete LUNs backing each snapshot in the cgsnapshot.
 
         :return: An implicit update for snapshots models that is interpreted
-        by the manager to set their models to deleted.
+                 by the manager to set their models to deleted.
         """
         for snapshot in snapshots:
             self._delete_lun(snapshot['name'])
@@ -1098,9 +1138,10 @@ class NetAppBlockStorageLibrary(object):
         """Creates a CG from a either a cgsnapshot or group of cinder vols.
 
         :return: An implicit update for the volumes model that is
-        interpreted by the manager as a successful operation.
+                 interpreted by the manager as a successful operation.
         """
         LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
+        volume_model_updates = []
 
         if cgsnapshot:
             vols = zip(volumes, snapshots)
@@ -1110,7 +1151,11 @@ class NetAppBlockStorageLibrary(object):
                     'name': snapshot['name'],
                     'size': snapshot['volume_size'],
                 }
-                self._clone_source_to_destination(source, volume)
+                volume_model_update = self._clone_source_to_destination(
+                    source, volume)
+                if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)
 
         else:
             vols = zip(volumes, source_vols)
@@ -1118,6 +1163,14 @@ class NetAppBlockStorageLibrary(object):
             for volume, old_src_vref in vols:
                 src_lun = self._get_lun_from_table(old_src_vref['name'])
                 source = {'name': src_lun.name, 'size': old_src_vref['size']}
-                self._clone_source_to_destination(source, volume)
+                volume_model_update = self._clone_source_to_destination(
+                    source, volume)
+                if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)
 
-        return None, None
+        return None, volume_model_updates
+
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        raise NotImplementedError()

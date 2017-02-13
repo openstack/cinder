@@ -1,0 +1,4 @@
+---
+features:
+  - Added secure HTTP support for REST API calls in the NexentaStor5 driver.
+    Use of HTTPS is set True by default with option ``nexenta_use_https``.

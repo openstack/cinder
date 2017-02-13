@@ -18,25 +18,22 @@
 Volume driver for NetApp E-Series iSCSI storage systems.
 """
 
-from oslo_log import log as logging
-
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
-LOG = logging.getLogger(__name__)
-
-
+@interface.volumedriver
 class NetAppEseriesISCSIDriver(driver.BaseVD,
-                               driver.ManageableVD,
-                               driver.ExtendVD,
-                               driver.TransferVD,
-                               driver.SnapshotVD,
-                               driver.ConsistencyGroupVD):
+                               driver.ManageableVD):
     """NetApp E-Series iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_ESeries'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+    VERSION = library.NetAppESeriesLibrary.VERSION
 
     def __init__(self, *args, **kwargs):
         super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)

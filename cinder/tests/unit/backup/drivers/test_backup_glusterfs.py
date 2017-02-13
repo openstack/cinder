@@ -45,7 +45,7 @@ class BackupGlusterfsShareTestCase(test.TestCase):
         self.override_config('glusterfs_backup_share', FAKE_BACKUP_SHARE)
         self.mock_object(glusterfs.GlusterfsBackupDriver,
                          '_init_backup_repo_path',
-                         mock.Mock(return_value=FAKE_BACKUP_PATH))
+                         return_value=FAKE_BACKUP_PATH)
 
         with mock.patch.object(glusterfs.GlusterfsBackupDriver,
                                '_check_configuration'):
@@ -56,7 +56,7 @@ class BackupGlusterfsShareTestCase(test.TestCase):
         self.override_config('glusterfs_backup_share', None)
         self.mock_object(glusterfs.GlusterfsBackupDriver,
                          '_init_backup_repo_path',
-                         mock.Mock(return_value=FAKE_BACKUP_PATH))
+                         return_value=FAKE_BACKUP_PATH)
 
         with mock.patch.object(glusterfs.GlusterfsBackupDriver,
                                '_check_configuration'):
@@ -74,13 +74,13 @@ class BackupGlusterfsShareTestCase(test.TestCase):
         self.mock_object(glusterfs.GlusterfsBackupDriver,
                          '_check_configuration')
         self.mock_object(remotefs_brick, 'RemoteFsClient',
-                         mock.Mock(return_value=mock_remotefsclient))
+                         return_value=mock_remotefsclient)
         self.mock_object(os, 'getegid',
-                         mock.Mock(return_value=333333))
+                         return_value=333333)
         self.mock_object(utils, 'get_file_gid',
-                         mock.Mock(return_value=333333))
+                         return_value=333333)
         self.mock_object(utils, 'get_file_mode',
-                         mock.Mock(return_value=00000))
+                         return_value=00000)
         self.mock_object(utils, 'get_root_helper')
 
         with mock.patch.object(glusterfs.GlusterfsBackupDriver,

@@ -17,6 +17,7 @@
 import os
 import sys
 
+from os_brick.remotefs import windows_remotefs as remotefs_brick
 from os_win import utilsfactory
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -26,9 +27,9 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume.drivers import smbfs
-from cinder.volume.drivers.windows import remotefs
 
 VERSION = '1.1.0'
 
@@ -42,8 +43,17 @@ CONF.set_default('smbfs_mount_point_base', r'C:\OpenStack\_mnt')
 CONF.set_default('smbfs_default_volume_format', 'vhd')
 
 
+@interface.volumedriver
 class WindowsSmbfsDriver(smbfs.SmbfsDriver):
+    # NOTE(lpetrut): This driver is currently inhering the Linux SMBFS driver,
+    # which is being deprecated. This dependency will be removed along with
+    # the Linux SMBFS driver during Pike.
+    SUPPORTED = True
     VERSION = VERSION
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Microsoft_iSCSI_CI"
+
     _MINIMUM_QEMU_IMG_VERSION = '1.6'
 
     def __init__(self, *args, **kwargs):
@@ -54,9 +64,9 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         opts = getattr(self.configuration,
                        'smbfs_mount_options',
                        CONF.smbfs_mount_options)
-        self._remotefsclient = remotefs.WindowsRemoteFsClient(
+        self._remotefsclient = remotefs_brick.WindowsRemoteFsClient(
             'cifs', root_helper=None, smbfs_mount_point_base=self.base,
-            smbfs_mount_options=opts)
+            smbfs_mount_options=opts, local_path_for_loopback=True)
 
         self._vhdutils = utilsfactory.get_vhdutils()
         self._pathutils = utilsfactory.get_pathutils()
@@ -75,7 +85,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     def _do_create_volume(self, volume):
         volume_path = self.local_path(volume)
         volume_format = self.get_volume_format(volume)
-        volume_size_bytes = volume['size'] * units.Gi
+        volume_size_bytes = volume.size * units.Gi
 
         if os.path.exists(volume_path):
             err_msg = _('File already exists at: %s') % volume_path
@@ -89,11 +99,10 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         self._vhdutils.create_dynamic_vhd(volume_path, volume_size_bytes)
 
     def _ensure_share_mounted(self, smbfs_share):
-        mnt_options = {}
+        mnt_flags = None
         if self.shares.get(smbfs_share) is not None:
             mnt_flags = self.shares[smbfs_share]
-            mnt_options = self.parse_options(mnt_flags)[1]
-        self._remotefsclient.mount(smbfs_share, mnt_options)
+        self._remotefsclient.mount(smbfs_share, mnt_flags)
 
     def _delete(self, path):
         fileutils.delete_if_exists(path)
@@ -146,13 +155,14 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
 
     def _do_create_snapshot(self, snapshot, backing_file, new_snap_path):
         backing_file_full_path = os.path.join(
-            self._local_volume_dir(snapshot['volume']),
+            self._local_volume_dir(snapshot.volume),
             backing_file)
         self._vhdutils.create_differencing_vhd(new_snap_path,
                                                backing_file_full_path)
 
     def _do_extend_volume(self, volume_path, size_gb, volume_name=None):
-        self._vhdutils.resize_vhd(volume_path, size_gb * units.Gi)
+        self._vhdutils.resize_vhd(volume_path, size_gb * units.Gi,
+                                  is_file_max_size=False)
 
     @remotefs_drv.locked_volume_id_operation
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -171,7 +181,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         try:
             if backing_file or root_file_fmt == self._DISK_FORMAT_VHDX:
                 temp_file_name = '%s.temp_image.%s.%s' % (
-                    volume['id'],
+                    volume.id,
                     image_meta['id'],
                     self._DISK_FORMAT_VHD)
                 temp_path = os.path.join(self._local_volume_dir(volume),
@@ -203,22 +213,23 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
             self.configuration.volume_dd_blocksize)
 
         self._vhdutils.resize_vhd(self.local_path(volume),
-                                  volume['size'] * units.Gi)
+                                  volume.size * units.Gi,
+                                  is_file_max_size=False)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume."""
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
                   "volume_size: %(size)s",
-                  {'snap': snapshot['id'],
-                   'vol': volume['id'],
-                   'size': snapshot['volume_size']})
+                  {'snap': snapshot.id,
+                   'vol': volume.id,
+                   'size': snapshot.volume_size})
 
-        info_path = self._local_path_volume_info(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        vol_dir = self._local_volume_dir(snapshot['volume'])
+        vol_dir = self._local_volume_dir(snapshot.volume)
 
-        forward_file = snap_info[snapshot['id']]
+        forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_dir, forward_file)
 
         # Find the file which backs this file, which represents the point
@@ -230,4 +241,5 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         self._delete(volume_path)
         self._vhdutils.convert_vhd(snapshot_path,
                                    volume_path)
-        self._vhdutils.resize_vhd(volume_path, volume_size * units.Gi)
+        self._vhdutils.resize_vhd(volume_path, volume_size * units.Gi,
+                                  is_file_max_size=False)

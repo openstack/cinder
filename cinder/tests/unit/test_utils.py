@@ -15,12 +15,14 @@
 
 import datetime
 import functools
+import json
 import os
+import sys
 import time
 
+import ddt
 import mock
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 from oslo_utils import timeutils
 import six
 from six.moves import range
@@ -29,10 +31,8 @@ import webob.exc
 import cinder
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder import utils
-
-
-CONF = cfg.CONF
 
 
 class ExecuteTestCase(test.TestCase):
@@ -131,20 +131,6 @@ class GenericUtilsTestCase(test.TestCase):
         hostname = "<}\x1fh\x10e\x08l\x02l\x05o\x12!{>"
         self.assertEqual("hello", utils.sanitize_hostname(hostname))
 
-    def test_is_valid_boolstr(self):
-        self.assertTrue(utils.is_valid_boolstr(True))
-        self.assertTrue(utils.is_valid_boolstr('trUe'))
-        self.assertTrue(utils.is_valid_boolstr(False))
-        self.assertTrue(utils.is_valid_boolstr('faLse'))
-        self.assertTrue(utils.is_valid_boolstr('yeS'))
-        self.assertTrue(utils.is_valid_boolstr('nO'))
-        self.assertTrue(utils.is_valid_boolstr('y'))
-        self.assertTrue(utils.is_valid_boolstr('N'))
-        self.assertTrue(utils.is_valid_boolstr(1))
-        self.assertTrue(utils.is_valid_boolstr('1'))
-        self.assertTrue(utils.is_valid_boolstr(0))
-        self.assertTrue(utils.is_valid_boolstr('0'))
-
     @mock.patch('os.path.join', side_effect=lambda x, y: '/'.join((x, y)))
     def test_make_dev_path(self, mock_join):
         self.assertEqual('/dev/xvda', utils.make_dev_path('xvda'))
@@ -170,6 +156,7 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.read_file_as_root,
                           test_filepath)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('tempfile.NamedTemporaryFile')
     @mock.patch.object(os, 'open')
     @mock.patch.object(os, 'fdatasync')
@@ -213,63 +200,6 @@ class GenericUtilsTestCase(test.TestCase):
                           mock.MagicMock())
         mock_isfile.assert_called_once_with(tempfile)
         mock_unlink.assert_called_once_with(tempfile)
-
-    @mock.patch('oslo_utils.timeutils.utcnow')
-    def test_service_is_up(self, mock_utcnow):
-        fts_func = datetime.datetime.fromtimestamp
-        fake_now = 1000
-        down_time = 5
-
-        self.flags(service_down_time=down_time)
-        mock_utcnow.return_value = fts_func(fake_now)
-
-        # Up (equal)
-        service = {'updated_at': fts_func(fake_now - down_time),
-                   'created_at': fts_func(fake_now - down_time)}
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
-
-        # Up
-        service = {'updated_at': fts_func(fake_now - down_time + 1),
-                   'created_at': fts_func(fake_now - down_time + 1)}
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
-
-        # Down
-        service = {'updated_at': fts_func(fake_now - down_time - 1),
-                   'created_at': fts_func(fake_now - down_time - 1)}
-        result = utils.service_is_up(service)
-        self.assertFalse(result)
-
-    def test_safe_parse_xml(self):
-
-        normal_body = ('<?xml version="1.0" ?>'
-                       '<foo><bar><v1>hey</v1><v2>there</v2></bar></foo>')
-
-        def killer_body():
-            return (("""<!DOCTYPE x [
-                    <!ENTITY a "%(a)s">
-                    <!ENTITY b "%(b)s">
-                    <!ENTITY c "%(c)s">]>
-                <foo>
-                    <bar>
-                        <v1>%(d)s</v1>
-                    </bar>
-                </foo>""") % {
-                'a': 'A' * 10,
-                'b': '&a;' * 10,
-                'c': '&b;' * 10,
-                'd': '&c;' * 9999,
-            }).strip()
-
-        dom = utils.safe_minidom_parse_string(normal_body)
-        # Some versions of minidom inject extra newlines so we ignore them
-        result = str(dom.toxml()).replace('\n', '')
-        self.assertEqual(normal_body, result)
-
-        self.assertRaises(ValueError,
-                          utils.safe_minidom_parse_string,
-                          killer_body())
 
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
@@ -351,15 +281,6 @@ class GenericUtilsTestCase(test.TestCase):
         mock_conf.rootwrap_config = '/path/to/conf'
         self.assertEqual('sudo cinder-rootwrap /path/to/conf',
                          utils.get_root_helper())
-
-    def test_list_of_dicts_to_dict(self):
-        a = {'id': '1', 'color': 'orange'}
-        b = {'id': '2', 'color': 'blue'}
-        c = {'id': '3', 'color': 'green'}
-        lst = [a, b, c]
-
-        resp = utils.list_of_dicts_to_dict(lst, 'id')
-        self.assertEqual(c['id'], resp['3']['id'])
 
 
 class TemporaryChownTestCase(test.TestCase):
@@ -592,7 +513,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
         mock_stat.assert_called_once_with(path)
         mock_isblk.assert_called_once_with(mock_stat.return_value.st_mode)
         mock_ischr.assert_called_once_with(mock_stat.return_value.st_mode)
-        self.assertIs(None, output)
+        self.assertIsNone(output)
 
 
 class MonkeyPatchTestCase(test.TestCase):
@@ -625,26 +546,23 @@ class MonkeyPatchTestCase(test.TestCase):
 
         self.assertEqual(8, ret_b)
         package_a = self.example_package + 'example_a.'
-        self.assertTrue(
-            package_a + 'example_function_a'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'example_function_a',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
 
-        self.assertTrue(
-            package_a + 'ExampleClassA.example_method'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertTrue(
-            package_a + 'ExampleClassA.example_method_add'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method_add',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
         package_b = self.example_package + 'example_b.'
-        self.assertFalse(
-            package_b + 'example_function_b'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(
-            package_b + 'ExampleClassB.example_method'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(
-            package_b + 'ExampleClassB.example_method_add'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'example_function_b',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'ExampleClassB.example_method',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'ExampleClassB.example_method_add',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
 
 
 class AuditPeriodTest(test.TestCase):
@@ -806,8 +724,53 @@ class BrickUtils(test.TestCase):
         self.assertEqual(mock_factory.return_value, output)
         mock_factory.assert_called_once_with(
             'protocol', mock_helper.return_value, driver=None,
-            execute=putils.execute, use_multipath=False,
-            device_scan_attempts=3)
+            use_multipath=False, device_scan_attempts=3)
+
+    @mock.patch('os_brick.encryptors.get_volume_encryptor')
+    @mock.patch('cinder.utils.get_root_helper')
+    def test_brick_attach_volume_encryptor(self, mock_helper,
+                                           mock_get_encryptor):
+        attach_info = {'device': {'path': 'dev/sda'},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        ctxt = mock.Mock(name='context')
+        mock_encryptor = mock.Mock()
+        mock_get_encryptor.return_value = mock_encryptor
+        utils.brick_attach_volume_encryptor(ctxt, attach_info, encryption)
+
+        connection_info = attach_info['conn']
+        connection_info['data']['device_path'] = attach_info['device']['path']
+        mock_helper.assert_called_once_with()
+        mock_get_encryptor.assert_called_once_with(
+            root_helper=mock_helper.return_value,
+            connection_info=connection_info,
+            keymgr=mock.ANY,
+            **encryption)
+        mock_encryptor.attach_volume.assert_called_once_with(
+            ctxt, **encryption)
+
+    @mock.patch('os_brick.encryptors.get_volume_encryptor')
+    @mock.patch('cinder.utils.get_root_helper')
+    def test_brick_detach_volume_encryptor(self,
+                                           mock_helper, mock_get_encryptor):
+        attach_info = {'device': {'path': 'dev/sda'},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        mock_encryptor = mock.Mock()
+        mock_get_encryptor.return_value = mock_encryptor
+        utils.brick_detach_volume_encryptor(attach_info, encryption)
+
+        mock_helper.assert_called_once_with()
+        connection_info = attach_info['conn']
+        connection_info['data']['device_path'] = attach_info['device']['path']
+        mock_get_encryptor.assert_called_once_with(
+            root_helper=mock_helper.return_value,
+            connection_info=connection_info,
+            keymgr=mock.ANY,
+            **encryption)
+        mock_encryptor.detach_volume.assert_called_once_with(**encryption)
 
 
 class StringLengthTestCase(test.TestCase):
@@ -823,6 +786,9 @@ class StringLengthTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           utils.check_string_length,
                           'a' * 256, 'name', max_length=255)
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_string_length,
+                          dict(), 'name', max_length=255)
 
 
 class AddVisibleAdminMetadataTestCase(test.TestCase):
@@ -949,9 +915,6 @@ class WrongException(Exception):
 
 
 class TestRetryDecorator(test.TestCase):
-    def setUp(self):
-        super(TestRetryDecorator, self).setUp()
-
     def test_no_retry_required(self):
         self.counter = 0
 
@@ -1075,6 +1038,7 @@ class TestRetryDecorator(test.TestCase):
             self.assertFalse(mock_sleep.called)
 
 
+@ddt.ddt
 class LogTracingTestCase(test.TestCase):
 
     def test_utils_setup_tracing(self):
@@ -1190,8 +1154,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the correct function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertTrue('_trace_test_method' in str(call))
-            self.assertFalse('blah' in str(call))
+            self.assertIn('_trace_test_method', str(call))
+            self.assertNotIn('blah', str(call))
 
     def test_utils_trace_method_outer_decorator(self):
         mock_logging = self.mock_object(utils, 'logging')
@@ -1217,8 +1181,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the incorrect function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertFalse('_trace_test_method' in str(call))
-            self.assertTrue('blah' in str(call))
+            self.assertNotIn('_trace_test_method', str(call))
+            self.assertIn('blah', str(call))
 
     def test_utils_trace_method_outer_decorator_with_functools(self):
         mock_log = mock.Mock()
@@ -1245,8 +1209,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the incorrect function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertTrue('_trace_test_method' in str(call))
-            self.assertFalse('wraps' in str(call))
+            self.assertIn('_trace_test_method', str(call))
+            self.assertNotIn('wraps', str(call))
 
     def test_utils_trace_method_with_exception(self):
         self.LOG = self.mock_object(utils, 'LOG')
@@ -1260,8 +1224,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertRaises(exception.APITimeout, _trace_test_method)
 
         exception_log = self.LOG.debug.call_args_list[1]
-        self.assertTrue('exception' in str(exception_log))
-        self.assertTrue('test message' in str(exception_log))
+        self.assertIn('exception', str(exception_log))
+        self.assertIn('test message', str(exception_log))
 
     def test_utils_trace_method_with_time(self):
         mock_logging = self.mock_object(utils, 'logging')
@@ -1282,7 +1246,7 @@ class LogTracingTestCase(test.TestCase):
 
         self.assertEqual('OK', result)
         return_log = mock_log.debug.call_args_list[1]
-        self.assertTrue('2900' in str(return_log))
+        self.assertIn('2900', str(return_log))
 
     def test_utils_trace_wrapper_class(self):
         mock_logging = self.mock_object(utils, 'logging')
@@ -1303,43 +1267,82 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual('OK', result)
         self.assertEqual(2, mock_log.debug.call_count)
 
-    def test_utils_calculate_virtual_free_capacity_with_thick(self):
-        host_stat = {'total_capacity_gb': 30.01,
-                     'free_capacity_gb': 28.01,
-                     'provisioned_capacity_gb': 2.0,
-                     'max_over_subscription_ratio': 1.0,
-                     'thin_provisioning_support': False,
-                     'thick_provisioning_support': True,
+    def test_utils_trace_method_with_password_dict(self):
+        mock_logging = self.mock_object(utils, 'logging')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = lambda x: True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
+
+        @utils.trace_method
+        def _trace_test_method(*args, **kwargs):
+            return {'something': 'test',
+                    'password': 'Now you see me'}
+
+        utils.setup_tracing(['method'])
+        result = _trace_test_method(self)
+        expected_unmasked_dict = {'something': 'test',
+                                  'password': 'Now you see me'}
+
+        self.assertEqual(expected_unmasked_dict, result)
+        self.assertEqual(2, mock_log.debug.call_count)
+        self.assertIn("'password': '***'",
+                      str(mock_log.debug.call_args_list[1]))
+
+    def test_utils_trace_method_with_password_str(self):
+        mock_logging = self.mock_object(utils, 'logging')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = lambda x: True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
+
+        @utils.trace_method
+        def _trace_test_method(*args, **kwargs):
+            return "'adminPass': 'Now you see me'"
+
+        utils.setup_tracing(['method'])
+        result = _trace_test_method(self)
+        expected_unmasked_str = "'adminPass': 'Now you see me'"
+
+        self.assertEqual(expected_unmasked_str, result)
+        self.assertEqual(2, mock_log.debug.call_count)
+        self.assertIn("'adminPass': '***'",
+                      str(mock_log.debug.call_args_list[1]))
+
+    @ddt.data(
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 1.0,
+         'thin_support': False, 'thick_support': True,
+         'is_thin_lun': False, 'expected': 27.01},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': False,
+         'is_thin_lun': True, 'expected': 37.02},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': True, 'expected': 37.02},
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': False, 'expected': 27.01},
+    )
+    @ddt.unpack
+    def test_utils_calculate_virtual_free_capacity_provision_type(
+            self, total, free, provisioned, max_ratio, thin_support,
+            thick_support, is_thin_lun, expected):
+        host_stat = {'total_capacity_gb': total,
+                     'free_capacity_gb': free,
+                     'provisioned_capacity_gb': provisioned,
+                     'max_over_subscription_ratio': max_ratio,
+                     'thin_provisioning_support': thin_support,
+                     'thick_provisioning_support': thick_support,
                      'reserved_percentage': 5}
 
-        free = utils.calculate_virtual_free_capacity(
+        free_capacity = utils.calculate_virtual_free_capacity(
             host_stat['total_capacity_gb'],
             host_stat['free_capacity_gb'],
             host_stat['provisioned_capacity_gb'],
             host_stat['thin_provisioning_support'],
             host_stat['max_over_subscription_ratio'],
-            host_stat['reserved_percentage'])
+            host_stat['reserved_percentage'],
+            is_thin_lun)
 
-        self.assertEqual(27.01, free)
-
-    def test_utils_calculate_virtual_free_capacity_with_thin(self):
-        host_stat = {'total_capacity_gb': 20.01,
-                     'free_capacity_gb': 18.01,
-                     'provisioned_capacity_gb': 2.0,
-                     'max_over_subscription_ratio': 2.0,
-                     'thin_provisioning_support': True,
-                     'thick_provisioning_support': False,
-                     'reserved_percentage': 5}
-
-        free = utils.calculate_virtual_free_capacity(
-            host_stat['total_capacity_gb'],
-            host_stat['free_capacity_gb'],
-            host_stat['provisioned_capacity_gb'],
-            host_stat['thin_provisioning_support'],
-            host_stat['max_over_subscription_ratio'],
-            host_stat['reserved_percentage'])
-
-        self.assertEqual(37.02, free)
+        self.assertEqual(expected, free_capacity)
 
 
 class Comparable(utils.ComparableMixin):
@@ -1411,3 +1414,38 @@ class TestValidateInteger(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           utils.validate_integer,
                           value, 'limit', min_value=-1, max_value=(2 ** 31))
+
+
+@ddt.ddt
+class TestNotificationShortCircuit(test.TestCase):
+    def test_do_nothing_getter(self):
+        """Test any attribute will always return the same instance (self)."""
+        donothing = utils.DoNothing()
+        self.assertIs(donothing, donothing.anyname)
+
+    def test_do_nothing_caller(self):
+        """Test calling the object will always return the same instance."""
+        donothing = utils.DoNothing()
+        self.assertIs(donothing, donothing())
+
+    def test_do_nothing_json_serializable(self):
+        """Test calling the object will always return the same instance."""
+        donothing = utils.DoNothing()
+        self.assertEqual('""', json.dumps(donothing))
+
+    @utils.if_notifications_enabled
+    def _decorated_method(self):
+        return mock.sentinel.success
+
+    def test_if_notification_enabled_when_enabled(self):
+        """Test method is called when notifications are enabled."""
+        result = self._decorated_method()
+        self.assertEqual(mock.sentinel.success, result)
+
+    @ddt.data([], ['noop'], ['noop', 'noop'])
+    def test_if_notification_enabled_when_disabled(self, driver):
+        """Test method is not called when notifications are disabled."""
+        self.override_config('driver', driver,
+                             group='oslo_messaging_notifications')
+        result = self._decorated_method()
+        self.assertEqual(utils.DO_NOTHING, result)

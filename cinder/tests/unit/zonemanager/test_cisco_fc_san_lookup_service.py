@@ -85,7 +85,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         get_nameserver_info_mock.return_value = (nsshow_data)
         device_map = self.get_device_mapping_from_network(
             initiator_list, target_list)
-        self.assertDictMatch(_device_map_to_verify, device_map)
+        self.assertDictEqual(_device_map_to_verify, device_map)
 
     @mock.patch.object(cisco_lookup.CiscoFCSanLookupService,
                        '_get_switch_info')

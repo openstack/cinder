@@ -12,21 +12,23 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo_config import cfg
 from oslo_log import log as logging
+from six.moves import http_client
 from webob import exc
 
+from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.v2 import snapshots
+from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
-from cinder import exception
 from cinder.i18n import _
 from cinder import volume as cinder_volume
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
-authorize = extensions.extension_authorizer('snapshot', 'snapshot_manage')
+authorize_manage = extensions.extension_authorizer('snapshot',
+                                                   'snapshot_manage')
+authorize_list_manageable = extensions.extension_authorizer('snapshot',
+                                                            'list_manageable')
 
 
 class SnapshotManageController(wsgi.Controller):
@@ -37,9 +39,9 @@ class SnapshotManageController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(SnapshotManageController, self).__init__(*args, **kwargs)
         self.volume_api = cinder_volume.API()
+        self._list_manageable_view = list_manageable_view.ViewBuilder()
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=snapshots.SnapshotTemplate)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Instruct Cinder to manage a storage snapshot object.
 
@@ -53,13 +55,15 @@ class SnapshotManageController(wsgi.Controller):
 
         Required HTTP Body:
 
-        {
-         "snapshot":
-          {
-           "volume_id": <Cinder volume already exists in volume backend>,
-           "ref":  <Driver-specific reference to the existing storage object>,
-          }
-        }
+        .. code-block:: json
+
+         {
+           "snapshot":
+           {
+             "volume_id": <Cinder volume already exists in volume backend>,
+             "ref":  <Driver-specific reference to the existing storage object>
+           }
+         }
 
         See the appropriate Cinder drivers' implementations of the
         manage_snapshot method to find out the accepted format of 'ref'.
@@ -73,14 +77,15 @@ class SnapshotManageController(wsgi.Controller):
         The snapshot will later enter the error state if it is discovered that
         'ref' is bad.
 
-        Optional elements to 'snapshot' are:
-            name               A name for the new snapshot.
-            description        A description for the new snapshot.
-            metadata           Key/value pairs to be associated with the new
-                               snapshot.
+        Optional elements to 'snapshot' are::
+
+         name           A name for the new snapshot.
+         description    A description for the new snapshot.
+         metadata       Key/value pairs to be associated with the new snapshot.
+
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_manage(context)
 
         if not self.is_valid_body(body, 'snapshot'):
             msg = _("Missing required element snapshot in request body.")
@@ -100,11 +105,8 @@ class SnapshotManageController(wsgi.Controller):
 
         # Check whether volume exists
         volume_id = snapshot['volume_id']
-        try:
-            volume = self.volume_api.get(context, volume_id)
-        except exception.VolumeNotFound:
-            msg = _("Volume: %s could not be found.") % volume_id
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
 
         LOG.debug('Manage snapshot request body: %s', body)
 
@@ -112,22 +114,34 @@ class SnapshotManageController(wsgi.Controller):
 
         snapshot_parameters['metadata'] = snapshot.get('metadata', None)
         snapshot_parameters['description'] = snapshot.get('description', None)
-        # NOTE(wanghao) if name in request body, we are overriding the 'name'
-        snapshot_parameters['name'] = snapshot.get('name',
-                                                   snapshot.get('display_name')
-                                                   )
+        snapshot_parameters['name'] = snapshot.get('name')
 
-        try:
-            new_snapshot = self.volume_api.manage_existing_snapshot(
-                context,
-                snapshot['ref'],
-                volume,
-                **snapshot_parameters)
-        except exception.ServiceNotFound:
-            msg = _("Service %s not found.") % CONF.volume_topic
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        new_snapshot = self.volume_api.manage_existing_snapshot(
+            context,
+            snapshot['ref'],
+            volume,
+            **snapshot_parameters)
 
         return self._view_builder.detail(req, new_snapshot)
+
+    @wsgi.extends
+    def index(self, req):
+        """Returns a summary list of snapshots available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, False, self.volume_api.get_manageable_snapshots,
+            self._list_manageable_view)
+
+    @wsgi.extends
+    def detail(self, req):
+        """Returns a detailed list of snapshots available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, True, self.volume_api.get_manageable_snapshots,
+            self._list_manageable_view)
 
 
 class Snapshot_manage(extensions.ExtensionDescriptor):
@@ -135,11 +149,11 @@ class Snapshot_manage(extensions.ExtensionDescriptor):
 
     name = 'SnapshotManage'
     alias = 'os-snapshot-manage'
-    namespace = ('http://docs.openstack.org/volume/ext/'
-                 'os-snapshot-manage/api/v1')
     updated = '2014-12-31T00:00:00+00:00'
 
     def get_resources(self):
         controller = SnapshotManageController()
         return [extensions.ResourceExtension(Snapshot_manage.alias,
-                                             controller)]
+                                             controller,
+                                             collection_actions=
+                                             {'detail': 'GET'})]

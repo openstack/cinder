@@ -129,8 +129,7 @@ class PerformanceLibrary(object):
                                              p2_flush_time):
         """Get adjusted CP time by limiting CP phase 2 flush time to 20%."""
 
-        return (total_cp_time *
-                (1.0 - (1.0 * p2_flush_time / total_cp_time) / 0.8))
+        return (total_cp_time - p2_flush_time) * 1.20
 
     def _get_performance_counter_delta(self, counters_t1, counters_t2,
                                        counter_name):

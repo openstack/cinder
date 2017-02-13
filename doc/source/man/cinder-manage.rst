@@ -2,14 +2,12 @@
 cinder-manage
 =============
 
-------------------------------------------------------
+------------------------------------------
 Control and manage OpenStack block storage
-------------------------------------------------------
+------------------------------------------
 
 :Author: openstack@lists.openstack.org
-:Date:   2015-11-03
 :Copyright: OpenStack Foundation
-:Version: 7.0.0
 :Manual section: 1
 :Manual group: cloud computing
 
@@ -127,6 +125,10 @@ Cinder Backup
 ``cinder-manage backup list``
 
     Displays a list of all backups (including ones in progress) and the host on which the backup operation is running.
+
+``cinder-manage backup update_backup_host --currenthost <current host> --newhost <new host>``
+
+    Updates the host name of all backups currently associated with a specified host.
 
 Cinder Version
 ~~~~~~~~~~~~~~

@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 import oslo_messaging
 
 from cinder.api import extensions
@@ -23,9 +22,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.volume import rpcapi
-
-
-LOG = logging.getLogger(__name__)
 
 
 def authorize(context, action_name):
@@ -48,16 +44,18 @@ class CapabilitiesController(wsgi.Controller):
         """Return capabilities list of given backend."""
         context = req.environ['cinder.context']
         authorize(context, 'capabilities')
-        filters = {'host': id, 'binary': 'cinder-volume'}
-        service = objects.ServiceList.get_all(context, filters)
-        if not service:
+        filters = {'host_or_cluster': id, 'binary': 'cinder-volume'}
+        services = objects.ServiceList.get_all(context, filters)
+        if not services:
             msg = (_("Can't find service: %s") % id)
             raise exception.NotFound(msg)
+        topic = services[0].service_topic_queue
         try:
-            capabilities = self.volume_api.get_capabilities(context, id, False)
+            capabilities = self.volume_api.get_capabilities(context, topic,
+                                                            False)
         except oslo_messaging.MessagingTimeout:
-            raise exception.RPCTimeout(service=id)
-        return self._view_builder.summary(req, capabilities, id)
+            raise exception.RPCTimeout(service=topic)
+        return self._view_builder.summary(req, capabilities, topic)
 
 
 class Capabilities(extensions.ExtensionDescriptor):
@@ -65,7 +63,6 @@ class Capabilities(extensions.ExtensionDescriptor):
 
     name = "Capabilities"
     alias = "capabilities"
-    namespace = "http://docs.openstack.org/volume/ext/capabilities/api/v2"
     updated = "2015-08-31T00:00:00+00:00"
 
     def get_resources(self):

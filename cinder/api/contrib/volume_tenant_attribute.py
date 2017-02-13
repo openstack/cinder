@@ -14,7 +14,6 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 
 
 authorize = extensions.soft_extension_authorizer('volume',
@@ -31,7 +30,6 @@ class VolumeTenantAttributeController(wsgi.Controller):
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
         if authorize(context):
-            resp_obj.attach(xml=VolumeTenantAttributeTemplate())
             volume = resp_obj.obj['volume']
             self._add_volume_tenant_attribute(req, volume)
 
@@ -39,7 +37,6 @@ class VolumeTenantAttributeController(wsgi.Controller):
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
         if authorize(context):
-            resp_obj.attach(xml=VolumeListTenantAttributeTemplate())
             for vol in list(resp_obj.obj['volumes']):
                 self._add_volume_tenant_attribute(req, vol)
 
@@ -49,35 +46,9 @@ class Volume_tenant_attribute(extensions.ExtensionDescriptor):
 
     name = "VolumeTenantAttribute"
     alias = "os-vol-tenant-attr"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume_tenant_attribute/api/v2")
     updated = "2011-11-03T00:00:00+00:00"
 
     def get_controller_extensions(self):
         controller = VolumeTenantAttributeController()
         extension = extensions.ControllerExtension(self, 'volumes', controller)
         return [extension]
-
-
-def make_volume(elem):
-    elem.set('{%s}tenant_id' % Volume_tenant_attribute.namespace,
-             '%s:tenant_id' % Volume_tenant_attribute.alias)
-
-
-class VolumeTenantAttributeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume', selector='volume')
-        make_volume(root)
-        alias = Volume_tenant_attribute.alias
-        namespace = Volume_tenant_attribute.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})
-
-
-class VolumeListTenantAttributeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volumes')
-        elem = xmlutil.SubTemplateElement(root, 'volume', selector='volumes')
-        make_volume(elem)
-        alias = Volume_tenant_attribute.alias
-        namespace = Volume_tenant_attribute.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})

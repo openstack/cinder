@@ -43,20 +43,17 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
     def _set_up_fake_pools(self):
 
-        class test_volume(object):
-            self.id = None
-            self.aggr = None
-
-        volume1 = test_volume()
-        volume1.id = {'name': 'pool1'}
-        volume1.aggr = {'name': 'aggr1'}
-        volume2 = test_volume()
-        volume2.id = {'name': 'pool2'}
-        volume2.aggr = {'name': 'aggr2'}
-        volume3 = test_volume()
-        volume3.id = {'name': 'pool3'}
-        volume3.aggr = {'name': 'aggr2'}
-        self.fake_volumes = [volume1, volume2, volume3]
+        self.fake_volumes = {
+            'pool1': {
+                'netapp_aggregate': 'aggr1',
+            },
+            'pool2': {
+                'netapp_aggregate': 'aggr2',
+            },
+            'pool3': {
+                'netapp_aggregate': 'aggr2',
+            },
+        }
 
         self.fake_aggrs = set(['aggr1', 'aggr2', 'aggr3'])
         self.fake_nodes = set(['node1', 'node2'])
@@ -96,7 +93,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             system_constituent)
         self.mock_object(self.perf_library,
                          '_get_base_counter_name',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
+                         side_effect=netapp_api.NaApiError)
 
         self.perf_library._init_counter_info()
 
@@ -110,7 +107,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         self.zapi_client.features.SYSTEM_CONSTITUENT_METRICS = False
         mock_get_base_counter_name = self.mock_object(
             self.perf_library, '_get_base_counter_name',
-            mock.Mock(return_value='cpu_elapsed_time1'))
+            return_value='cpu_elapsed_time1')
 
         self.perf_library._init_counter_info()
 
@@ -127,7 +124,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         self.zapi_client.features.SYSTEM_CONSTITUENT_METRICS = True
         mock_get_base_counter_name = self.mock_object(
             self.perf_library, '_get_base_counter_name',
-            mock.Mock(return_value='cpu_elapsed_time'))
+            return_value='cpu_elapsed_time')
 
         self.perf_library._init_counter_info()
 
@@ -147,17 +144,15 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         }
         mock_get_aggregates_for_pools = self.mock_object(
             self.perf_library, '_get_aggregates_for_pools',
-            mock.Mock(return_value=self.fake_aggrs))
+            return_value=self.fake_aggrs)
         mock_get_nodes_for_aggregates = self.mock_object(
             self.perf_library, '_get_nodes_for_aggregates',
-            mock.Mock(return_value=(self.fake_nodes,
-                                    self.fake_aggr_node_map)))
+            return_value=(self.fake_nodes, self.fake_aggr_node_map))
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(side_effect=[21, 31]))
+            side_effect=[21, 31])
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(side_effect=[25, 75]))
+            self.perf_library, '_get_node_utilization', side_effect=[25, 75])
 
         self.perf_library.update_performance_cache(self.fake_volumes)
 
@@ -184,17 +179,15 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_aggregates_for_pools = self.mock_object(
             self.perf_library, '_get_aggregates_for_pools',
-            mock.Mock(return_value=self.fake_aggrs))
+            return_value=self.fake_aggrs)
         mock_get_nodes_for_aggregates = self.mock_object(
             self.perf_library, '_get_nodes_for_aggregates',
-            mock.Mock(return_value=(self.fake_nodes,
-                                    self.fake_aggr_node_map)))
+            return_value=(self.fake_nodes, self.fake_aggr_node_map))
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(side_effect=[11, 21]))
+            side_effect=[11, 21])
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(side_effect=[25, 75]))
+            self.perf_library, '_get_node_utilization', side_effect=[25, 75])
 
         self.perf_library.update_performance_cache(self.fake_volumes)
 
@@ -225,16 +218,15 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         }
         mock_get_aggregates_for_pools = self.mock_object(
             self.perf_library, '_get_aggregates_for_pools',
-            mock.Mock(return_value=self.fake_aggrs))
+            return_value=self.fake_aggrs)
         mock_get_nodes_for_aggregates = self.mock_object(
             self.perf_library, '_get_nodes_for_aggregates',
-            mock.Mock(return_value=(set(), {})))
+            return_value=(set(), {}))
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(side_effect=[11, 21]))
+            side_effect=[11, 21])
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(side_effect=[25, 75]))
+            self.perf_library, '_get_node_utilization', side_effect=[25, 75])
 
         self.perf_library.update_performance_cache(self.fake_volumes)
 
@@ -267,17 +259,15 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         }
         mock_get_aggregates_for_pools = self.mock_object(
             self.perf_library, '_get_aggregates_for_pools',
-            mock.Mock(return_value=self.fake_aggrs))
+            return_value=self.fake_aggrs)
         mock_get_nodes_for_aggregates = self.mock_object(
             self.perf_library, '_get_nodes_for_aggregates',
-            mock.Mock(return_value=(self.fake_nodes,
-                                    self.fake_aggr_node_map)))
+            return_value=(self.fake_nodes, self.fake_aggr_node_map))
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(side_effect=[None, None]))
+            side_effect=[None, None])
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(side_effect=[25, 75]))
+            self.perf_library, '_get_node_utilization', side_effect=[25, 75])
 
         self.perf_library.update_performance_cache(self.fake_volumes)
 
@@ -334,20 +324,19 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         self.assertAlmostEqual(expected, result)
 
+    def test__update_for_failover(self):
+        self.mock_object(self.perf_library, 'update_performance_cache')
+        mock_client = mock.Mock(name='FAKE_ZAPI_CLIENT')
+
+        self.perf_library._update_for_failover(mock_client, self.fake_volumes)
+
+        self.assertEqual(mock_client, self.perf_library.zapi_client)
+        self.perf_library.update_performance_cache.assert_called_once_with(
+            self.fake_volumes)
+
     def test_get_aggregates_for_pools(self):
 
-        class test_volume(object):
-            self.aggr = None
-
-        volume1 = test_volume()
-        volume1.aggr = {'name': 'aggr1'}
-        volume2 = test_volume()
-        volume2.aggr = {'name': 'aggr2'}
-        volume3 = test_volume()
-        volume3.aggr = {'name': 'aggr2'}
-        volumes = [volume1, volume2, volume3]
-
-        result = self.perf_library._get_aggregates_for_pools(volumes)
+        result = self.perf_library._get_aggregates_for_pools(self.fake_volumes)
 
         expected_aggregate_names = set(['aggr1', 'aggr2'])
         self.assertEqual(expected_aggregate_names, result)
@@ -359,7 +348,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_node_for_aggregate = self.mock_object(
             self.zapi_client, 'get_node_for_aggregate',
-            mock.Mock(side_effect=aggregate_nodes))
+            side_effect=aggregate_nodes)
 
         result = self.perf_library._get_nodes_for_aggregates(aggregate_names)
 
@@ -377,13 +366,13 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_node_utilization_system_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_system_counters',
-            mock.Mock(return_value=['A', 'B', 'C']))
+            return_value=['A', 'B', 'C'])
         mock_get_node_utilization_wafl_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_wafl_counters',
-            mock.Mock(return_value=['D', 'E', 'F']))
+            return_value=['D', 'E', 'F'])
         mock_get_node_utilization_processor_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_processor_counters',
-            mock.Mock(return_value=['G', 'H', 'I']))
+            return_value=['G', 'H', 'I'])
 
         result = self.perf_library._get_node_utilization_counters(fake.NODE)
 
@@ -401,7 +390,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         self.mock_object(self.perf_library,
                          '_get_node_utilization_system_counters',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
+                         side_effect=netapp_api.NaApiError)
 
         result = self.perf_library._get_node_utilization_counters(fake.NODE)
 
@@ -411,10 +400,10 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_uuids = self.mock_object(
             self.zapi_client, 'get_performance_instance_uuids',
-            mock.Mock(return_value=fake.SYSTEM_INSTANCE_UUIDS))
+            return_value=fake.SYSTEM_INSTANCE_UUIDS)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.SYSTEM_COUNTERS))
+            return_value=fake.SYSTEM_COUNTERS)
 
         result = self.perf_library._get_node_utilization_system_counters(
             fake.NODE)
@@ -431,13 +420,13 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_uuids = self.mock_object(
             self.zapi_client, 'get_performance_instance_uuids',
-            mock.Mock(return_value=fake.WAFL_INSTANCE_UUIDS))
+            return_value=fake.WAFL_INSTANCE_UUIDS)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.WAFL_COUNTERS))
+            return_value=fake.WAFL_COUNTERS)
         mock_get_performance_counter_info = self.mock_object(
             self.zapi_client, 'get_performance_counter_info',
-            mock.Mock(return_value=fake.WAFL_CP_PHASE_TIMES_COUNTER_INFO))
+            return_value=fake.WAFL_CP_PHASE_TIMES_COUNTER_INFO)
 
         result = self.perf_library._get_node_utilization_wafl_counters(
             fake.NODE)
@@ -456,13 +445,13 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_uuids = self.mock_object(
             self.zapi_client, 'get_performance_instance_uuids',
-            mock.Mock(return_value=fake.PROCESSOR_INSTANCE_UUIDS))
+            return_value=fake.PROCESSOR_INSTANCE_UUIDS)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.PROCESSOR_COUNTERS))
+            return_value=fake.PROCESSOR_COUNTERS)
         self.mock_object(
             self.zapi_client, 'get_performance_counter_info',
-            mock.Mock(return_value=fake.PROCESSOR_DOMAIN_BUSY_COUNTER_INFO))
+            return_value=fake.PROCESSOR_DOMAIN_BUSY_COUNTER_INFO)
 
         result = self.perf_library._get_node_utilization_processor_counters(
             fake.NODE)

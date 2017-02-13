@@ -17,7 +17,6 @@
 from lxml import etree
 
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
@@ -35,9 +34,17 @@ EXPORT_PATH = '/fake/export/path'
 NFS_SHARE = '%s:%s' % (SHARE_IP, EXPORT_PATH)
 HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, POOL_NAME)
 NFS_HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, NFS_SHARE)
+AGGREGATE = 'aggr1'
 FLEXVOL = 'openstack-flexvol'
 NFS_FILE_PATH = 'nfsvol'
 PATH = '/vol/%s/%s' % (POOL_NAME, LUN_NAME)
+IMAGE_FILE_ID = 'img-cache-imgid'
+PROVIDER_LOCATION = 'fake_provider_location'
+NFS_HOST = 'nfs-host1'
+NFS_SHARE_PATH = '/export'
+NFS_EXPORT_1 = '%s:%s' % (NFS_HOST, NFS_SHARE_PATH)
+NFS_EXPORT_2 = 'nfs-host2:/export'
+MOUNT_POINT = '/mnt/nfs'
 LUN_METADATA = {
     'OsType': None,
     'SpaceReserved': 'true',
@@ -56,9 +63,73 @@ NFS_VOLUME = {
     'size': SIZE,
     'id': VOLUME_ID,
     'host': NFS_HOST_STRING,
+    'provider_location': PROVIDER_LOCATION,
 }
 
+FAKE_MANAGE_VOLUME = {
+    'name': 'volume-new-managed-123',
+    'id': 'volume-new-managed-123',
+}
+
+FAKE_IMAGE_LOCATION = (
+    None,
+    [
+        # valid metadata
+        {
+            'metadata': {
+                'share_location': 'nfs://host/path',
+                'mountpoint': '/opt/stack/data/glance',
+                'id': 'abc-123',
+                'type': 'nfs'
+            },
+            'url': 'file:///opt/stack/data/glance/image-id-0'
+        },
+        # missing metadata
+        {
+            'metadata': {},
+            'url': 'file:///opt/stack/data/glance/image-id-1'
+        },
+        # missing location_type
+        {
+            'metadata': {'location_type': None},
+            'url': 'file:///opt/stack/data/glance/image-id-2'
+        },
+        # non-nfs location_type
+        {
+            'metadata': {'location_type': 'not-NFS'},
+            'url': 'file:///opt/stack/data/glance/image-id-3'
+        },
+        # missing share_location
+        {
+            'metadata': {'location_type': 'nfs', 'share_location': None},
+            'url': 'file:///opt/stack/data/glance/image-id-4'},
+        # missing mountpoint
+        {
+            'metadata': {
+                'location_type': 'nfs',
+                'share_location': 'nfs://host/path',
+                # Pre-kilo we documented "mount_point"
+                'mount_point': '/opt/stack/data/glance'
+            },
+            'url': 'file:///opt/stack/data/glance/image-id-5'
+        },
+        # Valid metadata
+        {
+            'metadata':
+                {
+                    'share_location': 'nfs://host/path',
+                    'mountpoint': '/opt/stack/data/glance',
+                    'id': 'abc-123',
+                    'type': 'nfs',
+                },
+            'url': 'file:///opt/stack/data/glance/image-id-6'
+        }
+    ]
+)
+
 NETAPP_VOLUME = 'fake_netapp_volume'
+
+VFILER = 'fake_netapp_vfiler'
 
 UUID1 = '12345678-1234-5678-1234-567812345678'
 LUN_PATH = '/vol/vol0/%s' % LUN_NAME
@@ -168,6 +239,7 @@ MAX_OVER_SUBSCRIPTION_RATIO = 19.0
 TOTAL_BYTES = 4797892092432
 AVAILABLE_BYTES = 13479932478
 CAPACITY_VALUES = (TOTAL_BYTES, AVAILABLE_BYTES)
+CAPACITIES = {'size-total': TOTAL_BYTES, 'size-available': AVAILABLE_BYTES}
 
 IGROUP1 = {'initiator-group-os-type': 'linux',
            'initiator-group-type': 'fcp',
@@ -210,50 +282,33 @@ CLONE_DESTINATION = {
     'id': CLONE_DESTINATION_ID,
 }
 
+VOLUME_NAME = 'volume-fake_volume_id'
+MOUNT_PATH = '168.10.16.11:/' + VOLUME_ID
 SNAPSHOT_NAME = 'fake_snapshot_name'
 SNAPSHOT_LUN_HANDLE = 'fake_snapshot_lun_handle'
+SNAPSHOT_MOUNT = '/fake/mount/path'
 
 SNAPSHOT = {
     'name': SNAPSHOT_NAME,
     'volume_size': SIZE,
-    'volume_id': 'fake_volume_id',
+    'volume_id': VOLUME_ID,
+    'volume_name': VOLUME_NAME,
     'busy': False,
 }
 
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
 
-FAKE_CMODE_POOLS = [
-    {
-        'QoS_support': True,
-        'consistencygroup_support': True,
-        'free_capacity_gb': 3.72,
-        'netapp_compression': u'true',
-        'netapp_dedup': u'true',
-        'netapp_disk_type': 'SSD',
-        'netapp_mirrored': u'true',
-        'netapp_nocompression': u'false',
-        'netapp_nodedup': u'false',
-        'netapp_raid_type': 'raiddp',
-        'netapp_thick_provisioned': u'false',
-        'netapp_thin_provisioned': u'true',
-        'netapp_unmirrored': u'false',
+FAKE_CMODE_VOLUMES = ['open123', 'mixed', 'open321']
+FAKE_CMODE_POOL_MAP = {
+    'open123': {
         'pool_name': 'open123',
-        'reserved_percentage': 0,
-        'total_capacity_gb': 4.65,
-        'thin_provisioning_support': True,
-        'thick_provisioning_support': False,
-        'provisioned_capacity_gb': 0.93,
-        'max_over_subscription_ratio': 20.0,
-        'utilization': 30.0,
-        'filter_function': 'filter',
-        'goodness_function': 'goodness',
-    }
-]
-
-FAKE_CMODE_VOLUME = {
-    'all': [ssc_cmode.NetAppVolume(name='open123', vserver='vs'),
-            ssc_cmode.NetAppVolume(name='mixed', vserver='vs'),
-            ssc_cmode.NetAppVolume(name='open321', vserver='vs')],
+    },
+    'mixed': {
+        'pool_name': 'mixed',
+    },
+    'open321': {
+        'pool_name': 'open321',
+    },
 }
 
 FAKE_7MODE_VOLUME = {
@@ -271,33 +326,6 @@ FAKE_7MODE_VOLUME = {
             <name>open1234</name>
             </volume-info>"""))
     ],
-}
-
-
-FAKE_CMODE_VOL1 = ssc_cmode.NetAppVolume(name='open123', vserver='openstack')
-FAKE_CMODE_VOL1.state['vserver_root'] = False
-FAKE_CMODE_VOL1.state['status'] = 'online'
-FAKE_CMODE_VOL1.state['junction_active'] = True
-FAKE_CMODE_VOL1.space['size_avl_bytes'] = '4000000000'
-FAKE_CMODE_VOL1.space['size_total_bytes'] = '5000000000'
-FAKE_CMODE_VOL1.space['space-guarantee-enabled'] = False
-FAKE_CMODE_VOL1.space['space-guarantee'] = 'file'
-FAKE_CMODE_VOL1.space['thin_provisioned'] = True
-FAKE_CMODE_VOL1.mirror['mirrored'] = True
-FAKE_CMODE_VOL1.qos['qos_policy_group'] = None
-FAKE_CMODE_VOL1.aggr['name'] = 'aggr1'
-FAKE_CMODE_VOL1.aggr['junction'] = '/vola'
-FAKE_CMODE_VOL1.sis['dedup'] = True
-FAKE_CMODE_VOL1.sis['compression'] = True
-FAKE_CMODE_VOL1.aggr['raid_type'] = 'raiddp'
-FAKE_CMODE_VOL1.aggr['ha_policy'] = 'cfo'
-FAKE_CMODE_VOL1.aggr['disk_type'] = 'SSD'
-ssc_map = {
-    'mirrored': [FAKE_CMODE_VOL1],
-    'dedup': [FAKE_CMODE_VOL1],
-    'compression': [FAKE_CMODE_VOL1],
-    'thin': [FAKE_CMODE_VOL1],
-    'all': [FAKE_CMODE_VOL1],
 }
 
 FILE_LIST = ['file1', 'file2', 'file3']
@@ -347,6 +375,7 @@ FAKE_7MODE_POOLS = [
         'total_capacity_gb': 0.0,
         'free_capacity_gb': 0.0,
         'max_over_subscription_ratio': 20.0,
+        'multiattach': True,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb': 0.0,
@@ -358,6 +387,7 @@ FAKE_7MODE_POOLS = [
 
 CG_VOLUME_NAME = 'fake_cg_volume'
 CG_GROUP_NAME = 'fake_consistency_group'
+CG_POOL_NAME = 'cdot'
 SOURCE_CG_VOLUME_NAME = 'fake_source_cg_volume'
 CG_VOLUME_ID = 'fake_cg_volume_id'
 CG_VOLUME_SIZE = 100
@@ -390,7 +420,7 @@ CG_VOLUME = {
     'name': CG_VOLUME_NAME,
     'size': 100,
     'id': CG_VOLUME_ID,
-    'host': 'hostname@backend#cdot',
+    'host': 'hostname@backend#' + CG_POOL_NAME,
     'consistencygroup_id': CONSISTENCY_GROUP_ID,
     'status': 'fake_status',
 }
@@ -405,6 +435,8 @@ CONSISTENCY_GROUP = {
     'status': 'fake_status',
     'name': CG_GROUP_NAME,
 }
+
+CG_CONTEXT = {}
 
 CG_SNAPSHOT = {
     'id': CG_SNAPSHOT_ID,
@@ -453,9 +485,30 @@ class test_snapshot(object):
     def __getitem__(self, key):
         return getattr(self, key)
 
-PROVIDER_LOCATION = 'fake_provider_location'
 test_snapshot = test_snapshot()
 test_snapshot.id = 'fake_snap_id'
 test_snapshot.name = 'snapshot-%s' % test_snapshot.id
 test_snapshot.volume_id = 'fake_volume_id'
 test_snapshot.provider_location = PROVIDER_LOCATION
+
+
+def get_fake_net_interface_get_iter_response():
+    return etree.XML("""<results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <net-interface-info></net-interface-info>
+            <address>FAKE_IP</address>
+        </attributes-list>
+    </results>""")
+
+
+def get_fake_ifs():
+    list_of_ifs = [
+        etree.XML("""<net-interface-info>
+        <address>FAKE_IP</address></net-interface-info>"""),
+        etree.XML("""<net-interface-info>
+        <address>FAKE_IP2</address></net-interface-info>"""),
+        etree.XML("""<net-interface-info>
+        <address>FAKE_IP3</address></net-interface-info>"""),
+    ]
+    return [netapp_api.NaElement(el) for el in list_of_ifs]

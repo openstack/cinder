@@ -40,19 +40,11 @@ class ViewBuilder(object):
 
         """
         limit_names = {
-            "ram": ["maxTotalRAMSize"],
-            "instances": ["maxTotalInstances"],
-            "cores": ["maxTotalCores"],
             "gigabytes": ["maxTotalVolumeGigabytes"],
             "backup_gigabytes": ["maxTotalBackupGigabytes"],
             "volumes": ["maxTotalVolumes"],
             "snapshots": ["maxTotalSnapshots"],
             "backups": ["maxTotalBackups"],
-            "key_pairs": ["maxTotalKeypairs"],
-            "floating_ips": ["maxTotalFloatingIps"],
-            "metadata_items": ["maxServerMeta", "maxImageMeta"],
-            "injected_files": ["maxPersonality"],
-            "injected_file_content_bytes": ["maxPersonalitySize"],
         }
         limits = {}
         for name, value in absolute_limits.items():

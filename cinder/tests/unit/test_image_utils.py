@@ -15,6 +15,7 @@
 #    under the License.
 """Unit tests for image utils."""
 
+import errno
 import math
 
 import mock
@@ -24,6 +25,8 @@ from oslo_utils import units
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests import fixtures
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import throttling
 
 
@@ -38,7 +41,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=True)
+                                          'info', test_path, run_as_root=True,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
@@ -51,7 +55,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path, run_as_root=False)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=False)
+                                          'info', test_path, run_as_root=False,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('cinder.image.image_utils.os')
@@ -66,7 +71,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_called_once_with('qemu-img', 'info', test_path,
-                                          run_as_root=True)
+                                          run_as_root=True,
+                                          prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('cinder.utils.execute')
@@ -271,6 +277,30 @@ class TestFetch(test.TestCase):
         (mock_fileutils.remove_path_on_error.return_value.__exit__
             .assert_called_once_with(None, None, None))
 
+    def test_fetch_enospc(self):
+        stdlog = self.useFixture(fixtures.StandardLogging())
+
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        e = IOError()
+        e.errno = errno.ENOSPC
+        image_service.download.side_effect = e
+        image_id = mock.sentinel.image_id
+        path = '/test_path'
+        _user_id = mock.sentinel._user_id
+        _project_id = mock.sentinel._project_id
+
+        with mock.patch('cinder.image.image_utils.open',
+                        new=mock.mock_open(), create=True):
+            self.assertRaises(IOError,
+                              image_utils.fetch,
+                              context, image_service, image_id, path,
+                              _user_id, _project_id)
+        error_message = ('No space left in image_conversion_dir path '
+                         '(/) while fetching image %s.' % image_id)
+
+        self.assertTrue(error_message in stdlog.logger.output)
+
 
 class TestVerifyImage(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -297,10 +327,12 @@ class TestVerifyImage(test.TestCase):
         (mock_fileutils.remove_path_on_error.return_value.__exit__
             .assert_called_once_with(None, None, None))
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.fileutils')
     @mock.patch('cinder.image.image_utils.fetch')
-    def test_kwargs(self, mock_fetch, mock_fileutils, mock_info):
+    def test_kwargs(self, mock_fetch, mock_fileutils, mock_info,
+                    mock_check_space):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_id = mock.sentinel.image_id
@@ -481,7 +513,7 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_convert.called)
         self.assertFalse(mock_info.called)
         mock_chown.assert_called_once_with(volume_path)
-        mock_open.assert_called_once_with(volume_path)
+        mock_open.assert_called_once_with(volume_path, 'rb')
         image_service.update.assert_called_once_with(
             ctxt, image_meta['id'], {},
             mock_open.return_value.__enter__.return_value)
@@ -561,8 +593,9 @@ class TestFetchToVhd(test.TestCase):
                                               dest, 'vpc', blocksize, None,
                                               None, run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
-    def test_kwargs(self, mock_fetch_to):
+    def test_kwargs(self, mock_fetch_to, mock_check_space):
         ctxt = mock.sentinel.context
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
@@ -599,8 +632,9 @@ class TestFetchToRaw(test.TestCase):
                                               dest, 'raw', blocksize, None,
                                               None, None, run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
-    def test_kwargs(self, mock_fetch_to):
+    def test_kwargs(self, mock_fetch_to, mock_check_space):
         ctxt = mock.sentinel.context
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
@@ -623,18 +657,20 @@ class TestFetchToRaw(test.TestCase):
 
 
 class TestFetchToVolumeFormat(test.TestCase):
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.CONF')
     def test_defaults(self, mock_conf, mock_temp, mock_info, mock_fetch,
-                      mock_is_xen, mock_repl_xen, mock_copy, mock_convert):
+                      mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
+                      mock_check_space):
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
         image_service = mock.Mock(temp_images=None)
@@ -667,18 +703,20 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.CONF')
     def test_kwargs(self, mock_conf, mock_temp, mock_info, mock_fetch,
-                    mock_is_xen, mock_repl_xen, mock_copy, mock_convert):
+                    mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
+                    mock_check_space):
         ctxt = mock.sentinel.context
         image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
@@ -715,11 +753,12 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              run_as_root=run_as_root)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -727,7 +766,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.CONF')
     def test_temporary_images(self, mock_conf, mock_temp, mock_info,
                               mock_fetch, mock_is_xen, mock_repl_xen,
-                              mock_copy, mock_convert):
+                              mock_copy, mock_convert, mock_check_space):
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
         image_service = mock.Mock(temp_images=None)
@@ -771,7 +810,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -795,7 +834,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         tmp = mock_temp.return_value.__enter__.return_value
         image_service.show.return_value = {'disk_format': 'raw',
                                            'size': 41126400}
-        image_size_m = math.ceil(41126400 / units.Mi)
+        image_size_m = math.ceil(float(41126400) / units.Mi)
 
         output = image_utils.fetch_to_volume_format(
             ctxt, image_service, image_id, dest, volume_format, blocksize,
@@ -817,7 +856,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -860,7 +899,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -903,7 +942,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -925,7 +964,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         data = mock_info.return_value
         data.file_format = volume_format
         data.backing_file = None
-        data.virtual_size = 4321 * 1024 ** 3
+        data.virtual_size = int(1234.5 * units.Gi)
         tmp = mock_temp.return_value.__enter__.return_value
 
         self.assertRaises(
@@ -946,11 +985,56 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         self.assertFalse(mock_convert.called)
 
+    @mock.patch('psutil.disk_usage')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
+                return_value=False)
+    @mock.patch('cinder.image.image_utils.fetch')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_check_no_available_space_error(self, mock_conf, mock_temp,
+                                            mock_info, mock_fetch, mock_is_xen,
+                                            mock_repl_xen, mock_copy,
+                                            mock_convert, mock_check_space,
+                                            mock_disk_usage):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock(temp_images=None)
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        volume_format = mock.sentinel.volume_format
+        blocksize = mock.sentinel.blocksize
+        ctxt.user_id = user_id = mock.sentinel.user_id
+        project_id = mock.sentinel.project_id
+        size = 1234
+        run_as_root = mock.sentinel.run_as_root
+
+        mock_disk_usage.return_value = units.Gi - 1
+
+        data = mock_info.return_value
+        data.file_format = volume_format
+        data.backing_file = None
+        data.virtual_size = units.Gi
+
+        mock_check_space.side_effect = exception.ImageUnacceptable(
+            image_id='fake_image_id', reason='test')
+
+        self.assertRaises(
+            exception.ImageUnacceptable,
+            image_utils.fetch_to_volume_format,
+            ctxt, image_service, image_id, dest, volume_format, blocksize,
+            user_id=user_id, project_id=project_id, size=size,
+            run_as_root=run_as_root)
+
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
+    @mock.patch(
+        'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -998,7 +1082,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1042,11 +1126,12 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         self.assertFalse(mock_convert.called)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1055,6 +1140,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     def _test_format_name_mismatch(self, mock_conf, mock_temp, mock_info,
                                    mock_fetch, mock_is_xen, mock_repl_xen,
                                    mock_copy, mock_convert,
+                                   mock_check_space,
                                    legacy_format_name=False):
         ctxt = mock.sentinel.context
         image_service = mock.Mock(temp_images=None)
@@ -1107,11 +1193,12 @@ class TestFetchToVolumeFormat(test.TestCase):
         # the legacy 'vpc' format name if 'vhd' is requested.
         self._test_format_name_mismatch(legacy_format_name=True)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1119,7 +1206,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.CONF')
     def test_xenserver_to_vhd(self, mock_conf, mock_temp, mock_info,
                               mock_fetch, mock_is_xen, mock_repl_xen,
-                              mock_copy, mock_convert):
+                              mock_copy, mock_convert, mock_check_space):
         ctxt = mock.sentinel.context
         image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
@@ -1158,18 +1245,6 @@ class TestFetchToVolumeFormat(test.TestCase):
 
 
 class TestXenserverUtils(test.TestCase):
-    @mock.patch('cinder.image.image_utils.is_xenserver_format')
-    def test_is_xenserver_image(self, mock_format):
-        ctxt = mock.sentinel.context
-        image_service = mock.Mock()
-        image_id = mock.sentinel.image_id
-
-        output = image_utils.is_xenserver_image(ctxt, image_service, image_id)
-
-        image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_format.assert_called_once_with(image_service.show.return_value)
-        self.assertEqual(mock_format.return_value, output)
-
     def test_is_xenserver_format(self):
         image_meta1 = {'disk_format': 'vhd', 'container_format': 'ovf'}
         self.assertTrue(image_utils.is_xenserver_format(image_meta1))
@@ -1251,12 +1326,13 @@ class TestVhdUtils(test.TestCase):
         mock_exec.assert_called_once_with('vhd-util', 'coalesce', '-n',
                                           vhd_path)
 
+    @mock.patch('cinder.image.image_utils.temporary_dir')
     @mock.patch('cinder.image.image_utils.coalesce_vhd')
     @mock.patch('cinder.image.image_utils.resize_vhd')
     @mock.patch('cinder.image.image_utils.get_vhd_size')
     @mock.patch('cinder.image.image_utils.utils.execute')
     def test_coalesce_chain(self, mock_exec, mock_size, mock_resize,
-                            mock_coal):
+                            mock_coal, mock_temp):
         vhd_chain = (mock.sentinel.first,
                      mock.sentinel.second,
                      mock.sentinel.third,
@@ -1379,6 +1455,52 @@ class TestCreateTemporaryFile(test.TestCase):
         mock_mkstemp.assert_called_once_with(dir=conv_dir)
         mock_close.assert_called_once_with(fd)
 
+    @mock.patch('cinder.image.image_utils.os.remove')
+    @mock.patch('cinder.image.image_utils.os.path.join')
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.os.listdir')
+    @mock.patch('cinder.image.image_utils.os.path.exists', return_value=True)
+    def test_cleanup_temporary_file(self, mock_path, mock_listdir, mock_conf,
+                                    mock_join, mock_remove):
+        mock_listdir.return_value = ['tmphost@backend1', 'tmphost@backend2']
+        conv_dir = mock.sentinel.image_conversion_dir
+        mock_conf.image_conversion_dir = conv_dir
+        mock_join.return_value = '/test/tmp/tmphost@backend1'
+        image_utils.cleanup_temporary_file('host@backend1')
+        mock_listdir.assert_called_once_with(conv_dir)
+        mock_remove.assert_called_once_with('/test/tmp/tmphost@backend1')
+
+    @mock.patch('cinder.image.image_utils.os.remove')
+    @mock.patch('cinder.image.image_utils.os.listdir')
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.os.path.exists', return_value=False)
+    def test_cleanup_temporary_file_with_not_exist_path(self, mock_path,
+                                                        mock_conf,
+                                                        mock_listdir,
+                                                        mock_remove):
+        conv_dir = mock.sentinel.image_conversion_dir
+        mock_conf.image_conversion_dir = conv_dir
+        image_utils.cleanup_temporary_file('host@backend1')
+        self.assertFalse(mock_listdir.called)
+        self.assertFalse(mock_remove.called)
+
+    @mock.patch('cinder.image.image_utils.os.remove')
+    @mock.patch('cinder.image.image_utils.os.path.join')
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.os.listdir')
+    @mock.patch('cinder.image.image_utils.os.path.exists', return_value=True)
+    def test_cleanup_temporary_file_with_exception(self, mock_path,
+                                                   mock_listdir, mock_conf,
+                                                   mock_join, mock_remove):
+        mock_listdir.return_value = ['tmphost@backend1', 'tmphost@backend2']
+        conv_dir = mock.sentinel.image_conversion_dir
+        mock_conf.image_conversion_dir = conv_dir
+        mock_join.return_value = '/test/tmp/tmphost@backend1'
+        mock_remove.side_effect = OSError
+        image_utils.cleanup_temporary_file('host@backend1')
+        mock_listdir.assert_called_once_with(conv_dir)
+        mock_remove.assert_called_once_with('/test/tmp/tmphost@backend1')
+
 
 class TestTemporaryFileContextManager(test.TestCase):
     @mock.patch('cinder.image.image_utils.create_temporary_file',
@@ -1389,3 +1511,24 @@ class TestTemporaryFileContextManager(test.TestCase):
             self.assertEqual(mock.sentinel.temporary_file, tmp_file)
             self.assertFalse(mock_delete.called)
         mock_delete.assert_called_once_with(mock.sentinel.temporary_file)
+
+
+class TestImageUtils(test.TestCase):
+    def test_get_virtual_size(self):
+        image_id = fake.IMAGE_ID
+        virtual_size = 1073741824
+        volume_size = 2
+        virt_size = image_utils.check_virtual_size(virtual_size,
+                                                   volume_size,
+                                                   image_id)
+        self.assertEqual(1, virt_size)
+
+    def test_get_bigger_virtual_size(self):
+        image_id = fake.IMAGE_ID
+        virtual_size = 3221225472
+        volume_size = 2
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.check_virtual_size,
+                          virtual_size,
+                          volume_size,
+                          image_id)

@@ -1,0 +1,59 @@
+#################################################
+# Storage resource
+#################################################
+
+# Common
+lun_base:
+  _properties: &lun_base_prop
+    lun_id: lun_id
+    poll: False
+    operation: None
+    state: Ready
+
+pool_base:
+  _properties: &pool_base_prop
+    name: pool_name
+    pool_id: 0
+    state: Ready
+    user_capacity_gbs: 1311
+    total_subscribed_capacity_gbs: 131
+    available_capacity_gbs: 132
+    percent_full_threshold: 70
+    fast_cache: True
+
+vnx_base:
+  _properties: &vnx_base_prop
+    serial: fake_serial
+
+test_load_storage_resource: &test_load_storage_resource
+  lun: &lun1
+    _properties:
+      <<: *lun_base_prop
+      state: Offline
+    _methods:
+      update:
+
+  pool: &pool1
+    _properties:
+      <<: *pool_base_prop
+    _methods:
+      create_lun: *lun1
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: *pool1
+
+test_patch_client_inner: *test_load_storage_resource
+
+test_patch_client_mocked_inner: *test_load_storage_resource
+
+test_patch_common_adapter_inner: *test_load_storage_resource
+
+test_property_side_effect_inner:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+      total_capacity_gb:
+        _side_effect: [5, 10]

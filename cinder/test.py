@@ -20,11 +20,9 @@ Allows overriding of CONF for use of fakes, and some black magic for
 inline callbacks.
 
 """
-
 import copy
 import logging
 import os
-import shutil
 import uuid
 
 import fixtures
@@ -33,14 +31,18 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
-from oslo_log import log
+import oslo_messaging
 from oslo_messaging import conffixture as messaging_conffixture
+from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslotest import moxstubout
+import six
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
+from cinder import context
+from cinder import coordination
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
@@ -50,11 +52,10 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.volume import utils
 
 
 CONF = cfg.CONF
-
-LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 
@@ -65,11 +66,8 @@ class TestingException(Exception):
 
 class Database(fixtures.Fixture):
 
-    def __init__(self, db_api, db_migrate, sql_connection,
-                 sqlite_db, sqlite_clean_db):
+    def __init__(self, db_api, db_migrate, sql_connection):
         self.sql_connection = sql_connection
-        self.sqlite_db = sqlite_db
-        self.sqlite_clean_db = sqlite_clean_db
 
         # Suppress logging for test runs
         migrate_logger = logging.getLogger('migrate')
@@ -79,30 +77,22 @@ class Database(fixtures.Fixture):
         self.engine.dispose()
         conn = self.engine.connect()
         db_migrate.db_sync()
-        if sql_connection == "sqlite://":
-            conn = self.engine.connect()
-            self._DB = "".join(line for line in conn.connection.iterdump())
-            self.engine.dispose()
-        else:
-            cleandb = os.path.join(CONF.state_path, sqlite_clean_db)
-            testdb = os.path.join(CONF.state_path, sqlite_db)
-            shutil.copyfile(testdb, cleandb)
+        self._DB = "".join(line for line in conn.connection.iterdump())
+        self.engine.dispose()
 
     def setUp(self):
         super(Database, self).setUp()
 
-        if self.sql_connection == "sqlite://":
-            conn = self.engine.connect()
-            conn.connection.executescript(self._DB)
-            self.addCleanup(self.engine.dispose)
-        else:
-            shutil.copyfile(
-                os.path.join(CONF.state_path, self.sqlite_clean_db),
-                os.path.join(CONF.state_path, self.sqlite_db))
+        conn = self.engine.connect()
+        conn.connection.executescript(self._DB)
+        self.addCleanup(self.engine.dispose)
 
 
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
+
+    POLICY_PATH = 'cinder/tests/unit/policy.json'
+    MOCK_WORKER = True
 
     def _get_joined_notifier(self, *args, **kwargs):
         # We create a new fake notifier but we join the notifications with
@@ -120,9 +110,14 @@ class TestCase(testtools.TestCase):
 
         # Mock rpc get notifier with fake notifier method that joins all
         # notifications with the default notifier
-        p = mock.patch('cinder.rpc.get_notifier',
-                       side_effect=self._get_joined_notifier)
-        p.start()
+        self.patch('cinder.rpc.get_notifier',
+                   side_effect=self._get_joined_notifier)
+
+        if self.MOCK_WORKER:
+            # Mock worker creation for all tests that don't care about it
+            clean_path = 'cinder.objects.cleanable.CinderCleanableObject.%s'
+            for method in ('create_worker', 'set_worker', 'unset_worker'):
+                self.patch(clean_path % method, return_value=None)
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)
@@ -158,6 +153,14 @@ class TestCase(testtools.TestCase):
         self.messaging_conf.transport_driver = 'fake'
         self.messaging_conf.response_timeout = 15
         self.useFixture(self.messaging_conf)
+
+        # Load oslo_messaging_notifications config group so we can set an
+        # override to prevent notifications from being ignored due to the
+        # short-circuit mechanism.
+        oslo_messaging.get_notification_transport(CONF)
+        #  We need to use a valid driver for the notifications, so we use test.
+        self.override_config('driver', ['test'],
+                             group='oslo_messaging_notifications')
         rpc.init(CONF)
 
         # NOTE(geguileo): This is required because _determine_obj_version_cap
@@ -182,9 +185,7 @@ class TestCase(testtools.TestCase):
         global _DB_CACHE
         if not _DB_CACHE:
             _DB_CACHE = Database(sqla_api, migration,
-                                 sql_connection=CONF.database.connection,
-                                 sqlite_db=CONF.database.sqlite_db,
-                                 sqlite_clean_db='clean.sqlite')
+                                 sql_connection=CONF.database.connection)
         self.useFixture(_DB_CACHE)
 
         # NOTE(danms): Make sure to reset us back to non-remote objects
@@ -205,7 +206,7 @@ class TestCase(testtools.TestCase):
         self.injected = []
         self._services = []
 
-        fake_notifier.stub_notifier(self.stubs)
+        fake_notifier.mock_notifier(self)
 
         self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
@@ -223,16 +224,22 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/unit/policy.json'),
+                                 self.POLICY_PATH),
                              group='oslo_policy')
 
         self._disable_osprofiler()
+        self._disallow_invalid_uuids()
 
         # NOTE(geguileo): This is required because common get_by_id method in
         # cinder.db.sqlalchemy.api caches get methods and if we use a mocked
         # get method in one test it would carry on to the next test.  So we
         # clear out the cache.
         sqla_api._GET_METHODS = {}
+
+        self.override_config('backend_url', 'file://' + lock_path,
+                             group='coordination')
+        coordination.COORDINATOR.start()
+        self.addCleanup(coordination.COORDINATOR.stop)
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \
@@ -248,6 +255,17 @@ class TestCase(testtools.TestCase):
         mock_decorator = mock.MagicMock(side_effect=side_effect)
         p = mock.patch("osprofiler.profiler.trace_cls",
                        return_value=mock_decorator)
+        p.start()
+
+    def _disallow_invalid_uuids(self):
+        def catch_uuid_warning(message, *args, **kwargs):
+            ovo_message = "invalid UUID. Using UUIDFields with invalid UUIDs " \
+                          "is no longer supported"
+            if ovo_message in message:
+                raise AssertionError(message)
+
+        p = mock.patch("warnings.warn",
+                       side_effect=catch_uuid_warning)
         p.start()
 
     def _common_cleanup(self):
@@ -292,74 +310,160 @@ class TestCase(testtools.TestCase):
         self._services.append(svc)
         return svc
 
-    def mock_object(self, obj, attr_name, new_attr=None, **kwargs):
+    def mock_object(self, obj, attr_name, *args, **kwargs):
         """Use python mock to mock an object attribute
 
         Mocks the specified objects attribute with the given value.
         Automatically performs 'addCleanup' for the mock.
 
         """
-        if not new_attr:
-            new_attr = mock.Mock()
-        patcher = mock.patch.object(obj, attr_name, new_attr, **kwargs)
-        patcher.start()
+        patcher = mock.patch.object(obj, attr_name, *args, **kwargs)
+        result = patcher.start()
         self.addCleanup(patcher.stop)
-        return new_attr
+        return result
+
+    def patch(self, path, *args, **kwargs):
+        """Use python mock to mock a path with automatic cleanup."""
+        patcher = mock.patch(path, *args, **kwargs)
+        result = patcher.start()
+        self.addCleanup(patcher.stop)
+        return result
 
     # Useful assertions
-    def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
-        """Assert two dicts are equivalent.
+    def assert_notify_called(self, mock_notify, calls):
+        for i in range(0, len(calls)):
+            mock_call = mock_notify.call_args_list[i]
+            call = calls[i]
 
-        This is a 'deep' match in the sense that it handles nested
-        dictionaries appropriately.
+            posargs = mock_call[0]
 
-        NOTE:
+            self.assertEqual(call[0], posargs[0])
+            self.assertEqual(call[1], posargs[2])
 
-            If you don't care (or don't know) a given value, you can specify
-            the string DONTCARE as the value. This will cause that dict-item
-            to be skipped.
 
+class ModelsObjectComparatorMixin(object):
+    def _dict_from_object(self, obj, ignored_keys):
+        if ignored_keys is None:
+            ignored_keys = []
+        obj = jsonutils.to_primitive(obj)  # Convert to dict first.
+        items = obj.items()
+        return {k: v for k, v in items
+                if k not in ignored_keys}
+
+    def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
+        obj1 = self._dict_from_object(obj1, ignored_keys)
+        obj2 = self._dict_from_object(obj2, ignored_keys)
+
+        self.assertEqual(
+            len(obj1), len(obj2),
+            "Keys mismatch: %s" % six.text_type(
+                set(obj1.keys()) ^ set(obj2.keys())))
+        for key, value in obj1.items():
+            self.assertEqual(value, obj2[key])
+
+    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None,
+                                   msg=None):
+        obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
+        objs1 = map(obj_to_dict, objs1)
+        objs2 = list(map(obj_to_dict, objs2))
+        # We don't care about the order of the lists, as long as they are in
+        for obj1 in objs1:
+            self.assertIn(obj1, objs2)
+            objs2.remove(obj1)
+        self.assertEqual([], objs2)
+
+    def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
+        self.assertEqual(len(primitives1), len(primitives2))
+        for primitive in primitives1:
+            self.assertIn(primitive, primitives2)
+
+        for primitive in primitives2:
+            self.assertIn(primitive, primitives1)
+
+
+class RPCAPITestCase(TestCase, ModelsObjectComparatorMixin):
+    def setUp(self):
+        super(RPCAPITestCase, self).setUp()
+        self.context = context.get_admin_context()
+        self.rpcapi = None
+        self.base_version = '2.0'
+
+    def _test_rpc_api(self, method, rpc_method, server=None, fanout=False,
+                      version=None, expected_method=None,
+                      expected_kwargs_diff=None, retval=None,
+                      expected_retval=None, **kwargs):
+        """Runs a test against RPC API method.
+
+        :param method: Name of RPC API method.
+        :param rpc_method: Expected RPC message type (cast or call).
+        :param server: Expected hostname.
+        :param fanout: True if expected call/cast should be fanout.
+        :param version: Expected autocalculated RPC API version.
+        :param epected_method: Expected RPC method name.
+        :param expected_kwargs_diff: Map of expected changes between keyword
+                                     arguments passed into the method and sent
+                                     over RPC.
+        :param retval: Value returned by RPC call/cast.
+        :param expected_retval: Expected RPC API response (if different than
+                                retval).
+        :param kwargs: Parameters passed into the RPC API method.
         """
-        def raise_assertion(msg):
-            d1str = d1
-            d2str = d2
-            base_msg = ('Dictionaries do not match. %(msg)s d1: %(d1str)s '
-                        'd2: %(d2str)s' %
-                        {'msg': msg, 'd1str': d1str, 'd2str': d2str})
-            raise AssertionError(base_msg)
 
-        d1keys = set(d1.keys())
-        d2keys = set(d2.keys())
-        if d1keys != d2keys:
-            d1only = d1keys - d2keys
-            d2only = d2keys - d1keys
-            raise_assertion('Keys in d1 and not d2: %(d1only)s. '
-                            'Keys in d2 and not d1: %(d2only)s' %
-                            {'d1only': d1only, 'd2only': d2only})
+        rpcapi = self.rpcapi()
+        expected_kwargs_diff = expected_kwargs_diff or {}
+        version = version or self.base_version
+        topic = None
+        if server is not None:
+            backend = utils.extract_host(server)
+            server = utils.extract_host(server, 'host')
+            topic = 'cinder-volume.%s' % backend
 
-        for key in d1keys:
-            d1value = d1[key]
-            d2value = d2[key]
-            try:
-                error = abs(float(d1value) - float(d2value))
-                within_tolerance = error <= tolerance
-            except (ValueError, TypeError):
-                # If both values aren't convertible to float, just ignore
-                # ValueError if arg is a str, TypeError if it's something else
-                # (like None)
-                within_tolerance = False
+        if expected_method is None:
+            expected_method = method
 
-            if hasattr(d1value, 'keys') and hasattr(d2value, 'keys'):
-                self.assertDictMatch(d1value, d2value)
-            elif 'DONTCARE' in (d1value, d2value):
-                continue
-            elif approx_equal and within_tolerance:
-                continue
-            elif d1value != d2value:
-                raise_assertion("d1['%(key)s']=%(d1value)s != "
-                                "d2['%(key)s']=%(d2value)s" %
-                                {
-                                    'key': key,
-                                    'd1value': d1value,
-                                    'd2value': d2value,
-                                })
+        if expected_retval is None:
+            expected_retval = retval
+
+        target = {
+            "server": server,
+            "fanout": fanout,
+            "version": version,
+            "topic": topic,
+        }
+
+        # Initially we expect that we'll pass same arguments to RPC API method
+        # and RPC call/cast...
+        expected_msg = copy.deepcopy(kwargs)
+        # ... but here we're taking exceptions into account.
+        expected_msg.update(expected_kwargs_diff)
+
+        def _fake_prepare_method(*args, **kwds):
+            # This is checking if target will be properly created.
+            for kwd in kwds:
+                self.assertEqual(target[kwd], kwds[kwd])
+            return rpcapi.client
+
+        def _fake_rpc_method(*args, **kwargs):
+            # This checks if positional arguments passed to RPC method match.
+            self.assertEqual((self.context, expected_method), args)
+
+            # This checks if keyword arguments passed to RPC method match.
+            for kwarg, value in kwargs.items():
+                # Getting possible changes into account.
+                if isinstance(value, objects_base.CinderObject):
+                    # We need to compare objects differently.
+                    self._assertEqualObjects(expected_msg[kwarg], value)
+                else:
+                    self.assertEqual(expected_msg[kwarg], value)
+
+            # Returning fake value we're supposed to return.
+            if retval:
+                return retval
+
+        # Enable mocks that will check everything and run RPC method.
+        with mock.patch.object(rpcapi.client, "prepare",
+                               side_effect=_fake_prepare_method):
+            with mock.patch.object(rpcapi.client, rpc_method,
+                                   side_effect=_fake_rpc_method):
+                real_retval = getattr(rpcapi, method)(self.context, **kwargs)
+                self.assertEqual(expected_retval, real_retval)

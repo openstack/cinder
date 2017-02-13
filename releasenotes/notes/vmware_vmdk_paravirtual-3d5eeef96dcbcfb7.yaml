@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added support for images with ``vmware_adaptertype`` set to
+    ``paraVirtual`` in the VMDK driver.

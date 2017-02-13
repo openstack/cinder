@@ -14,32 +14,32 @@
 #    under the License.
 
 
-from lxml import etree
 import mock
 from oslo_serialization import jsonutils
 import webob
 
-from cinder.api.contrib import extended_snapshot_attributes
 from cinder import context
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 
 
-UUID1 = '00000000-0000-0000-0000-000000000001'
-UUID2 = '00000000-0000-0000-0000-000000000002'
+UUID1 = fake.SNAPSHOT_ID
+UUID2 = fake.SNAPSHOT2_ID
 
 
 def _get_default_snapshot_param():
     return {'id': UUID1,
-            'volume_id': 12,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'created_at': None,
             'display_name': 'Default name',
             'display_description': 'Default description',
-            'project_id': 'fake',
+            'project_id': fake.PROJECT_ID,
             'progress': '0%',
             'expected_attrs': ['metadata']}
 
@@ -60,11 +60,14 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
 
     def setUp(self):
         super(ExtendedSnapshotAttributesTest, self).setUp()
+        self.user_ctxt = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
 
     def _make_request(self, url):
         req = webob.Request.blank(url)
         req.headers['Accept'] = self.content_type
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         return res
 
     def _get_snapshot(self, body):
@@ -83,39 +86,28 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_show(self, snapshot_get_by_id, volume_get_by_id,
                   snapshot_metadata_get):
-        ctx = context.RequestContext('fake', 'fake', auth_token=True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                     auth_token=True)
         snapshot = _get_default_snapshot_param()
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
 
-        url = '/v2/fake/snapshots/%s' % UUID1
+        url = '/v2/%s/snapshots/%s' % (fake.PROJECT_ID, UUID1)
         res = self._make_request(url)
 
         self.assertEqual(200, res.status_int)
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
-                                      project_id='fake',
+                                      project_id=fake.PROJECT_ID,
                                       progress='0%')
 
     def test_detail(self):
-        url = '/v2/fake/snapshots/detail'
+        url = '/v2/%s/snapshots/detail' % fake.PROJECT_ID
         res = self._make_request(url)
 
         self.assertEqual(200, res.status_int)
         for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
-                                          project_id='fake',
+                                          project_id=fake.PROJECT_ID,
                                           progress='0%')
-
-
-class ExtendedSnapshotAttributesXmlTest(ExtendedSnapshotAttributesTest):
-    content_type = 'application/xml'
-    ext = extended_snapshot_attributes
-    prefix = '{%s}' % ext.Extended_snapshot_attributes.namespace
-
-    def _get_snapshot(self, body):
-        return etree.XML(body)
-
-    def _get_snapshots(self, body):
-        return etree.XML(body).getchildren()

@@ -45,6 +45,9 @@ quota_opts = [
     cfg.IntOpt('quota_consistencygroups',
                default=10,
                help='Number of consistencygroups allowed per project'),
+    cfg.IntOpt('quota_groups',
+               default=10,
+               help='Number of groups allowed per project'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
                help='Total amount of storage, in gigabytes, allowed '
@@ -100,7 +103,7 @@ class DbQuotaDriver(object):
 
     def get_default(self, context, resource, project_id):
         """Get a specific default quota for a resource."""
-        default_quotas = db.quota_class_get_default(context)
+        default_quotas = db.quota_class_get_defaults(context)
         return default_quotas.get(resource.name, resource.default)
 
     def get_defaults(self, context, resources, project_id=None):
@@ -117,7 +120,7 @@ class DbQuotaDriver(object):
         quotas = {}
         default_quotas = {}
         if CONF.use_default_quota_class:
-            default_quotas = db.quota_class_get_default(context)
+            default_quotas = db.quota_class_get_defaults(context)
 
         for resource in resources.values():
             if default_quotas:
@@ -149,7 +152,7 @@ class DbQuotaDriver(object):
         default_quotas = {}
         class_quotas = db.quota_class_get_all_by_name(context, quota_class)
         if defaults:
-            default_quotas = db.quota_class_get_default(context)
+            default_quotas = db.quota_class_get_defaults(context)
         for resource in resources.values():
             if resource.name in class_quotas:
                 quotas[resource.name] = class_quotas[resource.name]
@@ -188,6 +191,7 @@ class DbQuotaDriver(object):
         quotas = {}
         project_quotas = db.quota_get_all_by_project(context, project_id)
         allocated_quotas = None
+        default_quotas = None
         if usages:
             project_usages = db.quota_usage_get_all_by_project(context,
                                                                project_id)
@@ -206,20 +210,22 @@ class DbQuotaDriver(object):
         else:
             class_quotas = {}
 
-        # TODO(mc_nair): change this to be lazy loaded
-        default_quotas = self.get_defaults(context, resources, project_id)
-
         for resource in resources.values():
             # Omit default/quota class values
             if not defaults and resource.name not in project_quotas:
                 continue
 
-            quotas[resource.name] = dict(
-                limit=project_quotas.get(
-                    resource.name,
-                    class_quotas.get(resource.name,
-                                     default_quotas[resource.name])),
-            )
+            quota_val = project_quotas.get(resource.name)
+            if quota_val is None:
+                quota_val = class_quotas.get(resource.name)
+                if quota_val is None:
+                    # Lazy load the default quotas
+                    if default_quotas is None:
+                        default_quotas = self.get_defaults(
+                            context, resources, project_id)
+                    quota_val = default_quotas[resource.name]
+
+            quotas[resource.name] = {'limit': quota_val}
 
             # Include usages if desired.  This is optional because one
             # internal consumer of this interface wants to access the
@@ -1199,5 +1205,30 @@ class CGQuotaEngine(QuotaEngine):
     def register_resources(self, resources):
         raise NotImplementedError(_("Cannot register resources"))
 
+
+class GroupQuotaEngine(QuotaEngine):
+    """Represent the group quotas."""
+
+    @property
+    def resources(self):
+        """Fetches all possible quota resources."""
+
+        result = {}
+        # Global quotas.
+        argses = [('groups', '_sync_groups',
+                   'quota_groups'), ]
+        for args in argses:
+            resource = ReservableResource(*args)
+            result[resource.name] = resource
+
+        return result
+
+    def register_resource(self, resource):
+        raise NotImplementedError(_("Cannot register resource"))
+
+    def register_resources(self, resources):
+        raise NotImplementedError(_("Cannot register resources"))
+
 QUOTAS = VolumeTypeQuotaEngine()
 CGQUOTAS = CGQuotaEngine()
+GROUP_QUOTAS = GroupQuotaEngine()

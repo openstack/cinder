@@ -19,6 +19,7 @@
 Unit Tests for remote procedure calls using queue
 """
 
+import ddt
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -29,6 +30,7 @@ from cinder import db
 from cinder import exception
 from cinder import manager
 from cinder import objects
+from cinder.objects import fields
 from cinder import rpc
 from cinder import service
 from cinder import test
@@ -51,9 +53,10 @@ CONF.register_opts(test_service_opts)
 class FakeManager(manager.Manager):
     """Fake manager for tests."""
     def __init__(self, host=None,
-                 db_driver=None, service_name=None):
+                 db_driver=None, service_name=None, cluster=None):
         super(FakeManager, self).__init__(host=host,
-                                          db_driver=db_driver)
+                                          db_driver=db_driver,
+                                          cluster=cluster)
 
     def test_method(self):
         return 'manager'
@@ -67,7 +70,9 @@ class ExtendedService(service.Service):
 class ServiceManagerTestCase(test.TestCase):
     """Test cases for Services."""
 
-    def test_message_gets_to_manager(self):
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_message_gets_to_manager(self, is_upgrading_mock):
         serv = service.Service('test',
                                'test',
                                'test',
@@ -75,7 +80,9 @@ class ServiceManagerTestCase(test.TestCase):
         serv.start()
         self.assertEqual('manager', serv.test_method())
 
-    def test_override_manager_method(self):
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_override_manager_method(self, is_upgrading_mock):
         serv = ExtendedService('test',
                                'test',
                                'test',
@@ -83,9 +90,11 @@ class ServiceManagerTestCase(test.TestCase):
         serv.start()
         self.assertEqual('service', serv.test_method())
 
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
     @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'test': '1.5'})
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'test': '1.3'})
-    def test_reset(self):
+    def test_reset(self, is_upgrading_mock):
         serv = service.Service('test',
                                'test',
                                'test',
@@ -97,29 +106,45 @@ class ServiceManagerTestCase(test.TestCase):
 
 
 class ServiceFlagsTestCase(test.TestCase):
-    def test_service_enabled_on_create_based_on_flag(self):
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_service_enabled_on_create_based_on_flag(self,
+                                                     is_upgrading_mock=False):
+        ctxt = context.get_admin_context()
         self.flags(enable_new_services=True)
         host = 'foo'
         binary = 'cinder-fake'
-        app = service.Service.create(host=host, binary=binary)
-        app.start()
-        app.stop()
-        ref = db.service_get(context.get_admin_context(), app.service_id)
-        db.service_destroy(context.get_admin_context(), app.service_id)
-        self.assertFalse(ref['disabled'])
+        cluster = 'cluster'
+        app = service.Service.create(host=host, binary=binary, cluster=cluster)
+        ref = db.service_get(ctxt, app.service_id)
+        db.service_destroy(ctxt, app.service_id)
+        self.assertFalse(ref.disabled)
 
-    def test_service_disabled_on_create_based_on_flag(self):
+        # Check that the cluster is also enabled
+        db_cluster = objects.ClusterList.get_all(ctxt)[0]
+        self.assertFalse(db_cluster.disabled)
+        db.cluster_destroy(ctxt, db_cluster.id)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_service_disabled_on_create_based_on_flag(self, is_upgrading_mock):
+        ctxt = context.get_admin_context()
         self.flags(enable_new_services=False)
         host = 'foo'
         binary = 'cinder-fake'
-        app = service.Service.create(host=host, binary=binary)
-        app.start()
-        app.stop()
-        ref = db.service_get(context.get_admin_context(), app.service_id)
-        db.service_destroy(context.get_admin_context(), app.service_id)
-        self.assertTrue(ref['disabled'])
+        cluster = 'cluster'
+        app = service.Service.create(host=host, binary=binary, cluster=cluster)
+        ref = db.service_get(ctxt, app.service_id)
+        db.service_destroy(ctxt, app.service_id)
+        self.assertTrue(ref.disabled)
+
+        # Check that the cluster is also enabled
+        db_cluster = objects.ClusterList.get_all(ctxt)[0]
+        self.assertTrue(db_cluster.disabled)
+        db.cluster_destroy(ctxt, db_cluster.id)
 
 
+@ddt.ddt
 class ServiceTestCase(test.TestCase):
     """Test cases for Services."""
 
@@ -128,27 +153,123 @@ class ServiceTestCase(test.TestCase):
         self.host = 'foo'
         self.binary = 'cinder-fake'
         self.topic = 'fake'
+        self.service_ref = {'host': self.host,
+                            'binary': self.binary,
+                            'topic': self.topic,
+                            'report_count': 0,
+                            'availability_zone': 'nova',
+                            'id': 1}
+        self.ctxt = context.get_admin_context()
 
-    def test_create(self):
+    def _check_app(self, app, cluster=None, cluster_exists=None,
+                   is_upgrading=False, svc_id=None, added_to_cluster=None):
+        """Check that Service instance and DB service and cluster are ok."""
+        self.assertIsNotNone(app)
+
+        # Check that we have the service ID
+        self.assertTrue(hasattr(app, 'service_id'))
+
+        if svc_id:
+            self.assertEqual(svc_id, app.service_id)
+
+        # Check that cluster has been properly set
+        self.assertEqual(cluster, app.cluster)
+        # Check that the entry has been really created in the DB
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+
+        cluster_name = cluster if cluster_exists is not False else None
+
+        # Check that cluster name matches
+        self.assertEqual(cluster_name, svc.cluster_name)
+
+        clusters = objects.ClusterList.get_all(self.ctxt)
+
+        if added_to_cluster is None:
+            added_to_cluster = not is_upgrading
+
+        if cluster_name:
+            # Make sure we have created the cluster in the DB
+            self.assertEqual(1, len(clusters))
+            cluster = clusters[0]
+            self.assertEqual(cluster_name, cluster.name)
+            self.assertEqual(self.binary, cluster.binary)
+        else:
+            # Make sure we haven't created any cluster in the DB
+            self.assertListEqual([], clusters.objects)
+
+        self.assertEqual(added_to_cluster, app.added_to_cluster)
+
+    @ddt.data(False, True)
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n')
+    def test_create(self, is_upgrading, is_upgrading_mock):
+        """Test non clustered service creation."""
+        is_upgrading_mock.return_value = is_upgrading
+
         # NOTE(vish): Create was moved out of mock replay to make sure that
         #             the looping calls are created in StartService.
         app = service.Service.create(host=self.host,
                                      binary=self.binary,
                                      topic=self.topic)
+        self._check_app(app, is_upgrading=is_upgrading)
 
-        self.assertTrue(app)
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_create_with_cluster_not_upgrading(self, is_upgrading_mock):
+        """Test DB cluster creation when service is created."""
+        cluster_name = 'cluster'
+        app = service.Service.create(host=self.host, binary=self.binary,
+                                     cluster=cluster_name, topic=self.topic)
+        self._check_app(app, cluster_name)
 
-    def test_report_state_newly_disconnected(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=True)
+    def test_create_with_cluster_upgrading(self, is_upgrading_mock):
+        """Test that we don't create the cluster while we are upgrading."""
+        cluster_name = 'cluster'
+        app = service.Service.create(host=self.host, binary=self.binary,
+                                     cluster=cluster_name, topic=self.topic)
+        self._check_app(app, cluster_name, cluster_exists=False,
+                        is_upgrading=True)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_create_svc_exists_upgrade_cluster(self, is_upgrading_mock):
+        """Test that we update cluster_name field when cfg has changed."""
+        # Create the service in the DB
+        db_svc = db.service_create(context.get_admin_context(),
+                                   {'host': self.host, 'binary': self.binary,
+                                    'topic': self.topic,
+                                    'cluster_name': None})
+        cluster_name = 'cluster'
+        app = service.Service.create(host=self.host, binary=self.binary,
+                                     cluster=cluster_name, topic=self.topic)
+        self._check_app(app, cluster_name, svc_id=db_svc.id)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=True)
+    def test_create_svc_exists_not_upgrade_cluster(self, is_upgrading_mock):
+        """Test we don't update cluster_name on cfg change when upgrading."""
+        # Create the service in the DB
+        db_svc = db.service_create(context.get_admin_context(),
+                                   {'host': self.host, 'binary': self.binary,
+                                    'topic': self.topic,
+                                    'cluster': None})
+        cluster_name = 'cluster'
+        app = service.Service.create(host=self.host, binary=self.binary,
+                                     cluster=cluster_name, topic=self.topic)
+        self._check_app(app, cluster_name, cluster_exists=False,
+                        is_upgrading=True, svc_id=db_svc.id)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    @mock.patch.object(objects.service.Service, 'get_by_args')
+    @mock.patch.object(objects.service.Service, 'get_by_id')
+    def test_report_state_newly_disconnected(self, get_by_id, get_by_args,
+                                             is_upgrading_mock):
+        get_by_args.side_effect = exception.NotFound()
+        get_by_id.side_effect = db_exc.DBConnectionError()
         with mock.patch.object(objects.service, 'db') as mock_db:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            mock_db.service_get.side_effect = db_exc.DBConnectionError()
+            mock_db.service_create.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,
@@ -161,17 +282,16 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
-    def test_report_state_disconnected_DBError(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    @mock.patch.object(objects.service.Service, 'get_by_args')
+    @mock.patch.object(objects.service.Service, 'get_by_id')
+    def test_report_state_disconnected_DBError(self, get_by_id, get_by_args,
+                                               is_upgrading_mock):
+        get_by_args.side_effect = exception.NotFound()
+        get_by_id.side_effect = db_exc.DBError()
         with mock.patch.object(objects.service, 'db') as mock_db:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            mock_db.service_get.side_effect = db_exc.DBError()
+            mock_db.service_create.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,
@@ -184,41 +304,32 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
-    def test_report_state_newly_connected(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
-        with mock.patch.object(objects.service, 'db') as mock_db,\
-                mock.patch('cinder.db.sqlalchemy.api.get_by_id') as get_by_id:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            get_by_id.return_value = service_ref
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    @mock.patch('cinder.db.sqlalchemy.api.service_update')
+    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    def test_report_state_newly_connected(self, get_by_id, service_update,
+                                          is_upgrading_mock):
+        get_by_id.return_value = self.service_ref
 
-            serv = service.Service(
-                self.host,
-                self.binary,
-                self.topic,
-                'cinder.tests.unit.test_service.FakeManager'
-            )
-            serv.start()
-            serv.model_disconnected = True
-            serv.report_state()
+        serv = service.Service(
+            self.host,
+            self.binary,
+            self.topic,
+            'cinder.tests.unit.test_service.FakeManager'
+        )
+        serv.start()
+        serv.model_disconnected = True
+        serv.report_state()
 
-            self.assertFalse(serv.model_disconnected)
-            self.assertTrue(mock_db.service_update.called)
+        self.assertFalse(serv.model_disconnected)
+        self.assertTrue(service_update.called)
 
-    def test_report_state_manager_not_working(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_report_state_manager_not_working(self, is_upgrading_mock):
         with mock.patch('cinder.db') as mock_db:
-            mock_db.service_get.return_value = service_ref
+            mock_db.service_get.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,
@@ -233,7 +344,9 @@ class ServiceTestCase(test.TestCase):
             serv.manager.is_working.assert_called_once_with()
             self.assertFalse(mock_db.service_update.called)
 
-    def test_service_with_long_report_interval(self):
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
+    def test_service_with_long_report_interval(self, is_upgrading_mock):
         self.override_config('service_down_time', 10)
         self.override_config('report_interval', 10)
         service.Service.create(
@@ -241,9 +354,12 @@ class ServiceTestCase(test.TestCase):
             manager="cinder.tests.unit.test_service.FakeManager")
         self.assertEqual(25, CONF.service_down_time)
 
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
     @mock.patch.object(rpc, 'get_server')
     @mock.patch('cinder.db')
-    def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc):
+    def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc,
+                                              is_upgrading_mock):
         serv = service.Service(
             self.host,
             self.binary,
@@ -257,6 +373,8 @@ class ServiceTestCase(test.TestCase):
         serv.rpcserver.stop.assert_called_once_with()
         serv.rpcserver.wait.assert_called_once_with()
 
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                return_value=False)
     @mock.patch('cinder.service.Service.report_state')
     @mock.patch('cinder.service.Service.periodic_tasks')
     @mock.patch.object(service.loopingcall, 'FixedIntervalLoopingCall')
@@ -264,7 +382,7 @@ class ServiceTestCase(test.TestCase):
     @mock.patch('cinder.db')
     def test_service_stop_waits_for_timers(self, mock_db, mock_rpc,
                                            mock_loopcall, mock_periodic,
-                                           mock_report):
+                                           mock_report, is_upgrading_mock):
         """Test that we wait for loopcalls only if stop succeeds."""
         serv = service.Service(
             self.host,
@@ -298,11 +416,164 @@ class ServiceTestCase(test.TestCase):
         self.assertEqual(1, serv.timers[1].stop.call_count)
         self.assertEqual(1, serv.timers[1].wait.call_count)
 
+    @mock.patch('cinder.manager.Manager.init_host')
+    @mock.patch.object(service.loopingcall, 'FixedIntervalLoopingCall')
+    @mock.patch('oslo_messaging.Target')
+    @mock.patch.object(rpc, 'get_server')
+    def _check_rpc_servers_and_init_host(self, app, added_to_cluster, cluster,
+                                         rpc_mock, target_mock, loop_mock,
+                                         init_host_mock):
+        app.start()
+
+        # Since we have created the service entry we call init_host with
+        # added_to_cluster=True
+        init_host_mock.assert_called_once_with(
+            added_to_cluster=added_to_cluster,
+            service_id=self.service_ref['id'])
+
+        expected_target_calls = [mock.call(topic=self.topic, server=self.host)]
+        expected_rpc_calls = [mock.call(target_mock.return_value, mock.ANY,
+                                        mock.ANY),
+                              mock.call().start()]
+
+        if cluster and added_to_cluster:
+            self.assertIsNotNone(app.cluster_rpcserver)
+            expected_target_calls.append(mock.call(
+                topic=self.topic + '.' + cluster,
+                server=cluster.split('@')[0]))
+            expected_rpc_calls.extend(expected_rpc_calls[:])
+
+        # Check that we create message targets for host and cluster
+        target_mock.assert_has_calls(expected_target_calls)
+
+        # Check we get and start rpc services for host and cluster
+        rpc_mock.assert_has_calls(expected_rpc_calls)
+
+        self.assertIsNotNone(app.rpcserver)
+
+        app.stop()
+
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value='1.6')
+    def test_start_rpc_and_init_host_no_cluster(self, is_upgrading_mock):
+        """Test that without cluster we don't create rpc service."""
+        app = service.Service.create(host=self.host, binary='cinder-volume',
+                                     cluster=None, topic=self.topic)
+        self._check_rpc_servers_and_init_host(app, True, None)
+
+    @ddt.data('1.3', '1.7')
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version')
+    def test_start_rpc_and_init_host_cluster(self, obj_version,
+                                             get_min_obj_mock):
+        """Test that with cluster we create the rpc service."""
+        get_min_obj_mock.return_value = obj_version
+        cluster = 'cluster@backend#pool'
+        self.host = 'host@backend#pool'
+        app = service.Service.create(host=self.host, binary='cinder-volume',
+                                     cluster=cluster, topic=self.topic)
+        self._check_rpc_servers_and_init_host(app, obj_version != '1.3',
+                                              cluster)
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_no_cluster(self, get_mock):
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_not_called()
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_exists_non_relicated(self,
+                                                                get_mock):
+        cluster = objects.Cluster(
+            name='cluster_name', active_backend_id=None, frozen=False,
+            replication_status=fields.ReplicationStatus.NOT_CAPABLE)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_change(self, get_mock):
+        """We copy replication fields from the cluster to the service."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+        cluster = objects.Cluster(name='cluster_name', **changes)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual(changes, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_ensure_cluster_exists_cluster_no_change(self, get_mock):
+        """Don't copy replication fields from cluster if replication error."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+        cluster = objects.Cluster(name='cluster_name', **changes)
+        get_mock.return_value = cluster
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        svc.replication_status = fields.ReplicationStatus.ERROR
+        svc.obj_reset_changes()
+        app.cluster = cluster.name
+        app._ensure_cluster_exists(self.ctxt, svc)
+        get_mock.assert_called_once_with(self.ctxt, None, name=cluster.name,
+                                         binary=app.binary)
+        self.assertEqual({}, svc.cinder_obj_get_changes())
+
+    @mock.patch('cinder.service.Service.is_svc_upgrading_to_n',
+                mock.Mock(return_value=False))
+    def test_ensure_cluster_exists_cluster_create_replicated_and_non(self):
+        """We use service replication fields to create the cluster."""
+        changes = dict(replication_status=fields.ReplicationStatus.FAILED_OVER,
+                       active_backend_id='secondary',
+                       frozen=True)
+
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
+        svc = objects.Service.get_by_id(self.ctxt, app.service_id)
+        for key, value in changes.items():
+            setattr(svc, key, value)
+
+        app.cluster = 'cluster_name'
+        app._ensure_cluster_exists(self.ctxt, svc)
+
+        cluster = objects.Cluster.get_by_id(self.ctxt, None, name=app.cluster)
+        for key, value in changes.items():
+            self.assertEqual(value, getattr(cluster, key))
+
 
 class TestWSGIService(test.TestCase):
-
-    def setUp(self):
-        super(TestWSGIService, self).setUp()
 
     @mock.patch('oslo_service.wsgi.Loader')
     def test_service_random_port(self, mock_loader):
@@ -364,6 +635,18 @@ class TestWSGIService(test.TestCase):
         self.override_config('osapi_volume_workers', -1)
         self.assertRaises(exception.InvalidInput,
                           service.WSGIService, "osapi_volume")
+        self.assertTrue(mock_loader.called)
+
+    @mock.patch('oslo_service.wsgi.Server')
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_ssl_enabled(self, mock_loader, mock_server):
+        self.override_config('osapi_volume_use_ssl', True)
+
+        service.WSGIService("osapi_volume")
+        mock_server.assert_called_once_with(mock.ANY, mock.ANY, mock.ANY,
+                                            port=mock.ANY, host=mock.ANY,
+                                            use_ssl=True)
+
         self.assertTrue(mock_loader.called)
 
 

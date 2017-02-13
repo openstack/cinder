@@ -19,6 +19,7 @@ Provides common functionality for functional tests
 import os.path
 import random
 import string
+import time
 import uuid
 
 import fixtures
@@ -28,9 +29,12 @@ from oslo_config import cfg
 from cinder import service
 from cinder import test  # For the flags
 from cinder.tests.functional.api import client
-
+from cinder.tests.unit import fake_constants as fake
 
 CONF = cfg.CONF
+VOLUME = 'VOLUME'
+GROUP = 'GROUP'
+GROUP_SNAPSHOT = 'GROUP_SNAPSHOT'
 
 
 def generate_random_alphanumeric(length):
@@ -57,6 +61,9 @@ def generate_new_element(items, prefix, numeric=False):
 
 
 class _FunctionalTestBase(test.TestCase):
+    osapi_version_major = '2'
+    osapi_version_minor = '0'
+
     def setUp(self):
         super(_FunctionalTestBase, self).setUp()
 
@@ -76,7 +83,13 @@ class _FunctionalTestBase(test.TestCase):
         self._start_api_service()
         self.addCleanup(self.osapi.stop)
 
-        self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)
+        api_version = self.osapi_version_major + '.' + self.osapi_version_minor
+        self.api = client.TestOpenStackClient(fake.USER_ID,
+                                              fake.PROJECT_ID, self.auth_url,
+                                              api_version)
+
+    def _update_project(self, new_project_id):
+        self.api.update_project(new_project_id)
 
     def _start_api_service(self):
         default_conf = os.path.abspath(os.path.join(
@@ -87,7 +100,8 @@ class _FunctionalTestBase(test.TestCase):
         self.osapi.start()
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
-        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
+        self.auth_url = 'http://%s:%s/v' % (self.osapi.host, self.osapi.port)
+        self.auth_url += self.osapi_version_major
 
     def _get_flags(self):
         """An opportunity to setup flags, before the services are started."""
@@ -136,3 +150,58 @@ class _FunctionalTestBase(test.TestCase):
         server_name = self.get_unused_server_name()
         server['name'] = server_name
         return server
+
+    def _poll_resource_while(self, res_id, continue_states, res_type=VOLUME,
+                             expected_end_status=None, max_retries=5):
+        """Poll (briefly) while the state is in continue_states.
+
+        Continues until the state changes from continue_states or max_retries
+        are hit. If expected_end_status is specified, we assert that the end
+        status of the resource is expected_end_status.
+        """
+        retries = 0
+        while retries <= max_retries:
+            try:
+                if res_type == VOLUME:
+                    found_res = self.api.get_volume(res_id)
+                elif res_type == GROUP:
+                    found_res = self.api.get_group(res_id)
+                elif res_type == GROUP_SNAPSHOT:
+                    found_res = self.api.get_group_snapshot(res_id)
+                else:
+                    return None
+            except client.OpenStackApiException404:
+                return None
+            except client.OpenStackApiException:
+                # NOTE(xyang): Got OpenStackApiException(
+                # u'Unexpected status code',) sometimes, but
+                # it works if continue.
+                continue
+
+            self.assertEqual(res_id, found_res['id'])
+            res_status = found_res['status']
+            if res_status not in continue_states:
+                if expected_end_status:
+                    self.assertEqual(expected_end_status, res_status)
+                return found_res
+
+            time.sleep(1)
+            retries += 1
+
+    def _poll_volume_while(self, volume_id, continue_states,
+                           expected_end_status=None, max_retries=5):
+        return self._poll_resource_while(volume_id, continue_states,
+                                         VOLUME, expected_end_status,
+                                         max_retries)
+
+    def _poll_group_while(self, group_id, continue_states,
+                          expected_end_status=None, max_retries=30):
+        return self._poll_resource_while(group_id, continue_states,
+                                         GROUP, expected_end_status,
+                                         max_retries)
+
+    def _poll_group_snapshot_while(self, group_snapshot_id, continue_states,
+                                   expected_end_status=None, max_retries=30):
+        return self._poll_resource_while(group_snapshot_id, continue_states,
+                                         GROUP_SNAPSHOT, expected_end_status,
+                                         max_retries)

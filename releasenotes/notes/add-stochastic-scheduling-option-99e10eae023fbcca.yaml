@@ -1,0 +1,11 @@
+---
+features:
+  - Added a new config option ``scheduler_weight_handler``. This is a global
+    option which specifies how the scheduler should choose from a listed of
+    weighted pools. By default the existing weigher is used which always
+    chooses the highest weight.
+  - Added a new weight handler ``StochasticHostWeightHandler``. This weight
+    handler chooses pools randomly, where the random probabilities are
+    proportional to the weights, so higher weighted pools are chosen more
+    frequently, but not all the time. This weight handler spreads new
+    shares across available pools more fairly.

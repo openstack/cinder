@@ -1,0 +1,4 @@
+---
+features:
+  - Added create/delete APIs for group snapshots and
+    an API to create group from source.

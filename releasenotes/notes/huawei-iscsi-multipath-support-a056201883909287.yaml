@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Support for iSCSI multipath in Huawei driver.

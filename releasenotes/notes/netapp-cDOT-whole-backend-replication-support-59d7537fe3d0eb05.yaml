@@ -1,0 +1,8 @@
+---
+features:
+  - Added host-level (whole back end replication - v2.1) replication support
+    to the NetApp cDOT drivers (iSCSI, FC, NFS).
+upgrade:
+  - While configuring NetApp cDOT back ends, new configuration options
+    (``replication_device`` and ``netapp_replication_aggregate_map``) must be
+    added in order to use the host-level failover feature.

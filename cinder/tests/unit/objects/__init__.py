@@ -21,8 +21,8 @@ from cinder import test
 
 
 class BaseObjectsTestCase(test.TestCase):
-    def setUp(self):
-        super(BaseObjectsTestCase, self).setUp()
+    def setUp(self, *args, **kwargs):
+        super(BaseObjectsTestCase, self).setUp(*args, **kwargs)
         self.user_id = 'fake-user'
         self.project_id = 'fake-project'
         self.context = context.RequestContext(self.user_id, self.project_id,
@@ -45,11 +45,12 @@ class BaseObjectsTestCase(test.TestCase):
                 # base class" error
                 continue
 
-            if field in ('modified_at', 'created_at',
-                         'updated_at', 'deleted_at') and db[field]:
+            obj_field = getattr(obj, field)
+            if field in ('modified_at', 'created_at', 'updated_at',
+                         'deleted_at', 'last_heartbeat') and db[field]:
                 test.assertEqual(db[field],
-                                 timeutils.normalize_time(obj[field]))
-            elif isinstance(obj[field], obj_base.ObjectListBase):
-                test.assertEqual(db[field], obj[field].objects)
+                                 timeutils.normalize_time(obj_field))
+            elif isinstance(obj_field, obj_base.ObjectListBase):
+                test.assertEqual(db[field], obj_field.objects)
             else:
-                test.assertEqual(db[field], obj[field])
+                test.assertEqual(db[field], obj_field)

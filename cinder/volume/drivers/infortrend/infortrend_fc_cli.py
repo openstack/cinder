@@ -19,13 +19,15 @@ Fibre Channel Driver for Infortrend Eonstor based on CLI.
 
 from oslo_log import log as logging
 
+from cinder import interface
 from cinder.volume import driver
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
+from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
     """Infortrend Fibre Channel Driver for Eonstor DS using CLI.
@@ -33,7 +35,12 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
+        1.0.2 - Support GS Series
     """
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Infortrend_Storage_CI"
+    VERSION = common_cli.InfortrendCommon.VERSION
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)
@@ -138,7 +145,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
@@ -186,7 +193,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
@@ -211,9 +218,11 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        .. code-block:: json
+
+            existing_ref:{
+                'id':lun_id
+            }
         """
         LOG.debug(
             'manage_existing volume id=%(volume_id)s '

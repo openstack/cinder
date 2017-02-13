@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Configurations that are setting backend config in ``[DEFAULT]``
+    section are now not supported. You should use ``enabled_backends``
+    option to set up backends.

@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed 'No Space left' error by dd command when users set the config option
+    ``volume_clear_size`` to a value larger than the size of a volume.

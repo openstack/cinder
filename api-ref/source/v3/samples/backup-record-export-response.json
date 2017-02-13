@@ -1,0 +1,6 @@
+{
+    "backup-record": {
+        "backup_service": "cinder.backup.drivers.swift",
+        "backup_url": "eyJzdGF0"
+    }
+}

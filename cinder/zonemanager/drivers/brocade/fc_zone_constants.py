@@ -1,4 +1,4 @@
-#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -38,6 +38,8 @@ DEACTIVATE_ZONESET = 'cfgdisable'
 CFG_DELETE = 'cfgdelete '
 CFG_REMOVE = 'cfgremove '
 ZONE_DELETE = 'zonedelete '
+ZONE_ADD = 'zoneadd '
+ZONE_REMOVE = 'zoneremove '
 CFG_SHOW_TRANS = 'cfgtransshow'
 CFG_ZONE_TRANS_ABORT = 'cfgtransabort'
 NS_SHOW = 'nsshow'

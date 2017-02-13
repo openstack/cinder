@@ -16,10 +16,11 @@
 Handles all requests to Nova.
 """
 
-
+from keystoneauth1 import identity
+from keystoneauth1 import session as ka_session
+from novaclient import api_versions
 from novaclient import client as nova_client
 from novaclient import exceptions as nova_exceptions
-from novaclient import service_catalog
 from oslo_config import cfg
 from oslo_log import log as logging
 from requests import exceptions as request_exceptions
@@ -59,11 +60,80 @@ CONF.register_opts(nova_opts)
 LOG = logging.getLogger(__name__)
 
 # TODO(e0ne): Make Nova version configurable in Mitaka.
-NOVA_API_VERSION = 2
+NOVA_API_VERSION = "2.1"
 
-nova_extensions = [ext for ext in nova_client.discover_extensions(2)
+nova_extensions = [ext for ext in
+                   nova_client.discover_extensions(NOVA_API_VERSION)
                    if ext.name in ("assisted_volume_snapshots",
                                    "list_extensions")]
+
+
+# TODO(dmllr): This is a copy of the ServiceCatalog class in python-novaclient
+# that got removed in 7.0.0 release. This needs to be cleaned up once we depend
+# on newer novaclient.
+class _NovaClientServiceCatalog(object):
+    """Helper methods for dealing with a Keystone Service Catalog."""
+
+    def __init__(self, resource_dict):
+        self.catalog = resource_dict
+
+    def url_for(self, attr=None, filter_value=None,
+                service_type=None, endpoint_type='publicURL',
+                service_name=None, volume_service_name=None):
+        """Fetch public URL for a particular endpoint.
+
+        If none given, return the first.
+        See tests for sample service catalog.
+        """
+        matching_endpoints = []
+        if 'endpoints' in self.catalog:
+            # We have a bastardized service catalog. Treat it special. :/
+            for endpoint in self.catalog['endpoints']:
+                if not filter_value or endpoint[attr] == filter_value:
+                    # Ignore 1.0 compute endpoints
+                    if endpoint.get("type") == 'compute' and \
+                            endpoint.get('versionId') in (None, '1.1', '2'):
+                        matching_endpoints.append(endpoint)
+            if not matching_endpoints:
+                raise nova_exceptions.EndpointNotFound()
+
+        # We don't always get a service catalog back ...
+        if 'serviceCatalog' not in self.catalog['access']:
+            return None
+
+        # Full catalog ...
+        catalog = self.catalog['access']['serviceCatalog']
+
+        for service in catalog:
+            if service.get("type") != service_type:
+                continue
+
+            if (service_name and service_type == 'compute' and
+                    service.get('name') != service_name):
+                continue
+
+            if (volume_service_name and service_type == 'volume' and
+                    service.get('name') != volume_service_name):
+                continue
+
+            endpoints = service['endpoints']
+            for endpoint in endpoints:
+                # Ignore 1.0 compute endpoints
+                if (service.get("type") == 'compute' and
+                        endpoint.get('versionId', '2') not in ('1.1', '2')):
+                    continue
+                if (not filter_value or
+                        endpoint.get(attr).lower() == filter_value.lower()):
+                    endpoint["serviceName"] = service.get("name")
+                    matching_endpoints.append(endpoint)
+
+        if not matching_endpoints:
+            raise nova_exceptions.EndpointNotFound()
+        elif len(matching_endpoints) > 1:
+            raise nova_exceptions.AmbiguousEndpoints(
+                endpoints=matching_endpoints)
+        else:
+            return matching_endpoints[0][endpoint_type]
 
 
 def novaclient(context, admin_endpoint=False, privileged_user=False,
@@ -85,7 +155,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
     compat_catalog = {
         'access': {'serviceCatalog': context.service_catalog or []}
     }
-    sc = service_catalog.ServiceCatalog(compat_catalog)
+    sc = _NovaClientServiceCatalog(compat_catalog)
 
     nova_endpoint_template = CONF.nova_endpoint_template
     nova_catalog_info = CONF.nova_catalog_info
@@ -134,11 +204,19 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
 
         LOG.debug('Nova client connection created using URL: %s', url)
 
-    c = nova_client.Client(NOVA_API_VERSION,
-                           context.user_id,
-                           context.auth_token,
-                           context.project_name,
-                           auth_url=url,
+    # Now that we have the correct auth_url, username, password, project_name
+    # and domain information, i.e. project_domain_id and user_domain_id (if
+    # using Identity v3 API) let's build a Keystone session.
+    auth = identity.Password(auth_url=url,
+                             username=context.user_id,
+                             password=context.auth_token,
+                             project_name=context.project_name,
+                             project_domain_id=context.project_domain,
+                             user_domain_id=context.user_domain)
+    keystone_session = ka_session.Session(auth=auth)
+
+    c = nova_client.Client(api_versions.APIVersion(NOVA_API_VERSION),
+                           session=keystone_session,
                            insecure=CONF.nova_api_insecure,
                            timeout=timeout,
                            region_name=CONF.os_region_name,
@@ -166,14 +244,15 @@ class API(base.Base):
 
     def update_server_volume(self, context, server_id, attachment_id,
                              new_volume_id):
-        novaclient(context).volumes.update_server_volume(server_id,
-                                                         attachment_id,
-                                                         new_volume_id)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
+        nova.volumes.update_server_volume(server_id,
+                                          attachment_id,
+                                          new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
-        # pylint: disable-msg=E1101
+        # pylint: disable=E1101
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
@@ -181,7 +260,7 @@ class API(base.Base):
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
-        # pylint: disable-msg=E1101
+        # pylint: disable=E1101
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)

@@ -19,18 +19,18 @@ Volume FC driver for IBM Storwize family and SVC storage systems.
 
 Notes:
 1. If you specify both a password and a key file, this driver will use the
-   key file only.
+key file only.
 2. When using a key file for authentication, it is up to the user or
-   system administrator to store the private key in a safe manner.
+system administrator to store the private key in a safe manner.
 3. The defaults for creating volumes are "-rsize 2% -autoexpand
-   -grainsize 256 -warning 0".  These can be changed in the configuration
-   file or by using volume types(recommended only for advanced users).
+-grainsize 256 -warning 0".  These can be changed in the configuration
+file or by using volume types(recommended only for advanced users).
 
 Limitations:
 1. The driver expects CLI output in English, error messages may be in a
-   localized format.
+localized format.
 2. Clones and creating volumes from snapshots, where the source and target
-   are of different sizes, is not supported.
+are of different sizes, is not supported.
 
 """
 
@@ -40,6 +40,7 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import (
     storwize_svc_common as storwize_common)
@@ -58,34 +59,41 @@ CONF = cfg.CONF
 CONF.register_opts(storwize_svc_fc_opts)
 
 
+@interface.volumedriver
 class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
     """IBM Storwize V7000 and SVC FC volume driver.
 
     Version history:
-    1.0 - Initial driver
-    1.1 - FC support, create_cloned_volume, volume type support,
-          get_volume_stats, minor bug fixes
-    1.2.0 - Added retype
-    1.2.1 - Code refactor, improved exception handling
-    1.2.2 - Fix bug #1274123 (races in host-related functions)
-    1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim to
-            lsfabric, clear unused data from connections, ensure matching
-            WWPNs by comparing lower case
-    1.2.4 - Fix bug #1278035 (async migration/retype)
-    1.2.5 - Added support for manage_existing (unmanage is inherited)
-    1.2.6 - Added QoS support in terms of I/O throttling rate
-    1.3.1 - Added support for volume replication
-    1.3.2 - Added support for consistency group
-    1.3.3 - Update driver to use ABC metaclasses
-    2.0 - Code refactor, split init file and placed shared methods for
-          FC and iSCSI within the StorwizeSVCCommonDriver class
-    2.0.1 - Added support for multiple pools with model update
-    2.1 - Added replication V2 support to the global/metro mirror
-          mode
-    2.1.1 - Update replication to version 2.1
+
+    .. code-block:: none
+
+        1.0 - Initial driver
+        1.1 - FC support, create_cloned_volume, volume type support,
+              get_volume_stats, minor bug fixes
+        1.2.0 - Added retype
+        1.2.1 - Code refactor, improved exception handling
+        1.2.2 - Fix bug #1274123 (races in host-related functions)
+        1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim
+                to lsfabric, clear unused data from connections, ensure
+                matching WWPNs by comparing lower case
+        1.2.4 - Fix bug #1278035 (async migration/retype)
+        1.2.5 - Added support for manage_existing (unmanage is inherited)
+        1.2.6 - Added QoS support in terms of I/O throttling rate
+        1.3.1 - Added support for volume replication
+        1.3.2 - Added support for consistency group
+        1.3.3 - Update driver to use ABC metaclasses
+        2.0 - Code refactor, split init file and placed shared methods
+              for FC and iSCSI within the StorwizeSVCCommonDriver class
+        2.0.1 - Added support for multiple pools with model update
+        2.1 - Added replication V2 support to the global/metro mirror
+              mode
+        2.1.1 - Update replication to version 2.1
     """
 
     VERSION = "2.1.1"
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_STORAGE_CI"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCFCDriver, self).__init__(*args, **kwargs)
@@ -101,7 +109,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             raise exception.InvalidConnectorException(
                 missing='wwpns')
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Perform necessary work to make a FC connection."""
         @utils.synchronized('storwize-host' + self._state['system_id'] +
@@ -124,8 +132,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-
-        volume_name = volume['name']
+        volume_name = self._get_target_vol(volume)
 
         # Check if a host object is defined for this host name
         host_name = self._helpers.get_host_from_connector(connector)
@@ -225,7 +232,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
 
         return i_t_map
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an FC connection has been terminated."""
         # If a fake connector is generated by nova when the host
@@ -253,7 +260,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-        vol_name = volume['name']
+        vol_name = self._get_target_vol(volume)
         info = {}
         if 'host' in connector:
             # get host according to FC protocol
@@ -263,7 +270,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
-            host_name = self._helpers.get_host_from_connector(connector)
+            host_name = self._helpers.get_host_from_connector(
+                connector, volume_name=vol_name)
             if host_name is None:
                 msg = (_('terminate_connection: Failed to get host name from'
                          ' connector.'))

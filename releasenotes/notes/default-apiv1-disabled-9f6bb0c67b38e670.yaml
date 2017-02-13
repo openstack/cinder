@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The v1 API was deprecated in the Juno release and is
+    now defaulted to disabled. In order to still use the
+    v1 API, you must now set ``enable_v1_api`` to ``True``
+    in your cinder.conf file.

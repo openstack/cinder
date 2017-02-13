@@ -1,0 +1,7 @@
+---
+fixes:
+  - Fixed volume extend issue that allowed a tenant with enough quota to
+    extend the volume to limits greater than what the volume backend supported.
+other:
+  - Now extend won't work on disabled services because it's going through the
+    scheduler, unlike how it worked before.

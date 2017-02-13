@@ -1,0 +1,4 @@
+---
+features:
+  - Add ``get_manageable_volumes`` and ``get_manageable_snapshots`` implementations for
+    Pure Storage Volume Drivers.

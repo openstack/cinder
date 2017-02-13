@@ -18,6 +18,9 @@ from taskflow.patterns import linear_flow
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
+from cinder.message import api as message_api
+from cinder.message import defined_messages
+from cinder.message import resource_types
 from cinder import rpc
 from cinder import utils
 from cinder.volume.flows import common
@@ -35,13 +38,11 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
 
     default_provides = set(['request_spec'])
 
-    def __init__(self, db_api, **kwargs):
+    def __init__(self, **kwargs):
         super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
-        self.db_api = db_api
 
-    def _populate_request_spec(self, context, volume, snapshot_id,
-                               image_id):
+    def _populate_request_spec(self, volume, snapshot_id, image_id):
         # Create the full request spec using the volume object.
         #
         # NOTE(dulek): At this point, a volume can be deleted before it gets
@@ -66,7 +67,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                 image_id):
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
-            request_spec = self._populate_request_spec(context, volume.id,
+            request_spec = self._populate_request_spec(volume.id,
                                                        snapshot_id, image_id)
         return {
             'request_spec': request_spec,
@@ -85,11 +86,11 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
     """
     FAILURE_TOPIC = "scheduler.create_volume"
 
-    def __init__(self, db_api, driver_api, **kwargs):
+    def __init__(self, driver_api, **kwargs):
         super(ScheduleCreateVolumeTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
-        self.db_api = db_api
         self.driver_api = driver_api
+        self.message_api = message_api.API()
 
     def _handle_failure(self, context, request_spec, cause):
         try:
@@ -98,6 +99,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
             LOG.error(_LE("Failed to run task %(name)s: %(cause)s"),
                       {'cause': cause, 'name': self.name})
 
+    @utils.if_notifications_enabled
     def _notify_failure(self, context, request_spec, cause):
         """When scheduling fails send out an event that it failed."""
         payload = {
@@ -116,26 +118,31 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                               "payload %(payload)s"),
                           {'topic': self.FAILURE_TOPIC, 'payload': payload})
 
-    def execute(self, context, request_spec, filter_properties):
+    def execute(self, context, request_spec, filter_properties, volume):
         try:
             self.driver_api.schedule_create_volume(context, request_spec,
                                                    filter_properties)
         except Exception as e:
             # An error happened, notify on the scheduler queue and log that
             # this happened and set the volume to errored out and reraise the
-            # error *if* exception caught isn't NoValidHost. Otherwise *do not*
-            # reraise (since what's the point?)
+            # error *if* exception caught isn't NoValidBackend. Otherwise *do
+            # not* reraise (since what's the point?)
             with excutils.save_and_reraise_exception(
-                    reraise=not isinstance(e, exception.NoValidHost)):
+                    reraise=not isinstance(e, exception.NoValidBackend)):
+                if isinstance(e, exception.NoValidBackend):
+                    self.message_api.create(
+                        context,
+                        defined_messages.EventIds.UNABLE_TO_ALLOCATE,
+                        context.project_id,
+                        resource_type=resource_types.VOLUME,
+                        resource_uuid=request_spec['volume_id'])
                 try:
                     self._handle_failure(context, request_spec, e)
                 finally:
-                    common.error_out_volume(context, self.db_api,
-                                            request_spec['volume_id'],
-                                            reason=e)
+                    common.error_out(volume, reason=e)
 
 
-def get_flow(context, db_api, driver_api, request_spec=None,
+def get_flow(context, driver_api, request_spec=None,
              filter_properties=None,
              volume=None, snapshot_id=None, image_id=None):
 
@@ -162,12 +169,11 @@ def get_flow(context, db_api, driver_api, request_spec=None,
 
     # This will extract and clean the spec from the starting values.
     scheduler_flow.add(ExtractSchedulerSpecTask(
-        db_api,
         rebind={'request_spec': 'raw_request_spec'}))
 
     # This will activate the desired scheduler driver (and handle any
     # driver related failures appropriately).
-    scheduler_flow.add(ScheduleCreateVolumeTask(db_api, driver_api))
+    scheduler_flow.add(ScheduleCreateVolumeTask(driver_api))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(scheduler_flow, store=create_what)

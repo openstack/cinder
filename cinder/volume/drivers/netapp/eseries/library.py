@@ -2,8 +2,9 @@
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Navneet Singh
 # Copyright (c) 2015 Yogesh Kshirsagar
-# Copyright (c) 2015 Tom Barron
+# Copyright (c) 2015 Jose Porrua
 # Copyright (c) 2015 Michael Price
+# Copyright (c) 2015 Tom Barron
 #  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -60,25 +61,18 @@ class NetAppESeriesLibrary(object):
     REQUIRED_FLAGS = ['netapp_server_hostname', 'netapp_controller_ips',
                       'netapp_login', 'netapp_password']
     SLEEP_SECS = 5
-    HOST_TYPES = {'aix': 'AIX MPIO',
-                  'avt': 'AVT_4M',
-                  'factoryDefault': 'FactoryDefault',
-                  'hpux': 'HP-UX TPGS',
+    HOST_TYPES = {'factoryDefault': 'FactoryDefault',
                   'linux_atto': 'LnxTPGSALUA',
                   'linux_dm_mp': 'LnxALUA',
-                  'linux_mpp_rdac': 'Linux',
+                  'linux_mpp_rdac': 'LNX',
                   'linux_pathmanager': 'LnxTPGSALUA_PM',
-                  'macos': 'MacTPGSALUA',
-                  'ontap': 'ONTAP',
-                  'svc': 'SVC',
-                  'solaris_v11': 'SolTPGSALUA',
-                  'solaris_v10': 'Solaris',
+                  'linux_sf': 'LnxTPGSALUA_SF',
+                  'ontap': 'ONTAP_ALUA',
+                  'ontap_rdac': 'ONTAP_RDAC',
                   'vmware': 'VmwTPGSALUA',
-                  'windows':
-                  'Windows 2000/Server 2003/Server 2008 Non-Clustered',
+                  'windows': 'W2KNETNCL',
                   'windows_atto': 'WinTPGSALUA',
-                  'windows_clustered':
-                  'Windows 2000/Server 2003/Server 2008 Clustered'
+                  'windows_clustered': 'W2KNETCL',
                   }
     # NOTE(ameade): This maps what is reported by the e-series api to a
     # consistent set of values that are reported by all NetApp drivers
@@ -113,6 +107,7 @@ class NetAppESeriesLibrary(object):
     WORLDWIDENAME = 'worldWideName'
 
     DEFAULT_HOST_TYPE = 'linux_dm_mp'
+    DEFAULT_CHAP_USER_NAME = 'eserieschapuser'
 
     # Define name marker string to use in snapshot groups that are for copying
     # volumes.  This is to differentiate them from ordinary snapshot groups.
@@ -207,12 +202,23 @@ class NetAppESeriesLibrary(object):
         self._start_periodic_tasks()
 
     def _check_host_type(self):
-        host_type = (self.configuration.netapp_host_type
-                     or self.DEFAULT_HOST_TYPE)
-        self.host_type = self.HOST_TYPES.get(host_type)
-        if not self.host_type:
-            raise exception.NetAppDriverException(
-                _('Configured host type is not supported.'))
+        """Validate that the configured host-type is available for the array.
+
+        Not all host-types are available on every firmware version.
+        """
+        requested_host_type = (self.configuration.netapp_host_type
+                               or self.DEFAULT_HOST_TYPE)
+        actual_host_type = (
+            self.HOST_TYPES.get(requested_host_type, requested_host_type))
+
+        for host_type in self._client.list_host_types():
+            if(host_type.get('code') == actual_host_type or
+               host_type.get('name') == actual_host_type):
+                self.host_type = host_type.get('code')
+                return
+        exc_msg = _("The host-type '%s' is not supported on this storage "
+                    "system.")
+        raise exception.NetAppDriverException(exc_msg % requested_host_type)
 
     def _check_multipath(self):
         if not self.configuration.use_multipath_for_image_xfer:
@@ -253,7 +259,7 @@ class NetAppESeriesLibrary(object):
             except socket.gaierror as e:
                 LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.'),
                           {'host': host, 'e': e})
-                raise exception.NoValidHost(
+                raise exception.NoValidBackend(
                     _("Controller IP '%(host)s' could not be resolved: %(e)s.")
                     % {'host': host, 'e': e})
 
@@ -453,9 +459,8 @@ class NetAppESeriesLibrary(object):
     def _get_ordered_images_in_snapshot_group(self, snapshot_group_id):
         images = self._client.list_snapshot_images()
         if images:
-            filtered_images = filter(lambda img: (img['pitGroupRef'] ==
-                                                  snapshot_group_id),
-                                     images)
+            filtered_images = [img for img in images if img['pitGroupRef'] ==
+                               snapshot_group_id]
             sorted_imgs = sorted(filtered_images, key=lambda x: x[
                 'pitTimestamp'])
             return sorted_imgs
@@ -820,12 +825,11 @@ class NetAppESeriesLibrary(object):
         groups_for_v = self._get_snapshot_groups_for_volume(vol)
 
         # Filter out reserved snapshot groups
-        groups = filter(lambda g: self.SNAPSHOT_VOL_COPY_SUFFIX not in g[
-            'label'], groups_for_v)
+        groups = [g for g in groups_for_v
+                  if self.SNAPSHOT_VOL_COPY_SUFFIX not in g['label']]
 
         # Filter out groups that are part of a consistency group
-        groups = filter(lambda g: not g['consistencyGroup'], groups)
-
+        groups = [g for g in groups if not g['consistencyGroup']]
         # Find all groups with free snapshot capacity
         groups = [group for group in groups if group.get('snapshotCount') <
                   self.MAX_SNAPSHOT_COUNT]
@@ -920,7 +924,7 @@ class NetAppESeriesLibrary(object):
 
         :param snapshot: The Cinder snapshot
         :param group_name: An optional label for the snapshot group
-        :return An E-Series snapshot image
+        :returns: An E-Series snapshot image
         """
 
         os_vol = snapshot['volume']
@@ -1127,6 +1131,9 @@ class NetAppESeriesLibrary(object):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
+
+        .. code-block:: python
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -1140,7 +1147,9 @@ class NetAppESeriesLibrary(object):
                 }
             }
 
-            or
+        or
+
+        .. code-block:: python
 
              {
                 'driver_volume_type': 'fibre_channel'
@@ -1293,7 +1302,35 @@ class NetAppESeriesLibrary(object):
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
                                                               iqn, address,
                                                               port)
+        if self.configuration.use_chap_auth:
+            if self._client.features.CHAP_AUTHENTICATION:
+                chap_username, chap_password = self._configure_chap(iqn)
+                properties['data']['auth_username'] = chap_username
+                properties['data']['auth_password'] = chap_password
+                properties['data']['auth_method'] = 'CHAP'
+                properties['data']['discovery_auth_username'] = chap_username
+                properties['data']['discovery_auth_password'] = chap_password
+                properties['data']['discovery_auth_method'] = 'CHAP'
+            else:
+                msg = _("E-series proxy API version %(current_version)s does "
+                        "not support CHAP authentication. The proxy version "
+                        "must be at least %(min_version)s.")
+                min_version = (self._client.features.
+                               CHAP_AUTHENTICATION.minimum_version)
+                msg = msg % {'current_version': self._client.api_version,
+                             'min_version': min_version}
+
+                LOG.info(msg)
+                raise exception.NetAppDriverException(msg)
         return properties
+
+    def _configure_chap(self, target_iqn):
+        chap_username = self.DEFAULT_CHAP_USER_NAME
+        chap_password = volume_utils.generate_password()
+        self._client.set_chap_authentication(target_iqn,
+                                             chap_username,
+                                             chap_password)
+        return chap_username, chap_password
 
     def _get_iscsi_service_details(self):
         """Gets iscsi iqn, ip and port information."""
@@ -1591,8 +1628,8 @@ class NetAppESeriesLibrary(object):
 
         pool_ids = set(pool.get("volumeGroupRef") for pool in storage_pools)
 
-        relevant_disks = filter(lambda x: x.get('currentVolumeGroupRef') in
-                                pool_ids, all_disks)
+        relevant_disks = [x for x in all_disks
+                          if x.get('currentVolumeGroupRef') in pool_ids]
         for drive in relevant_disks:
             current_vol_group = drive.get('currentVolumeGroupRef')
             if current_vol_group not in ssc_stats:

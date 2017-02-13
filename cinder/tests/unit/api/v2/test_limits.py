@@ -17,9 +17,6 @@
 Tests dealing with HTTP rate-limiting.
 """
 
-from xml.dom import minidom
-
-from lxml import etree
 from oslo_serialization import jsonutils
 import six
 from six.moves import http_client
@@ -28,7 +25,6 @@ import webob
 
 from cinder.api.v2 import limits
 from cinder.api import views
-from cinder.api import xmlutil
 import cinder.context
 from cinder import test
 
@@ -52,14 +48,14 @@ class BaseLimitTestSuite(test.TestCase):
     def setUp(self):
         super(BaseLimitTestSuite, self).setUp()
         self.time = 0.0
-        self.stubs.Set(limits.Limit, "_get_time", self._get_time)
+        self.mock_object(limits.Limit, "_get_time", self._get_time)
         self.absolute_limits = {}
 
-        def stub_get_project_quotas(context, project_id, usages=True):
+        def fake_get_project_quotas(context, project_id, usages=True):
             return {k: dict(limit=v) for k, v in self.absolute_limits.items()}
 
-        self.stubs.Set(cinder.quota.QUOTAS, "get_project_quotas",
-                       stub_get_project_quotas)
+        self.mock_object(cinder.quota.QUOTAS, "get_project_quotas",
+                         fake_get_project_quotas)
 
     def _get_time(self):
         """Return the "time" according to this test suite."""
@@ -250,7 +246,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
 
     def test_limit_class(self):
         """Test that middleware selected correct limiter class."""
-        assert isinstance(self.app._limiter, TestLimiter)
+        self.assertIsInstance(self.app._limiter, TestLimiter)
 
     def test_good_request(self):
         """Test successful GET request through middleware."""
@@ -275,26 +271,6 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
         body = jsonutils.loads(response.body)
         expected = "Only 1 GET request(s) can be made to * every minute."
         value = body["overLimitFault"]["details"].strip()
-        self.assertEqual(expected, value)
-
-    def test_limited_request_xml(self):
-        """Test a rate-limited (413) response as XML."""
-        request = webob.Request.blank("/")
-        response = request.get_response(self.app)
-        self.assertEqual(200, response.status_int)
-
-        request = webob.Request.blank("/")
-        request.accept = "application/xml"
-        response = request.get_response(self.app)
-        self.assertEqual(413, response.status_int)
-
-        root = minidom.parseString(response.body).childNodes[0]
-        expected = "Only 1 GET request(s) can be made to * every minute."
-
-        details = root.getElementsByTagName("details")
-        self.assertEqual(1, details.length)
-
-        value = details.item(0).firstChild.data.strip()
         self.assertEqual(expected, value)
 
 
@@ -327,6 +303,10 @@ class LimitTest(BaseLimitTestSuite):
         self.assertIsNone(delay)
         self.assertEqual(4, limit.next_request)
         self.assertEqual(4, limit.last_request)
+
+    def test_invalid_limit(self):
+        """Test that invalid limits are properly checked on construction."""
+        self.assertRaises(ValueError, limits.Limit, "GET", "*", ".*", 0, 1)
 
 
 class ParseLimitsTest(BaseLimitTestSuite):
@@ -366,7 +346,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                                             '(POST, /bar*, /bar.*, 5, second);'
                                             '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            assert False, six.text_type(e)
+            self.assertFalse(six.text_type(e))
 
         # Make sure the number of returned limits are correct
         self.assertEqual(4, len(l))
@@ -788,9 +768,11 @@ class LimitsViewBuilderTest(test.TestCase):
                              "remaining": 10,
                              "unit": "DAY",
                              "resetTime": 1311272226}]
-        self.absolute_limits = {"metadata_items": 1,
-                                "injected_files": 5,
-                                "injected_file_content_bytes": 5}
+        self.absolute_limits = {"gigabytes": 1,
+                                "backup_gigabytes": 2,
+                                "volumes": 3,
+                                "snapshots": 4,
+                                "backups": 5}
 
     def test_build_limits(self):
         tdate = "2011-07-21T18:17:06"
@@ -809,14 +791,15 @@ class LimitsViewBuilderTest(test.TestCase):
                                             "remaining": 10,
                                             "unit": "DAY",
                                             "next-available": tdate}]}],
-                       "absolute": {"maxServerMeta": 1,
-                                    "maxImageMeta": 1,
-                                    "maxPersonality": 5,
-                                    "maxPersonalitySize": 5}}}
+                       "absolute": {"maxTotalVolumeGigabytes": 1,
+                                    "maxTotalBackupGigabytes": 2,
+                                    "maxTotalVolumes": 3,
+                                    "maxTotalSnapshots": 4,
+                                    "maxTotalBackups": 5}}}
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)
-        self.assertDictMatch(expected_limits, output)
+        self.assertDictEqual(expected_limits, output)
 
     def test_build_limits_empty_limits(self):
         expected_limits = {"limits": {"rate": [],
@@ -825,86 +808,4 @@ class LimitsViewBuilderTest(test.TestCase):
         abs_limits = {}
         rate_limits = []
         output = self.view_builder.build(rate_limits, abs_limits)
-        self.assertDictMatch(expected_limits, output)
-
-
-class LimitsXMLSerializationTest(test.TestCase):
-    def test_xml_declaration(self):
-        serializer = limits.LimitsTemplate()
-
-        fixture = {"limits": {
-                   "rate": [],
-                   "absolute": {}}}
-
-        output = serializer.serialize(fixture)
-        has_dec = output.startswith(b"<?xml version='1.0' encoding='UTF-8'?>")
-        self.assertTrue(has_dec)
-
-    def test_index(self):
-        tdate = "2011-12-15T22:42:45Z"
-        serializer = limits.LimitsTemplate()
-        fixture = {"limits": {"rate": [{"uri": "*",
-                                        "regex": ".*",
-                                        "limit": [{"value": 10,
-                                                   "verb": "POST",
-                                                   "remaining": 2,
-                                                   "unit": "MINUTE",
-                                                   "next-available": tdate}]},
-                                       {"uri": "*/servers",
-                                        "regex": "^/servers",
-                                        "limit": [{"value": 50,
-                                                   "verb": "POST",
-                                                   "remaining": 10,
-                                                   "unit": "DAY",
-                                                   "next-available": tdate}]}],
-                              "absolute": {"maxServerMeta": 1,
-                                           "maxImageMeta": 1,
-                                           "maxPersonality": 5,
-                                           "maxPersonalitySize": 10240}}}
-
-        output = serializer.serialize(fixture)
-        root = etree.XML(output)
-        xmlutil.validate_schema(root, 'limits')
-
-        # verify absolute limits
-        absolutes = root.xpath('ns:absolute/ns:limit', namespaces=NS)
-        self.assertEqual(4, len(absolutes))
-        for limit in absolutes:
-            name = limit.get('name')
-            value = limit.get('value')
-            self.assertEqual(str(fixture['limits']['absolute'][name]), value)
-
-        # verify rate limits
-        rates = root.xpath('ns:rates/ns:rate', namespaces=NS)
-        self.assertEqual(2, len(rates))
-        for i, rate in enumerate(rates):
-            for key in ['uri', 'regex']:
-                self.assertEqual(str(fixture['limits']['rate'][i][key]),
-                                 rate.get(key))
-            rate_limits = rate.xpath('ns:limit', namespaces=NS)
-            self.assertEqual(1, len(rate_limits))
-            for j, limit in enumerate(rate_limits):
-                for key in ['verb', 'value', 'remaining', 'unit',
-                            'next-available']:
-                    self.assertEqual(
-                        str(fixture['limits']['rate'][i]['limit'][j][key]),
-                        limit.get(key))
-
-    def test_index_no_limits(self):
-        serializer = limits.LimitsTemplate()
-
-        fixture = {"limits": {
-                   "rate": [],
-                   "absolute": {}}}
-
-        output = serializer.serialize(fixture)
-        root = etree.XML(output)
-        xmlutil.validate_schema(root, 'limits')
-
-        # verify absolute limits
-        absolutes = root.xpath('ns:absolute/ns:limit', namespaces=NS)
-        self.assertEqual(0, len(absolutes))
-
-        # verify rate limits
-        rates = root.xpath('ns:rates/ns:rate', namespaces=NS)
-        self.assertEqual(0, len(rates))
+        self.assertDictEqual(expected_limits, output)

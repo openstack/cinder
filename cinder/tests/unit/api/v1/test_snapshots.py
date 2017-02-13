@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
+import ddt
 import mock
-from oslo_utils import timeutils
 import webob
 
 from cinder.api.v1 import snapshots
@@ -23,6 +22,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v1 import stubs
@@ -32,14 +32,14 @@ from cinder.tests.unit import fake_volume
 from cinder import volume
 
 
-UUID = fake.snapshot_id
-INVALID_UUID = fake.will_not_be_found_id
+UUID = fake.SNAPSHOT_ID
+INVALID_UUID = fake.WILL_NOT_BE_FOUND_ID
 
 
 def _get_default_snapshot_param():
     return {'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'created_at': None,
             'display_name': 'Default name',
@@ -75,6 +75,7 @@ def stub_snapshot_get_all(self, context, search_opts=None):
     return [param]
 
 
+@ddt.ddt
 class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super(SnapshotApiTest, self).setUp()
@@ -88,7 +89,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_create(self):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
-        snapshot = {"volume_id": fake.volume_id,
+        snapshot = {"volume_id": fake.VOLUME_ID,
                     "force": False,
                     "display_name": "Snapshot Test Name",
                     "display_description": "Snapshot Test Desc"}
@@ -102,13 +103,14 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot['display_description'],
                          resp_dict['snapshot']['display_description'])
 
-    def test_snapshot_create_force(self):
+    @ddt.data(True, 'y', 'true', 'trUE', 'yes', '1', 1)
+    def test_snapshot_create_force(self, force_param):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
-        snapshot = {"volume_id": fake.volume_id,
-                    "force": True,
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
+        snapshot = {"volume_id": fake.VOLUME_ID,
+                    "force": force_param,
                     "display_name": "Snapshot Test Name",
                     "display_description": "Snapshot Test Desc"}
         body = dict(snapshot=snapshot)
@@ -121,7 +123,30 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot['display_description'],
                          resp_dict['snapshot']['display_description'])
 
-        snapshot = {"volume_id": fake.snapshot_id,
+    @ddt.data(False, 'n', 'false', 'falSE', 'No', '0', 0)
+    def test_snapshot_create_force_failure(self, force_param):
+        self.stubs.Set(volume.api.API,
+                       "create_snapshot_force",
+                       stub_snapshot_create)
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
+        snapshot = {"volume_id": fake.VOLUME_ID,
+                    "force": force_param,
+                    "display_name": "Snapshot Test Name",
+                    "display_description": "Snapshot Test Desc"}
+        body = dict(snapshot=snapshot)
+        req = fakes.HTTPRequest.blank('/v1/snapshots')
+        self.assertRaises(exception.InvalidVolume,
+                          self.controller.create,
+                          req,
+                          body)
+
+    @ddt.data("**&&^^%%$$##@@", '-1', 2, '01', 'on', 'off', "1         ")
+    def test_snapshot_create_invalid_force_param(self, force_param):
+        self.stubs.Set(volume.api.API,
+                       "create_snapshot_force",
+                       stub_snapshot_create)
+        self.mock_object(volume.api.API, 'get', stubs.stub_volume_api_get)
+        snapshot = {"volume_id": fake.SNAPSHOT_ID,
                     "force": "**&&^^%%$$##@@",
                     "display_name": "Snapshot Test Name",
                     "display_description": "Snapshot Test Desc"}
@@ -155,14 +180,14 @@ class SnapshotApiTest(test.TestCase):
                              snapshot_metadata_get, update_snapshot):
         snapshot = {
             'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.user_id, fake.project_id, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
@@ -174,8 +199,8 @@ class SnapshotApiTest(test.TestCase):
         res_dict = self.controller.update(req, UUID, body)
         expected = {'snapshot': {
             'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': u'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'size': 100,
             'created_at': None,
             'display_name': u'Updated Test Name',
@@ -203,7 +228,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v1/snapshots/not-the-uuid')
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.update, req,
+        self.assertRaises(exception.NotFound, self.controller.update, req,
                           'not-the-uuid', body)
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
@@ -215,14 +240,14 @@ class SnapshotApiTest(test.TestCase):
                              snapshot_metadata_get, delete_snapshot):
         snapshot = {
             'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.user_id, fake.project_id, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
@@ -237,7 +262,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.delete,
                           req,
                           snapshot_id)
@@ -249,14 +274,14 @@ class SnapshotApiTest(test.TestCase):
                            snapshot_metadata_get):
         snapshot = {
             'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.user_id, fake.project_id, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
@@ -271,7 +296,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show,
                           req,
                           snapshot_id)
@@ -284,14 +309,14 @@ class SnapshotApiTest(test.TestCase):
                              volume_get_by_id, snapshot_metadata_get):
         snapshot = {
             'id': UUID,
-            'volume_id': fake.volume_id,
-            'status': 'available',
+            'volume_id': fake.VOLUME_ID,
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
             'expected_attrs': ['metadata']
         }
-        ctx = context.RequestContext(fake.user_id, fake.project_id, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
@@ -312,7 +337,7 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_limited_to_project(self,
                                                      snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.project_id,
+        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res = self.controller.index(req)
 
@@ -328,11 +353,11 @@ class SnapshotApiTest(test.TestCase):
                                                  limit=None, sort_keys=None,
                                                  sort_dirs=None, offset=None):
                 return [
-                    stubs.stub_snapshot(fake.snapshot_id,
+                    stubs.stub_snapshot(fake.SNAPSHOT_ID,
                                         display_name='backup1'),
-                    stubs.stub_snapshot(fake.snapshot2_id,
+                    stubs.stub_snapshot(fake.SNAPSHOT2_ID,
                                         display_name='backup2'),
-                    stubs.stub_snapshot(fake.snapshot3_id,
+                    stubs.stub_snapshot(fake.SNAPSHOT3_ID,
                                         display_name='backup3'),
                 ]
 
@@ -340,13 +365,13 @@ class SnapshotApiTest(test.TestCase):
                            stub_snapshot_get_all_by_project)
 
             req = fakes.HTTPRequest.blank('/v1/%s/snapshots?limit=1\
-                                          &offset=1' % fake.project_id,
+                                          &offset=1' % fake.PROJECT_ID,
                                           use_admin_context=is_admin)
             res = self.controller.index(req)
 
             self.assertIn('snapshots', res)
             self.assertEqual(1, len(res['snapshots']))
-            self.assertEqual(fake.snapshot2_id, res['snapshots'][0]['id'])
+            self.assertEqual(fake.SNAPSHOT2_ID, res['snapshots'][0]['id'])
 
         # admin case
         list_snapshots_with_limit_and_offset(is_admin=True)
@@ -356,7 +381,7 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_all_tenants(self, snapshot_metadata_get):
         req = fakes.HTTPRequest.blank(
-            '/v1/%s/snapshots?all_tenants=1' % fake.project_id,
+            '/v1/%s/snapshots?all_tenants=1' % fake.PROJECT_ID,
             use_admin_context=True)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
@@ -366,67 +391,17 @@ class SnapshotApiTest(test.TestCase):
     def test_all_tenants_non_admin_gets_all_tenants(self,
                                                     snapshot_metadata_get):
         req = fakes.HTTPRequest.blank(
-            '/v1/%s/snapshots?all_tenants=1' % fake.project_id)
+            '/v1/%s/snapshots?all_tenants=1' % fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_non_admin_get_by_project(self, snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
-
-
-class SnapshotSerializerTest(test.TestCase):
-    def _verify_snapshot(self, snap, tree):
-        self.assertEqual('snapshot', tree.tag)
-
-        for attr in ('id', 'status', 'size', 'created_at',
-                     'display_name', 'display_description', 'volume_id'):
-            self.assertEqual(str(snap[attr]), tree.get(attr))
-
-    def test_snapshot_show_create_serializer(self):
-        serializer = snapshots.SnapshotTemplate()
-        raw_snapshot = dict(
-            id='snap_id',
-            status='snap_status',
-            size=1024,
-            created_at=timeutils.utcnow(),
-            display_name='snap_name',
-            display_description='snap_desc',
-            volume_id='vol_id', )
-        text = serializer.serialize(dict(snapshot=raw_snapshot))
-
-        tree = etree.fromstring(text)
-
-        self._verify_snapshot(raw_snapshot, tree)
-
-    def test_snapshot_index_detail_serializer(self):
-        serializer = snapshots.SnapshotsTemplate()
-        raw_snapshots = [dict(id='snap1_id',
-                              status='snap1_status',
-                              size=1024,
-                              created_at=timeutils.utcnow(),
-                              display_name='snap1_name',
-                              display_description='snap1_desc',
-                              volume_id='vol1_id', ),
-                         dict(id='snap2_id',
-                              status='snap2_status',
-                              size=1024,
-                              created_at=timeutils.utcnow(),
-                              display_name='snap2_name',
-                              display_description='snap2_desc',
-                              volume_id='vol2_id', )]
-        text = serializer.serialize(dict(snapshots=raw_snapshots))
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('snapshots', tree.tag)
-        self.assertEqual(len(raw_snapshots), len(tree))
-        for idx, child in enumerate(tree):
-            self._verify_snapshot(raw_snapshots[idx], child)
 
 
 class SnapshotsUnprocessableEntityTestCase(test.TestCase):
@@ -438,7 +413,7 @@ class SnapshotsUnprocessableEntityTestCase(test.TestCase):
         self.controller = snapshots.SnapshotsController()
 
     def _unprocessable_snapshot_create(self, body):
-        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/snapshots' % fake.PROJECT_ID)
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,

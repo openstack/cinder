@@ -18,11 +18,12 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import timeutils
+from six.moves import http_client
 import webob.exc
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -36,51 +37,12 @@ LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'services')
 
 
-class ServicesIndexTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('services')
-        elem = xmlutil.SubTemplateElement(root, 'service', selector='services')
-        elem.set('binary')
-        elem.set('host')
-        elem.set('zone')
-        elem.set('status')
-        elem.set('state')
-        elem.set('update_at')
-        elem.set('disabled_reason')
-        elem.set('replication_status')
-        elem.set('active_backend_id')
-        elem.set('frozen')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        # TODO(uni): template elements of 'host', 'service' and 'disabled'
-        # should be deprecated to make ServicesUpdateTemplate consistent
-        # with ServicesIndexTemplate. Still keeping it here for API
-        # compatibility sake.
-        root = xmlutil.TemplateElement('host')
-        root.set('host')
-        root.set('service')
-        root.set('disabled')
-        root.set('binary')
-        root.set('status')
-        root.set('disabled_reason')
-        root.set('replication_status')
-        root.set('active_backend_id')
-        root.set('frozen')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
 class ServiceController(wsgi.Controller):
     def __init__(self, ext_mgr=None):
         self.ext_mgr = ext_mgr
         super(ServiceController, self).__init__()
         self.volume_api = volume.API()
 
-    @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
         """Return a list of all running services.
 
@@ -125,6 +87,11 @@ class ServiceController(wsgi.Controller):
                           'zone': svc.availability_zone,
                           'status': active, 'state': art,
                           'updated_at': updated_at}
+
+            # On V3.7 we added cluster support
+            if req.api_version_request.matches('3.7'):
+                ret_fields['cluster'] = svc.cluster_name
+
             if detailed:
                 ret_fields['disabled_reason'] = svc.disabled_reason
                 if svc.binary == "cinder-volume":
@@ -138,23 +105,31 @@ class ServiceController(wsgi.Controller):
         if not reason:
             return False
         try:
-            utils.check_string_length(reason.strip(), 'Disabled reason',
-                                      min_length=1, max_length=255)
+            utils.check_string_length(reason, 'Disabled reason', min_length=1,
+                                      max_length=255, allow_all_spaces=False)
         except exception.InvalidInput:
             return False
 
         return True
 
-    def _freeze(self, context, host):
-        return self.volume_api.freeze_host(context, host)
+    def _freeze(self, context, req, body):
+        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        return self.volume_api.freeze_host(context, host, cluster_name)
 
-    def _thaw(self, context, host):
-        return self.volume_api.thaw_host(context, host)
+    def _thaw(self, context, req, body):
+        cluster_name, host = common.get_cluster_host(req, body, '3.26')
+        return self.volume_api.thaw_host(context, host, cluster_name)
 
-    def _failover(self, context, host, backend_id=None):
-        return self.volume_api.failover_host(context, host, backend_id)
+    def _failover(self, context, req, body, clustered):
+        # We set version to None to always get the cluster name from the body,
+        # to False when we don't want to get it, and '3.26' when we only want
+        # it if the requested version is 3.26 or higher.
+        version = '3.26' if clustered else False
+        cluster_name, host = common.get_cluster_host(req, body, version)
+        self.volume_api.failover(context, host, cluster_name,
+                                 body.get('backend_id'))
+        return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.
 
@@ -178,24 +153,17 @@ class ServiceController(wsgi.Controller):
             disabled = True
             status = "disabled"
         elif id == "freeze":
-            return self._freeze(context, body['host'])
+            return self._freeze(context, req, body)
         elif id == "thaw":
-            return self._thaw(context, body['host'])
+            return self._thaw(context, req, body)
         elif id == "failover_host":
-            self._failover(
-                context,
-                body['host'],
-                body.get('backend_id', None)
-            )
-            return webob.Response(status_int=202)
+            return self._failover(context, req, body, False)
+        elif req.api_version_request.matches('3.26') and id == 'failover':
+            return self._failover(context, req, body, True)
         else:
-            raise webob.exc.HTTPNotFound(explanation=_("Unknown action"))
+            raise exception.InvalidInput(reason=_("Unknown action"))
 
-        try:
-            host = body['host']
-        except (TypeError, KeyError):
-            msg = _("Missing required element 'host' in request body.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        host = common.get_cluster_host(req, body, False)[1]
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:
@@ -214,17 +182,13 @@ class ServiceController(wsgi.Controller):
         if not binary_key:
             raise webob.exc.HTTPBadRequest()
 
-        try:
-            svc = objects.Service.get_by_args(context, host, binary_key)
-            if not svc:
-                raise webob.exc.HTTPNotFound(explanation=_('Unknown service'))
+        # Not found exception will be handled at the wsgi level
+        svc = objects.Service.get_by_args(context, host, binary_key)
 
-            svc.disabled = ret_val['disabled']
-            if 'disabled_reason' in ret_val:
-                svc.disabled_reason = ret_val['disabled_reason']
-            svc.save()
-        except exception.ServiceNotFound:
-            raise webob.exc.HTTPNotFound(explanation=_("service not found"))
+        svc.disabled = ret_val['disabled']
+        if 'disabled_reason' in ret_val:
+            svc.disabled_reason = ret_val['disabled_reason']
+        svc.save()
 
         ret_val.update({'host': host, 'service': service,
                         'binary': binary, 'status': status})
@@ -236,7 +200,6 @@ class Services(extensions.ExtensionDescriptor):
 
     name = "Services"
     alias = "os-services"
-    namespace = "http://docs.openstack.org/volume/ext/services/api/v2"
     updated = "2012-10-28T00:00:00-00:00"
 
     def get_resources(self):

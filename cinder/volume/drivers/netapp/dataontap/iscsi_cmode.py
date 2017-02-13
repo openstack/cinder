@@ -16,24 +16,21 @@
 Volume driver for NetApp Data ONTAP (C-mode) iSCSI storage systems.
 """
 
-from oslo_log import log as logging
-
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 
 
-LOG = logging.getLogger(__name__)
-
-
+@interface.volumedriver
 class NetAppCmodeISCSIDriver(driver.BaseVD,
-                             driver.ConsistencyGroupVD,
-                             driver.ManageableVD,
-                             driver.ExtendVD,
-                             driver.TransferVD,
-                             driver.SnapshotVD):
+                             driver.ManageableVD):
     """NetApp C-mode iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_Cluster_direct'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+    VERSION = block_cmode.NetAppBlockStorageCmodeLibrary.VERSION
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
@@ -47,13 +44,13 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
         self.library.check_for_setup_error()
 
     def create_volume(self, volume):
-        self.library.create_volume(volume)
+        return self.library.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        self.library.create_volume_from_snapshot(volume, snapshot)
+        return self.library.create_volume_from_snapshot(volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        self.library.create_cloned_volume(volume, src_vref)
+        return self.library.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
         self.library.delete_volume(volume)
@@ -129,3 +126,7 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
         return self.library.create_consistencygroup_from_src(
             group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
             source_cg=source_cg, source_vols=source_vols)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        return self.library.failover_host(
+            context, volumes, secondary_id=secondary_id)

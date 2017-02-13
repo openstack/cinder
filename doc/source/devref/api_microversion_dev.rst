@@ -11,9 +11,13 @@ a particular version of the API. So breaking changes can be added to
 the API without breaking users who don't specifically ask for it. This
 is done with an HTTP header ``OpenStack-API-Version`` which
 is a monotonically increasing semantic version number starting from
-``3.0``. Each service that uses microversions will share this header, so
-the Volume service will need to specifiy ``volume``:
-    ``OpenStack-API-Version: volume 3.0``
+``3.0``.
+
+Each OpenStack service that uses microversions will share this header, so
+the Volume service will need to prefix the semantic version number with the
+word ``volume``::
+
+  OpenStack-API-Version: volume 3.0
 
 If a user makes a request without specifying a version, they will get
 the ``DEFAULT_API_VERSION`` as defined in
@@ -173,8 +177,9 @@ In the controller class::
         ....
 
 This method would only be available if the caller had specified an
-``OpenStack-API-Version`` of <= ``3.4``. If ``3.5`` or later
-is specified the server will respond with ``HTTP/404``.
+``OpenStack-API-Version`` of <= ``3.4``, and >= ``3.1``. If ``3.5`` or later
+is specified or if ``3.0`` or earlier (/v2 or /v1 endpoint), the server will
+respond with ``HTTP/404``
 
 Changing a method's behaviour
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -185,7 +190,7 @@ In the controller class::
     def my_api_method(self, req, id):
         .... method_1 ...
 
-    @wsgi.Controller.api_version("3.4")  # noqa
+    @my_api_method.api_version("3.4")
     def my_api_method(self, req, id):
         .... method_2 ...
 
@@ -193,10 +198,15 @@ If a caller specified ``3.1``, ``3.2`` or ``3.3`` (or received the
 default of ``3.1``) they would see the result from ``method_1``,
 ``3.4`` or later ``method_2``.
 
-It is vital that the two methods have the same name, so the second of
-them will need ``# noqa`` to avoid failing flake8's ``F811`` rule. The
-two methods may be different in any kind of semantics (schema
-validation, return values, response codes, etc)
+We could use ``wsgi.Controller.api_version`` decorator on the second
+``my_api_method`` as well, but then we would have to add ``# no qa`` to that
+line to avoid failing flake8's ``F811`` rule.  So the recommended approach is
+to use the ``api_version`` decorator from the first method that is defined, as
+illustrated by the example above, and then use ``my_api_method`` decorator for
+subsequent api versions of the same method.
+
+The two methods may be different in any kind of semantics (schema validation,
+return values, response codes, etc.).
 
 A method with only small changes between versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -300,7 +310,7 @@ method test, you just need to add the ``OpenStack-API-Version``
 header, for example::
 
     req = fakes.HTTPRequest.blank('/testable/url/endpoint')
-    req.headers = {'OpenStack-API-Version': 'volume 3.2'}
+    req.headers['OpenStack-API-Version'] = 'volume 3.6'
     req.api_version_request = api_version.APIVersionRequest('3.6')
 
     controller = controller.TestableController()

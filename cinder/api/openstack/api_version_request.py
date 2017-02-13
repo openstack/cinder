@@ -47,7 +47,37 @@ REST_API_VERSION_HISTORY = """
     * 3.0 - Includes all V2 APIs and extensions. V1 API is still supported.
     * 3.0 - Versions API updated to reflect beginning of microversions epoch.
     * 3.1 - Adds visibility and protected to _volume_upload_image parameters.
-
+    * 3.2 - Bootable filters in volume GET call no longer treats all values
+            passed to it as true.
+    * 3.3 - Add user messages APIs.
+    * 3.4 - Adds glance_metadata filter to list/detail volumes in _get_volumes.
+    * 3.5 - Add pagination support to messages API.
+    * 3.6 - Allows to set empty description and empty name for consistency
+            group in consisgroup-update operation.
+    * 3.7 - Add cluster API and cluster_name field to service list API
+    * 3.8 - Adds resources from volume_manage and snapshot_manage extensions.
+    * 3.9 - Add backup update interface.
+    * 3.10 - Add group_id filter to list/detail volumes in _get_volumes.
+    * 3.11 - Add group types and group specs API.
+    * 3.12 - Add volumes summary API.
+    * 3.13 - Add generic volume groups API.
+    * 3.14 - Add group snapshot and create group from src APIs.
+    * 3.15 - Inject the response's `Etag` header to avoid the lost update
+             problem with volume metadata.
+    * 3.16 - Migrate volume now supports cluster
+    * 3.17 - Getting manageable volumes and snapshots now accepts cluster.
+    * 3.18 - Add backup project attribute.
+    * 3.19 - Add API reset status actions 'reset_status' to group snapshot.
+    * 3.20 - Add API reset status actions 'reset_status' to generic
+             volume group.
+    * 3.21 - Show provider_id in detailed view of a volume for admin.
+    * 3.22 - Add filtering based on metadata for snapshot listing.
+    * 3.23 - Allow passing force parameter to volume delete.
+    * 3.24 - Add workers/cleanup endpoint.
+    * 3.25 - Add ``volumes`` field to group list/detail and group show.
+    * 3.26 - Add failover action and cluster listings accept new filters and
+             return new data.
+    * 3.27 - Add attachment API
 """
 
 # The minimum and maximum versions of the API supported
@@ -55,7 +85,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.1"
+_MAX_API_VERSION = "3.27"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
@@ -106,8 +136,10 @@ class APIVersionRequest(utils.ComparableMixin):
         return ("API Version Request Major: %(major)s, Minor: %(minor)s"
                 % {'major': self._ver_major, 'minor': self._ver_minor})
 
-    def is_null(self):
-        return self._ver_major is None and self._ver_minor is None
+    def __bool__(self):
+        return (self._ver_major or self._ver_minor) is not None
+
+    __nonzero__ = __bool__
 
     def _cmpkey(self):
         """Return the value used by ComparableMixin for rich comparisons."""
@@ -125,7 +157,7 @@ class APIVersionRequest(utils.ComparableMixin):
                             method.end_version,
                             method.experimental)
 
-    def matches(self, min_version, max_version, experimental=False):
+    def matches(self, min_version, max_version=None, experimental=False):
         """Compares this version to the specified min/max range.
 
         Returns whether the version object represents a version
@@ -142,7 +174,7 @@ class APIVersionRequest(utils.ComparableMixin):
         :returns: boolean
         """
 
-        if self.is_null():
+        if not self:
             raise ValueError
 
         if isinstance(min_version, str):
@@ -152,16 +184,12 @@ class APIVersionRequest(utils.ComparableMixin):
 
         if not min_version and not max_version:
             return True
-        elif ((min_version and max_version) and
-              max_version.is_null() and min_version.is_null()):
-            return True
 
-        elif not max_version or max_version.is_null():
+        if not max_version:
             return min_version <= self
-        elif not min_version or min_version.is_null():
+        if not min_version:
             return self <= max_version
-        else:
-            return min_version <= self <= max_version
+        return min_version <= self <= max_version
 
     def get_string(self):
         """Returns a string representation of this object.
@@ -169,7 +197,7 @@ class APIVersionRequest(utils.ComparableMixin):
         If this method is used to create an APIVersionRequest,
         the resulting object will be an equivalent request.
         """
-        if self.is_null():
+        if not self:
             raise ValueError
         return ("%(major)s.%(minor)s" %
                 {'major': self._ver_major, 'minor': self._ver_minor})

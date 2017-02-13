@@ -21,39 +21,42 @@ import json
 
 import mock
 
+from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.eseries import utils
 import cinder.volume.drivers.netapp.options as na_opts
 import cinder.volume.drivers.netapp.utils as na_utils
 
 FAKE_CINDER_VOLUME = {
-    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'id': fake.VOLUME_ID,
     'size': 1,
     'volume_name': 'lun1',
     'host': 'hostname@backend#DDP',
     'os_type': 'linux',
     'provider_location': 'lun1',
-    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'name_id': fake.VOLUME2_ID,
     'provider_auth': 'provider a b',
-    'project_id': 'project',
+    'project_id': fake.PROJECT_ID,
     'display_name': None,
     'display_description': 'lun1',
     'volume_type_id': None,
     'migration_status': None,
-    'attach_status': "detached"
+    'attach_status': fields.VolumeAttachStatus.DETACHED
 }
 
 FAKE_CINDER_SNAPSHOT = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
-    'volume': FAKE_CINDER_VOLUME
+    'id': fake.SNAPSHOT_ID,
+    'volume': FAKE_CINDER_VOLUME,
+    'provider_id': '3400000060080E500023BB3400631F335294A5A8',
 }
 
 FAKE_CINDER_CG = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c951d48a2',
+    'id': fake.CONSISTENCY_GROUP_ID,
 }
 
 FAKE_CINDER_CG_SNAPSHOT = {
-    'id': '78f95b9d-4d13-4781-a512-1a1c951d6a6',
+    'id': fake.CGSNAPSHOT_ID,
     'consistencygroup_id': FAKE_CINDER_CG['id'],
 }
 
@@ -604,7 +607,7 @@ HOST_3 = {
 
 VOLUME_MAPPING = {
     'lunMappingRef': '8800000000000000000000000000000000000000',
-    'lun': 0,
+    'lun': 1,
     'ssid': 16384,
     'perms': 15,
     'volumeRef': VOLUME['volumeRef'],
@@ -691,7 +694,7 @@ SNAPSHOT_GROUP = {
 }
 
 SNAPSHOT_IMAGE = {
-    'id': '3400000060080E500023BB3400631F335294A5A8',
+    'id': fake.SNAPSHOT_ID,
     'baseVol': '0200000060080E500023C734000009825294A534',
     'status': 'optimal',
     'pitCapacity': '2147483648',
@@ -759,29 +762,6 @@ SNAPSHOT_VOLUME = {
 FAKE_BACKEND_STORE = {
     'key': 'cinder-snapshots',
     'value': '{"3300000060080E50003416400000E90D56B047E5":"2"}'
-}
-
-FAKE_CINDER_VOLUME = {
-    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
-    'size': 1,
-    'volume_name': 'lun1',
-    'host': 'hostname@backend#DDP',
-    'os_type': 'linux',
-    'provider_location': 'lun1',
-    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
-    'provider_auth': 'provider a b',
-    'project_id': 'project',
-    'display_name': None,
-    'display_description': 'lun1',
-    'volume_type_id': None,
-    'migration_status': None,
-    'attach_status': "detached"
-}
-
-FAKE_CINDER_SNAPSHOT = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
-    'volume': FAKE_CINDER_VOLUME,
-    'provider_id': '3400000060080E500023BB3400631F335294A5A8'
 }
 
 HARDWARE_INVENTORY_SINGLE_CONTROLLER = {
@@ -942,6 +922,7 @@ FAKE_POOL_ACTION_PROGRESS = [
     },
 ]
 
+FAKE_CHAP_SECRET = 'password123'
 FAKE_RESOURCE_URL = '/devmgr/v2/devmgr/utils/about'
 FAKE_APP_VERSION = '2015.2|2015.2.dev59|vendor|Linux-3.13.0-24-generic'
 FAKE_BACKEND = 'eseriesiSCSI'
@@ -955,6 +936,49 @@ FAKE_ABOUT_RESPONSE = {
     'version': '01.53.9010.0005',
     'systemId': 'a89355ab-692c-4d4a-9383-e249095c3c0',
 }
+
+FAKE_TARGET_IQN = 'iqn.1992-01.com.lsi:2365.60080e500023c73400000000515af323'
+
+FAKE_CHAP_USERNAME = 'eserieschapuser'
+
+FAKE_CHAP_PARAMETERS = {
+    'ChapAuthentication': True,
+    'iqn': FAKE_TARGET_IQN,
+    'chapSecret': FAKE_CHAP_SECRET,
+    'authMethod': 'CHAP',
+}
+
+FAKE_CLIENT_CHAP_PARAMETERS = (
+    FAKE_TARGET_IQN,
+    FAKE_CHAP_USERNAME,
+    FAKE_CHAP_SECRET,
+)
+
+FAKE_TARGET_DICT = {
+    'data': {
+        'auth_method': 'CHAP',
+        'auth_password': FAKE_CHAP_SECRET,
+        'auth_username': FAKE_CHAP_USERNAME,
+        'discovery_auth_method': 'CHAP',
+        'discovery_auth_password': FAKE_CHAP_SECRET,
+        'discovery_auth_username': FAKE_CHAP_USERNAME,
+        'target_discovered': False,
+        'target_iqn': FAKE_TARGET_IQN,
+        'target_lun': 1,
+        'target_portal': '172.20.123.66:3260',
+        'volume_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    },
+    'driver_volume_type': 'iscsi',
+}
+
+FAKE_CHAP_POST_DATA = {
+    'enableChapAuthentication': True,
+    'alias': FAKE_CHAP_USERNAME,
+    'iqn': FAKE_TARGET_IQN,
+    'chapSecret': FAKE_CHAP_SECRET,
+    'authMethod': 'CHAP',
+}
+
 
 FAKE_CONTROLLERS = [
     {'serialNumber': FAKE_SERIAL_NUMBERS[0], 'modelName': '2752'},
@@ -1090,6 +1114,7 @@ def create_configuration_eseries():
     config.netapp_controller_ips = '10.11.12.13,10.11.12.14'
     config.netapp_webservice_path = '/devmgr/v2'
     config.netapp_enable_multiattach = False
+    config.use_chap_auth = False
     return config
 
 
@@ -1238,24 +1263,104 @@ class FakeEseriesClient(object):
     def list_host_types(self):
         return [
             {
-                'id': '4',
-                'code': 'AIX',
-                'name': 'AIX',
-                'index': 4
+                'name': 'FactoryDefault',
+                'index': 0,
+                'code': 'FactoryDefault',
             },
             {
-                'id': '5',
-                'code': 'IRX',
-                'name': 'IRX',
-                'index': 5
+                'name': 'Windows 2000/Server 2003/Server 2008 Non-Clustered',
+                'index': 1,
+                'code': 'W2KNETNCL',
             },
             {
-                'id': '6',
-                'code': 'LnxALUA',
+                'name': 'Solaris',
+                'index': 2,
+                'code': 'SOL',
+            },
+            {
+                'name': 'ONTAP_RDAC',
+                'index': 4,
+                'code': 'ONTAP_RDAC',
+            },
+            {
+                'name': 'AVT_4M',
+                'index': 5,
+                'code': 'AVT_4M',
+            },
+            {
+                'name': 'Linux',
+                'index': 6,
+                'code': 'LNX',
+            },
+            {
                 'name': 'LnxALUA',
-                'index': 6
+                'index': 7,
+                'code': 'LnxALUA',
+            },
+            {
+                'name': 'Windows 2000/Server 2003/Server 2008 Clustered',
+                'index': 8,
+                'code': 'W2KNETCL',
+            },
+            {
+                'name': 'AIX MPIO',
+                'index': 9,
+                'code': 'AIX MPIO',
+            },
+            {
+                'name': 'VmwTPGSALUA',
+                'index': 10,
+                'code': 'VmwTPGSALUA',
+            },
+            {
+                'name': 'HP-UX TPGS',
+                'index': 15,
+                'code': 'HPXTPGS',
+            },
+            {
+                'name': 'SolTPGSALUA',
+                'index': 17,
+                'code': 'SolTPGSALUA',
+            },
+            {
+                'name': 'SVC',
+                'index': 18,
+                'code': 'SVC',
+            },
+            {
+                'name': 'MacTPGSALUA',
+                'index': 22,
+                'code': 'MacTPGSALUA',
+            },
+            {
+                'name': 'WinTPGSALUA',
+                'index': 23,
+                'code': 'WinTPGSALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA',
+                'index': 24,
+                'code': 'LnxTPGSALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA_PM',
+                'index': 25,
+                'code': 'LnxTPGSALUA_PM',
+            },
+            {
+                'name': 'ONTAP_ALUA',
+                'index': 26,
+                'code': 'ONTAP_ALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA_SF',
+                'index': 27,
+                'code': 'LnxTPGSALUA_SF',
             }
         ]
+
+    def update_host_type(self, *args, **kwargs):
+        pass
 
     def list_hardware_inventory(self):
         return HARDWARE_INVENTORY
@@ -1268,6 +1373,9 @@ class FakeEseriesClient(object):
 
     def add_autosupport_data(self, *args):
         pass
+
+    def set_chap_authentication(self, *args, **kwargs):
+        return FAKE_CHAP_PARAMETERS
 
     def get_serial_numbers(self):
         return FAKE_ASUP_DATA.get('controller1-serial'), FAKE_ASUP_DATA.get(

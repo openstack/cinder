@@ -37,6 +37,7 @@ from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -80,6 +81,11 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         self.root_volume_name = self._get_root_volume_name()
         self.perf_library = perf_7mode.Performance7modeLibrary(
             self.zapi_client)
+        # This driver has been marked 'deprecated' in the Ocata release and
+        # can be removed in Queens.
+        msg = _("The 7-mode Data ONTAP driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
 
     def _do_partner_setup(self):
         partner_backend = self.configuration.netapp_partner_backend_name
@@ -119,7 +125,26 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                     'Ensure that the configuration option '
                     'netapp_pool_name_search_pattern is set correctly.')
             raise exception.NetAppDriverException(msg)
+        self._add_looping_tasks()
         super(NetAppBlockStorage7modeLibrary, self).check_for_setup_error()
+
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval."""
+        super(NetAppBlockStorage7modeLibrary, self)._add_looping_tasks()
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+
+        base_ems_message = dot_utils.build_ems_log_message_0(
+            self.driver_name, self.app_version, self.driver_mode)
+        self.zapi_client.send_ems_log_message(base_ems_message)
+
+        pool_ems_message = dot_utils.build_ems_log_message_1(
+            self.driver_name, self.app_version, None, self.volume_list, [])
+        self.zapi_client.send_ems_log_message(pool_ems_message)
+
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
 
     def _create_lun(self, volume_name, lun_name, size,
                     metadata, qos_policy_group_name=None):
@@ -194,8 +219,12 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None):
-        """Clone LUN with the given handle to the new name."""
+                   block_count=0, source_snapshot=None, is_snapshot=False):
+        """Clone LUN with the given handle to the new name.
+
+        :param: is_snapshot Not used, present for method signature consistency
+        """
+
         if not space_reserved:
             space_reserved = self.lun_space_reservation
         if qos_policy_group_name is not None:
@@ -263,8 +292,6 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             goodness_function=goodness_function)
         data['sparse_copy_volume'] = True
 
-        self.zapi_client.provide_ems(self, self.driver_name, self.app_version,
-                                     server_type=self.driver_mode)
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):
@@ -297,6 +324,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             pool = dict()
             pool['pool_name'] = volume_name
             pool['QoS_support'] = False
+            pool['multiattach'] = True
             pool['reserved_percentage'] = (
                 self.reserved_percentage)
             pool['max_over_subscription_ratio'] = (
@@ -439,3 +467,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
         return (super(NetAppBlockStorage7modeLibrary, self)
                 ._get_preferred_target_from_list(target_details_list))
+
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        return self.volume_list or []

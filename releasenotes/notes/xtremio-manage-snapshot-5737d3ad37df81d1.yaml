@@ -1,0 +1,3 @@
+---
+features:
+  - Added snapshot manage/unmanage support to the EMC XtremIO driver.

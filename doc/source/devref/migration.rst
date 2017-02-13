@@ -49,35 +49,37 @@ regardless if the back-ends are located on the same c-vol node or not.
 How to do volume migration via CLI
 ----------------------------------
 Scenario 1 of volume migration is done via the following command from
-the CLI:
-cinder migrate [--force-host-copy [<True|False>]]
-            [--lock-volume [<True|False>]]
-            <volume> <host>
-Mandatory arguments:
-  <volume>              ID of volume to migrate.
-  <host>                Destination host. The format of host is
-                        host@backend#POOL, while 'host' is the host
-                        name of the volume node, 'backend' is the back-end
-                        name and 'POOL' is a logical concept to describe
-                        a set of storage resource, residing in the
-                        back-end. If the back-end does not have specified
-                        pools, 'POOL' needs to be set with the same name
-                        as 'backend'.
+the CLI::
 
-Optional arguments:
-  --force-host-copy [<True|False>]
-                        Enables or disables generic host-based force-
-                        migration, which bypasses the driver optimization.
-                        Default=False.
-  --lock-volume [<True|False>]
-                        Enables or disables the termination of volume
-                        migration caused by other commands. This option
-                        applies to the available volume. True means it locks
-                        the volume state and does not allow the migration to
-                        be aborted. The volume status will be in maintenance
-                        during the migration. False means it allows the volume
-                        migration to be aborted. The volume status is still in
-                        the original status. Default=False.
+ cinder migrate [--force-host-copy [<True|False>]]
+                [--lock-volume [<True|False>]]
+                <volume> <host>
+
+ Mandatory arguments:
+   <volume>              ID of volume to migrate.
+   <host>                Destination host. The format of host is
+                         host@backend#POOL, while 'host' is the host
+                         name of the volume node, 'backend' is the back-end
+                         name and 'POOL' is a logical concept to describe
+                         a set of storage resource, residing in the
+                         back-end. If the back-end does not have specified
+                         pools, 'POOL' needs to be set with the same name
+                         as 'backend'.
+
+ Optional arguments:
+   --force-host-copy [<True|False>]
+                         Enables or disables generic host-based force-
+                         migration, which bypasses the driver optimization.
+                         Default=False.
+   --lock-volume [<True|False>]
+                         Enables or disables the termination of volume
+                         migration caused by other commands. This option
+                         applies to the available volume. True means it locks
+                         the volume state and does not allow the migration to
+                         be aborted. The volume status will be in maintenance
+                         during the migration. False means it allows the volume
+                         migration to be aborted. The volume status is still in
+                         the original status. Default=False.
 
 Important note: Currently, error handling for failed migration operations is
 under development in Cinder. If we would like the volume migration to finish
@@ -89,12 +91,13 @@ request of another action comes.
 
 
 Scenario 2 of volume migration can be done via the following command
-from the CLI:
-cinder retype --migration-policy on-demand
-                     <volume> <volume-type>
-Mandatory arguments:
-  <volume>              Name or ID of volume for which to modify type.
-  <volume-type>         New volume type.
+from the CLI::
+
+ cinder retype --migration-policy on-demand
+               <volume> <volume-type>
+ Mandatory arguments:
+   <volume>              Name or ID of volume for which to modify type.
+   <volume-type>         New volume type.
 
 Source volume type and destination volume type must be different and
 they must refer to different back-ends.
@@ -102,7 +105,7 @@ they must refer to different back-ends.
 
 Configurations
 --------------
-To set up a an environment to try the volume migration, we need to
+To set up an environment to try the volume migration, we need to
 configure at least two different back-ends on the same node of cinder
 volume service, c-vol node or two back-ends on two different volume
 nodes of cinder volume service, c-vol nodes. Which command to use,
@@ -132,9 +135,9 @@ For Node 2:
     ...
 
 If a volume with a predefined volume type is going to migrate,
-the back-end drivers from Node 1 and Node2 should have the same
+the back-end drivers from Node 1 and Node 2 should have the same
 value for volume_backend_name, which means <driver-backend> should be
-the same for Noe 1 and Node 2. The volume type can be created
+the same for Node 1 and Node 2. The volume type can be created
 with the extra specs {volume_backend_name: driver-biz}.
 
 If we are going to migrate a volume with a volume type of none, it
@@ -178,7 +181,7 @@ contains the following entries:
     volume_backend_name=driver-net
     ...
 
-Two volume type needs to be created. One is with the extra specs:
+Two volume types need to be created. One is with the extra specs:
 {volume_backend_name: driver-biz}. The other is with the extra specs:
 {volume_backend_name: driver-net}.
 

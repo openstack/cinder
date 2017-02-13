@@ -1,0 +1,19 @@
+{
+    "transfer": {
+        "id": "1a7059f5-8ed7-45b7-8d05-2811e5d09f24",
+        "created_at": "2015-02-25T03:56:53.081642",
+        "name": "first volume",
+        "volume_id": "c86b9af4-151d-4ead-b62c-5fb967af0e37",
+        "auth_key": "9266c59563c84664",
+        "links": [
+            {
+                "href": "http://localhost/v3/firstproject/volumes/3",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost/firstproject/volumes/3",
+                "rel": "bookmark"
+            }
+        ]
+    }
+}

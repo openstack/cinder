@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+
+    Removing the Dell EqualLogic driver's deprecated configuration options.
+    Please replace old options in your cinder.conf with the new one.
+
+    * Removed - ``eqlx_cli_timeout``
+    * Replaced with - ``ssh_conn_timeout``
+    * Removed - ``eqlx_use_chap``
+    * Replaced with - ``use_chap_auth``
+    * Removed - ``eqlx_chap_login``
+    * Replaced with - ``chap_username``
+    * Removed - ``eqlx_chap_password``
+    * Replaced with - ``chap_password``

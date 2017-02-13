@@ -19,12 +19,14 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
+from cinder import interface
 import cinder.volume.driver
 from cinder.volume.drivers.prophetstor import dplcommon
 
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                      cinder.volume.driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):

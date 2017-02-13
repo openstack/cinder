@@ -16,7 +16,6 @@
 import webob
 from webob import exc
 
-from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
@@ -31,22 +30,16 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__()
 
     def _get_metadata(self, context, volume_id):
-        try:
-            volume = self.volume_api.get(context, volume_id)
-            meta = self.volume_api.get_volume_metadata(context, volume)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
+        meta = self.volume_api.get_volume_metadata(context, volume)
         return meta
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, volume_id):
         """Returns the list of metadata for a given volume."""
         context = req.environ['cinder.context']
         return {'metadata': self._get_metadata(context, volume_id)}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def create(self, req, volume_id, body):
         try:
             metadata = body['metadata']
@@ -63,8 +56,6 @@ class Controller(wsgi.Controller):
 
         return {'metadata': new_metadata}
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
-    @wsgi.deserializers(xml=common.MetaItemDeserializer)
     def update(self, req, volume_id, id, body):
         try:
             meta_item = body['meta']
@@ -88,8 +79,6 @@ class Controller(wsgi.Controller):
 
         return {'meta': meta_item}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def update_all(self, req, volume_id, body):
         try:
             metadata = body['metadata']
@@ -114,10 +103,7 @@ class Controller(wsgi.Controller):
                                                           volume,
                                                           metadata,
                                                           delete)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
-
+        # Not found exception will be handled at the wsgi level
         except (ValueError, AttributeError):
             msg = _("Malformed request body")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -128,7 +114,6 @@ class Controller(wsgi.Controller):
         except exception.InvalidVolumeMetadataSize as error:
             raise exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
     def show(self, req, volume_id, id):
         """Return a single metadata item."""
         context = req.environ['cinder.context']
@@ -137,8 +122,8 @@ class Controller(wsgi.Controller):
         try:
             return {'meta': {id: data[id]}}
         except KeyError:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.VolumeMetadataNotFound(volume_id=volume_id,
+                                                   metadata_key=id)
 
     def delete(self, req, volume_id, id):
         """Deletes an existing metadata."""
@@ -147,15 +132,12 @@ class Controller(wsgi.Controller):
         metadata = self._get_metadata(context, volume_id)
 
         if id not in metadata:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.VolumeMetadataNotFound(volume_id=volume_id,
+                                                   metadata_key=id)
 
-        try:
-            volume = self.volume_api.get(context, volume_id)
-            self.volume_api.delete_volume_metadata(context, volume, id)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
+        self.volume_api.delete_volume_metadata(context, volume, id)
         return webob.Response(status_int=200)
 
 

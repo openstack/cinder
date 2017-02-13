@@ -36,11 +36,8 @@ import sys
 import tempfile
 import time
 import types
-from xml.dom import minidom
-from xml.parsers import expat
-from xml import sax
-from xml.sax import expatreader
 
+from os_brick import encryptors
 from os_brick.initiator import connector
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
@@ -57,6 +54,7 @@ import webob.exc
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import keymgr
 
 
 CONF = cfg.CONF
@@ -160,9 +158,27 @@ def check_ssh_injection(cmd_list):
                     raise exception.SSHInjectionThreat(command=cmd_list)
 
 
-def cinderdir():
-    import cinder
-    return os.path.abspath(cinder.__file__).split('cinder/__init__.py')[0]
+def check_metadata_properties(metadata=None):
+    """Checks that the volume metadata properties are valid."""
+
+    if not metadata:
+        metadata = {}
+
+    for k, v in metadata.items():
+        if len(k) == 0:
+            msg = _("Metadata property key blank.")
+            LOG.debug(msg)
+            raise exception.InvalidVolumeMetadata(reason=msg)
+        if len(k) > 255:
+            msg = _("Metadata property key %s greater than 255 "
+                    "characters.") % k
+            LOG.debug(msg)
+            raise exception.InvalidVolumeMetadataSize(reason=msg)
+        if len(v) > 255:
+            msg = _("Metadata property key %s value greater than "
+                    "255 characters.") % k
+            LOG.debug(msg)
+            raise exception.InvalidVolumeMetadataSize(reason=msg)
 
 
 def last_completed_audit_period(unit=None):
@@ -252,76 +268,6 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
-def list_of_dicts_to_dict(seq, key):
-    """Convert list of dicts to an indexed dict.
-
-    Takes a list of dicts, and converts it to a nested dict
-    indexed by <key>
-
-    :param seq: list of dicts
-    :parm key: key in dicts to index by
-
-    example:
-      lst = [{'id': 1, ...}, {'id': 2, ...}...]
-      key = 'id'
-      returns {1:{'id': 1, ...}, 2:{'id':2, ...}
-
-    """
-    return {d[key]: dict(d, index=d[key]) for (i, d) in enumerate(seq)}
-
-
-class ProtectedExpatParser(expatreader.ExpatParser):
-    """An expat parser which disables DTD's and entities by default."""
-
-    def __init__(self, forbid_dtd=True, forbid_entities=True,
-                 *args, **kwargs):
-        # Python 2.x old style class
-        expatreader.ExpatParser.__init__(self, *args, **kwargs)
-        self.forbid_dtd = forbid_dtd
-        self.forbid_entities = forbid_entities
-
-    def start_doctype_decl(self, name, sysid, pubid, has_internal_subset):
-        raise ValueError("Inline DTD forbidden")
-
-    def entity_decl(self, entityName, is_parameter_entity, value, base,
-                    systemId, publicId, notationName):
-        raise ValueError("<!ENTITY> forbidden")
-
-    def unparsed_entity_decl(self, name, base, sysid, pubid, notation_name):
-        # expat 1.2
-        raise ValueError("<!ENTITY> forbidden")
-
-    def reset(self):
-        expatreader.ExpatParser.reset(self)
-        if self.forbid_dtd:
-            self._parser.StartDoctypeDeclHandler = self.start_doctype_decl
-        if self.forbid_entities:
-            self._parser.EntityDeclHandler = self.entity_decl
-            self._parser.UnparsedEntityDeclHandler = self.unparsed_entity_decl
-
-
-def safe_minidom_parse_string(xml_string):
-    """Parse an XML string using minidom safely.
-
-    """
-    try:
-        if six.PY3 and isinstance(xml_string, bytes):
-            # On Python 3, minidom.parseString() requires Unicode when
-            # the parser parameter is used.
-            #
-            # Bet that XML used in Cinder is always encoded to UTF-8.
-            xml_string = xml_string.decode('utf-8')
-        return minidom.parseString(xml_string, parser=ProtectedExpatParser())
-    except sax.SAXParseException:
-        raise expat.ExpatError()
-
-
-def is_valid_boolstr(val):
-    """Check if the provided string is a valid bool string or not."""
-    val = str(val).lower()
-    return val in ('true', 'false', 'yes', 'no', 'y', 'n', '1', '0')
-
-
 def is_none_string(val):
     """Check if a string represents a None value."""
     if not isinstance(val, six.string_types):
@@ -407,15 +353,6 @@ def sanitize_hostname(hostname):
     hostname = hostname.strip('.-')
 
     return hostname
-
-
-def service_is_up(service):
-    """Check whether a service is up based on last heartbeat."""
-    last_heartbeat = service['updated_at'] or service['created_at']
-    # Timestamps in DB are UTC.
-    elapsed = (timeutils.utcnow(with_timezone=True) -
-               last_heartbeat).total_seconds()
-    return abs(elapsed) <= CONF.service_down_time
 
 
 def read_file_as_root(file_path):
@@ -539,7 +476,6 @@ def brick_get_connector_properties(multipath=False, enforce_multipath=False):
 
 
 def brick_get_connector(protocol, driver=None,
-                        execute=processutils.execute,
                         use_multipath=False,
                         device_scan_attempts=3,
                         *args, **kwargs):
@@ -552,11 +488,40 @@ def brick_get_connector(protocol, driver=None,
     root_helper = get_root_helper()
     return connector.InitiatorConnector.factory(protocol, root_helper,
                                                 driver=driver,
-                                                execute=execute,
                                                 use_multipath=use_multipath,
                                                 device_scan_attempts=
                                                 device_scan_attempts,
                                                 *args, **kwargs)
+
+
+def brick_get_encryptor(connection_info, *args, **kwargs):
+    """Wrapper to get a brick encryptor object."""
+
+    root_helper = get_root_helper()
+    key_manager = keymgr.API(CONF)
+    return encryptors.get_volume_encryptor(root_helper=root_helper,
+                                           connection_info=connection_info,
+                                           keymgr=key_manager,
+                                           *args, **kwargs)
+
+
+def brick_attach_volume_encryptor(context, attach_info, encryption):
+    """Attach encryption layer."""
+    connection_info = attach_info['conn']
+    connection_info['data']['device_path'] = attach_info['device']['path']
+    encryptor = brick_get_encryptor(connection_info,
+                                    **encryption)
+    encryptor.attach_volume(context, **encryption)
+
+
+def brick_detach_volume_encryptor(attach_info, encryption):
+    """Detach encryption layer."""
+    connection_info = attach_info['conn']
+    connection_info['data']['device_path'] = attach_info['device']['path']
+
+    encryptor = brick_get_encryptor(connection_info,
+                                    **encryption)
+    encryptor.detach_volume(**encryption)
 
 
 def require_driver_initialized(driver):
@@ -572,6 +537,21 @@ def require_driver_initialized(driver):
         driver_name = driver.__class__.__name__
         LOG.error(_LE("Volume driver %s not initialized"), driver_name)
         raise exception.DriverNotInitialized()
+    else:
+        log_unsupported_driver_warning(driver)
+
+
+def log_unsupported_driver_warning(driver):
+    """Annoy the log about unsupported drivers."""
+    if not driver.supported:
+        # Check to see if the driver is flagged as supported.
+        LOG.warning(_LW("Volume driver (%(driver_name)s %(version)s) is "
+                        "currently unsupported and may be removed in the "
+                        "next release of OpenStack.  Use at your own risk."),
+                    {'driver_name': driver.__class__.__name__,
+                     'version': driver.get_version()},
+                    resource={'type': 'driver',
+                              'id': driver.__class__.__name__})
 
 
 def get_file_mode(path):
@@ -614,7 +594,7 @@ def _get_disk_of_partition(devpath, st=None):
 
 def get_bool_param(param_string, params):
     param = params.get(param_string, False)
-    if not is_valid_boolstr(param):
+    if not strutils.is_valid_boolstr(param):
         msg = _('Value %(param)s for %(param_string)s is not a '
                 'boolean.') % {'param': param, 'param_string': param_string}
         raise exception.InvalidParameterValue(err=msg)
@@ -650,7 +630,8 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
         raise exception.Error(msg)
 
 
-def check_string_length(value, name, min_length=0, max_length=None):
+def check_string_length(value, name, min_length=0, max_length=None,
+                        allow_all_spaces=True):
     """Check the length of specified string.
 
     :param value: the value of the string
@@ -658,19 +639,17 @@ def check_string_length(value, name, min_length=0, max_length=None):
     :param min_length: the min_length of the string
     :param max_length: the max_length of the string
     """
-    if not isinstance(value, six.string_types):
-        msg = _("%s is not a string or unicode") % name
-        raise exception.InvalidInput(message=msg)
+    try:
+        strutils.check_string_length(value, name=name,
+                                     min_length=min_length,
+                                     max_length=max_length)
+    except(ValueError, TypeError) as exc:
+        raise exception.InvalidInput(reason=exc)
 
-    if len(value) < min_length:
-        msg = _("%(name)s has a minimum character requirement of "
-                "%(min_length)s.") % {'name': name, 'min_length': min_length}
-        raise exception.InvalidInput(message=msg)
+    if not allow_all_spaces and value.isspace():
+        msg = _('%(name)s cannot be all spaces.')
+        raise exception.InvalidInput(reason=msg)
 
-    if max_length and len(value) > max_length:
-        msg = _("%(name)s has more than %(max_length)s "
-                "characters.") % {'name': name, 'max_length': max_length}
-        raise exception.InvalidInput(message=msg)
 
 _visible_admin_metadata_keys = ['readonly', 'attached_mode']
 
@@ -831,7 +810,7 @@ def convert_str(text):
     * convert to Unicode on Python 3: decode bytes from UTF-8
     """
     if six.PY2:
-        return encodeutils.safe_encode(text)
+        return encodeutils.to_utf8(text)
     else:
         if isinstance(text, bytes):
             return text.decode('utf-8')
@@ -892,6 +871,7 @@ def trace(f):
             return f(*args, **kwargs)
 
         all_args = inspect.getcallargs(f, *args, **kwargs)
+
         logger.debug('==> %(func)s: call %(all_args)r',
                      {'func': func_name, 'all_args': all_args})
 
@@ -907,10 +887,17 @@ def trace(f):
             raise
         total_time = int(round(time.time() * 1000)) - start_time
 
+        if isinstance(result, dict):
+            mask_result = strutils.mask_dict_password(result)
+        elif isinstance(result, six.string_types):
+            mask_result = strutils.mask_password(result)
+        else:
+            mask_result = result
+
         logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
                      {'func': func_name,
                       'time': total_time,
-                      'result': result})
+                      'result': mask_result})
         return result
     return trace_logging_wrapper
 
@@ -1007,7 +994,8 @@ def calculate_virtual_free_capacity(total_capacity,
                                     provisioned_capacity,
                                     thin_provisioning_support,
                                     max_over_subscription_ratio,
-                                    reserved_percentage):
+                                    reserved_percentage,
+                                    thin):
     """Calculate the virtual free capacity based on thin provisioning support.
 
     :param total_capacity:  total_capacity_gb of a host_state or pool.
@@ -1020,13 +1008,14 @@ def calculate_virtual_free_capacity(total_capacity,
                                         a host_state or a pool
     :param reserved_percentage: reserved_percentage of a host_state or
                                 a pool.
+    :param thin: whether volume to be provisioned is thin
     :returns: the calculated virtual free capacity.
     """
 
     total = float(total_capacity)
     reserved = float(reserved_percentage) / 100
 
-    if thin_provisioning_support:
+    if thin and thin_provisioning_support:
         free = (total * max_over_subscription_ratio
                 - provisioned_capacity
                 - math.floor(total * reserved))
@@ -1062,3 +1051,55 @@ def validate_integer(value, name, min_value=None, max_value=None):
                          {'value_name': name, 'max_value': max_value}))
 
     return value
+
+
+def validate_dictionary_string_length(specs):
+    """Check the length of each key and value of dictionary."""
+    if not isinstance(specs, dict):
+        msg = _('specs must be a dictionary.')
+        raise exception.InvalidInput(reason=msg)
+
+    for key, value in specs.items():
+        if key is not None:
+            check_string_length(key, 'Key "%s"' % key,
+                                min_length=1, max_length=255)
+
+        if value is not None:
+            check_string_length(value, 'Value for key "%s"' % key,
+                                min_length=0, max_length=255)
+
+
+def service_expired_time(with_timezone=False):
+    return (timeutils.utcnow(with_timezone=with_timezone) -
+            datetime.timedelta(seconds=CONF.service_down_time))
+
+
+class DoNothing(str):
+    """Class that literrally does nothing.
+
+    We inherit from str in case it's called with json.dumps.
+    """
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, name):
+        return self
+
+
+DO_NOTHING = DoNothing()
+
+
+def notifications_enabled(conf):
+    """Check if oslo notifications are enabled."""
+    notifications_driver = set(conf.oslo_messaging_notifications.driver)
+    return notifications_driver and notifications_driver != {'noop'}
+
+
+def if_notifications_enabled(f):
+    """Calls decorated method only if notifications are enabled."""
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if notifications_enabled(CONF):
+            return f(*args, **kwargs)
+        return DO_NOTHING
+    return wrapped

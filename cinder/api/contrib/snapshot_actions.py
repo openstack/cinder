@@ -13,12 +13,14 @@
 #   under the License.
 
 from oslo_log import log as logging
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LI
 from cinder import objects
+from cinder.objects import fields
 
 LOG = logging.getLogger(__name__)
 
@@ -53,8 +55,13 @@ class SnapshotActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         # Allowed state transitions
-        status_map = {'creating': ['creating', 'available', 'error'],
-                      'deleting': ['deleting', 'error_deleting']}
+        status_map = {fields.SnapshotStatus.CREATING:
+                      [fields.SnapshotStatus.CREATING,
+                       fields.SnapshotStatus.AVAILABLE,
+                       fields.SnapshotStatus.ERROR],
+                      fields.SnapshotStatus.DELETING:
+                      [fields.SnapshotStatus.DELETING,
+                       fields.SnapshotStatus.ERROR_DELETING]}
 
         current_snapshot = objects.Snapshot.get_by_id(context, id)
 
@@ -92,7 +99,7 @@ class SnapshotActionsController(wsgi.Controller):
 
         current_snapshot.update(update_dict)
         current_snapshot.save()
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Snapshot_actions(extensions.ExtensionDescriptor):
@@ -100,8 +107,6 @@ class Snapshot_actions(extensions.ExtensionDescriptor):
 
     name = "SnapshotActions"
     alias = "os-snapshot-actions"
-    namespace = \
-        "http://docs.openstack.org/volume/ext/snapshot-actions/api/v1.1"
     updated = "2013-07-16T00:00:00+00:00"
 
     def get_controller_extensions(self):

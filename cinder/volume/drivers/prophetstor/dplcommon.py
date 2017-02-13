@@ -697,11 +697,13 @@ class DPLVolume(object):
                              [http_client.OK, http_client.ACCEPTED])
 
 
-class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
-                      driver.CloneableImageVD,
-                      driver.SnapshotVD, driver.LocalVD, driver.BaseVD):
+class DPLCOMMONDriver(driver.CloneableImageVD,
+                      driver.BaseVD):
     """Class of dpl storage adapter."""
     VERSION = '2.0.4'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "ProphetStor_CI"
 
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
@@ -934,7 +936,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 cgsnapshot.get('description', ''),
                 True)
             for snapshot in snapshots:
-                snapshot.status = 'available'
+                snapshot.status = fields.SnapshotStatus.AVAILABLE
         except Exception as e:
             msg = _('Failed to create cg snapshot %(id)s '
                     'due to %(reason)s.') % {'id': cgsnapshot['id'],
@@ -960,7 +962,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
                 self._conver_uuid2hex(cgsnapshot['id']), True)
             for snapshot in snapshots:
-                snapshot.status = 'deleted'
+                snapshot.status = fields.SnapshotStatus.DELETED
         except Exception as e:
             msg = _('Failed to delete cgsnapshot %(id)s due to '
                     '%(reason)s.') % {'id': cgsnapshot['id'],

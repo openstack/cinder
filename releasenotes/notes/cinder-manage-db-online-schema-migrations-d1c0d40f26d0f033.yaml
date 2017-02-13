@@ -1,0 +1,13 @@
+---
+upgrade:
+  - To get rid of long running DB data migrations that must be run offline,
+    Cinder will now be able to execute them online, on a live cloud. Before
+    upgrading from Ocata to Pike, operator needs to perform all the Newton
+    data migrations. To achieve that he needs to perform ``cinder-manage db
+    online_data_migrations`` until there are no records to be updated. To limit
+    DB performance impact migrations can be performed in chunks limited by
+    ``--max_number`` option. If your intent is to upgrade Cinder in a non-live
+    manner, you can use ``--ignore_state`` option safely. Please note that
+    finishing all the Newton data migrations will be enforced by the first
+    schema migration in Pike, so you won't be able to upgrade to Pike without
+    that.

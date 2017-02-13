@@ -21,10 +21,12 @@ import threading
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 import six
 
 from cinder import exception
-from cinder.i18n import _LE, _LI
+from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -52,8 +54,12 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
     VERSION = common.VERSION
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = ["Hitachi_HBSD_CI", "Hitachi_HBSD2_CI"]
 
     def __init__(self, *args, **kwargs):
         os.environ['LANG'] = 'C'
@@ -257,6 +263,9 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.context = context
         self.common = common.HBSDCommon(self.configuration, self,
                                         context, self.db)
+        msg = _("The HBSD iSCSI driver is deprecated and "
+                "will be removed in P release")
+        versionutils.report_deprecated_feature(LOG, msg)
 
         self.check_param()
 

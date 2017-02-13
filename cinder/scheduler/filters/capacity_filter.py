@@ -28,28 +28,48 @@ from cinder.scheduler import filters
 LOG = logging.getLogger(__name__)
 
 
-class CapacityFilter(filters.BaseHostFilter):
-    """CapacityFilter filters based on volume host's capacity utilization."""
+class CapacityFilter(filters.BaseBackendFilter):
+    """Capacity filters based on volume backend's capacity utilization."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         """Return True if host has sufficient capacity."""
 
         # If the volume already exists on this host, don't fail it for
         # insufficient capacity (e.g., if we are retyping)
-        if host_state.host == filter_properties.get('vol_exists_on'):
+        if backend_state.backend_id == filter_properties.get('vol_exists_on'):
             return True
 
-        volume_size = filter_properties.get('size')
+        spec = filter_properties.get('request_spec')
+        if spec:
+            volid = spec.get('volume_id')
 
-        if host_state.free_capacity_gb is None:
+        grouping = 'cluster' if backend_state.cluster_name else 'host'
+        if filter_properties.get('new_size'):
+            # If new_size is passed, we are allocating space to extend a volume
+            requested_size = (int(filter_properties.get('new_size')) -
+                              int(filter_properties.get('size')))
+            LOG.debug('Checking if %(grouping)s %(grouping_name)s can extend '
+                      'the volume %(id)s in %(size)s GB',
+                      {'grouping': grouping,
+                       'grouping_name': backend_state.backend_id, 'id': volid,
+                       'size': requested_size})
+        else:
+            requested_size = filter_properties.get('size')
+            LOG.debug('Checking if %(grouping)s %(grouping_name)s can create '
+                      'a %(size)s GB volume (%(id)s)',
+                      {'grouping': grouping,
+                       'grouping_name': backend_state.backend_id, 'id': volid,
+                       'size': requested_size})
+
+        if backend_state.free_capacity_gb is None:
             # Fail Safe
             LOG.error(_LE("Free capacity not set: "
                           "volume node info collection broken."))
             return False
 
-        free_space = host_state.free_capacity_gb
-        total_space = host_state.total_capacity_gb
-        reserved = float(host_state.reserved_percentage) / 100
+        free_space = backend_state.free_capacity_gb
+        total_space = backend_state.total_capacity_gb
+        reserved = float(backend_state.reserved_percentage) / 100
         if free_space in ['infinite', 'unknown']:
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the
@@ -69,36 +89,48 @@ class CapacityFilter(filters.BaseHostFilter):
         total = float(total_space)
         if total <= 0:
             LOG.warning(_LW("Insufficient free space for volume creation. "
-                            "Total capacity is %(total).2f on host %(host)s."),
+                            "Total capacity is %(total).2f on %(grouping)s "
+                            "%(grouping_name)s."),
                         {"total": total,
-                         "host": host_state.host})
+                         "grouping": grouping,
+                         "grouping_name": backend_state.backend_id})
             return False
         # Calculate how much free space is left after taking into account
         # the reserved space.
         free = free_space - math.floor(total * reserved)
 
-        msg_args = {"host": host_state.host,
-                    "requested": volume_size,
-                    "available": free}
+        # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
+        # we will not use max_over_subscription_ratio and
+        # provisioned_capacity_gb to determine whether a volume can be
+        # provisioned. Instead free capacity will be used to evaluate.
+        thin = True
+        vol_type = filter_properties.get('volume_type', {}) or {}
+        provision_type = vol_type.get('extra_specs', {}).get(
+            'provisioning:type')
+        if provision_type == 'thick':
+            thin = False
 
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
         # subscription ratio.
-        if (host_state.thin_provisioning_support and
-                host_state.max_over_subscription_ratio >= 1):
-            provisioned_ratio = ((host_state.provisioned_capacity_gb +
-                                  volume_size) / total)
-            if provisioned_ratio > host_state.max_over_subscription_ratio:
+        if (thin and backend_state.thin_provisioning_support and
+                backend_state.max_over_subscription_ratio >= 1):
+            provisioned_ratio = ((backend_state.provisioned_capacity_gb +
+                                  requested_size) / total)
+            if provisioned_ratio > backend_state.max_over_subscription_ratio:
+                msg_args = {
+                    "provisioned_ratio": provisioned_ratio,
+                    "oversub_ratio": backend_state.max_over_subscription_ratio,
+                    "grouping": grouping,
+                    "grouping_name": backend_state.backend_id,
+                }
                 LOG.warning(_LW(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
                     "%(provisioned_ratio).2f has exceeded the maximum over "
-                    "subscription ratio %(oversub_ratio).2f on host "
-                    "%(host)s."),
-                    {"provisioned_ratio": provisioned_ratio,
-                     "oversub_ratio": host_state.max_over_subscription_ratio,
-                     "host": host_state.host})
+                    "subscription ratio %(oversub_ratio).2f on %(grouping)s "
+                    "%(grouping_name)s."), msg_args)
                 return False
             else:
                 # Thin provisioning is enabled and projected over-subscription
@@ -108,26 +140,33 @@ class CapacityFilter(filters.BaseHostFilter):
                 # the currently available free capacity (taking into account
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
-                    free * host_state.max_over_subscription_ratio)
-                return adjusted_free_virtual >= volume_size
-        elif host_state.thin_provisioning_support:
-            LOG.warning(_LW("Filtering out host %(host)s with an invalid "
-                            "maximum over subscription ratio of "
-                            "%(oversub_ratio).2f. The ratio should be a "
+                    free * backend_state.max_over_subscription_ratio)
+                return adjusted_free_virtual >= requested_size
+        elif thin and backend_state.thin_provisioning_support:
+            LOG.warning(_LW("Filtering out %(grouping)s %(grouping_name)s "
+                            "with an invalid maximum over subscription ratio "
+                            "of %(oversub_ratio).2f. The ratio should be a "
                             "minimum of 1.0."),
                         {"oversub_ratio":
-                            host_state.max_over_subscription_ratio,
-                         "host": host_state.host})
+                            backend_state.max_over_subscription_ratio,
+                         "grouping": grouping,
+                         "grouping_name": backend_state.backend_id})
             return False
 
-        if free < volume_size:
+        msg_args = {"grouping_name": backend_state.backend_id,
+                    "grouping": grouping,
+                    "requested": requested_size,
+                    "available": free}
+
+        if free < requested_size:
             LOG.warning(_LW("Insufficient free space for volume creation "
-                            "on host %(host)s (requested / avail): "
-                            "%(requested)s/%(available)s"), msg_args)
+                            "on %(grouping)s %(grouping_name)s (requested / "
+                            "avail): %(requested)s/%(available)s"),
+                        msg_args)
             return False
 
         LOG.debug("Space information for volume creation "
-                  "on host %(host)s (requested / avail): "
+                  "on %(grouping)s %(grouping_name)s (requested / avail): "
                   "%(requested)s/%(available)s", msg_args)
 
         return True

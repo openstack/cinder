@@ -19,6 +19,7 @@ import uuid
 from lxml import etree
 import mock
 import six
+import time
 
 from cinder import exception
 from cinder import test
@@ -52,9 +53,6 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.fake_size = '1024'
         self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
         self.mock_send_request = self.mock_object(self.client, 'send_request')
-
-    def tearDown(self):
-        super(NetAppBaseClientTestCase, self).tearDown()
 
     def test_get_ontapi_version(self):
         version_response = netapp_api.NaElement(
@@ -527,8 +525,8 @@ class NetAppBaseClientTestCase(test.TestCase):
                                                          asserted_api_args)
 
     def test_create_cg_snapshot(self):
-        self.mock_object(self.client, '_start_cg_snapshot', mock.Mock(
-            return_value=fake.CONSISTENCY_GROUP_ID))
+        self.mock_object(self.client, '_start_cg_snapshot',
+                         return_value=fake.CONSISTENCY_GROUP_ID)
         self.mock_object(self.client, '_commit_cg_snapshot')
 
         self.client.create_cg_snapshot([fake.CG_VOLUME_NAME],
@@ -536,6 +534,14 @@ class NetAppBaseClientTestCase(test.TestCase):
 
         self.client._commit_cg_snapshot.assert_called_once_with(
             fake.CONSISTENCY_GROUP_ID)
+
+    def test_create_cg_snapshot_no_id(self):
+        self.mock_object(self.client, '_start_cg_snapshot', return_value=None)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.create_cg_snapshot,
+                          [fake.CG_VOLUME_NAME],
+                          fake.CG_SNAPSHOT_NAME)
 
     def test_start_cg_snapshot(self):
         snapshot_init = {
@@ -559,3 +565,40 @@ class NetAppBaseClientTestCase(test.TestCase):
 
         self.client.send_request.assert_called_once_with(
             'cg-commit', {'cg-id': snapshot_commit['cg-id']})
+
+    def test_wait_for_busy_snapshot_raise_exception(self):
+        BUSY_SNAPSHOT = dict(fake.SNAPSHOT)
+        BUSY_SNAPSHOT['busy'] = True
+
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
+        mock_get_snapshot = self.mock_object(self.client, 'get_snapshot',
+                                             return_value=BUSY_SNAPSHOT)
+
+        self.assertRaises(exception.SnapshotIsBusy,
+                          self.client.wait_for_busy_snapshot,
+                          fake.FLEXVOL, fake.SNAPSHOT_NAME)
+
+        calls = [
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+        ]
+        mock_get_snapshot.assert_has_calls(calls)
+
+    def test_rename_snapshot(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_snapshot(
+            fake.SNAPSHOT['volume_id'], fake.SNAPSHOT_NAME,
+            client_base.DELETED_PREFIX + fake.SNAPSHOT_NAME)
+
+        api_args = {
+            'volume': fake.SNAPSHOT['volume_id'],
+            'current-name': fake.SNAPSHOT_NAME,
+            'new-name':
+                client_base.DELETED_PREFIX + fake.SNAPSHOT_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'snapshot-rename', api_args)

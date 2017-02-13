@@ -13,13 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 import six
 
 from cinder.api import common
-
-
-LOG = logging.getLogger(__name__)
+from cinder import group as group_api
+from cinder.objects import fields
+from cinder.volume import group_types
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -53,12 +52,25 @@ class ViewBuilder(common.ViewBuilder):
             },
         }
 
+    def _get_volume_status(self, volume):
+        # NOTE(wanghao): for fixing bug 1504007, we introduce 'managing',
+        # 'error_managing' and 'error_managing_deleting' status into managing
+        # process, but still expose 'creating' and 'error' and 'deleting'
+        # status to user for API compatibility.
+        status_map = {
+            'managing': 'creating',
+            'error_managing': 'error',
+            'error_managing_deleting': 'deleting',
+        }
+        vol_status = volume.get('status')
+        return status_map.get(vol_status, vol_status)
+
     def detail(self, request, volume):
         """Detailed view of a single volume."""
         volume_ref = {
             'volume': {
                 'id': volume.get('id'),
-                'status': volume.get('status'),
+                'status': self._get_volume_status(volume),
                 'size': volume.get('size'),
                 'availability_zone': volume.get('availability_zone'),
                 'created_at': volume.get('created_at'),
@@ -82,6 +94,18 @@ class ViewBuilder(common.ViewBuilder):
         if request.environ['cinder.context'].is_admin:
             volume_ref['volume']['migration_status'] = (
                 volume.get('migration_status'))
+
+        # NOTE(xyang): Display group_id as consistencygroup_id in detailed
+        # view of the volume if group is converted from cg.
+        group_id = volume.get('group_id')
+        if group_id is not None:
+            # Not found exception will be handled at the wsgi level
+            ctxt = request.environ['cinder.context']
+            grp = group_api.API().get(ctxt, group_id)
+            cgsnap_type = group_types.get_default_cgsnapshot_type()
+            if grp.group_type_id == cgsnap_type['id']:
+                volume_ref['volume']['consistencygroup_id'] = group_id
+
         return volume_ref
 
     def _is_volume_encrypted(self, volume):
@@ -92,10 +116,11 @@ class ViewBuilder(common.ViewBuilder):
         """Retrieve the attachments of the volume object."""
         attachments = []
 
-        if volume['attach_status'] == 'attached':
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             attaches = volume.volume_attachment
             for attachment in attaches:
-                if attachment.get('attach_status') == 'attached':
+                if (attachment.get('attach_status') ==
+                        fields.VolumeAttachStatus.ATTACHED):
                     a = {'id': attachment.get('volume_id'),
                          'attachment_id': attachment.get('id'),
                          'volume_id': attachment.get('volume_id'),

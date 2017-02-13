@@ -1,0 +1,13 @@
+---
+features:
+  - The ``force`` boolean parameter has been added to the volume
+    delete API.  It may be used in combination with ``cascade``.
+    This also means that volume force delete is available
+    in the base volume API rather than only in the
+    ``volume_admin_actions`` extension.
+upgrade:
+  - There is a new policy option ``volume:force_delete`` which
+    controls access to the ability to specify force delete
+    via the volume delete API.  This is separate from the
+    pre-existing ``volume-admin-actions:force_delete`` policy
+    check.

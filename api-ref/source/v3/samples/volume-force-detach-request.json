@@ -1,0 +1,8 @@
+{
+    "os-force_detach": {
+        "attachment_id": "d8777f54-84cf-4809-a679-468ffed56cf1",
+        "connector": {
+            "initiator": "iqn.2012-07.org.fake:01"
+        }
+    }
+}

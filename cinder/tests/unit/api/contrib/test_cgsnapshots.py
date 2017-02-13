@@ -17,8 +17,6 @@
 Tests for cgsnapshot code.
 """
 
-from xml.dom import minidom
-
 import mock
 from oslo_serialization import jsonutils
 import webob
@@ -30,6 +28,8 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
+
 from cinder.tests.unit import utils
 import cinder.volume
 
@@ -41,8 +41,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
         super(CgsnapshotsAPITestCase, self).setUp()
         self.volume_api = cinder.volume.API()
         self.context = context.get_admin_context()
-        self.context.project_id = 'fake'
-        self.context.user_id = 'fake'
+        self.context.project_id = fake.PROJECT_ID
+        self.context.user_id = fake.USER_ID
+        self.user_ctxt = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
 
     def test_show_cgsnapshot(self):
         consistencygroup = utils.create_consistencygroup(self.context)
@@ -51,11 +53,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                         consistencygroup.id)['id']
         cgsnapshot = utils.create_cgsnapshot(
             self.context, consistencygroup_id=consistencygroup.id)
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
-                                  cgsnapshot.id)
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+            fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
@@ -71,40 +74,19 @@ class CgsnapshotsAPITestCase(test.TestCase):
                           volume_id)
         consistencygroup.destroy()
 
-    def test_show_cgsnapshot_xml_content_type(self):
-        consistencygroup = utils.create_consistencygroup(self.context)
-        volume_id = utils.create_volume(self.context,
-                                        consistencygroup_id=
-                                        consistencygroup.id)['id']
-        cgsnapshot = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
-                                  cgsnapshot.id)
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-
-        cgsnapshots = dom.getElementsByTagName('cgsnapshot')
-        name = cgsnapshots.item(0).getAttribute('name')
-        self.assertEqual("test_cgsnapshot", name.strip())
-        cgsnapshot.destroy()
-        db.volume_destroy(context.get_admin_context(),
-                          volume_id)
-        consistencygroup.destroy()
-
     def test_show_cgsnapshot_with_cgsnapshot_NotFound(self):
-        req = webob.Request.blank('/v2/fake/cgsnapshots/9999')
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+            fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('CgSnapshot 9999 could not be found.',
+        self.assertEqual('GroupSnapshot %s could not be found.' %
+                         fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
     def test_list_cgsnapshots_json(self):
@@ -119,10 +101,11 @@ class CgsnapshotsAPITestCase(test.TestCase):
         cgsnapshot3 = utils.create_cgsnapshot(
             self.context, consistencygroup_id=consistencygroup.id)
 
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
@@ -146,42 +129,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
                           volume_id)
         consistencygroup.destroy()
 
-    def test_list_cgsnapshots_xml(self):
-        consistencygroup = utils.create_consistencygroup(self.context)
-        volume_id = utils.create_volume(self.context,
-                                        consistencygroup_id=
-                                        consistencygroup.id)['id']
-        cgsnapshot1 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-        cgsnapshot2 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-        cgsnapshot3 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        cgsnapshot_list = dom.getElementsByTagName('cgsnapshot')
-
-        self.assertEqual(cgsnapshot1.id,
-                         cgsnapshot_list.item(0).getAttribute('id'))
-        self.assertEqual(cgsnapshot2.id,
-                         cgsnapshot_list.item(1).getAttribute('id'))
-        self.assertEqual(cgsnapshot3.id,
-                         cgsnapshot_list.item(2).getAttribute('id'))
-
-        cgsnapshot3.destroy()
-        cgsnapshot2.destroy()
-        cgsnapshot1.destroy()
-        db.volume_destroy(context.get_admin_context(),
-                          volume_id)
-        consistencygroup.destroy()
-
     def test_list_cgsnapshots_detail_json(self):
         consistencygroup = utils.create_consistencygroup(self.context)
         volume_id = utils.create_volume(self.context,
@@ -194,11 +141,13 @@ class CgsnapshotsAPITestCase(test.TestCase):
         cgsnapshot3 = utils.create_cgsnapshot(
             self.context, consistencygroup_id=consistencygroup.id)
 
-        req = webob.Request.blank('/v2/fake/cgsnapshots/detail')
+        req = webob.Request.blank('/v2/%s/cgsnapshots/detail' %
+                                  fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
@@ -236,71 +185,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
                           volume_id)
         consistencygroup.destroy()
 
-    def test_list_cgsnapshots_detail_xml(self):
-        consistencygroup = utils.create_consistencygroup(self.context)
-        volume_id = utils.create_volume(self.context,
-                                        consistencygroup_id=
-                                        consistencygroup.id)['id']
-        cgsnapshot1 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-        cgsnapshot2 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-        cgsnapshot3 = utils.create_cgsnapshot(
-            self.context, consistencygroup_id=consistencygroup.id)
-
-        req = webob.Request.blank('/v2/fake/cgsnapshots/detail')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        cgsnapshot_detail = dom.getElementsByTagName('cgsnapshot')
-
-        self.assertEqual(
-            'this is a test cgsnapshot',
-            cgsnapshot_detail.item(0).getAttribute('description'))
-        self.assertEqual(
-            'test_cgsnapshot',
-            cgsnapshot_detail.item(0).getAttribute('name'))
-        self.assertEqual(
-            cgsnapshot1.id,
-            cgsnapshot_detail.item(0).getAttribute('id'))
-        self.assertEqual(
-            'creating', cgsnapshot_detail.item(0).getAttribute('status'))
-
-        self.assertEqual(
-            'this is a test cgsnapshot',
-            cgsnapshot_detail.item(1).getAttribute('description'))
-        self.assertEqual(
-            'test_cgsnapshot',
-            cgsnapshot_detail.item(1).getAttribute('name'))
-        self.assertEqual(
-            cgsnapshot2.id,
-            cgsnapshot_detail.item(1).getAttribute('id'))
-        self.assertEqual(
-            'creating', cgsnapshot_detail.item(1).getAttribute('status'))
-
-        self.assertEqual(
-            'this is a test cgsnapshot',
-            cgsnapshot_detail.item(2).getAttribute('description'))
-        self.assertEqual(
-            'test_cgsnapshot',
-            cgsnapshot_detail.item(2).getAttribute('name'))
-        self.assertEqual(
-            cgsnapshot3.id,
-            cgsnapshot_detail.item(2).getAttribute('id'))
-        self.assertEqual(
-            'creating', cgsnapshot_detail.item(2).getAttribute('status'))
-
-        cgsnapshot3.destroy()
-        cgsnapshot2.destroy()
-        cgsnapshot1.destroy()
-        db.volume_destroy(context.get_admin_context(),
-                          volume_id)
-        consistencygroup.destroy()
-
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_cgsnapshot_json(self, mock_validate):
@@ -312,11 +196,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "description":
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
 
         res_dict = jsonutils.loads(res.body)
 
@@ -329,14 +214,48 @@ class CgsnapshotsAPITestCase(test.TestCase):
             context.get_admin_context(), res_dict['cgsnapshot']['id'])
         cgsnapshot.destroy()
 
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_cgsnapshot_when_volume_in_error_status(self,
+                                                           mock_validate):
+        consistencygroup = utils.create_consistencygroup(self.context)
+        utils.create_volume(
+            self.context,
+            status='error',
+            consistencygroup_id=consistencygroup.id
+        )
+        body = {"cgsnapshot": {"name": "cg1",
+                               "description":
+                               "CG Snapshot 1",
+                               "consistencygroup_id": consistencygroup.id}}
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(
+            "Invalid volume: The snapshot cannot be created when the volume "
+            "is in error status.",
+            res_dict['badRequest']['message']
+        )
+        self.assertTrue(mock_validate.called)
+
+        consistencygroup.destroy()
+
     def test_create_cgsnapshot_with_no_body(self):
         # omit body from the request
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
@@ -357,11 +276,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "description":
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
@@ -383,11 +303,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
 
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
@@ -396,10 +317,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          res_dict['itemNotFound']['message'])
         consistencygroup.destroy()
 
-    @mock.patch.object(objects.CGSnapshot, 'create')
-    def test_create_cgsnapshot_from_empty_consistencygroup(
-            self,
-            mock_cgsnapshot_create):
+    def test_create_cgsnapshot_from_empty_consistencygroup(self):
         consistencygroup = utils.create_consistencygroup(self.context)
 
         body = {"cgsnapshot": {"name": "cg1",
@@ -407,22 +325,25 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
 
-        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Invalid ConsistencyGroup: Consistency group is '
-                         'empty. No cgsnapshot will be created.',
-                         res_dict['badRequest']['message'])
+        expected = ("Invalid ConsistencyGroup: Source CG cannot be empty or "
+                    "in 'creating' or 'updating' state. No cgsnapshot will be "
+                    "created.")
+        self.assertEqual(expected, res_dict['badRequest']['message'])
 
         # If failed to create cgsnapshot, its DB object should not be created
-        self.assertFalse(mock_cgsnapshot_create.called)
-
+        self.assertListEqual(
+            [],
+            list(objects.CGSnapshotList.get_all(self.context)))
         consistencygroup.destroy()
 
     def test_delete_cgsnapshot_available(self):
@@ -434,11 +355,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context,
             consistencygroup_id=consistencygroup.id,
             status='available')
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
-                                  cgsnapshot.id)
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+                                  (fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
 
         cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
         self.assertEqual(202, res.status_int)
@@ -449,16 +371,47 @@ class CgsnapshotsAPITestCase(test.TestCase):
                           volume_id)
         consistencygroup.destroy()
 
-    def test_delete_cgsnapshot_with_cgsnapshot_NotFound(self):
-        req = webob.Request.blank('/v2/fake/cgsnapshots/9999')
+    def test_delete_cgsnapshot_available_used_as_source(self):
+        consistencygroup = utils.create_consistencygroup(self.context)
+        volume_id = utils.create_volume(
+            self.context,
+            consistencygroup_id=consistencygroup.id)['id']
+        cgsnapshot = utils.create_cgsnapshot(
+            self.context,
+            consistencygroup_id=consistencygroup.id,
+            status='available')
+
+        cg2 = utils.create_consistencygroup(
+            self.context, status='creating', cgsnapshot_id=cgsnapshot.id)
+        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
+                                  cgsnapshot.id)
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
+
+        cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
+        self.assertEqual(400, res.status_int)
+        self.assertEqual('available', cgsnapshot.status)
+
+        cgsnapshot.destroy()
+        db.volume_destroy(context.get_admin_context(),
+                          volume_id)
+        consistencygroup.destroy()
+        cg2.destroy()
+
+    def test_delete_cgsnapshot_with_cgsnapshot_NotFound(self):
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+                                  (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('CgSnapshot 9999 could not be found.',
+        self.assertEqual('GroupSnapshot %s could not be found.' %
+                         fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
     def test_delete_cgsnapshot_with_Invalidcgsnapshot(self):
@@ -470,17 +423,20 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context,
             consistencygroup_id=consistencygroup.id,
             status='invalid')
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
-                                  cgsnapshot.id)
+        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+            fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Invalid cgsnapshot',
-                         res_dict['badRequest']['message'])
+        expected = ('Invalid CgSnapshot: CgSnapshot status must be available '
+                    'or error, and no CG can be currently using it as source '
+                    'for its creation.')
+        self.assertEqual(expected, res_dict['badRequest']['message'])
 
         cgsnapshot.destroy()
         db.volume_destroy(context.get_admin_context(),

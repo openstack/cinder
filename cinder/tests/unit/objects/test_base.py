@@ -13,39 +13,49 @@
 #    under the License.
 
 import datetime
-import mock
 import uuid
 
 from iso8601 import iso8601
-from oslo_utils import versionutils
+import mock
 from oslo_versionedobjects import fields
 from sqlalchemy import sql
 
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import models
+from cinder import exception
 from cinder import objects
+from cinder.objects import fields as c_fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_objects
 from cinder.tests.unit import objects as test_objects
 
 
-@objects.base.CinderObjectRegistry.register_if(False)
-class TestObject(objects.base.CinderObject):
-    VERSION = '1.1'
+class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):
+    def test_add(self):
+        history = test_objects.obj_base.CinderObjectVersionsHistory()
+        v10 = {'Backup': '2.0'}
+        v11 = {'Backup': '2.1'}
+        history.add('1.0', v10)
+        history.add('1.1', v11)
+        # We have 3 elements because we have the liberty version by default
+        self.assertEqual(2 + 1, len(history))
 
-    fields = {
-        'scheduled_at': objects.base.fields.DateTimeField(nullable=True),
-        'uuid': objects.base.fields.UUIDField(),
-        'text': objects.base.fields.StringField(nullable=True),
-    }
+        expected_v10 = history['liberty'].copy()
+        expected_v10.update(v10)
+        expected_v11 = history['liberty'].copy()
+        expected_v11.update(v11)
 
-    def obj_make_compatible(self, primitive, target_version):
-        super(TestObject, self).obj_make_compatible(primitive,
-                                                    target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        if target_version < (1, 1):
-            primitive.pop('text', None)
+        self.assertEqual('1.1', history.get_current())
+        self.assertEqual(expected_v11, history.get_current_versions())
+        self.assertEqual(expected_v10, history['1.0'])
+
+    def test_add_existing(self):
+        history = test_objects.obj_base.CinderObjectVersionsHistory()
+        history.add('1.0', {'Backup': '1.0'})
+        self.assertRaises(exception.ProgrammingError,
+                          history.add, '1.0', {'Backup': '1.0'})
 
 
 class TestCinderObject(test_objects.BaseObjectsTestCase):
@@ -53,7 +63,7 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
 
     def setUp(self):
         super(TestCinderObject, self).setUp()
-        self.obj = TestObject(
+        self.obj = fake_objects.ChildObject(
             scheduled_at=None,
             uuid=uuid.uuid4(),
             text='text')
@@ -94,32 +104,60 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         self.assertDictEqual({'scheduled_at': now},
                              self.obj.cinder_obj_get_changes())
 
-    def test_refresh(self):
+    @mock.patch('cinder.objects.base.CinderPersistentObject.get_by_id')
+    def test_refresh(self, get_by_id):
         @objects.base.CinderObjectRegistry.register_if(False)
         class MyTestObject(objects.base.CinderObject,
                            objects.base.CinderObjectDictCompat,
-                           objects.base.CinderComparableObject):
+                           objects.base.CinderComparableObject,
+                           objects.base.CinderPersistentObject):
             fields = {'id': fields.UUIDField(),
                       'name': fields.StringField()}
 
-        test_obj = MyTestObject(id=fake.object_id, name='foo')
-        refresh_obj = MyTestObject(id=fake.object_id, name='bar')
-        with mock.patch(
-                'cinder.objects.base.CinderObject.get_by_id') as get_by_id:
-            get_by_id.return_value = refresh_obj
+        test_obj = MyTestObject(id=fake.OBJECT_ID, name='foo')
+        refresh_obj = MyTestObject(id=fake.OBJECT_ID, name='bar')
+        get_by_id.return_value = refresh_obj
 
-            test_obj.refresh()
-            self._compare(self, refresh_obj, test_obj)
+        test_obj.refresh()
+        self._compare(self, refresh_obj, test_obj)
+
+    @mock.patch('cinder.objects.base.CinderPersistentObject.get_by_id')
+    def test_refresh_readonly(self, get_by_id_mock):
+        @objects.base.CinderObjectRegistry.register_if(False)
+        class MyTestObject(objects.base.CinderObject,
+                           objects.base.CinderObjectDictCompat,
+                           objects.base.CinderComparableObject,
+                           objects.base.CinderPersistentObject):
+            fields = {'id': fields.UUIDField(),
+                      'name': fields.StringField(read_only=True)}
+
+        test_obj = MyTestObject(id=fake.OBJECT_ID, name='foo')
+        refresh_obj = MyTestObject(id=fake.OBJECT_ID, name='bar')
+        get_by_id_mock.return_value = refresh_obj
+
+        test_obj.refresh()
+        self._compare(self, refresh_obj, test_obj)
 
     def test_refresh_no_id_field(self):
         @objects.base.CinderObjectRegistry.register_if(False)
         class MyTestObjectNoId(objects.base.CinderObject,
                                objects.base.CinderObjectDictCompat,
-                               objects.base.CinderComparableObject):
+                               objects.base.CinderComparableObject,
+                               objects.base.CinderPersistentObject):
             fields = {'uuid': fields.UUIDField()}
 
-        test_obj = MyTestObjectNoId(uuid=fake.object_id, name='foo')
+        test_obj = MyTestObjectNoId(uuid=fake.OBJECT_ID, name='foo')
         self.assertRaises(NotImplementedError, test_obj.refresh)
+
+    @mock.patch('cinder.objects.base.objects', mock.Mock())
+    def test_cls_init(self):
+        """Test that class init method gets called on registration."""
+        @objects.base.CinderObjectRegistry.register
+        class MyTestObject(objects.base.CinderObject,
+                           objects.base.CinderPersistentObject):
+            cinder_ovo_cls_init = mock.Mock()
+
+        MyTestObject.cinder_ovo_cls_init.assert_called_once_with()
 
 
 class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
@@ -156,7 +194,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
             'status': 'available',
             'availability_zone': 'az',
             'host': 'dummy',
-            'attach_status': 'no',
+            'attach_status': c_fields.VolumeAttachStatus.DETACHED,
         }
         volume = objects.Volume(context=self.context, **vol)
         volume.create()
@@ -578,6 +616,116 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
         # Check that the volume in the DB has also been updated
         self._check_volume(volume, 'deleting', expected_size, True)
 
+    def test_conditional_update_auto_order(self):
+        volume = self._create_volume()
+
+        has_snapshot_filter = sql.exists().where(
+            models.Snapshot.volume_id == models.Volume.id)
+
+        case_values = volume.Case([(has_snapshot_filter, 'has-snapshot')],
+                                  else_='no-snapshot')
+
+        values = {'status': 'deleting',
+                  'previous_status': volume.model.status,
+                  'migration_status': case_values}
+
+        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+            update = model_query.return_value.filter.return_value.update
+            update.return_value = 0
+            self.assertFalse(volume.conditional_update(
+                values, {'status': 'available'}))
+
+        # We check that we are passing values to update to SQLAlchemy in the
+        # right order
+        self.assertEqual(1, update.call_count)
+        self.assertListEqual(
+            [('previous_status', volume.model.status),
+             ('migration_status', mock.ANY),
+             ('status', 'deleting')],
+            list(update.call_args[0][0]))
+        self.assertDictEqual(
+            {'synchronize_session': False,
+             'update_args': {'preserve_parameter_order': True}},
+            update.call_args[1])
+
+    def test_conditional_update_force_order(self):
+        volume = self._create_volume()
+
+        has_snapshot_filter = sql.exists().where(
+            models.Snapshot.volume_id == models.Volume.id)
+
+        case_values = volume.Case([(has_snapshot_filter, 'has-snapshot')],
+                                  else_='no-snapshot')
+
+        values = {'status': 'deleting',
+                  'previous_status': volume.model.status,
+                  'migration_status': case_values}
+
+        order = ['status']
+
+        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+            update = model_query.return_value.filter.return_value.update
+            update.return_value = 0
+            self.assertFalse(volume.conditional_update(
+                values, {'status': 'available'}, order=order))
+
+        # We check that we are passing values to update to SQLAlchemy in the
+        # right order
+        self.assertEqual(1, update.call_count)
+        self.assertListEqual(
+            [('status', 'deleting'),
+             ('previous_status', volume.model.status),
+             ('migration_status', mock.ANY)],
+            list(update.call_args[0][0]))
+        self.assertDictEqual(
+            {'synchronize_session': False,
+             'update_args': {'preserve_parameter_order': True}},
+            update.call_args[1])
+
+    def test_conditional_update_no_order(self):
+        volume = self._create_volume()
+
+        values = {'status': 'deleting',
+                  'previous_status': 'available',
+                  'migration_status': None}
+
+        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+            update = model_query.return_value.filter.return_value.update
+            update.return_value = 0
+            self.assertFalse(volume.conditional_update(
+                values, {'status': 'available'}))
+
+        # Check that arguments passed to SQLAlchemy's update are correct (order
+        # is not relevant).
+        self.assertEqual(1, update.call_count)
+        arg = update.call_args[0][0]
+        self.assertIsInstance(arg, dict)
+        self.assertEqual(set(values.keys()), set(arg.keys()))
+
+    def test_conditional_update_multitable_fail(self):
+        volume = self._create_volume()
+        self.assertRaises(exception.ProgrammingError,
+                          volume.conditional_update,
+                          {'status': 'deleting',
+                           objects.Snapshot.model.status: 'available'},
+                          {'status': 'available'})
+
+    def test_conditional_update_multitable_fail_fields_different_models(self):
+        volume = self._create_volume()
+        self.assertRaises(exception.ProgrammingError,
+                          volume.conditional_update,
+                          {objects.Backup.model.status: 'available',
+                           objects.Snapshot.model.status: 'available'})
+
+    def test_conditional_update_not_multitable(self):
+        volume = self._create_volume()
+        with mock.patch('cinder.db.sqlalchemy.api._create_facade_lazily') as m:
+            res = volume.conditional_update(
+                {objects.Volume.model.status: 'deleting',
+                 objects.Volume.model.size: 12}, reflect_changes=False)
+            self.assertTrue(res)
+            self.assertTrue(m.called)
+
 
 class TestCinderDictObject(test_objects.BaseObjectsTestCase):
     @objects.base.CinderObjectRegistry.register_if(False)
@@ -596,34 +744,149 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
 
     def test_dict_objects(self):
         obj = self.TestDictObject()
-        self.assertIsNone(obj.get('non_existing'))
+        self.assertNotIn('non_existing', obj)
         self.assertEqual('val', obj.get('abc', 'val'))
-        self.assertIsNone(obj.get('abc'))
+        self.assertNotIn('abc', obj)
         obj.abc = 'val2'
         self.assertEqual('val2', obj.get('abc', 'val'))
         self.assertEqual(42, obj.get('foo'))
         self.assertEqual(42, obj.get('foo', None))
 
-        self.assertTrue('foo' in obj)
-        self.assertTrue('abc' in obj)
-        self.assertFalse('def' in obj)
+        self.assertIn('foo', obj)
+        self.assertIn('abc', obj)
+        self.assertNotIn('def', obj)
 
 
-@mock.patch('cinder.objects.base.OBJ_VERSIONS', {'1.0': {'TestObject': '1.0'},
-                                                 '1.1': {'TestObject': '1.1'},
-                                                 })
+@mock.patch('cinder.objects.base.OBJ_VERSIONS', fake_objects.MyHistory())
 class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
+    BACKPORT_MSG = ('Backporting %(obj_name)s from version %(src_vers)s to '
+                    'version %(dst_vers)s')
+
     def setUp(self):
         super(TestCinderObjectSerializer, self).setUp()
-        self.obj = TestObject(scheduled_at=None, uuid=uuid.uuid4(),
-                              text='text')
+        self.obj = fake_objects.ChildObject(scheduled_at=None,
+                                            uuid=uuid.uuid4(),
+                                            text='text',
+                                            integer=1)
+        self.parent = fake_objects.ParentObject(uuid=uuid.uuid4(),
+                                                child=self.obj,
+                                                scheduled_at=None)
+        self.parent_list = fake_objects.ParentObjectList(objects=[self.parent])
 
-    def test_serialize_entity_backport(self):
-        serializer = objects.base.CinderObjectSerializer('1.0')
-        primitive = serializer.serialize_entity(self.context, self.obj)
-        self.assertEqual('1.0', primitive['versioned_object.version'])
+    def test_serialize_init_current_has_no_manifest(self):
+        """Test that pinned to current version we have no manifest."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        # Serializer should not have a manifest
+        self.assertIsNone(serializer.manifest)
+
+    def test_serialize_init_no_cap_has_no_manifest(self):
+        """Test that without cap we have no manifest."""
+        serializer = objects.base.CinderObjectSerializer()
+        # Serializer should not have a manifest
+        self.assertIsNone(serializer.manifest)
+
+    def test_serialize_init_pinned_has_manifest(self):
+        """Test that pinned to older version we have manifest."""
+        objs_version = '1.5'
+        serializer = objects.base.CinderObjectSerializer(objs_version)
+        # Serializer should have the right manifest
+        self.assertDictEqual(fake_objects.MyHistory()[objs_version],
+                             serializer.manifest)
 
     def test_serialize_entity_unknown_version(self):
-        serializer = objects.base.CinderObjectSerializer('0.9')
+        """Test that bad cap version will prevent serializer creation."""
+        self.assertRaises(exception.CappedVersionUnknown,
+                          objects.base.CinderObjectSerializer, '0.9')
+
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_basic_no_backport(self, log_debug_mock):
+        """Test single element serializer with no backport."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        primitive = serializer.serialize_entity(self.context, self.obj)
+        self.assertEqual('1.2', primitive['versioned_object.version'])
+        data = primitive['versioned_object.data']
+        self.assertEqual(1, data['integer'])
+        self.assertEqual('text', data['text'])
+        log_debug_mock.assert_not_called()
+
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_basic_backport(self, log_debug_mock):
+        """Test single element serializer with backport."""
+        serializer = objects.base.CinderObjectSerializer('1.5')
         primitive = serializer.serialize_entity(self.context, self.obj)
         self.assertEqual('1.1', primitive['versioned_object.version'])
+        data = primitive['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])
+        log_debug_mock.assert_called_once_with(self.BACKPORT_MSG,
+                                               {'obj_name': 'ChildObject',
+                                                'src_vers': '1.2',
+                                                'dst_vers': '1.1'})
+
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_no_backport(self, log_debug_mock):
+        """Test related elements serialization with no backport."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        self.assertEqual('1.1', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        self.assertEqual('1.1', parent['versioned_object.version'])
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.2', child['versioned_object.version'])
+        log_debug_mock.assert_not_called()
+
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_backport_last_children(self,
+                                                          log_debug_mock):
+        """Test related elements serialization with backport of the last child.
+
+        Test that using the manifest we properly backport a child object even
+        when all its parents have not changed their version.
+        """
+        serializer = objects.base.CinderObjectSerializer('1.5')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        self.assertEqual('1.1', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        self.assertEqual('1.1', parent['versioned_object.version'])
+        # Only the child has been backported
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.1', child['versioned_object.version'])
+        # Check that the backport has been properly done
+        data = child['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])
+        log_debug_mock.assert_called_once_with(self.BACKPORT_MSG,
+                                               {'obj_name': 'ChildObject',
+                                                'src_vers': '1.2',
+                                                'dst_vers': '1.1'})
+
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_backport(self, log_debug_mock):
+        """Test backport of the whole tree of related elements."""
+        serializer = objects.base.CinderObjectSerializer('1.3')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        # List has been backported
+        self.assertEqual('1.0', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        # Parent has been backported as well
+        self.assertEqual('1.0', parent['versioned_object.version'])
+        # And the backport has been properly done
+        data = parent['versioned_object.data']
+        self.assertNotIn('scheduled_at', data)
+        # And child as well
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.1', child['versioned_object.version'])
+        # Check that the backport has been properly done
+        data = child['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])
+        log_debug_mock.assert_has_calls([
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ParentObjectList',
+                                          'src_vers': '1.1',
+                                          'dst_vers': '1.0'}),
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ParentObject',
+                                          'src_vers': '1.1',
+                                          'dst_vers': '1.0'}),
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ChildObject',
+                                          'src_vers': '1.2',
+                                          'dst_vers': '1.1'})])

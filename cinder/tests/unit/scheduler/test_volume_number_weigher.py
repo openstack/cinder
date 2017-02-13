@@ -17,16 +17,15 @@ Tests For Volume Number Weigher.
 """
 
 import mock
-from oslo_config import cfg
 
+from cinder.common import constants
 from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder.scheduler import weights
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
-
-CONF = cfg.CONF
 
 
 def fake_volume_data_get_for_host(context, host, count_only=False):
@@ -46,11 +45,18 @@ def fake_volume_data_get_for_host(context, host, count_only=False):
 
 
 class VolumeNumberWeigherTestCase(test.TestCase):
+
     def setUp(self):
         super(VolumeNumberWeigherTestCase, self).setUp()
-        self.context = context.get_admin_context()
+        uid = fake_constants.USER_ID
+        pid = fake_constants.PROJECT_ID
+        self.context = context.RequestContext(user_id=uid,
+                                              project_id=pid,
+                                              is_admin=False,
+                                              read_deleted="no",
+                                              overwrite=False)
         self.host_manager = fakes.FakeHostManager()
-        self.weight_handler = weights.HostWeightHandler(
+        self.weight_handler = weights.OrderedHostWeightHandler(
             'cinder.scheduler.weights')
 
     def _get_weighed_host(self, hosts, weight_properties=None):
@@ -61,19 +67,23 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             hosts,
             weight_properties)[0]
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')
-    def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
+    @mock.patch('cinder.db.sqlalchemy.api.service_get_all')
+    def _get_all_backends(self, _mock_service_get_all, disabled=False):
         ctxt = context.get_admin_context()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic,
+        fakes.mock_host_manager_db_calls(_mock_service_get_all,
                                          disabled=disabled)
-        host_states = self.host_manager.get_all_host_states(ctxt)
-        _mock_service_get_all_by_topic.assert_called_once_with(
-            ctxt, CONF.volume_topic, disabled=disabled)
-        return host_states
+        backend_states = self.host_manager.get_all_backend_states(ctxt)
+        _mock_service_get_all.assert_called_once_with(
+            ctxt,
+            None,  # backend_match_level
+            topic=constants.VOLUME_TOPIC,
+            frozen=False,
+            disabled=disabled)
+        return backend_states
 
     def test_volume_number_weight_multiplier1(self):
         self.flags(volume_number_multiplier=-1.0)
-        hostinfo_list = self._get_all_hosts()
+        backend_info_list = self._get_all_backends()
 
         # host1: 1 volume    Norm=0.0
         # host2: 2 volumes
@@ -83,14 +93,14 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # so, host1 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
-            weighed_host = self._get_weighed_host(hostinfo_list)
+            weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(0.0, weighed_host.weight)
             self.assertEqual('host1',
                              utils.extract_host(weighed_host.obj.host))
 
     def test_volume_number_weight_multiplier2(self):
         self.flags(volume_number_multiplier=1.0)
-        hostinfo_list = self._get_all_hosts()
+        backend_info_list = self._get_all_backends()
 
         # host1: 1 volume      Norm=0
         # host2: 2 volumes
@@ -100,7 +110,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # so, host5 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
-            weighed_host = self._get_weighed_host(hostinfo_list)
+            weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(1.0, weighed_host.weight)
             self.assertEqual('host5',
                              utils.extract_host(weighed_host.obj.host))

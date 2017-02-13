@@ -1,4 +1,4 @@
-#    (c) Copyright 2015 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,6 +20,7 @@ HTTP or HTTPS protocol.
 
 from oslo_log import log as logging
 from oslo_serialization import base64
+from oslo_utils import encodeutils
 import requests
 import six
 import time
@@ -230,8 +231,8 @@ class BrcdHTTPFCZoneClient(object):
         """Return the sub string between the delimiters.
 
         :param data: String to manipulate
-        :param delim1 : Delimiter 1
-        :param delim2 : Delimiter 2
+        :param delim1: Delimiter 1
+        :param delim2: Delimiter 2
         :returns: substring between the delimiters
         """
         try:
@@ -448,13 +449,17 @@ class BrcdHTTPFCZoneClient(object):
         are active then it will return empty map.
 
         :returns: Map -- active zone set map in the following format
-        {
-            'zones':
-                {'openstack50060b0000c26604201900051ee8e329':
-                    ['50060b0000c26604', '201900051ee8e329']
-                },
-            'active_zone_config': 'OpenStack_Cfg'
-        }
+
+        .. code-block:: python
+
+            {
+                'zones':
+                    {'openstack50060b0000c26604201900051ee8e329':
+                        ['50060b0000c26604', '201900051ee8e329']
+                    },
+                'active_zone_config': 'OpenStack_Cfg'
+            }
+
         :raises: BrocadeZoningHttpException
         """
         active_zone_set = {}
@@ -483,16 +488,24 @@ class BrcdHTTPFCZoneClient(object):
 
         This method will add the zone configuration passed by user.
 
-        :param add_zones_info: Zone names mapped to members.
-            zone members are colon separated but case-insensitive
+        :param add_zones_info: Zone names mapped to members. Zone members
+                               are colon separated but case-insensitive
+
+        .. code-block:: python
+
             {   zonename1:[zonememeber1,zonemember2,...],
                 zonename2:[zonemember1, zonemember2,...]...}
-            e.g: {'openstack50060b0000c26604201900051ee8e329':
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
                     ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']
-                }R
+            }
+
         :param activate: True will activate the zone config.
         :param active_zone_set: Active zone set dict retrieved from
-                              get_active_zone_set method
+                                get_active_zone_set method
         :raises: BrocadeZoningHttpException
         """
         LOG.debug("Add zones - zones passed: %(zones)s.",
@@ -505,11 +518,11 @@ class BrcdHTTPFCZoneClient(object):
         ifas = self.ifas
         active_cfg = self.active_cfg
         # update the active_cfg, zones and cfgs map with new information
-        zones, cfgs, active_cfg = self.add_update_zones_cfgs(cfgs,
-                                                             zones,
-                                                             add_zones_info,
-                                                             active_cfg,
-                                                             cfg_name)
+        zones, cfgs, active_cfg = self.add_zones_cfgs(cfgs,
+                                                      zones,
+                                                      add_zones_info,
+                                                      active_cfg,
+                                                      cfg_name)
         # Build the zonestring with updated maps
         data = self.form_zone_string(cfgs,
                                      active_cfg,
@@ -519,6 +532,63 @@ class BrcdHTTPFCZoneClient(object):
                                      ifas,
                                      activate)
         LOG.debug("Add zones: final zone string after applying "
+                  "to the switch: %(zonestring)s", {'zonestring': data})
+        # Post the zone data to the switch
+        error_code, error_msg = self.post_zone_data(data)
+        if error_code != "0":
+            msg = (_("Applying the zones and cfgs to the switch failed "
+                     "(error code=%(err_code)s error msg=%(err_msg)s.")
+                   % {'err_code': error_code, 'err_msg': error_msg})
+
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+
+    def update_zones(self, zone_info, activate, operation,
+                     active_zone_set=None):
+        """Update zone configuration.
+
+        This method will update the zone configuration passed by user.
+
+        :param zone_info: Zone names mapped to members. Zone members
+                          are colon separated but case-insensitive
+
+        .. code-block:: python
+
+            {   zonename1:[zonememeber1,zonemember2,...],
+                zonename2:[zonemember1, zonemember2,...]...}
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
+                    ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']
+            }
+
+        :param activate: True will activate the zone config.
+        :param operation: ZONE_ADD or ZONE_REMOVE
+        :param active_zone_set: Active zone set dict retrieved from
+                                get_active_zone_set method
+        :raises: BrocadeZoningHttpException
+        """
+        LOG.debug("Update zones - zones passed: %(zones)s.",
+                  {'zones': zone_info})
+        cfgs = self.cfgs
+        zones = self.zones
+        alias = self.alias
+        qlps = self.qlps
+        ifas = self.ifas
+        active_cfg = self.active_cfg
+        # update the zones with new information
+        zones = self._update_zones(zones, zone_info, operation)
+        # Build the zonestring with updated maps
+        data = self.form_zone_string(cfgs,
+                                     active_cfg,
+                                     zones,
+                                     alias,
+                                     qlps,
+                                     ifas,
+                                     activate)
+        LOG.debug("Update zones: final zone string after applying "
                   "to the switch: %(zonestring)s", {'zonestring': data})
         # Post the zone data to the switch
         error_code, error_msg = self.post_zone_data(data)
@@ -551,19 +621,19 @@ class BrcdHTTPFCZoneClient(object):
             saveonly = "false" if activate is True else "true"
 
             # Form the zone string based on the dictionary of each items
-            for cfg in cfgs.keys():
+            for cfg in sorted(cfgs.keys()):
                 zoneString += (zone_constant.CFG_DELIM +
                                cfg + " " + cfgs.get(cfg) + " ")
-            for zone in zones.keys():
+            for zone in sorted(zones.keys()):
                 zoneString += (zone_constant.ZONE_DELIM +
                                zone + " " + zones.get(zone) + " ")
-            for al in alias.keys():
+            for al in sorted(alias.keys()):
                 zoneString += (zone_constant.ALIAS_DELIM +
                                al + " " + alias.get(al) + " ")
-            for qlp in qlps.keys():
+            for qlp in sorted(qlps.keys()):
                 zoneString += (zone_constant.QLP_DELIM +
                                qlp + " " + qlps.get(qlp) + " ")
-            for ifa in ifas.keys():
+            for ifa in sorted(ifas.keys()):
                 zoneString += (zone_constant.IFA_DELIM +
                                ifa + " " + ifas.get(ifa) + " ")
             # append the active_cfg string only if it is not null and activate
@@ -578,20 +648,21 @@ class BrcdHTTPFCZoneClient(object):
                    % six.text_type(e))
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)
-        return zoneString
+        # Reconstruct the zoneString to type base string for OpenSSL
+        return encodeutils.safe_encode(zoneString)
 
-    def add_update_zones_cfgs(self, cfgs, zones, add_zones_info,
-                              active_cfg, cfg_name):
-        """Add or update the zones and cfgs map based on the new zones info.
+    def add_zones_cfgs(self, cfgs, zones, add_zones_info,
+                       active_cfg, cfg_name):
+        """Add the zones and cfgs map based on the new zones info.
 
         This method will return the updated zones,cfgs and active_cfg
 
         :param cfgs: Existing cfgs map
         :param active_cfg: Existing Active cfg string
         :param zones: Existing zones map
-        :param add_zones_info :Zones map to add
-        :param active_cfg :Existing active cfg
-        :param cfg_name : New cfg name
+        :param add_zones_info: Zones map to add
+        :param active_cfg: Existing active cfg
+        :param cfg_name: New cfg name
         :returns: updated zones, zone configs map, and active_cfg
         """
         cfg_string = ""
@@ -606,16 +677,6 @@ class BrcdHTTPFCZoneClient(object):
                 if zone_name not in zones_in_active_cfg:
                     cfg_string += delimiter + zone_name
                     delimiter = ";"
-                # update the zone string
-                # if zone name already exists and dont have the new members
-                # already
-                if (zone_name in zones and set(members)
-                   != set(zones.get(zone_name).split(";"))):
-                    # update the existing zone with new members
-                    zones.update(
-                        {zone_name: (";".join(members) +
-                                     ";" + zones.get(zone_name))})
-                else:
                     # add a new zone with the members
                     zones.update({zone_name: ";".join(members)})
             # update cfg string
@@ -635,6 +696,42 @@ class BrcdHTTPFCZoneClient(object):
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)
         return zones, cfgs, active_cfg
+
+    def _update_zones(self, zones, updated_zones_info, operation):
+        """Update the zones based on the updated zones info.
+
+        This method will return the updated zones
+
+        :param zones: Existing zones map
+        :param updated_zones_info: Zones map to update
+        :param operation: ZONE_ADD or ZONE_REMOVE
+        :returns: updated zones
+        """
+        try:
+            for zone_name in updated_zones_info:
+                members = updated_zones_info[zone_name]
+                # update the zone string
+                # if zone name already exists and dont have the new members
+                # already
+                current_members = zones.get(zone_name).split(";")
+                if operation == zone_constant.ZONE_ADD:
+                    new_members = set(members).difference(set(current_members))
+                    if new_members:
+                        # update the existing zone with new members
+                        zones.update({zone_name: (";".join(new_members) +
+                                     ";" + zones.get(zone_name))})
+                else:
+                    new_members = set(current_members).difference(set(members))
+                    if new_members:
+                        zones.pop(zone_name)
+                        zones.update({zone_name: ";".join(new_members)})
+        except Exception as e:
+            msg = (_("Error while updating the zones "
+                     "in the zone string. Error %(description)s.")
+                   % {'description': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+        return zones
 
     def is_vf_enabled(self):
         """To check whether VF is enabled or not.
@@ -677,10 +774,10 @@ class BrcdHTTPFCZoneClient(object):
                 nsinfo.extend([line[start_index:start_index + 23].strip()])
         return nsinfo
 
-    def delete_update_zones_cfgs(
+    def delete_zones_cfgs(
             self, cfgs, zones,
             delete_zones_info, active_cfg):
-        """Add or update the zones and cfgs map based on the new zones info.
+        """Delete the zones and cfgs map based on the new zones info.
 
         Return the updated zones, cfgs and active_cfg after deleting the
         required items.
@@ -688,8 +785,8 @@ class BrcdHTTPFCZoneClient(object):
         :param cfgs: Existing cfgs map
         :param active_cfg: Existing Active cfg string
         :param zones: Existing zones map
-        :param delete_zones_info :Zones map to add
-        :param active_cfg :Existing active cfg
+        :param delete_zones_info: Zones map to add
+        :param active_cfg: Existing active cfg
         :returns: updated zones, zone config sets, and active zone config
         :raises: BrocadeZoningHttpException
         """
@@ -743,7 +840,7 @@ class BrcdHTTPFCZoneClient(object):
         active_cfg = self.active_cfg
         # update the active_cfg, zones and cfgs map with required information
         # being removed
-        zones, cfgs, active_cfg = self.delete_update_zones_cfgs(
+        zones, cfgs, active_cfg = self.delete_zones_cfgs(
             cfgs,
             zones,
             delete_zones_info,
@@ -859,7 +956,7 @@ class BrcdHTTPFCZoneClient(object):
                      "Error: %(error)s")
                    % {'switch_id': self.switch_ip,
                       'protocol': self.protocol,
-                      'page': zone_constant.LOG_OUT_PAGE,
+                      'page': zone_constant.LOGOUT_PAGE,
                       'error': six.text_type(ex)})
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)

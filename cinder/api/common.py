@@ -23,8 +23,6 @@ from oslo_log import log as logging
 from six.moves import urllib
 import webob
 
-from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
@@ -44,13 +42,13 @@ api_common_opts = [
     cfg.ListOpt('query_volume_filters',
                 default=['name', 'status', 'metadata',
                          'availability_zone',
-                         'bootable'],
+                         'bootable', 'group_id'],
                 help="Volume filter options which "
                      "non-admin user could use to "
                      "query volumes. Default values "
                      "are: ['name', 'status', "
                      "'metadata', 'availability_zone' ,"
-                     "'bootable']")
+                     "'bootable', 'group_id']")
 ]
 
 CONF = cfg.CONF
@@ -58,9 +56,6 @@ CONF.register_opts(api_common_opts)
 
 LOG = logging.getLogger(__name__)
 
-
-XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
-XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
 
@@ -245,11 +240,14 @@ def get_request_url(request):
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
-    Given: 'http://www.cinder.com/v1.1/123'
-    Returns: 'http://www.cinder.com/123'
+    Given: 'http://cinder.example.com/v1.1/123'
+    Returns: 'http://cinder.example.com/123'
 
-    Given: 'http://www.cinder.com/v1.1'
-    Returns: 'http://www.cinder.com'
+    Given: 'http://cinder.example.com/v1.1'
+    Returns: 'http://cinder.example.com'
+
+    Given: 'http://cinder.example.com/volume/drivers/v1.1/flashsystem'
+    Returns: 'http://cinder.example.com/volume/drivers/flashsystem'
 
     """
     parsed_url = urllib.parse.urlsplit(href)
@@ -257,8 +255,10 @@ def remove_version_from_href(href):
 
     # NOTE: this should match vX.X or vX
     expression = re.compile(r'^v([0-9]+|[0-9]+\.[0-9]+)(/.*|$)')
-    if expression.match(url_parts[1]):
-        del url_parts[1]
+    for x in range(len(url_parts)):
+        if expression.match(url_parts[x]):
+            del url_parts[x]
+            break
 
     new_path = '/'.join(url_parts)
 
@@ -372,73 +372,30 @@ class ViewBuilder(object):
         return urllib.parse.urlunsplit(url_parts).rstrip('/')
 
 
-class MetadataDeserializer(wsgi.MetadataXMLDeserializer):
-    def deserialize(self, text):
-        dom = utils.safe_minidom_parse_string(text)
-        metadata_node = self.find_first_child_named(dom, "metadata")
-        metadata = self.extract_metadata(metadata_node)
-        return {'body': {'metadata': metadata}}
+def get_cluster_host(req, params, cluster_version=None):
+    """Get cluster and host from the parameters.
 
+    This method checks the presence of cluster and host parameters and returns
+    them depending on the cluster_version.
 
-class MetaItemDeserializer(wsgi.MetadataXMLDeserializer):
-    def deserialize(self, text):
-        dom = utils.safe_minidom_parse_string(text)
-        metadata_item = self.extract_metadata(dom)
-        return {'body': {'meta': metadata_item}}
+    If cluster_version is False we will never return the cluster_name and we
+    will require the presence of the host parameter.
 
+    If cluster_version is None we will always check for the presence of the
+    cluster parameter, and if cluster_version is a string with a version we
+    will only check for the presence of the parameter if the version of the
+    request is not less than  it.  In both cases we will require one and only
+    one parameter, host or cluster.
+    """
+    if (cluster_version is not False and
+            req.api_version_request.matches(cluster_version)):
+        cluster_name = params.get('cluster')
+        msg = _('One and only one of cluster and host must be set.')
+    else:
+        cluster_name = None
+        msg = _('Host field is missing.')
 
-class MetadataXMLDeserializer(wsgi.XMLDeserializer):
-
-    def extract_metadata(self, metadata_node):
-        """Marshal the metadata attribute of a parsed request."""
-        if metadata_node is None:
-            return {}
-        metadata = {}
-        for meta_node in self.find_children_named(metadata_node, "meta"):
-            key = meta_node.getAttribute("key")
-            metadata[key] = self.extract_text(meta_node)
-        return metadata
-
-    def _extract_metadata_container(self, datastring):
-        dom = utils.safe_minidom_parse_string(datastring)
-        metadata_node = self.find_first_child_named(dom, "metadata")
-        metadata = self.extract_metadata(metadata_node)
-        return {'body': {'metadata': metadata}}
-
-    def create(self, datastring):
-        return self._extract_metadata_container(datastring)
-
-    def update_all(self, datastring):
-        return self._extract_metadata_container(datastring)
-
-    def update(self, datastring):
-        dom = utils.safe_minidom_parse_string(datastring)
-        metadata_item = self.extract_metadata(dom)
-        return {'body': {'meta': metadata_item}}
-
-
-metadata_nsmap = {None: xmlutil.XMLNS_V11}
-
-
-class MetaItemTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        sel = xmlutil.Selector('meta', xmlutil.get_items, 0)
-        root = xmlutil.TemplateElement('meta', selector=sel)
-        root.set('key', 0)
-        root.text = 1
-        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
-
-
-class MetadataTemplateElement(xmlutil.TemplateElement):
-    def will_render(self, datum):
-        return True
-
-
-class MetadataTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = MetadataTemplateElement('metadata', selector='metadata')
-        elem = xmlutil.SubTemplateElement(root, 'meta',
-                                          selector=xmlutil.get_items)
-        elem.set('key', 0)
-        elem.text = 1
-        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
+    host = params.get('host')
+    if bool(cluster_name) == bool(host):
+        raise exception.InvalidInput(reason=msg)
+    return cluster_name, host

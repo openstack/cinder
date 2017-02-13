@@ -1,0 +1,25 @@
+---
+prelude: >
+    Everything in Cinder's release notes related to the High Availability
+    Active-Active effort -preluded with "HA A-A:"- is work in progress and
+    should not be used in production until it has been completed and the
+    appropriate release note has been issued stating its readiness for
+    production.
+
+features:
+  - "HA A-A: Add cluster configuration option to allow grouping hosts that
+    share the same backend configurations and should work in Active-Active
+    fashion."
+  - "HA A-A: Updated manage command to display cluster information on service
+    listings."
+  - "HA A-A: Added cluster subcommand in manage command to list, remove, and
+    rename clusters."
+  - "HA A-A: Added clusters API endpoints for cluster related operations (index,
+    detail, show, enable/disable).  Index and detail accept filtering by
+    `name`, `binary`, `disabled`, `num_hosts`, `num_down_hosts`, and up/down
+    status (`is_up`) as URL parameters.  Also added their respective policies."
+  - "HA A-A: Attach and detach operations are now cluster aware and make full
+    use of clustered cinder-volume services."
+  - "HA A-A: Delete volume, delete snapshot, delete consistency group, and
+    delete consistency group snapshot operations are now cluster aware and make
+    full use of clustered cinder-volume services."

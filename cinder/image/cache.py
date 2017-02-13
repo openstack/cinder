@@ -20,7 +20,9 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.i18n import _LW
+from cinder import objects
 from cinder import rpc
+from cinder import utils
 
 CONF = cfg.CONF
 
@@ -46,11 +48,17 @@ class ImageVolumeCache(object):
         self._notify_cache_eviction(context, cache_entry['image_id'],
                                     cache_entry['host'])
 
+    @staticmethod
+    def _get_query_filters(volume_ref):
+        if volume_ref.is_clustered:
+            return {'cluster_name': volume_ref.cluster_name}
+        return {'host': volume_ref.host}
+
     def get_entry(self, context, volume_ref, image_id, image_meta):
         cache_entry = self.db.image_volume_cache_get_and_update_last_used(
             context,
             image_id,
-            volume_ref['host']
+            **self._get_query_filters(volume_ref)
         )
 
         if cache_entry:
@@ -79,8 +87,9 @@ class ImageVolumeCache(object):
         created and is in an available state.
         """
         LOG.debug('Creating new image-volume cache entry for image '
-                  '%(image_id)s on host %(host)s.',
-                  {'image_id': image_id, 'host': volume_ref['host']})
+                  '%(image_id)s on %(service)s',
+                  {'image_id': image_id,
+                   'service': volume_ref.service_topic_queue})
 
         # When we are creating an image from a volume the updated_at field
         # will be a unicode representation of the datetime. In that case
@@ -94,19 +103,20 @@ class ImageVolumeCache(object):
 
         cache_entry = self.db.image_volume_cache_create(
             context,
-            volume_ref['host'],
+            volume_ref.host,
+            volume_ref.cluster_name,
             image_id,
             image_updated_at.replace(tzinfo=None),
-            volume_ref['id'],
-            volume_ref['size']
+            volume_ref.id,
+            volume_ref.size
         )
 
         LOG.debug('New image-volume cache entry created: %(entry)s.',
                   {'entry': self._entry_to_str(cache_entry)})
         return cache_entry
 
-    def ensure_space(self, context, space_required, host):
-        """Makes room for a cache entry.
+    def ensure_space(self, context, volume):
+        """Makes room for a volume cache entry.
 
         Returns True if successful, false otherwise.
         """
@@ -119,11 +129,12 @@ class ImageVolumeCache(object):
         # and bail out before evicting everything else to try and make
         # room for it.
         if (self.max_cache_size_gb != 0 and
-                space_required > self.max_cache_size_gb):
+                volume.size > self.max_cache_size_gb):
             return False
 
         # Assume the entries are ordered by most recently used to least used.
-        entries = self.db.image_volume_cache_get_all_for_host(context, host)
+        entries = self.db.image_volume_cache_get_all(
+            **self._get_query_filters(volume))
 
         current_count = len(entries)
 
@@ -132,13 +143,13 @@ class ImageVolumeCache(object):
             current_size += entry['size']
 
         # Add values for the entry we intend to create.
-        current_size += space_required
+        current_size += volume.size
         current_count += 1
 
-        LOG.debug('Image-volume cache for host %(host)s current_size (GB) = '
+        LOG.debug('Image-volume cache for %(service)s current_size (GB) = '
                   '%(size_gb)s (max = %(max_gb)s), current count = %(count)s '
                   '(max = %(max_count)s).',
-                  {'host': host,
+                  {'service': volume.service_topic_queue,
                    'size_gb': current_size,
                    'max_gb': self.max_cache_size_gb,
                    'count': current_count,
@@ -153,9 +164,9 @@ class ImageVolumeCache(object):
             self._delete_image_volume(context, entry)
             current_size -= entry['size']
             current_count -= 1
-            LOG.debug('Image-volume cache for host %(host)s new size (GB) = '
+            LOG.debug('Image-volume cache for %(service)s new size (GB) = '
                       '%(size_gb)s, new count = %(count)s.',
-                      {'host': host,
+                      {'service': volume.service_topic_queue,
                        'size_gb': current_size,
                        'count': current_count})
 
@@ -165,21 +176,26 @@ class ImageVolumeCache(object):
         # to 0.
         if self.max_cache_size_gb > 0:
             if current_size > self.max_cache_size_gb > 0:
-                LOG.warning(_LW('Image-volume cache for host %(host)s does '
-                                'not have enough space (GB).'), {'host': host})
+                LOG.warning(_LW('Image-volume cache for %(service)s does '
+                                'not have enough space (GB).'),
+                            {'service': volume.service_topic_queue})
                 return False
 
         return True
 
+    @utils.if_notifications_enabled
     def _notify_cache_hit(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'hit')
 
+    @utils.if_notifications_enabled
     def _notify_cache_miss(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'miss')
 
+    @utils.if_notifications_enabled
     def _notify_cache_eviction(self, context, image_id, host):
         self._notify_cache_action(context, image_id, host, 'evict')
 
+    @utils.if_notifications_enabled
     def _notify_cache_action(self, context, image_id, host, action):
         data = {
             'image_id': image_id,
@@ -191,13 +207,10 @@ class ImageVolumeCache(object):
 
     def _delete_image_volume(self, context, cache_entry):
         """Delete a volume and remove cache entry."""
-        volume_ref = self.db.volume_get(context, cache_entry['volume_id'])
+        volume = objects.Volume.get_by_id(context, cache_entry['volume_id'])
 
         # Delete will evict the cache entry.
-        self.volume_api.delete(context, volume_ref)
-
-    def _get_image_volume_name(self, image_id):
-        return 'image-volume-' + image_id
+        self.volume_api.delete(context, volume)
 
     def _should_update_entry(self, cache_entry, image_meta):
         """Ensure that the cache entry image data is still valid."""

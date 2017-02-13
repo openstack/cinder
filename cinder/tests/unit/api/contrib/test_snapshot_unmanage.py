@@ -18,15 +18,16 @@ import webob
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
-from cinder.tests.unit import fake_volume
 
 
 # This list of fake snapshot is used by our tests.
-snapshot_id = 'ffffffff-0000-ffff-0000-ffffffffffff'
-bad_snp_id = 'ffffffff-0000-ffff-0000-fffffffffffe'
+snapshot_id = fake.SNAPSHOT_ID
+bad_snp_id = fake.WILL_NOT_BE_FOUND_ID
 
 
 def app():
@@ -44,11 +45,11 @@ def api_snapshot_get(self, context, snp_id):
     existence of snapshot_id in our list of fake snapshots and raise an
     exception if the specified snapshot ID is not in our list.
     """
-    snapshot = {'id': 'ffffffff-0000-ffff-0000-ffffffffffff',
+    snapshot = {'id': fake.SNAPSHOT_ID,
                 'progress': '100%',
-                'volume_id': 'fake_volume_id',
-                'project_id': 'fake_project',
-                'status': 'available'}
+                'volume_id': fake.VOLUME_ID,
+                'project_id': fake.PROJECT_ID,
+                'status': fields.SnapshotStatus.AVAILABLE}
     if snp_id == snapshot_id:
         snapshot_objct = fake_snapshot.fake_snapshot_obj(context, **snapshot)
         return snapshot_objct
@@ -73,11 +74,12 @@ class SnapshotUnmanageTest(test.TestCase):
 
     def _get_resp(self, snapshot_id):
         """Helper to build an os-unmanage req for the specified snapshot_id."""
-        req = webob.Request.blank('/v2/fake/snapshots/%s/action' % snapshot_id)
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, snapshot_id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.environ['cinder.context'] = context.RequestContext('admin',
-                                                               'fake',
+        req.environ['cinder.context'] = context.RequestContext(fake.USER_ID,
+                                                               fake.PROJECT_ID,
                                                                True)
         body = {'os-unmanage': ''}
         req.body = jsonutils.dump_as_bytes(body)
@@ -86,26 +88,15 @@ class SnapshotUnmanageTest(test.TestCase):
 
     @mock.patch('cinder.db.conditional_update', return_value=1)
     @mock.patch('cinder.db.snapshot_update')
-    @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_snapshot')
-    def test_unmanage_snapshot_ok(self, mock_rpcapi, mock_volume_get_by_id,
-                                  mock_db_update, mock_conditional_update):
+    def test_unmanage_snapshot_ok(self, mock_rpcapi, mock_db_update,
+                                  mock_conditional_update):
         """Return success for valid and unattached volume."""
-        ctxt = context.RequestContext('admin', 'fake', True)
-        volume = fake_volume.fake_volume_obj(ctxt, id='fake_volume_id')
-        mock_volume_get_by_id.return_value = volume
         res = self._get_resp(snapshot_id)
-
-        self.assertEqual(1, mock_volume_get_by_id.call_count)
-        self.assertEqual(2, len(mock_volume_get_by_id.call_args[0]),
-                         mock_volume_get_by_id.call_args)
-        self.assertEqual('fake_volume_id',
-                         mock_volume_get_by_id.call_args[0][1])
 
         self.assertEqual(1, mock_rpcapi.call_count)
         self.assertEqual(3, len(mock_rpcapi.call_args[0]))
-        self.assertEqual(1, len(mock_rpcapi.call_args[1]))
-        self.assertTrue(mock_rpcapi.call_args[1]['unmanage_only'])
+        self.assertEqual(0, len(mock_rpcapi.call_args[1]))
 
         self.assertEqual(202, res.status_int, res)
 

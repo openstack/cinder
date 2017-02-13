@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2011 OpenStack LLC
+# Copyright 2011 OpenStack Foundation
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -17,7 +17,7 @@
 PRE_COMMIT_SCRIPT=.git/hooks/pre-commit
 
 make_hook() {
-    echo "exec ./run_tests.sh -N -p" >> $PRE_COMMIT_SCRIPT
+    echo "exec tox -e fast8" >> $PRE_COMMIT_SCRIPT
     chmod +x $PRE_COMMIT_SCRIPT
 
     if [ -w $PRE_COMMIT_SCRIPT -a -x $PRE_COMMIT_SCRIPT ]; then

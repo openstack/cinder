@@ -13,7 +13,6 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
@@ -22,30 +21,37 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import cleanable
+from cinder.objects import fields as c_fields
+
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 @base.CinderObjectRegistry.register
-class Snapshot(base.CinderPersistentObject, base.CinderObject,
-               base.CinderObjectDictCompat):
+class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
+               base.CinderObjectDictCompat, base.CinderComparableObject,
+               base.ClusteredObject):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Changed 'status' field to use SnapshotStatusField
+    # Version 1.2: This object is now cleanable (adds rows to workers table)
+    # Version 1.3: SnapshotStatusField now includes "unmanaging"
+    VERSION = '1.3'
 
     # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They
     # are typically the relationship in the sqlalchemy object.
-    OPTIONAL_FIELDS = ('volume', 'metadata', 'cgsnapshot')
+    OPTIONAL_FIELDS = ('volume', 'metadata', 'cgsnapshot', 'group_snapshot')
 
     fields = {
         'id': fields.UUIDField(),
 
-        'user_id': fields.UUIDField(nullable=True),
-        'project_id': fields.UUIDField(nullable=True),
+        'user_id': fields.StringField(nullable=True),
+        'project_id': fields.StringField(nullable=True),
 
         'volume_id': fields.UUIDField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
-        'status': fields.StringField(nullable=True),
+        'group_snapshot_id': fields.UUIDField(nullable=True),
+        'status': c_fields.SnapshotStatusField(nullable=True),
         'progress': fields.StringField(nullable=True),
         'volume_size': fields.IntegerField(nullable=True),
 
@@ -56,16 +62,21 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'volume_type_id': fields.UUIDField(nullable=True),
 
         'provider_location': fields.StringField(nullable=True),
-        'provider_id': fields.UUIDField(nullable=True),
+        'provider_id': fields.StringField(nullable=True),
         'metadata': fields.DictOfStringsField(),
         'provider_auth': fields.StringField(nullable=True),
 
         'volume': fields.ObjectField('Volume', nullable=True),
         'cgsnapshot': fields.ObjectField('CGSnapshot', nullable=True),
+        'group_snapshot': fields.ObjectField('GroupSnapshot', nullable=True),
     }
 
+    @property
+    def cluster_name(self):
+        return self.volume.cluster_name
+
     @classmethod
-    def _get_expected_attrs(cls, context):
+    def _get_expected_attrs(cls, context, *args, **kwargs):
         return 'metadata',
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -107,12 +118,17 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         super(Snapshot, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
 
-    @staticmethod
-    def _from_db_object(context, snapshot, db_snapshot, expected_attrs=None):
+        if target_version < (1, 3):
+            if primitive.get('status') == c_fields.SnapshotStatus.UNMANAGING:
+                primitive['status'] = c_fields.SnapshotStatus.DELETING
+
+    @classmethod
+    def _from_db_object(cls, context, snapshot, db_snapshot,
+                        expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
         for name, field in snapshot.fields.items():
-            if name in Snapshot.OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_snapshot.get(name)
             if isinstance(field, fields.IntegerField):
@@ -123,11 +139,17 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             volume = objects.Volume(context)
             volume._from_db_object(context, volume, db_snapshot['volume'])
             snapshot.volume = volume
-        if 'cgsnapshot' in expected_attrs:
+        if snapshot.cgsnapshot_id and 'cgsnapshot' in expected_attrs:
             cgsnapshot = objects.CGSnapshot(context)
             cgsnapshot._from_db_object(context, cgsnapshot,
                                        db_snapshot['cgsnapshot'])
             snapshot.cgsnapshot = cgsnapshot
+        if snapshot.group_snapshot_id and 'group_snapshot' in expected_attrs:
+            group_snapshot = objects.GroupSnapshot(context)
+            group_snapshot._from_db_object(context, group_snapshot,
+                                           db_snapshot['group_snapshot'])
+            snapshot.group_snapshot = group_snapshot
+
         if 'metadata' in expected_attrs:
             metadata = db_snapshot.get('snapshot_metadata')
             if metadata is None:
@@ -138,7 +160,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         snapshot.obj_reset_changes()
         return snapshot
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -151,11 +172,17 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if 'cgsnapshot' in updates:
             raise exception.ObjectActionError(action='create',
                                               reason=_('cgsnapshot assigned'))
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('cluster assigned'))
+        if 'group_snapshot' in updates:
+            raise exception.ObjectActionError(
+                action='create',
+                reason=_('group_snapshot assigned'))
 
         db_snapshot = db.snapshot_create(self._context, updates)
         self._from_db_object(self._context, self, db_snapshot)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -163,8 +190,18 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
                 raise exception.ObjectActionError(action='save',
                                                   reason=_('volume changed'))
             if 'cgsnapshot' in updates:
+                # NOTE(xyang): Allow this to pass if 'cgsnapshot' is
+                # set to None. This is to support backward compatibility.
+                if updates.get('cgsnapshot'):
+                    raise exception.ObjectActionError(
+                        action='save', reason=_('cgsnapshot changed'))
+            if 'group_snapshot' in updates:
                 raise exception.ObjectActionError(
-                    action='save', reason=_('cgsnapshot changed'))
+                    action='save', reason=_('group_snapshot changed'))
+
+            if 'cluster' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cluster changed'))
 
             if 'metadata' in updates:
                 # Metadata items that are not specified in the
@@ -178,9 +215,10 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
-        db.snapshot_destroy(self._context, self.id)
+        updated_values = db.snapshot_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
     def obj_load_attr(self, attrname):
         if attrname not in self.OPTIONAL_FIELDS:
@@ -196,8 +234,18 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
                                                    self.volume_id)
 
         if attrname == 'cgsnapshot':
-            self.cgsnapshot = objects.CGSnapshot.get_by_id(self._context,
-                                                           self.cgsnapshot_id)
+            if self.cgsnapshot_id is None:
+                self.cgsnapshot = None
+            else:
+                self.cgsnapshot = objects.CGSnapshot.get_by_id(
+                    self._context, self.cgsnapshot_id)
+        if attrname == 'group_snapshot':
+            if self.group_snapshot_id is None:
+                self.group_snapshot = None
+            else:
+                self.group_snapshot = objects.GroupSnapshot.get_by_id(
+                    self._context,
+                    self.group_snapshot_id)
 
         self.obj_reset_changes(fields=[attrname])
 
@@ -211,11 +259,23 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if not md_was_changed:
             self.obj_reset_changes(['metadata'])
 
-    @base.remotable_classmethod
+    @classmethod
     def snapshot_data_get_for_project(cls, context, project_id,
                                       volume_type_id=None):
         return db.snapshot_data_get_for_project(context, project_id,
                                                 volume_type_id)
+
+    @staticmethod
+    def _is_cleanable(status, obj_version):
+        # Before 1.2 we didn't have workers table, so cleanup wasn't supported.
+        if obj_version and obj_version < 1.2:
+            return False
+        return status == 'creating'
+
+    @property
+    def host(self):
+        """All cleanable VO must have a host property/attribute."""
+        return self.volume.host
 
 
 @base.CinderObjectRegistry.register
@@ -225,27 +285,29 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('Snapshot'),
     }
-    child_versions = {
-        '1.0': '1.0'
-    }
 
-    @base.remotable_classmethod
-    def get_all(cls, context, search_opts, marker=None, limit=None,
+    @classmethod
+    def get_all(cls, context, filters, marker=None, limit=None,
                 sort_keys=None, sort_dirs=None, offset=None):
-        snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
+        """Get all snapshot given some search_opts (filters).
+
+        Special filters accepted are host and cluster_name, that refer to the
+        volume's fields.
+        """
+        snapshots = db.snapshot_get_all(context, filters, marker, limit,
                                         sort_keys, sort_dirs, offset)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_by_host(cls, context, host, filters=None):
-        snapshots = db.snapshot_get_by_host(context, host, filters)
+        snapshots = db.snapshot_get_all_by_host(context, host, filters)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, search_opts, marker=None,
                            limit=None, sort_keys=None, sort_dirs=None,
                            offset=None):
@@ -256,23 +318,31 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_for_volume(cls, context, volume_id):
         snapshots = db.snapshot_get_all_for_volume(context, volume_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
-    def get_active_by_window(cls, context, begin, end):
-        snapshots = db.snapshot_get_active_by_window(context, begin, end)
+    @classmethod
+    def get_all_active_by_window(cls, context, begin, end):
+        snapshots = db.snapshot_get_all_active_by_window(context, begin, end)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_for_cgsnapshot(cls, context, cgsnapshot_id):
         snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
+        expected_attrs = Snapshot._get_expected_attrs(context)
+        return base.obj_make_list(context, cls(context), objects.Snapshot,
+                                  snapshots, expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_all_for_group_snapshot(cls, context, group_snapshot_id):
+        snapshots = db.snapshot_get_all_for_group_snapshot(
+            context, group_snapshot_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)

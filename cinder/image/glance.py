@@ -36,7 +36,7 @@ from six.moves import range
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE
 
 
 glance_opts = [
@@ -44,7 +44,7 @@ glance_opts = [
                 default=[],
                 help='A list of url schemes that can be downloaded directly '
                      'via the direct_url.  Currently supported schemes: '
-                     '[file].'),
+                     '[file, cinder].'),
     cfg.StrOpt('glance_catalog_info',
                default='image:glance:publicURL',
                help='Info to match when looking for glance in the service '
@@ -157,13 +157,6 @@ class GlanceClientWrapper(object):
         self.api_servers = None
         self.version = version
 
-        if CONF.glance_num_retries < 0:
-            LOG.warning(_LW(
-                "glance_num_retries shouldn't be a negative value. "
-                "The number of retries will be set to 0 until this is"
-                "corrected in the cinder.conf."))
-            CONF.set_override('glance_num_retries', 0)
-
     def _create_static_client(self, context, netloc, use_ssl, version):
         """Create a client that we'll use for every call."""
         self.netloc = netloc
@@ -219,6 +212,8 @@ class GlanceClientWrapper(object):
                                           'method': method,
                                           'extra': extra})
                 time.sleep(1)
+            except glanceclient.exc.HTTPOverLimit as e:
+                raise exception.ImageLimitExceeded(e)
 
 
 class GlanceImageService(object):
@@ -252,10 +247,15 @@ class GlanceImageService(object):
             if param in params:
                 _params[param] = params.get(param)
 
-        # ensure filters is a dict
-        _params.setdefault('filters', {})
-        # NOTE(vish): don't filter out private images
-        _params['filters'].setdefault('is_public', 'none')
+        # NOTE(geguileo): We set is_public default value for v1 because we want
+        # to retrieve all images by default.  We don't need to send v2
+        # equivalent - "visible" - because its default value when omitted is
+        # "public, private, shared", which will return all.
+        if CONF.glance_api_version <= 1:
+            # ensure filters is a dict
+            _params.setdefault('filters', {})
+            # NOTE(vish): don't filter out private images
+            _params['filters'].setdefault('is_public', 'none')
 
         return _params
 
@@ -312,16 +312,6 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
-    def delete_locations(self, context, image_id, url_set):
-        """Delete backend location urls from an image."""
-        if CONF.glance_api_version != 2:
-            raise exception.Invalid("Image API version 2 is disabled.")
-        client = GlanceClientWrapper(version=2)
-        try:
-            return client.call(context, 'delete_locations', image_id, url_set)
-        except Exception:
-            _reraise_translated_image_exception(image_id)
-
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
         if data and 'file' in CONF.allowed_direct_url_schemes:
@@ -365,6 +355,13 @@ class GlanceImageService(object):
     def update(self, context, image_id,
                image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
+        # For v2, _translate_to_glance stores custom properties in image meta
+        # directly. We need the custom properties to identify properties to
+        # remove if purge_props is True. Save the custom properties before
+        # translate.
+        if CONF.glance_api_version > 1 and purge_props:
+            props_to_update = image_meta.get('properties', {}).keys()
+
         image_meta = self._translate_to_glance(image_meta)
         # NOTE(dosaboy): see comment in bug 1210467
         if CONF.glance_api_version == 1:
@@ -372,14 +369,27 @@ class GlanceImageService(object):
         # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
-        if data:
-            image_meta['data'] = data
         try:
             # NOTE(dosaboy): the v2 api separates update from upload
-            if data and CONF.glance_api_version > 1:
-                self._client.call(context, 'upload', image_id, data)
-                image_meta = self._client.call(context, 'get', image_id)
+            if CONF.glance_api_version > 1:
+                if data:
+                    self._client.call(context, 'upload', image_id, data)
+                if image_meta:
+                    if purge_props:
+                        # Properties to remove are those not specified in
+                        # input properties.
+                        cur_image_meta = self.show(context, image_id)
+                        cur_props = cur_image_meta['properties'].keys()
+                        remove_props = list(set(cur_props) -
+                                            set(props_to_update))
+                        image_meta['remove_props'] = remove_props
+                    image_meta = self._client.call(context, 'update', image_id,
+                                                   **image_meta)
+                else:
+                    image_meta = self._client.call(context, 'get', image_id)
             else:
+                if data:
+                    image_meta['data'] = data
                 image_meta = self._client.call(context, 'update', image_id,
                                                **image_meta)
         except Exception:

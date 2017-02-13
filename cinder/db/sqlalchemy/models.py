@@ -23,10 +23,12 @@ SQLAlchemy models for cinder data.
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from oslo_utils import timeutils
+from sqlalchemy import and_, func, select
+from sqlalchemy import bindparam
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship, backref, validates
+from sqlalchemy import ForeignKey, DateTime, Boolean, UniqueConstraint
+from sqlalchemy.orm import backref, column_property, relationship, validates
 
 
 CONF = cfg.CONF
@@ -45,11 +47,17 @@ class CinderBase(models.TimestampMixin,
     deleted = Column(Boolean, default=False)
     metadata = None
 
+    @staticmethod
+    def delete_values():
+        return {'deleted': True,
+                'deleted_at': timeutils.utcnow()}
+
     def delete(self, session):
         """Delete this object."""
-        self.deleted = True
-        self.deleted_at = timeutils.utcnow()
+        updated_values = self.delete_values()
+        self.update(updated_values)
         self.save(session=session)
+        return updated_values
 
 
 class Service(BASE, CinderBase):
@@ -57,8 +65,13 @@ class Service(BASE, CinderBase):
 
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True)
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     binary = Column(String(255))
+    # We want to overwrite default updated_at definition so we timestamp at
+    # creation as well, so we only need to check updated_at for the heartbeat
+    updated_at = Column(DateTime, default=timeutils.utcnow,
+                        onupdate=timeutils.utcnow)
     topic = Column(String(255))
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
@@ -77,9 +90,70 @@ class Service(BASE, CinderBase):
 
     # replication_status can be: enabled, disabled, not-capable, error,
     # failed-over or not-configured
-    replication_status = Column(String(255), default="not-capable")
+    replication_status = Column(String(36), default="not-capable")
     active_backend_id = Column(String(255))
     frozen = Column(Boolean, nullable=False, default=False)
+
+    cluster = relationship('Cluster',
+                           backref='services',
+                           foreign_keys=cluster_name,
+                           primaryjoin='and_('
+                                       'Service.cluster_name == Cluster.name,'
+                                       'Service.deleted == False)')
+
+
+class Cluster(BASE, CinderBase):
+    """Represents a cluster of hosts."""
+    __tablename__ = 'clusters'
+    # To remove potential races on creation we have a constraint set on name
+    # and race_preventer fields, and we set value on creation to 0, so 2
+    # clusters with the same name will fail this constraint.  On deletion we
+    # change this field to the same value as the id which will be unique and
+    # will not conflict with the creation of another cluster with the same
+    # name.
+    __table_args__ = (UniqueConstraint('name', 'binary', 'race_preventer'),)
+
+    id = Column(Integer, primary_key=True)
+    # NOTE(geguileo): Name is constructed in the same way that Server.host but
+    # using cluster configuration option instead of host.
+    name = Column(String(255), nullable=False)
+    binary = Column(String(255), nullable=False)
+    disabled = Column(Boolean, default=False)
+    disabled_reason = Column(String(255))
+    race_preventer = Column(Integer, nullable=False, default=0)
+
+    replication_status = Column(String(36), default="not-capable")
+    active_backend_id = Column(String(255))
+    frozen = Column(Boolean, nullable=False, default=False)
+
+    # Last heartbeat reported by any of the services of this cluster.  This is
+    # not deferred since we always want to load this field.
+    last_heartbeat = column_property(
+        select([func.max(Service.updated_at)]).
+        where(and_(Service.cluster_name == name, ~Service.deleted)).
+        correlate_except(Service), deferred=False)
+
+    # Number of existing services for this cluster
+    num_hosts = column_property(
+        select([func.count(Service.id)]).
+        where(and_(Service.cluster_name == name, ~Service.deleted)).
+        correlate_except(Service),
+        group='services_summary', deferred=True)
+
+    # Number of services that are down for this cluster
+    num_down_hosts = column_property(
+        select([func.count(Service.id)]).
+        where(and_(Service.cluster_name == name,
+                   ~Service.deleted,
+                   Service.updated_at < bindparam('expired'))).
+        correlate_except(Service),
+        group='services_summary', deferred=True)
+
+    @staticmethod
+    def delete_values():
+        return {'race_preventer': Cluster.id,
+                'deleted': True,
+                'deleted_at': timeutils.utcnow()}
 
 
 class ConsistencyGroup(BASE, CinderBase):
@@ -90,6 +164,7 @@ class ConsistencyGroup(BASE, CinderBase):
     user_id = Column(String(255), nullable=False)
     project_id = Column(String(255), nullable=False)
 
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))
     availability_zone = Column(String(255))
     name = Column(String(255))
@@ -98,6 +173,25 @@ class ConsistencyGroup(BASE, CinderBase):
     status = Column(String(255))
     cgsnapshot_id = Column(String(36))
     source_cgid = Column(String(36))
+
+
+class Group(BASE, CinderBase):
+    """Represents a generic volume group."""
+    __tablename__ = 'groups'
+    id = Column(String(36), primary_key=True)
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    cluster_name = Column(String(255))
+    host = Column(String(255))
+    availability_zone = Column(String(255))
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+    group_type_id = Column(String(36))
+    group_snapshot_id = Column(String(36))
+    source_group_id = Column(String(36))
 
 
 class Cgsnapshot(BASE, CinderBase):
@@ -118,6 +212,27 @@ class Cgsnapshot(BASE, CinderBase):
         backref="cgsnapshots",
         foreign_keys=consistencygroup_id,
         primaryjoin='Cgsnapshot.consistencygroup_id == ConsistencyGroup.id')
+
+
+class GroupSnapshot(BASE, CinderBase):
+    """Represents a group snapshot."""
+    __tablename__ = 'group_snapshots'
+    id = Column(String(36), primary_key=True)
+
+    group_id = Column(String(36), nullable=False)
+    user_id = Column(String(255))
+    project_id = Column(String(255))
+
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+    group_type_id = Column(String(36))
+
+    group = relationship(
+        Group,
+        backref="group_snapshots",
+        foreign_keys=group_id,
+        primaryjoin='GroupSnapshot.group_id == Group.id')
 
 
 class Volume(BASE, CinderBase):
@@ -144,6 +259,7 @@ class Volume(BASE, CinderBase):
 
     snapshot_id = Column(String(36))
 
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
@@ -168,6 +284,7 @@ class Volume(BASE, CinderBase):
     encryption_key_id = Column(String(36))
 
     consistencygroup_id = Column(String(36))
+    group_id = Column(String(36))
 
     bootable = Column(Boolean, default=False)
     multiattach = Column(Boolean, default=False)
@@ -183,6 +300,12 @@ class Volume(BASE, CinderBase):
         backref="volumes",
         foreign_keys=consistencygroup_id,
         primaryjoin='Volume.consistencygroup_id == ConsistencyGroup.id')
+
+    group = relationship(
+        Group,
+        backref="volumes",
+        foreign_keys=group_id,
+        primaryjoin='Volume.group_id == Group.id')
 
 
 class VolumeMetadata(BASE, CinderBase):
@@ -251,6 +374,42 @@ class VolumeTypes(BASE, CinderBase):
                            'VolumeTypes.deleted == False)')
 
 
+class GroupTypes(BASE, CinderBase):
+    """Represent possible group_types of groups offered."""
+    __tablename__ = "group_types"
+    id = Column(String(36), primary_key=True)
+    name = Column(String(255))
+    description = Column(String(255))
+    is_public = Column(Boolean, default=True)
+    groups = relationship(Group,
+                          backref=backref('group_type', uselist=False),
+                          foreign_keys=id,
+                          primaryjoin='and_('
+                          'Group.group_type_id == GroupTypes.id, '
+                          'GroupTypes.deleted == False)')
+
+
+class GroupVolumeTypeMapping(BASE, CinderBase):
+    """Represent mapping between groups and volume_types."""
+    __tablename__ = "group_volume_type_mapping"
+    id = Column(Integer, primary_key=True, nullable=False)
+    volume_type_id = Column(String(36),
+                            ForeignKey('volume_types.id'),
+                            nullable=False)
+    group_id = Column(String(36),
+                      ForeignKey('groups.id'),
+                      nullable=False)
+
+    group = relationship(
+        Group,
+        backref="volume_types",
+        foreign_keys=group_id,
+        primaryjoin='and_('
+        'GroupVolumeTypeMapping.group_id == Group.id,'
+        'GroupVolumeTypeMapping.deleted == False)'
+    )
+
+
 class VolumeTypeProjects(BASE, CinderBase):
     """Represent projects associated volume_types."""
     __tablename__ = "volume_type_projects"
@@ -273,6 +432,28 @@ class VolumeTypeProjects(BASE, CinderBase):
         'VolumeTypeProjects.deleted == 0)')
 
 
+class GroupTypeProjects(BASE, CinderBase):
+    """Represent projects associated group_types."""
+    __tablename__ = "group_type_projects"
+    __table_args__ = (schema.UniqueConstraint(
+        "group_type_id", "project_id", "deleted",
+        name="uniq_group_type_projects0group_type_id0project_id0deleted"),
+    )
+    id = Column(Integer, primary_key=True)
+    group_type_id = Column(Integer, ForeignKey('group_types.id'),
+                           nullable=False)
+    project_id = Column(String(255))
+    deleted = Column(Integer, default=0)
+
+    group_type = relationship(
+        GroupTypes,
+        backref="projects",
+        foreign_keys=group_type_id,
+        primaryjoin='and_('
+        'GroupTypeProjects.group_type_id == GroupTypes.id,'
+        'GroupTypeProjects.deleted == 0)')
+
+
 class VolumeTypeExtraSpecs(BASE, CinderBase):
     """Represents additional specs as key/value pairs for a volume_type."""
     __tablename__ = 'volume_type_extra_specs'
@@ -292,38 +473,59 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
     )
 
 
+class GroupTypeSpecs(BASE, CinderBase):
+    """Represents additional specs as key/value pairs for a group_type."""
+    __tablename__ = 'group_type_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    group_type_id = Column(String(36),
+                           ForeignKey('group_types.id'),
+                           nullable=False)
+    group_type = relationship(
+        GroupTypes,
+        backref="group_specs",
+        foreign_keys=group_type_id,
+        primaryjoin='and_('
+        'GroupTypeSpecs.group_type_id == GroupTypes.id,'
+        'GroupTypeSpecs.deleted == False)'
+    )
+
+
 class QualityOfServiceSpecs(BASE, CinderBase):
     """Represents QoS specs as key/value pairs.
 
     QoS specs is standalone entity that can be associated/disassociated
     with volume types (one to many relation).  Adjacency list relationship
     pattern is used in this model in order to represent following hierarchical
-    data with in flat table, e.g, following structure
+    data with in flat table, e.g, following structure:
 
-    qos-specs-1  'Rate-Limit'
-         |
-         +------>  consumer = 'front-end'
-         +------>  total_bytes_sec = 1048576
-         +------>  total_iops_sec = 500
+    .. code-block:: none
 
-    qos-specs-2  'QoS_Level1'
-         |
-         +------>  consumer = 'back-end'
-         +------>  max-iops =  1000
-         +------>  min-iops = 200
+      qos-specs-1  'Rate-Limit'
+           |
+           +------>  consumer = 'front-end'
+           +------>  total_bytes_sec = 1048576
+           +------>  total_iops_sec = 500
 
-    is represented by:
+      qos-specs-2  'QoS_Level1'
+           |
+           +------>  consumer = 'back-end'
+           +------>  max-iops =  1000
+           +------>  min-iops = 200
 
-      id       specs_id       key                  value
-    ------     --------   -------------            -----
-    UUID-1     NULL       QoSSpec_Name           Rate-Limit
-    UUID-2     UUID-1       consumer             front-end
-    UUID-3     UUID-1     total_bytes_sec        1048576
-    UUID-4     UUID-1     total_iops_sec           500
-    UUID-5     NULL       QoSSpec_Name           QoS_Level1
-    UUID-6     UUID-5       consumer             back-end
-    UUID-7     UUID-5       max-iops               1000
-    UUID-8     UUID-5       min-iops               200
+      is represented by:
+
+        id       specs_id       key                  value
+      ------     --------   -------------            -----
+      UUID-1     NULL       QoSSpec_Name           Rate-Limit
+      UUID-2     UUID-1       consumer             front-end
+      UUID-3     UUID-1     total_bytes_sec        1048576
+      UUID-4     UUID-1     total_iops_sec           500
+      UUID-5     NULL       QoSSpec_Name           QoS_Level1
+      UUID-6     UUID-5       consumer             back-end
+      UUID-7     UUID-5       max-iops               1000
+      UUID-8     UUID-5       min-iops               200
     """
     __tablename__ = 'quality_of_service_specs'
     id = Column(String(36), primary_key=True)
@@ -465,6 +667,7 @@ class Snapshot(BASE, CinderBase):
 
     volume_id = Column(String(36))
     cgsnapshot_id = Column(String(36))
+    group_snapshot_id = Column(String(36))
     status = Column(String(255))
     progress = Column(String(255))
     volume_size = Column(Integer)
@@ -488,6 +691,12 @@ class Snapshot(BASE, CinderBase):
         backref="snapshots",
         foreign_keys=cgsnapshot_id,
         primaryjoin='Snapshot.cgsnapshot_id == Cgsnapshot.id')
+
+    group_snapshot = relationship(
+        GroupSnapshot,
+        backref="snapshots",
+        foreign_keys=group_snapshot_id,
+        primaryjoin='Snapshot.group_snapshot_id == GroupSnapshot.id')
 
 
 class SnapshotMetadata(BASE, CinderBase):
@@ -597,11 +806,29 @@ class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
     value = Column(String(255))
 
 
+class Message(BASE, CinderBase):
+    """Represents a message"""
+    __tablename__ = 'messages'
+    id = Column(String(36), primary_key=True, nullable=False)
+    project_id = Column(String(36), nullable=False)
+    # Info/Error/Warning.
+    message_level = Column(String(255), nullable=False)
+    request_id = Column(String(255), nullable=True)
+    resource_type = Column(String(255))
+    # The uuid of the related resource.
+    resource_uuid = Column(String(36), nullable=True)
+    # Operation specific event ID.
+    event_id = Column(String(255), nullable=False)
+    # After this time the message may no longer exist
+    expires_at = Column(DateTime, nullable=True)
+
+
 class ImageVolumeCacheEntry(BASE, models.ModelBase):
     """Represents an image volume cache entry"""
     __tablename__ = 'image_volume_cache_entries'
     id = Column(Integer, primary_key=True, nullable=False)
     host = Column(String(255), index=True, nullable=False)
+    cluster_name = Column(String(255), nullable=True)
     image_id = Column(String(36), index=True, nullable=False)
     image_updated_at = Column(DateTime, nullable=False)
     volume_id = Column(String(36), nullable=False)
@@ -609,28 +836,62 @@ class ImageVolumeCacheEntry(BASE, models.ModelBase):
     last_used = Column(DateTime, default=lambda: timeutils.utcnow())
 
 
-def register_models():
-    """Register Models and create metadata.
+class Worker(BASE, CinderBase):
+    """Represents all resources that are being worked on by a node."""
+    __tablename__ = 'workers'
+    __table_args__ = (schema.UniqueConstraint('resource_type', 'resource_id'),
+                      {'mysql_engine': 'InnoDB'})
 
-    Called from cinder.db.sqlalchemy.__init__ as part of loading the driver,
-    it will never need to be called explicitly elsewhere unless the
-    connection is lost and needs to be reestablished.
-    """
-    from sqlalchemy import create_engine
-    models = (Backup,
-              Service,
-              Volume,
-              VolumeMetadata,
-              VolumeAdminMetadata,
-              VolumeAttachment,
-              SnapshotMetadata,
-              Transfer,
-              VolumeTypeExtraSpecs,
-              VolumeTypes,
-              VolumeGlanceMetadata,
-              ConsistencyGroup,
-              Cgsnapshot
-              )
-    engine = create_engine(CONF.database.connection, echo=False)
-    for model in models:
-        model.metadata.create_all(engine)
+    # We want to overwrite default updated_at definition so we timestamp at
+    # creation as well
+    updated_at = Column(DateTime, default=timeutils.utcnow,
+                        onupdate=timeutils.utcnow)
+
+    # Id added for convenience and speed on some operations
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Type of the resource we are working on (Volume, Snapshot, Backup) it must
+    # match the Versioned Object class name.
+    resource_type = Column(String(40), primary_key=True, nullable=False)
+    # UUID of the resource we are working on
+    resource_id = Column(String(36), primary_key=True, nullable=False)
+
+    # Status that should be cleaned on service failure
+    status = Column(String(255), nullable=False)
+
+    # Service that is currently processing the operation
+    service_id = Column(Integer, nullable=True)
+
+    # To prevent claiming and updating races
+    race_preventer = Column(Integer, nullable=False, default=0)
+
+    # This is a flag we don't need to store in the DB as it is only used when
+    # we are doing the cleanup to let decorators know
+    cleaning = False
+
+    service = relationship(
+        'Service',
+        backref="workers",
+        foreign_keys=service_id,
+        primaryjoin='Worker.service_id == Service.id')
+
+
+class AttachmentSpecs(BASE, CinderBase):
+    """Represents attachment specs as k/v pairs for a volume_attachment."""
+
+    __tablename__ = 'attachment_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    attachment_id = (
+        Column(String(36),
+               ForeignKey('volume_attachment.id'),
+               nullable=False))
+    volume_attachment = relationship(
+        VolumeAttachment,
+        backref="attachment_specs",
+        foreign_keys=attachment_id,
+        primaryjoin='and_('
+        'AttachmentSpecs.attachment_id == VolumeAttachment.id,'
+        'AttachmentSpecs.deleted == False)'
+    )

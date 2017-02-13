@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import strutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -24,106 +25,17 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import consistencygroups as consistencygroup_views
-from cinder.api import xmlutil
-from cinder import consistencygroup as consistencygroupAPI
+from cinder import consistencygroup as consistencygroup_api
 from cinder import exception
+from cinder import group as group_api
 from cinder.i18n import _, _LI
-from cinder import utils
+from cinder.objects import cgsnapshot as cgsnap_obj
+from cinder.objects import consistencygroup as cg_obj
+from cinder.objects import group as grp_obj
+from cinder.objects import group_snapshot as grpsnap_obj
+from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
-
-
-def make_consistencygroup(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('availability_zone')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('description')
-
-
-def make_consistencygroup_from_src(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('description')
-    elem.set('cgsnapshot_id')
-    elem.set('source_cgid')
-
-
-class ConsistencyGroupTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroup',
-                                       selector='consistencygroup')
-        make_consistencygroup(root)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ConsistencyGroupsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroups')
-        elem = xmlutil.SubTemplateElement(root, 'consistencygroup',
-                                          selector='consistencygroups')
-        make_consistencygroup(elem)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ConsistencyGroupFromSrcTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroup-from-src',
-                                       selector='consistencygroup-from-src')
-        make_consistencygroup_from_src(root)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class CreateDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        consistencygroup = self._extract_consistencygroup(dom)
-        return {'body': {'consistencygroup': consistencygroup}}
-
-    def _extract_consistencygroup(self, node):
-        consistencygroup = {}
-        consistencygroup_node = self.find_first_child_named(
-            node,
-            'consistencygroup')
-
-        attributes = ['name',
-                      'description']
-
-        for attr in attributes:
-            if consistencygroup_node.getAttribute(attr):
-                consistencygroup[attr] = consistencygroup_node.\
-                    getAttribute(attr)
-        return consistencygroup
-
-
-class CreateFromSrcDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        consistencygroup = self._extract_consistencygroup(dom)
-        retval = {'body': {'consistencygroup-from-src': consistencygroup}}
-        return retval
-
-    def _extract_consistencygroup(self, node):
-        consistencygroup = {}
-        consistencygroup_node = self.find_first_child_named(
-            node, 'consistencygroup-from-src')
-
-        attributes = ['cgsnapshot', 'source_cgid', 'name', 'description']
-
-        for attr in attributes:
-            if consistencygroup_node.getAttribute(attr):
-                consistencygroup[attr] = (
-                    consistencygroup_node.getAttribute(attr))
-        return consistencygroup
 
 
 class ConsistencyGroupsController(wsgi.Controller):
@@ -132,21 +44,17 @@ class ConsistencyGroupsController(wsgi.Controller):
     _view_builder_class = consistencygroup_views.ViewBuilder
 
     def __init__(self):
-        self.consistencygroup_api = consistencygroupAPI.API()
+        self.consistencygroup_api = consistencygroup_api.API()
+        self.group_api = group_api.API()
         super(ConsistencyGroupsController, self).__init__()
 
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
     def show(self, req, id):
         """Return data about the given consistency group."""
         LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
-        try:
-            consistencygroup = self.consistencygroup_api.get(
-                context,
-                group_id=id)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        consistencygroup = self._get(context, id)
 
         return self._view_builder.detail(req, consistencygroup)
 
@@ -169,28 +77,55 @@ class ConsistencyGroupsController(wsgi.Controller):
                 msg = _("Invalid value '%s' for force.") % force
                 raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI('Delete consistency group with id: %s'), id,
-                 context=context)
+        LOG.info(_LI('Delete consistency group with id: %s'), id)
 
         try:
-            group = self.consistencygroup_api.get(context, id)
-            self.consistencygroup_api.delete(context, group, force)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+            group = self._get(context, id)
+            if isinstance(group, cg_obj.ConsistencyGroup):
+                self.consistencygroup_api.delete(context, group, force)
+            elif isinstance(group, grp_obj.Group):
+                consistencygroup_api.api.check_policy(context, 'delete')
+                self.group_api.delete(context, group, force)
+            else:
+                msg = _("Group '%s' not found.") % id
+                raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.serializers(xml=ConsistencyGroupsTemplate)
     def index(self, req):
         """Returns a summary list of consistency groups."""
         return self._get_consistencygroups(req, is_detail=False)
 
-    @wsgi.serializers(xml=ConsistencyGroupsTemplate)
     def detail(self, req):
         """Returns a detailed list of consistency groups."""
         return self._get_consistencygroups(req, is_detail=True)
+
+    def _get(self, context, id):
+        # Not found exception will be handled at the wsgi level
+        try:
+            consistencygroup = self.consistencygroup_api.get(
+                context,
+                group_id=id)
+        except exception.ConsistencyGroupNotFound:
+            consistencygroup = self.group_api.get(context, group_id=id)
+
+        return consistencygroup
+
+    def _get_cgsnapshot(self, context, id):
+        # Not found exception will be handled at the wsgi level
+        try:
+            cgsnapshot = self.consistencygroup_api.get_cgsnapshot(
+                context,
+                cgsnapshot_id=id)
+        except exception.CgSnapshotNotFound:
+            cgsnapshot = self.group_api.get_group_snapshot(
+                context,
+                group_snapshot_id=id)
+
+        return cgsnapshot
 
     def _get_consistencygroups(self, req, is_detail):
         """Returns a list of consistency groups through view builder."""
@@ -203,17 +138,25 @@ class ConsistencyGroupsController(wsgi.Controller):
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
 
+        groups = self.group_api.get_all(
+            context, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
+
         if is_detail:
             consistencygroups = self._view_builder.detail_list(
                 req, consistencygroups)
+            groups = self._view_builder.detail_list(req, groups)
         else:
             consistencygroups = self._view_builder.summary_list(
                 req, consistencygroups)
+            groups = self._view_builder.summary_list(req, groups)
+
+        consistencygroups['consistencygroups'] = (
+            consistencygroups['consistencygroups'] +
+            groups['consistencygroups'])
         return consistencygroups
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
-    @wsgi.deserializers(xml=CreateDeserializer)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new consistency group."""
         LOG.debug('Creating new consistency group %s', body)
@@ -229,29 +172,36 @@ class ConsistencyGroupsController(wsgi.Controller):
             msg = _("volume_types must be provided to create "
                     "consistency group %(name)s.") % {'name': name}
             raise exc.HTTPBadRequest(explanation=msg)
+        volume_types = volume_types.rstrip(',').split(',')
         availability_zone = consistencygroup.get('availability_zone', None)
+        group_type = group_types.get_default_cgsnapshot_type()
+        if not group_type:
+            msg = (_('Group type %s not found. Rerun migration script to '
+                     'create the default cgsnapshot type.') %
+                   group_types.DEFAULT_CGSNAPSHOT_TYPE)
+            raise exc.HTTPBadRequest(explanation=msg)
 
         LOG.info(_LI("Creating consistency group %(name)s."),
-                 {'name': name},
-                 context=context)
+                 {'name': name})
 
         try:
-            new_consistencygroup = self.consistencygroup_api.create(
-                context, name, description, volume_types,
+            consistencygroup_api.api.check_policy(context, 'create')
+            new_consistencygroup = self.group_api.create(
+                context, name, description, group_type['id'], volume_types,
                 availability_zone=availability_zone)
-        except exception.InvalidConsistencyGroup as error:
+        except (exception.InvalidConsistencyGroup,
+                exception.InvalidGroup,
+                exception.InvalidVolumeType,
+                exception.ObjectActionError) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.InvalidVolumeType as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.NotFound:
+            # Not found exception will be handled at the wsgi level
+            raise
 
         retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=ConsistencyGroupFromSrcTemplate)
-    @wsgi.deserializers(xml=CreateFromSrcDeserializer)
+    @wsgi.response(http_client.ACCEPTED)
     def create_from_src(self, req, body):
         """Create a new consistency group from a source.
 
@@ -284,53 +234,100 @@ class ConsistencyGroupsController(wsgi.Controller):
         if cgsnapshot_id:
             LOG.info(_LI("Creating consistency group %(name)s from "
                          "cgsnapshot %(snap)s."),
-                     {'name': name, 'snap': cgsnapshot_id},
-                     context=context)
+                     {'name': name, 'snap': cgsnapshot_id})
         elif source_cgid:
             LOG.info(_LI("Creating consistency group %(name)s from "
                          "source consistency group %(source_cgid)s."),
-                     {'name': name, 'source_cgid': source_cgid},
-                     context=context)
+                     {'name': name, 'source_cgid': source_cgid})
 
         try:
-            new_consistencygroup = self.consistencygroup_api.create_from_src(
-                context, name, description, cgsnapshot_id, source_cgid)
+            src_grp = None
+            src_snap = None
+            if source_cgid:
+                src_grp = self._get(context, source_cgid)
+            if cgsnapshot_id:
+                src_snap = self._get_cgsnapshot(context, cgsnapshot_id)
+            if (isinstance(src_grp, cg_obj.ConsistencyGroup) or
+                    isinstance(src_snap, cgsnap_obj.CGSnapshot)):
+                new_group = self.consistencygroup_api.create_from_src(
+                    context, name, description, cgsnapshot_id, source_cgid)
+            elif (isinstance(src_grp, grp_obj.Group) or
+                    isinstance(src_snap, grpsnap_obj.GroupSnapshot)):
+                consistencygroup_api.api.check_policy(context, 'create')
+                new_group = self.group_api.create_from_src(
+                    context, name, description, cgsnapshot_id, source_cgid)
+            else:
+                msg = (_("Source CGSnapshot %(cgsnap)s or source CG %(cg)s "
+                         "not found.") % {'cgsnap': cgsnapshot_id,
+                                          'cg': source_cgid})
+                raise exc.HTTPNotFound(explanation=msg)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.CgSnapshotNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.NotFound:
+            # Not found exception will be handled at the wsgi level
+            raise
         except exception.CinderException as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        retval = self._view_builder.summary(req, new_consistencygroup)
+        retval = self._view_builder.summary(req, new_group)
         return retval
 
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
+    def _check_update_parameters(self, name, description, add_volumes,
+                                 remove_volumes):
+        if not (name or description or add_volumes or remove_volumes):
+            msg = _("Name, description, add_volumes, and remove_volumes "
+                    "can not be all empty in the request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+    def _update(self, context, id, name, description, add_volumes,
+                remove_volumes,
+                allow_empty=False):
+        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
+                     "description: %(description)s add_volumes: "
+                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
+                 {'id': id,
+                  'name': name,
+                  'description': description,
+                  'add_volumes': add_volumes,
+                  'remove_volumes': remove_volumes})
+
+        group = self._get(context, id)
+        if isinstance(group, cg_obj.ConsistencyGroup):
+            self.consistencygroup_api.update(context, group, name, description,
+                                             add_volumes, remove_volumes,
+                                             allow_empty)
+        elif isinstance(group, grp_obj.Group):
+            self.group_api.update(context, group, name, description,
+                                  add_volumes, remove_volumes)
+        else:
+            msg = _("Group '%s' not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+
     def update(self, req, id, body):
         """Update the consistency group.
 
         Expected format of the input parameter 'body':
-        {
-            "consistencygroup":
+
+        .. code-block:: json
+
             {
-                "name": "my_cg",
-                "description": "My consistency group",
-                "add_volumes": "volume-uuid-1,volume-uuid-2,..."
-                "remove_volumes": "volume-uuid-8,volume-uuid-9,..."
+                "consistencygroup":
+                {
+                    "name": "my_cg",
+                    "description": "My consistency group",
+                    "add_volumes": "volume-uuid-1,volume-uuid-2,...",
+                    "remove_volumes": "volume-uuid-8,volume-uuid-9,..."
+                }
             }
-        }
+
         """
         LOG.debug('Update called for consistency group %s.', id)
-
         if not body:
             msg = _("Missing request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
         self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
-
         consistencygroup = body.get('consistencygroup', None)
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -338,32 +335,11 @@ class ConsistencyGroupsController(wsgi.Controller):
         add_volumes = consistencygroup.get('add_volumes', None)
         remove_volumes = consistencygroup.get('remove_volumes', None)
 
-        if (not name and not description and not add_volumes
-                and not remove_volumes):
-            msg = _("Name, description, add_volumes, and remove_volumes "
-                    "can not be all empty in the request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
-                     "description: %(description)s add_volumes: "
-                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
-                 {'id': id, 'name': name,
-                  'description': description,
-                  'add_volumes': add_volumes,
-                  'remove_volumes': remove_volumes},
-                 context=context)
-
-        try:
-            group = self.consistencygroup_api.get(context, id)
-            self.consistencygroup_api.update(
-                context, group, name, description,
-                add_volumes, remove_volumes)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.InvalidConsistencyGroup as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
-
-        return webob.Response(status_int=202)
+        self._check_update_parameters(name, description, add_volumes,
+                                      remove_volumes)
+        self._update(context, id, name, description, add_volumes,
+                     remove_volumes)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class Consistencygroups(extensions.ExtensionDescriptor):
@@ -371,7 +347,6 @@ class Consistencygroups(extensions.ExtensionDescriptor):
 
     name = 'Consistencygroups'
     alias = 'consistencygroups'
-    namespace = 'http://docs.openstack.org/volume/ext/consistencygroups/api/v1'
     updated = '2014-08-18T00:00:00+00:00'
 
     def get_resources(self):

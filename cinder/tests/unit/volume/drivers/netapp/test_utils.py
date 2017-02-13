@@ -104,10 +104,12 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual('new_fake_value', fake_object.fake_attr)
 
     def test_round_down(self):
+        self.assertAlmostEqual(na_utils.round_down(5.567), 5.56)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0.00'), 5.56)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0.0'), 5.5)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0'), 5)
         self.assertAlmostEqual(na_utils.round_down(0, '0.00'), 0)
+        self.assertAlmostEqual(na_utils.round_down(-5.567), -5.56)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.00'), -5.56)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.0'), -5.5)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)
@@ -133,7 +135,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         actual_properties_mapped = actual_properties['data']
 
-        self.assertIs(type(actual_properties_mapped['target_lun']), int)
+        self.assertIs(int, type(actual_properties_mapped['target_lun']))
 
     def test_iscsi_connection_lun_id_type_dict(self):
         FAKE_LUN_ID = {'id': 'fake_id'}
@@ -148,8 +150,8 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         fake_volume_type = {'extra_specs': fake_extra_specs}
         fake_volume = {'volume_type_id': 'fake_volume_type_id'}
         self.mock_object(context, 'get_admin_context')
-        self.mock_object(volume_types, 'get_volume_type', mock.Mock(
-            return_value=fake_volume_type))
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_value=fake_volume_type)
         self.mock_object(na_utils, 'log_extra_spec_warnings')
 
         result = na_utils.get_volume_extra_specs(fake_volume)
@@ -169,8 +171,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
     def test_get_volume_extra_specs_no_volume_type(self):
         fake_volume = {'volume_type_id': 'fake_volume_type_id'}
         self.mock_object(context, 'get_admin_context')
-        self.mock_object(volume_types, 'get_volume_type', mock.Mock(
-            return_value=None))
+        self.mock_object(volume_types, 'get_volume_type', return_value=None)
         self.mock_object(na_utils, 'log_extra_spec_warnings')
 
         result = na_utils.get_volume_extra_specs(fake_volume)
@@ -539,9 +540,6 @@ class OpenStackInfoTestCase(test.TestCase):
     DEB_RLS = 'upstream_version-debian_revision'
     DEB_VENDOR = 'debian_revision'
 
-    def setUp(self):
-        super(OpenStackInfoTestCase, self).setUp()
-
     def test_openstack_info_init(self):
         info = na_utils.OpenStackInfo()
 
@@ -815,9 +813,6 @@ class FeaturesTestCase(test.TestCase):
 
 @ddt.ddt
 class BitSetTestCase(test.TestCase):
-
-    def setUp(self):
-        super(BitSetTestCase, self).setUp()
 
     def test_default(self):
         self.assertEqual(na_utils.BitSet(0), na_utils.BitSet())

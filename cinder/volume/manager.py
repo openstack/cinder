@@ -24,7 +24,6 @@ intact.
 
 **Related Flags**
 
-:volume_topic:  What :mod:`rpc` topic to listen to (default: `cinder-volume`).
 :volume_manager:  The module name of a class derived from
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).
@@ -35,6 +34,7 @@ intact.
 :num_shell_tries:  Number of times to attempt to run commands (default: 3)
 
 """
+
 
 import requests
 import time
@@ -53,15 +53,25 @@ profiler = importutils.try_import('osprofiler.profiler')
 import six
 from taskflow import exceptions as tfe
 
+from cinder.common import constants
 from cinder import compute
 from cinder import context
+from cinder import coordination
+from cinder import db
 from cinder import exception
 from cinder import flow_utils
+from cinder import keymgr as key_manager
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import cache as image_cache
 from cinder.image import glance
+from cinder.image import image_utils
 from cinder import manager
+from cinder.message import api as message_api
+from cinder.message import defined_messages
+from cinder.message import resource_types
 from cinder import objects
+from cinder.objects import cgsnapshot
+from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder import quota
 from cinder import utils
@@ -70,6 +80,7 @@ from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume.flows.manager import manage_existing_snapshot
+from cinder.volume import group_types
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
@@ -78,7 +89,13 @@ LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 VALID_REMOVE_VOL_FROM_CG_STATUS = (
+    'available',
+    'in-use',
+    'error',
+    'error_deleting')
+VALID_REMOVE_VOL_FROM_GROUP_STATUS = (
     'available',
     'in-use',
     'error',
@@ -86,8 +103,14 @@ VALID_REMOVE_VOL_FROM_CG_STATUS = (
 VALID_ADD_VOL_TO_CG_STATUS = (
     'available',
     'in-use')
-VALID_CREATE_CG_SRC_SNAP_STATUS = ('available',)
+VALID_ADD_VOL_TO_GROUP_STATUS = (
+    'available',
+    'in-use')
+VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
+VALID_CREATE_GROUP_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
+VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
+VA_LIST = objects.VolumeAttachmentList
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -122,99 +145,40 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver',
-    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000ISCSIDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver',
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
-    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000FCDriver':
-    'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
-    'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
-    'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver',
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
-    'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver',
+    'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
     'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
-    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver':
-    'cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver',
-    'cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver':
-    'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver':
-    'cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver',
-    'cinder.volume.drivers.san.hp.hp_xp_fc.HPXPFCDriver':
-    'cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver',
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
+    'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver':
+    'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver':
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
+    'cinder.volume.drivers.ibm.xiv_ds8k':
+    'cinder.volume.drivers.ibm.ibm_storage',
+    'cinder.volume.drivers.emc.scaleio':
+    'cinder.volume.drivers.dell_emc.scaleio.driver',
+    'cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver':
+    'cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver',
+    'cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver':
+    'cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver',
+    'cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver':
+    'cinder.volume.drivers.dell_emc.xtremio.XtremIOFCDriver',
+    'cinder.volume.drivers.datera.DateraDriver':
+    'cinder.volume.drivers.datera.datera_iscsi.DateraDriver',
+    'cinder.volume.drivers.emc.emc_vmax_iscsi.EMCVMAXISCSIDriver':
+    'cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver',
+    'cinder.volume.drivers.emc.emc_vmax_fc.EMCVMAXFCDriver':
+    'cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver',
+    'cinder.volume.drivers.eqlx.DellEQLSanISCSIDriver':
+    'cinder.volume.drivers.dell_emc.ps.PSSeriesISCSIDriver',
 }
 
 
-def locked_volume_operation(f):
-    """Lock decorator for volume operations.
-
-    Takes a named lock prior to executing the operation. The lock is named with
-    the operation executed and the id of the volume. This lock can then be used
-    by other operations to avoid operation conflicts on shared volumes.
-
-    Example use:
-
-    If a volume operation uses this decorator, it will block until the named
-    lock is free. This is used to protect concurrent operations on the same
-    volume e.g. delete VolA while create volume VolB from VolA is in progress.
-    """
-    def lvo_inner1(inst, context, volume_id, **kwargs):
-        @utils.synchronized("%s-%s" % (volume_id, f.__name__), external=True)
-        def lvo_inner2(*_args, **_kwargs):
-            return f(*_args, **_kwargs)
-        return lvo_inner2(inst, context, volume_id, **kwargs)
-    return lvo_inner1
-
-
-def locked_detach_operation(f):
-    """Lock decorator for volume detach operations.
-
-    Takes a named lock prior to executing the detach call.  The lock is named
-    with the operation executed and the id of the volume. This lock can then
-    be used by other operations to avoid operation conflicts on shared volumes.
-
-    This locking mechanism is only for detach calls.   We can't use the
-    locked_volume_operation, because detach requires an additional
-    attachment_id in the parameter list.
-    """
-    def ldo_inner1(inst, context, volume_id, attachment_id=None, **kwargs):
-        @utils.synchronized("%s-%s" % (volume_id, f.__name__), external=True)
-        def ldo_inner2(*_args, **_kwargs):
-            return f(*_args, **_kwargs)
-        return ldo_inner2(inst, context, volume_id, attachment_id, **kwargs)
-    return ldo_inner1
-
-
-def locked_snapshot_operation(f):
-    """Lock decorator for snapshot operations.
-
-    Takes a named lock prior to executing the operation. The lock is named with
-    the operation executed and the id of the snapshot. This lock can then be
-    used by other operations to avoid operation conflicts on shared snapshots.
-
-    Example use:
-
-    If a snapshot operation uses this decorator, it will block until the named
-    lock is free. This is used to protect concurrent operations on the same
-    snapshot e.g. delete SnapA while create volume VolA from SnapA is in
-    progress.
-    """
-    def lso_inner1(inst, context, snapshot, **kwargs):
-        @utils.synchronized("%s-%s" % (snapshot.id, f.__name__), external=True)
-        def lso_inner2(*_args, **_kwargs):
-            return f(*_args, **_kwargs)
-        return lso_inner2(inst, context, snapshot, **kwargs)
-    return lso_inner1
-
-
-class VolumeManager(manager.SchedulerDependentManager):
+class VolumeManager(manager.CleanableManager,
+                    manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = volume_rpcapi.VolumeAPI.RPC_API_VERSION
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -225,7 +189,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     _VOLUME_CLONE_SKIP_PROPERTIES = {
         'id', '_name_id', 'name_id', 'name', 'status',
         'attach_status', 'migration_status', 'volume_type',
-        'consistencygroup', 'volume_attachment'}
+        'consistencygroup', 'volume_attachment', 'group'}
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -233,7 +197,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
-        self.additional_endpoints.append(_VolumeV1Proxy(self))
         self.configuration = config.Configuration(volume_manager_opts,
                                                   config_group=service_name)
         self.stats = {}
@@ -252,14 +215,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.debug("Cinder Volume DB check: vol_db_empty=%s", vol_db_empty)
 
         # We pass the current setting for service.active_backend_id to
-        # the driver on init, incase there was a restart or something
+        # the driver on init, in case there was a restart or something
         curr_active_backend_id = None
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
             service = objects.Service.get_by_args(
                 context.get_admin_context(),
                 svc_host,
-                'cinder-volume')
+                constants.VOLUME_BINARY)
         except exception.ServiceNotFound:
             # NOTE(jdg): This is to solve problems with unit tests
             LOG.info(_LI("Service not found for updating "
@@ -275,13 +238,23 @@ class VolumeManager(manager.SchedulerDependentManager):
             requests.packages.urllib3.disable_warnings(
                 requests.packages.urllib3.exceptions.InsecurePlatformWarning)
 
+        self.key_manager = key_manager.API(CONF)
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
             db=self.db,
             host=self.host,
+            cluster_name=self.cluster,
             is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
+
+        if self.cluster and not self.driver.SUPPORTS_ACTIVE_ACTIVE:
+            msg = _LE('Active-Active configuration is not currently supported '
+                      'by driver %s.') % volume_driver
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        self.message_api = message_api.API()
 
         if CONF.profiler.enabled and profiler is not None:
             self.driver = profiler.trace_cls("driver")(self.driver)
@@ -315,9 +288,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.info(_LI('Image-volume cache disabled for host %(host)s.'),
                      {'host': self.host})
             self.image_volume_cache = None
-
-    def _add_to_threadpool(self, func, *args, **kwargs):
-        self._tp.spawn_n(func, *args, **kwargs)
 
     def _count_allocated_capacity(self, ctxt, volume):
         pool = vol_utils.extract_host(volume['host'], 'pool')
@@ -378,23 +348,25 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def _sync_provider_info(self, ctxt, volumes, snapshots):
         # NOTE(jdg): For now this just updates provider_id, we can add more
-        # add more items to the update if theyr'e releveant but we need
-        # to be safe in what we allow and add a list of allowed keys
-        # things that make sense are provider_*, replication_status etc
+        # items to the update if they're relevant but we need to be safe in
+        # what we allow and add a list of allowed keys.  Things that make sense
+        # are provider_*, replication_status etc
 
         updates, snapshot_updates = self.driver.update_provider_info(
             volumes, snapshots)
-        host_vols = utils.list_of_dicts_to_dict(volumes, 'id')
 
-        for u in updates or []:
-            update = {}
-            # NOTE(JDG): Make sure returned item is in this hosts volumes
-            if host_vols.get(u['id'], None):
-                update['provider_id'] = u['provider_id']
-            if update:
-                self.db.volume_update(ctxt,
-                                      u['id'],
-                                      update)
+        if updates:
+            for volume in volumes:
+                # NOTE(JDG): Make sure returned item is in this hosts volumes
+                update = (
+                    [updt for updt in updates if updt['id'] ==
+                        volume['id']])
+                if update:
+                    update = update[0]
+                    self.db.volume_update(
+                        ctxt,
+                        update['id'],
+                        {'provider_id': update['provider_id']})
 
         # NOTE(jdg): snapshots are slighty harder, because
         # we do not have a host column and of course no get
@@ -411,12 +383,46 @@ class VolumeManager(manager.SchedulerDependentManager):
                     if update:
                         self.db.snapshot_update(
                             ctxt,
-                            updt['id'],
-                            {'provider_id': updt['provider_id']})
+                            update['id'],
+                            {'provider_id': update['provider_id']})
 
-    def init_host(self):
+    def _include_resources_in_cluster(self, ctxt):
+
+        LOG.info(_LI('Including all resources from host %(host)s in cluster '
+                     '%(cluster)s.'),
+                 {'host': self.host, 'cluster': self.cluster})
+        num_vols = objects.VolumeList.include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        num_cgs = objects.ConsistencyGroupList.include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        num_cache = db.image_volume_cache_include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        LOG.info(_LI('%(num_vols)s volumes, %(num_cgs)s consistency groups, '
+                     'and %(num_cache)s image volume caches from host '
+                     '%(host)s have been included in cluster %(cluster)s.'),
+                 {'num_vols': num_vols, 'num_cgs': num_cgs,
+                  'host': self.host, 'cluster': self.cluster,
+                  'num_cache': num_cache})
+
+    def init_host(self, added_to_cluster=None, **kwargs):
         """Perform any required initialization."""
         ctxt = context.get_admin_context()
+        if not self.driver.supported:
+            utils.log_unsupported_driver_warning(self.driver)
+
+            if not self.configuration.enable_unsupported_driver:
+                LOG.error(_LE("Unsupported drivers are disabled."
+                              " You can re-enable by adding "
+                              "enable_unsupported_driver=True to the "
+                              "driver section in cinder.conf"),
+                          resource={'type': 'driver',
+                                    'id': self.__class__.__name__})
+                return
+
+        # If we have just added this host to a cluster we have to include all
+        # our resources in that cluster.
+        if added_to_cluster:
+            self._include_resources_in_cluster(ctxt)
 
         LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s)"),
                  {'driver_name': self.driver.__class__.__name__,
@@ -435,14 +441,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Initialize backend capabilities list
         self.driver.init_capabilities()
 
-        volumes = objects.VolumeList.get_all_by_host(ctxt, self.host)
-        snapshots = self.db.snapshot_get_by_host(ctxt, self.host)
+        volumes = self._get_my_volumes(ctxt)
+        snapshots = self._get_my_snapshots(ctxt)
         self._sync_provider_info(ctxt, volumes, snapshots)
         # FIXME volume count for exporting is wrong
 
+        self.stats['pools'] = {}
+        self.stats.update({'allocated_capacity_gb': 0})
+
         try:
-            self.stats['pools'] = {}
-            self.stats.update({'allocated_capacity_gb': 0})
             for volume in volumes:
                 # available volume should also be counted into allocated
                 if volume['status'] in ['in-use', 'available']:
@@ -456,32 +463,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                         LOG.exception(_LE("Failed to re-export volume, "
                                           "setting to ERROR."),
                                       resource=volume)
-                        volume.status = 'error'
-                        volume.save()
-                elif volume['status'] in ('downloading', 'creating'):
-                    LOG.warning(_LW("Detected volume stuck "
-                                    "in %(curr_status)s "
-                                    "status, setting to ERROR."),
-                                {'curr_status': volume['status']},
-                                resource=volume)
+                        volume.conditional_update({'status': 'error'},
+                                                  {'status': 'in-use'})
+            # All other cleanups are processed by parent class CleanableManager
 
-                    if volume['status'] == 'downloading':
-                        self.driver.clear_download(ctxt, volume)
-                    volume.status = 'error'
-                    volume.save()
-                elif volume.status == 'uploading':
-                        # Set volume status to available or in-use.
-                        self.db.volume_update_status_based_on_attachment(
-                            ctxt, volume.id)
-                else:
-                    pass
-            snapshots = objects.SnapshotList.get_by_host(
-                ctxt, self.host, {'status': 'creating'})
-            for snapshot in snapshots:
-                LOG.warning(_LW("Detected snapshot stuck in creating "
-                            "status, setting to ERROR."), resource=snapshot)
-                snapshot.status = 'error'
-                snapshot.save()
         except Exception:
             LOG.exception(_LE("Error during re-export on driver init."),
                           resource=volume)
@@ -494,19 +479,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # that an entry exists in the service table
         self.driver.set_initialized()
 
-        for volume in volumes:
-            if volume['status'] == 'deleting':
-                if CONF.volume_service_inithost_offload:
-                    # Offload all the pending volume delete operations to the
-                    # threadpool to prevent the main volume service thread
-                    # from being blocked.
-                    self._add_to_threadpool(self.delete_volume, ctxt,
-                                            volume['id'])
-                else:
-                    # By default, delete volumes sequentially
-                    self.delete_volume(ctxt, volume['id'])
-                LOG.info(_LI("Resume volume delete completed successfully."),
-                         resource=volume)
+        # Keep the image tmp file clean when init host.
+        backend_name = vol_utils.extract_host(self.service_topic_queue)
+        image_utils.cleanup_temporary_file(backend_name)
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
@@ -514,11 +489,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
 
+        # Make sure to call CleanableManager to do the cleanup
+        super(VolumeManager, self).init_host(added_to_cluster=added_to_cluster,
+                                             **kwargs)
+
     def init_host_with_rpc(self):
         LOG.info(_LI("Initializing RPC dependent components of volume "
                      "driver %(driver_name)s (%(version)s)"),
                  {'driver_name': self.driver.__class__.__name__,
                   'version': self.driver.get_version()})
+
+        try:
+            # Make sure the driver is initialized first
+            utils.log_unsupported_driver_warning(self.driver)
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            LOG.error(_LE("Cannot complete RPC initialization because "
+                          "driver isn't initialized properly."),
+                      resource={'type': 'driver',
+                                'id': self.driver.__class__.__name__})
+            return
 
         stats = self.driver.get_volume_stats(refresh=True)
         svc_host = vol_utils.extract_host(self.host, 'backend')
@@ -526,7 +516,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             service = objects.Service.get_by_args(
                 context.get_admin_context(),
                 svc_host,
-                'cinder-volume')
+                constants.VOLUME_BINARY)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Service not found for updating "
@@ -544,6 +534,37 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
 
+    def _do_cleanup(self, ctxt, vo_resource):
+        if isinstance(vo_resource, objects.Volume):
+            if vo_resource.status == 'downloading':
+                self.driver.clear_download(ctxt, vo_resource)
+
+            elif vo_resource.status == 'uploading':
+                # Set volume status to available or in-use.
+                self.db.volume_update_status_based_on_attachment(
+                    ctxt, vo_resource.id)
+
+            elif vo_resource.status == 'deleting':
+                if CONF.volume_service_inithost_offload:
+                    # Offload all the pending volume delete operations to the
+                    # threadpool to prevent the main volume service thread
+                    # from being blocked.
+                    self._add_to_threadpool(self.delete_volume, ctxt,
+                                            vo_resource, cascade=True)
+                else:
+                    # By default, delete volumes sequentially
+                    self.delete_volume(ctxt, vo_resource, cascade=True)
+                # We signal that we take care of cleaning the worker ourselves
+                # (with set_workers decorator in delete_volume method) so
+                # do_cleanup method doesn't need to remove it.
+                return True
+
+        # For Volume creating and downloading and for Snapshot downloading
+        # statuses we have to set status to error
+        if vo_resource.status in ('creating', 'downloading'):
+            vo_resource.status = 'error'
+            vo_resource.save()
+
     def is_working(self):
         """Return if Manager is ready to accept requests.
 
@@ -553,22 +574,30 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         return self.driver.initialized
 
-    def create_volume(self, context, volume_id, request_spec=None,
-                      filter_properties=None, allow_reschedule=True,
-                      volume=None):
+    def _set_resource_host(self, resource):
+        """Set the host field on the DB to our own when we are clustered."""
+        if (resource.is_clustered and
+                not vol_utils.hosts_are_equivalent(resource.host, self.host)):
+            pool = vol_utils.extract_host(resource.host, 'pool')
+            resource.host = vol_utils.append_host(self.host, pool)
+            resource.save()
+
+    @objects.Volume.set_workers
+    def create_volume(self, context, volume, request_spec=None,
+                      filter_properties=None, allow_reschedule=True):
         """Creates the volume."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is None:
-            # For older clients, mimic the old behavior and look up the volume
-            # by its volume_id.
-            volume = objects.Volume.get_by_id(context, volume_id)
+        # Log about unsupported drivers
+        utils.log_unsupported_driver_warning(self.driver)
+
+        # Make sure the host in the DB matches our own when clustered
+        self._set_resource_host(volume)
 
         context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
 
         if request_spec is None:
-            request_spec = {}
+            request_spec = objects.RequestSpec()
 
         try:
             # NOTE(flaper87): Driver initialization is
@@ -580,7 +609,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver,
                 self.scheduler_rpcapi,
                 self.host,
-                volume.id,
+                volume,
                 allow_reschedule,
                 context,
                 request_spec,
@@ -616,23 +645,19 @@ class VolumeManager(manager.SchedulerDependentManager):
             with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
                 flow_engine.run()
 
-        @utils.synchronized(locked_action, external=True)
-        def _run_flow_locked():
-            _run_flow()
-
         # NOTE(dulek): Flag to indicate if volume was rescheduled. Used to
         # decide if allocated_capacity should be incremented.
         rescheduled = False
-        vol_ref = None
 
         try:
             if locked_action is None:
                 _run_flow()
             else:
-                _run_flow_locked()
+                with coordination.Lock(locked_action):
+                    _run_flow()
         finally:
             try:
-                vol_ref = flow_engine.storage.fetch('volume_ref')
+                flow_engine.storage.fetch('refreshed')
             except tfe.NotFound:
                 # If there's no vol_ref, then flow is reverted. Lets check out
                 # if rescheduling occurred.
@@ -644,21 +669,27 @@ class VolumeManager(manager.SchedulerDependentManager):
                     pass
 
             if not rescheduled:
-                if not vol_ref:
-                    # Flow was reverted and not rescheduled, fetching
-                    # volume_ref from the DB, because it will be needed.
-                    vol_ref = objects.Volume.get_by_id(context, volume.id)
                 # NOTE(dulek): Volume wasn't rescheduled so we need to update
                 # volume stats as these are decremented on delete.
-                self._update_allocated_capacity(vol_ref)
+                self._update_allocated_capacity(volume)
 
-        LOG.info(_LI("Created volume successfully."), resource=vol_ref)
-        return vol_ref.id
+        LOG.info(_LI("Created volume successfully."), resource=volume)
+        return volume.id
 
-    @locked_volume_operation
-    def delete_volume(self, context, volume_id,
-                      unmanage_only=False,
-                      volume=None,
+    def _check_is_our_resource(self, resource):
+        if resource.host:
+            res_backend = vol_utils.extract_host(resource.service_topic_queue)
+            backend = vol_utils.extract_host(self.service_topic_queue)
+            if res_backend != backend:
+                msg = (_('Invalid %(resource)s: %(resource)s %(id)s is not '
+                         'local to %(backend)s.') %
+                       {'resource': resource.obj_name, 'id': resource.id,
+                        'backend': backend})
+                raise exception.Invalid(msg)
+
+    @coordination.synchronized('{volume.id}-{f_name}')
+    @objects.Volume.set_workers
+    def delete_volume(self, context, volume, unmanage_only=False,
                       cascade=False):
         """Deletes and unexports volume.
 
@@ -673,16 +704,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
 
         try:
-            # FIXME(thangp): Remove this in v2.0 of RPC API.
-            if volume is None:
-                volume = objects.Volume.get_by_id(context, volume_id)
-            else:
-                volume.refresh()
+            volume.refresh()
         except exception.VolumeNotFound:
             # NOTE(thingee): It could be possible for a volume to
             # be deleted when resuming deletes from init_host().
-            LOG.debug("Attempted delete of non-existent volume: %s",
-                      volume_id)
+            LOG.debug("Attempted delete of non-existent volume: %s", volume.id)
             return
 
         if context.project_id != volume.project_id:
@@ -690,12 +716,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             project_id = context.project_id
 
-        if volume['attach_status'] == "attached":
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             # Volume is still attached, need to detach first
-            raise exception.VolumeAttached(volume_id=volume_id)
-        if vol_utils.extract_host(volume.host) != self.host:
-            raise exception.InvalidVolume(
-                reason=_("volume is not local to this node"))
+            raise exception.VolumeAttached(volume_id=volume.id)
+        self._check_is_our_resource(volume)
 
         if unmanage_only and cascade:
             # This could be done, but is ruled out for now just
@@ -712,7 +736,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         is_migrating_dest = (is_migrating and
                              volume.migration_status.startswith(
                                  'target:'))
-        self._notify_about_volume_usage(context, volume, "delete.start")
+        notification = "delete.start"
+        if unmanage_only:
+            notification = "unmanage.start"
+        self._notify_about_volume_usage(context, volume, notification)
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -755,36 +782,44 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 # If this is a destination volume, we have to clear the
                 # database record to avoid user confusion.
+                new_status = 'error_deleting'
+                if unmanage_only is True:
+                    new_status = 'error_unmanaging'
+
                 self._clear_db(context, is_migrating_dest, volume,
-                               'error_deleting')
+                               new_status)
 
         # If deleting source/destination volume in a migration, we should
         # skip quotas.
         if not is_migrating:
             # Get reservations
             try:
-                reserve_opts = {'volumes': -1,
-                                'gigabytes': -volume.size}
-                QUOTAS.add_volume_type_opts(context,
-                                            reserve_opts,
-                                            volume.volume_type_id)
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-            except Exception:
                 reservations = None
+                if volume.status != 'error_managing_deleting':
+                    reserve_opts = {'volumes': -1,
+                                    'gigabytes': -volume.size}
+                    QUOTAS.add_volume_type_opts(context,
+                                                reserve_opts,
+                                                volume.volume_type_id)
+                    reservations = QUOTAS.reserve(context,
+                                                  project_id=project_id,
+                                                  **reserve_opts)
+            except Exception:
                 LOG.exception(_LE("Failed to update usages deleting volume."),
                               resource=volume)
 
         # Delete glance metadata if it exists
-        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+        self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
 
         volume.destroy()
 
         # If deleting source/destination volume in a migration, we should
         # skip quotas.
         if not is_migrating:
-            self._notify_about_volume_usage(context, volume, "delete.end")
+            notification = "delete.end"
+            if unmanage_only:
+                notification = "unmanage.end"
+            self._notify_about_volume_usage(context, volume, notification)
 
             # Commit the reservations
             if reservations:
@@ -806,7 +841,10 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             self.publish_service_capabilities(context)
 
-        LOG.info(_LI("Deleted volume successfully."), resource=volume)
+        msg = _LI("Deleted volume successfully.")
+        if unmanage_only:
+            msg = _LI("Unmanaged volume successfully.")
+        LOG.info(msg, resource=volume)
 
     def _clear_db(self, context, is_migrating_dest, volume_ref, status):
         # This method is called when driver.unmanage() or
@@ -821,7 +859,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             volume_ref.status = status
             volume_ref.save()
 
-    def create_snapshot(self, context, volume_id, snapshot):
+    @objects.Snapshot.set_workers
+    def create_snapshot(self, context, snapshot):
         """Creates and exports the snapshot."""
         context = context.elevated()
 
@@ -845,14 +884,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                snapshot.status = 'error'
+                snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
 
-        vol_ref = self.db.volume_get(context, volume_id)
+        vol_ref = self.db.volume_get(context, snapshot.volume_id)
         if vol_ref.bootable:
             try:
                 self.db.volume_glance_metadata_copy_to_snapshot(
-                    context, snapshot.id, volume_id)
+                    context, snapshot.id, snapshot.volume_id)
             except exception.GlanceMetadataNotFound:
                 # If volume is not created from image, No glance metadata
                 # would be available for that volume in
@@ -862,12 +901,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.exception(_LE("Failed updating snapshot"
                                   " metadata using the provided volumes"
                                   " %(volume_id)s metadata"),
-                              {'volume_id': volume_id}, resource=snapshot)
-                snapshot.status = 'error'
+                              {'volume_id': snapshot.volume_id},
+                              resource=snapshot)
+                snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
                 raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
-        snapshot.status = 'available'
+        snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.progress = '100%'
         snapshot.save()
 
@@ -876,7 +916,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource=snapshot)
         return snapshot.id
 
-    @locked_snapshot_operation
+    @coordination.synchronized('{snapshot.id}-{f_name}')
     def delete_snapshot(self, context, snapshot, unmanage_only=False):
         """Deletes and unexports snapshot."""
         context = context.elevated()
@@ -904,12 +944,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.SnapshotIsBusy:
             LOG.error(_LE("Delete snapshot failed, due to snapshot busy."),
                       resource=snapshot)
-            snapshot.status = 'available'
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
             snapshot.save()
             return
         except Exception:
             with excutils.save_and_reraise_exception():
-                snapshot.status = 'error_deleting'
+                snapshot.status = fields.SnapshotStatus.ERROR_DELETING
                 snapshot.save()
 
         # Get reservations
@@ -939,129 +979,138 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Commit the reservations
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
-        LOG.info(_LI("Delete snapshot completed successfully"),
-                 resource=snapshot)
 
+        msg = _LI("Delete snapshot completed successfully.")
+        if unmanage_only:
+            msg = _LI("Unmanage snapshot completed successfully.")
+        LOG.info(msg, resource=snapshot)
+
+    @coordination.synchronized('{volume_id}')
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
-                      mountpoint, mode):
+                      mountpoint, mode, volume=None):
         """Updates db to show volume is attached."""
-        @utils.synchronized(volume_id, external=True)
-        def do_attach():
-            # check the volume status before attaching
-            volume = self.db.volume_get(context, volume_id)
-            volume_metadata = self.db.volume_admin_metadata_get(
-                context.elevated(), volume_id)
-            if volume['status'] == 'attaching':
-                if (volume_metadata.get('attached_mode') and
-                   volume_metadata.get('attached_mode') != mode):
-                    raise exception.InvalidVolume(
-                        reason=_("being attached by different mode"))
-
-            if (volume['status'] == 'in-use' and not volume['multiattach']
-               and not volume['migration_status']):
+        # FIXME(lixiaoy1): Remove this in v4.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look
+            # up the volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+        # Get admin_metadata. This needs admin context.
+        with volume.obj_as_admin():
+            volume_metadata = volume.admin_metadata
+        # check the volume status before attaching
+        if volume.status == 'attaching':
+            if (volume_metadata.get('attached_mode') and
+               volume_metadata.get('attached_mode') != mode):
                 raise exception.InvalidVolume(
-                    reason=_("volume is already attached"))
+                    reason=_("being attached by different mode"))
 
-            attachment = None
-            host_name_sanitized = utils.sanitize_hostname(
-                host_name) if host_name else None
-            if instance_uuid:
-                attachment = \
-                    self.db.volume_attachment_get_by_instance_uuid(
-                        context, volume_id, instance_uuid)
-            else:
-                attachment = \
-                    self.db.volume_attachment_get_by_host(context, volume_id,
-                                                          host_name_sanitized)
-            if attachment is not None:
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'in-use'})
-                return
+        if (volume.status == 'in-use' and not volume.multiattach
+           and not volume.migration_status):
+            raise exception.InvalidVolume(
+                reason=_("volume is already attached"))
 
-            self._notify_about_volume_usage(context, volume,
-                                            "attach.start")
-            values = {'volume_id': volume_id,
-                      'attach_status': 'attaching', }
+        host_name_sanitized = utils.sanitize_hostname(
+            host_name) if host_name else None
+        if instance_uuid:
+            attachments = (
+                VA_LIST.get_all_by_instance_uuid(
+                    context, instance_uuid))
+        else:
+            attachments = (
+                VA_LIST.get_all_by_host(
+                    context, host_name_sanitized))
+        if attachments:
+            # check if volume<->instance mapping is already tracked in DB
+            for attachment in attachments:
+                if attachment['volume_id'] == volume_id:
+                    volume.status = 'in-use'
+                    volume.save()
+                    return attachment
 
-            attachment = self.db.volume_attach(context.elevated(), values)
-            volume_metadata = self.db.volume_admin_metadata_update(
-                context.elevated(), volume_id,
-                {"attached_mode": mode}, False)
+        self._notify_about_volume_usage(context, volume,
+                                        "attach.start")
 
-            attachment_id = attachment['id']
-            if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
-                self.db.volume_attachment_update(context, attachment_id,
-                                                 {'attach_status':
-                                                  'error_attaching'})
-                raise exception.InvalidUUID(uuid=instance_uuid)
+        attachment = volume.begin_attach(mode)
 
-            volume = self.db.volume_get(context, volume_id)
+        if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
+            attachment.attach_status = (
+                fields.VolumeAttachStatus.ERROR_ATTACHING)
+            attachment.save()
+            raise exception.InvalidUUID(uuid=instance_uuid)
 
-            if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'error_attaching'})
-                raise exception.InvalidVolumeAttachMode(mode=mode,
-                                                        volume_id=volume_id)
+        if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+            attachment.attach_status = (
+                fields.VolumeAttachStatus.ERROR_ATTACHING)
+            attachment.save()
+            self.message_api.create(
+                context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
+                context.project_id, resource_type=resource_types.VOLUME,
+                resource_uuid=volume.id)
+            raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                    volume_id=volume.id)
 
-            try:
-                # NOTE(flaper87): Verify the driver is enabled
-                # before going forward. The exception will be caught
-                # and the volume status updated.
-                utils.require_driver_initialized(self.driver)
+        try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught
+            # and the volume status updated.
+            utils.require_driver_initialized(self.driver)
 
-                LOG.debug('Attaching volume %(volume_id)s to instance '
-                          '%(instance)s at mountpoint %(mount)s on host '
-                          '%(host)s.',
-                          {'volume_id': volume_id, 'instance': instance_uuid,
-                           'mount': mountpoint, 'host': host_name_sanitized},
-                          resource=volume)
-                self.driver.attach_volume(context,
-                                          volume,
-                                          instance_uuid,
-                                          host_name_sanitized,
-                                          mountpoint)
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    self.db.volume_attachment_update(
-                        context, attachment_id,
-                        {'attach_status': 'error_attaching'})
-
-            volume = self.db.volume_attached(context.elevated(),
-                                             attachment_id,
-                                             instance_uuid,
-                                             host_name_sanitized,
-                                             mountpoint,
-                                             mode)
-            self._notify_about_volume_usage(context, volume, "attach.end")
-            LOG.info(_LI("Attach volume completed successfully."),
+            LOG.info(_LI('Attaching volume %(volume_id)s to instance '
+                         '%(instance)s at mountpoint %(mount)s on host '
+                         '%(host)s.'),
+                     {'volume_id': volume_id, 'instance': instance_uuid,
+                      'mount': mountpoint, 'host': host_name_sanitized},
                      resource=volume)
-            return self.db.volume_attachment_get(context, attachment_id)
-        return do_attach()
+            self.driver.attach_volume(context,
+                                      volume,
+                                      instance_uuid,
+                                      host_name_sanitized,
+                                      mountpoint)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                attachment.attach_status = (
+                    fields.VolumeAttachStatus.ERROR_ATTACHING)
+                attachment.save()
 
-    @locked_detach_operation
-    def detach_volume(self, context, volume_id, attachment_id=None):
+        volume = attachment.finish_attach(
+            instance_uuid,
+            host_name_sanitized,
+            mountpoint,
+            mode)
+
+        self._notify_about_volume_usage(context, volume, "attach.end")
+        LOG.info(_LI("Attach volume completed successfully."),
+                 resource=volume)
+        return attachment
+
+    @coordination.synchronized('{volume_id}-{f_name}')
+    def detach_volume(self, context, volume_id, attachment_id=None,
+                      volume=None):
         """Updates db to show volume is detached."""
         # TODO(vish): refactor this into a more general "unreserve"
-        volume = self.db.volume_get(context, volume_id)
-        attachment = None
+        # FIXME(lixiaoy1): Remove this in v4.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         if attachment_id:
             try:
-                attachment = self.db.volume_attachment_get(context,
-                                                           attachment_id)
+                attachment = objects.VolumeAttachment.get_by_id(context,
+                                                                attachment_id)
             except exception.VolumeAttachmentNotFound:
                 LOG.info(_LI("Volume detach called, but volume not attached."),
                          resource=volume)
                 # We need to make sure the volume status is set to the correct
                 # status.  It could be in detaching status now, and we don't
                 # want to leave it there.
-                self.db.volume_detached(context, volume_id, attachment_id)
+                volume.finish_detach(attachment_id)
                 return
         else:
             # We can try and degrade gracefully here by trying to detach
             # a volume without the attachment_id here if the volume only has
             # one attachment.  This is for backwards compatibility.
-            attachments = self.db.volume_attachment_get_used_by_volume_id(
-                context, volume_id)
+            attachments = volume.volume_attachment
             if len(attachments) > 1:
                 # There are more than 1 attachments for this volume
                 # we have to have an attachment id.
@@ -1076,9 +1125,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # so set the status to available and move on.
                 LOG.info(_LI("Volume detach called, but volume not attached."),
                          resource=volume)
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'available',
-                                       'attach_status': 'detached'})
+                volume.status = 'available'
+                volume.attach_status = fields.VolumeAttachStatus.DETACHED
+                volume.save()
                 return
 
         self._notify_about_volume_usage(context, volume, "detach.start")
@@ -1088,22 +1137,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the volume status updated.
             utils.require_driver_initialized(self.driver)
 
-            LOG.debug('Detaching volume %(volume_id)s from instance '
-                      '%(instance)s.',
-                      {'volume_id': volume_id,
-                       'instance': attachment.get('instance_uuid')},
-                      resource=volume)
+            LOG.info(_LI('Detaching volume %(volume_id)s from instance '
+                         '%(instance)s.'),
+                     {'volume_id': volume_id,
+                      'instance': attachment.get('instance_uuid')},
+                     resource=volume)
             self.driver.detach_volume(context, volume, attachment)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
-                    context, attachment.get('id'),
-                    {'attach_status': 'error_detaching'})
-
-        self.db.volume_detached(context.elevated(), volume_id,
-                                attachment.get('id'))
-        self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
-                                             'attached_mode')
+                    context, attachment.get('id'), {
+                        'attach_status':
+                            fields.VolumeAttachStatus.ERROR_DETACHING})
 
         # NOTE(jdg): We used to do an ensure export here to
         # catch upgrades while volumes were attached (E->F)
@@ -1112,7 +1157,6 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # We're going to remove the export here
         # (delete the iscsi target)
-        volume = self.db.volume_get(context, volume_id)
         try:
             utils.require_driver_initialized(self.driver)
             self.driver.remove_export(context.elevated(), volume)
@@ -1128,6 +1172,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.RemoveExportException(volume=volume_id,
                                                   reason=six.text_type(ex))
 
+        volume.finish_detach(attachment.id)
         self._notify_about_volume_usage(context, volume, "detach.end")
         LOG.info(_LI("Detach volume completed successfully."), resource=volume)
 
@@ -1140,14 +1185,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         image_volume = None
         try:
-            if not self.image_volume_cache.ensure_space(
-                    ctx,
-                    volume_ref['size'],
-                    volume_ref['host']):
+            if not self.image_volume_cache.ensure_space(ctx, volume_ref):
                 LOG.warning(_LW('Unable to ensure space for image-volume in'
                                 ' cache. Will skip creating entry for image'
-                                ' %(image)s on host %(host)s.'),
-                            {'image': image_id, 'host': volume_ref['host']})
+                                ' %(image)s on %(service)s.'),
+                            {'image': image_id,
+                             'service': volume_ref.service_topic_queue})
                 return
 
             image_volume = self._clone_image_volume(ctx,
@@ -1169,7 +1212,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.warning(_LW('Failed to create new image-volume cache entry.'
                             ' Error: %(exception)s'), {'exception': e})
             if image_volume:
-                self.delete_volume(ctx, image_volume.id)
+                self.delete_volume(ctx, image_volume)
 
     def _clone_image_volume(self, ctx, volume, image_meta):
         volume_type_id = volume.get('volume_type_id')
@@ -1180,7 +1223,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             new_vol_values = {k: volume[k] for k in set(volume.keys()) -
                               self._VOLUME_CLONE_SKIP_PROPERTIES}
             new_vol_values['volume_type_id'] = volume_type_id
-            new_vol_values['attach_status'] = 'detached'
+            new_vol_values['attach_status'] = (
+                fields.VolumeAttachStatus.DETACHED)
             new_vol_values['status'] = 'creating'
             new_vol_values['project_id'] = ctx.project_id
             new_vol_values['display_name'] = 'image-%s' % image_meta['id']
@@ -1197,15 +1241,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                            'image_id': image_meta['id'],
                            'except': ex})
             QUOTAS.rollback(ctx, reservations)
-            return False
+            return
 
         QUOTAS.commit(ctx, reservations,
                       project_id=new_vol_values['project_id'])
 
         try:
-            self.create_volume(ctx, image_volume.id,
-                               allow_reschedule=False)
-            image_volume = self.db.volume_get(ctx, image_volume.id)
+            self.create_volume(ctx, image_volume, allow_reschedule=False)
+            image_volume = objects.Volume.get_by_id(ctx, image_volume.id)
             if image_volume.status != 'available':
                 raise exception.InvalidVolume(_('Volume is not available.'))
 
@@ -1220,11 +1263,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                           {'volume_id': volume.id,
                            'image_id': image_meta['id']})
             try:
-                self.delete_volume(ctx, image_volume.id)
+                self.delete_volume(ctx, image_volume)
             except exception.CinderException:
                 LOG.exception(_LE('Could not delete the image volume %(id)s.'),
                               {'id': volume.id})
-            return False
+            return
 
     def _clone_image_volume_and_add_location(self, ctx, volume, image_service,
                                              image_meta):
@@ -1244,6 +1287,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                 image_meta)
         if not image_volume:
             return False
+
+        # The image_owner metadata should be set before uri is added to
+        # the image so glance cinder store can check its owner.
+        image_volume_meta = {'image_owner': ctx.project_id}
+        self.db.volume_metadata_update(image_volume_context,
+                                       image_volume.id,
+                                       image_volume_meta,
+                                       False)
 
         uri = 'cinder://%s' % image_volume.id
         image_registered = None
@@ -1266,8 +1317,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   '%(id)s.'), {'id': image_volume.id})
             return False
 
-        image_volume_meta = {'glance_image_id': image_meta['id'],
-                             'image_owner': ctx.project_id}
+        image_volume_meta['glance_image_id'] = image_meta['id']
         self.db.volume_metadata_update(image_volume_context,
                                        image_volume.id,
                                        image_volume_meta,
@@ -1284,7 +1334,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         payload = {'volume_id': volume_id, 'image_id': image_meta['id']}
         image_service = None
         try:
-            volume = self.db.volume_get(context, volume_id)
+            volume = objects.Volume.get_by_id(context, volume_id)
 
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1317,6 +1367,13 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             with excutils.save_and_reraise_exception():
                 payload['message'] = six.text_type(error)
+                if isinstance(error, exception.ImageLimitExceeded):
+                    self.message_api.create(
+                        context,
+                        defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
+                        context.project_id,
+                        resource_type=resource_types.VOLUME,
+                        resource_uuid=volume_id)
         finally:
             self.db.volume_update_status_based_on_attachment(context,
                                                              volume_id)
@@ -1339,51 +1396,47 @@ class VolumeManager(manager.SchedulerDependentManager):
                         exc_info=True, resource={'type': 'image',
                                                  'id': image_id})
 
-    def _driver_data_namespace(self):
-        return self.driver.configuration.safe_get('driver_data_namespace') \
-            or self.driver.configuration.safe_get('volume_backend_name') \
-            or self.driver.__class__.__name__
+    def _parse_connection_options(self, context, volume, conn_info):
+        # Add qos_specs to connection info
+        typeid = volume.volume_type_id
+        specs = None
+        if typeid:
+            res = volume_types.get_volume_type_qos_specs(typeid)
+            qos = res['qos_specs']
+            # only pass qos_specs that is designated to be consumed by
+            # front-end, or both front-end and back-end.
+            if qos and qos.get('consumer') in ['front-end', 'both']:
+                specs = qos.get('specs')
 
-    def _get_driver_initiator_data(self, context, connector):
-        data = None
-        initiator = connector.get('initiator', False)
-        if initiator:
-            if not isinstance(initiator, six.string_types):
-                msg = _('Invalid initiator value received')
-                raise exception.InvalidInput(reason=msg)
-            namespace = self._driver_data_namespace()
-            try:
-                data = self.db.driver_initiator_data_get(
-                    context,
-                    initiator,
-                    namespace
-                )
-            except exception.CinderException:
-                LOG.exception(_LE("Failed to get driver initiator data for"
-                                  " initiator %(initiator)s and namespace"
-                                  " %(namespace)s"),
-                              {'initiator': initiator,
-                               'namespace': namespace})
-                raise
-        return data
+        qos_spec = dict(qos_specs=specs)
+        conn_info['data'].update(qos_spec)
 
-    def _save_driver_initiator_data(self, context, connector, model_update):
-        if connector.get('initiator', False) and model_update:
-            namespace = self._driver_data_namespace()
-            try:
-                self.db.driver_initiator_data_update(context,
-                                                     connector['initiator'],
-                                                     namespace,
-                                                     model_update)
-            except exception.CinderException:
-                LOG.exception(_LE("Failed to update initiator data for"
-                                  " initiator %(initiator)s and backend"
-                                  " %(backend)s"),
-                              {'initiator': connector['initiator'],
-                               'backend': namespace})
-                raise
+        # Add access_mode to connection info
+        volume_metadata = volume.admin_metadata
+        access_mode = volume_metadata.get('attached_mode')
+        if access_mode is None:
+            # NOTE(zhiyan): client didn't call 'os-attach' before
+            access_mode = ('ro'
+                           if volume_metadata.get('readonly') == 'True'
+                           else 'rw')
+        conn_info['data']['access_mode'] = access_mode
 
-    def initialize_connection(self, context, volume_id, connector):
+        # Add encrypted flag to connection_info if not set in the driver.
+        if conn_info['data'].get('encrypted') is None:
+            encrypted = bool(volume.encryption_key_id)
+            conn_info['data']['encrypted'] = encrypted
+
+        # Add discard flag to connection_info if not set in the driver and
+        # configured to be reported.
+        if conn_info['data'].get('discard') is None:
+            discard_supported = (self.driver.configuration
+                                 .safe_get('report_discard_supported'))
+            if discard_supported:
+                conn_info['data']['discard'] = True
+
+        return conn_info
+
+    def initialize_connection(self, context, volume, connector):
         """Prepare volume for connection from host represented by connector.
 
         This method calls the driver initialize_connection and returns
@@ -1423,9 +1476,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # NOTE(flaper87): Verify the driver is enabled
         # before going forward. The exception will be caught
         # and the volume status updated.
+
+        # TODO(jdg): Add deprecation warning
         utils.require_driver_initialized(self.driver)
-        volume = self.db.volume_get(context, volume_id)
-        model_update = None
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
@@ -1433,88 +1486,37 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as err:
             err_msg = (_("Validate volume connection failed "
                          "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume)
+            LOG.exception(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         try:
             model_update = self.driver.create_export(context.elevated(),
                                                      volume, connector)
-        except exception.CinderException:
-            err_msg = (_("Create export for volume failed."))
-            LOG.exception(err_msg, resource=volume)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+        except exception.CinderException as ex:
+            msg = _("Create export of volume failed (%s)") % ex.msg
+            LOG.exception(msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         try:
             if model_update:
-                volume = self.db.volume_update(context,
-                                               volume_id,
-                                               model_update)
+                volume.update(model_update)
+                volume.save()
         except exception.CinderException as ex:
             LOG.exception(_LE("Model update failed."), resource=volume)
             raise exception.ExportFailure(reason=six.text_type(ex))
 
-        initiator_data = self._get_driver_initiator_data(context, connector)
         try:
-            if initiator_data:
-                conn_info = self.driver.initialize_connection(volume,
-                                                              connector,
-                                                              initiator_data)
-            else:
-                conn_info = self.driver.initialize_connection(volume,
-                                                              connector)
+            conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
             err_msg = (_("Driver initialize connection failed "
                          "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume)
+            LOG.exception(err_msg, resource=volume)
 
             self.driver.remove_export(context.elevated(), volume)
 
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-        initiator_update = conn_info.get('initiator_update', None)
-        if initiator_update:
-            self._save_driver_initiator_data(context, connector,
-                                             initiator_update)
-            del conn_info['initiator_update']
-
-        # Add qos_specs to connection info
-        typeid = volume['volume_type_id']
-        specs = None
-        if typeid:
-            res = volume_types.get_volume_type_qos_specs(typeid)
-            qos = res['qos_specs']
-            # only pass qos_specs that is designated to be consumed by
-            # front-end, or both front-end and back-end.
-            if qos and qos.get('consumer') in ['front-end', 'both']:
-                specs = qos.get('specs')
-
-        qos_spec = dict(qos_specs=specs)
-        conn_info['data'].update(qos_spec)
-
-        # Add access_mode to connection info
-        volume_metadata = self.db.volume_admin_metadata_get(context.elevated(),
-                                                            volume_id)
-        access_mode = volume_metadata.get('attached_mode')
-        if access_mode is None:
-            # NOTE(zhiyan): client didn't call 'os-attach' before
-            access_mode = ('ro'
-                           if volume_metadata.get('readonly') == 'True'
-                           else 'rw')
-        conn_info['data']['access_mode'] = access_mode
-
-        # Add encrypted flag to connection_info if not set in the driver.
-        if conn_info['data'].get('encrypted') is None:
-            encrypted = bool(volume.get('encryption_key_id'))
-            conn_info['data']['encrypted'] = encrypted
-
-        # Add discard flag to connection_info if not set in the driver and
-        # configured to be reported.
-        if conn_info['data'].get('discard') is None:
-            discard_supported = (self.driver.configuration
-                                 .safe_get('report_discard_supported'))
-            if discard_supported:
-                conn_info['data']['discard'] = True
-
+        conn_info = self._parse_connection_options(context, volume, conn_info)
         LOG.info(_LI("Initialize volume connection completed successfully."),
                  resource=volume)
         return conn_info
@@ -1536,14 +1538,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as err:
             err_msg = (_('Terminate volume connection failed: %(err)s')
                        % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume_ref)
+            LOG.exception(err_msg, resource=volume_ref)
             raise exception.VolumeBackendAPIException(data=err_msg)
         LOG.info(_LI("Terminate volume connection completed successfully."),
                  resource=volume_ref)
 
     def remove_export(self, context, volume_id):
         """Removes an export for a volume."""
-
         utils.require_driver_initialized(self.driver)
         volume_ref = self.db.volume_get(context, volume_id)
         try:
@@ -1619,7 +1620,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return {'conn': conn, 'device': vol_handle, 'connector': connector}
 
-    def _attach_volume(self, ctxt, volume, properties, remote=False):
+    def _attach_volume(self, ctxt, volume, properties, remote=False,
+                       attach_encryptor=False):
         status = volume['status']
 
         if remote:
@@ -1633,13 +1635,37 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_update(ctxt, volume['id'],
                                           {'status': status})
         else:
-            conn = self.initialize_connection(ctxt, volume['id'], properties)
+            conn = self.initialize_connection(ctxt, volume, properties)
 
-        return self._connect_device(conn)
+        attach_info = self._connect_device(conn)
+        try:
+            if attach_encryptor and (
+                    volume_types.is_encrypted(ctxt,
+                                              volume.volume_type_id)):
+                encryption = self.db.volume_encryption_metadata_get(
+                    ctxt.elevated(), volume.id)
+                if encryption:
+                    utils.brick_attach_volume_encryptor(ctxt,
+                                                        attach_info,
+                                                        encryption)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to attach volume encryptor"
+                              " %(vol)s."), {'vol': volume['id']})
+                self._detach_volume(ctxt, attach_info, volume, properties)
+        return attach_info
 
     def _detach_volume(self, ctxt, attach_info, volume, properties,
-                       force=False, remote=False):
+                       force=False, remote=False,
+                       attach_encryptor=False):
         connector = attach_info['connector']
+        if attach_encryptor and (
+                volume_types.is_encrypted(ctxt,
+                                          volume.volume_type_id)):
+            encryption = self.db.volume_encryption_metadata_get(
+                ctxt.elevated(), volume.id)
+            if encryption:
+                utils.brick_detach_volume_encryptor(attach_info, encryption)
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
@@ -1662,26 +1688,39 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.',
                   {'src': src_vol['name'], 'dest': dest_vol['name']})
-
+        attach_encryptor = False
+        # If the encryption method or key is changed, we have to
+        # copy data through dm-crypt.
+        if volume_types.volume_types_encryption_changed(
+                ctxt,
+                src_vol.volume_type_id,
+                dest_vol.volume_type_id):
+            attach_encryptor = True
         properties = utils.brick_get_connector_properties()
 
         dest_remote = remote in ['dest', 'both']
-        dest_attach_info = self._attach_volume(ctxt, dest_vol, properties,
-                                               remote=dest_remote)
+        dest_attach_info = self._attach_volume(
+            ctxt, dest_vol, properties,
+            remote=dest_remote,
+            attach_encryptor=attach_encryptor)
 
         try:
             src_remote = remote in ['src', 'both']
-            src_attach_info = self._attach_volume(ctxt, src_vol, properties,
-                                                  remote=src_remote)
+            src_attach_info = self._attach_volume(
+                ctxt, src_vol, properties,
+                remote=src_remote,
+                attach_encryptor=attach_encryptor)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed to attach source volume for copy."))
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
-                                    properties, remote=dest_remote)
+                                    properties, remote=dest_remote,
+                                    attach_encryptor=attach_encryptor)
 
         # Check the backend capabilities of migration destination host.
         rpcapi = volume_rpcapi.VolumeAPI()
-        capabilities = rpcapi.get_capabilities(ctxt, dest_vol['host'],
+        capabilities = rpcapi.get_capabilities(ctxt,
+                                               dest_vol.service_topic_queue,
                                                False)
         sparse_copy_volume = bool(capabilities and
                                   capabilities.get('sparse_copy_volume',
@@ -1704,31 +1743,42 @@ class VolumeManager(manager.SchedulerDependentManager):
             try:
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
                                     properties, force=copy_error,
-                                    remote=dest_remote)
+                                    remote=dest_remote,
+                                    attach_encryptor=attach_encryptor)
             finally:
                 self._detach_volume(ctxt, src_attach_info, src_vol,
                                     properties, force=copy_error,
-                                    remote=src_remote)
+                                    remote=src_remote,
+                                    attach_encryptor=attach_encryptor)
 
-    def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
+    def _migrate_volume_generic(self, ctxt, volume, backend, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
-        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | {'host'}
+        tmp_skip = {'snapshot_id', 'source_volid'}
+        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | tmp_skip | {'host',
+                                                                'cluster_name'}
         new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
+            if volume_types.volume_types_encryption_changed(
+                    ctxt, volume.volume_type_id, new_type_id):
+                encryption_key_id = vol_utils.create_encryption_key(
+                    ctxt, self.key_manager, new_type_id)
+                new_vol_values['encryption_key_id'] = encryption_key_id
+
         new_volume = objects.Volume(
             context=ctxt,
-            host=host['host'],
+            host=backend['host'],
+            cluster_name=backend.get('cluster_name'),
             status='creating',
-            attach_status='detached',
+            attach_status=fields.VolumeAttachStatus.DETACHED,
             migration_status='target:%s' % volume['id'],
             **new_vol_values
         )
         new_volume.create()
-        rpcapi.create_volume(ctxt, new_volume, host['host'],
-                             None, None, allow_reschedule=False)
+        rpcapi.create_volume(ctxt, new_volume, None, None,
+                             allow_reschedule=False)
 
         # Wait for new_volume to become ready
         starttime = time.time()
@@ -1740,13 +1790,13 @@ class VolumeManager(manager.SchedulerDependentManager):
             tries += 1
             now = time.time()
             if new_volume.status == 'error':
-                msg = _("failed to create new_volume on destination host")
+                msg = _("failed to create new_volume on destination")
                 self._clean_temporary_volume(ctxt, volume,
                                              new_volume,
                                              clean_db_only=True)
                 raise exception.VolumeMigrationFailed(reason=msg)
             elif now > deadline:
-                msg = _("timeout creating new_volume on destination host")
+                msg = _("timeout creating new_volume on destination")
                 self._clean_temporary_volume(ctxt, volume,
                                              new_volume,
                                              clean_db_only=True)
@@ -1756,6 +1806,13 @@ class VolumeManager(manager.SchedulerDependentManager):
             # TODO(thangp): Replace get_by_id with refresh when it is
             # available
             new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
+
+        # Set skipped value to avoid calling
+        # function except for _create_raw_volume
+        tmp_skipped_values = {k: volume[k] for k in tmp_skip if volume.get(k)}
+        if tmp_skipped_values:
+            new_volume.update(tmp_skipped_values)
+            new_volume.save()
 
         # Copy the source volume to the destination volume
         try:
@@ -1769,8 +1826,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                               remote='dest')
 
                 # The above call is synchronous so we complete the migration
-                self.migrate_volume_completion(ctxt, volume.id,
-                                               new_volume.id,
+                self.migrate_volume_completion(ctxt, volume, new_volume,
                                                error=False)
             else:
                 nova_api = compute.API()
@@ -1828,15 +1884,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                 "source volume may have been deleted."),
                             {'vol': new_volume.id})
 
-    def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
-                                  error=False, volume=None, new_volume=None):
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is None or new_volume is None:
-            # For older clients, mimic the old behavior and look up the volume
-            # by its volume_id.
-            volume = objects.Volume.get_by_id(ctxt, volume_id)
-            new_volume = objects.Volume.get_by_id(ctxt, new_volume_id)
-
+    def migrate_volume_completion(self, ctxt, volume, new_volume, error=False):
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1869,14 +1917,20 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume.save()
 
         # Detach the source volume (if it fails, don't fail the migration)
-        try:
-            if orig_volume_status == 'in-use':
-                attachments = volume.volume_attachment
-                for attachment in attachments:
-                    self.detach_volume(ctxt, volume.id, attachment['id'])
-        except Exception as ex:
-            LOG.error(_LE("Detach migration source volume failed:  %(err)s"),
-                      {'err': ex}, resource=volume)
+        # As after detach and refresh, volume_attchments will be None.
+        # We keep volume_attachment for later attach.
+        if orig_volume_status == 'in-use':
+            for attachment in volume.volume_attachment:
+                try:
+                    self.detach_volume(ctxt, volume.id, attachment.id)
+                except Exception as ex:
+                    LOG.error(_LE("Detach migration source volume "
+                                  "%(volume.id)s from instance "
+                                  "%(instance_id)s failed: %(err)s"),
+                              {'err': ex,
+                               'volume.id': volume.id,
+                               'instance_id': attachment.id},
+                              resource=volume)
 
         # Give driver (new_volume) a chance to update things as needed
         # after a successful migration.
@@ -1895,8 +1949,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                    'migration_status': 'success'}
 
         if orig_volume_status == 'in-use':
-            attachments = volume.volume_attachment
-            for attachment in attachments:
+            for attachment in volume.volume_attachment:
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment['instance_uuid'],
                                      attachment['attached_host'],
@@ -1918,15 +1971,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource=volume)
         return volume.id
 
-    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
-                       new_type_id=None, volume=None):
+    def migrate_volume(self, ctxt, volume, host, force_host_copy=False,
+                       new_type_id=None):
         """Migrate the volume to the specified host (called on source host)."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is None:
-            # For older clients, mimic the old behavior and look up the volume
-            # by its volume_id.
-            volume = objects.Volume.get_by_id(ctxt, volume_id)
-
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1954,6 +2001,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                                  host)
                 if moved:
                     updates = {'host': host['host'],
+                               'cluster_name': host.get('cluster_name'),
                                'migration_status': 'success',
                                'previous_status': volume.status}
                     if status_update:
@@ -1971,8 +2019,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     volume.save()
         if not moved:
             try:
-                self._migrate_volume_generic(ctxt, volume, host,
-                                             new_type_id)
+                self._migrate_volume_generic(ctxt, volume, host, new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
@@ -2081,6 +2128,25 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, volume, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
+    def _notify_about_group_usage(self,
+                                  context,
+                                  group,
+                                  event_suffix,
+                                  volumes=None,
+                                  extra_usage_info=None):
+        vol_utils.notify_about_group_usage(
+            context, group, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+        if not volumes:
+            volumes = self.db.volume_get_all_by_generic_group(
+                context, group.id)
+        if volumes:
+            for volume in volumes:
+                vol_utils.notify_about_volume_usage(
+                    context, volume, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
     def _notify_about_cgsnapshot_usage(self,
                                        context,
                                        cgsnapshot,
@@ -2100,14 +2166,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
-    def extend_volume(self, context, volume_id, new_size, reservations,
-                      volume=None):
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is None:
-            # For older clients, mimic the old behavior and look up the volume
-            # by its volume_id.
-            volume = objects.Volume.get_by_id(context, volume_id)
+    def _notify_about_group_snapshot_usage(self,
+                                           context,
+                                           group_snapshot,
+                                           event_suffix,
+                                           snapshots=None,
+                                           extra_usage_info=None):
+        vol_utils.notify_about_group_snapshot_usage(
+            context, group_snapshot, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
 
+        if not snapshots:
+            snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                context, group_snapshot.id)
+        if snapshots:
+            for snapshot in snapshots:
+                vol_utils.notify_about_snapshot_usage(
+                    context, snapshot, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
+    def extend_volume(self, context, volume, new_size, reservations):
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -2158,9 +2236,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Extend volume completed successfully."),
                  resource=volume)
 
-    def retype(self, ctxt, volume_id, new_type_id, host,
+    def _is_our_backend(self, host, cluster_name):
+        return ((not cluster_name and
+                 vol_utils.hosts_are_equivalent(self.driver.host, host)) or
+                (cluster_name and
+                 vol_utils.hosts_are_equivalent(self.driver.cluster_name,
+                                                cluster_name)))
+
+    def retype(self, context, volume, new_type_id, host,
                migration_policy='never', reservations=None,
-               volume=None, old_reservations=None):
+               old_reservations=None):
 
         def _retype_error(context, volume, old_reservations,
                           new_reservations, status_update):
@@ -2170,14 +2255,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             finally:
                 QUOTAS.rollback(context, old_reservations)
                 QUOTAS.rollback(context, new_reservations)
-
-        context = ctxt.elevated()
-
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is None:
-            # For older clients, mimic the old behavior and look up the volume
-            # by its volume_id.
-            volume = objects.Volume.get_by_id(context, volume_id)
 
         status_update = {'status': volume.previous_status}
         if context.project_id != volume.project_id:
@@ -2238,16 +2315,18 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Call driver to try and change the type
         retype_model_update = None
 
-        # NOTE(jdg): Check to see if the destination host is the same
-        # as the current.  If it's not don't call the driver.retype
-        # method, otherwise drivers that implement retype may report
-        # success, but it's invalid in the case of a migrate.
+        # NOTE(jdg): Check to see if the destination host or cluster (depending
+        # if it's the volume is in a clustered backend or not) is the same as
+        # the current.  If it's not don't call the driver.retype method,
+        # otherwise drivers that implement retype may report success, but it's
+        # invalid in the case of a migrate.
 
         # We assume that those that support pools do this internally
         # so we strip off the pools designation
+
         if (not retyped and
-                vol_utils.hosts_are_equivalent(self.driver.host,
-                                               host['host'])):
+                not diff.get('encryption') and
+                self._is_our_backend(host['host'], host.get('cluster_name'))):
             try:
                 new_type = volume_types.get_volume_type(context, new_type_id)
                 ret = self.driver.retype(context,
@@ -2301,7 +2380,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             volume.save()
 
             try:
-                self.migrate_volume(context, volume.id, host,
+                self.migrate_volume(context, volume, host,
                                     new_type_id=new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -2310,9 +2389,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             model_update = {'volume_type_id': new_type_id,
                             'host': host['host'],
+                            'cluster_name': host.get('cluster_name'),
                             'status': status_update['status']}
             if retype_model_update:
                 model_update.update(retype_model_update)
+            self._set_replication_status(diff, model_update)
             volume.update(model_update)
             volume.save()
 
@@ -2327,18 +2408,62 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Retype volume completed successfully."),
                  resource=volume)
 
-    def manage_existing(self, ctxt, volume_id, ref=None):
+    @staticmethod
+    def _set_replication_status(diff, model_update):
+        """Update replication_status in model_update if it has changed."""
+        if not diff or model_update.get('replication_status'):
+            return
+
+        diff_specs = diff.get('extra_specs', {})
+        replication_diff = diff_specs.get('replication_enabled')
+
+        if replication_diff:
+            is_replicated = vol_utils.is_replicated_str(replication_diff[1])
+            if is_replicated:
+                replication_status = fields.ReplicationStatus.ENABLED
+            else:
+                replication_status = fields.ReplicationStatus.DISABLED
+            model_update['replication_status'] = replication_status
+
+    def manage_existing(self, ctxt, volume, ref=None):
+        vol_ref = self._run_manage_existing_flow_engine(
+            ctxt, volume, ref)
+
+        self._update_stats_for_managed(vol_ref)
+
+        LOG.info(_LI("Manage existing volume completed successfully."),
+                 resource=vol_ref)
+        return vol_ref.id
+
+    def _update_stats_for_managed(self, volume_reference):
+        # Update volume stats
+        pool = vol_utils.extract_host(volume_reference.host, 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    volume_reference.host, 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] \
+                += volume_reference.size
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=volume_reference.size)
+
+    def _run_manage_existing_flow_engine(self, ctxt, volume, ref):
         try:
             flow_engine = manage_existing.get_flow(
                 ctxt,
                 self.db,
                 self.driver,
                 self.host,
-                volume_id,
-                ref)
+                volume,
+                ref,
+            )
         except Exception:
             msg = _("Failed to create manage_existing flow.")
-            LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})
+            LOG.exception(msg, resource={'type': 'volume', 'id': volume.id})
             raise exception.CinderException(msg)
 
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
@@ -2346,129 +2471,95 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Fetch created volume from storage
         vol_ref = flow_engine.storage.fetch('volume')
-        # Update volume stats
-        pool = vol_utils.extract_host(vol_ref['host'], 'pool')
-        if pool is None:
-            # Legacy volume, put them into default pool
-            pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
-                    vol_ref['host'], 'pool', True)
 
-        try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] \
-                += vol_ref['size']
-        except KeyError:
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=vol_ref['size'])
+        return vol_ref
 
-        LOG.info(_LI("Manage existing volume completed successfully."),
-                 resource=vol_ref)
-        return vol_ref['id']
+    def _get_my_resources(self, ctxt, ovo_class_list):
+        if self.cluster:
+            filters = {'cluster_name': self.cluster}
+        else:
+            filters = {'host': self.host}
+        return getattr(ovo_class_list, 'get_all')(ctxt, filters=filters)
 
-    def promote_replica(self, ctxt, volume_id):
-        """Promote volume replica secondary to be the primary volume."""
-        volume = self.db.volume_get(ctxt, volume_id)
-        model_update = None
+    def _get_my_volumes(self, ctxt):
+        return self._get_my_resources(ctxt, objects.VolumeList)
 
+    def _get_my_snapshots(self, ctxt):
+        return self._get_my_resources(ctxt, objects.SnapshotList)
+
+    def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
+                               sort_dirs, want_objects=False):
         try:
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Promote volume replica failed."),
-                              resource=volume)
+                LOG.exception(_LE("Listing manageable volumes failed, due "
+                                  "to uninitialized driver."))
 
+        cinder_volumes = self._get_my_volumes(ctxt)
         try:
-            model_update = self.driver.promote_replica(ctxt, volume)
-        except exception.CinderException:
-            err_msg = (_('Error promoting secondary volume to primary'))
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-        try:
-            if model_update:
-                volume = self.db.volume_update(ctxt,
-                                               volume_id,
-                                               model_update)
-        except exception.CinderException:
-            err_msg = (_("Failed updating model"
-                         " with driver provided model %(model)s") %
-                       {'model': model_update})
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-        LOG.info(_LI("Promote volume replica completed successfully."),
-                 resource=volume)
-
-    def reenable_replication(self, ctxt, volume_id):
-        """Re-enable replication of secondary volume with primary volumes."""
-        volume = self.db.volume_get(ctxt, volume_id)
-        model_update = None
-
-        try:
-            utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized:
+            driver_entries = self.driver.get_manageable_volumes(
+                cinder_volumes, marker, limit, offset, sort_keys, sort_dirs)
+            if want_objects:
+                driver_entries = (objects.ManageableVolumeList.
+                                  from_primitives(ctxt, driver_entries))
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Sync volume replica failed."),
-                              resource=volume)
-
-        try:
-            model_update = self.driver.reenable_replication(ctxt, volume)
-        except exception.CinderException:
-            err_msg = (_("Synchronizing secondary volume to primary failed."))
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-        try:
-            if model_update:
-                volume = self.db.volume_update(ctxt,
-                                               volume_id,
-                                               model_update)
-        except exception.CinderException:
-            err_msg = (_("Failed updating model"
-                         " with driver provided model %(model)s") %
-                       {'model': model_update})
-            raise exception.ReplicationError(reason=err_msg,
-                                             volume_id=volume_id)
-
-    def _update_replication_relationship_status(self, ctxt):
-        # Only want volumes that do not have a 'disabled' replication status
-        filters = {'replication_status': ['active', 'copying', 'error',
-                                          'active-stopped', 'inactive']}
-        volumes = self.db.volume_get_all_by_host(ctxt, self.host,
-                                                 filters=filters)
-        for vol in volumes:
-            model_update = None
-            try:
-                model_update = self.driver.get_replication_status(
-                    ctxt, vol)
-                if model_update:
-                    self.db.volume_update(ctxt, vol['id'], model_update)
-            except Exception:
-                LOG.exception(_LE("Get replication status for volume failed."),
-                              resource=vol)
+                LOG.exception(_LE("Listing manageable volumes failed, due "
+                                  "to driver error."))
+        return driver_entries
 
     def create_consistencygroup(self, context, group):
         """Creates the consistency group."""
+        return self._create_group(context, group, False)
+
+    def create_group(self, context, group):
+        """Creates the group."""
+        return self._create_group(context, group)
+
+    def _create_group(self, context, group, is_generic_group=True):
         context = context.elevated()
 
-        status = fields.ConsistencyGroupStatus.AVAILABLE
+        # Make sure the host in the DB matches our own when clustered
+        self._set_resource_host(group)
+
+        status = fields.GroupStatus.AVAILABLE
         model_update = None
 
-        self._notify_about_consistencygroup_usage(
-            context, group, "create.start")
+        if is_generic_group:
+            self._notify_about_group_usage(
+                context, group, "create.start")
+        else:
+            self._notify_about_consistencygroup_usage(
+                context, group, "create.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
-            LOG.info(_LI("Consistency group %s: creating"), group.name)
-            model_update = self.driver.create_consistencygroup(context,
-                                                               group)
+            LOG.info(_LI("Group %s: creating"), group.name)
+            if is_generic_group:
+                try:
+                    model_update = self.driver.create_group(context,
+                                                            group)
+                except NotImplementedError:
+                    cgsnap_type = group_types.get_default_cgsnapshot_type()
+                    if group.group_type_id != cgsnap_type['id']:
+                        model_update = self._create_group_generic(context,
+                                                                  group)
+                    else:
+                        cg, __ = self._convert_group_to_cg(group, [])
+                        model_update = self.driver.create_consistencygroup(
+                            context, cg)
+            else:
+                model_update = self.driver.create_consistencygroup(context,
+                                                                   group)
 
             if model_update:
                 if (model_update['status'] ==
-                        fields.ConsistencyGroupStatus.ERROR):
-                    msg = (_('Create consistency group failed.'))
+                        fields.GroupStatus.ERROR):
+                    msg = (_('Create group failed.'))
                     LOG.error(msg,
-                              resource={'type': 'consistency_group',
+                              resource={'type': 'group',
                                         'id': group.id})
                     raise exception.VolumeDriverException(message=msg)
                 else:
@@ -2476,22 +2567,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                     group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = fields.ConsistencyGroupStatus.ERROR
+                group.status = fields.GroupStatus.ERROR
                 group.save()
-                LOG.error(_LE("Consistency group %s: create failed"),
+                LOG.error(_LE("Group %s: create failed"),
                           group.name)
 
         group.status = status
         group.created_at = timeutils.utcnow()
         group.save()
-        LOG.info(_LI("Consistency group %s: created successfully"),
+        LOG.info(_LI("Group %s: created successfully"),
                  group.name)
 
-        self._notify_about_consistencygroup_usage(
-            context, group, "create.end")
+        if is_generic_group:
+            self._notify_about_group_usage(
+                context, group, "create.end")
+        else:
+            self._notify_about_consistencygroup_usage(
+                context, group, "create.end")
 
-        LOG.info(_LI("Create consistency group completed successfully."),
-                 resource={'type': 'consistency_group',
+        LOG.info(_LI("Create group completed successfully."),
+                 resource={'type': 'group',
                            'id': group.id})
         return group
 
@@ -2630,6 +2725,202 @@ class VolumeManager(manager.SchedulerDependentManager):
                            'id': group.id})
         return group
 
+    def create_group_from_src(self, context, group,
+                              group_snapshot=None, source_group=None):
+        """Creates the group from source.
+
+        The source can be a group snapshot or a source group.
+        """
+        source_name = None
+        snapshots = None
+        source_vols = None
+        try:
+            volumes = objects.VolumeList.get_all_by_generic_group(context,
+                                                                  group.id)
+            if group_snapshot:
+                try:
+                    # Check if group_snapshot still exists
+                    group_snapshot = objects.GroupSnapshot.get_by_id(
+                        context, group_snapshot.id)
+                except exception.GroupSnapshotNotFound:
+                    LOG.error(_LE("Create group "
+                                  "from snapshot-%(snap)s failed: "
+                                  "SnapshotNotFound."),
+                              {'snap': group_snapshot.id},
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise
+
+                source_name = _("snapshot-%s") % group_snapshot.id
+                snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                    context, group_snapshot.id)
+                for snap in snapshots:
+                    if (snap.status not in
+                            VALID_CREATE_GROUP_SRC_SNAP_STATUS):
+                        msg = (_("Cannot create group "
+                                 "%(group)s because snapshot %(snap)s is "
+                                 "not in a valid state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'snap': snap['id'],
+                                'valid': VALID_CREATE_GROUP_SRC_SNAP_STATUS})
+                        raise exception.InvalidGroup(reason=msg)
+
+            if source_group:
+                try:
+                    source_group = objects.Group.get_by_id(
+                        context, source_group.id)
+                except exception.GroupNotFound:
+                    LOG.error(_LE("Create group "
+                                  "from source group-%(group)s failed: "
+                                  "GroupNotFound."),
+                              {'group': source_group.id},
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise
+
+                source_name = _("group-%s") % source_group.id
+                source_vols = objects.VolumeList.get_all_by_generic_group(
+                    context, source_group.id)
+                for source_vol in source_vols:
+                    if (source_vol.status not in
+                            VALID_CREATE_GROUP_SRC_GROUP_STATUS):
+                        msg = (_("Cannot create group "
+                                 "%(group)s because source volume "
+                                 "%(source_vol)s is not in a valid "
+                                 "state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'source_vol': source_vol.id,
+                                'valid': VALID_CREATE_GROUP_SRC_GROUP_STATUS})
+                        raise exception.InvalidGroup(reason=msg)
+
+            # Sort source snapshots so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_snapshots = None
+            if group_snapshot and snapshots:
+                sorted_snapshots = self._sort_snapshots(volumes, snapshots)
+
+            # Sort source volumes so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_source_vols = None
+            if source_group and source_vols:
+                sorted_source_vols = self._sort_source_vols(volumes,
+                                                            source_vols)
+
+            self._notify_about_group_usage(
+                context, group, "create.start")
+
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, volumes_model_update = (
+                    self.driver.create_group_from_src(
+                        context, group, volumes, group_snapshot,
+                        sorted_snapshots, source_group, sorted_source_vols))
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, volumes_model_update = (
+                        self._create_group_from_src_generic(
+                            context, group, volumes, group_snapshot,
+                            sorted_snapshots, source_group,
+                            sorted_source_vols))
+                else:
+                    cg, volumes = self._convert_group_to_cg(
+                        group, volumes)
+                    cgsnapshot, sorted_snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, sorted_snapshots, context))
+                    source_cg, sorted_source_vols = (
+                        self._convert_group_to_cg(source_group,
+                                                  sorted_source_vols))
+                    model_update, volumes_model_update = (
+                        self.driver.create_consistencygroup_from_src(
+                            context, cg, volumes, cgsnapshot,
+                            sorted_snapshots, source_cg, sorted_source_vols))
+                    self._remove_cgsnapshot_id_from_snapshots(sorted_snapshots)
+                    self._remove_consistencygroup_id_from_volumes(volumes)
+                    self._remove_consistencygroup_id_from_volumes(
+                        sorted_source_vols)
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    self.db.volume_update(context, update['id'], update)
+
+            if model_update:
+                group.update(model_update)
+                group.save()
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                group.status = 'error'
+                group.save()
+                LOG.error(_LE("Create group "
+                              "from source %(source)s failed."),
+                          {'source': source_name},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                # Update volume status to 'error' as well.
+                self._remove_consistencygroup_id_from_volumes(volumes)
+                for vol in volumes:
+                    vol.status = 'error'
+                    vol.save()
+
+        now = timeutils.utcnow()
+        status = 'available'
+        for vol in volumes:
+            update = {'status': status, 'created_at': now}
+            self._update_volume_from_src(context, vol, update, group=group)
+            self._update_allocated_capacity(vol)
+
+        group.status = status
+        group.created_at = now
+        group.save()
+
+        self._notify_about_group_usage(
+            context, group, "create.end")
+        LOG.info(_LI("Create group "
+                     "from source-%(source)s completed successfully."),
+                 {'source': source_name},
+                 resource={'type': 'group',
+                           'id': group.id})
+        return group
+
+    def _create_group_from_src_generic(self, context, group, volumes,
+                                       group_snapshot=None, snapshots=None,
+                                       source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param context: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
+        :returns: model_update, volumes_model_update
+        """
+        for vol in volumes:
+            try:
+                if snapshots:
+                    for snapshot in snapshots:
+                        if vol.snapshot_id == snapshot.id:
+                            self.driver.create_volume_from_snapshot(
+                                vol, snapshot)
+                            break
+            except Exception:
+                raise
+            try:
+                if source_vols:
+                    for source_vol in source_vols:
+                        if vol.source_volid == source_vol.id:
+                            self.driver.create_cloned_volume(vol, source_vol)
+                            break
+            except Exception:
+                raise
+        return None, None
+
     def _sort_snapshots(self, volumes, snapshots):
         # Sort source snapshots so that they are in the same order as their
         # corresponding target volumes. Each source snapshot in the snapshots
@@ -2679,6 +2970,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def _update_volume_from_src(self, context, vol, update, group=None):
         try:
             snapshot_id = vol.get('snapshot_id')
+            source_volid = vol.get('source_volid')
             if snapshot_id:
                 snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
                 orig_vref = self.db.volume_get(context,
@@ -2687,6 +2979,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                     update['bootable'] = True
                     self.db.volume_glance_metadata_copy_to_volume(
                         context, vol['id'], snapshot_id)
+            if source_volid:
+                source_vol = objects.Volume.get_by_id(context, source_volid)
+                if source_vol.bootable:
+                    update['bootable'] = True
+                    self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                        context, source_volid, vol['id'])
+                if source_vol.multiattach:
+                    update['multiattach'] = True
+
         except exception.SnapshotNotFound:
             LOG.error(_LE("Source snapshot %(snapshot_id)s cannot be found."),
                       {'snapshot_id': vol['snapshot_id']})
@@ -2747,20 +3048,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             project_id = context.project_id
 
-        volumes = self.db.volume_get_all_by_group(context, group.id)
+        volumes = objects.VolumeList.get_all_by_group(context, group.id)
 
-        for volume_ref in volumes:
-            if volume_ref['attach_status'] == "attached":
+        for volume in volumes:
+            if (volume.attach_status ==
+                    fields.VolumeAttachStatus.ATTACHED):
                 # Volume is still attached, need to detach first
-                raise exception.VolumeAttached(volume_id=volume_ref['id'])
-            # self.host is 'host@backend'
-            # volume_ref['host'] is 'host@backend#pool'
-            # Extract host before doing comparison
-            if volume_ref['host']:
-                new_host = vol_utils.extract_host(volume_ref['host'])
-                if new_host != self.host:
-                    raise exception.InvalidVolume(
-                        reason=_("Volume is not local to this node"))
+                raise exception.VolumeAttached(volume_id=volume.id)
+            self._check_is_our_resource(volume)
 
         self._notify_about_consistencygroup_usage(
             context, group, "delete.start")
@@ -2804,8 +3099,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # None for volumes_model_update.
                 if not volumes_model_update:
                     for vol in volumes:
-                        self.db.volume_update(
-                            context, vol['id'], {'status': 'error'})
+                        vol.status = 'error'
+                        vol.save()
 
         # Get reservations for group
         try:
@@ -2820,15 +3115,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                           resource={'type': 'consistency_group',
                                     'id': group.id})
 
-        for volume_ref in volumes:
+        for volume in volumes:
             # Get reservations for volume
             try:
-                volume_id = volume_ref['id']
                 reserve_opts = {'volumes': -1,
-                                'gigabytes': -volume_ref['size']}
+                                'gigabytes': -volume.size}
                 QUOTAS.add_volume_type_opts(context,
                                             reserve_opts,
-                                            volume_ref.get('volume_type_id'))
+                                            volume.volume_type_id)
                 reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
                                               **reserve_opts)
@@ -2840,15 +3134,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         'id': group.id})
 
             # Delete glance metadata if it exists
-            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+            self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
 
-            self.db.volume_destroy(context, volume_id)
+            self.db.volume_destroy(context, volume.id)
 
             # Commit the reservations
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
-            self.stats['allocated_capacity_gb'] -= volume_ref['size']
+            self.stats['allocated_capacity_gb'] -= volume.size
 
         if cgreservations:
             CGQUOTAS.commit(context, cgreservations,
@@ -2862,6 +3156,214 @@ class VolumeManager(manager.SchedulerDependentManager):
                      "completed successfully."),
                  resource={'type': 'consistency_group',
                            'id': group.id})
+
+    def delete_group(self, context, group):
+        """Deletes group and the volumes in the group."""
+        context = context.elevated()
+        project_id = group.project_id
+
+        if context.project_id != group.project_id:
+            project_id = group.project_id
+        else:
+            project_id = context.project_id
+
+        volumes = objects.VolumeList.get_all_by_generic_group(
+            context, group.id)
+
+        for vol_obj in volumes:
+            if vol_obj.attach_status == "attached":
+                # Volume is still attached, need to detach first
+                raise exception.VolumeAttached(volume_id=vol_obj.id)
+            self._check_is_our_resource(vol_obj)
+
+        self._notify_about_group_usage(
+            context, group, "delete.start")
+
+        volumes_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, volumes_model_update = (
+                    self.driver.delete_group(context, group, volumes))
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, volumes_model_update = (
+                        self._delete_group_generic(context, group, volumes))
+                else:
+                    cg, volumes = self._convert_group_to_cg(
+                        group, volumes)
+                    model_update, volumes_model_update = (
+                        self.driver.delete_consistencygroup(context, cg,
+                                                            volumes))
+                    self._remove_consistencygroup_id_from_volumes(volumes)
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    # If we failed to delete a volume, make sure the
+                    # status for the group is set to error as well
+                    if (update['status'] in ['error_deleting', 'error']
+                            and model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = update['status']
+                self.db.volumes_update(context, volumes_model_update)
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Delete group failed.'))
+                    LOG.error(msg,
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                group.status = 'error'
+                group.save()
+                # Update volume status to 'error' if driver returns
+                # None for volumes_model_update.
+                if not volumes_model_update:
+                    self._remove_consistencygroup_id_from_volumes(volumes)
+                    for vol_obj in volumes:
+                        vol_obj.status = 'error'
+                        vol_obj.save()
+
+        # Get reservations for group
+        try:
+            reserve_opts = {'groups': -1}
+            grpreservations = GROUP_QUOTAS.reserve(context,
+                                                   project_id=project_id,
+                                                   **reserve_opts)
+        except Exception:
+            grpreservations = None
+            LOG.exception(_LE("Delete group "
+                              "failed to update usages."),
+                          resource={'type': 'group',
+                                    'id': group.id})
+
+        for vol in volumes:
+            # Get reservations for volume
+            try:
+                reserve_opts = {'volumes': -1,
+                                'gigabytes': -vol.size}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            vol.volume_type_id)
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+            except Exception:
+                reservations = None
+                LOG.exception(_LE("Delete group "
+                                  "failed to update usages."),
+                              resource={'type': 'group',
+                                        'id': group.id})
+
+            # Delete glance metadata if it exists
+            self.db.volume_glance_metadata_delete_by_volume(context, vol.id)
+
+            vol.destroy()
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+            self.stats['allocated_capacity_gb'] -= vol.size
+
+        if grpreservations:
+            GROUP_QUOTAS.commit(context, grpreservations,
+                                project_id=project_id)
+
+        group.destroy()
+        self._notify_about_group_usage(
+            context, group, "delete.end")
+        self.publish_service_capabilities(context)
+        LOG.info(_LI("Delete group "
+                     "completed successfully."),
+                 resource={'type': 'group',
+                           'id': group.id})
+
+    def _convert_group_to_cg(self, group, volumes):
+        if not group:
+            return None, None
+        cg = consistencygroup.ConsistencyGroup()
+        cg.from_group(group)
+        for vol in volumes:
+            vol.consistencygroup_id = vol.group_id
+            vol.consistencygroup = cg
+
+        return cg, volumes
+
+    def _remove_consistencygroup_id_from_volumes(self, volumes):
+        if not volumes:
+            return
+        for vol in volumes:
+            vol.consistencygroup_id = None
+            vol.consistencygroup = None
+
+    def _convert_group_snapshot_to_cgsnapshot(self, group_snapshot, snapshots,
+                                              ctxt):
+        if not group_snapshot:
+            return None, None
+        cgsnap = cgsnapshot.CGSnapshot()
+        cgsnap.from_group_snapshot(group_snapshot)
+
+        # Populate consistencygroup object
+        grp = objects.Group.get_by_id(ctxt, group_snapshot.group_id)
+        cg, __ = self._convert_group_to_cg(grp, [])
+        cgsnap.consistencygroup = cg
+
+        for snap in snapshots:
+            snap.cgsnapshot_id = snap.group_snapshot_id
+            snap.cgsnapshot = cgsnap
+
+        return cgsnap, snapshots
+
+    def _remove_cgsnapshot_id_from_snapshots(self, snapshots):
+        if not snapshots:
+            return
+        for snap in snapshots:
+            snap.cgsnapshot_id = None
+            snap.cgsnapshot = None
+
+    def _create_group_generic(self, context, group):
+        """Creates a group."""
+        # A group entry is already created in db. Just returns a status here.
+        model_update = {'status': fields.GroupStatus.AVAILABLE,
+                        'created_at': timeutils.utcnow()}
+        return model_update
+
+    def _delete_group_generic(self, context, group, volumes):
+        """Deletes a group and volumes in the group."""
+        model_update = {'status': group.status}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            try:
+                self.driver.remove_export(context, volume_ref)
+                self.driver.delete_volume(volume_ref)
+                volume_model_update['status'] = 'deleted'
+            except exception.VolumeIsBusy:
+                volume_model_update['status'] = 'available'
+            except Exception:
+                volume_model_update['status'] = 'error'
+                model_update['status'] = fields.GroupStatus.ERROR
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    def _update_group_generic(self, context, group,
+                              add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        # NOTE(xyang): The volume manager adds/removes the volume to/from the
+        # group in the database. This default implementation does not do
+        # anything in the backend storage.
+        return None, None, None
 
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
@@ -2881,32 +3383,26 @@ class VolumeManager(manager.SchedulerDependentManager):
             remove_volumes_list = remove_volumes.split(',')
         for add_vol in add_volumes_list:
             try:
-                add_vol_ref = self.db.volume_get(context, add_vol)
+                add_vol_ovo = objects.Volume.get_by_id(context, add_vol)
             except exception.VolumeNotFound:
                 LOG.error(_LE("Update consistency group "
                               "failed to add volume-%(volume_id)s: "
                               "VolumeNotFound."),
-                          {'volume_id': add_vol_ref['id']},
+                          {'volume_id': add_vol},
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
-            if add_vol_ref['status'] not in VALID_ADD_VOL_TO_CG_STATUS:
+            if add_vol_ovo.status not in VALID_ADD_VOL_TO_CG_STATUS:
                 msg = (_("Cannot add volume %(volume_id)s to consistency "
                          "group %(group_id)s because volume is in an invalid "
                          "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': add_vol_ref['id'],
+                       {'volume_id': add_vol_ovo.id,
                         'group_id': group.id,
-                        'status': add_vol_ref['status'],
+                        'status': add_vol_ovo.status,
                         'valid': VALID_ADD_VOL_TO_CG_STATUS})
                 raise exception.InvalidVolume(reason=msg)
-            # self.host is 'host@backend'
-            # volume_ref['host'] is 'host@backend#pool'
-            # Extract host before doing comparison
-            new_host = vol_utils.extract_host(add_vol_ref['host'])
-            if new_host != self.host:
-                raise exception.InvalidVolume(
-                    reason=_("Volume is not local to this node."))
-            add_volumes_ref.append(add_vol_ref)
+            self._check_is_our_resource(add_vol_ovo)
+            add_volumes_ref.append(add_vol_ovo)
 
         for remove_vol in remove_volumes_list:
             try:
@@ -2915,7 +3411,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.error(_LE("Update consistency group "
                               "failed to remove volume-%(volume_id)s: "
                               "VolumeNotFound."),
-                          {'volume_id': remove_vol_ref['id']},
+                          {'volume_id': remove_vol},
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
@@ -3007,6 +3503,159 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'consistency_group',
                            'id': group.id})
 
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates group.
+
+        Update group by adding volumes to the group,
+        or removing volumes from the group.
+        """
+
+        add_volumes_ref = []
+        remove_volumes_ref = []
+        add_volumes_list = []
+        remove_volumes_list = []
+        if add_volumes:
+            add_volumes_list = add_volumes.split(',')
+        if remove_volumes:
+            remove_volumes_list = remove_volumes.split(',')
+        for add_vol in add_volumes_list:
+            try:
+                add_vol_ref = objects.Volume.get_by_id(context, add_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Update group "
+                              "failed to add volume-%(volume_id)s: "
+                              "VolumeNotFound."),
+                          {'volume_id': add_vol_ref.id},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                raise
+            if add_vol_ref.status not in VALID_ADD_VOL_TO_GROUP_STATUS:
+                msg = (_("Cannot add volume %(volume_id)s to "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': add_vol_ref.id,
+                        'group_id': group.id,
+                        'status': add_vol_ref.status,
+                        'valid': VALID_ADD_VOL_TO_GROUP_STATUS})
+                raise exception.InvalidVolume(reason=msg)
+            self._check_is_our_resource(add_vol_ref)
+            add_volumes_ref.append(add_vol_ref)
+
+        for remove_vol in remove_volumes_list:
+            try:
+                remove_vol_ref = objects.Volume.get_by_id(context, remove_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Update group "
+                              "failed to remove volume-%(volume_id)s: "
+                              "VolumeNotFound."),
+                          {'volume_id': remove_vol_ref.id},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                raise
+            if (remove_vol_ref.status not in
+                    VALID_REMOVE_VOL_FROM_GROUP_STATUS):
+                msg = (_("Cannot remove volume %(volume_id)s from "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': remove_vol_ref.id,
+                        'group_id': group.id,
+                        'status': remove_vol_ref.status,
+                        'valid': VALID_REMOVE_VOL_FROM_GROUP_STATUS})
+                raise exception.InvalidVolume(reason=msg)
+            remove_volumes_ref.append(remove_vol_ref)
+
+        self._notify_about_group_usage(
+            context, group, "update.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, add_volumes_update, remove_volumes_update = (
+                    self.driver.update_group(
+                        context, group,
+                        add_volumes=add_volumes_ref,
+                        remove_volumes=remove_volumes_ref))
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update, add_volumes_update, remove_volumes_update = (
+                        self._update_group_generic(
+                            context, group,
+                            add_volumes=add_volumes_ref,
+                            remove_volumes=remove_volumes_ref))
+                else:
+                    cg, remove_volumes_ref = self._convert_group_to_cg(
+                        group, remove_volumes_ref)
+                    model_update, add_volumes_update, remove_volumes_update = (
+                        self.driver.update_consistencygroup(
+                            context, group,
+                            add_volumes=add_volumes_ref,
+                            remove_volumes=remove_volumes_ref))
+                    self._remove_consistencygroup_id_from_volumes(
+                        remove_volumes_ref)
+
+            if add_volumes_update:
+                self.db.volumes_update(context, add_volumes_update)
+
+            if remove_volumes_update:
+                self.db.volumes_update(context, remove_volumes_update)
+
+            if model_update:
+                if model_update['status'] in (
+                        [fields.GroupStatus.ERROR]):
+                    msg = (_('Error occurred when updating group '
+                             '%s.') % group.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                group.update(model_update)
+                group.save()
+
+        except exception.VolumeDriverException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred in the volume driver when "
+                              "updating group %(group_id)s."),
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
+                for add_vol in add_volumes_ref:
+                    add_vol.status = 'error'
+                    add_vol.save()
+                self._remove_consistencygroup_id_from_volumes(
+                    remove_volumes_ref)
+                for rem_vol in remove_volumes_ref:
+                    rem_vol.status = 'error'
+                    rem_vol.save()
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred when updating "
+                              "group %(group_id)s."),
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
+                for add_vol in add_volumes_ref:
+                    add_vol.status = 'error'
+                    add_vol.save()
+                for rem_vol in remove_volumes_ref:
+                    rem_vol.status = 'error'
+                    rem_vol.save()
+
+        group.status = 'available'
+        group.save()
+        for add_vol in add_volumes_ref:
+            add_vol.group_id = group.id
+            add_vol.save()
+        for rem_vol in remove_volumes_ref:
+            rem_vol.group_id = None
+            rem_vol.save()
+
+        self._notify_about_group_usage(
+            context, group, "update.end")
+        LOG.info(_LI("Update group completed successfully."),
+                 resource={'type': 'group',
+                           'id': group.id})
+
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates the cgsnapshot."""
         caller_context = context
@@ -3047,7 +3696,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                             snap_model['id'],
                                             snap_model)
 
-                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                    if (snap_model['status'] in [
+                        fields.SnapshotStatus.ERROR_DELETING,
+                        fields.SnapshotStatus.ERROR] and
                             model_update['status'] not in
                             ['error_deleting', 'error']):
                         model_update['status'] = snap_model['status']
@@ -3070,7 +3721,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # None for snapshots_model_update.
                 if not snapshots_model_update:
                     for snapshot in snapshots:
-                        snapshot.status = 'error'
+                        snapshot.status = fields.SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:
@@ -3081,6 +3732,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 try:
                     self.db.volume_glance_metadata_copy_to_snapshot(
                         context, snapshot_id, volume_id)
+                except exception.GlanceMetadataNotFound:
+                    # If volume is not created from image, No glance metadata
+                    # would be available for that volume in
+                    # volume glance metadata table
+                    pass
                 except exception.CinderException as ex:
                     LOG.error(_LE("Failed updating %(snapshot_id)s"
                                   " metadata using the provided volumes"
@@ -3090,14 +3746,16 @@ class VolumeManager(manager.SchedulerDependentManager):
 
                     # TODO(thangp): Switch over to use snapshot.update()
                     # after cgsnapshot-objects bugs are fixed
-                    self.db.snapshot_update(context, snapshot_id,
-                                            {'status': 'error'})
+                    self.db.snapshot_update(
+                        context, snapshot_id, {
+                            'status': fields.SnapshotStatus.ERROR})
                     raise exception.MetadataCopyFailure(
                         reason=six.text_type(ex))
 
             self.db.snapshot_update(context,
-                                    snapshot['id'], {'status': 'available',
-                                                     'progress': '100%'})
+                                    snapshot['id'],
+                                    {'status': fields.SnapshotStatus.AVAILABLE,
+                                     'progress': '100%'})
 
         cgsnapshot.status = 'available'
         cgsnapshot.save()
@@ -3107,6 +3765,162 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_cgsnapshot_usage(
             context, cgsnapshot, "create.end")
         return cgsnapshot
+
+    def create_group_snapshot(self, context, group_snapshot):
+        """Creates the group_snapshot."""
+        caller_context = context
+        context = context.elevated()
+
+        LOG.info(_LI("GroupSnapshot %s: creating."), group_snapshot.id)
+
+        snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+            context, group_snapshot.id)
+
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "create.start")
+
+        snapshots_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("Group snapshot %(grp_snap_id)s: creating.",
+                      {'grp_snap_id': group_snapshot.id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            group_snapshot.context = caller_context
+            for snapshot in snapshots:
+                snapshot.context = caller_context
+
+            try:
+                model_update, snapshots_model_update = (
+                    self.driver.create_group_snapshot(context, group_snapshot,
+                                                      snapshots))
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group_snapshot.group_type_id != cgsnap_type['id']:
+                    model_update, snapshots_model_update = (
+                        self._create_group_snapshot_generic(
+                            context, group_snapshot, snapshots))
+                else:
+                    cgsnapshot, snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, snapshots, context))
+                    model_update, snapshots_model_update = (
+                        self.driver.create_cgsnapshot(context, cgsnapshot,
+                                                      snapshots))
+                    self._remove_cgsnapshot_id_from_snapshots(snapshots)
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
+                    # Update db for snapshot.
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    snap_id = snap_model.pop('id')
+                    snap_obj = objects.Snapshot.get_by_id(context, snap_id)
+                    snap_obj.update(snap_model)
+                    snap_obj.save()
+                    if (snap_model['status'] in [
+                        fields.SnapshotStatus.ERROR_DELETING,
+                        fields.SnapshotStatus.ERROR] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
+
+            if model_update:
+                if model_update['status'] == 'error':
+                    msg = (_('Error occurred when creating group_snapshot '
+                             '%s.') % group_snapshot.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+                group_snapshot.update(model_update)
+                group_snapshot.save()
+
+        except exception.CinderException:
+            with excutils.save_and_reraise_exception():
+                group_snapshot.status = 'error'
+                group_snapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                self._remove_cgsnapshot_id_from_snapshots(snapshots)
+                if not snapshots_model_update:
+                    for snapshot in snapshots:
+                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.save()
+
+        for snapshot in snapshots:
+            volume_id = snapshot.volume_id
+            snapshot_id = snapshot.id
+            vol_obj = objects.Volume.get_by_id(context, volume_id)
+            if vol_obj.bootable:
+                try:
+                    self.db.volume_glance_metadata_copy_to_snapshot(
+                        context, snapshot_id, volume_id)
+                except exception.GlanceMetadataNotFound:
+                    # If volume is not created from image, No glance metadata
+                    # would be available for that volume in
+                    # volume glance metadata table
+                    pass
+                except exception.CinderException as ex:
+                    LOG.error(_LE("Failed updating %(snapshot_id)s"
+                                  " metadata using the provided volumes"
+                                  " %(volume_id)s metadata"),
+                              {'volume_id': volume_id,
+                               'snapshot_id': snapshot_id})
+                    snapshot.status = fields.SnapshotStatus.ERROR
+                    snapshot.save()
+                    raise exception.MetadataCopyFailure(
+                        reason=six.text_type(ex))
+
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.progress = '100%'
+            snapshot.save()
+
+        group_snapshot.status = 'available'
+        group_snapshot.save()
+
+        LOG.info(_LI("group_snapshot %s: created successfully"),
+                 group_snapshot.id)
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "create.end")
+        return group_snapshot
+
+    def _create_group_snapshot_generic(self, context, group_snapshot,
+                                       snapshots):
+        """Creates a group_snapshot."""
+        model_update = {'status': 'available'}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.driver.create_snapshot(snapshot)
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
+
+    def _delete_group_snapshot_generic(self, context, group_snapshot,
+                                       snapshots):
+        """Deletes a group_snapshot."""
+        model_update = {'status': group_snapshot.status}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.driver.delete_snapshot(snapshot)
+                snapshot_model_update['status'] = 'deleted'
+            except exception.SnapshotIsBusy:
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
 
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes cgsnapshot."""
@@ -3150,7 +3964,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                         snap.status = snap_model['status']
                         snap.save()
 
-                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                    if (snap_model['status'] in
+                            [fields.SnapshotStatus.ERROR_DELETING,
+                             fields.SnapshotStatus.ERROR] and
                             model_update['status'] not in
                             ['error_deleting', 'error']):
                         model_update['status'] = snap_model['status']
@@ -3173,7 +3989,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # None for snapshots_model_update.
                 if not snapshots_model_update:
                     for snapshot in snapshots:
-                        snapshot.status = 'error'
+                        snapshot.status = fields.SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:
@@ -3214,15 +4030,133 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
                                             snapshots)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume,
-                               volume_status):
-        """Finalize migration process on backend device."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if (not isinstance(volume, objects.Volume) or
-                not isinstance(new_volume, objects.Volume)):
-            volume = objects.Volume.get_by_id(ctxt, volume['id'])
-            new_volume = objects.Volume.get_by_id(ctxt, new_volume['id'])
+    def delete_group_snapshot(self, context, group_snapshot):
+        """Deletes group_snapshot."""
+        caller_context = context
+        context = context.elevated()
+        project_id = group_snapshot.project_id
 
+        LOG.info(_LI("group_snapshot %s: deleting"), group_snapshot.id)
+
+        snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+            context, group_snapshot.id)
+
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "delete.start")
+
+        snapshots_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("group_snapshot %(grp_snap_id)s: deleting",
+                      {'grp_snap_id': group_snapshot.id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            group_snapshot.context = caller_context
+            for snapshot in snapshots:
+                snapshot.context = caller_context
+
+            try:
+                model_update, snapshots_model_update = (
+                    self.driver.delete_group_snapshot(context, group_snapshot,
+                                                      snapshots))
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group_snapshot.group_type_id != cgsnap_type['id']:
+                    model_update, snapshots_model_update = (
+                        self._delete_group_snapshot_generic(
+                            context, group_snapshot, snapshots))
+                else:
+                    cgsnapshot, snapshots = (
+                        self._convert_group_snapshot_to_cgsnapshot(
+                            group_snapshot, snapshots, context))
+                    model_update, snapshots_model_update = (
+                        self.driver.delete_cgsnapshot(context, cgsnapshot,
+                                                      snapshots))
+                    self._remove_cgsnapshot_id_from_snapshots(snapshots)
+
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    snap = next((item for item in snapshots if
+                                 item.id == snap_model['id']), None)
+                    if snap:
+                        snap_model.pop('id')
+                        snap.update(snap_model)
+                        snap.save()
+
+                    if (snap_model['status'] in
+                            [fields.SnapshotStatus.ERROR_DELETING,
+                             fields.SnapshotStatus.ERROR] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Error occurred when deleting group_snapshot '
+                             '%s.') % group_snapshot.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group_snapshot.update(model_update)
+                    group_snapshot.save()
+
+        except exception.CinderException:
+            with excutils.save_and_reraise_exception():
+                group_snapshot.status = 'error'
+                group_snapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                if not snapshots_model_update:
+                    self._remove_cgsnapshot_id_from_snapshots(snapshots)
+                    for snapshot in snapshots:
+                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.save()
+
+        for snapshot in snapshots:
+            # Get reservations
+            try:
+                if CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'snapshots': -1}
+                else:
+                    reserve_opts = {
+                        'snapshots': -1,
+                        'gigabytes': -snapshot.volume_size,
+                    }
+                volume_ref = objects.Volume.get_by_id(context,
+                                                      snapshot.volume_id)
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.volume_type_id)
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+
+            except Exception:
+                reservations = None
+                LOG.exception(_LE("Failed to update usages deleting snapshot"))
+
+            self.db.volume_glance_metadata_delete_by_snapshot(context,
+                                                              snapshot.id)
+            snapshot.destroy()
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+        group_snapshot.destroy()
+        LOG.info(_LI("group_snapshot %s: deleted successfully"),
+                 group_snapshot.id)
+        self._notify_about_group_snapshot_usage(context, group_snapshot,
+                                                "delete.end",
+                                                snapshots)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
+        """Finalize migration process on backend device."""
         model_update = None
         model_update_default = {'_name_id': new_volume.name_id,
                                 'provider_location':
@@ -3264,9 +4198,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume.update(model_update_default)
                 volume.save()
 
-    # Replication V2.1 methods
-    def failover_host(self, context,
-                      secondary_backend_id=None):
+    # Replication V2.1 and a/a method
+    def failover(self, context, secondary_backend_id=None):
         """Failover a backend to a secondary replication target.
 
         Instructs a replication capable/configured backend to failover
@@ -3280,41 +4213,44 @@ class VolumeManager(manager.SchedulerDependentManager):
         :param context: security context
         :param secondary_backend_id: Specifies backend_id to fail over to
         """
+        updates = {}
+        repl_status = fields.ReplicationStatus
+
         svc_host = vol_utils.extract_host(self.host, 'backend')
+        service = objects.Service.get_by_args(context, svc_host,
+                                              constants.VOLUME_BINARY)
+        volumes = self._get_my_volumes(context)
 
-        service = objects.Service.get_by_args(
-            context,
-            svc_host,
-            'cinder-volume')
-        volumes = objects.VolumeList.get_all_by_host(context, self.host)
-
-        exception_encountered = False
+        exception_encountered = True
         try:
+            # For non clustered we can call v2.1 failover_host, but for
+            # clustered we call a/a failover method.  We know a/a method
+            # exists because BaseVD class wouldn't have started if it didn't.
+            failover = getattr(self.driver,
+                               'failover' if service.is_clustered
+                               else 'failover_host')
             # expected form of volume_update_list:
             # [{volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}},
             #  {volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}}]
-            (active_backend_id, volume_update_list) = (
-                self.driver.failover_host(
-                    context,
-                    volumes,
-                    secondary_backend_id))
+            active_backend_id, volume_update_list = failover(
+                context,
+                volumes,
+                secondary_id=secondary_backend_id)
+            exception_encountered = False
         except exception.UnableToFailOver:
             LOG.exception(_LE("Failed to perform replication failover"))
-            service.replication_status = (
-                fields.ReplicationStatus.FAILOVER_ERROR)
-            service.save()
-            exception_encountered = True
+            updates['replication_status'] = repl_status.FAILOVER_ERROR
         except exception.InvalidReplicationTarget:
             LOG.exception(_LE("Invalid replication target specified "
                               "for failover"))
-            # Preserve the replication_status
-            if secondary_backend_id == "default":
-                service.replication_status = (
-                    fields.ReplicationStatus.FAILED_OVER)
+            # Preserve the replication_status: Status should be failed over if
+            # we were failing back or if we were failing over from one
+            # secondary to another secondary. In both cases active_backend_id
+            # will be set.
+            if service.active_backend_id:
+                updates['replication_status'] = repl_status.FAILED_OVER
             else:
-                service.replication_status = fields.ReplicationStatus.ENABLED
-            service.save()
-            exception_encountered = True
+                updates['replication_status'] = repl_status.ENABLED
         except exception.VolumeDriverException:
             # NOTE(jdg): Drivers need to be aware if they fail during
             # a failover sequence, we're expecting them to cleanup
@@ -3322,30 +4258,29 @@ class VolumeManager(manager.SchedulerDependentManager):
             # backend is still set as primary as per driver memory
             LOG.error(_LE("Driver reported error during "
                           "replication failover."))
-            service.status = 'error'
-            service.save()
-            exception_encountered = True
+            updates.update(disabled=True,
+                           replication_status=repl_status.FAILOVER_ERROR)
         if exception_encountered:
             LOG.error(
                 _LE("Error encountered during failover on host: "
                     "%(host)s invalid target ID %(backend_id)s"),
                 {'host': self.host, 'backend_id':
                  secondary_backend_id})
+            self.finish_failover(context, service, updates)
             return
 
         if secondary_backend_id == "default":
-            service.replication_status = fields.ReplicationStatus.ENABLED
-            service.active_backend_id = ""
-            service.disabled = False
-            service.disabled_reason = ""
-            service.save()
-
+            updates['replication_status'] = repl_status.ENABLED
+            updates['active_backend_id'] = ''
+            updates['disabled'] = service.frozen
+            updates['disabled_reason'] = 'frozen' if service.frozen else ''
         else:
-            service.replication_status = fields.ReplicationStatus.FAILED_OVER
-            service.active_backend_id = active_backend_id
-            service.disabled = True
-            service.disabled_reason = "failed-over"
-            service.save()
+            updates['replication_status'] = repl_status.FAILED_OVER
+            updates['active_backend_id'] = active_backend_id
+            updates['disabled'] = True
+            updates['disabled_reason'] = 'failed-over'
+
+        self.finish_failover(context, service, updates)
 
         for update in volume_update_list:
             # Response must include an id key: {volume_id: <cinder-uuid>}
@@ -3362,6 +4297,53 @@ class VolumeManager(manager.SchedulerDependentManager):
             vobj.save()
 
         LOG.info(_LI("Failed over to replication target successfully."))
+
+    # TODO(geguileo): In P - remove this
+    failover_host = failover
+
+    def finish_failover(self, context, service, updates):
+        """Completion of the failover locally or via RPC."""
+        # If the service is clustered, broadcast the service changes to all
+        # volume services, including this one.
+        if service.is_clustered:
+            # We have to update the cluster with the same data, and we do it
+            # before broadcasting the failover_completed RPC call to prevent
+            # races with services that may be starting..
+            for key, value in updates.items():
+                setattr(service.cluster, key, value)
+            service.cluster.save()
+            rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.failover_completed(context, service, updates)
+        else:
+            service.update(updates)
+            service.save()
+
+    def failover_completed(self, context, updates):
+        """Finalize failover of this backend.
+
+        When a service is clustered and replicated the failover has 2 stages,
+        one that does the failover of the volumes and another that finalizes
+        the failover of the services themselves.
+
+        This method takes care of the last part and is called from the service
+        doing the failover of the volumes after finished processing the
+        volumes.
+        """
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+        service = objects.Service.get_by_args(context, svc_host,
+                                              constants.VOLUME_BINARY)
+        service.update(updates)
+        try:
+            self.driver.failover_completed(context, service.active_backend_id)
+        except Exception:
+            msg = _('Driver reported error during replication failover '
+                    'completion.')
+            LOG.exception(msg)
+            service.disabled = True
+            service.disabled_reason = msg
+            service.replication_status = (
+                fields.ReplicationStatus.ERROR)
+        service.save()
 
     def freeze_host(self, context):
         """Freeze management plane on this backend.
@@ -3390,7 +4372,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         service = objects.Service.get_by_args(
             context,
             svc_host,
-            'cinder-volume')
+            constants.VOLUME_BINARY)
         service.disabled = True
         service.disabled_reason = "frozen"
         service.save()
@@ -3423,7 +4405,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         service = objects.Service.get_by_args(
             context,
             svc_host,
-            'cinder-volume')
+            constants.VOLUME_BINARY)
         service.disabled = False
         service.disabled_reason = ""
         service.save()
@@ -3452,6 +4434,28 @@ class VolumeManager(manager.SchedulerDependentManager):
             flow_engine.run()
         return snapshot.id
 
+    def get_manageable_snapshots(self, ctxt, marker, limit, offset,
+                                 sort_keys, sort_dirs, want_objects=False):
+        try:
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable snapshots failed, due "
+                                  "to uninitialized driver."))
+
+        cinder_snapshots = self._get_my_snapshots(ctxt)
+        try:
+            driver_entries = self.driver.get_manageable_snapshots(
+                cinder_snapshots, marker, limit, offset, sort_keys, sort_dirs)
+            if want_objects:
+                driver_entries = (objects.ManageableSnapshotList.
+                                  from_primitives(ctxt, driver_entries))
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable snapshots failed, due "
+                                  "to driver error."))
+        return driver_entries
+
     def get_capabilities(self, context, discover):
         """Get capabilities of backend storage."""
         if discover:
@@ -3460,160 +4464,227 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.debug("Obtained capabilities list: %s.", capabilities)
         return capabilities
 
-    def get_backup_device(self, ctxt, backup):
+    def get_backup_device(self, ctxt, backup, want_objects=False):
         (backup_device, is_snapshot) = (
             self.driver.get_backup_device(ctxt, backup))
         secure_enabled = self.driver.secure_file_operations_enabled()
         backup_device_dict = {'backup_device': backup_device,
                               'secure_enabled': secure_enabled,
                               'is_snapshot': is_snapshot, }
-        return backup_device_dict
+        # TODO(sborkows): from_primitive method will be removed in O, so there
+        # is a need to clean here then.
+        return (objects.BackupDeviceInfo.from_primitive(backup_device_dict,
+                                                        ctxt)
+                if want_objects else backup_device_dict)
 
     def secure_file_operations_enabled(self, ctxt, volume):
         secure_enabled = self.driver.secure_file_operations_enabled()
         return secure_enabled
 
+    def _connection_create(self, ctxt, volume, attachment, connector):
+        try:
+            self.driver.validate_connector(connector)
+        except exception.InvalidConnectorException as err:
+            raise exception.InvalidInput(reason=six.text_type(err))
+        except Exception as err:
+            err_msg = (_("Validate volume connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.error(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
-# TODO(dulek): This goes away immediately in Newton and is just present in
-# Mitaka so that we can receive v1.x and v2.0 messages
-class _VolumeV1Proxy(object):
+        try:
+            model_update = self.driver.create_export(ctxt.elevated(),
+                                                     volume, connector)
+        except exception.CinderException as ex:
+            err_msg = (_("Create export for volume failed (%s).") % ex.msg)
+            LOG.exception(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
-    target = messaging.Target(version='1.40')
+        try:
+            if model_update:
+                volume.update(model_update)
+                volume.save()
+        except exception.CinderException as ex:
+            LOG.exception(_LE("Model update failed."), resource=volume)
+            raise exception.ExportFailure(reason=six.text_type(ex))
 
-    def __init__(self, manager):
-        self.manager = manager
+        try:
+            conn_info = self.driver.initialize_connection(volume, connector)
+        except Exception as err:
+            err_msg = (_("Driver initialize connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+            self.driver.remove_export(ctxt.elevated(), volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        conn_info = self._parse_connection_options(ctxt, volume, conn_info)
 
-    def create_volume(self, context, volume_id, request_spec=None,
-                      filter_properties=None, allow_reschedule=True,
-                      volume=None):
-        return self.manager.create_volume(
-            context, volume_id, request_spec=request_spec,
-            filter_properties=filter_properties,
-            allow_reschedule=allow_reschedule, volume=volume)
+        # NOTE(jdg): Get rid of the nested dict (data key)
+        conn_data = conn_info.pop('data', {})
+        connection_info = conn_data.copy()
+        connection_info.update(conn_info)
+        values = {'volume_id': volume.id,
+                  'attach_status': 'attaching', }
 
-    def delete_volume(self, context, volume_id, unmanage_only=False,
-                      volume=None, cascade=False):
-        return self.manager.delete_volume(
-            context, volume_id, unmanage_only=unmanage_only, volume=volume,
-            cascade=cascade)
+        self.db.volume_attachment_update(ctxt, attachment.id, values)
+        self.db.attachment_specs_update_or_create(
+            ctxt,
+            attachment.id,
+            connector)
 
-    def create_snapshot(self, context, volume_id, snapshot):
-        return self.manager.create_snapshot(context, volume_id, snapshot)
+        connection_info['attachment_id'] = attachment.id
+        return connection_info
 
-    def delete_snapshot(self, context, snapshot, unmanage_only=False):
-        return self.manager.delete_snapshot(context, snapshot,
-                                            unmanage_only=unmanage_only)
+    def attachment_update(self,
+                          context,
+                          vref,
+                          connector,
+                          attachment_id):
+        """Update/Finalize an attachment.
 
-    def attach_volume(self, context, volume_id, instance_uuid, host_name,
-                      mountpoint, mode):
-        return self.manager.attach_volume(context, volume_id, instance_uuid,
-                                          host_name, mountpoint, mode)
+        This call updates a valid attachment record to associate with a volume
+        and provide the caller with the proper connection info.  Note that
+        this call requires an `attachment_ref`.  It's expected that prior to
+        this call that the volume and an attachment UUID has been reserved.
 
-    def detach_volume(self, context, volume_id, attachment_id=None):
-        return self.manager.detach_volume(context, volume_id,
-                                          attachment_id=attachment_id)
+        param: vref: Volume object to create attachment for
+        param: connector: Connector object to use for attachment creation
+        param: attachment_ref: ID of the attachment record to update
+        """
 
-    def copy_volume_to_image(self, context, volume_id, image_meta):
-        return self.manager.copy_volume_to_image(context, volume_id,
-                                                 image_meta)
-
-    def initialize_connection(self, context, volume_id, connector):
-        return self.manager.initialize_connection(context, volume_id,
+        mode = connector.get('mode', 'rw')
+        self._notify_about_volume_usage(context, vref, 'attach.start')
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        connection_info = self._connection_create(context,
+                                                  vref,
+                                                  attachment_ref,
                                                   connector)
+        # FIXME(jdg): get rid of this admin_meta option here, the only thing
+        # it does is enforce that a volume is R/O, that should be done via a
+        # type and not *more* metadata
+        volume_metadata = self.db.volume_admin_metadata_update(
+            context.elevated(),
+            attachment_ref.volume_id,
+            {'attached_mode': mode}, False)
 
-    def terminate_connection(self, context, volume_id, connector, force=False):
-        return self.manager.terminate_connection(context, volume_id, connector,
-                                                 force=force)
+        if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+            self.db.volume_update(context, vref.id,
+                                  {'status': 'error_attaching'})
+            self.message_api.create(
+                context, defined_messages.ATTACH_READONLY_VOLUME,
+                context.project_id, resource_type=resource_types.VOLUME,
+                resource_uuid=vref.id)
+            raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                    volume_id=vref.id)
+        try:
+            utils.require_driver_initialized(self.driver)
+            self.driver.attach_volume(context,
+                                      vref,
+                                      attachment_ref.instance_uuid,
+                                      connector.get('hostname', ''),
+                                      connector.get('mountpoint', 'na'))
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.volume_attachment_update(
+                    context, attachment_ref.id,
+                    {'attach_status': 'error_attaching'})
 
-    def remove_export(self, context, volume_id):
-        return self.manager.remove_export(context, volume_id)
+        self.db.volume_attached(context.elevated(),
+                                attachment_ref.id,
+                                attachment_ref.instance_uuid,
+                                connector.get('hostname', ''),
+                                connector.get('mountpoint', 'na'),
+                                mode)
+        vref.refresh()
+        self._notify_about_volume_usage(context, vref, "attach.end")
+        LOG.info(_LI("Attach volume completed successfully."),
+                 resource=vref)
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        return connection_info
 
-    def accept_transfer(self, context, volume_id, new_user, new_project):
-        return self.manager.accept_transfer(context, volume_id, new_user,
-                                            new_project)
+    def _connection_terminate(self, context, volume,
+                              attachment, force=False):
+        """Remove a volume connection, but leave attachment."""
+        utils.require_driver_initialized(self.driver)
 
-    def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
-                                  error=False, volume=None, new_volume=None):
-        return self.manager.migrate_volume_completion(
-            ctxt, volume_id, new_volume_id, error=error, volume=volume,
-            new_volume=new_volume)
+        # TODO(jdg): Add an object method to cover this
+        connector = self.db.attachment_specs_get(
+            context,
+            attachment.id)
 
-    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
-                       new_type_id=None, volume=None):
-        return self.manager.migrate_volume(
-            ctxt, volume_id, host, force_host_copy=force_host_copy,
-            new_type_id=new_type_id, volume=volume)
+        try:
+            shared_connections = self.driver.terminate_connection(volume,
+                                                                  connector,
+                                                                  force=force)
+            if not isinstance(shared_connections, bool):
+                shared_connections = False
 
-    def publish_service_capabilities(self, context):
-        return self.manager.publish_service_capabilities(context)
+        except Exception as err:
+            err_msg = (_('Terminate volume connection failed: %(err)s')
+                       % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=volume)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        LOG.info(_LI("Terminate volume connection completed successfully."),
+                 resource=volume)
+        # NOTE(jdg): Return True/False if there are other outstanding
+        # attachments that share this connection.  If True should signify
+        # caller to preserve the actual host connection (work should be
+        # done in the brick connector as it has the knowledge of what's
+        # going on here.
+        return shared_connections
 
-    def extend_volume(self, context, volume_id, new_size, reservations,
-                      volume=None):
-        return self.manager.extend_volume(context, volume_id, new_size,
-                                          reservations, volume=volume)
+    def attachment_delete(self, context, attachment_id, vref):
+        """Delete/Detach the specified attachment.
 
-    def retype(self, ctxt, volume_id, new_type_id, host,
-               migration_policy='never', reservations=None,
-               volume=None, old_reservations=None):
-        return self.manager.retype(ctxt, volume_id, new_type_id, host,
-                                   migration_policy=migration_policy,
-                                   reservations=reservations, volume=volume,
-                                   old_reservations=old_reservations)
+        Notifies the backend device that we're detaching the specified
+        attachment instance.
 
-    def manage_existing(self, ctxt, volume_id, ref=None):
-        return self.manager.manage_existing(ctxt, volume_id, ref=ref)
+        param: vref: Volume object associated with the attachment
+        param: attachment: Attachment reference object to remove
 
-    def promote_replica(self, ctxt, volume_id):
-        return self.manager.promote_replica(ctxt, volume_id)
+        NOTE if the attachment reference is None, we remove all existing
+        attachments for the specified volume object.
+        """
+        has_shared_connection = False
+        attachment_ref = objects.VolumeAttachment.get_by_id(context,
+                                                            attachment_id)
+        if not attachment_ref:
+            for attachment in VA_LIST.get_all_by_volume_id(context, vref.id):
+                if self._do_attachment_delete(context, vref, attachment):
+                    has_shared_connection = True
+        else:
+            has_shared_connection = (
+                self._do_attachment_delete(context, vref, attachment_ref))
+        return has_shared_connection
 
-    def reenable_replication(self, ctxt, volume_id):
-        return self.manager.reenable_replication(ctxt, volume_id)
+    def _do_attachment_delete(self, context, vref, attachment):
+        utils.require_driver_initialized(self.driver)
+        self._notify_about_volume_usage(context, vref, "detach.start")
+        has_shared_connection = self._connection_terminate(context,
+                                                           vref,
+                                                           attachment)
+        self.driver.detach_volume(context, vref, attachment)
+        try:
+            LOG.debug('Deleting attachment %(attachment_id)s.',
+                      {'attachment_id': attachment.id},
+                      resource=vref)
+            self.driver.detach_volume(context, vref, attachment)
+            self.driver.remove_export(context.elevated(), vref)
+        except Exception:
+            # FIXME(jdg): Obviously our volume object is going to need some
+            # changes to deal with multi-attach and figuring out how to
+            # represent a single failed attach out of multiple attachments
 
-    def create_consistencygroup(self, context, group):
-        return self.manager.create_consistencygroup(context, group)
-
-    def create_consistencygroup_from_src(self, context, group,
-                                         cgsnapshot=None, source_cg=None):
-        return self.manager.create_consistencygroup_from_src(
-            context, group, cgsnapshot=cgsnapshot, source_cg=source_cg)
-
-    def delete_consistencygroup(self, context, group):
-        return self.manager.delete_consistencygroup(context, group)
-
-    def update_consistencygroup(self, context, group, add_volumes=None,
-                                remove_volumes=None):
-        return self.manager.update_consistencygroup(
-            context, group, add_volumes=add_volumes,
-            remove_volumes=remove_volumes)
-
-    def create_cgsnapshot(self, context, cgsnapshot):
-        return self.manager.create_cgsnapshot(context, cgsnapshot)
-
-    def delete_cgsnapshot(self, context, cgsnapshot):
-        return self.manager.delete_cgsnapshot(context, cgsnapshot)
-
-    def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
-        return self.manager.update_migrated_volume(ctxt, volume, new_volume,
-                                                   volume_status)
-
-    def failover_host(self, context, secondary_backend_id=None):
-        return self.manager.failover_host(
-            context, secondary_backend_id=secondary_backend_id)
-
-    def freeze_host(self, context):
-        return self.manager.freeze_host(context)
-
-    def thaw_host(self, context):
-        return self.manager.thaw_host(context)
-
-    def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
-        return self.manager.manage_exisiting_snapshot(ctxt, snapshot, ref=ref)
-
-    def get_capabilities(self, context, discover):
-        return self.manager.get_capabilities(context, discover)
-
-    def get_backup_device(self, ctxt, backup):
-        return self.manager.get_backup_device(ctxt, backup)
-
-    def secure_file_operations_enabled(self, ctxt, volume):
-        return self.manager.secure_file_operations_enabled(ctxt, volume)
+            # TODO(jdg): object method here
+            self.db.volume_attachment_update(
+                context, attachment.get('id'),
+                {'attach_status': 'error_detaching'})
+        else:
+            self.db.volume_detached(context.elevated(), vref.id,
+                                    attachment.get('id'))
+            self.db.volume_admin_metadata_delete(context.elevated(),
+                                                 vref.id,
+                                                 'attached_mode')
+        self._notify_about_volume_usage(context, vref, "detach.end")
+        return has_shared_connection

@@ -14,74 +14,29 @@
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import encodeutils
 from oslo_utils import strutils
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder import utils
 from cinder import volume
 
 
-LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 
 def authorize(context, action_name):
     action = 'volume_actions:%s' % action_name
     extensions.extension_authorizer('volume', action)(context)
-
-
-class VolumeToImageSerializer(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('os-volume_upload_image',
-                                       selector='os-volume_upload_image')
-        root.set('id')
-        root.set('updated_at')
-        root.set('status')
-        root.set('display_description')
-        root.set('size')
-        root.set('volume_type')
-        root.set('image_id')
-        root.set('container_format')
-        root.set('disk_format')
-        root.set('image_name')
-        root.set('protected')
-        if CONF.glance_api_version == 2:
-            root.set('visibility')
-        else:
-            root.set('is_public')
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class VolumeToImageDeserializer(wsgi.XMLDeserializer):
-    """Deserializer to handle xml-formatted requests."""
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        action_node = dom.childNodes[0]
-        action_name = action_node.tagName
-
-        action_data = {}
-        attributes = ["force", "image_name", "container_format", "disk_format",
-                      "protected"]
-        if CONF.glance_api_version == 2:
-            attributes.append('visibility')
-        else:
-            attributes.append('is_public')
-        for attr in attributes:
-            if action_node.hasAttribute(attr):
-                action_data[attr] = action_node.getAttribute(attr)
-        if 'force' in action_data and action_data['force'] == 'True':
-            action_data['force'] = True
-        return {'body': {action_name: action_data}}
 
 
 class VolumeActionsController(wsgi.Controller):
@@ -93,10 +48,8 @@ class VolumeActionsController(wsgi.Controller):
     def _attach(self, req, id, body):
         """Add attachment metadata."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         # instance uuid is an option now
         instance_uuid = None
@@ -135,16 +88,14 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-detach')
     def _detach(self, req, id, body):
         """Clear attachment metadata."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         attachment_id = None
         if body['os-detach']:
@@ -163,64 +114,54 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-reserve')
     def _reserve(self, req, id, body):
         """Mark volume as reserved."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         self.volume_api.reserve_volume(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-unreserve')
     def _unreserve(self, req, id, body):
         """Unmark volume as reserved."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         self.volume_api.unreserve_volume(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-begin_detaching')
     def _begin_detaching(self, req, id, body):
         """Update volume status to 'detaching'."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         self.volume_api.begin_detaching(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-roll_detaching')
     def _roll_detaching(self, req, id, body):
         """Roll back volume status to 'in-use'."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         self.volume_api.roll_detaching(context, volume)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-initialize_connection')
     def _initialize_connection(self, req, id, body):
         """Initialize volume attachment."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
         try:
             connector = body['os-initialize_connection']['connector']
         except KeyError:
@@ -233,7 +174,7 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidInput as err:
             raise webob.exc.HTTPBadRequest(
                 explanation=err)
-        except exception.VolumeBackendAPIException as error:
+        except exception.VolumeBackendAPIException:
             msg = _("Unable to fetch connection information from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
 
@@ -243,10 +184,8 @@ class VolumeActionsController(wsgi.Controller):
     def _terminate_connection(self, req, id, body):
         """Terminate volume attachment."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
         try:
             connector = body['os-terminate_connection']['connector']
         except KeyError:
@@ -254,15 +193,13 @@ class VolumeActionsController(wsgi.Controller):
                 explanation=_("Must specify 'connector'"))
         try:
             self.volume_api.terminate_connection(context, volume, connector)
-        except exception.VolumeBackendAPIException as error:
+        except exception.VolumeBackendAPIException:
             msg = _("Unable to terminate volume connection from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
-    @wsgi.serializers(xml=VolumeToImageSerializer)
-    @wsgi.deserializers(xml=VolumeToImageDeserializer)
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']
@@ -280,16 +217,25 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Invalid value for 'force': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         authorize(context, "upload_image")
-        image_metadata = {"container_format": params.get("container_format",
-                                                         "bare"),
-                          "disk_format": params.get("disk_format", "raw"),
-                          "name": params["image_name"]}
+        # check for valid disk-format
+        disk_format = params.get("disk_format", "raw")
+        if not image_utils.validate_disk_format(disk_format):
+            msg = _("Invalid disk-format '%(disk_format)s' is specified. "
+                    "Allowed disk-formats are %(allowed_disk_formats)s.") % {
+                "disk_format": disk_format,
+                "allowed_disk_formats": ", ".join(
+                    image_utils.VALID_DISK_FORMATS)
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        image_metadata = {"container_format": params.get(
+            "container_format", "bare"),
+            "disk_format": disk_format,
+            "name": params["image_name"]}
 
         if req_version >= api_version_request.APIVersionRequest('3.1'):
 
@@ -329,33 +275,28 @@ class VolumeActionsController(wsgi.Controller):
     def _extend(self, req, id, body):
         """Extend size of volume."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         try:
-            int(body['os-extend']['new_size'])
+            size = int(body['os-extend']['new_size'])
         except (KeyError, ValueError, TypeError):
             msg = _("New volume size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        size = int(body['os-extend']['new_size'])
         try:
             self.volume_api.extend(context, volume, size)
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-update_readonly_flag')
     def _volume_readonly_update(self, req, id, body):
         """Update volume readonly flag."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         try:
             readonly_flag = body['os-update_readonly_flag']['readonly']
@@ -372,7 +313,7 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-retype')
     def _retype(self, req, id, body):
@@ -387,16 +328,14 @@ class VolumeActionsController(wsgi.Controller):
         policy = body['os-retype'].get('migration_policy')
 
         self.volume_api.retype(context, volume, new_type, policy)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-set_bootable')
     def _set_bootable(self, req, id, body):
         """Update bootable status of a volume."""
         context = req.environ['cinder.context']
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
 
         try:
             bootable = body['os-set_bootable']['bootable']
@@ -415,7 +354,7 @@ class VolumeActionsController(wsgi.Controller):
         update_dict = {'bootable': bootable}
 
         self.volume_api.update(context, volume, update_dict)
-        return webob.Response(status_int=200)
+        return webob.Response(status_int=http_client.OK)
 
 
 class Volume_actions(extensions.ExtensionDescriptor):
@@ -423,7 +362,6 @@ class Volume_actions(extensions.ExtensionDescriptor):
 
     name = "VolumeActions"
     alias = "os-volume-actions"
-    namespace = "http://docs.openstack.org/volume/ext/volume-actions/api/v1.1"
     updated = "2012-05-31T00:00:00+00:00"
 
     def get_controller_extensions(self):

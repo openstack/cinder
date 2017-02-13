@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
 # Copyright (c) 2016 Mike Rooney. All rights reserved.
+# Copyright (c) 2017 Jose Porrua. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,15 +16,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import copy
 import math
+import re
 
 from oslo_log import log as logging
+from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LW, _LE
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
@@ -33,7 +35,7 @@ from oslo_utils import strutils
 
 
 LOG = logging.getLogger(__name__)
-DELETED_PREFIX = 'deleted_cinder_'
+DEFAULT_MAX_PAGE_LENGTH = 50
 
 
 @six.add_metaclass(utils.TraceWrapperMetaclass)
@@ -55,12 +57,25 @@ class Client(client_base.Client):
 
         ontapi_version = self.get_ontapi_version()   # major, minor
 
+        ontapi_1_20 = ontapi_version >= (1, 20)
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
+        ontapi_1_100 = ontapi_version >= (1, 100)
+        ontapi_1_1xx = (1, 100) <= ontapi_version < (1, 200)
+
+        self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
+        self.features.add_feature('USER_CAPABILITY_LIST',
+                                  supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
+        self.features.add_feature('CLONE_SPLIT_STATUS', supported=ontapi_1_30)
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
                                   supported=ontapi_1_30)
+        self.features.add_feature('ADVANCED_DISK_PARTITIONING',
+                                  supported=ontapi_1_30)
+        self.features.add_feature('BACKUP_CLONE_PARAM', supported=ontapi_1_100)
+        self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
+        self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_1xx)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -72,8 +87,124 @@ class Client(client_base.Client):
         num_records = api_result_element.get_child_content('num-records')
         return bool(num_records and '0' != num_records)
 
+    def _get_record_count(self, api_result_element):
+        try:
+            return int(api_result_element.get_child_content('num-records'))
+        except TypeError:
+            msg = _('Missing record count for NetApp iterator API invocation.')
+            raise exception.NetAppDriverException(msg)
+
     def set_vserver(self, vserver):
+        self.vserver = vserver
         self.connection.set_vserver(vserver)
+
+    def send_iter_request(self, api_name, api_args=None, enable_tunneling=True,
+                          max_page_length=DEFAULT_MAX_PAGE_LENGTH):
+        """Invoke an iterator-style getter API."""
+
+        if not api_args:
+            api_args = {}
+
+        api_args['max-records'] = max_page_length
+
+        # Get first page
+        result = self.send_request(
+            api_name, api_args, enable_tunneling=enable_tunneling)
+
+        # Most commonly, we can just return here if there is no more data
+        next_tag = result.get_child_content('next-tag')
+        if not next_tag:
+            return result
+
+        # Ensure pagination data is valid and prepare to store remaining pages
+        num_records = self._get_record_count(result)
+        attributes_list = result.get_child_by_name('attributes-list')
+        if not attributes_list:
+            msg = _('Missing attributes list for API %s.') % api_name
+            raise exception.NetAppDriverException(msg)
+
+        # Get remaining pages, saving data into first page
+        while next_tag is not None:
+            next_api_args = copy.deepcopy(api_args)
+            next_api_args['tag'] = next_tag
+            next_result = self.send_request(
+                api_name, next_api_args, enable_tunneling=enable_tunneling)
+
+            next_attributes_list = next_result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+
+            for record in next_attributes_list.get_children():
+                attributes_list.add_child_elem(record)
+
+            num_records += self._get_record_count(next_result)
+            next_tag = next_result.get_child_content('next-tag')
+
+        result.get_child_by_name('num-records').set_content(
+            six.text_type(num_records))
+        result.get_child_by_name('next-tag').set_content('')
+        return result
+
+    def list_vservers(self, vserver_type='data'):
+        """Get the names of vservers present, optionally filtered by type."""
+        query = {
+            'vserver-info': {
+                'vserver-type': vserver_type,
+            }
+        } if vserver_type else None
+
+        api_args = {
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                },
+            },
+        }
+        if query:
+            api_args['query'] = query
+
+        result = self.send_iter_request('vserver-get-iter', api_args,
+                                        enable_tunneling=False)
+        vserver_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        return [vserver_info.get_child_content('vserver-name')
+                for vserver_info in vserver_info_list.get_children()]
+
+    def _get_ems_log_destination_vserver(self):
+        """Returns the best vserver destination for EMS messages."""
+        major, minor = self.get_ontapi_version(cached=True)
+
+        if (major > 1) or (major == 1 and minor > 15):
+            # Prefer admin Vserver (requires cluster credentials).
+            admin_vservers = self.list_vservers(vserver_type='admin')
+            if admin_vservers:
+                return admin_vservers[0]
+
+            # Fall back to data Vserver.
+            data_vservers = self.list_vservers(vserver_type='data')
+            if data_vservers:
+                return data_vservers[0]
+
+        # If older API version, or no other Vservers found, use node Vserver.
+        node_vservers = self.list_vservers(vserver_type='node')
+        if node_vservers:
+            return node_vservers[0]
+
+        raise exception.NotFound("No Vserver found to receive EMS messages.")
+
+    def send_ems_log_message(self, message_dict):
+        """Sends a message to the Data ONTAP EMS log."""
+
+        # NOTE(cknight): Cannot use deepcopy on the connection context
+        node_client = copy.copy(self)
+        node_client.connection = copy.copy(self.connection)
+        node_client.connection.set_timeout(25)
+
+        try:
+            node_client.set_vserver(self._get_ems_log_destination_vserver())
+            node_client.send_request('ems-autosupport-log', message_dict)
+            LOG.debug('EMS executed successfully.')
+        except netapp_api.NaApiError as e:
+            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
@@ -317,7 +448,7 @@ class Client(client_base.Client):
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
-                  block_count=0, source_snapshot=None):
+                  block_count=0, source_snapshot=None, is_snapshot=False):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -342,6 +473,8 @@ class Client(client_base.Client):
             }
             if source_snapshot:
                 zapi_args['snapshot-name'] = source_snapshot
+            if is_snapshot and self.features.BACKUP_CLONE_PARAM:
+                zapi_args['is-backup'] = 'true'
             clone_create = netapp_api.NaElement.create_node_with_children(
                 'clone-create', **zapi_args)
             if qos_policy_group_name is not None:
@@ -479,7 +612,7 @@ class Client(client_base.Client):
         # matching that pattern.
         if spec is not None:
             current_name = spec['policy_name']
-            new_name = DELETED_PREFIX + current_name
+            new_name = client_base.DELETED_PREFIX + current_name
             try:
                 self.qos_policy_group_rename(current_name, new_name)
             except netapp_api.NaApiError as ex:
@@ -495,7 +628,7 @@ class Client(client_base.Client):
         api_args = {
             'query': {
                 'qos-policy-group-info': {
-                    'policy-group': '%s*' % DELETED_PREFIX,
+                    'policy-group': '%s*' % client_base.DELETED_PREFIX,
                     'vserver': self.vserver,
                 }
             },
@@ -566,16 +699,26 @@ class Client(client_base.Client):
                                    "%(junction)s ") % msg_fmt)
 
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
-                   dest_exists=False):
+                   dest_exists=False, source_snapshot=None,
+                   is_snapshot=False):
         """Clones file on vserver."""
         LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
-                  "dest %(dest_path)s, vserver %(vserver)s",
+                  "dest %(dest_path)s, vserver %(vserver)s,"
+                  "source_snapshot %(source_snapshot)s",
                   {'volume': flex_vol, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver})
+                   'dest_path': dest_path, 'vserver': vserver,
+                   'source_snapshot': source_snapshot})
+        zapi_args = {
+            'volume': flex_vol,
+            'source-path': src_path,
+            'destination-path': dest_path,
+        }
+        if is_snapshot and self.features.BACKUP_CLONE_PARAM:
+            zapi_args['is-backup'] = 'true'
+        if source_snapshot:
+            zapi_args['snapshot-name'] = source_snapshot
         clone_create = netapp_api.NaElement.create_node_with_children(
-            'clone-create',
-            **{'volume': flex_vol, 'source-path': src_path,
-               'destination-path': dest_path})
+            'clone-create', **zapi_args)
         major, minor = self.connection.get_api_version()
         if major == 1 and minor >= 20 and dest_exists:
             clone_create.add_new_child('destination-exists', 'true')
@@ -592,86 +735,94 @@ class Client(client_base.Client):
                   {'path': path, 'bytes': unique_bytes})
         return unique_bytes
 
-    def get_vserver_ips(self, vserver):
-        """Get ips for the vserver."""
-        result = netapp_api.invoke_api(
-            self.connection, api_name='net-interface-get-iter',
-            is_iter=True, tunnel=vserver)
-        if_list = []
-        for res in result:
-            records = res.get_child_content('num-records')
-            if records > 0:
-                attr_list = res['attributes-list']
-                ifs = attr_list.get_children()
-                if_list.extend(ifs)
-        return if_list
+    def check_cluster_api(self, object_name, operation_name, api):
+        """Checks the availability of a cluster API.
 
-    def check_apis_on_cluster(self, api_list=None):
-        """Checks API availability and permissions on cluster.
-
-        Checks API availability and permissions for executing user.
-        Returns a list of failed apis.
+        Returns True if the specified cluster API exists and may be called by
+        the current user. The API is *called* on Data ONTAP versions prior to
+        8.2, while versions starting with 8.2 utilize an API designed for
+        this purpose.
         """
-        api_list = api_list or []
-        failed_apis = []
-        if api_list:
-            api_version = self.connection.get_api_version()
-            if api_version:
-                major, minor = api_version
-                if major == 1 and minor < 20:
-                    for api_name in api_list:
-                        na_el = netapp_api.NaElement(api_name)
-                        try:
-                            self.connection.invoke_successfully(na_el)
-                        except Exception as e:
-                            if isinstance(e, netapp_api.NaApiError):
-                                if (e.code == netapp_api.NaErrors
-                                        ['API_NOT_FOUND'].code or
-                                    e.code == netapp_api.NaErrors
-                                        ['INSUFFICIENT_PRIVS'].code):
-                                    failed_apis.append(api_name)
-                elif major == 1 and minor >= 20:
-                    failed_apis = copy.copy(api_list)
-                    result = netapp_api.invoke_api(
-                        self.connection,
-                        api_name='system-user-capability-get-iter',
-                        api_family='cm',
-                        additional_elems=None,
-                        is_iter=True)
-                    for res in result:
-                        attr_list = res.get_child_by_name('attributes-list')
-                        if attr_list:
-                            capabilities = attr_list.get_children()
-                            for capability in capabilities:
-                                op_list = capability.get_child_by_name(
-                                    'operation-list')
-                                if op_list:
-                                    ops = op_list.get_children()
-                                    for op in ops:
-                                        apis = op.get_child_content(
-                                            'api-name')
-                                        if apis:
-                                            api_list = apis.split(',')
-                                            for api_name in api_list:
-                                                if (api_name and
-                                                        api_name.strip()
-                                                        in failed_apis):
-                                                    failed_apis.remove(
-                                                        api_name)
-                                        else:
-                                            continue
-                else:
-                    msg = _("Unsupported Clustered Data ONTAP version.")
-                    raise exception.VolumeBackendAPIException(data=msg)
-            else:
-                msg = _("Data ONTAP API version could not be determined.")
-                raise exception.VolumeBackendAPIException(data=msg)
-        return failed_apis
 
-    def get_operational_network_interface_addresses(self):
-        """Gets the IP addresses of operational LIFs on the vserver."""
+        if not self.features.USER_CAPABILITY_LIST:
+            return self._check_cluster_api_legacy(api)
+        else:
+            return self._check_cluster_api(object_name, operation_name, api)
+
+    def _check_cluster_api(self, object_name, operation_name, api):
+        """Checks the availability of a cluster API.
+
+        Returns True if the specified cluster API exists and may be called by
+        the current user.  This method assumes Data ONTAP 8.2 or higher.
+        """
 
         api_args = {
+            'query': {
+                'capability-info': {
+                    'object-name': object_name,
+                    'operation-list': {
+                        'operation-info': {
+                            'name': operation_name,
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'capability-info': {
+                    'operation-list': {
+                        'operation-info': {
+                            'api-name': None,
+                        },
+                    },
+                },
+            },
+        }
+        result = self.send_request(
+            'system-user-capability-get-iter', api_args, False)
+
+        if not self._has_records(result):
+            return False
+
+        capability_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for capability_info in capability_info_list.get_children():
+
+            operation_list = capability_info.get_child_by_name(
+                'operation-list') or netapp_api.NaElement('none')
+
+            for operation_info in operation_list.get_children():
+                api_name = operation_info.get_child_content('api-name') or ''
+                api_names = api_name.split(',')
+                if api in api_names:
+                    return True
+
+        return False
+
+    def _check_cluster_api_legacy(self, api):
+        """Checks the availability of a cluster API.
+
+        Returns True if the specified cluster API exists and may be called by
+        the current user.  This method should only be used for Data ONTAP 8.1,
+        and only getter APIs may be tested because the API is actually called
+        to perform the check.
+        """
+
+        if not re.match(".*-get$|.*-get-iter$|.*-list-info$", api):
+            raise ValueError(_('Non-getter API passed to API test method.'))
+
+        try:
+            self.send_request(api, enable_tunneling=False)
+        except netapp_api.NaApiError as ex:
+            if ex.code in (netapp_api.EAPIPRIVILEGE, netapp_api.EAPINOTFOUND):
+                return False
+
+        return True
+
+    def get_operational_lif_addresses(self):
+        """Gets the IP addresses of operational LIFs on the vserver."""
+
+        net_interface_get_iter_args = {
             'query': {
                 'net-interface-info': {
                     'operational-status': 'up'
@@ -683,7 +834,8 @@ class Client(client_base.Client):
                 }
             }
         }
-        result = self.send_request('net-interface-get-iter', api_args)
+        result = self.send_iter_request('net-interface-get-iter',
+                                        net_interface_get_iter_args)
 
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -691,15 +843,19 @@ class Client(client_base.Client):
         return [lif_info.get_child_content('address') for lif_info in
                 lif_info_list.get_children()]
 
-    def get_flexvol_capacity(self, flexvol_path):
+    def get_flexvol_capacity(self, flexvol_path=None, flexvol_name=None):
         """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        volume_id_attributes = {}
+        if flexvol_path:
+            volume_id_attributes['junction-path'] = flexvol_path
+        if flexvol_name:
+            volume_id_attributes['name'] = flexvol_name
 
         api_args = {
             'query': {
                 'volume-attributes': {
-                    'volume-id-attributes': {
-                        'junction-path': flexvol_path
-                    }
+                    'volume-id-attributes': volume_id_attributes,
                 }
             },
             'desired-attributes': {
@@ -712,7 +868,11 @@ class Client(client_base.Client):
             },
         }
 
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if self._get_record_count(result) != 1:
+            msg = _('Volume %s not found.')
+            msg_args = flexvol_path or flexvol_name
+            raise exception.NetAppDriverException(msg % msg_args)
 
         attributes_list = result.get_child_by_name('attributes-list')
         volume_attributes = attributes_list.get_child_by_name(
@@ -725,7 +885,421 @@ class Client(client_base.Client):
         size_total = float(
             volume_space_attributes.get_child_content('size-total'))
 
-        return size_total, size_available
+        return {
+            'size-total': size_total,
+            'size-available': size_available,
+        }
+
+    def list_flexvols(self):
+        """Returns the names of the flexvols on the controller."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'type': 'rw',
+                        'style': 'flex',
+                    },
+                    'volume-state-attributes': {
+                        'is-vserver-root': 'false',
+                        'is-inconsistent': 'false',
+                        'is-invalid': 'false',
+                        'state': 'online',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        volumes = []
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for volume_attributes in attributes_list.get_children():
+
+            volume_id_attributes = volume_attributes.get_child_by_name(
+                'volume-id-attributes') or netapp_api.NaElement('none')
+
+            volumes.append(volume_id_attributes.get_child_content('name'))
+
+        return volumes
+
+    def get_flexvol(self, flexvol_path=None, flexvol_name=None):
+        """Get flexvol attributes needed for the storage service catalog."""
+
+        volume_id_attributes = {'type': 'rw', 'style': 'flex'}
+        if flexvol_path:
+            volume_id_attributes['junction-path'] = flexvol_path
+        if flexvol_name:
+            volume_id_attributes['name'] = flexvol_name
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': volume_id_attributes,
+                    'volume-state-attributes': {
+                        'is-vserver-root': 'false',
+                        'is-inconsistent': 'false',
+                        'is-invalid': 'false',
+                        'state': 'online',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                        'owning-vserver-name': None,
+                        'junction-path': None,
+                        'containing-aggregate-name': None,
+                        'type': None,
+                    },
+                    'volume-mirror-attributes': {
+                        'is-data-protection-mirror': None,
+                        'is-replica-volume': None,
+                    },
+                    'volume-space-attributes': {
+                        'is-space-guarantee-enabled': None,
+                        'space-guarantee': None,
+                        'percentage-snapshot-reserve': None,
+                        'size': None,
+                    },
+                    'volume-qos-attributes': {
+                        'policy-group-name': None,
+                    },
+                    'volume-snapshot-attributes': {
+                        'snapshot-policy': None,
+                    },
+                    'volume-language-attributes': {
+                        'language-code': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+
+        if self._get_record_count(result) != 1:
+            msg = _('Could not find unique volume %(vol)s.')
+            msg_args = {'vol': flexvol_name}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+
+        volume_id_attributes = volume_attributes.get_child_by_name(
+            'volume-id-attributes') or netapp_api.NaElement('none')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes') or netapp_api.NaElement('none')
+        volume_qos_attributes = volume_attributes.get_child_by_name(
+            'volume-qos-attributes') or netapp_api.NaElement('none')
+        volume_snapshot_attributes = volume_attributes.get_child_by_name(
+            'volume-snapshot-attributes') or netapp_api.NaElement('none')
+        volume_language_attributes = volume_attributes.get_child_by_name(
+            'volume-language-attributes') or netapp_api.NaElement('none')
+
+        volume = {
+            'name': volume_id_attributes.get_child_content('name'),
+            'vserver': volume_id_attributes.get_child_content(
+                'owning-vserver-name'),
+            'junction-path': volume_id_attributes.get_child_content(
+                'junction-path'),
+            'aggregate': volume_id_attributes.get_child_content(
+                'containing-aggregate-name'),
+            'type': volume_id_attributes.get_child_content('type'),
+            'space-guarantee-enabled': strutils.bool_from_string(
+                volume_space_attributes.get_child_content(
+                    'is-space-guarantee-enabled')),
+            'space-guarantee': volume_space_attributes.get_child_content(
+                'space-guarantee'),
+            'percentage-snapshot-reserve': (
+                volume_space_attributes.get_child_content(
+                    'percentage-snapshot-reserve')),
+            'size': volume_space_attributes.get_child_content('size'),
+            'qos-policy-group': volume_qos_attributes.get_child_content(
+                'policy-group-name'),
+            'snapshot-policy': volume_snapshot_attributes.get_child_content(
+                'snapshot-policy'),
+            'language': volume_language_attributes.get_child_content(
+                'language-code'),
+        }
+
+        return volume
+
+    def get_flexvol_dedupe_info(self, flexvol_name):
+        """Get dedupe attributes needed for the storage service catalog."""
+
+        api_args = {
+            'query': {
+                'sis-status-info': {
+                    'path': '/vol/%s' % flexvol_name,
+                },
+            },
+            'desired-attributes': {
+                'sis-status-info': {
+                    'state': None,
+                    'is-compression-enabled': None,
+                    'logical-data-size': None,
+                    'logical-data-limit': None,
+                },
+            },
+        }
+
+        no_dedupe_response = {
+            'compression': False,
+            'dedupe': False,
+            'logical-data-size': 0,
+            'logical-data-limit': 1,
+        }
+
+        try:
+            result = self.send_iter_request('sis-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get dedupe info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return no_dedupe_response
+
+        if self._get_record_count(result) != 1:
+            return no_dedupe_response
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        sis_status_info = attributes_list.get_child_by_name(
+            'sis-status-info') or netapp_api.NaElement('none')
+
+        logical_data_size = sis_status_info.get_child_content(
+            'logical-data-size') or 0
+        logical_data_limit = sis_status_info.get_child_content(
+            'logical-data-limit') or 1
+
+        sis = {
+            'compression': strutils.bool_from_string(
+                sis_status_info.get_child_content('is-compression-enabled')),
+            'dedupe': na_utils.to_bool(
+                sis_status_info.get_child_content('state')),
+            'logical-data-size': int(logical_data_size),
+            'logical-data-limit': int(logical_data_limit),
+        }
+
+        return sis
+
+    def get_flexvol_dedupe_used_percent(self, flexvol_name):
+        """Determine how close a flexvol is to its shared block limit."""
+
+        # Note(cknight): The value returned by this method is computed from
+        # values returned by two different APIs, one of which was new in
+        # Data ONTAP 8.3.
+        if not self.features.CLONE_SPLIT_STATUS:
+            return 0.0
+
+        dedupe_info = self.get_flexvol_dedupe_info(flexvol_name)
+        clone_split_info = self.get_clone_split_info(flexvol_name)
+
+        total_dedupe_blocks = (dedupe_info.get('logical-data-size') +
+                               clone_split_info.get('unsplit-size'))
+        dedupe_used_percent = (100.0 * float(total_dedupe_blocks) /
+                               dedupe_info.get('logical-data-limit'))
+        return dedupe_used_percent
+
+    def get_clone_split_info(self, flexvol_name):
+        """Get the status of unsplit file/LUN clones in a flexvol."""
+
+        try:
+            result = self.send_request('clone-split-status',
+                                       {'volume-name': flexvol_name})
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get clone split info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return {'unsplit-size': 0, 'unsplit-clone-count': 0}
+
+        clone_split_info = result.get_child_by_name(
+            'clone-split-info') or netapp_api.NaElement('none')
+
+        unsplit_size = clone_split_info.get_child_content('unsplit-size') or 0
+        unsplit_clone_count = clone_split_info.get_child_content(
+            'unsplit-clone-count') or 0
+
+        return {
+            'unsplit-size': int(unsplit_size),
+            'unsplit-clone-count': int(unsplit_clone_count),
+        }
+
+    def is_flexvol_mirrored(self, flexvol_name, vserver_name):
+        """Check if flexvol is a SnapMirror source."""
+
+        api_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-vserver': vserver_name,
+                    'source-volume': flexvol_name,
+                    'mirror-state': 'snapmirrored',
+                    'relationship-type': 'data_protection',
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-info': None,
+            },
+        }
+
+        try:
+            result = self.send_iter_request('snapmirror-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get SnapMirror info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return False
+
+        if not self._has_records(result):
+            return False
+
+        return True
+
+    def is_flexvol_encrypted(self, flexvol_name, vserver_name):
+        """Check if a flexvol is encrypted."""
+
+        if not self.features.FLEXVOL_ENCRYPTION:
+            return False
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': flexvol_name,
+                        'owning-vserver-name': vserver_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                },
+            },
+        }
+
+        try:
+            result = self.send_iter_request('volume-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get Encryption info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return False
+
+        if not self._has_records(result):
+            return False
+
+        return True
+
+    def create_flexvol(self, flexvol_name, aggregate_name, size_gb,
+                       space_guarantee_type=None, snapshot_policy=None,
+                       language=None, dedupe_enabled=False,
+                       compression_enabled=False, snapshot_reserve=None,
+                       volume_type='rw'):
+
+        """Creates a volume."""
+        api_args = {
+            'containing-aggr-name': aggregate_name,
+            'size': six.text_type(size_gb) + 'g',
+            'volume': flexvol_name,
+            'volume-type': volume_type,
+        }
+        if volume_type == 'dp':
+            snapshot_policy = None
+        else:
+            api_args['junction-path'] = '/%s' % flexvol_name
+        if snapshot_policy is not None:
+            api_args['snapshot-policy'] = snapshot_policy
+        if space_guarantee_type:
+            api_args['space-reserve'] = space_guarantee_type
+        if language is not None:
+            api_args['language-code'] = language
+        if snapshot_reserve is not None:
+            api_args['percentage-snapshot-reserve'] = six.text_type(
+                snapshot_reserve)
+        self.send_request('volume-create', api_args)
+
+        # cDOT compression requires that deduplication be enabled.
+        if dedupe_enabled or compression_enabled:
+            self.enable_flexvol_dedupe(flexvol_name)
+        if compression_enabled:
+            self.enable_flexvol_compression(flexvol_name)
+
+    def flexvol_exists(self, volume_name):
+        """Checks if a flexvol exists on the storage array."""
+        LOG.debug('Checking if volume %s exists', volume_name)
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        return self._has_records(result)
+
+    def rename_flexvol(self, orig_flexvol_name, new_flexvol_name):
+        """Set flexvol name."""
+        api_args = {
+            'volume': orig_flexvol_name,
+            'new-volume-name': new_flexvol_name,
+        }
+        self.send_request('volume-rename', api_args)
+
+    def mount_flexvol(self, flexvol_name, junction_path=None):
+        """Mounts a volume on a junction path."""
+        api_args = {
+            'volume-name': flexvol_name,
+            'junction-path': (junction_path if junction_path
+                              else '/%s' % flexvol_name)
+        }
+        self.send_request('volume-mount', api_args)
+
+    def enable_flexvol_dedupe(self, flexvol_name):
+        """Enable deduplication on volume."""
+        api_args = {'path': '/vol/%s' % flexvol_name}
+        self.send_request('sis-enable', api_args)
+
+    def disable_flexvol_dedupe(self, flexvol_name):
+        """Disable deduplication on volume."""
+        api_args = {'path': '/vol/%s' % flexvol_name}
+        self.send_request('sis-disable', api_args)
+
+    def enable_flexvol_compression(self, flexvol_name):
+        """Enable compression on volume."""
+        api_args = {
+            'path': '/vol/%s' % flexvol_name,
+            'enable-compression': 'true'
+        }
+        self.send_request('sis-set-config', api_args)
+
+    def disable_flexvol_compression(self, flexvol_name):
+        """Disable compression on volume."""
+        api_args = {
+            'path': '/vol/%s' % flexvol_name,
+            'enable-compression': 'false'
+        }
+        self.send_request('sis-set-config', api_args)
 
     @utils.trace_method
     def delete_file(self, path_to_file):
@@ -787,7 +1361,7 @@ class Client(client_base.Client):
             if e.code == netapp_api.EAPINOTFOUND:
                 return None
             else:
-                raise e
+                raise
 
         if len(aggrs) < 1:
             return None
@@ -795,6 +1369,170 @@ class Client(client_base.Client):
         aggr_ownership_attrs = aggrs[0].get_child_by_name(
             'aggr-ownership-attributes') or netapp_api.NaElement('none')
         return aggr_ownership_attrs.get_child_content('home-name')
+
+    def get_aggregate(self, aggregate_name):
+        """Get aggregate attributes needed for the storage service catalog."""
+
+        if not aggregate_name:
+            return {}
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-raid-attributes': {
+                    'raid-type': None,
+                    'is-hybrid': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get info for aggregate %s.')
+            LOG.exception(msg, aggregate_name)
+            return {}
+
+        if len(aggrs) < 1:
+            return {}
+
+        aggr_attributes = aggrs[0]
+        aggr_raid_attrs = aggr_attributes.get_child_by_name(
+            'aggr-raid-attributes') or netapp_api.NaElement('none')
+
+        aggregate = {
+            'name': aggr_attributes.get_child_content('aggregate-name'),
+            'raid-type': aggr_raid_attrs.get_child_content('raid-type'),
+            'is-hybrid': strutils.bool_from_string(
+                aggr_raid_attrs.get_child_content('is-hybrid')),
+        }
+
+        return aggregate
+
+    def get_aggregate_disk_types(self, aggregate_name):
+        """Get the disk type(s) of an aggregate."""
+
+        disk_types = set()
+        disk_types.update(self._get_aggregate_disk_types(aggregate_name))
+        if self.features.ADVANCED_DISK_PARTITIONING:
+            disk_types.update(self._get_aggregate_disk_types(aggregate_name,
+                                                             shared=True))
+
+        return list(disk_types) if disk_types else None
+
+    def _get_aggregate_disk_types(self, aggregate_name, shared=False):
+        """Get the disk type(s) of an aggregate (may be a list)."""
+
+        disk_types = set()
+
+        if shared:
+            disk_raid_info = {
+                'disk-shared-info': {
+                    'aggregate-list': {
+                        'shared-aggregate-info': {
+                            'aggregate-name': aggregate_name,
+                        },
+                    },
+                },
+            }
+        else:
+            disk_raid_info = {
+                'disk-aggregate-info': {
+                    'aggregate-name': aggregate_name,
+                },
+            }
+
+        api_args = {
+            'query': {
+                'storage-disk-info': {
+                    'disk-raid-info': disk_raid_info,
+                },
+            },
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'effective-disk-type': None,
+                    },
+                },
+            },
+        }
+
+        try:
+            result = self.send_iter_request(
+                'storage-disk-get-iter', api_args, enable_tunneling=False)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get disk info for aggregate %s.')
+            LOG.exception(msg, aggregate_name)
+            return disk_types
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for storage_disk_info in attributes_list.get_children():
+
+            disk_raid_info = storage_disk_info.get_child_by_name(
+                'disk-raid-info') or netapp_api.NaElement('none')
+            disk_type = disk_raid_info.get_child_content(
+                'effective-disk-type')
+            if disk_type:
+                disk_types.add(disk_type)
+
+        return disk_types
+
+    def get_aggregate_capacities(self, aggregate_names):
+        """Gets capacity info for multiple aggregates."""
+
+        if not isinstance(aggregate_names, list):
+            return {}
+
+        aggregates = {}
+        for aggregate_name in aggregate_names:
+            aggregates[aggregate_name] = self.get_aggregate_capacity(
+                aggregate_name)
+
+        return aggregates
+
+    def get_aggregate_capacity(self, aggregate_name):
+        """Gets capacity info for an aggregate."""
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggr-space-attributes': {
+                    'percent-used-capacity': None,
+                    'size-available': None,
+                    'size-total': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get info for aggregate %s.')
+            LOG.exception(msg, aggregate_name)
+            return {}
+
+        if len(aggrs) < 1:
+            return {}
+
+        aggr_attributes = aggrs[0]
+        aggr_space_attributes = aggr_attributes.get_child_by_name(
+            'aggr-space-attributes') or netapp_api.NaElement('none')
+
+        percent_used = int(aggr_space_attributes.get_child_content(
+            'percent-used-capacity'))
+        size_available = float(aggr_space_attributes.get_child_content(
+            'size-available'))
+        size_total = float(
+            aggr_space_attributes.get_child_content('size-total'))
+
+        return {
+            'percent-used': percent_used,
+            'size-available': size_available,
+            'size-total': size_total,
+        }
 
     def get_performance_instance_uuids(self, object_name, node_name):
         """Get UUIDs of performance instances for a cluster node."""
@@ -870,6 +1608,51 @@ class Client(client_base.Client):
 
         return counter_data
 
+    def get_snapshots_marked_for_deletion(self, volume_list=None):
+        """Get a list of snapshots marked for deletion.
+
+        :param volume_list: placeholder parameter to match 7mode client method
+        signature.
+        """
+
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': client_base.DELETED_PREFIX + '*',
+                    'vserver': self.vserver,
+                    'busy': 'false',
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'snapshot-instance-uuid': None,
+                }
+            },
+        }
+
+        result = self.send_request('snapshot-get-iter', api_args)
+
+        snapshots = []
+
+        attributes = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        snapshot_info_list = attributes.get_children()
+        for snapshot_info in snapshot_info_list:
+            snapshot_name = snapshot_info.get_child_content('name')
+            snapshot_id = snapshot_info.get_child_content(
+                'snapshot-instance-uuid')
+            snapshot_volume = snapshot_info.get_child_content('volume')
+
+            snapshots.append({
+                'name': snapshot_name,
+                'instance_id': snapshot_id,
+                'volume_name': snapshot_volume,
+            })
+
+        return snapshots
+
     def get_snapshot(self, volume_name, snapshot_name):
         """Gets a single snapshot."""
         api_args = {
@@ -935,7 +1718,7 @@ class Client(client_base.Client):
                 'reason': error_reason,
             }
             if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
-                raise exception.SnapshotUnavailable(msg % msg_args)
+                raise exception.SnapshotUnavailable(data=msg % msg_args)
             else:
                 raise exception.VolumeBackendAPIException(data=msg % msg_args)
 
@@ -948,3 +1731,492 @@ class Client(client_base.Client):
                     'volume %(vol)s.')
             msg_args = {'snap': snapshot_name, 'vol': volume_name}
             raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+    def create_cluster_peer(self, addresses, username=None, password=None,
+                            passphrase=None):
+        """Creates a cluster peer relationship."""
+
+        api_args = {
+            'peer-addresses': [
+                {'remote-inet-address': address} for address in addresses
+            ],
+        }
+        if username:
+            api_args['user-name'] = username
+        if password:
+            api_args['password'] = password
+        if passphrase:
+            api_args['passphrase'] = passphrase
+
+        self.send_request('cluster-peer-create', api_args)
+
+    def get_cluster_peers(self, remote_cluster_name=None):
+        """Gets one or more cluster peer relationships."""
+
+        api_args = {}
+        if remote_cluster_name:
+            api_args['query'] = {
+                'cluster-peer-info': {
+                    'remote-cluster-name': remote_cluster_name,
+                }
+            }
+
+        result = self.send_iter_request('cluster-peer-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        cluster_peers = []
+
+        for cluster_peer_info in result.get_child_by_name(
+                'attributes-list').get_children():
+
+            cluster_peer = {
+                'active-addresses': [],
+                'peer-addresses': []
+            }
+
+            active_addresses = cluster_peer_info.get_child_by_name(
+                'active-addresses') or netapp_api.NaElement('none')
+            for address in active_addresses.get_children():
+                cluster_peer['active-addresses'].append(address.get_content())
+
+            peer_addresses = cluster_peer_info.get_child_by_name(
+                'peer-addresses') or netapp_api.NaElement('none')
+            for address in peer_addresses.get_children():
+                cluster_peer['peer-addresses'].append(address.get_content())
+
+            cluster_peer['availability'] = cluster_peer_info.get_child_content(
+                'availability')
+            cluster_peer['cluster-name'] = cluster_peer_info.get_child_content(
+                'cluster-name')
+            cluster_peer['cluster-uuid'] = cluster_peer_info.get_child_content(
+                'cluster-uuid')
+            cluster_peer['remote-cluster-name'] = (
+                cluster_peer_info.get_child_content('remote-cluster-name'))
+            cluster_peer['serial-number'] = (
+                cluster_peer_info.get_child_content('serial-number'))
+            cluster_peer['timeout'] = cluster_peer_info.get_child_content(
+                'timeout')
+
+            cluster_peers.append(cluster_peer)
+
+        return cluster_peers
+
+    def delete_cluster_peer(self, cluster_name):
+        """Deletes a cluster peer relationship."""
+
+        api_args = {'cluster-name': cluster_name}
+        self.send_request('cluster-peer-delete', api_args)
+
+    def get_cluster_peer_policy(self):
+        """Gets the cluster peering policy configuration."""
+
+        if not self.features.CLUSTER_PEER_POLICY:
+            return {}
+
+        result = self.send_request('cluster-peer-policy-get')
+
+        attributes = result.get_child_by_name(
+            'attributes') or netapp_api.NaElement('none')
+        cluster_peer_policy = attributes.get_child_by_name(
+            'cluster-peer-policy') or netapp_api.NaElement('none')
+
+        policy = {
+            'is-unauthenticated-access-permitted':
+            cluster_peer_policy.get_child_content(
+                'is-unauthenticated-access-permitted'),
+            'passphrase-minimum-length':
+            cluster_peer_policy.get_child_content(
+                'passphrase-minimum-length'),
+        }
+
+        if policy['is-unauthenticated-access-permitted'] is not None:
+            policy['is-unauthenticated-access-permitted'] = (
+                strutils.bool_from_string(
+                    policy['is-unauthenticated-access-permitted']))
+        if policy['passphrase-minimum-length'] is not None:
+            policy['passphrase-minimum-length'] = int(
+                policy['passphrase-minimum-length'])
+
+        return policy
+
+    def set_cluster_peer_policy(self, is_unauthenticated_access_permitted=None,
+                                passphrase_minimum_length=None):
+        """Modifies the cluster peering policy configuration."""
+
+        if not self.features.CLUSTER_PEER_POLICY:
+            return
+
+        if (is_unauthenticated_access_permitted is None and
+                passphrase_minimum_length is None):
+            return
+
+        api_args = {}
+        if is_unauthenticated_access_permitted is not None:
+            api_args['is-unauthenticated-access-permitted'] = (
+                'true' if strutils.bool_from_string(
+                    is_unauthenticated_access_permitted) else 'false')
+        if passphrase_minimum_length is not None:
+            api_args['passphrase-minlength'] = six.text_type(
+                passphrase_minimum_length)
+
+        self.send_request('cluster-peer-policy-modify', api_args)
+
+    def create_vserver_peer(self, vserver_name, peer_vserver_name):
+        """Creates a Vserver peer relationship for SnapMirrors."""
+        api_args = {
+            'vserver': vserver_name,
+            'peer-vserver': peer_vserver_name,
+            'applications': [
+                {'vserver-peer-application': 'snapmirror'},
+            ],
+        }
+        self.send_request('vserver-peer-create', api_args)
+
+    def delete_vserver_peer(self, vserver_name, peer_vserver_name):
+        """Deletes a Vserver peer relationship."""
+
+        api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
+        self.send_request('vserver-peer-delete', api_args)
+
+    def accept_vserver_peer(self, vserver_name, peer_vserver_name):
+        """Accepts a pending Vserver peer relationship."""
+
+        api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
+        self.send_request('vserver-peer-accept', api_args)
+
+    def get_vserver_peers(self, vserver_name=None, peer_vserver_name=None):
+        """Gets one or more Vserver peer relationships."""
+
+        api_args = None
+        if vserver_name or peer_vserver_name:
+            api_args = {'query': {'vserver-peer-info': {}}}
+            if vserver_name:
+                api_args['query']['vserver-peer-info']['vserver'] = (
+                    vserver_name)
+            if peer_vserver_name:
+                api_args['query']['vserver-peer-info']['peer-vserver'] = (
+                    peer_vserver_name)
+
+        result = self.send_iter_request('vserver-peer-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        vserver_peers = []
+
+        for vserver_peer_info in result.get_child_by_name(
+                'attributes-list').get_children():
+
+            vserver_peer = {
+                'vserver': vserver_peer_info.get_child_content('vserver'),
+                'peer-vserver':
+                vserver_peer_info.get_child_content('peer-vserver'),
+                'peer-state':
+                vserver_peer_info.get_child_content('peer-state'),
+                'peer-cluster':
+                vserver_peer_info.get_child_content('peer-cluster'),
+            }
+            vserver_peers.append(vserver_peer)
+
+        return vserver_peers
+
+    def _ensure_snapmirror_v2(self):
+        """Verify support for SnapMirror control plane v2."""
+        if not self.features.SNAPMIRROR_V2:
+            msg = _('SnapMirror features require Data ONTAP 8.2 or later.')
+            raise exception.NetAppDriverException(msg)
+
+    def create_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume,
+                          schedule=None, policy=None,
+                          relationship_type='data_protection'):
+        """Creates a SnapMirror relationship (cDOT 8.2 or later only)."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+            'relationship-type': relationship_type,
+        }
+        if schedule:
+            api_args['schedule'] = schedule
+        if policy:
+            api_args['policy'] = policy
+
+        try:
+            self.send_request('snapmirror-create', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.ERELATION_EXISTS:
+                raise
+
+    def initialize_snapmirror(self, source_vserver, source_volume,
+                              destination_vserver, destination_volume,
+                              source_snapshot=None, transfer_priority=None):
+        """Initializes a SnapMirror relationship (cDOT 8.2 or later only)."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        if source_snapshot:
+            api_args['source-snapshot'] = source_snapshot
+        if transfer_priority:
+            api_args['transfer-priority'] = transfer_priority
+
+        result = self.send_request('snapmirror-initialize', api_args)
+
+        result_info = {}
+        result_info['operation-id'] = result.get_child_content(
+            'result-operation-id')
+        result_info['status'] = result.get_child_content('result-status')
+        result_info['jobid'] = result.get_child_content('result-jobid')
+        result_info['error-code'] = result.get_child_content(
+            'result-error-code')
+        result_info['error-message'] = result.get_child_content(
+            'result-error-message')
+
+        return result_info
+
+    def release_snapmirror(self, source_vserver, source_volume,
+                           destination_vserver, destination_volume,
+                           relationship_info_only=False):
+        """Removes a SnapMirror relationship on the source endpoint."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'query': {
+                'snapmirror-destination-info': {
+                    'source-volume': source_volume,
+                    'source-vserver': source_vserver,
+                    'destination-volume': destination_volume,
+                    'destination-vserver': destination_vserver,
+                    'relationship-info-only': ('true' if relationship_info_only
+                                               else 'false'),
+                }
+            }
+        }
+        self.send_request('snapmirror-release-iter', api_args)
+
+    def quiesce_snapmirror(self, source_vserver, source_volume,
+                           destination_vserver, destination_volume):
+        """Disables future transfers to a SnapMirror destination."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        self.send_request('snapmirror-quiesce', api_args)
+
+    def abort_snapmirror(self, source_vserver, source_volume,
+                         destination_vserver, destination_volume,
+                         clear_checkpoint=False):
+        """Stops ongoing transfers for a SnapMirror relationship."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+            'clear-checkpoint': 'true' if clear_checkpoint else 'false',
+        }
+        try:
+            self.send_request('snapmirror-abort', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.ENOTRANSFER_IN_PROGRESS:
+                raise
+
+    def break_snapmirror(self, source_vserver, source_volume,
+                         destination_vserver, destination_volume):
+        """Breaks a data protection SnapMirror relationship."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        self.send_request('snapmirror-break', api_args)
+
+    def modify_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume,
+                          schedule=None, policy=None, tries=None,
+                          max_transfer_rate=None):
+        """Modifies a SnapMirror relationship."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        if schedule:
+            api_args['schedule'] = schedule
+        if policy:
+            api_args['policy'] = policy
+        if tries is not None:
+            api_args['tries'] = tries
+        if max_transfer_rate is not None:
+            api_args['max-transfer-rate'] = max_transfer_rate
+
+        self.send_request('snapmirror-modify', api_args)
+
+    def delete_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Destroys a SnapMirror relationship."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-volume': source_volume,
+                    'source-vserver': source_vserver,
+                    'destination-volume': destination_volume,
+                    'destination-vserver': destination_vserver,
+                }
+            }
+        }
+        self.send_request('snapmirror-destroy-iter', api_args)
+
+    def update_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Schedules a SnapMirror update."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        try:
+            self.send_request('snapmirror-update', api_args)
+        except netapp_api.NaApiError as e:
+            if (e.code != netapp_api.ETRANSFER_IN_PROGRESS and
+                    e.code != netapp_api.EANOTHER_OP_ACTIVE):
+                raise
+
+    def resume_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Resume a SnapMirror relationship if it is quiesced."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        try:
+            self.send_request('snapmirror-resume', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.ERELATION_NOT_QUIESCED:
+                raise
+
+    def resync_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Resync a SnapMirror relationship."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'source-volume': source_volume,
+            'source-vserver': source_vserver,
+            'destination-volume': destination_volume,
+            'destination-vserver': destination_vserver,
+        }
+        self.send_request('snapmirror-resync', api_args)
+
+    def _get_snapmirrors(self, source_vserver=None, source_volume=None,
+                         destination_vserver=None, destination_volume=None,
+                         desired_attributes=None):
+
+        query = None
+        if (source_vserver or source_volume or destination_vserver or
+                destination_volume):
+            query = {'snapmirror-info': {}}
+            if source_volume:
+                query['snapmirror-info']['source-volume'] = source_volume
+            if destination_volume:
+                query['snapmirror-info']['destination-volume'] = (
+                    destination_volume)
+            if source_vserver:
+                query['snapmirror-info']['source-vserver'] = source_vserver
+            if destination_vserver:
+                query['snapmirror-info']['destination-vserver'] = (
+                    destination_vserver)
+
+        api_args = {}
+        if query:
+            api_args['query'] = query
+        if desired_attributes:
+            api_args['desired-attributes'] = desired_attributes
+
+        result = self.send_iter_request('snapmirror-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+        else:
+            return result.get_child_by_name('attributes-list').get_children()
+
+    def get_snapmirrors(self, source_vserver, source_volume,
+                        destination_vserver, destination_volume,
+                        desired_attributes=None):
+        """Gets one or more SnapMirror relationships.
+
+        Either the source or destination info may be omitted.
+        Desired attributes should be a flat list of attribute names.
+        """
+        self._ensure_snapmirror_v2()
+
+        if desired_attributes is not None:
+            desired_attributes = {
+                'snapmirror-info': {attr: None for attr in desired_attributes},
+            }
+
+        result = self._get_snapmirrors(
+            source_vserver=source_vserver,
+            source_volume=source_volume,
+            destination_vserver=destination_vserver,
+            destination_volume=destination_volume,
+            desired_attributes=desired_attributes)
+
+        snapmirrors = []
+
+        for snapmirror_info in result:
+            snapmirror = {}
+            for child in snapmirror_info.get_children():
+                name = self._strip_xml_namespace(child.get_name())
+                snapmirror[name] = child.get_content()
+            snapmirrors.append(snapmirror)
+
+        return snapmirrors
+
+    def get_provisioning_options_from_flexvol(self, flexvol_name):
+        """Get a dict of provisioning options matching existing flexvol."""
+
+        flexvol_info = self.get_flexvol(flexvol_name=flexvol_name)
+        dedupe_info = self.get_flexvol_dedupe_info(flexvol_name)
+
+        provisioning_opts = {
+            'aggregate': flexvol_info['aggregate'],
+            # space-guarantee can be 'none', 'file', 'volume'
+            'space_guarantee_type': flexvol_info.get('space-guarantee'),
+            'snapshot_policy': flexvol_info['snapshot-policy'],
+            'language': flexvol_info['language'],
+            'dedupe_enabled': dedupe_info['dedupe'],
+            'compression_enabled': dedupe_info['compression'],
+            'snapshot_reserve': flexvol_info['percentage-snapshot-reserve'],
+            'volume_type': flexvol_info['type'],
+            'size': int(math.ceil(float(flexvol_info['size']) / units.Gi)),
+        }
+
+        return provisioning_opts

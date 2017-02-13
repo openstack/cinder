@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    The IBM_Storage driver has been open sourced. This means that there is no
+    more need to download the package from the IBM site. The only requirement
+    remaining is to install pyxcli, which is available through pypi::
+
+        ``sudo pip install pyxcli``
+
+upgrade:
+  - |
+    Previous installations of IBM Storage must be un-installed first and the
+    new driver should be installed on top. In addition the cinder.conf values
+    should be updated to reflect the new paths. For example the proxy setting
+    of ``storage.proxy.IBMStorageProxy`` should be updated to
+    ``cinder.volume.drivers.ibm.ibm_storage.proxy.IBMStorageProxy``.

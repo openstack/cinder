@@ -19,9 +19,12 @@ from oslo_serialization import jsonutils
 
 import cinder
 from cinder.api.openstack import wsgi
+from cinder import context
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit import fake_constants as fake
+
 
 UUID = fakes.FAKE_UUID
 
@@ -30,7 +33,8 @@ class SchedulerHintsTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerHintsTestCase, self).setUp()
-        self.fake_instance = stubs.stub_volume(1, uuid=UUID)
+        self.fake_instance = v2_fakes.create_fake_volume(fake.VOLUME_ID,
+                                                         uuid=UUID)
         self.fake_instance['created_at'] =\
             datetime.datetime(2013, 1, 1, 1, 1, 1)
         self.fake_instance['launched_at'] =\
@@ -39,7 +43,9 @@ class SchedulerHintsTestCase(test.TestCase):
             osapi_volume_extension=[
                 'cinder.api.contrib.select_extensions'],
             osapi_volume_ext_list=['Scheduler_hints'])
-        self.app = fakes.wsgi_app()
+        self.user_ctxt = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+        self.app = fakes.wsgi_app(fake_auth_context=self.user_ctxt)
 
     def test_create_server_without_hints(self):
 
@@ -48,15 +54,15 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertNotIn('scheduler_hints', kwargs['body'])
             return self.fake_instance
 
-        self.stubs.Set(cinder.api.v2.volumes.VolumeController, 'create',
-                       fake_create)
+        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+                         fake_create)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
-        body = {'id': id,
-                'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
-                'volume_id': '1', }
+        body = {'id': UUID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
+                'volume_id': fake.VOLUME_ID, }
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
         self.assertEqual(202, res.status_int)
@@ -69,15 +75,15 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertEqual({"a": "b"}, kwargs['body']['scheduler_hints'])
             return self.fake_instance
 
-        self.stubs.Set(cinder.api.v2.volumes.VolumeController, 'create',
-                       fake_create)
+        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+                         fake_create)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
-        body = {'id': id,
-                'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
-                'volume_id': '1',
+        body = {'id': UUID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
+                'volume_id': fake.VOLUME_ID,
                 'scheduler_hints': {'a': 'b'}, }
 
         req.body = jsonutils.dump_as_bytes(body)
@@ -85,13 +91,13 @@ class SchedulerHintsTestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
 
     def test_create_server_bad_hints(self):
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'volume': {
-            'id': id,
-            'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
-            'volume_id': '1',
+            'id': UUID,
+            'volume_type_id': fake.VOLUME_TYPE_ID,
+            'volume_id': fake.VOLUME_ID,
             'scheduler_hints': 'a', }}
 
         req.body = jsonutils.dump_as_bytes(body)

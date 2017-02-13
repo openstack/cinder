@@ -23,9 +23,6 @@ from cinder import test
 
 
 class ChanceWeigherTestCase(test.TestCase):
-    def setUp(self):
-        super(ChanceWeigherTestCase, self).setUp()
-
     def fake_random(self, reset=False):
         if reset:
             self.not_random_float = 0.0
@@ -53,7 +50,7 @@ class ChanceWeigherTestCase(test.TestCase):
         # ensure HostManager can load the ChanceWeigher
         # via the entry points mechanism
         hm = host_manager.HostManager()
-        weighers = hm._choose_host_weighers('ChanceWeigher')
+        weighers = hm._choose_backend_weighers('ChanceWeigher')
         self.assertEqual(1, len(weighers))
         self.assertEqual(weighers[0], chance.ChanceWeigher)
 
@@ -61,7 +58,8 @@ class ChanceWeigherTestCase(test.TestCase):
         # ensure we don't lose any hosts when weighing with
         # the ChanceWeigher
         hm = host_manager.HostManager()
-        fake_hosts = [host_manager.HostState('fake_host%s' % x)
-                      for x in range(1, 5)]
-        weighed_hosts = hm.get_weighed_hosts(fake_hosts, {}, 'ChanceWeigher')
-        self.assertEqual(4, len(weighed_hosts))
+        fake_backends = [host_manager.BackendState('fake_be%s' % x, None)
+                         for x in range(1, 5)]
+        weighed_backends = hm.get_weighed_backends(fake_backends, {},
+                                                   'ChanceWeigher')
+        self.assertEqual(4, len(weighed_backends))

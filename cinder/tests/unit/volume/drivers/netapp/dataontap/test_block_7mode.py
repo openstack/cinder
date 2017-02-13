@@ -24,6 +24,8 @@ import ddt
 from lxml import etree
 import mock
 
+from oslo_utils import timeutils
+
 from cinder import exception
 from cinder import test
 import cinder.tests.unit.volume.drivers.netapp.dataontap.client.fakes \
@@ -35,6 +37,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -45,7 +48,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppBlockStorage7modeLibraryTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_7mode()}
+        kwargs = {
+            'configuration': self.get_config_7mode(),
+            'host': 'openstack@7modeblock',
+        }
         self.library = block_7mode.NetAppBlockStorage7modeLibrary(
             'driver', 'protocol', **kwargs)
 
@@ -55,9 +61,6 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.vfiler = mock.Mock()
         # Deprecated option
         self.library.configuration.netapp_volume_list = None
-
-    def tearDown(self):
-        super(NetAppBlockStorage7modeLibraryTestCase, self).tearDown()
 
     def get_config_7mode(self):
         config = na_fakes.create_configuration_7mode()
@@ -114,9 +117,12 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.zapi_client.get_ontapi_version.return_value = (1, 9)
         self.mock_object(self.library, '_refresh_volume_info')
         self.library.volume_list = ['open1', 'open2']
+        mock_add_looping_tasks = self.mock_object(
+            self.library, '_add_looping_tasks')
 
         self.library.check_for_setup_error()
 
+        mock_add_looping_tasks.assert_called_once_with()
         super_check_for_setup_error.assert_called_once_with()
 
     def test_check_for_setup_error_no_filtered_pools(self):
@@ -127,10 +133,54 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
 
-    def test_check_for_setup_error_too_old(self):
-        self.zapi_client.get_ontapi_version.return_value = (1, 8)
+    @ddt.data(None, (1, 8))
+    def test_check_for_setup_error_unsupported_or_no_version(self, version):
+        self.zapi_client.get_ontapi_version.return_value = version
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.check_for_setup_error)
+
+    def test_handle_ems_logging(self):
+
+        self.library.volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            return_value='fake_base_ems_log_message')
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            return_value='fake_pool_ems_log_message')
+        mock_send_ems_log_message = self.mock_object(
+            self.zapi_client, 'send_ems_log_message')
+
+        self.library._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.library.driver_name, self.library.app_version,
+            self.library.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.library.driver_name, self.library.app_version, None,
+            self.library.volume_list, [])
+
+    def test__get_volume_model_update(self):
+        """Driver is not expected to return a model update."""
+        self.assertIsNone(
+            self.library._get_volume_model_update(fake.VOLUME_REF))
+
+    @ddt.data(None, fake.VFILER)
+    def test__get_owner(self, vfiler):
+        self.library.configuration.netapp_server_hostname = 'openstack'
+        self.library.vfiler = vfiler
+        expected_owner = 'openstack'
+
+        retval = self.library._get_owner()
+
+        if vfiler:
+            expected_owner += ':' + vfiler
+
+        self.assertEqual(expected_owner, retval)
 
     def test_find_mapped_lun_igroup(self):
         response = netapp_api.NaElement(etree.XML("""
@@ -291,7 +341,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.assertEqual(0, self.library.partner_zapi_client.
                          has_luns_mapped_to_initiators.call_count)
 
-    def test_clone_lun_zero_block_count(self):
+    @ddt.data(True, False)
+    def test_clone_lun_zero_block_count(self, is_snapshot):
         """Test for when clone lun is not passed a block count."""
         self.library._get_lun_attr = mock.Mock(return_value={
             'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
@@ -299,7 +350,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.zapi_client.get_lun_by_args.return_value = [fake.FAKE_LUN]
         self.library._add_lun_to_table = mock.Mock()
 
-        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
+                                is_snapshot=is_snapshot)
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
@@ -378,17 +430,6 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         result = self.library._get_fc_target_wwpns(include_partner=False)
 
         self.assertSetEqual(set(ports1), set(result))
-
-    @mock.patch.object(block_7mode.NetAppBlockStorage7modeLibrary,
-                       '_refresh_volume_info', mock.Mock())
-    @mock.patch.object(block_7mode.NetAppBlockStorage7modeLibrary,
-                       '_get_pool_stats', mock.Mock())
-    def test_vol_stats_calls_provide_ems(self):
-        self.library.zapi_client.provide_ems = mock.Mock()
-
-        self.library.get_volume_stats(refresh=True)
-
-        self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
         self.library.vol_refresh_voluntary = False
@@ -539,6 +580,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             'total_capacity_gb': 1342.21,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10.0,
+            'multiattach': True,
             'utilization': 30.0,
             'filter_function': 'filter',
             'goodness_function': 'goodness',
@@ -633,6 +675,74 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         self.assertListEqual([], pools)
 
+    @ddt.data((None, False, False),
+              (30, True, False),
+              (30, False, True))
+    @ddt.unpack
+    def test__refresh_volume_info_already_running(self,
+                                                  vol_refresh_time,
+                                                  vol_refresh_voluntary,
+                                                  is_newer):
+        mock_warning_log = self.mock_object(block_7mode.LOG, 'warning')
+        self.library.vol_refresh_time = vol_refresh_time
+        self.library.vol_refresh_voluntary = vol_refresh_voluntary
+        self.library.vol_refresh_interval = 30
+        self.mock_object(timeutils, 'is_newer_than', return_value=is_newer)
+        self.mock_object(na_utils, 'set_safe_attr', return_value=False)
+
+        retval = self.library._refresh_volume_info()
+
+        self.assertIsNone(retval)
+        # Assert no values are unset by the method
+        self.assertEqual(vol_refresh_voluntary,
+                         self.library.vol_refresh_voluntary)
+        self.assertEqual(vol_refresh_time, self.library.vol_refresh_time)
+        if timeutils.is_newer_than.called:
+            timeutils.is_newer_than.assert_called_once_with(
+                vol_refresh_time, self.library.vol_refresh_interval)
+        na_utils.set_safe_attr.assert_has_calls([
+            mock.call(self.library, 'vol_refresh_running', True),
+            mock.call(self.library, 'vol_refresh_running', False)])
+        self.assertEqual(1, mock_warning_log.call_count)
+
+    def test__refresh_volume_info(self):
+        mock_warning_log = self.mock_object(block_7mode.LOG, 'warning')
+        self.library.vol_refresh_time = None
+        self.library.vol_refresh_voluntary = True
+        self.mock_object(timeutils, 'is_newer_than')
+        self.mock_object(self.library.zapi_client, 'get_filer_volumes')
+        self.mock_object(self.library, '_get_filtered_pools',
+                         return_value=['vol1', 'vol2'])
+        self.mock_object(na_utils, 'set_safe_attr', return_value=True)
+
+        retval = self.library._refresh_volume_info()
+
+        self.assertIsNone(retval)
+        self.assertEqual(False, self.library.vol_refresh_voluntary)
+        self.assertEqual(['vol1', 'vol2'], self.library.volume_list)
+        self.assertIsNotNone(self.library.vol_refresh_time)
+        na_utils.set_safe_attr.assert_has_calls([
+            mock.call(self.library, 'vol_refresh_running', True),
+            mock.call(self.library, 'vol_refresh_running', False)])
+        self.assertFalse(mock_warning_log.called)
+
+    def test__refresh_volume_info_exception(self):
+        mock_warning_log = self.mock_object(block_7mode.LOG, 'warning')
+        self.library.vol_refresh_time = None
+        self.library.vol_refresh_voluntary = True
+        self.mock_object(timeutils, 'is_newer_than')
+        self.mock_object(na_utils, 'set_safe_attr', return_value=True)
+        self.mock_object(self.library.zapi_client,
+                         'get_filer_volumes',
+                         side_effect=exception.NetAppDriverException)
+        self.mock_object(self.library, '_get_filtered_pools')
+
+        retval = self.library._refresh_volume_info()
+
+        self.assertIsNone(retval)
+        self.assertFalse(self.library._get_filtered_pools.called)
+        self.assertEqual(1, mock_warning_log.call_count)
+
     def test_delete_volume(self):
         self.library.vol_refresh_voluntary = False
         mock_super_delete_volume = self.mock_object(
@@ -652,3 +762,18 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
         self.assertTrue(self.library.vol_refresh_voluntary)
+
+    def test_add_looping_tasks(self):
+        mock_super_add_looping_tasks = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, '_add_looping_tasks')
+
+        self.library._add_looping_tasks()
+
+        mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_get_backing_flexvol_names(self):
+        self.library.volume_list = ['vol0', 'vol1', 'vol2']
+
+        result = self.library._get_backing_flexvol_names()
+
+        self.assertEqual('vol2', result[2])

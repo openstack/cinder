@@ -4,13 +4,13 @@
 #
 # Translators:
 # ADİL REŞİT DURSUN <ardursun@deltanoc.com>, 2015
-# Andreas Jaeger <jaegerandi@gmail.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 02:55+0000\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev178\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-10-06 03:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -88,10 +88,6 @@ msgstr ""
 "için hesap bulunamadı!"
 
 #, python-format
-msgid "Array mismatch %(myid)s vs %(arid)s"
-msgstr "Dizi uyuşmazlığı %(myid)s ve %(arid)s"
-
-#, python-format
 msgid "Authorizing request: %(zfssaurl)s retry: %(retry)d ."
 msgstr "İstek yetkilendiriliyor: %(zfssaurl)s tekrar deneme: %(retry)d ."
 
@@ -135,21 +131,8 @@ msgid "Call to json.loads() raised an exception: %s."
 msgstr "json.loads() çağrısı bir istisna oluşturdu: %s."
 
 #, python-format
-msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
-msgstr "%(cg_name)s tutarsızlık grubuna %(lun)s lun eklenemiyor."
-
-#, python-format
 msgid "Can not discovery in %(target_ip)s with %(target_iqn)s."
 msgstr "%(target_iqn)s ile %(target_ip)s keşfedilemiyor."
-
-#, python-format
-msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr ""
-"%(cg_name)s tutarsızlık grubunda yeni %(luns)s LUN'lar yerleştirilemiyor."
-
-#, python-format
-msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "%(cg_name)s tutarsızlık grubunda %(luns)s LUN'lar kaldırılamıyor."
 
 #, python-format
 msgid "Can't find volume to map %(key)s, %(msg)s"
@@ -213,12 +196,6 @@ msgid "Cannot get storage system."
 msgstr "Depolama sistemi alınamaz."
 
 #, python-format
-msgid "Clone Volume:%(volume)s failed from source volume:%(src_vref)s"
-msgstr ""
-"Kopya Mantıksal Sürücü:Kaynak mantıksal sürücüden %(volume)s başarısız oldu:"
-"%(src_vref)s"
-
-#, python-format
 msgid "Cloning of volume %s failed."
 msgstr "%s mantıksal sürücüsünün kopyalaması başarısız oldu."
 
@@ -259,10 +236,6 @@ msgid "Connect to Flexvisor failed: %s."
 msgstr "Flexvisor'a bağlanılamadı: %s."
 
 #, python-format
-msgid "Consistency group %s: create failed"
-msgstr "Tutarlılık grubu %s: oluşturma başarısız oldu"
-
-#, python-format
 msgid "Copy snapshot to volume for snapshot %(snap)s volume %(vol)s failed!"
 msgstr ""
 "%(snap)s anlık sistem görüntüsü %(vol)s mantıksal sürücüsü için mantıksal "
@@ -286,14 +259,6 @@ msgstr ""
 #, python-format
 msgid "Could not stat scheduler options file %(filename)s."
 msgstr "%(filename)s zamanlayıcı seçenek dosyalarının bilgileri gösterilemedi."
-
-#, python-format
-msgid "Create cg snapshot %s failed."
-msgstr "%s cg anlık sistem görüntüsü oluşturma başarısız oldu."
-
-#, python-format
-msgid "Create consistency group %s failed."
-msgstr "%s tutarlılık grubu oluşturma başarısız oldu."
 
 #, python-format
 msgid ""
@@ -333,20 +298,8 @@ msgstr "%s mantıksal sürücü oluşturma başarısız oldu."
 msgid "DB error:"
 msgstr "DB hatası:"
 
-#, python-format
-msgid "DBError detected when purging from table=%(table)s"
-msgstr "Tablo=%(table)s temizlenirken DBError tespit edildi"
-
 msgid "DBError encountered: "
 msgstr "DBError ile karşılaşıldı: "
-
-#, python-format
-msgid "Delete cgsnapshot %s failed."
-msgstr "%s cgsnapshot silme başarısız oldu."
-
-#, python-format
-msgid "Delete consistency group %s failed."
-msgstr "%s tutarlılık grubu silme başarısız oldu."
 
 msgid "Delete consistency group failed to update usages."
 msgstr "Kullanımları güncellemek için tutarlılık grubu silme başarısız oldu."
@@ -426,13 +379,6 @@ msgstr ""
 msgid "Error activating LV"
 msgstr "LV etkinleştirilirken hata"
 
-msgid "Error adding HBA to server"
-msgstr "Sunucuya HBA ekleme hatası"
-
-#, python-format
-msgid "Error attaching volume %s"
-msgstr "Mantıksal sürücü %s eklenirken hata"
-
 msgid "Error closing channel."
 msgstr "Kanal kapatılırken hata."
 
@@ -443,18 +389,12 @@ msgstr ""
 "'%(method)s' için '%(netloc)s' glance sunucusuna bağlantı kurulurken hata, "
 "%(extra)s. "
 
-msgid "Error copying key."
-msgstr "Anahtar kopyalama hatası."
-
-msgid "Error creating Barbican client."
-msgstr "Barbican istemcisi oluşturulurken hata."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "QOS kuralı %s oluşturulurken hata"
 
 msgid "Error creating Volume"
-msgstr "Mantıksal sürücü oluşturulurken hata"
+msgstr "Mantıksal sürücü oluşturmada hata"
 
 msgid "Error creating Volume Group"
 msgstr "Mantıksal Sürücü Grubu oluşturulurken hata"
@@ -462,18 +402,12 @@ msgstr "Mantıksal Sürücü Grubu oluşturulurken hata"
 msgid "Error creating chap record."
 msgstr "Chap kaydı oluşturulurken hata."
 
-msgid "Error creating key."
-msgstr "Anahtar oluşturma hatası."
-
 msgid "Error creating snapshot"
 msgstr "Anlık sistem görüntüsü oluşturma hatası"
 
 #, python-format
 msgid "Error creating volume. Msg - %s."
 msgstr "Mantıksal sürücü oluşturulurken hata. İleti - %s."
-
-msgid "Error deleting key."
-msgstr "Anahtar silinirken hata."
 
 #, python-format
 msgid "Error detaching volume %(volume)s, due to remove export failure."
@@ -536,27 +470,14 @@ msgstr "Dizi, havuz, SLO ve iş yükü alma hatası."
 msgid "Error getting chap record."
 msgstr "Chap kaydı alınırken hata."
 
-msgid "Error getting key."
-msgstr "Anahtar alınırken hata."
-
 msgid "Error getting name server info."
 msgstr "Ad sunucu bilgisi alınırken hata."
-
-msgid "Error getting secret data."
-msgstr "Gizli veri alırken hata."
-
-msgid "Error getting secret metadata."
-msgstr "Gizli metadata alınırken hata."
 
 msgid "Error getting show fcns database info."
 msgstr "fcns veritabanı bilgisini göster sonucu alınırken hata."
 
 msgid "Error getting target pool name and array."
 msgstr "Hedef havuz adı ve dizisi alınırken hata."
-
-#, python-format
-msgid "Error happened during storage pool querying, %s."
-msgstr "Depolama havuzu sorgulama sırasında hata oluştu, %s."
 
 #, python-format
 msgid "Error in copying volume: %s"
@@ -682,17 +603,6 @@ msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr ""
 "Mantıksal sürücü oluşturulurken hata oluştu: imajdan %(id)s: %(image_id)s."
 
-msgid "Error occurred while selecting datastore."
-msgstr "Verideposu seçilirken hata oluştu."
-
-#, python-format
-msgid "Error on adding lun to consistency group. %s"
-msgstr "Tutarsızlık grubuna lun eklenirken hata. %s"
-
-#, python-format
-msgid "Error on enable compression on lun %s."
-msgstr "Lun %s sıkıştırma etkinleştirmede hata."
-
 #, python-format
 msgid ""
 "Error on execute %(command)s. Error code: %(exit_code)d Error msg: %(result)s"
@@ -753,9 +663,6 @@ msgstr ""
 #, python-format
 msgid "Error setting Flash Cache policy to %s - exception"
 msgstr "%s için Flash Cache ilkesi ayarlanırken hata - istisna"
-
-msgid "Error storing key."
-msgstr "Anahtar depolama hatası."
 
 #, python-format
 msgid "Error unmapping volume: %s"
@@ -843,12 +750,6 @@ msgstr "Fabric %s için fcns veritabanı bilgisi toplanamadı"
 #, python-format
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Fabric %s'den ad sunucu bilgisi toplanamadı"
-
-msgid "Failed collecting nscamshow"
-msgstr "nscamshow toplanamadı"
-
-msgid "Failed collecting nsshow info for fabric"
-msgstr "Fabric için nsshow bilgisi toplanamadı"
 
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
@@ -1036,6 +937,10 @@ msgid "Failed to create clone of volume \"%s\"."
 msgstr "\"%s\" mantıksal sürücüsünün klonu oluşturulamadı."
 
 #, python-format
+msgid "Failed to create cloned volume %s."
+msgstr "Kopyalanmış %s mantıksal sürücüsü oluşturulamadı."
+
+#, python-format
 msgid "Failed to create consistency group %(group_id)s."
 msgstr "Tutarlılık grubu %(group_id)s oluşturulamadı."
 
@@ -1148,10 +1053,6 @@ msgid "Failed to find %(s)s.  Result %(r)s"
 msgstr "%(s)s bulunamadı.  Sonuç %(r)s"
 
 #, python-format
-msgid "Failed to find available iSCSI targets for %s."
-msgstr "%s için kullanılabilir iSCSI hedefleri bulunamadı."
-
-#, python-format
 msgid "Failed to get device number for throttling: %(error)s"
 msgstr "Ayarlama için aygıt numarası alınamadı: %(error)s"
 
@@ -1231,18 +1132,8 @@ msgid "Failed to issue mmlsfs command for path %(path)s, error: %(error)s."
 msgstr "%(path)s yolu için mmlsfs komutu sonuçlanmadı, hata: %(error)s."
 
 #, python-format
-msgid "Failed to load %s"
-msgstr "%s yükleme başarısız"
-
-msgid "Failed to load osapi_volume"
-msgstr "osapi_volume yükleme başarısız"
-
-#, python-format
 msgid "Failed to open iet session list for %s"
 msgstr "%s için iet oturum listesi açılamadı"
-
-msgid "Failed to query migration status of LUN."
-msgstr "LUN'un göç durumu sorgulanamadı."
 
 msgid "Failed to re-export volume, setting to ERROR."
 msgstr "Mantıksal sürücü yeniden dışa aktarılamadı, HATA durumuna ayarlıyor."
@@ -1379,14 +1270,6 @@ msgstr ""
 "%(volume_id)s metadata'sı güncellenemedi."
 
 #, python-format
-msgid ""
-"Failed to update initiator data for initiator %(initiator)s and backend "
-"%(backend)s"
-msgstr ""
-"%(backend)s art alanda çalışan uygulama ve %(initiator)s başlatıcısı için "
-"başlatıcı veri güncellenemedi"
-
-#, python-format
 msgid "Failed to update quota donating volume transfer id %s"
 msgstr "%s mantıksal sürücü aktarım kimliğine verilen kota güncellenemedi"
 
@@ -1517,13 +1400,6 @@ msgstr "GPFS etkin değil.  Detaylı çıktı: %s."
 msgid "Get method error."
 msgstr "Get metodu hatası."
 
-msgid "Get replication status for volume failed."
-msgstr "Mantıksal sürücü için kopyalama durumu alma başarısız oldu."
-
-#, python-format
-msgid "HDP not found: %s"
-msgstr "HDP bulunamadı: %s"
-
 #, python-format
 msgid "ISCSI discovery attempt failed for:%s"
 msgstr "ISCSI keşif girişimi başarısız oldu:%s"
@@ -1539,10 +1415,6 @@ msgstr "Geçersiz JSON: %s"
 #, python-format
 msgid "Invalid ReplayList return: %s"
 msgstr "Geçersiz ReplayList dönüşü: %s"
-
-#, python-format
-msgid "Invalid value for %(key)s, value is %(value)s."
-msgstr "%(key)s için geçersiz değer, değer %(value)s."
 
 #, python-format
 msgid "JSON encode params %(param)s error: %(status)s."
@@ -1582,12 +1454,6 @@ msgstr ""
 msgid "Lun delete for %s failed!"
 msgstr "%s için Lun silme başarısız oldu!"
 
-#, python-format
-msgid "Lun delete snapshot for volume %(vol)s snapshot %(snap)s failed!"
-msgstr ""
-"Lun %(vol)s mantıksal sürücüsü %(snap)s anlık görüntüsü için anlık görüntüyü "
-"silemedi!"
-
 msgid "Lun mapping returned null!"
 msgstr "Lun eşleştirmesi boş değer döndü!"
 
@@ -1614,10 +1480,6 @@ msgstr ""
 msgid "Message: %s"
 msgstr "İleti: %s"
 
-#, python-format
-msgid "Migration of LUN %s failed to complete."
-msgstr "%s LUN göçü tamamlanamadı."
-
 msgid "Model update failed."
 msgstr "Model güncellemesi başarısız oldu."
 
@@ -1632,12 +1494,6 @@ msgstr "%(share)s için bağlama hatası."
 #, python-format
 msgid "Multiple replay profiles under name %s"
 msgstr "%s adı altında birden fazla tekrar profilleri"
-
-#, python-format
-msgid "NFS share %(share)s has no service entry: %(svc)s -> %(hdp)s"
-msgstr ""
-"NFS paylaşımı %(share)s hiçbir servis girdisine sahip değil: %(svc)s -> "
-"%(hdp)s"
 
 msgid "No CLI output for firmware version check"
 msgstr "Donanım yazılımı sürüm kontrolü için hiçbir CLI çıktısı yok"
@@ -1656,10 +1512,6 @@ msgid ""
 msgstr ""
 "Hiçbir eylem gerekmez. Mantıksal sürücü: %(volumeName)s zaten slo/workload "
 "birleşiminin parçasıdır: %(targetCombination)s."
-
-#, python-format
-msgid "No configuration found for service: %s"
-msgstr "Servis için hiçbir yapılandırma bulunamadı: %s"
 
 #, python-format
 msgid ""
@@ -1700,9 +1552,6 @@ msgstr "Pipe1 başarısız - %s "
 #, python-format
 msgid "Pipe2 failed - %s "
 msgstr "Pipe2 başarısız - %s "
-
-msgid "Promote volume replica failed."
-msgstr "Mantıksal sürücü kopyasını yükseltme başarısız oldu."
 
 #, python-format
 msgid ""
@@ -1830,16 +1679,9 @@ msgstr "StdOut  :%s"
 msgid "Storage profile: %s cannot be found in vCenter."
 msgstr "Depolama profili: %s vCenter'da bulunamıyor."
 
-msgid "Sync volume replica failed."
-msgstr "Mantıksal sürücü kopyasını eşzamanlandırma başarısız oldu."
-
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."
 msgstr "CloudByte depolamasında TSM [%s] bulunamadı."
-
-#, python-format
-msgid "Target end points do not exist for hardware Id: %(hardwareIdInstance)s."
-msgstr "Donanım kimliği için hedef uç noktalar yoktur: %(hardwareIdInstance)s."
 
 msgid "The Flexvisor service is unavailable."
 msgstr "Flexvisor servisi kullanılabilir değil."
@@ -1854,9 +1696,6 @@ msgstr "Bağlayıcı gerekli bilgileri içermiyor: başlatıcı eksik"
 msgid ""
 "The connector does not contain the required information: wwpns is missing"
 msgstr "Bağlayıcı gerekli bilgileri içermiyor: wwpns eksik"
-
-msgid "The given extra_spec or valid_values is None."
-msgstr "Verilen extra_spec ya da valid_values hiçbiridir."
 
 #, python-format
 msgid ""
@@ -1945,16 +1784,9 @@ msgid "Unable to determine whether %(volumeName)s is composite or not."
 msgstr ""
 "%(volumeName)s mantıksal sürücüsünün bileşik olup olmadığı belirlenemedi."
 
-msgid "Unable to find FC initiators"
-msgstr "FC başlatıcısı bulunamadı"
-
 #, python-format
 msgid "Unable to find VG: %s"
 msgstr "VG bulunamadı: %s"
-
-#, python-format
-msgid "Unable to find controller port: %s"
-msgstr "Bağlantı noktası bağlayıcısı bulunamadı: %s"
 
 #, python-format
 msgid ""
@@ -2000,10 +1832,6 @@ msgstr "Mantıksal Sürücü Yapılandırması alınamadı: %s"
 #, python-format
 msgid "Unable to retrieve pool instance of %(poolName)s on array %(array)s."
 msgstr "%(array)s dizisindeki %(poolName)s havuz örneği alınamadı."
-
-#, python-format
-msgid "Unable to unmap Volume %s"
-msgstr "Mantıksal sürücü %s eşleştirmesi kaldırılamadı"
 
 msgid "Unexpected build error:"
 msgstr "Beklenmeyen inşa hatası:"
@@ -2310,9 +2138,6 @@ msgstr ""
 "sil: %(vol_id)s stdout ile başarısız oldu: %(out)s\n"
 " stderr: %(err)s"
 
-msgid "delete_vol: provider location empty."
-msgstr "delete_vol: sağlayıcı konumu boş."
-
 #, python-format
 msgid "ensure_export: Volume %s not found on storage."
 msgstr "ensure_export: Mantıksal sürücü %s depolama üzerinde bulunamadı."
@@ -2326,10 +2151,6 @@ msgstr "mantıksal sürücü durum bilgisi tazeleme hatası"
 
 msgid "horcm command timeout."
 msgstr "horcm komutu zaman aşımı."
-
-#, python-format
-msgid "iSCSI portal not found for service: %s"
-msgstr "Servis için iSCSI kapısı bulunamadı: %s"
 
 #, python-format
 msgid ""

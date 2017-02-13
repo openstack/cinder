@@ -35,12 +35,18 @@ def create_zone_manager():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager()
-        LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
-                     " Driver %(drv_name)s %(drv_version)s."),
-                 {'zm_version': zm.get_version(),
-                  'drv_name': zm.driver.__class__.__name__,
-                  'drv_version': zm.driver.get_version()})
-        return zm
+        if zm.initialized:
+            LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
+                         " Driver %(drv_name)s %(drv_version)s."),
+                     {'zm_version': zm.get_version(),
+                      'drv_name': zm.driver.__class__.__name__,
+                      'drv_version': zm.driver.get_version()})
+            return zm
+        else:
+            LOG.debug("FC Zone Manager %(zm_version)s disabled",
+                      {"zm_version": zm.get_version()})
+            return None
+
     else:
         LOG.debug("FC Zone Manager not enabled in cinder.conf.")
         return None
@@ -68,7 +74,7 @@ def get_formatted_wwn(wwn_str):
                          for i in range(0, len(wwn_str), 2)])).lower()
 
 
-def AddFCZone(initialize_connection):
+def add_fc_zone(initialize_connection):
     """Decorator to add a FC Zone."""
 
     def decorator(self, *args, **kwargs):
@@ -83,7 +89,7 @@ def AddFCZone(initialize_connection):
             if 'initiator_target_map' in conn_info['data']:
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("AddFCZone connection info: %(conninfo)s.",
+                    LOG.debug("add_fc_zone connection info: %(conninfo)s.",
                               {'conninfo': conn_info})
                     zm.add_connection(conn_info)
 
@@ -92,7 +98,7 @@ def AddFCZone(initialize_connection):
     return decorator
 
 
-def RemoveFCZone(terminate_connection):
+def remove_fc_zone(terminate_connection):
     """Decorator for FC drivers to remove zone."""
 
     def decorator(self, *args, **kwargs):
@@ -107,7 +113,7 @@ def RemoveFCZone(terminate_connection):
             if 'initiator_target_map' in conn_info['data']:
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("RemoveFCZone connection info: %(conninfo)s.",
+                    LOG.debug("remove_fc_zone connection info: %(conninfo)s.",
                               {'conninfo': conn_info})
                     zm.delete_connection(conn_info)
 

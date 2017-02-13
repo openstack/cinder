@@ -11,7 +11,6 @@
 #    under the License.
 
 
-from oslo_config import cfg
 from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
@@ -20,12 +19,13 @@ from taskflow.types import failure as ft
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
+from cinder import objects
+from cinder.objects import fields
 from cinder.volume.flows import common
 
 LOG = logging.getLogger(__name__)
 
 ACTION = 'volume:manage_existing'
-CONF = cfg.CONF
 
 
 class EntryCreateTask(flow_utils.CinderTask):
@@ -37,7 +37,8 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     def __init__(self, db):
         requires = ['availability_zone', 'description', 'metadata',
-                    'name', 'host', 'bootable', 'volume_type', 'ref']
+                    'name', 'host', 'cluster_name', 'bootable', 'volume_type',
+                    'ref']
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -56,34 +57,28 @@ class EntryCreateTask(flow_utils.CinderTask):
             'size': 0,
             'user_id': context.user_id,
             'project_id': context.project_id,
-            'status': 'creating',
-            'attach_status': 'detached',
+            'status': 'managing',
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
             'host': kwargs.pop('host'),
+            'cluster_name': kwargs.pop('cluster_name'),
             'availability_zone': kwargs.pop('availability_zone'),
             'volume_type_id': volume_type_id,
-            'metadata': kwargs.pop('metadata'),
+            'metadata': kwargs.pop('metadata') or {},
             'bootable': kwargs.pop('bootable'),
         }
 
-        volume = self.db.volume_create(context, volume_properties)
+        volume = objects.Volume(context=context, **volume_properties)
+        volume.create()
 
         return {
             'volume_properties': volume_properties,
-            # NOTE(harlowja): it appears like further usage of this volume
-            # result actually depend on it being a sqlalchemy object and not
-            # just a plain dictionary so that's why we are storing this here.
-            #
-            # In the future where this task results can be serialized and
-            # restored automatically for continued running we will need to
-            # resolve the serialization & recreation of this object since raw
-            # sqlalchemy objects can't be serialized.
             'volume': volume,
         }
 
-    def revert(self, context, result, optional_args, **kwargs):
+    def revert(self, context, result, optional_args=None, **kwargs):
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
             return
@@ -109,22 +104,19 @@ class ManageCastTask(flow_utils.CinderTask):
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
 
-    def execute(self, context, **kwargs):
-        volume = kwargs.pop('volume')
+    def execute(self, context, volume, **kwargs):
         request_spec = kwargs.copy()
         request_spec['volume_id'] = volume.id
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
-        self.scheduler_rpcapi.manage_existing(context, CONF.volume_topic,
-                                              volume['id'],
+        self.scheduler_rpcapi.manage_existing(context, volume,
                                               request_spec=request_spec)
 
-    def revert(self, context, result, flow_failures, **kwargs):
+    def revert(self, context, result, flow_failures, volume, **kwargs):
         # Restore the source volume status and set the volume to error status.
-        volume_id = kwargs['volume_id']
-        common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_LE("Volume %s: manage failed."), volume_id)
+        common.error_out(volume, status='error_managing')
+        LOG.error(_LE("Volume %s: manage failed."), volume.id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info

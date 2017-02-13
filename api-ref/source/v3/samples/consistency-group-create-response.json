@@ -1,0 +1,11 @@
+{
+    "consistencygroup": {
+        "status": "error",
+        "description": "first consistency group",
+        "availability_zone": "az0",
+        "created_at": "2016-08-19T19:32:19.000000",
+        "volume_types": ["type1", "type2"],
+        "id": "63d1a274-de38-4384-a97e-475306777027",
+        "name": "firstcg"
+    }
+}

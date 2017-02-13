@@ -16,25 +16,22 @@
 Volume driver for NetApp Data ONTAP (7-mode) FibreChannel storage systems.
 """
 
-from oslo_log import log as logging
-
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_7mode
 from cinder.zonemanager import utils as fczm_utils
 
 
-LOG = logging.getLogger(__name__)
-
-
+@interface.volumedriver
 class NetApp7modeFibreChannelDriver(driver.BaseVD,
-                                    driver.ConsistencyGroupVD,
-                                    driver.ManageableVD,
-                                    driver.ExtendVD,
-                                    driver.TransferVD,
-                                    driver.SnapshotVD):
+                                    driver.ManageableVD):
     """NetApp 7-mode FibreChannel volume driver."""
 
     DRIVER_NAME = 'NetApp_FibreChannel_7mode_direct'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+    VERSION = block_7mode.NetAppBlockStorage7modeLibrary.VERSION
 
     def __init__(self, *args, **kwargs):
         super(NetApp7modeFibreChannelDriver, self).__init__(*args, **kwargs)
@@ -48,13 +45,13 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
         self.library.check_for_setup_error()
 
     def create_volume(self, volume):
-        self.library.create_volume(volume)
+        return self.library.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        self.library.create_volume_from_snapshot(volume, snapshot)
+        return self.library.create_volume_from_snapshot(volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        self.library.create_cloned_volume(volume, src_vref)
+        return self.library.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
         self.library.delete_volume(volume)
@@ -97,11 +94,11 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
     def unmanage(self, volume):
         return self.library.unmanage(volume)
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         return self.library.initialize_connection_fc(volume, connector)
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         return self.library.terminate_connection_fc(volume, connector,
                                                     **kwargs)
@@ -132,3 +129,6 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
         return self.library.create_consistencygroup_from_src(
             group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
             source_cg=source_cg, source_vols=source_vols)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        raise NotImplementedError()

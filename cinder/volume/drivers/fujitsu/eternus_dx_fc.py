@@ -22,6 +22,7 @@ FibreChannel Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 from oslo_log import log as logging
 import six
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu import eternus_dx_common
 from cinder.zonemanager import utils as fczm_utils
@@ -29,8 +30,13 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class FJDXFCDriver(driver.FibreChannelDriver):
     """FC Cinder Volume Driver for Fujitsu ETERNUS DX S3 series."""
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Fujitsu_ETERNUS_CI"
+    VERSION = eternus_dx_common.FJDXCommon.VERSION
 
     def __init__(self, *args, **kwargs):
 
@@ -136,7 +142,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
         """Driver entry point to remove an export for a volume."""
         return
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         LOG.debug('initialize_connection, volume id: %(vid)s, '
@@ -155,7 +161,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
                   'info: %s, exit method.', info)
         return info
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         LOG.debug('terminate_connection, volume id: %(vid)s, '

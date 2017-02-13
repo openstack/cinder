@@ -1,0 +1,8 @@
+---
+upgrade:
+  - The ISERTgtAdm target was deprecated in the Kilo release.
+    It has now been removed. You should now just use
+    LVMVolumeDriver and specify ``iscsi_helper`` for the target
+    driver you wish to use. In order to enable iser, please
+    set ``iscsi_protocol=iser`` with lioadm or tgtadm target
+    helpers.

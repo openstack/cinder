@@ -12,24 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""Weighers that weigh hosts by volume number in backends:
-
-1. Volume Number Weigher.  Weigh hosts by their volume number.
-
-The default is to spread volumes across all hosts evenly.  If you prefer
-stacking, you can set the 'volume_number_multiplier' option to a positive
-number and the weighing has the opposite effect of the default.
-"""
-
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import db
 from cinder.scheduler import weights
-
-
-LOG = logging.getLogger(__name__)
 
 
 volume_number_weight_opts = [
@@ -44,6 +31,13 @@ CONF.register_opts(volume_number_weight_opts)
 
 
 class VolumeNumberWeigher(weights.BaseHostWeigher):
+    """Weigher that weighs hosts by volume number in backends.
+
+    The default is to spread volumes across all hosts evenly. If you prefer
+    stacking, you can set the ``volume_number_multiplier`` option to a positive
+    number and the weighing has the opposite effect of the default.
+    """
+
     def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.volume_number_multiplier
@@ -54,6 +48,7 @@ class VolumeNumberWeigher(weights.BaseHostWeigher):
         We want spreading to be the default.
         """
         context = weight_properties['context']
+        context = context.elevated()
         volume_number = db.volume_data_get_for_host(context=context,
                                                     host=host_state.host,
                                                     count_only=True)

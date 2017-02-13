@@ -13,15 +13,20 @@
 #    under the License.
 
 from datetime import timedelta
+import ddt
 import mock
 
 from oslo_utils import timeutils
 
 from cinder import context as ctxt
+from cinder.db.sqlalchemy import models
 from cinder.image import cache as image_cache
+from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 
 
+@ddt.ddt
 class ImageVolumeCacheTestCase(test.TestCase):
 
     def setUp(self):
@@ -29,6 +34,13 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.mock_db = mock.Mock()
         self.mock_volume_api = mock.Mock()
         self.context = ctxt.get_admin_context()
+        self.volume = models.Volume()
+        vol_params = {'id': fake.VOLUME_ID,
+                      'host': 'foo@bar#whatever',
+                      'cluster_name': 'cluster',
+                      'size': 0}
+        self.volume.update(vol_params)
+        self.volume_ovo = objects.Volume(self.context, **vol_params)
 
     def _build_cache(self, max_gb=0, max_count=0):
         cache = image_cache.ImageVolumeCache(self.mock_db,
@@ -42,6 +54,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
         entry = {
             'id': 1,
             'host': 'test@foo#bar',
+            'cluster_name': 'cluster@foo#bar',
             'image_id': 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2',
             'image_updated_at': timeutils.utcnow(with_timezone=True),
             'volume_id': '70a599e0-31e7-49b7-b260-868f441e862b',
@@ -78,12 +91,10 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.assertEqual(entry['image_id'], msg['payload']['image_id'])
         self.assertEqual(1, len(self.notifier.notifications))
 
-    def test_get_entry(self):
+    @ddt.data(True, False)
+    def test_get_entry(self, clustered):
         cache = self._build_cache()
         entry = self._build_entry()
-        volume_ref = {
-            'host': 'foo@bar#whatever'
-        }
         image_meta = {
             'is_public': True,
             'owner': '70a599e0-31e7-49b7-b260-868f441e862b',
@@ -94,16 +105,21 @@ class ImageVolumeCacheTestCase(test.TestCase):
         }
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.return_value) = entry
+        if not clustered:
+            self.volume_ovo.cluster_name = None
+            expect = {'host': self.volume.host}
+        else:
+            expect = {'cluster_name': self.volume.cluster_name}
         found_entry = cache.get_entry(self.context,
-                                      volume_ref,
+                                      self.volume_ovo,
                                       entry['image_id'],
                                       image_meta)
-        self.assertDictMatch(entry, found_entry)
+        self.assertDictEqual(entry, found_entry)
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.assert_called_once_with)(
             self.context,
             entry['image_id'],
-            volume_ref['host']
+            **expect
         )
 
         msg = self.notifier.notifications[0]
@@ -115,9 +131,6 @@ class ImageVolumeCacheTestCase(test.TestCase):
 
     def test_get_entry_not_exists(self):
         cache = self._build_cache()
-        volume_ref = {
-            'host': 'foo@bar#whatever'
-        }
         image_meta = {
             'is_public': True,
             'owner': '70a599e0-31e7-49b7-b260-868f441e862b',
@@ -131,7 +144,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
          image_volume_cache_get_and_update_last_used.return_value) = None
 
         found_entry = cache.get_entry(self.context,
-                                      volume_ref,
+                                      self.volume_ovo,
                                       image_id,
                                       image_meta)
 
@@ -140,16 +153,14 @@ class ImageVolumeCacheTestCase(test.TestCase):
         msg = self.notifier.notifications[0]
         self.assertEqual('image_volume_cache.miss', msg['event_type'])
         self.assertEqual('INFO', msg['priority'])
-        self.assertEqual(volume_ref['host'], msg['payload']['host'])
+        self.assertEqual(self.volume.host, msg['payload']['host'])
         self.assertEqual(image_id, msg['payload']['image_id'])
         self.assertEqual(1, len(self.notifier.notifications))
 
-    def test_get_entry_needs_update(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_get_entry_needs_update(self, mock_volume_by_id):
         cache = self._build_cache()
         entry = self._build_entry()
-        volume_ref = {
-            'host': 'foo@bar#whatever'
-        }
         image_meta = {
             'is_public': True,
             'owner': '70a599e0-31e7-49b7-b260-868f441e862b',
@@ -160,11 +171,12 @@ class ImageVolumeCacheTestCase(test.TestCase):
         }
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.return_value) = entry
-        mock_volume = mock.Mock()
-        self.mock_db.volume_get.return_value = mock_volume
+
+        mock_volume = mock.MagicMock()
+        mock_volume_by_id.return_value = mock_volume
 
         found_entry = cache.get_entry(self.context,
-                                      volume_ref,
+                                      self.volume_ovo,
                                       entry['image_id'],
                                       image_meta)
 
@@ -176,60 +188,56 @@ class ImageVolumeCacheTestCase(test.TestCase):
         msg = self.notifier.notifications[0]
         self.assertEqual('image_volume_cache.miss', msg['event_type'])
         self.assertEqual('INFO', msg['priority'])
-        self.assertEqual(volume_ref['host'], msg['payload']['host'])
+        self.assertEqual(self.volume.host, msg['payload']['host'])
         self.assertEqual(entry['image_id'], msg['payload']['image_id'])
         self.assertEqual(1, len(self.notifier.notifications))
 
     def test_create_cache_entry(self):
         cache = self._build_cache()
         entry = self._build_entry()
-        volume_ref = {
-            'id': entry['volume_id'],
-            'host': entry['host'],
-            'size': entry['size']
-        }
         image_meta = {
             'updated_at': entry['image_updated_at']
         }
         self.mock_db.image_volume_cache_create.return_value = entry
         created_entry = cache.create_cache_entry(self.context,
-                                                 volume_ref,
+                                                 self.volume_ovo,
                                                  entry['image_id'],
                                                  image_meta)
         self.assertEqual(entry, created_entry)
         self.mock_db.image_volume_cache_create.assert_called_once_with(
             self.context,
-            entry['host'],
+            self.volume_ovo.host,
+            self.volume_ovo.cluster_name,
             entry['image_id'],
             entry['image_updated_at'].replace(tzinfo=None),
-            entry['volume_id'],
-            entry['size']
+            self.volume_ovo.id,
+            self.volume_ovo.size
         )
 
     def test_ensure_space_unlimited(self):
         cache = self._build_cache(max_gb=0, max_count=0)
-        host = 'foo@bar#whatever'
-        has_space = cache.ensure_space(self.context, 0, host)
+        has_space = cache.ensure_space(self.context, self.volume)
         self.assertTrue(has_space)
 
-        has_space = cache.ensure_space(self.context, 500, host)
+        self.volume.size = 500
+        has_space = cache.ensure_space(self.context, self.volume)
         self.assertTrue(has_space)
 
     def test_ensure_space_no_entries(self):
         cache = self._build_cache(max_gb=100, max_count=10)
-        host = 'foo@bar#whatever'
-        self.mock_db.image_volume_cache_get_all_for_host.return_value = []
+        self.mock_db.image_volume_cache_get_all.return_value = []
 
-        has_space = cache.ensure_space(self.context, 5, host)
+        self.volume_ovo.size = 5
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
 
-        has_space = cache.ensure_space(self.context, 101, host)
+        self.volume_ovo.size = 101
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertFalse(has_space)
 
     def test_ensure_space_need_gb(self):
         cache = self._build_cache(max_gb=30, max_count=10)
         mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
-        host = 'foo@bar#whatever'
 
         entries = []
         entry1 = self._build_entry(size=12)
@@ -238,9 +246,10 @@ class ImageVolumeCacheTestCase(test.TestCase):
         entries.append(entry2)
         entry3 = self._build_entry(size=10)
         entries.append(entry3)
-        self.mock_db.image_volume_cache_get_all_for_host.return_value = entries
+        self.mock_db.image_volume_cache_get_all.return_value = entries
 
-        has_space = cache.ensure_space(self.context, 15, host)
+        self.volume_ovo.size = 15
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(2, mock_delete.call_count)
         mock_delete.assert_any_call(self.context, entry2)
@@ -249,16 +258,16 @@ class ImageVolumeCacheTestCase(test.TestCase):
     def test_ensure_space_need_count(self):
         cache = self._build_cache(max_gb=30, max_count=2)
         mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
-        host = 'foo@bar#whatever'
 
         entries = []
         entry1 = self._build_entry(size=10)
         entries.append(entry1)
         entry2 = self._build_entry(size=5)
         entries.append(entry2)
-        self.mock_db.image_volume_cache_get_all_for_host.return_value = entries
+        self.mock_db.image_volume_cache_get_all.return_value = entries
 
-        has_space = cache.ensure_space(self.context, 12, host)
+        self.volume_ovo.size = 12
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(1, mock_delete.call_count)
         mock_delete.assert_any_call(self.context, entry2)
@@ -266,7 +275,6 @@ class ImageVolumeCacheTestCase(test.TestCase):
     def test_ensure_space_need_gb_and_count(self):
         cache = self._build_cache(max_gb=30, max_count=3)
         mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
-        host = 'foo@bar#whatever'
 
         entries = []
         entry1 = self._build_entry(size=10)
@@ -275,9 +283,10 @@ class ImageVolumeCacheTestCase(test.TestCase):
         entries.append(entry2)
         entry3 = self._build_entry(size=12)
         entries.append(entry3)
-        self.mock_db.image_volume_cache_get_all_for_host.return_value = entries
+        self.mock_db.image_volume_cache_get_all.return_value = entries
 
-        has_space = cache.ensure_space(self.context, 16, host)
+        self.volume_ovo.size = 16
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(2, mock_delete.call_count)
         mock_delete.assert_any_call(self.context, entry2)
@@ -286,11 +295,11 @@ class ImageVolumeCacheTestCase(test.TestCase):
     def test_ensure_space_cant_free_enough_gb(self):
         cache = self._build_cache(max_gb=30, max_count=10)
         mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
-        host = 'foo@bar#whatever'
 
         entries = list(self._build_entry(size=25))
-        self.mock_db.image_volume_cache_get_all_for_host.return_value = entries
+        self.mock_db.image_volume_cache_get_all.return_value = entries
 
-        has_space = cache.ensure_space(self.context, 50, host)
+        self.volume_ovo.size = 50
+        has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertFalse(has_space)
         mock_delete.assert_not_called()

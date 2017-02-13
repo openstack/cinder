@@ -1,0 +1,1639 @@
+# variables in header
+x-openstack-request-id:
+  description: >
+    foo
+  in: header
+  required: false
+  type: string
+
+# variables in path
+admin_tenant_id:
+  description: |
+    The UUID of the administrative tenant.
+  in: path
+  required: false
+  type: string
+backup_id:
+  description: |
+    The UUID for a backup.
+  in: path
+  required: false
+  type: string
+cgsnapshot_id_1:
+  description: |
+    The ID of the consistency group snapshot.
+  in: path
+  required: false
+  type: string
+consistencygroup_id_2:
+  description: |
+    The ID of the consistency group.
+  in: path
+  required: false
+  type: string
+force_3:
+  description: |
+    To delete a QoS specification even if it is in-
+    use, set to ``true``. Default is ``false``.
+  in: path
+  required: false
+  type: boolean
+hostname:
+  description: |
+    The name of the host that hosts the storage back
+    end.
+  in: path
+  required: false
+  type: string
+qos_id:
+  description: |
+    The ID of the QoS specification.
+  in: path
+  required: false
+  type: string
+snapshot_id_1:
+  description: |
+    The UUID of the snapshot.
+  in: path
+  required: false
+  type: string
+tenant_id:
+  description: |
+    The UUID of the tenant in a multi-tenancy cloud.
+  in: path
+  required: false
+  type: string
+transfer_id:
+  description: |
+    The unique identifier for a volume transfer.
+  in: path
+  required: false
+  type: string
+user_id_1:
+  description: |
+    The user ID. Specify in the URI as
+    ``user_id={user_id}``.
+  in: path
+  required: false
+  type: string
+volume_id_1:
+  description: |
+    The UUID of the volume.
+  in: path
+  required: false
+  type: string
+volume_type:
+  description: |
+    The ID of Volume Type to be accessed by project.
+  in: path
+  required: false
+  type: string
+volume_type_id:
+  description: |
+    The UUID for an existing volume type.
+  in: path
+  required: false
+  type: string
+
+# variables in query
+action:
+  description: |
+    The action. Valid values are "set" or "unset."
+  in: query
+  required: true
+  type: string
+all-tenants:
+  description: |
+    Shows details for all tenants. Admin only..
+  in: query
+  required: false
+  type: string
+bootable_query:
+  description: |
+    Filters results by bootable status. Default=None.
+  in: query
+  required: false
+  type: boolean
+detail:
+  description: |
+    Indicates whether to show pool details or only
+    pool names in the response.  Set to ``true`` to show pool details.
+    Set to ``false`` to show only pool names. Default is ``false``.
+  in: query
+  required: false
+  type: boolean
+image-id:
+  description: |
+    Creates volume from image ID. Default=None.
+  in: query
+  required: false
+  type: string
+limit:
+  description: |
+    Requests a page size of items. Returns a number
+    of items up to a limit value. Use the ``limit`` parameter to make
+    an initial limited request and use the ID of the last-seen item
+    from the response as the ``marker`` parameter value in a
+    subsequent limited request.
+  in: query
+  required: false
+  type: integer
+marker:
+  description: |
+    The ID of the last-seen item. Use the ``limit``
+    parameter to make an initial limited request and use the ID of the
+    last-seen item from the response as the ``marker`` parameter value
+    in a subsequent limited request.
+  in: query
+  required: false
+  type: string
+metadata_query:
+  description: |
+    Filters results by a metadata key and value pair.
+    Default=None.
+  in: query
+  required: true
+  type: object
+migration_status_query:
+  description: |
+    Filters results by a migration status. Default=None.
+    Admin only.
+  in: query
+  required: false
+  type: string
+name_volume:
+  description: |
+    Filters results by a name. Default=None.
+  in: query
+  required: false
+  type: string
+sort:
+  description: |
+    Comma-separated list of sort keys and optional
+    sort directions in the form of < key > [: < direction > ]. A valid
+    direction is ``asc`` (ascending) or ``desc`` (descending).
+  in: query
+  required: false
+  type: string
+sort_dir:
+  description: |
+    Sorts by one or more sets of attribute and sort
+    direction combinations. If you omit the sort direction in a set,
+    default is ``desc``.
+  in: query
+  required: false
+  type: string
+sort_key:
+  description: |
+    Sorts by an attribute. A valid value is ``name``,
+    ``status``, ``container_format``, ``disk_format``, ``size``,
+    ``id``, ``created_at``, or ``updated_at``. Default is
+    ``created_at``. The API uses the natural sorting direction of the
+    ``sort_key`` attribute value.
+  in: query
+  required: false
+  type: string
+sort_key_1:
+  description: |
+    Sorts by an image attribute. A valid value is
+    ``name``, ``status``, ``container_format``, ``disk_format``,
+    ``size``, ``id``, ``created_at``, or ``updated_at``. Default is
+    ``created_at``. The API uses the natural sorting direction of the
+    ``sort_key`` attribute value.
+  in: query
+  required: false
+  type: string
+status_query:
+  description: |
+    Filters results by a status. Default=None.
+  in: query
+  required: false
+  type: boolean
+usage:
+  description: |
+    Set to ``usage=true`` to show quota usage.
+    Default is ``false``.
+  in: query
+  required: false
+  type: boolean
+
+# variables in body
+absolute:
+  description: |
+    An ``absolute`` limits object.
+  in: body
+  required: true
+  type: object
+add_volumes:
+  description: |
+    One or more volume UUIDs, separated by commas, to
+    add to the volume consistency group.
+  in: body
+  required: false
+  type: string
+alias:
+  description: |
+    The alias for the extension. For example,
+    "FOXNSOX", "os- availability-zone", "os-extended-quotas", "os-
+    share-unmanage" or "os-used-limits."
+  in: body
+  required: true
+  type: string
+attach_status:
+  description: |
+    The volume attach status.
+  in: body
+  required: false
+  type: string
+attachment_id:
+  description: |
+    The interface ID.
+  in: body
+  required: false
+  type: string
+attachments:
+  description: |
+    Instance attachment information.  If this volume
+    is attached to a server instance, the attachments list includes
+    the UUID of the attached server, an attachment UUID, the name of
+    the attached host, if any, the volume UUID, the device, and the
+    device UUID.  Otherwise, this list is empty.
+  in: body
+  required: true
+  type: array
+auth_key:
+  description: |
+    The authentication key for the volume transfer.
+  in: body
+  required: true
+  type: string
+availability_zone:
+  description: |
+    The name of the availability zone.
+  in: body
+  required: false
+  type: string
+availability_zone_1:
+  description: |
+    The availability zone.
+  in: body
+  required: false
+  type: string
+availability_zone_2:
+  description: |
+    The availability zone.
+  in: body
+  required: true
+  type: string
+availability_zone_3:
+  description: |
+    The availability zone name.
+  in: body
+  required: true
+  type: string
+backup:
+  description: |
+    A ``backup`` object.
+  in: body
+  required: true
+  type: object
+backups:
+  description: |
+    A list of ``backup`` objects.
+  in: body
+  required: true
+  type: array
+bootable:
+  description: |
+    Enables or disables the bootable attribute. You
+    can boot an instance from a bootable volume.
+  in: body
+  required: true
+  type: boolean
+bootable_response:
+  description: |
+    Enables or disables the bootable attribute. You
+    can boot an instance from a bootable volume.
+  in: body
+  required: true
+  type: string
+capabilities:
+  description: |
+    The capabilities for the back end.  The value is
+    either ``null`` or a string value that indicates the capabilities
+    for each pool. For example, ``total_capacity`` or ``QoS_support``.
+  in: body
+  required: true
+  type: object
+cgsnapshot_id:
+  description: |
+    The UUID of the consistency group snapshot.
+  in: body
+  required: false
+  type: string
+connector:
+  description: |
+    The ``connector`` object.
+  in: body
+  required: true
+  type: object
+consistencygroup_id:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: true
+  type: string
+consistencygroup_id_1:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: false
+  type: string
+consumer:
+  description: |
+    The consumer type.
+  in: body
+  required: false
+  type: string
+consumer_1:
+  description: |
+    The consumer type.
+  in: body
+  required: true
+  type: string
+container:
+  description: |
+    The container name or null.
+  in: body
+  required: true
+  type: string
+cores:
+  description: |
+    The number of instance cores that are allowed for
+    each tenant.
+  in: body
+  required: true
+  type: integer
+created_at:
+  description: |
+    The date and time when the resource was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC.
+  in: body
+  required: true
+  type: string
+created_at_1:
+  description: |
+    Date and time when the volume was created.
+  in: body
+  required: true
+  type: string
+description:
+  description: |
+    The backup description or null.
+  in: body
+  required: true
+  type: string
+description_1:
+  description: |
+    The consistency group snapshot description.
+  in: body
+  required: true
+  type: string
+description_10:
+  description: |
+    The capabilities description.
+  in: body
+  required: true
+  type: string
+description_11:
+  description: |
+    The consistency group description.
+  in: body
+  required: false
+  type: string
+description_2:
+  description: |
+    The description of the consistency group.
+  in: body
+  required: false
+  type: string
+description_3:
+  description: |
+    The description of the consistency group.
+  in: body
+  required: true
+  type: string
+description_4:
+  description: |
+    A description for the snapshot. Default is
+    ``None``.
+  in: body
+  required: false
+  type: string
+description_5:
+  description: |
+    The volume description.
+  in: body
+  required: false
+  type: string
+description_6:
+  description: |
+    The consistency group description.
+  in: body
+  required: true
+  type: string
+description_7:
+  description: |
+    The extension description.
+  in: body
+  required: true
+  type: string
+description_8:
+  description: |
+    A description for the snapshot.
+  in: body
+  required: true
+  type: string
+description_9:
+  description: |
+    The volume description.
+  in: body
+  required: true
+  type: string
+display_name:
+  description: |
+    The name of volume backend capabilities.
+  in: body
+  required: true
+  type: string
+driver_version:
+  description: |
+    The driver version.
+  in: body
+  required: true
+  type: string
+encrypted:
+  description: |
+    If true, this volume is encrypted.
+  in: body
+  required: true
+  type: boolean
+extra_specs:
+  description: |
+    A set of key and value pairs that contains the
+    specifications for a volume type.
+  in: body
+  required: true
+  type: object
+extra_specs_1:
+  description: |
+    A key and value pair that contains additional
+    specifications that are associated with the volume type. Examples
+    include capabilities, capacity, compression, and so on, depending
+    on the storage driver in use.
+  in: body
+  required: true
+  type: object
+fail_reason:
+  description: |
+    If the backup failed, the reason for the failure.
+    Otherwise, null.
+  in: body
+  required: true
+  type: string
+fixed_ips:
+  description: |
+    The number of fixed IP addresses that are allowed
+    for each tenant. Must be equal to or greater than the number of
+    allowed instances.
+  in: body
+  required: true
+  type: integer
+floating_ips:
+  description: |
+    The number of floating IP addresses that are
+    allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+force:
+  description: |
+    Indicates whether to backup, even if the volume
+    is attached. Default is ``false``.
+  in: body
+  required: false
+  type: boolean
+force_1:
+  description: |
+    Indicates whether to snapshot, even if the volume
+    is attached. Default is ``false``.
+  in: body
+  required: false
+  type: boolean
+force_2:
+  description: |
+    If set to ``true``, forces deletion of a
+    consistency group that has a registered volume.
+  in: body
+  required: false
+  type: boolean
+free_capacity:
+  description: |
+    The amount of free capacity for the back-end
+    volume, in GBs. A valid value is a string, such as ``unknown``, or
+    an integer.
+  in: body
+  required: true
+  type: string
+has_dependent_backups:
+  description: |
+    If this value is ``true``, the backup depends on
+    other backups.
+  in: body
+  required: false
+  type: boolean
+host:
+  description: |
+    The OpenStack Block Storage host where the
+    existing volume resides.
+  in: body
+  required: true
+  type: string
+host_name:
+  description: |
+    The name of the attaching host.
+  in: body
+  required: false
+  type: string
+id:
+  description: |
+    The UUID of the volume transfer.
+  in: body
+  required: true
+  type: string
+id_1:
+  description: |
+    The UUID of the backup.
+  in: body
+  required: true
+  type: string
+id_2:
+  description: |
+    The UUID of the consistency group snapshot.
+  in: body
+  required: true
+  type: string
+id_3:
+  description: |
+    The generated ID for the QoS specification.
+  in: body
+  required: true
+  type: string
+id_4:
+  description: |
+    The snapshot UUID.
+  in: body
+  required: true
+  type: string
+id_5:
+  description: |
+    The UUID of the volume.
+  in: body
+  required: true
+  type: string
+id_6:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: true
+  type: string
+id_7:
+  description: |
+    The ID for the quota set.
+  in: body
+  required: true
+  type: integer
+imageRef:
+  description: |
+    The UUID of the image from which you want to
+    create the volume. Required to create a bootable volume.
+  in: body
+  required: false
+  type: string
+in_use:
+  description: |
+    The in use data size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: string
+incremental:
+  description: |
+    The backup mode. A valid value is ``true`` for
+    incremental backup mode or ``false`` for full backup mode. Default
+    is ``false``.
+  in: body
+  required: false
+  type: boolean
+injected_file_content_bytes:
+  description: |
+    The number of bytes of content that are allowed
+    for each injected file.
+  in: body
+  required: true
+  type: integer
+injected_file_path_bytes:
+  description: |
+    The number of bytes that are allowed for each
+    injected file path.
+  in: body
+  required: true
+  type: integer
+injected_files:
+  description: |
+    The number of injected files that are allowed for
+    each tenant.
+  in: body
+  required: true
+  type: integer
+instance_uuid:
+  description: |
+    The UUID of the attaching instance.
+  in: body
+  required: false
+  type: string
+instances:
+  description: |
+    The number of instances that are allowed for each
+    tenant.
+  in: body
+  required: true
+  type: integer
+is_incremental:
+  description: |
+    Indicates whether the backup mode is incremental.
+    If this value is ``true``, the backup mode is incremental. If this
+    value is ``false``, the backup mode is full.
+  in: body
+  required: false
+  type: boolean
+is_public:
+  description:
+    Volume type which is accessible to the public.
+  in: body
+  required: false
+  type: boolean
+key:
+  description: |
+    The metadata key name for the metadata that you
+    want to remove.
+  in: body
+  required: true
+  type: string
+key_pairs:
+  description: |
+    The number of key pairs that are allowed for each
+    user.
+  in: body
+  required: true
+  type: integer
+keys:
+  description: |
+    List of Keys.
+  in: body
+  required: true
+  type: array
+limits:
+  description: |
+    A list of ``limit`` objects.
+  in: body
+  required: true
+  type: object
+links:
+  description: |
+    Links for the volume transfer.
+  in: body
+  required: true
+  type: array
+links_1:
+  description: |
+    Links for the backup.
+  in: body
+  required: true
+  type: array
+links_2:
+  description: |
+    The QoS specification links.
+  in: body
+  required: true
+  type: array
+links_3:
+  description: |
+    The volume links.
+  in: body
+  required: true
+  type: array
+links_4:
+  description: |
+    List of links related to the extension.
+  in: body
+  required: true
+  type: array
+location:
+  description: |
+    Full URL to a service or server.
+  format: uri
+  in: body
+  required: true
+  type: string
+maxTotalBackupGigabytes:
+  description: |
+    The maximum total amount of backups, in gibibytes
+    (GiB).
+  in: body
+  required: true
+  type: integer
+maxTotalBackups:
+  description: |
+    The maximum number of backups.
+  in: body
+  required: true
+  type: integer
+maxTotalSnapshots:
+  description: |
+    The maximum number of snapshots.
+  in: body
+  required: true
+  type: integer
+maxTotalVolumeGigabytes:
+  description: |
+    The maximum total amount of volumes, in gibibytes
+    (GiB).
+  in: body
+  required: true
+  type: integer
+maxTotalVolumes:
+  description: |
+    The maximum number of volumes.
+  in: body
+  required: true
+  type: integer
+metadata:
+  description: |
+    One or more metadata key and value pairs for the
+    snapshot, if any.
+  in: body
+  required: true
+  type: object
+metadata_1:
+  description: |
+    A ``metadata`` object. Contains one or more
+    metadata key and value pairs that are associated with the volume.
+  in: body
+  required: true
+  type: object
+metadata_2:
+  description: |
+    One or more metadata key and value pairs that are
+    associated with the volume.
+  in: body
+  required: false
+  type: object
+metadata_3:
+  description: |
+    One or more metadata key and value pairs that are
+    associated with the volume.
+  in: body
+  required: true
+  type: object
+metadata_4:
+  description: |
+    One or more metadata key and value pairs to
+    associate with the volume.
+  in: body
+  required: false
+  type: string
+metadata_5:
+  description: |
+    The image metadata to add to the volume as a set
+    of metadata key and value pairs.
+  in: body
+  required: true
+  type: object
+metadata_6:
+  description: |
+    One or more metadata key and value pairs to
+    associate with the volume.
+  in: body
+  required: false
+  type: object
+metadata_7:
+  description: |
+    One or more metadata key and value pairs for the
+    snapshot.
+  in: body
+  required: false
+  type: object
+metadata_items:
+  description: |
+    The number of metadata items that are allowed for
+    each instance.
+  in: body
+  required: true
+  type: integer
+migration_status:
+  description: |
+    The volume migration status.
+  in: body
+  required: true
+  type: string
+migration_status_1:
+  description: |
+    The volume migration status.
+  in: body
+  required: false
+  type: string
+mountpoint:
+  description: |
+    The attaching mount point.
+  in: body
+  required: false
+  type: string
+multiattach:
+  description: |
+    To enable this volume to attach to more than one
+    server, set this value to ``true``. Default is ``false``.
+  in: body
+  required: false
+  type: boolean
+multiattach_1:
+  description: |
+    If true, this volume can attach to more than one
+    instance.
+  in: body
+  required: true
+  type: boolean
+name:
+  description: |
+    The name of the Volume Transfer.
+  in: body
+  required: true
+  type: string
+name_1:
+  description: |
+    The backup name.
+  in: body
+  required: true
+  type: string
+name_10:
+  description: |
+    The name of the extension. For example, "Fox In
+    Socks."
+  in: body
+  required: true
+  type: string
+name_11:
+  description: |
+    The name of the back-end volume.
+  in: body
+  required: true
+  type: string
+name_12:
+  description: |
+    The name of the snapshot.
+  in: body
+  required: true
+  type: string
+name_13:
+  description: |
+    The volume name.
+  in: body
+  required: true
+  type: string
+name_14:
+  description: |
+    The name of the volume to which you want to
+    restore a backup.
+  in: body
+  required: false
+  type: string
+name_15:
+  description: |
+    The consistency group name.
+  in: body
+  required: false
+  type: string
+name_2:
+  description: |
+    The consistency group snapshot name.
+  in: body
+  required: true
+  type: string
+name_3:
+  description: |
+    The name of the consistency group.
+  in: body
+  required: true
+  type: string
+name_4:
+  description: |
+    The name of the QoS specification.
+  in: body
+  required: true
+  type: string
+name_5:
+  description: |
+    The name of the snapshot. Default is ``None``.
+  in: body
+  required: false
+  type: string
+name_6:
+  description: |
+    The volume transfer name.
+  in: body
+  required: false
+  type: string
+name_7:
+  description: |
+    The name of the volume type.
+  in: body
+  required: true
+  type: string
+name_8:
+  description: |
+    The volume name.
+  in: body
+  required: false
+  type: string
+name_9:
+  description: |
+    The consistency group name.
+  in: body
+  required: true
+  type: string
+namespace:
+  description: |
+    Link associated to the extension.
+  in: body
+  required: true
+  type: string
+namespace_1:
+  description: |
+    The storage namespace, such as
+    ``OS::Storage::Capabilities::foo``.
+  in: body
+  required: true
+  type: string
+new_size:
+  description: |
+    The new size of the volume, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
+object_count:
+  description: |
+    The number of objects in the backup.
+  in: body
+  required: true
+  type: integer
+os-attach:
+  description: |
+    The ``os-attach`` action.
+  in: body
+  required: true
+  type: object
+os-detach:
+  description: |
+    The ``os-detach`` action.
+  in: body
+  required: true
+  type: object
+os-extend:
+  description: |
+    The ``os-extend`` action.
+  in: body
+  required: true
+  type: object
+os-extended-snapshot-attributes:progress:
+  description: |
+    A percentage value for the build progress.
+  in: body
+  required: true
+  type: integer
+os-extended-snapshot-attributes:project_id:
+  description: |
+    The UUID of the owning project.
+  in: body
+  required: true
+  type: string
+os-force_delete:
+  description: |
+    The ``os-force_delete`` action.
+  in: body
+  required: true
+  type: string
+os-force_detach:
+  description: |
+    The ``os-force_detach`` action.
+  in: body
+  required: true
+  type: object
+os-reset_status:
+  description: |
+    The ``os-reset_status`` action.
+  in: body
+  required: true
+  type: object
+OS-SCH-HNT:scheduler_hints:
+  description: |
+    The dictionary of data to send to the scheduler.
+  in: body
+  required: false
+  type: object
+os-set_image_metadata:
+  description: |
+    The ``os-set_image_metadata`` action.
+  in: body
+  required: true
+  type: object
+os-unmanage:
+  description: |
+    The ``os-unmanage`` action. This action removes
+    the specified volume from Cinder management.
+  in: body
+  required: true
+  type: object
+os-unset_image_metadata:
+  description: |
+    The ``os-unset_image_metadata`` action. This
+    action removes the key-value pairs from the image metadata.
+  in: body
+  required: true
+  type: object
+os-vol-host-attr:host:
+  description: |
+    Current back-end of the volume.
+  in: body
+  required: true
+  type: string
+os-vol-mig-status-attr:migstat:
+  description: |
+    The status of this volume migration (None means
+    that a migration is not currently in progress).
+  in: body
+  required: true
+  type: string
+os-vol-mig-status-attr:name_id:
+  description: |
+    The volume ID that this volume name on the back-
+    end is based on.
+  in: body
+  required: true
+  type: string
+os-vol-tenant-attr:tenant_id:
+  description: |
+    The tenant ID which the volume belongs to.
+  in: body
+  required: true
+  type: string
+os-volume-replication:driver_data:
+  description: |
+    The name of the volume replication driver.
+  in: body
+  required: false
+  type: string
+os-volume-replication:extended_status:
+  description: |
+    The volume replication status managed by the
+    driver of backend storage.
+  in: body
+  required: false
+  type: string
+os-volume-replication:extended_status_1:
+  description: |
+    The status of the volume replication.
+  in: body
+  required: false
+  type: string
+pool_name:
+  description: |
+    The name of the storage pool.
+  in: body
+  required: true
+  type: string
+project:
+  description: |
+    The ID of the project. Volume Type access to be
+    added to this project ID.
+  in: body
+  required: true
+  type: string
+project_id:
+  description: |
+    The UUID of the project.
+  in: body
+  required: true
+  type: string
+project_id_1:
+  description: |
+    The Project ID having access to this volume type.
+  in: body
+  required: true
+  type: string
+properties:
+  description: |
+    The backend volume capabilities list, which is
+    consisted of cinder standard capabilities and vendor unique
+    properties.
+  in: body
+  required: true
+  type: object
+qos_specs:
+  description: |
+    A ``qos_specs`` object.
+  in: body
+  required: true
+  type: object
+QoS_support:
+  description: |
+    The quality of service (QoS) support.
+  in: body
+  required: true
+  type: boolean
+quota_set:
+  description: |
+    A ``quota_set`` object.
+  in: body
+  required: true
+  type: object
+ram:
+  description: |
+    The amount of instance RAM in megabytes that are
+    allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+rate:
+  description: |
+    Rate-limit volume copy bandwidth, used to
+    mitigate slow down of data access from the instances.
+  in: body
+  required: true
+  type: array
+ref:
+  description: |
+    A reference to the existing volume. The internal
+    structure of this reference depends on the volume driver
+    implementation. For details about the required elements in the
+    structure, see the documentation for the volume driver.
+  in: body
+  required: true
+  type: string
+ref_1:
+  description: |
+    A reference to the existing volume. The internal
+    structure of this reference is dependent on the implementation of
+    the volume driver, see the specific driver's documentation for
+    details of the required elements in the structure.
+  in: body
+  required: true
+  type: object
+remove_volumes:
+  description: |
+    One or more volume UUIDs, separated by commas, to
+    remove from the volume consistency group.
+  in: body
+  required: false
+  type: string
+replication_status:
+  description: |
+    The volume replication status.
+  in: body
+  required: true
+  type: string
+replication_targets:
+  description: |
+    A list of volume backends used to replicate volumes
+    on this backend.
+  in: body
+  required: true
+  type: list
+reserved:
+  description: |
+    Reserved volume size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: integer
+reserved_percentage:
+  description: |
+    The percentage of the total capacity that is
+    reserved for the internal use by the back end.
+  in: body
+  required: true
+  type: integer
+restore:
+  description: |
+    A ``restore`` object.
+  in: body
+  required: true
+  type: object
+security_group_rules:
+  description: |
+    The number of rules that are allowed for each
+    security group.
+  in: body
+  required: false
+  type: integer
+security_groups:
+  description: |
+    The number of security groups that are allowed
+    for each tenant.
+  in: body
+  required: true
+  type: integer
+size:
+  description: |
+    The size of the volume, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
+size_1:
+  description: |
+    The size of the backup, in GB.
+  in: body
+  required: true
+  type: integer
+snapshot:
+  description: |
+    A partial representation of a snapshot used in
+    the creation process.
+  in: body
+  required: true
+  type: string
+snapshot_1:
+  description: |
+    A ``snapshot`` object.
+  in: body
+  required: true
+  type: object
+snapshot_id:
+  description: |
+    To create a volume from an existing snapshot,
+    specify the UUID of the volume snapshot. The volume is created in
+    same availability zone and with same size as the snapshot.
+  in: body
+  required: false
+  type: string
+snapshot_id_2:
+  description: |
+    The UUID of the source volume snapshot.
+  in: body
+  required: true
+  type: string
+snapshot_id_3:
+  description: |
+    The UUID of the source volume snapshot. The API
+    creates a new volume snapshot with the same size as the source
+    volume snapshot.
+  in: body
+  required: true
+  type: string
+source_cgid:
+  description: |
+    The UUID of the source consistency group.
+  in: body
+  required: false
+  type: string
+source_replica:
+  description: |
+    The UUID of the primary volume to clone.
+  in: body
+  required: false
+  type: string
+source_volid:
+  description: |
+    The UUID of the source volume. The API creates a
+    new volume with the same size as the source volume.
+  in: body
+  required: false
+  type: string
+source_volid_1:
+  description: |
+    The UUID of the source volume.
+  in: body
+  required: true
+  type: string
+specs:
+  description: |
+    A ``specs`` object.
+  in: body
+  required: true
+  type: object
+specs_1:
+  description: |
+    Specification key and value pairs.
+  in: body
+  required: true
+  type: object
+specs_2:
+  description: |
+    Specification key and value pairs.
+  in: body
+  required: true
+  type: string
+status:
+  description: |
+    The ``status`` of the consistency group snapshot.
+  in: body
+  required: false
+  type: string
+status_1:
+  description: |
+    The status of the consistency group.
+  in: body
+  required: true
+  type: string
+status_2:
+  description: |
+    The status for the snapshot.
+  in: body
+  required: true
+  type: string
+status_3:
+  description: |
+    The volume status.
+  in: body
+  required: true
+  type: string
+status_4:
+  description: |
+    The backup status. Refer to Backup statuses table
+    for the possible status value.
+  in: body
+  required: true
+  type: string
+status_5:
+  description: |
+    The consistency group status. A valid value is
+    ``creating``, ``available``, ``error``, ``deleting``,
+    ``updating``, or ``invalid``.
+  in: body
+  required: true
+  type: string
+status_6:
+  description: |
+    The volume status.
+  in: body
+  required: false
+  type: string
+storage_protocol:
+  description: |
+    The storage back end for the back-end volume. For
+    example, ``iSCSI`` or ``FC``.
+  in: body
+  required: true
+  type: string
+storage_protocol_1:
+  description: |
+    The storage protocol, such as Fibre Channel,
+    iSCSI, NFS, and so on.
+  in: body
+  required: true
+  type: string
+total_capacity:
+  description: |
+    The total capacity for the back-end volume, in
+    GBs. A valid value is a string, such as ``unknown``, or an
+    integer.
+  in: body
+  required: true
+  type: string
+totalBackupGigabytesUsed:
+  description: |
+    The total number of backups gibibytes (GiB) used.
+  in: body
+  required: true
+  type: integer
+totalBackupsUsed:
+  description: |
+    The total number of backups used.
+  in: body
+  required: true
+  type: integer
+totalGigabytesUsed:
+  description: |
+    The total number of gibibytes (GiB) used.
+  in: body
+  required: true
+  type: integer
+totalSnapshotsUsed:
+  description: |
+    The total number of snapshots used.
+  in: body
+  required: true
+  type: integer
+totalVolumesUsed:
+  description: |
+    The total number of volumes used.
+  in: body
+  required: true
+  type: integer
+updated:
+  description: |
+    The date and time stamp when the extension was
+    last updated.
+  in: body
+  required: true
+  type: string
+updated_1:
+  description: |
+    The date and time stamp when the API request was
+    issued.
+  in: body
+  required: true
+  type: string
+updated_at:
+  description: |
+    The date and time when the resource was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC. In the previous example, the offset value is ``-05:00``.
+
+    If the ``updated_at`` date and time stamp is not set, its value is
+    ``null``.
+  in: body
+  required: true
+  type: string
+user_id:
+  description: |
+    The UUID of the user.
+  in: body
+  required: true
+  type: string
+vendor_name:
+  description: |
+    The name of the vendor.
+  in: body
+  required: true
+  type: string
+visibility:
+  description: |
+    The volume type access.
+  in: body
+  required: true
+  type: string
+volume:
+  description: |
+    A ``volume`` object.
+  in: body
+  required: true
+  type: object
+volume_1:
+  description: |
+    A ``volume`` object.
+  in: body
+  required: true
+  type: string
+volume_backend_name:
+  description: |
+    The name of the back-end volume.
+  in: body
+  required: true
+  type: string
+volume_id:
+  description: |
+    The UUID of the volume.
+  in: body
+  required: true
+  type: string
+volume_id_2:
+  description: |
+    The UUID of the volume that you want to back up.
+  in: body
+  required: true
+  type: string
+volume_id_3:
+  description: |
+    To create a snapshot from an existing volume,
+    specify the UUID of the existing volume.
+  in: body
+  required: true
+  type: string
+volume_id_4:
+  description: |
+    The UUID of the volume from which the backup was
+    created.
+  in: body
+  required: true
+  type: string
+volume_id_5:
+  description: |
+    If the snapshot was created from a volume, the
+    volume ID.
+  in: body
+  required: true
+  type: string
+volume_id_6:
+  description: |
+    The UUID of the volume to which you want to
+    restore a backup.
+  in: body
+  required: false
+  type: string
+volume_type_1:
+  description: |
+    A ``volume_type`` object.
+  in: body
+  required: true
+  type: object
+volume_type_2:
+  description: |
+    The volume type. To create an environment with
+    multiple-storage back ends, you must specify a volume type. Block
+    Storage volume back ends are spawned as children to ``cinder-
+    volume``, and they are keyed from a unique queue. They are named
+    ``cinder- volume.HOST.BACKEND``. For example, ``cinder-
+    volume.ubuntu.lvmdriver``. When a volume is created, the scheduler
+    chooses an appropriate back end to handle the request based on the
+    volume type.  Default is ``None``.  For information about how to
+    use volume types to create multiple- storage back ends, see
+    `Configure multiple-storage back ends
+    <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: false
+  type: string
+volume_type_3:
+  description: |
+    The volume type. In an environment with multiple-
+    storage back ends, the scheduler determines where to send the
+    volume based on the volume type.  For information about how to use
+    volume types to create multiple- storage back ends, see `Configure
+    multiple-storage back ends <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: true
+  type: string
+volume_type_4:
+  description: |
+    The associated volume type.
+  in: body
+  required: false
+  type: string
+volume_type_5:
+  description: |
+    A list of ``volume_type`` objects.
+  in: body
+  required: true
+  type: array
+volume_types:
+  description: |
+    The list of volume types.  In an environment with
+    multiple-storage back ends, the scheduler determines where to send
+    the volume based on the volume type.  For information about how to
+    use volume types to create multiple- storage back ends, see
+    `Configure multiple-storage back ends
+    <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: true
+  type: array
+volume_types_2:
+  description: |
+    The list of volume types separated by commas.  In an environment with
+    multiple-storage back ends, the scheduler determines where to send
+    the volume based on the volume type.  For information about how to
+    use volume types to create multiple-storage back ends, see
+    `Configure multiple-storage back ends
+    <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: true
+  type: string
+volumes:
+  description: |
+    A list of ``volume`` objects.
+  in: body
+  required: true
+  type: array

@@ -1,0 +1,15 @@
+---
+features:
+  - Added Datera EDF API 2.1 support.
+  - Added Datera Multi-Tenancy Support.
+  - Added Datera Template Support.
+  - Broke Datera driver up into modules.
+upgrade:
+  - Datera driver location has changed from cinder.volume.drivers
+    .datera.DateraDriver to cinder.volume.drivers.datera.datera_iscsi
+    .DateraDriver.
+
+deprecations:
+  - Deprecated datera_api_version option.
+  - Removed datera_acl_allow_all option.
+  - Removed datera_num_replicas option.

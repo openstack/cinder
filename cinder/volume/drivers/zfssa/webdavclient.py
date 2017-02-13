@@ -107,7 +107,10 @@ class ZFSSAWebDAVClient(object):
 
         while retry < maxretries:
             try:
-                response = urllib.request.urlopen(request, timeout=None)
+                # URLs are prepended with self.https_path which is safe
+                # meaning that the URL will either be safe or nonexistant
+                response = urllib.request.urlopen(  # nosec
+                    request, timeout=None)
             except urllib.error.HTTPError as err:
                 LOG.error(_LE('WebDAV returned with %(code)s error during '
                               '%(method)s call.'),

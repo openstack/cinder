@@ -77,18 +77,18 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
             self.DETAIL_OPTIONS['failure'])
         rest_response_fail['status'] = 1
 
-        self.FAKE_SOAP_RESPONSE['restore_detail'] = {
+        self.FAKE_RESPONSE['restore_detail'] = {
             'success': rest_success,
             'fail': rest_fail,
             'pending': rest_pending,
             'request_fail': rest_response_fail
         }
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response['result'] = '1234'
 
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['restore_detail']['success'])
+            self.FAKE_RESPONSE['restore_detail']['success'])
         self.test_pending = False
 
         self.test_pending_count = 0
@@ -102,9 +102,9 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
         if self.test_pending:
             if self.test_pending_count == 0:
                 self.test_pending_count += 1
-                return self.FAKE_SOAP_RESPONSE['restore_detail']['pending']
+                return self.FAKE_RESPONSE['restore_detail']['pending']
             else:
-                return self.FAKE_SOAP_RESPONSE['restore_detail']['success']
+                return self.FAKE_RESPONSE['restore_detail']['success']
         else:
             return self.response_detail
 
@@ -121,29 +121,29 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
 
     def test_create_volume_from_snapshot_fail(self):
         """Create volume from snapshot request fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume_from_snapshot)
 
     def test_create_volume_from_snapshot_fail_not_immediate(self):
         """Get restore details request fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['restore_detail']['fail'])
+            self.FAKE_RESPONSE['restore_detail']['fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume_from_snapshot)
 
     def test_create_volume_from_snapshot_fail_detail_response_fail(self):
         """Get restore details reports that restore operation fails."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['restore_detail']['request_fail'])
+            self.FAKE_RESPONSE['restore_detail']['request_fail'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume_from_snapshot)
 
     def test_create_volume_from_snapshot_fail_not_immediate_resp_fail(self):
         """Get restore details reports that the task is pending, then done."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.test_pending = True
         self.test_create_volume_from_snapshot()
 
@@ -153,9 +153,9 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
         timeout = 3
         mock_time.side_effect = utils.generate_timeout_series(timeout)
         self.driver.configuration.restore_check_timeout = timeout
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
-            self.FAKE_SOAP_RESPONSE['restore_detail']['pending'])
+            self.FAKE_RESPONSE['restore_detail']['pending'])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume_from_snapshot)
 

@@ -1,0 +1,11 @@
+{
+    "snapshot": {
+        "created_at": "2013-02-20T08:11:34.000000",
+        "description": "This is yet, another snapshot",
+        "name": "snap-002",
+        "id": "4b502fcb-1f26-45f8-9fe5-3b9a0a52eaf2",
+        "size": 1,
+        "status": "available",
+        "volume_id": "2402b902-0b7a-458c-9c07-7435a826f794"
+    }
+}

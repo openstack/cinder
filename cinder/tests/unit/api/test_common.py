@@ -17,6 +17,7 @@
 Test suites for 'common' code used throughout the OpenStack HTTP API.
 """
 
+import ddt
 import mock
 from testtools import matchers
 import webob
@@ -32,7 +33,14 @@ NS = "{http://docs.openstack.org/compute/api/v1.1}"
 ATOMNS = "{http://www.w3.org/2005/Atom}"
 CONF = cfg.CONF
 
+TINY = list(range(1))
+SMALL = list(range(10))
+MEDIUM = list(range(1000))
+LARGE = list(range(10000))
+ITEMS = list(range(2000))
 
+
+@ddt.ddt
 class LimiterTest(test.TestCase):
     """Unit tests for the `cinder.api.common.limited` method.
 
@@ -40,137 +48,92 @@ class LimiterTest(test.TestCase):
     and 'limit' GET params, returns a subset or complete set of the given
     items.
     """
+    @ddt.data('/?offset=', '/?offset=123456789012346456',
+              u'/?offset=\u0020aa', '/?offset=-30',
+              u'/?limit=hello', '/?limit=-3000',
+              '/?offset=30034522235674530&limit=10')
+    def test_limiter_bad_offset_or_limit_values(self, value):
+        """Test limiter with bad offset or limit values
 
-    def setUp(self):
-        """Run before each test."""
-        super(LimiterTest, self).setUp()
-        self.tiny = list(range(1))
-        self.small = list(range(10))
-        self.medium = list(range(1000))
-        self.large = list(range(10000))
-
-    def test_limiter_offset_zero(self):
-        """Test offset key works with 0."""
-        req = webob.Request.blank('/?offset=0')
-        self.assertEqual(self.tiny, common.limited(self.tiny, req))
-        self.assertEqual(self.small, common.limited(self.small, req))
-        self.assertEqual(self.medium, common.limited(self.medium, req))
-        self.assertEqual(self.large[:1000], common.limited(self.large, req))
-
-    def test_limiter_offset_medium(self):
-        """Test offset key works with a medium sized number."""
-        req = webob.Request.blank('/?offset=10')
-        self.assertEqual([], common.limited(self.tiny, req))
-        self.assertEqual(self.small[10:], common.limited(self.small, req))
-        self.assertEqual(self.medium[10:], common.limited(self.medium, req))
-        self.assertEqual(self.large[10:1010], common.limited(self.large, req))
-
-    def test_limiter_offset_over_max(self):
-        """Test offset key works with a number over 1000 (max_limit)."""
-        req = webob.Request.blank('/?offset=1001')
-        self.assertEqual([], common.limited(self.tiny, req))
-        self.assertEqual([], common.limited(self.small, req))
-        self.assertEqual([], common.limited(self.medium, req))
-        self.assertEqual(
-            self.large[1001:2001], common.limited(self.large, req))
-
-    def test_limiter_offset_blank(self):
-        """Test offset key works with a blank offset."""
-        req = webob.Request.blank('/?offset=')
+        This test includes next test cases:
+        1) Offset key works with a blank offset;
+        2) Offset key works with a offset out of range;
+        3) Offset key works with a BAD offset;
+        4) Offset value is negative;
+        5) Limit value is bad;
+        6) Limit value is negative value.
+        7) With both offset and limit;
+        """
+        req = webob.Request.blank(value)
         self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+            webob.exc.HTTPBadRequest, common.limited, SMALL, req)
 
-    def test_limiter_offset_out_of_range(self):
-        """Test offset key works with a offset out of range."""
-        req = webob.Request.blank('/?offset=123456789012346456')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+    @ddt.data(
+        ({'req': '/?offset=0', 'values': ((TINY, TINY),
+         (SMALL, SMALL),
+         (MEDIUM, MEDIUM),
+         (LARGE[:1000], LARGE))}),
+        ({'req': '/?offset=10', 'values': (([], TINY),
+         (SMALL[10:], SMALL),
+         (MEDIUM[10:], MEDIUM),
+         (LARGE[10:1010], LARGE))}),
+        ({'req': '/?offset=1001', 'values': (([], TINY),
+         ([], SMALL),
+         ([], MEDIUM),
+         (LARGE[1001:2001], LARGE))}),
+        ({'req': '/', 'values': ((TINY, TINY),
+         (SMALL, SMALL),
+         (MEDIUM, MEDIUM),
+         (LARGE[:1000], LARGE))}),
+        ({'req': '/?limit=0', 'values': ((TINY, TINY),
+         (SMALL, SMALL),
+         (MEDIUM, MEDIUM),
+         (LARGE[:1000], LARGE))}),
+        ({'req': '/?limit=10', 'values': ((TINY, TINY),
+         (SMALL, SMALL),
+         (MEDIUM[:10], MEDIUM),
+         (LARGE[:10], LARGE))}),
+        ({'req': '/?limit=3000', 'values': ((TINY, TINY),
+         (SMALL, SMALL),
+         (MEDIUM, MEDIUM),
+         (LARGE[:1000], LARGE))}))
+    @ddt.unpack
+    def test_limiter(self, req, values):
+        """Test limited method with different input parameters.
 
-    def test_limiter_offset_bad(self):
-        """Test offset key works with a BAD offset."""
-        req = webob.Request.blank(u'/?offset=\u0020aa')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+        This test includes next test cases:
+        1) Test offset key works with 0;
+        2) Test offset key works with a medium sized number;
+        3) Test offset key works with a number over 1000 (max_limit);
+        4) Test request with no offset or limit;
+        5) Test limit of zero;
+        6) Test limit of 10;
+        7) Test limit of 3000;
+        """
+        req = webob.Request.blank(req)
+        for expected, value, in values:
+            self.assertEqual(expected, common.limited(value, req))
 
-    def test_limiter_nothing(self):
-        """Test request with no offset or limit."""
-        req = webob.Request.blank('/')
-        self.assertEqual(self.tiny, common.limited(self.tiny, req))
-        self.assertEqual(self.small, common.limited(self.small, req))
-        self.assertEqual(self.medium, common.limited(self.medium, req))
-        self.assertEqual(self.large[:1000], common.limited(self.large, req))
-
-    def test_limiter_limit_zero(self):
-        """Test limit of zero."""
-        req = webob.Request.blank('/?limit=0')
-        self.assertEqual(self.tiny, common.limited(self.tiny, req))
-        self.assertEqual(self.small, common.limited(self.small, req))
-        self.assertEqual(self.medium, common.limited(self.medium, req))
-        self.assertEqual(self.large[:1000], common.limited(self.large, req))
-
-    def test_limiter_limit_bad(self):
-        """Test with a bad limit."""
-        req = webob.Request.blank(u'/?limit=hello')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
-
-    def test_limiter_limit_medium(self):
-        """Test limit of 10."""
-        req = webob.Request.blank('/?limit=10')
-        self.assertEqual(self.tiny, common.limited(self.tiny, req))
-        self.assertEqual(self.small, common.limited(self.small, req))
-        self.assertEqual(self.medium[:10], common.limited(self.medium, req))
-        self.assertEqual(self.large[:10], common.limited(self.large, req))
-
-    def test_limiter_limit_over_max(self):
-        """Test limit of 3000."""
-        req = webob.Request.blank('/?limit=3000')
-        self.assertEqual(self.tiny, common.limited(self.tiny, req))
-        self.assertEqual(self.small, common.limited(self.small, req))
-        self.assertEqual(self.medium, common.limited(self.medium, req))
-        self.assertEqual(self.large[:1000], common.limited(self.large, req))
-
-    def test_limiter_limit_and_offset(self):
-        """Test request with both limit and offset."""
-        items = list(range(2000))
-        req = webob.Request.blank('/?offset=1&limit=3')
-        self.assertEqual(items[1:4], common.limited(items, req))
-        req = webob.Request.blank('/?offset=3&limit=0')
-        self.assertEqual(items[3:1003], common.limited(items, req))
-        req = webob.Request.blank('/?offset=3&limit=1500')
-        self.assertEqual(items[3:1003], common.limited(items, req))
-        req = webob.Request.blank('/?offset=3000&limit=10')
-        self.assertEqual([], common.limited(items, req))
-        req = webob.Request.blank('/?offset=30034522235674530&limit=10')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, items, req)
-
-    def test_limiter_custom_max_limit(self):
-        """Test a max_limit other than 1000."""
-        items = list(range(2000))
-        req = webob.Request.blank('/?offset=1&limit=3')
-        self.assertEqual(
-            items[1:4], common.limited(items, req, max_limit=2000))
-        req = webob.Request.blank('/?offset=3&limit=0')
-        self.assertEqual(
-            items[3:], common.limited(items, req, max_limit=2000))
-        req = webob.Request.blank('/?offset=3&limit=2500')
-        self.assertEqual(
-            items[3:], common.limited(items, req, max_limit=2000))
-        req = webob.Request.blank('/?offset=3000&limit=10')
-        self.assertEqual([], common.limited(items, req, max_limit=2000))
-
-    def test_limiter_negative_limit(self):
-        """Test a negative limit."""
-        req = webob.Request.blank('/?limit=-3000')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
-
-    def test_limiter_negative_offset(self):
-        """Test a negative offset."""
-        req = webob.Request.blank('/?offset=-30')
-        self.assertRaises(
-            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+    @ddt.data(('/?offset=1&limit=3', 1, 4),
+              ('/?offset=3&limit=0', 3, 1003),
+              ('/?offset=3&limit=1500', 3, 1003),
+              ('/?offset=3000&limit=10', 0, 0),
+              ('/?offset=1&limit=3', 1, 4, 2000),
+              ('/?offset=3&limit=0', 3, None, 2000),
+              ('/?offset=3&limit=2500', 3, None, 2000),
+              ('/?offset=3000&limit=10', 0, 0, 2000))
+    @ddt.unpack
+    def test_limiter_with_offset_limit_max_limit(self, req,
+                                                 slice_start,
+                                                 slice_end,
+                                                 max_limit=None):
+        """Test with both parameters offset and limit and custom max_limit."""
+        # NOTE(mdovgal): using 0 as slice_start and slice_end we will
+        # get empty list as a result
+        # [3:None] equal to [3:]
+        req = webob.Request.blank(req)
+        self.assertEqual(ITEMS[slice_start:slice_end], common.limited(ITEMS,
+                         req, max_limit=max_limit))
 
 
 class PaginationParamsTest(test.TestCase):
@@ -227,73 +190,43 @@ class PaginationParamsTest(test.TestCase):
                          common.get_pagination_params(req.GET.copy()))
 
 
+@ddt.ddt
 class SortParamUtilsTest(test.TestCase):
 
-    def test_get_sort_params_defaults(self):
-        """Verifies the default sort key and direction."""
-        sort_keys, sort_dirs = common.get_sort_params({})
-        self.assertEqual(['created_at'], sort_keys)
-        self.assertEqual(['desc'], sort_dirs)
+    @ddt.data(({'params': {}}, ['created_at'], ['desc']),
+              ({'params': {}, 'default_key': 'key1', 'default_dir': 'dir1'},
+               ['key1'], ['dir1']),
+              ({'params': {'sort': 'key1:dir1'}}, ['key1'], ['dir1']),
+              ({'params': {'sort_key': 'key1', 'sort_dir': 'dir1'}},
+               ['key1'], ['dir1']),
+              ({'params': {'sort': 'key1'}}, ['key1'], ['desc']),
+              ({'params': {'sort': 'key1:dir1,key2:dir2,key3:dir3'}},
+               ['key1', 'key2', 'key3'], ['dir1', 'dir2', 'dir3']),
+              ({'params': {'sort': 'key1:dir1,key2,key3:dir3'}},
+               ['key1', 'key2', 'key3'], ['dir1', 'desc', 'dir3']),
+              ({'params': {'sort': 'key1:dir1,key2,key3'},
+                'default_dir': 'foo'},
+               ['key1', 'key2', 'key3'], ['dir1', 'foo', 'foo']),
+              ({'params': {'sort': ' key1 : dir1,key2: dir2 , key3 '}},
+               ['key1', 'key2', 'key3'], ['dir1', 'dir2', 'desc']))
+    @ddt.unpack
+    def test_get_sort_params(self, parameters, expected_keys, expected_dirs):
+        """Test for get sort parameters method
 
-    def test_get_sort_params_override_defaults(self):
-        """Verifies that the defaults can be overriden."""
-        sort_keys, sort_dirs = common.get_sort_params({}, default_key='key1',
-                                                      default_dir='dir1')
-        self.assertEqual(['key1'], sort_keys)
-        self.assertEqual(['dir1'], sort_dirs)
-
-    def test_get_sort_params_single_value_sort_param(self):
-        """Verifies a single sort key and direction."""
-        params = {'sort': 'key1:dir1'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1'], sort_keys)
-        self.assertEqual(['dir1'], sort_dirs)
-
-    def test_get_sort_params_single_value_old_params(self):
-        """Verifies a single sort key and direction."""
-        params = {'sort_key': 'key1', 'sort_dir': 'dir1'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1'], sort_keys)
-        self.assertEqual(['dir1'], sort_dirs)
-
-    def test_get_sort_params_single_with_default_sort_param(self):
-        """Verifies a single sort value with a default direction."""
-        params = {'sort': 'key1'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1'], sort_keys)
-        # Direction should be defaulted
-        self.assertEqual(['desc'], sort_dirs)
-
-    def test_get_sort_params_single_with_default_old_params(self):
-        """Verifies a single sort value with a default direction."""
-        params = {'sort_key': 'key1'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1'], sort_keys)
-        # Direction should be defaulted
-        self.assertEqual(['desc'], sort_dirs)
-
-    def test_get_sort_params_multiple_values(self):
-        """Verifies multiple sort parameter values."""
-        params = {'sort': 'key1:dir1,key2:dir2,key3:dir3'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
-        self.assertEqual(['dir1', 'dir2', 'dir3'], sort_dirs)
-
-    def test_get_sort_params_multiple_not_all_dirs(self):
-        """Verifies multiple sort keys without all directions."""
-        params = {'sort': 'key1:dir1,key2,key3:dir3'}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
-        # Second key is missing the direction, should be defaulted
-        self.assertEqual(['dir1', 'desc', 'dir3'], sort_dirs)
-
-    def test_get_sort_params_multiple_override_default_dir(self):
-        """Verifies multiple sort keys and overriding default direction."""
-        params = {'sort': 'key1:dir1,key2,key3'}
-        sort_keys, sort_dirs = common.get_sort_params(params,
-                                                      default_dir='foo')
-        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
-        self.assertEqual(['dir1', 'foo', 'foo'], sort_dirs)
+        This test includes next test cases:
+        1) Verifies the default sort key and direction.
+        2) Verifies that the defaults can be overridden.
+        3) Verifies a single sort key and direction.
+        4) Verifies a single sort key and direction.
+        5) Verifies a single sort value with a default direction.
+        6) Verifies multiple sort parameter values.
+        7) Verifies multiple sort keys without all directions.
+        8) Verifies multiple sort keys and overriding default direction.
+        9) Verifies that leading and trailing spaces are removed.
+        """
+        sort_keys, sort_dirs = common.get_sort_params(**parameters)
+        self.assertEqual(expected_keys, sort_keys)
+        self.assertEqual(expected_dirs, sort_dirs)
 
     def test_get_sort_params_params_modified(self):
         """Verifies that the input sort parameter are modified."""
@@ -305,13 +238,6 @@ class SortParamUtilsTest(test.TestCase):
         common.get_sort_params(params)
         self.assertEqual({}, params)
 
-    def test_get_sort_params_random_spaces(self):
-        """Verifies that leading and trailing spaces are removed."""
-        params = {'sort': ' key1 : dir1,key2: dir2 , key3 '}
-        sort_keys, sort_dirs = common.get_sort_params(params)
-        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
-        self.assertEqual(['dir1', 'dir2', 'desc'], sort_dirs)
-
     def test_get_params_mix_sort_and_old_params(self):
         """An exception is raised if both types of sorting params are given."""
         for params in ({'sort': 'k1', 'sort_key': 'k1'},
@@ -322,57 +248,43 @@ class SortParamUtilsTest(test.TestCase):
                               params)
 
 
+@ddt.ddt
 class MiscFunctionsTest(test.TestCase):
 
-    def test_remove_major_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1/images'
-        expected = 'http://www.testsite.com/images'
+    @ddt.data(('http://cinder.example.com/v1/images',
+               'http://cinder.example.com/images'),
+              ('http://cinder.example.com/v1.1/images',
+               'http://cinder.example.com/images'),
+              ('http://cinder.example.com/v1.1/',
+               'http://cinder.example.com/'),
+              ('http://cinder.example.com/v10.10',
+               'http://cinder.example.com'),
+              ('http://cinder.example.com/v1.1/images/v10.5',
+               'http://cinder.example.com/images/v10.5'),
+              ('http://cinder.example.com/cinder/v2',
+               'http://cinder.example.com/cinder'))
+    @ddt.unpack
+    def test_remove_version_from_href(self, fixture, expected):
+        """Test for removing version from href
+
+        This test conatins following test-cases:
+        1) remove major version from href
+        2-5) remove version from href
+        6) remove version from href version not trailing domain
+        """
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
-    def test_remove_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1.1/images'
-        expected = 'http://www.testsite.com/images'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_2(self):
-        fixture = 'http://www.testsite.com/v1.1/'
-        expected = 'http://www.testsite.com/'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_3(self):
-        fixture = 'http://www.testsite.com/v10.10'
-        expected = 'http://www.testsite.com'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_4(self):
-        fixture = 'http://www.testsite.com/v1.1/images/v10.5'
-        expected = 'http://www.testsite.com/images/v10.5'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_bad_request(self):
-        fixture = 'http://www.testsite.com/1.1/images'
-        self.assertRaises(ValueError,
-                          common.remove_version_from_href,
-                          fixture)
-
-    def test_remove_version_from_href_bad_request_2(self):
-        fixture = 'http://www.testsite.com/v/images'
-        self.assertRaises(ValueError,
-                          common.remove_version_from_href,
-                          fixture)
-
-    def test_remove_version_from_href_bad_request_3(self):
-        fixture = 'http://www.testsite.com/v1.1images'
+    @ddt.data('http://cinder.example.com/1.1/images',
+              'http://cinder.example.com/v/images',
+              'http://cinder.example.com/v1.1images')
+    def test_remove_version_from_href_bad_request(self, fixture):
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
 
 
+@ddt.ddt
 class TestCollectionLinks(test.TestCase):
     """Tests the _get_collection_links method."""
 
@@ -414,151 +326,53 @@ class TestCollectionLinks(test.TestCase):
             self.assertFalse(href_link_mock.called)
             self.assertThat(results, matchers.HasLength(0))
 
-    def test_items_equals_osapi_max_no_limit(self):
-        item_count = 5
-        osapi_max_limit = 5
-        limit = None
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
+    @ddt.data((5, 5, True), (5, 5, True, 4), (5, 5, True, 5),
+              (5, 5, True, 6), (5, 7, False), (5, 7, True, 4),
+              (5, 7, True, 5), (5, 7, False, 6), (5, 7, False, 7),
+              (5, 7, False, 8), (5, 3, True), (5, 3, True, 2),
+              (5, 3, True, 3), (5, 3, True, 4), (5, 3, True, 5),
+              (5, 3, True, 6))
+    @ddt.unpack
+    def test_items(self, item_count, osapi_max_limit,
+                   should_link_exist, limit=None):
+        """Test
 
-    def test_items_equals_osapi_max_greater_than_limit(self):
-        item_count = 5
-        osapi_max_limit = 5
-        limit = 4
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_equals_osapi_max_equals_limit(self):
-        item_count = 5
-        osapi_max_limit = 5
-        limit = 5
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_equals_osapi_max_less_than_limit(self):
-        item_count = 5
-        osapi_max_limit = 5
-        limit = 6
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_less_than_osapi_max_no_limit(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = None
-        should_link_exist = False
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_limit_less_than_items_less_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = 4
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_limit_equals_items_less_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = 5
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_less_than_limit_less_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = 6
-        should_link_exist = False
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_less_than_osapi_max_equals_limit(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = 7
-        should_link_exist = False
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_less_than_osapi_max_less_than_limit(self):
-        item_count = 5
-        osapi_max_limit = 7
-        limit = 8
-        should_link_exist = False
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_greater_than_osapi_max_no_limit(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = None
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_limit_less_than_items_greater_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = 2
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_greater_than_osapi_max_equals_limit(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = 3
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_greater_than_limit_greater_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = 4
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_items_equals_limit_greater_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = 5
-        should_link_exist = True
-        self._validate_next_link(item_count, osapi_max_limit, limit,
-                                 should_link_exist)
-
-    def test_limit_greater_than_items_greater_than_osapi_max(self):
-        item_count = 5
-        osapi_max_limit = 3
-        limit = 6
-        should_link_exist = True
+        1) Items count equals osapi_max_limit without limit;
+        2) Items count equals osapi_max_limit and greater than limit;
+        3) Items count equals osapi_max_limit and equals limit;
+        4) Items count equals osapi_max_limit and less than limit;
+        5) Items count less than osapi_max_limit without limit;
+        6) Limit less than items count and less than osapi_max_limit;
+        7) Limit equals items count and less than osapi_max_limit;
+        8) Items count less than limit and less than osapi_max_limit;
+        9) Items count less than osapi_max_limit and equals limit;
+        10) Items count less than osapi_max_limit and less than limit;
+        11) Items count greater than osapi_max_limit without limit;
+        12) Limit less than items count and greater than osapi_max_limit;
+        13) Items count greater than osapi_max_limit and equals limit;
+        14) Items count greater than limit and greater than osapi_max_limit;
+        15) Items count equals limit and greater than osapi_max_limit;
+        16) Limit greater than items count and greater than osapi_max_limit;
+        """
         self._validate_next_link(item_count, osapi_max_limit, limit,
                                  should_link_exist)
 
 
+@ddt.ddt
 class LinkPrefixTest(test.TestCase):
-    def test_update_link_prefix(self):
+
+    @ddt.data((["http://192.168.0.243:24/", "http://127.0.0.1/volume"],
+               "http://127.0.0.1/volume"),
+              (["http://foo.x.com/v1", "http://new.prefix.com"],
+               "http://new.prefix.com/v1"),
+              (["http://foo.x.com/v1",
+                "http://new.prefix.com:20455/new_extra_prefix"],
+               "http://new.prefix.com:20455/new_extra_prefix/v1"))
+    @ddt.unpack
+    def test_update_link_prefix(self, update_args, expected):
         vb = common.ViewBuilder()
-        result = vb._update_link_prefix("http://192.168.0.243:24/",
-                                        "http://127.0.0.1/volume")
-        self.assertEqual("http://127.0.0.1/volume", result)
-
-        result = vb._update_link_prefix("http://foo.x.com/v1",
-                                        "http://new.prefix.com")
-        self.assertEqual("http://new.prefix.com/v1", result)
-
-        result = vb._update_link_prefix(
-            "http://foo.x.com/v1",
-            "http://new.prefix.com:20455/new_extra_prefix")
-        self.assertEqual("http://new.prefix.com:20455/new_extra_prefix/v1",
-                         result)
+        result = vb._update_link_prefix(*update_args)
+        self.assertEqual(expected, result)
 
 
 class RequestUrlTest(test.TestCase):

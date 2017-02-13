@@ -1,0 +1,7 @@
+---
+upgrade:
+  - New config option added. ``"connection_string"`` in [profiler]
+    section is used to specify OSProfiler driver connection
+    string, for example,
+    ``"connection_string = messaging://"``,
+    ``"connection_string = mongodb://localhost:27017"``

@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for snapshots in the NFS driver. This functionality is only
+    enabled if ``nfs_snapshot_support`` is set to ``True`` in cinder.conf.
+    Cloning volumes is only supported if the source volume is not attached.

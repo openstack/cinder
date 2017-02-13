@@ -1,0 +1,29 @@
+---
+upgrade:
+  - |
+    After running the migration script to migrate CGs to
+    generic volume groups, CG and group APIs work as follows.
+
+    * Create CG only creates in the groups table.
+    * Modify CG modifies in the CG table if the CG is in the
+      CG table, otherwise it modifies in the groups table.
+    * Delete CG deletes from the CG or the groups table
+      depending on where the CG is.
+    * List CG checks both CG and groups tables.
+    * List CG Snapshots checks both the CG and the groups
+      tables.
+    * Show CG checks both tables.
+    * Show CG Snapshot checks both tables.
+    * Create CG Snapshot creates either in the CG or the groups
+      table depending on where the CG is.
+    * Create CG from Source creates in either the CG or the
+      groups table depending on the source.
+    * Create Volume adds the volume either to the CG or the
+      group.
+    * default_cgsnapshot_type is reserved for migrating CGs.
+    * Group APIs will only write/read in/from the groups table.
+    * Group APIs will not work on groups with default_cgsnapshot_type.
+    * Groups with default_cgsnapshot_type can only be operated by
+      CG APIs.
+    * After CG tables are removed, we will allow default_cgsnapshot_type
+      to be used by group APIs.

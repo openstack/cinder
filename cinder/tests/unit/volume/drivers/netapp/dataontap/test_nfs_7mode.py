@@ -25,6 +25,8 @@ from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_7mode
+from cinder.volume.drivers.netapp.dataontap import nfs_base
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -33,7 +35,10 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetApp7modeNfsDriverTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_7mode()}
+        kwargs = {
+            'configuration': self.get_config_7mode(),
+            'host': 'openstack@7modenfs',
+        }
 
         with mock.patch.object(utils, 'get_root_helper',
                                return_value=mock.Mock()):
@@ -54,6 +59,32 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         config.netapp_transport_type = 'http'
         config.netapp_server_port = '80'
         return config
+
+    @ddt.data({'share': None, 'is_snapshot': False},
+              {'share': None, 'is_snapshot': True},
+              {'share': 'fake_share', 'is_snapshot': False},
+              {'share': 'fake_share', 'is_snapshot': True})
+    @ddt.unpack
+    def test_clone_backing_file_for_volume(self, share, is_snapshot):
+
+        mock_get_export_ip_path = self.mock_object(
+            self.driver, '_get_export_ip_path',
+            return_value=(fake.SHARE_IP, fake.EXPORT_PATH))
+        mock_get_actual_path_for_export = self.mock_object(
+            self.driver.zapi_client, 'get_actual_path_for_export',
+            return_value='fake_path')
+
+        self.driver._clone_backing_file_for_volume(
+            fake.FLEXVOL, 'fake_clone', fake.VOLUME_ID, share=share,
+            is_snapshot=is_snapshot)
+
+        mock_get_export_ip_path.assert_called_once_with(
+            fake.VOLUME_ID, share)
+        mock_get_actual_path_for_export.assert_called_once_with(
+            fake.EXPORT_PATH)
+        self.driver.zapi_client.clone_file.assert_called_once_with(
+            'fake_path/' + fake.FLEXVOL, 'fake_path/fake_clone',
+            None)
 
     @ddt.data({'nfs_sparsed_volumes': True},
               {'nfs_sparsed_volumes': False})
@@ -77,22 +108,24 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         }
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
-                         mock.Mock(return_value=capacity))
+                         return_value=capacity)
         self.mock_object(self.driver.perf_library,
                          'get_node_utilization',
-                         mock.Mock(return_value=30.0))
+                         return_value=30.0)
 
         result = self.driver._get_pool_stats(filter_function='filter',
                                              goodness_function='goodness')
 
         expected = [{'pool_name': '192.168.99.24:/fake/export/path',
                      'QoS_support': False,
+                     'consistencygroup_support': True,
                      'thick_provisioning_support': thick,
                      'thin_provisioning_support': not thick,
                      'free_capacity_gb': 12.0,
                      'total_capacity_gb': 4468.0,
                      'reserved_percentage': 7,
                      'max_over_subscription_ratio': 19.0,
+                     'multiattach': True,
                      'provisioned_capacity_gb': 4456.0,
                      'utilization': 30.0,
                      'filter_function': 'filter',
@@ -143,3 +176,92 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                                                         fake.NFS_SHARE)
 
         self.assertEqual(expected, result)
+
+    def test__get_volume_model_update(self):
+        """Driver is not expected to return a model update."""
+        self.assertIsNone(
+            self.driver._get_volume_model_update(fake.VOLUME_REF))
+
+    def test_delete_cgsnapshot(self):
+        mock_delete_file = self.mock_object(self.driver, '_delete_file')
+
+        model_update, snapshots_model_update = (
+            self.driver.delete_cgsnapshot(
+                fake.CG_CONTEXT, fake.CG_SNAPSHOT, [fake.SNAPSHOT]))
+
+        mock_delete_file.assert_called_once_with(
+            fake.SNAPSHOT['volume_id'], fake.SNAPSHOT['name'])
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+
+    def test_get_snapshot_backing_flexvol_names(self):
+        snapshots = [
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume1'}},
+            {'volume': {'host': 'hostA@192.168.1.01#/fake/volume2'}},
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume3'}},
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume1'}},
+        ]
+
+        hosts = [snap['volume']['host'] for snap in snapshots]
+        flexvols = self.driver._get_flexvol_names_from_hosts(hosts)
+
+        self.assertEqual(3, len(flexvols))
+        self.assertIn('volume1', flexvols)
+        self.assertIn('volume2', flexvols)
+        self.assertIn('volume3', flexvols)
+
+    def test_check_for_setup_error(self):
+        mock_get_ontapi_version = self.mock_object(
+            self.driver.zapi_client, 'get_ontapi_version')
+        mock_get_ontapi_version.return_value = ['1', '10']
+        mock_add_looping_tasks = self.mock_object(
+            self.driver, '_add_looping_tasks')
+        mock_super_check_for_setup_error = self.mock_object(
+            nfs_base.NetAppNfsDriver, 'check_for_setup_error')
+
+        self.driver.check_for_setup_error()
+
+        mock_get_ontapi_version.assert_called_once_with()
+        mock_add_looping_tasks.assert_called_once_with()
+        mock_super_check_for_setup_error.assert_called_once_with()
+
+    def test_add_looping_tasks(self):
+        mock_super_add_looping_tasks = self.mock_object(
+            nfs_base.NetAppNfsDriver, '_add_looping_tasks')
+
+        self.driver._add_looping_tasks()
+        mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_handle_ems_logging(self):
+
+        volume_list = ['vol0', 'vol1', 'vol2']
+        self.mock_object(
+            self.driver, '_get_backing_flexvol_names',
+            return_value=volume_list)
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_0',
+            return_value='fake_base_ems_log_message')
+        self.mock_object(
+            dot_utils, 'build_ems_log_message_1',
+            return_value='fake_pool_ems_log_message')
+        mock_send_ems_log_message = self.mock_object(
+            self.driver.zapi_client, 'send_ems_log_message')
+
+        self.driver._handle_ems_logging()
+
+        mock_send_ems_log_message.assert_has_calls([
+            mock.call('fake_base_ems_log_message'),
+            mock.call('fake_pool_ems_log_message'),
+        ])
+        dot_utils.build_ems_log_message_0.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version,
+            self.driver.driver_mode)
+        dot_utils.build_ems_log_message_1.assert_called_once_with(
+            self.driver.driver_name, self.driver.app_version, None,
+            volume_list, [])
+
+    def test_get_backing_flexvol_names(self):
+
+        result = self.driver._get_backing_flexvol_names()
+
+        self.assertEqual('path', result[0])

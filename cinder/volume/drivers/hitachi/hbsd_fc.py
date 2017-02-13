@@ -21,11 +21,13 @@ import threading
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _LI, _LW
+from cinder.i18n import _, _LI, _LW
+from cinder import interface
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -44,8 +46,12 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     VERSION = common.VERSION
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = ["Hitachi_HBSD_CI", "Hitachi_HBSD2_CI"]
 
     def __init__(self, *args, **kwargs):
         os.environ['LANG'] = 'C'
@@ -305,6 +311,9 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.context = context
         self.common = common.HBSDCommon(self.configuration, self,
                                         context, self.db)
+        msg = _("The HBSD FC driver is deprecated and "
+                "will be removed in P release.")
+        versionutils.report_deprecated_feature(LOG, msg)
 
         self.check_param()
 
@@ -400,7 +409,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
         return hostgroups
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)
@@ -428,7 +437,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         self._delete_lun(hostgroups, ldev)
         LOG.debug("*** _terminate_ ***")
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)

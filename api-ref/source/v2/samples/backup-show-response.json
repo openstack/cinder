@@ -1,0 +1,27 @@
+{
+    "backup": {
+        "availability_zone": "az1",
+        "container": "volumebackups",
+        "created_at": "2013-04-02T10:35:27.000000",
+        "description": null,
+        "fail_reason": null,
+        "id": "2ef47aee-8844-490c-804d-2a8efe561c65",
+        "links": [
+            {
+                "href": "http://localhost:8776/v1/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost:8776/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "backup001",
+        "object_count": 22,
+        "size": 1,
+        "status": "available",
+        "volume_id": "e5185058-943a-4cb4-96d9-72c184c337d6",
+        "is_incremental": true,
+        "has_dependent_backups": false
+    }
+}

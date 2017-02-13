@@ -97,6 +97,7 @@ class _FakeImageService(object):
                   'updated_at': timestamp,
                   'deleted_at': None,
                   'deleted': False,
+                  'size': 1024,
                   'status': 'active',
                   'visibility': 'public',
                   'protected': True,
@@ -237,8 +238,8 @@ def FakeImageService_reset():
     _fakeImageService = _FakeImageService()
 
 
-def stub_out_image_service(stubs):
-    stubs.Set(cinder.image.glance, 'get_remote_image_service',
-              lambda x, y: (FakeImageService(), y))
-    stubs.Set(cinder.image.glance, 'get_default_image_service',
-              lambda: FakeImageService())
+def mock_image_service(testcase):
+    testcase.mock_object(cinder.image.glance, 'get_remote_image_service',
+                         lambda x, y: (FakeImageService(), y))
+    testcase.mock_object(cinder.image.glance, 'get_default_image_service',
+                         mock.Mock(side_effect=FakeImageService))

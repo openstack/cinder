@@ -1,0 +1,7 @@
+---
+deprecations:
+  - The api-paste.ini ``paste.filter_factory`` setting has been updated to use
+    ``oslo_middleware.sizelimit`` rather than ``cinder.api.middleware.sizelimit``
+    compatibility shim. ``cinder.api.middleware.sizelimit`` was deprecated in
+    kilo and should now be updated to use ``oslo_middleware.sizelimit`` in
+    api-paste.ini in preparation for removal in the pike release.

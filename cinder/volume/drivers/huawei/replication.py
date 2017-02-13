@@ -94,7 +94,7 @@ class PairOp(AbsReplicaOp):
             "REMOTERESID": rmt_lun_id,
             "REPLICATIONMODEL": replica_model,
             # recovery policy. 1: auto, 2: manual
-            "RECOVERYPOLICY": '2',
+            "RECOVERYPOLICY": '1',
             "SPEED": speed,
         }
 
@@ -186,7 +186,8 @@ class ReplicaCommonDriver(object):
 
     def split(self, replica_id):
         running_status = (constants.REPLICA_RUNNING_STATUS_SPLIT,
-                          constants.REPLICA_RUNNING_STATUS_INVALID)
+                          constants.REPLICA_RUNNING_STATUS_INVALID,
+                          constants.REPLICA_RUNNING_STATUS_ERRUPTED)
         info = self.op.get_replica_info(replica_id)
         if self.op.is_running_status(running_status, info):
             return
@@ -313,8 +314,8 @@ class ReplicaCommonDriver(object):
 
 
 def get_replication_driver_data(volume):
-    if volume.get('replication_driver_data'):
-        return json.loads(volume['replication_driver_data'])
+    if volume.replication_driver_data:
+        return json.loads(volume.replication_driver_data)
     return {}
 
 
@@ -530,7 +531,7 @@ class ReplicaPairManager(object):
             1. delete replication pair
             2. delete remote_lun
         """
-        LOG.debug('Delete replication, volume: %s.', volume['id'])
+        LOG.debug('Delete replication, volume: %s.', volume.id)
         info = get_replication_driver_data(volume)
         pair_id = info.get('pair_id')
         if pair_id:
@@ -554,18 +555,18 @@ class ReplicaPairManager(object):
         volumes_update = []
         for v in volumes:
             v_update = {}
-            v_update['volume_id'] = v['id']
+            v_update['volume_id'] = v.id
             drv_data = get_replication_driver_data(v)
             pair_id = drv_data.get('pair_id')
             if not pair_id:
-                LOG.warning(_LW("No pair id in volume %s."), v['id'])
+                LOG.warning(_LW("No pair id in volume %s."), v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
 
             rmt_lun_id = drv_data.get('rmt_lun_id')
             if not rmt_lun_id:
-                LOG.warning(_LW("No remote lun id in volume %s."), v['id'])
+                LOG.warning(_LW("No remote lun id in volume %s."), v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
@@ -586,7 +587,7 @@ class ReplicaPairManager(object):
             admin_metadata = huawei_utils.get_admin_metadata(v)
             admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
             new_drv_data = {'pair_id': pair_id,
-                            'rmt_lun_id': v['provider_location']}
+                            'rmt_lun_id': v.provider_location}
             new_drv_data = to_string(new_drv_data)
             v_update['updates'] = {'provider_location': rmt_lun_id,
                                    'replication_status': 'available',
@@ -604,18 +605,18 @@ class ReplicaPairManager(object):
         volumes_update = []
         for v in volumes:
             v_update = {}
-            v_update['volume_id'] = v['id']
+            v_update['volume_id'] = v.id
             drv_data = get_replication_driver_data(v)
             pair_id = drv_data.get('pair_id')
             if not pair_id:
-                LOG.warning(_LW("No pair id in volume %s."), v['id'])
+                LOG.warning(_LW("No pair id in volume %s."), v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
 
             rmt_lun_id = drv_data.get('rmt_lun_id')
             if not rmt_lun_id:
-                LOG.warning(_LW("No remote lun id in volume %s."), v['id'])
+                LOG.warning(_LW("No remote lun id in volume %s."), v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
@@ -627,7 +628,7 @@ class ReplicaPairManager(object):
             admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
 
             new_drv_data = {'pair_id': pair_id,
-                            'rmt_lun_id': v['provider_location']}
+                            'rmt_lun_id': v.provider_location}
             new_drv_data = to_string(new_drv_data)
             v_update['updates'] = {'provider_location': rmt_lun_id,
                                    'replication_status': 'failed-over',

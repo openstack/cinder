@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The config options ``scheduler_topic``, ``volume_topic``
+    and ``backup_topic`` have been removed without a
+    deprecation period as these had never worked
+    correctly.

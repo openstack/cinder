@@ -13,7 +13,6 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_serialization import jsonutils
 from oslo_utils import versionutils
@@ -26,8 +25,8 @@ from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
 
+
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 @base.CinderObjectRegistry.register
@@ -44,8 +43,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     fields = {
         'id': fields.UUIDField(),
 
-        'user_id': fields.UUIDField(),
-        'project_id': fields.UUIDField(),
+        'user_id': fields.StringField(),
+        'project_id': fields.StringField(),
 
         'volume_id': fields.UUIDField(),
         'host': fields.StringField(nullable=True),
@@ -105,7 +104,6 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         backup.obj_reset_changes()
         return backup
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -115,7 +113,6 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         db_backup = db.backup_create(self._context, updates)
         self._from_db_object(self._context, self, db_backup)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -123,10 +120,11 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
-            db.backup_destroy(self._context, self.id)
+            updated_values = db.backup_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
     @staticmethod
     def decode_record(backup_url):
@@ -142,7 +140,6 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
             msg = _("Can't parse backup record.")
         raise exception.InvalidInput(reason=msg)
 
-    @base.remotable
     def encode_record(self, **kwargs):
         """Serialize backup object, with optional extra info, into a string."""
         # We don't want to export extra fields and we want to force lazy
@@ -163,11 +160,8 @@ class BackupList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('Backup'),
     }
-    child_versions = {
-        '1.0': '1.0'
-    }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,
                 offset=None, sort_keys=None, sort_dirs=None):
         backups = db.backup_get_all(context, filters, marker, limit, offset,
@@ -175,13 +169,13 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_host(cls, context, host):
         backups = db.backup_get_all_by_host(context, host)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, filters=None,
                            marker=None, limit=None, offset=None,
                            sort_keys=None, sort_dirs=None):
@@ -191,9 +185,15 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_volume(cls, context, volume_id, filters=None):
         backups = db.backup_get_all_by_volume(context, volume_id, filters)
+        return base.obj_make_list(context, cls(context), objects.Backup,
+                                  backups)
+
+    @classmethod
+    def get_all_active_by_window(cls, context, begin, end):
+        backups = db.backup_get_all_active_by_window(context, begin, end)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
@@ -212,9 +212,65 @@ class BackupImport(Backup):
     completed.
     """
 
-    @base.remotable
     def create(self):
         updates = self.cinder_obj_get_changes()
 
         db_backup = db.backup_create(self._context, updates)
         self._from_db_object(self._context, self, db_backup)
+
+
+@base.CinderObjectRegistry.register
+class BackupDeviceInfo(base.CinderObject, base.CinderObjectDictCompat,
+                       base.CinderComparableObject):
+    # Version 1.0: Initial version
+    VERSION = '1.0'
+    fields = {
+        'volume': fields.ObjectField('Volume', nullable=True),
+        'snapshot': fields.ObjectField('Snapshot', nullable=True),
+        'secure_enabled': fields.BooleanField(default=False),
+    }
+    obj_extra_fields = ['is_snapshot', 'device_obj']
+
+    @property
+    def is_snapshot(self):
+        if self.obj_attr_is_set('snapshot') == self.obj_attr_is_set('volume'):
+            msg = _("Either snapshot or volume field should be set.")
+            raise exception.ProgrammingError(message=msg)
+        return self.obj_attr_is_set('snapshot')
+
+    @property
+    def device_obj(self):
+        return self.snapshot if self.is_snapshot else self.volume
+
+    # FIXME(sborkows): This should go away in early O as we stop supporting
+    # backward compatibility with M.
+    @classmethod
+    def from_primitive(cls, primitive, context, expected_attrs=None):
+        backup_device = BackupDeviceInfo()
+        if primitive['is_snapshot']:
+            if isinstance(primitive['backup_device'], objects.Snapshot):
+                backup_device.snapshot = primitive['backup_device']
+            else:
+                backup_device.snapshot = objects.Snapshot._from_db_object(
+                    context, objects.Snapshot(), primitive['backup_device'],
+                    expected_attrs=expected_attrs)
+        else:
+            if isinstance(primitive['backup_device'], objects.Volume):
+                backup_device.volume = primitive['backup_device']
+            else:
+                backup_device.volume = objects.Volume._from_db_object(
+                    context, objects.Volume(), primitive['backup_device'],
+                    expected_attrs=expected_attrs)
+        backup_device.secure_enabled = primitive['secure_enabled']
+        return backup_device
+
+    # FIXME(sborkows): This should go away in early O as we stop supporting
+    # backward compatibility with M.
+    def to_primitive(self, context):
+        backup_device = (db.snapshot_get(context, self.snapshot.id)
+                         if self.is_snapshot
+                         else db.volume_get(context, self.volume.id))
+        primitive = {'backup_device': backup_device,
+                     'secure_enabled': self.secure_enabled,
+                     'is_snapshot': self.is_snapshot}
+        return primitive

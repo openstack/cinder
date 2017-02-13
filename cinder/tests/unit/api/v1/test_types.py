@@ -15,9 +15,7 @@
 
 import uuid
 
-from lxml import etree
 from oslo_utils import timeutils
-import webob
 
 from cinder.api.v1 import types
 from cinder.api.views import types as views_types
@@ -39,8 +37,8 @@ def stub_volume_type(id):
 
 def return_volume_types_get_all_types(context, search_opts=None):
     d = {}
-    for vtype in [fake.volume_type_id, fake.volume_type2_id,
-                  fake.volume_type3_id]:
+    for vtype in [fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID,
+                  fake.VOLUME_TYPE3_ID]:
         vtype_name = 'vol_type_%s' % vtype
         d[vtype_name] = stub_volume_type(vtype)
     return d
@@ -51,7 +49,7 @@ def return_empty_volume_types_get_all_types(context, search_opts=None):
 
 
 def return_volume_types_get_volume_type(context, id):
-    if id == fake.will_not_be_found_id:
+    if id == fake.WILL_NOT_BE_FOUND_ID:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     return stub_volume_type(id)
 
@@ -65,14 +63,14 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(3, len(res_dict['volume_types']))
 
-        expected_names = ['vol_type_%s' % fake.volume_type_id,
-                          'vol_type_%s' % fake.volume_type2_id,
-                          'vol_type_%s' % fake.volume_type3_id]
+        expected_names = ['vol_type_%s' % fake.VOLUME_TYPE_ID,
+                          'vol_type_%s' % fake.VOLUME_TYPE2_ID,
+                          'vol_type_%s' % fake.VOLUME_TYPE3_ID]
 
         actual_names = map(lambda e: e['name'], res_dict['volume_types'])
         self.assertEqual(set(expected_names), set(actual_names))
@@ -83,7 +81,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_empty_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(0, len(res_dict['volume_types']))
@@ -92,8 +90,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        type_id = fake.volume_type_id
-        req = fakes.HTTPRequest.blank('/v1/%s/types/' % fake.project_id
+        type_id = fake.VOLUME_TYPE_ID
+        req = fakes.HTTPRequest.blank('/v1/%s/types/' % fake.PROJECT_ID
                                       + type_id)
         res_dict = self.controller.show(req, type_id)
 
@@ -107,10 +105,10 @@ class VolumeTypesApiTest(test.TestCase):
                        return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v1/%s/types/%s' %
-                                      (fake.project_id,
-                                       fake.will_not_be_found_id))
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
-                          req, fake.will_not_be_found_id)
+                                      (fake.PROJECT_ID,
+                                       fake.WILL_NOT_BE_FOUND_ID))
+        self.assertRaises(exception.VolumeTypeNotFound, self.controller.show,
+                          req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
@@ -123,7 +121,7 @@ class VolumeTypesApiTest(test.TestCase):
                                extra_specs={},
                                deleted_at=None,
                                description=None,
-                               id=fake.volume_type_id)
+                               id=fake.VOLUME_TYPE_ID)
 
         request = fakes.HTTPRequest.blank("/v1")
         output = view_builder.show(request, raw_volume_type)
@@ -133,8 +131,8 @@ class VolumeTypesApiTest(test.TestCase):
                                     extra_specs={},
                                     description=None,
                                     is_public=None,
-                                    id=fake.volume_type_id)
-        self.assertDictMatch(expected_volume_type, output['volume_type'])
+                                    id=fake.VOLUME_TYPE_ID)
+        self.assertDictEqual(expected_volume_type, output['volume_type'])
 
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
@@ -164,47 +162,5 @@ class VolumeTypesApiTest(test.TestCase):
                                         id=volume_type_ids[i],
                                         is_public=None,
                                         description=None)
-            self.assertDictMatch(expected_volume_type,
+            self.assertDictEqual(expected_volume_type,
                                  output['volume_types'][i])
-
-
-class VolumeTypesSerializerTest(test.TestCase):
-    def _verify_volume_type(self, vtype, tree):
-        self.assertEqual('volume_type', tree.tag)
-        self.assertEqual(vtype['name'], tree.get('name'))
-        self.assertEqual(vtype['id'], tree.get('id'))
-        self.assertEqual(1, len(tree))
-        extra_specs = tree[0]
-        self.assertEqual('extra_specs', extra_specs.tag)
-        seen = set(vtype['extra_specs'].keys())
-        for child in extra_specs:
-            self.assertIn(child.tag, seen)
-            self.assertEqual(vtype['extra_specs'][child.tag], child.text)
-            seen.remove(child.tag)
-        self.assertEqual(0, len(seen))
-
-    def test_index_serializer(self):
-        serializer = types.VolumeTypesTemplate()
-
-        # Just getting some input data
-        vtypes = return_volume_types_get_all_types(None)
-        text = serializer.serialize({'volume_types': list(vtypes.values())})
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('volume_types', tree.tag)
-        self.assertEqual(len(vtypes), len(tree))
-        for child in tree:
-            name = child.get('name')
-            self.assertIn(name, vtypes)
-            self._verify_volume_type(vtypes[name], child)
-
-    def test_voltype_serializer(self):
-        serializer = types.VolumeTypeTemplate()
-
-        vtype = stub_volume_type(fake.volume_type_id)
-        text = serializer.serialize(dict(volume_type=vtype))
-
-        tree = etree.fromstring(text)
-
-        self._verify_volume_type(vtype, tree)

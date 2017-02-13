@@ -5,11 +5,12 @@
 # Translators:
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 18:05+0000\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev161\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-10-05 02:09+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -50,10 +51,6 @@ msgstr ""
 msgid "3PAR vlun for volume %(name)s not found on host %(host)s"
 msgstr "3PAR vlun pro svazek %(name)s nenalezen v hostiteli %(host)s"
 
-#, python-format
-msgid "AttachSnapTask.revert: detach mount point %s"
-msgstr "Vrácení úkolu připojení snímku: odpojení bodu připojení %s"
-
 msgid "Attempted to delete a space that's not there."
 msgstr "Pokus smazat prostor který neexistuje."
 
@@ -86,23 +83,6 @@ msgid ""
 msgstr ""
 "Zálohovací služba %(service)s nepodporuje ověřování. Záloha s id %(id)s není "
 "ověřena. Ověřování přeskočeno."
-
-msgid ""
-"Both 'storagetype:prvosioning' and 'provisioning:type' are set in the extra "
-"specs, the value of 'provisioning:type' will be used. The key 'storagetype:"
-"provisioning' may be deprecated in the next release."
-msgstr ""
-"V dodatečných specifikacích jsou zadány 'storagetype:prvosioning' a "
-"'provisioning:type', bude použita hodnota z 'provisioning:type'. Klíč "
-"'storagetype:provisioning' může být v příští verzi zastaralý."
-
-#, python-format
-msgid "CG %(cg_name)s does not exist. Message: %(msg)s"
-msgstr "Skupina jednotnosti %(cg_name)s neexistuje. Zpráva: %(msg)s"
-
-#, python-format
-msgid "CG %(cg_name)s is deleting. Message: %(msg)s"
-msgstr "Probíhá mazání skupiny jednotnosti %(cg_name)s. Zpráva: %(msg)s"
 
 #, python-format
 msgid "CHAP is enabled, but server secret not configured on server %s"
@@ -140,10 +120,6 @@ msgstr ""
 "název je %(new_name)s."
 
 #, python-format
-msgid "Cgsnapshot name %(name)s already exists. Message: %(msg)s"
-msgstr "Snímek skupiny jednotnosti %(name)s již existuje. Zpráva: %(msg)s"
-
-#, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr "Změna využití se sníží na méně než 0 pro následující zdroje: %s"
 
@@ -157,34 +133,6 @@ msgid ""
 "Clone failed on V3. Cleaning up the target volume. Clone name: %(cloneName)s "
 msgstr ""
 "Klonování selhalo ve V3. Čištění cílového svazku. Název klona: %(cloneName)s "
-
-msgid ""
-"Configuration option eqlx_cli_timeout is deprecated and will be removed in M "
-"release. Use ssh_conn_timeout instead."
-msgstr ""
-"Volba nastavení eqlx_cli_timeout je zastaralá a bude odstraněna ve verzi M. "
-"Místo toho používejte ssh_conn_timeout."
-
-msgid ""
-"Configuration options eqlx_use_chap, eqlx_chap_login and eqlx_chap_password "
-"are deprecated. Use use_chap_auth, chap_username and chap_password "
-"respectively for the same."
-msgstr ""
-"Volby nastavení eqlx_use_chap, eqlx_chap_login a eqlx_chap_password jsou "
-"zastaralé. Byly nahrazeny volbami use_chap_auth, chap_username a "
-"chap_password respectively se stejnou funkcí."
-
-#, python-format
-msgid "Consistency group %(name)s already exists. Message: %(msg)s"
-msgstr "Skupina jednotnosti %(name)s již existuje. Zpráva: %(msg)s"
-
-#, python-format
-msgid ""
-"CopySnapshotTask.revert: delete the copied snapshot %(new_name)s of "
-"%(source_name)s."
-msgstr ""
-"Vrácení úkolu kopírování snímku: Mazání kopírovaného snímku %(new_name)s z "
-"%(source_name)s."
 
 #, python-format
 msgid "Could not create target because it already exists for volume: %s"
@@ -201,24 +149,6 @@ msgstr "Nelze získat informace o zásobě (%s)!"
 #, python-format
 msgid "Could not get status for %(name)s (%(status)d)."
 msgstr "Nelze získat stav %(name)s (%(status)d)."
-
-#, python-format
-msgid "CreateDestLunTask.revert: delete temp lun %s"
-msgstr "Vrácení úkolu vytvoření cílového LUN: Mazání dočasného lun %s"
-
-#, python-format
-msgid "CreateSMPTask.revert: delete mount point %s"
-msgstr "Vrácení vytvoření úkolu SMPT: Smazání bodu připojení %s"
-
-#, python-format
-msgid "CreateSnapshotTask.revert: delete temp cgsnapshot %s"
-msgstr ""
-"Vrácení úkolu vytvoření snímku: Mazání dočasného snímku skupiny jednotnosti "
-"%s"
-
-#, python-format
-msgid "CreateSnapshotTask.revert: delete temp snapshot %s"
-msgstr "Vrácení úkolu vytvoření snímku: Mazání dočasného snímku %s"
 
 #, python-format
 msgid ""
@@ -242,18 +172,6 @@ msgstr ""
 msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 "ID mazaného snímku nenalezeno. Odstraňování z cinder: %(id)s Výjimka: %(msg)s"
-
-#, python-format
-msgid "Delete temp LUN after migration start failed. LUN: %s"
-msgstr "Smazání dočasného LUN po zahájení přesunu selhalo. LUN: %s"
-
-#, python-format
-msgid ""
-"Delete the temporary cgsnapshot %(name)s failed. This temporary cgsnapshot "
-"can be deleted manually. Message: %(msg)s"
-msgstr ""
-"Smazání dočasného snímku skupiny jednotnosti %(name)s selhalo. Tento snímek "
-"lze smazat ručně. Zpráva: %(msg)s."
 
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
@@ -282,14 +200,6 @@ msgstr "Objeven snímek zaseknutý ve stavu creating, nastavování na ERROR."
 msgid "Detected volume stuck in %(curr_status)s status, setting to ERROR."
 msgstr ""
 "Objeven svazek zaseknutý ve stavu %(curr_status)s, nastavování na ERROR."
-
-#, python-format
-msgid ""
-"Didn't get the pool information of the host %s. Storage assisted Migration "
-"is not supported. The host may be using a legacy driver."
-msgstr ""
-"Z hostitele %s nebyly získány informace o zásobě. Přesun za pomocí úložiště "
-"není podporován. Hostitel možná používá zastaralý ovladač."
 
 msgid "Discover file retries exhausted."
 msgstr "Vyčerpány pokusy o zjištění souboru."
@@ -344,9 +254,6 @@ msgstr "Při mazání popisovače nastala chyba: %s."
 #, python-format
 msgid "Error occurred while deleting temporary disk: %s."
 msgstr "Při mazání dočasného disku nastala chyba: %s."
-
-msgid "Error on parsing target_pool_name/target_array_serial."
-msgstr "Chyba při zpracování názvu cílové zásoby a pole."
 
 #, python-format
 msgid "Error refreshing volume info. Message: %s"
@@ -425,20 +332,9 @@ msgstr ""
 "Klíč dodatečné specifikace 'storagetype:pool' je zastaralý od verze ovladače "
 "5.1.0. Tento klíč bude ignorován."
 
-msgid ""
-"Extra spec key 'storagetype:provisioning' may be deprecated in the next "
-"release. It is recommended to use extra spec key 'provisioning:type' instead."
-msgstr ""
-"Klíč dodatečné specifikace 'storagetype:provisioning' může být v příští "
-"verzi zastaralý. Doporučuje se místo toho použít klíč 'provisioning:type'."
-
 #, python-format
 msgid "FAST is enabled. Policy: %(fastPolicyName)s."
 msgstr "FAST je povoleno. Zásada: %(fastPolicyName)s."
-
-#, python-format
-msgid "Fail to connect host %(host)s back to storage group %(sg)s."
-msgstr "Nelze připojit hostitele %(host)s zpět do skupiny úložiště %(sg)s."
 
 #, python-format
 msgid ""
@@ -484,10 +380,6 @@ msgstr ""
 "chování. Chyba: %(exception)s"
 
 #, python-format
-msgid "Failed to deregister %(itor)s because: %(msg)s."
-msgstr "Nelze zrušit registraci %(itor)s protože: %(msg)s."
-
-#, python-format
 msgid "Failed to destroy Storage Group %s."
 msgstr "Nelze zničit skupinu úložiště %s."
 
@@ -503,23 +395,11 @@ msgstr "Odloučení specifikace qos %s selhalo."
 msgid "Failed to discard zero page: %s"
 msgstr "Nelze zahodit nulovou stránku: %s"
 
-#, python-format
-msgid "Failed to extract initiators of %s, so ignore deregistration operation."
-msgstr ""
-"Nelze extrahovat zavaděče %s, operace pro zrušení registrace je ignorována."
-
 msgid "Failed to get Raid Snapshot ID and did not store in snapshot."
 msgstr "Nelze získat ID Raid snímku a ve snímku nebylo uloženo."
 
 msgid "Failed to get target pool id."
 msgstr "Nelze získat id cílové zásoby."
-
-msgid ""
-"Failed to get target_pool_name and target_array_serial. 'location_info' is "
-"not in host['capabilities']."
-msgstr ""
-"Nelze získat název cílové zásoby a pole. 'location_info' není v "
-"hostiteli['capabilities']."
 
 #, python-format
 msgid "Failed to invoke ems. Message : %s"
@@ -565,12 +445,6 @@ msgstr "Dotaz na stav %(ret)d zásoby %(id)s selhal."
 #, python-format
 msgid "Failed to refresh mounts, reason=%s"
 msgstr "Nelze obnovit připojení, důvod=%s"
-
-#, python-format
-msgid ""
-"Failed to register %(itor)s to SP%(sp)s port %(portid)s because: %(msg)s."
-msgstr ""
-"Nelze registrovat %(itor)s do SP%(sp)s port %(portid)s protože: %(msg)s."
 
 #, python-format
 msgid "Failed to restart horcm: %s"
@@ -659,10 +533,6 @@ msgstr ""
 "%(storageSystem)s."
 
 #, python-format
-msgid "HLU %(hlu)s has already been removed from %(sgname)s. Message: %(msg)s"
-msgstr "HLU %(hlu)s již bylo odstraněno z %(sgname)s. Zpráva: %(msg)s"
-
-#, python-format
 msgid ""
 "HPELeftHand API is version %(current)s. A minimum version of %(min)s is "
 "needed for manage/unmanage support."
@@ -687,14 +557,6 @@ msgstr ""
 "třeba změnit zásadu Nova, nebo je třeba v nastavení zadat výsadní účet pro "
 "Nova se všemi potřebnými oprávněními."
 
-#, python-format
-msgid ""
-"Host %(host)s has already disconnected from storage group %(sgname)s. "
-"Message: %(msg)s"
-msgstr ""
-"Hostitel %(host)s již byl odpojen od skupiny úložiště %(sgname)s. Zpráva: "
-"%(msg)s"
-
 msgid ""
 "Host exists without CHAP credentials set and has iSCSI attachments but CHAP "
 "is enabled. Updating host with new CHAP credentials."
@@ -718,17 +580,6 @@ msgstr "IQN bylo použito k vytvoření mapy."
 
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr "Umístění poskytovatele ISCSI neuloženo, bude se zjišťovat"
-
-msgid ""
-"ISERTgtAdm is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use. In order to "
-"enable iser, please set iscsi_protocol=iser with lioadm or tgtadm target "
-"helpers."
-msgstr ""
-"ISERTgtAdm je zastaralé, nyní byste měli používat LVMVolumeDriver a zadat "
-"pomocníka iscsi pro cílový ovladač, který chcete použít. Abyste mohli použít "
-"iser, prosím nastavte protokol iscsi s hodnotou iser s cílovými pomocníky "
-"lioadm nebo tgtadm."
 
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr "id není v seřazení klíčů; je seřazení jedinečné?"
@@ -791,14 +642,6 @@ msgstr ""
 "Vypočtený výsledek '%s' :: Je použita její minimální hodnota 0"
 
 #, python-format
-msgid ""
-"Invalid iSCSI port %(sp)s-%(port)s-%(vlan)s found in io_port_list, will be "
-"ignored."
-msgstr ""
-"V seznamu portů vstupu/výstupu nalezen neplatný port iSCSI %(sp)s-%(port)s-"
-"%(vlan)s, bude ignorován."
-
-#, python-format
 msgid "Invalid trace flag: %s"
 msgstr "Neplatný příznak sledování: %s"
 
@@ -810,34 +653,6 @@ msgstr ""
 "funkce prosím použijte NetAppDriver."
 
 #, python-format
-msgid "LUN %(name)s is already expanded. Message: %(msg)s"
-msgstr "LUN %(name)s již je rozšířen. Zpráva: %(msg)s"
-
-#, python-format
-msgid "LUN %(name)s is not ready for extension: %(out)s"
-msgstr "LUN %(name)s není připraven na rozšíření: %(out)s"
-
-#, python-format
-msgid "LUN %(name)s is not ready for snapshot: %(out)s"
-msgstr "LUN %(name)s není připraven k pořízeni snímku: %(out)s"
-
-#, python-format
-msgid "LUN already exists, LUN name %(name)s. Message: %(msg)s"
-msgstr "LUN již existuje, název LUN %(name)s. Zpráva: %(msg)s"
-
-#, python-format
-msgid ""
-"LUN corresponding to %s is still in some Storage Groups.Try to bring the LUN "
-"out of Storage Groups and retry the deletion."
-msgstr ""
-"LUN odpovídající %s je stále v některých skupinách úložiště. Zkuste ho "
-"vyjmout ze skupin a znovu proveďte smazání."
-
-#, python-format
-msgid "LUN is already deleted, LUN name %(name)s. Message: %(msg)s"
-msgstr "LUN již je smazán, název LUN %(name)s. Zpráva: %(msg)s"
-
-#, python-format
 msgid ""
 "LUN misalignment may occur for current initiator group %(ig_nm)s) with host "
 "OS type %(ig_os)s. Please configure initiator group manually according to "
@@ -846,12 +661,6 @@ msgstr ""
 "U současné skupině zavaděče %(ig_nm)s s hostitelem mající typ OS %(ig_os)s "
 "se může objevit nevyrovnanost LUN. Prosím nastavte skupinu zavaděče ručně "
 "podle typu OS na hostiteli."
-
-#, python-format
-msgid "LUN with id %(remove_id)s is not present in cg %(cg_name)s, skip it."
-msgstr ""
-"LUN s id %(remove_id)s není přítomna ve skupině jednotnosti %(cg_name)s, je "
-"přeskočena."
 
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
@@ -864,23 +673,8 @@ msgstr ""
 "Lun není ve skupine lun. ID LUN %(lun_id)s, ID skupiny LUN: %(lungroup_id)s."
 
 #, python-format
-msgid ""
-"Maximum number of Pool LUNs, %s, have been created. No more LUN creation can "
-"be done."
-msgstr ""
-"Byl vytvořen maximální počet LUN zásoby %s.  Nelze vytvořit žádné další LUN."
-
-#, python-format
 msgid "Message - %s."
 msgstr "Zpráva - %s."
-
-#, python-format
-msgid ""
-"Migration command may get network timeout. Double check whether migration in "
-"fact started successfully. Message: %(msg)s"
-msgstr ""
-"Příkazu pro přesun může vypršet časový limit sítě. Zkontrolujte, zda přesun "
-"byl opravdu úspěšně zahájen. Zpráva: %(msg)s"
 
 #, python-format
 msgid "More than one valid preset was detected, using %s"
@@ -893,9 +687,6 @@ msgstr "Bod připojení %(name)s již existuje. Zpráva %(msg)s"
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
 msgstr ""
 "Žádný VLUN neobsahoval přihlašovací údaje CHAP. Vytváření nového klíče CHAP."
-
-msgid "No array serial number returned, set as unknown."
-msgstr "Nebylo předáno sériové číslo pole, nastaveno na neznámé."
 
 #, python-format
 msgid "No backing file found for %s, allowing snapshot to be deleted."
@@ -917,9 +708,6 @@ msgstr "V maskování %(mv)s nenalezena žádná skupiny portů."
 
 msgid "No protection domain name or id was specified in configuration."
 msgstr "V nastavení nebylo zadán žádný název nebo id ochranné domény."
-
-msgid "No shares found hence skipping ssc refresh."
-msgstr "Sdílení nenalezena a proto bude obnovení ssc přeskočeno."
 
 #, python-format
 msgid "No status payload for volume %s."
@@ -989,74 +777,6 @@ msgid "Property %s already exists."
 msgstr "Vlastnost %s již existuje."
 
 #, python-format
-msgid "Purity host deletion failed: %(msg)s."
-msgstr "Smazání hostitele Purity selhalo: %(msg)s."
-
-#, python-format
-msgid ""
-"Quota %(s_name)s exceeded for %(s_pid)s, tried to create volume "
-"(%(d_consumed)d volume(s) already consumed)."
-msgstr ""
-"Kvóta %(s_name)s překročena u %(s_pid)s, pokus o vytvoření svazku (již "
-"využíváno (%(d_consumed)d svazků)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG backup "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření zálohy o velikosti "
-"%(s_size)sG - (již využíváno (%(d_consumed)dG z %(d_quota)dG)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)."
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření snímku o velikosti "
-"%(s_size)sG (již využíváno (%(d_consumed)dG z %(d_quota)dG)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření svazku o velikosti "
-"%(s_size)sG (již využíváno (%(d_consumed)dG z %(d_quota)dG)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume - "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření svazku o velikosti "
-"%(s_size)sG - (již využíváno (%(d_consumed)dG z %(d_quota)dG)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create backups (%(d_consumed)d "
-"backups already consumed)"
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření záloh (již využíváno "
-"(%(d_consumed)d záloh)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
-"snapshots already consumed)."
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření snímku (již využíváno "
-"(%(d_consumed)d snímků)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d volumes "
-"already consumed)"
-msgstr ""
-"U %(s_pid)s překročena kvóta, pokus o vytvoření svazku (již využíváno "
-"(%(d_consumed)d svazků)."
-
-#, python-format
 msgid ""
 "RBD image for backup %(backup)s of volume %(volume)s not found. Deleting "
 "backup metadata."
@@ -1113,8 +833,11 @@ msgstr ""
 "%d."
 
 #, python-format
-msgid "See unavailable iSCSI target: %s"
-msgstr "Prohlédněte si nedostupný cíl iSCSI: %s"
+msgid ""
+"Share %s ignored due to invalid format. Must be of form address:/export."
+msgstr ""
+"Sdílení %s ignorováno kvůli neplatnému formátu. Musí být ve formátu adresa:/"
+"export."
 
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Zjištěno tiché selhání odstranění cíle, bude provede nový pokus..."
@@ -1128,27 +851,6 @@ msgid "Snapshot %(name)s already exists. Message: %(msg)s"
 msgstr "Snímek %(name)s již existuje. Zpráva: %(msg)s"
 
 #, python-format
-msgid ""
-"Snapshot %(name)s for consistency group does not exist. Message: %(msg)s"
-msgstr "Snímek %(name)s pro skupinu jednotnosti neexistuje. Zpráva: %(msg)s"
-
-#, python-format
-msgid "Snapshot %(name)s is in use, retry. Message: %(msg)s"
-msgstr "Snímek %(name)s je používán, bude proveden nový pokus. Zpráva: %(msg)s"
-
-#, python-format
-msgid "Snapshot %(name)s may deleted already. Message: %(msg)s"
-msgstr "Snímek %(name)s již mohl být smazán. Zpráva: %(msg)s"
-
-#, python-format
-msgid ""
-"Snapshot %(snapname)s is attached to snapshot mount point %(mpname)s "
-"already. Message: %(msg)s"
-msgstr ""
-"Snímek %(snapname)s již je připojen k bodu připojení %(mpname)s. Zpráva: "
-"%(msg)s"
-
-#, python-format
 msgid "Snapshot %s already deleted."
 msgstr "Snímek %s již je smazán."
 
@@ -1157,35 +859,8 @@ msgid "Snapshot still %(status)s Cannot delete snapshot."
 msgstr "Snímek je stále ve stavu %(status)s. Nelze ho smazat."
 
 #, python-format
-msgid "Start migration failed. Message: %s"
-msgstr "Zahájení přesunu selhalo. Zpráva: %s"
-
-#, python-format
-msgid "Storage Group %s is not found."
-msgstr "Skupina úložiště %s nebyla nalezena."
-
-#, python-format
-msgid "Storage Group %s is not found. Create it."
-msgstr "Skupina úložiště %s nenalezena. Bude vytvořena."
-
-#, python-format
-msgid "Storage Group %s is not found. terminate_connection() is unnecessary."
-msgstr "Skupina úložiště %s nenalezena. Není třeba ukončovat připojení."
-
-#, python-format
-msgid "Storage Pool '%(pool)s' is '%(state)s'."
-msgstr "Zásoba úložiště '%(pool)s' je '%(state)s'."
-
-#, python-format
 msgid "Storage group %(name)s already exists. Message: %(msg)s"
 msgstr "Skupina úložiště %(name)s již existuje. Zpráva: %(msg)s"
-
-#, python-format
-msgid ""
-"Storage group %(name)s doesn't exist, may have already been deleted. "
-"Message: %(msg)s"
-msgstr ""
-"Skupina úložiště %(name)s neexistuje, možná byla již smazána. Zpráva: %(msg)s"
 
 #, python-format
 msgid "Storage sync name not found for target %(target)s on %(storageSystem)s."
@@ -1267,14 +942,6 @@ msgstr ""
 msgid "The device %s won't be cleared."
 msgstr "Zařízení %s nebude vyčištěno."
 
-#, python-format
-msgid ""
-"The following specified storage pools do not exist: %(unexist)s. This host "
-"will only manage the storage pools: %(exist)s"
-msgstr ""
-"Následující zadané zásoby úložiště neexistují: %(unexist)s. Tento hostitel "
-"bude spravovat pouze tyto zásoby: %(exist)s"
-
 msgid ""
 "The option 'netapp_storage_pools' is deprecated and will be removed in the "
 "future releases. Please use the option 'netapp_pool_name_search_pattern' "
@@ -1302,26 +969,6 @@ msgstr ""
 #, python-format
 msgid "The provisioning: %(provisioning)s is not valid."
 msgstr "Poskytování %(provisioning)s není platné."
-
-#, python-format
-msgid ""
-"The source volume is a legacy volume. Create volume in the pool where the "
-"source volume %s is created."
-msgstr ""
-"Zdrojový svazek je zastaralý. Vytvořte svazek v zásobě, kde byl vytvořen "
-"zdrojový svazek %s."
-
-#, python-format
-msgid "The specified Snapshot mount point %s is not currently attached."
-msgstr "Zadaný bod připojení snímku %s není v současnosti připojen."
-
-#, python-format
-msgid ""
-"The user does not have access or sufficient privileges to use all netapp "
-"APIs. The following extra_specs will fail or be ignored: %s"
-msgstr ""
-"Uživatel nemá přístup nebo dostatečná oprávnění k použití všech API netapp. "
-"Následující dodatečné specifikace selžou nebo budou ignorovány: %s"
 
 #, python-format
 msgid ""
@@ -1393,10 +1040,6 @@ msgid ""
 msgstr ""
 "Nelze rozšířit svazek: %(vol)s na velikost %(size)s GB na současném datovém "
 "úložišti z důvodu nedostatku místa."
-
-#, python-format
-msgid "Unable to fetch datastores connected to host %s."
-msgstr "Nelze získat  datová úložiště spojená s hostitelem %s."
 
 #, python-format
 msgid "Unable to find Masking view: %(view)s."
@@ -1486,10 +1129,6 @@ msgid "Volume %(name)s already presented (%(status)d)!"
 msgstr "Svazek %(name)s již je přítomen na (%(status)d)!"
 
 #, python-format
-msgid "Volume %(vol)s was not in Storage Group %(sg)s."
-msgstr "Svazek %(vol)s není ve skupině úložiště %(sg)s."
-
-#, python-format
 msgid "Volume %(volume)s is not in any masking view."
 msgstr "Svazek %(volume)s není v žádném maskování."
 
@@ -1530,10 +1169,6 @@ msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "Svazek %s nemá zadáno umístění poskytovatele, je přeskočen."
 
 #, python-format
-msgid "Volume %s exists but can't be deleted"
-msgstr "Svazek %s existuje ale nemůže být smazán"
-
-#, python-format
 msgid "Volume %s is not found!, it may have been deleted."
 msgstr "Svazek %s nenalezen! Mohl být smazán."
 
@@ -1553,18 +1188,6 @@ msgstr "Úkol kopírování svazku pro zdrojový svazek %s nenalezen."
 #, python-format
 msgid "Volume deletion failed with message: %s"
 msgstr "Smazání svazku selhalo se zprávou: %s"
-
-#, python-format
-msgid "Volume initialization failure. (%s)"
-msgstr "Zavedení ovladače selhalo. (%s)"
-
-#, python-format
-msgid ""
-"Volume is masked but not to host %(host)s as expected. Returning empty "
-"dictionary."
-msgstr ""
-"Svazek je zamaskován ale ne vůči hostiteli %(host)s jak se očekávalo. "
-"Vracení prázdného slovníku."
 
 #, python-format
 msgid "Volume is not writable. Please broaden the file permissions. Mount: %s"
@@ -1634,44 +1257,8 @@ msgstr ""
 "Odmapování virtuálního disku od hostitele: Nenalezeno žádné mapování svazku "
 "%(vol_name)s k žádnému hostiteli."
 
-msgid ""
-"config option keymgr.fixed_key has not been defined: some operations may "
-"fail unexpectedly"
-msgstr ""
-"Volba nastavení keymgr.fixed_key není zadána: některé operace mohou nečekaně "
-"selhat"
-
-#, python-format
-msgid "delete_volume: unable to find volume %s"
-msgstr "Smazání svazku: Nelze najít svazek %s"
-
-msgid ""
-"destroy_empty_storage_group: True. Empty storage group will be deleted after "
-"volume is detached."
-msgstr ""
-"destroy_empty_storage_group: True. Prázdná skupina úložiště bude smazána po "
-"odpojení svazku."
-
 msgid "flush() not supported in this version of librbd"
 msgstr "flush() není podporován touto verzí librbd"
-
-msgid "force_delete_lun_in_storagegroup=True"
-msgstr "force_delete_lun_in_storagegroup=True"
-
-#, python-format
-msgid "get_evs: %(out)s -- No find for %(fsid)s"
-msgstr "Získání evs:  %(out)s -- Nenalezeno pro %(fsid)s"
-
-#, python-format
-msgid "get_fsid: %(out)s -- No info for %(fslabel)s"
-msgstr "Získání fsid: %(out)s -- Žádné informace pro %(fslabel)s"
-
-msgid ""
-"glance_num_retries shouldn't be a negative value. The number of retries will "
-"be set to 0 until this iscorrected in the cinder.conf."
-msgstr ""
-"Počet pokusů pro glance by neměl mí zápornou hodnotu. Počet pokusů bude "
-"nastaven na 0, dokud nebude opraven v conder.conf."
 
 #, python-format
 msgid ""
@@ -1680,13 +1267,6 @@ msgid ""
 msgstr ""
 "iSCSI IP: '%s' nebylo nalezeno v seznamu hpe3par_iscsi_ips zadaném v cinder."
 "conf."
-
-msgid ""
-"ignore_pool_full_threshold: True. LUN creation will still be forced even if "
-"the pool full threshold is exceeded."
-msgstr ""
-"ignore_pool_full_threshold: True. Vytvoření LUN bude vynuceno i když bude "
-"překročen práh naplnění zásoby."
 
 #, python-format
 msgid "initialize_connection: Did not find a preferred node for volume %s."
@@ -1703,15 +1283,6 @@ msgstr "Objekt %(key)s typu %(typ)s nenalezen, %(err_msg)s"
 msgid "qemu-img is not installed."
 msgstr "qemu-img není nainstalováno."
 
-msgid "refresh stale ssc job in progress. Returning... "
-msgstr "Úkol obnovy starého ssc probíhá. Vrácení..."
-
-msgid "san_secondary_ip is configured as the same value as san_ip."
-msgstr "san_secondary_ip je nastaven na stejnou hodnotu jako san_ip."
-
-msgid "snapcopy metadata is ignored when creating volume."
-msgstr "popisná data kopie snímku jsou při vytváření snímku ignorována."
-
 #, python-format
 msgid "snapshot: %s not found, skipping delete operation"
 msgstr "snímek: %s nenalezeno, operace mazání je přeskočena"
@@ -1727,12 +1298,6 @@ msgid ""
 msgstr ""
 "srstatld vyžaduje verzi WSAPI '%(srstatld_version)s'. Naisntalovaná verze je "
 "'%(version)s'."
-
-msgid "ssc job in progress. Returning... "
-msgstr "Úkol ssc probíhá. Vrácení..."
-
-msgid "terminate_conn: provider location empty."
-msgstr "Ukončení připojení: Umístění poskytovatele je prázdné."
 
 msgid "terminate_connection: lun map not found"
 msgstr "Ukončení připojení: Mapa lun nenalezena"

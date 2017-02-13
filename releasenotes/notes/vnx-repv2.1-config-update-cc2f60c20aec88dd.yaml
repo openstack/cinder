@@ -1,0 +1,8 @@
+---
+upgrade:
+  - In VNX Cinder driver, ``replication_device`` keys, ``backend_id`` and
+    ``san_ip`` are mandatory now. If you prefer security file authentication,
+    please append ``storage_vnx_security_file_dir`` in ``replication_device``,
+    otherwise, append ``san_login``, ``san_password``,
+    ``storage_vnx_authentication_type`` in ``replication_device``.
+

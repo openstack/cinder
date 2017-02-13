@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+
 import mock
 import tooz.coordination
 import tooz.locking
@@ -75,12 +77,16 @@ class CoordinatorTestCase(test.TestCase):
         agent1.start()
         agent2 = coordination.Coordinator()
         agent2.start()
-        self.assertNotIn('lock', MockToozLock.active_locks)
-        with agent1.get_lock('lock'):
-            self.assertIn('lock', MockToozLock.active_locks)
-            self.assertRaises(Locked, agent1.get_lock('lock').acquire)
-            self.assertRaises(Locked, agent2.get_lock('lock').acquire)
-        self.assertNotIn('lock', MockToozLock.active_locks)
+
+        lock_name = 'lock'
+        expected_name = lock_name.encode('ascii')
+
+        self.assertNotIn(expected_name, MockToozLock.active_locks)
+        with agent1.get_lock(lock_name):
+            self.assertIn(expected_name, MockToozLock.active_locks)
+            self.assertRaises(Locked, agent1.get_lock(lock_name).acquire)
+            self.assertRaises(Locked, agent2.get_lock(lock_name).acquire)
+        self.assertNotIn(expected_name, MockToozLock.active_locks)
 
     def test_coordinator_offline(self, get_coordinator, heartbeat):
         crd = get_coordinator.return_value
@@ -130,3 +136,4 @@ class CoordinationTestCase(test.TestCase):
         bar.__getitem__.return_value = 8
         func(foo, bar)
         get_lock.assert_called_with('lock-func-7-8')
+        self.assertEqual(['foo', 'bar'], inspect.getargspec(func)[0])

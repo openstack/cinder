@@ -38,10 +38,12 @@ LOG = logging.getLogger(__name__)
 class LVM(executor.Executor):
     """LVM object to enable various LVM related operations."""
     LVM_CMD_PREFIX = ['env', 'LC_ALL=C']
+    _supports_pvs_ignoreskippedcluster = None
 
     def __init__(self, vg_name, root_helper, create_vg=False,
                  physical_volumes=None, lvm_type='default',
-                 executor=putils.execute, lvm_conf=None):
+                 executor=putils.execute, lvm_conf=None,
+                 suppress_fd_warn=False):
 
         """Initialize the LVM object.
 
@@ -55,6 +57,7 @@ class LVM(executor.Executor):
         :param physical_volumes: List of PVs to build VG on
         :param lvm_type: VG and Volume type (default, or thin)
         :param executor: Execute method to use, None uses common/processutils
+        :param suppress_fd_warn: Add suppress FD Warn to LVM env
 
         """
         super(LVM, self).__init__(execute=executor, root_helper=root_helper)
@@ -74,11 +77,19 @@ class LVM(executor.Executor):
         # Ensure LVM_SYSTEM_DIR has been added to LVM.LVM_CMD_PREFIX
         # before the first LVM command is executed, and use the directory
         # where the specified lvm_conf file is located as the value.
+
+        # NOTE(jdg): We use the temp var here becuase LVM_CMD_PREFIX is a
+        # class global and if you use append here, you'll literally just keep
+        # appending values to the global.
+        _lvm_cmd_prefix = ['env', 'LC_ALL=C']
+
         if lvm_conf and os.path.isfile(lvm_conf):
             lvm_sys_dir = os.path.dirname(lvm_conf)
-            LVM.LVM_CMD_PREFIX = ['env',
-                                  'LC_ALL=C',
-                                  'LVM_SYSTEM_DIR=' + lvm_sys_dir]
+            _lvm_cmd_prefix.append('LVM_SYSTEM_DIR=' + lvm_sys_dir)
+
+        if suppress_fd_warn:
+            _lvm_cmd_prefix.append('LVM_SUPPRESS_FD_WARNINGS=1')
+        LVM.LVM_CMD_PREFIX = _lvm_cmd_prefix
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -248,6 +259,22 @@ class LVM(executor.Executor):
         return self._supports_lvchange_ignoreskipactivation
 
     @staticmethod
+    def supports_pvs_ignoreskippedcluster(root_helper):
+        """Property indicating whether pvs supports --ignoreskippedcluster
+
+        Check for LVM version >= 2.02.103.
+        (LVM2 git: baf95bbff cmdline: Add --ignoreskippedcluster.
+        """
+
+        if LVM._supports_pvs_ignoreskippedcluster is not None:
+            return LVM._supports_pvs_ignoreskippedcluster
+
+        LVM._supports_pvs_ignoreskippedcluster = (
+            LVM.get_lvm_version(root_helper) >= (2, 2, 103))
+
+        return LVM._supports_pvs_ignoreskippedcluster
+
+    @staticmethod
     def get_lv_info(root_helper, vg_name=None, lv_name=None):
         """Retrieve info about LVs (all, in a VG, or a single LV).
 
@@ -324,6 +351,9 @@ class LVM(executor.Executor):
                                     '-o', 'vg_name,name,size,free',
                                     '--separator', field_sep,
                                     '--nosuffix']
+        if LVM.supports_pvs_ignoreskippedcluster(root_helper):
+            cmd.append('--ignoreskippedcluster')
+
         (out, _err) = putils.execute(*cmd,
                                      root_helper=root_helper,
                                      run_as_root=True)
@@ -577,6 +607,18 @@ class LVM(executor.Executor):
             return name
         return '_' + name
 
+    def _lv_is_active(self, name):
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        if out:
+            out = out.strip()
+            if (out[4] == 'a'):
+                return True
+        return False
+
     def deactivate_lv(self, name):
         lv_path = self.vg_name + '/' + self._mangle_lv_name(name)
         cmd = ['lvchange', '-a', 'n']
@@ -591,6 +633,21 @@ class LVM(executor.Executor):
             LOG.error(_LE('StdOut  :%s'), err.stdout)
             LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
+
+        # Wait until lv is deactivated to return in
+        # order to prevent a race condition.
+        self._wait_for_volume_deactivation(name)
+
+    @utils.retry(exceptions=exception.VolumeNotDeactivated, retries=3,
+                 backoff_rate=1)
+    def _wait_for_volume_deactivation(self, name):
+        LOG.debug("Checking to see if volume %s has been deactivated.",
+                  name)
+        if self._lv_is_active(name):
+            LOG.debug("Volume %s is still active.", name)
+            raise exception.VolumeNotDeactivated(name=name)
+        else:
+            LOG.debug("Volume %s has been deactivated.", name)
 
     def activate_lv(self, name, is_snapshot=False, permanent=False):
         """Ensure that logical volume/snapshot logical volume is activated.
@@ -702,6 +759,44 @@ class LVM(executor.Executor):
             if (out[0] == 'o') or (out[0] == 'O'):
                 return True
         return False
+
+    def lv_is_snapshot(self, name):
+        """Return True if LV is a snapshot, False otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            if (out[0] == 's'):
+                return True
+        return False
+
+    def lv_is_open(self, name):
+        """Return True if LV is currently open, False otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            if (out[5] == 'o'):
+                return True
+        return False
+
+    def lv_get_origin(self, name):
+        """Return the origin of an LV that is a snapshot, None otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Origin', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            return out
+        return None
 
     def extend_volume(self, lv_name, new_size):
         """Extend the size of an existing volume."""

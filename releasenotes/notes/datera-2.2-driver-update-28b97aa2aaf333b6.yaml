@@ -1,0 +1,12 @@
+---
+features:
+  - Capabilites List for Datera Volume Drivers
+  - Extended Volume-Type Support for Datera Volume Drivers
+  - Naming convention change for Datera Volume Drivers
+  - Volume Manage/Unmanage support for Datera Volume Drivers
+  - New BoolOpt ``datera_debug_override_num_replicas`` for Datera Volume Drivers
+deprecations:
+  - IntOpt ``datera_num_replicas`` is changed to a volume type
+    extra spec option-- ``DF:replica_count``
+  - BoolOpt ``datera_acl_allow_all`` is changed to a volume type
+    extra spec option-- ``DF:acl_allow_all``

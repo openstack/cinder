@@ -1,0 +1,4 @@
+---
+upgrade:
+  - The ``backup_service_inithost_offload`` configuration
+    option now defaults to ``True`` instead of ``False``.

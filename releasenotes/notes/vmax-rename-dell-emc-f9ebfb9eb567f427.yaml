@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The VMAX driver is moved to the dell_emc directory.
+    volume_driver entry in cinder.conf needs to be changed to
+    ``cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver`` or
+    ``cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver``.

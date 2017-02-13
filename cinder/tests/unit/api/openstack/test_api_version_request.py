@@ -63,10 +63,12 @@ class APIVersionRequestTests(test.TestCase):
         self.assertEqual(minor, request._ver_minor)
 
     def test_null_version(self):
-
         v = api_version_request.APIVersionRequest()
+        self.assertFalse(v)
 
-        self.assertTrue(v.is_null())
+    def test_not_null_version(self):
+        v = api_version_request.APIVersionRequest('1.1')
+        self.assertTrue(v)
 
     @ddt.data('2', '200', '2.1.4', '200.23.66.3', '5 .3', '5. 3',
               '5.03', '02.1', '2.001', '', ' 2.1', '2.1 ')
@@ -87,15 +89,15 @@ class APIVersionRequestTests(test.TestCase):
         v4 = api_version_request.APIVersionRequest('2.0')
         v_null = api_version_request.APIVersionRequest()
 
-        self.assertTrue(v1 < v2)
-        self.assertTrue(v1 <= v2)
-        self.assertTrue(v3 > v2)
-        self.assertTrue(v3 >= v2)
-        self.assertTrue(v1 != v2)
-        self.assertTrue(v1 == v4)
-        self.assertTrue(v1 != v_null)
-        self.assertTrue(v_null == v_null)
-        self.assertFalse(v1 == '2.0')
+        self.assertLess(v1, v2)
+        self.assertLessEqual(v1, v2)
+        self.assertGreater(v3, v2)
+        self.assertGreaterEqual(v3, v2)
+        self.assertNotEqual(v1, v2)
+        self.assertEqual(v1, v4)
+        self.assertNotEqual(v1, v_null)
+        self.assertEqual(v_null, v_null)
+        self.assertNotEqual('2.0', v1)
 
     def test_version_matches(self):
         v1 = api_version_request.APIVersionRequest('2.0')

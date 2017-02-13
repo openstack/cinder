@@ -25,6 +25,7 @@ we should look at maybe pushing this up to Oslo
 
 
 import contextlib
+import errno
 import math
 import os
 import re
@@ -33,13 +34,15 @@ import tempfile
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import psutil
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
@@ -54,13 +57,29 @@ image_helper_opts = [cfg.StrOpt('image_conversion_dir',
 CONF = cfg.CONF
 CONF.register_opts(image_helper_opts)
 
+QEMU_IMG_LIMITS = processutils.ProcessLimits(
+    cpu_time=2,
+    address_space=1 * units.Gi)
+
+# NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
+# vdi, vmdk, vhd and vhdx disk-formats but glance doesn't support qed
+# disk-format.
+# Ref: http://docs.openstack.org/image-guide/convert-images.html
+VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2',
+                      'vhd', 'vhdx', 'parallels')
+
+
+def validate_disk_format(disk_format):
+    return disk_format in VALID_DISK_FORMATS
+
 
 def qemu_img_info(path, run_as_root=True):
     """Return an object containing the parsed output from qemu-img info."""
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]
-    out, _err = utils.execute(*cmd, run_as_root=run_as_root)
+    out, _err = utils.execute(*cmd, run_as_root=run_as_root,
+                              prlimit=QEMU_IMG_LIMITS)
     return imageutils.QemuImgInfo(out)
 
 
@@ -127,7 +146,8 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     if duration < 1:
         duration = 1
     try:
-        image_size = qemu_img_info(source, run_as_root=True).virtual_size
+        image_size = qemu_img_info(source,
+                                   run_as_root=run_as_root).virtual_size
     except ValueError as e:
         msg = _LI("The image was successfully converted, but image size "
                   "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
@@ -172,7 +192,18 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     start_time = timeutils.utcnow()
     with fileutils.remove_path_on_error(path):
         with open(path, "wb") as image_file:
-            image_service.download(context, image_id, image_file)
+            try:
+                image_service.download(context, image_id, image_file)
+            except IOError as e:
+                with excutils.save_and_reraise_exception():
+                    if e.errno == errno.ENOSPC:
+                        # TODO(eharney): Fire an async error message for this
+                        LOG.error(_LE("No space left in image_conversion_dir "
+                                      "path (%(path)s) while fetching "
+                                      "image %(image)s."),
+                                  {'path': os.path.dirname(path),
+                                   'image': image_id})
+
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
@@ -282,7 +313,7 @@ def fetch_to_volume_format(context, image_service,
         else:
             fetch(context, image_service, image_id, tmp, user_id, project_id)
 
-        if is_xenserver_image(context, image_service, image_id):
+        if is_xenserver_format(image_meta):
             replace_xenserver_image_with_coalesced_vhd(tmp)
 
         if not qemu_img:
@@ -292,12 +323,12 @@ def fetch_to_volume_format(context, image_service,
             LOG.debug('Copying image from %(tmp)s to volume %(dest)s - '
                       'size: %(size)s', {'tmp': tmp, 'dest': dest,
                                          'size': image_meta['size']})
-            image_size_m = math.ceil(image_meta['size'] / units.Mi)
+            image_size_m = math.ceil(float(image_meta['size']) / units.Mi)
             volume_utils.copy_volume(tmp, dest, image_size_m, blocksize)
             return
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
-        virt_size = data.virtual_size / units.Gi
+        virt_size = int(math.ceil(float(data.virtual_size) / units.Gi))
 
         # NOTE(xqueralt): If the image virtual size doesn't fit in the
         # requested volume there is no point on resizing it because it will
@@ -320,6 +351,10 @@ def fetch_to_volume_format(context, image_service,
                 image_id=image_id,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file, })
+
+        # NOTE(e0ne): check for free space in destination directory before
+        # image convertion.
+        check_available_space(dest, virt_size, image_id)
 
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
@@ -363,7 +398,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 image_service.update(context, image_id, {}, image_file)
         else:
             with utils.temporary_chown(volume_path):
-                with open(volume_path) as image_file:
+                with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {}, image_file)
         return
 
@@ -384,23 +419,51 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file})
 
-        convert_image(volume_path, tmp, image_meta['disk_format'],
+        out_format = image_meta['disk_format']
+        # qemu-img accepts 'vpc' as argument for vhd format
+        if out_format == 'vhd':
+            out_format = 'vpc'
+
+        convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
-        if data.file_format != image_meta['disk_format']:
+        if data.file_format != out_format:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
-                {'f1': image_meta['disk_format'], 'f2': data.file_format})
+                {'f1': out_format, 'f2': data.file_format})
 
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {}, image_file)
 
 
-def is_xenserver_image(context, image_service, image_id):
-    image_meta = image_service.show(context, image_id)
-    return is_xenserver_format(image_meta)
+def check_virtual_size(virtual_size, volume_size, image_id):
+    virtual_size = int(math.ceil(float(virtual_size) / units.Gi))
+
+    if virtual_size > volume_size:
+        params = {'image_size': virtual_size,
+                  'volume_size': volume_size}
+        reason = _("Image virtual size is %(image_size)dGB"
+                   " and doesn't fit in a volume of size"
+                   " %(volume_size)dGB.") % params
+        raise exception.ImageUnacceptable(image_id=image_id,
+                                          reason=reason)
+    return virtual_size
+
+
+def check_available_space(dest, image_size, image_id):
+    # TODO(e0ne): replace psutil with shutil.disk_usage when we drop
+    # Python 2.7 support.
+    if not os.path.isdir(dest):
+        dest = os.path.dirname(dest)
+
+    free_space = psutil.disk_usage(dest).free
+    if free_space <= image_size:
+        msg = ('There is no space to convert image. '
+               'Requested: %(image_size)s, available: %(free_space)s'
+               ) % {'image_size': image_size, 'free_space': free_space}
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
 
 def is_xenserver_format(image_meta):
@@ -446,6 +509,29 @@ def create_temporary_file(*args, **kwargs):
     fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir, *args, **kwargs)
     os.close(fd)
     return tmp
+
+
+def cleanup_temporary_file(backend_name):
+    temp_dir = CONF.image_conversion_dir
+    if (not temp_dir or not os.path.exists(temp_dir)):
+        LOG.debug("Configuration image_conversion_dir is None or the path "
+                  "doesn't exist.")
+        return
+    try:
+        # TODO(wanghao): Consider using os.scandir for better performance in
+        # future when cinder only supports Python version 3.5+.
+        files = os.listdir(CONF.image_conversion_dir)
+        # NOTE(wanghao): For multi-backend case, if one backend was slow
+        # starting but another backend is up and doing an image conversion,
+        # init_host should only clean the tmp files which belongs to its
+        # backend.
+        for tmp_file in files:
+            if tmp_file.endswith(backend_name):
+                path = os.path.join(temp_dir, tmp_file)
+                os.remove(path)
+    except OSError as e:
+        LOG.warning(_LW("Exception caught while clearing temporary image "
+                        "files: %s"), e)
 
 
 @contextlib.contextmanager
@@ -527,9 +613,9 @@ class TemporaryImages(object):
 
     @classmethod
     @contextlib.contextmanager
-    def fetch(cls, image_service, context, image_id):
+    def fetch(cls, image_service, context, image_id, suffix=''):
         tmp_images = cls.for_image_service(image_service).temporary_images
-        with temporary_file() as tmp:
+        with temporary_file(suffix=suffix) as tmp:
             fetch_verify_image(context, image_service, image_id, tmp)
             user = context.user_id
             if not tmp_images.get(user):

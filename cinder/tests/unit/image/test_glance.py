@@ -17,6 +17,7 @@
 import datetime
 import itertools
 
+import ddt
 import glanceclient.exc
 import mock
 from oslo_config import cfg
@@ -71,6 +72,7 @@ class TestGlanceSerializer(test.TestCase):
         self.assertEqual(metadata, glance._convert_from_string(converted))
 
 
+@ddt.ddt
 class TestGlanceImageService(test.TestCase):
     """Tests the Glance image service.
 
@@ -79,7 +81,7 @@ class TestGlanceImageService(test.TestCase):
         1. Glance -> ImageService - This is needed so we can support
            multiple ImageServices (Glance, Local, etc)
 
-        2. ImageService -> API - This is needed so we can support multple
+        2. ImageService -> API - This is needed so we can support multiple
            APIs (OpenStack, EC2)
 
     """
@@ -103,15 +105,14 @@ class TestGlanceImageService(test.TestCase):
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.context.service_catalog = service_catalog
-        self.stubs.Set(glance.time, 'sleep', lambda s: None)
+        self.mock_object(glance.time, 'sleep', return_value=None)
 
     def _create_image_service(self, client):
         def _fake_create_glance_client(context, netloc, use_ssl, version):
             return client
 
-        self.stubs.Set(glance,
-                       '_create_glance_client',
-                       _fake_create_glance_client)
+        self.mock_object(glance, '_create_glance_client',
+                         _fake_create_glance_client)
 
         client_wrapper = glance.GlanceClientWrapper('fake', 'fake_host', 9292)
         return glance.GlanceImageService(client=client_wrapper)
@@ -174,10 +175,10 @@ class TestGlanceImageService(test.TestCase):
             'properties': {'instance_id': '42', 'user_id': 'fake'},
             'owner': None,
         }
-        self.assertDictMatch(expected, image_meta)
+        self.assertDictEqual(expected, image_meta)
 
         image_metas = self.service.detail(self.context)
-        self.assertDictMatch(expected, image_metas[0])
+        self.assertDictEqual(expected, image_metas[0])
 
     def test_create_without_instance_id(self):
         """Test Creating images without instance_id.
@@ -210,7 +211,7 @@ class TestGlanceImageService(test.TestCase):
             'owner': None,
         }
         actual = self.service.show(self.context, image_id)
-        self.assertDictMatch(expected, actual)
+        self.assertDictEqual(expected, actual)
 
     def test_create(self):
         fixture = self._make_fixture(name='test image')
@@ -251,6 +252,25 @@ class TestGlanceImageService(test.TestCase):
         self.assertEqual('test image', image_metas[0]['name'])
         self.assertFalse(image_metas[0]['is_public'])
 
+    def test_detail_v1(self):
+        """Confirm we send is_public = None as default when using Glance v1."""
+        self.override_config('glance_api_version', 1)
+        with mock.patch.object(self.service, '_client') as client_mock:
+            client_mock.return_value = []
+            result = self.service.detail(self.context)
+        self.assertListEqual([], result)
+        client_mock.call.assert_called_once_with(self.context, 'list',
+                                                 filters={'is_public': 'none'})
+
+    def test_detail_v2(self):
+        """Check we don't send is_public key by default with Glance v2."""
+        self.override_config('glance_api_version', 2)
+        with mock.patch.object(self.service, '_client') as client_mock:
+            client_mock.return_value = []
+            result = self.service.detail(self.context)
+        self.assertListEqual([], result)
+        client_mock.call.assert_called_once_with(self.context, 'list')
+
     def test_detail_marker(self):
         fixtures = []
         ids = []
@@ -283,7 +303,7 @@ class TestGlanceImageService(test.TestCase):
                 'owner': None,
             }
 
-            self.assertDictMatch(expected, meta)
+            self.assertDictEqual(expected, meta)
             i = i + 1
 
     def test_detail_limit(self):
@@ -340,7 +360,7 @@ class TestGlanceImageService(test.TestCase):
                 'deleted': None,
                 'owner': None,
             }
-            self.assertDictMatch(expected, meta)
+            self.assertDictEqual(expected, meta)
             i = i + 1
 
     def test_detail_invalid_marker(self):
@@ -372,15 +392,45 @@ class TestGlanceImageService(test.TestCase):
         fixture = self._make_fixture(name='test image')
         image = self.service.create(self.context, fixture)
         image_id = image['id']
+        fixture['name'] = 'new image name'
         data = '*' * 256
         self.service.update(self.context, image_id, fixture, data=data)
 
         new_image_data = self.service.show(self.context, image_id)
         self.assertEqual(256, new_image_data['size'])
+        self.assertEqual('new image name', new_image_data['name'])
 
     def test_update_with_data_v2(self):
         self.flags(glance_api_version=2)
         self.test_update_with_data()
+
+    @mock.patch.object(glance.GlanceImageService, '_translate_from_glance')
+    @mock.patch.object(glance.GlanceImageService, 'show')
+    @ddt.data(1, 2)
+    def test_update_purge_props(self, ver, show, translate_from_glance):
+        self.flags(glance_api_version=ver)
+
+        image_id = mock.sentinel.image_id
+        client = mock.Mock(call=mock.Mock())
+        service = glance.GlanceImageService(client=client)
+
+        image_meta = {'properties': {'k1': 'v1'}}
+        client.call.return_value = {'k1': 'v1'}
+        if ver == 2:
+            show.return_value = {'properties': {'k2': 'v2'}}
+        translate_from_glance.return_value = image_meta.copy()
+
+        ret = service.update(self.context, image_id, image_meta)
+        self.assertDictEqual(image_meta, ret)
+        if ver == 2:
+            client.call.assert_called_once_with(
+                self.context, 'update', image_id, k1='v1', remove_props=['k2'])
+        else:
+            client.call.assert_called_once_with(
+                self.context, 'update', image_id, properties={'k1': 'v1'},
+                purge_props=True)
+        translate_from_glance.assert_called_once_with(self.context,
+                                                      {'k1': 'v1'})
 
     def test_delete(self):
         fixture1 = self._make_fixture(name='test image 1')
@@ -824,6 +874,20 @@ class TestGlanceClientVersion(test.TestCase):
 
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    @mock.patch('cinder.image.glance.get_api_servers',
+                return_value=itertools.cycle([(False, 'localhost:9292')]))
+    def test_call_glance_over_quota(self, api_servers, _mockglanceclient):
+        """Test glance version set by arg to GlanceClientWrapper"""
+        glance_wrapper = glance.GlanceClientWrapper()
+        fake_client = mock.Mock()
+        fake_client.images.method = mock.Mock(
+            side_effect=glanceclient.exc.HTTPOverLimit)
+        self.mock_object(glance_wrapper, 'client', fake_client)
+        self.assertRaises(exception.ImageLimitExceeded,
+                          glance_wrapper.call, 'fake_context', 'method',
+                          version=2)
+
 
 def _create_failing_glance_client(info):
     class MyGlanceStubClient(glance_stubs.StubGlanceClient):
@@ -842,7 +906,7 @@ class TestGlanceImageServiceClient(test.TestCase):
     def setUp(self):
         super(TestGlanceImageServiceClient, self).setUp()
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
-        self.stubs.Set(glance.time, 'sleep', lambda s: None)
+        self.mock_object(glance.time, 'sleep', return_value=None)
 
     def test_create_glance_client(self):
         self.flags(auth_strategy='keystone')
@@ -855,7 +919,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertTrue(kwargs['token'])
                 self.assertEqual(60, kwargs['timeout'])
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
@@ -871,7 +935,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertNotIn('token', kwargs)
                 self.assertEqual(60, kwargs['timeout'])
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
@@ -887,7 +951,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertTrue(kwargs['token'])
                 self.assertNotIn('timeout', kwargs)
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)

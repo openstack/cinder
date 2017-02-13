@@ -29,8 +29,10 @@ import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LI
+from cinder import objects
 from cinder import quota
+from cinder import quota_utils
 from cinder.volume import api as volume_api
 from cinder.volume import utils as volume_utils
 
@@ -57,6 +59,7 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def get(self, context, transfer_id):
+        volume_api.check_policy(context, 'get_transfer')
         rv = self.db.transfer_get(context, transfer_id)
         return dict(rv)
 
@@ -160,15 +163,21 @@ class API(base.Base):
             raise exception.InvalidAuthKey(reason=msg)
 
         volume_id = transfer['volume_id']
-        vol_ref = self.db.volume_get(context.elevated(), volume_id)
+        vol_ref = objects.Volume.get_by_id(context.elevated(), volume_id)
         if vol_ref['consistencygroup_id']:
             msg = _("Volume %s must not be part of a consistency "
                     "group.") % vol_ref['id']
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        volume_utils.notify_about_volume_usage(context, vol_ref,
-                                               "transfer.accept.start")
+        try:
+            values = {'per_volume_gigabytes': vol_ref.size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.VolumeSizeExceedsLimit(
+                size=vol_ref.size, limit=quotas['per_volume_gigabytes'])
 
         try:
             reserve_opts = {'volumes': 1, 'gigabytes': vol_ref.size}
@@ -177,35 +186,9 @@ class API(base.Base):
                                         vol_ref.volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            for over in overs:
-                if 'gigabytes' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "%(s_size)sG volume (%(d_consumed)dG of "
-                              "%(d_quota)dG already consumed)")
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      's_size': vol_ref['size'],
-                                      'd_consumed': _consumed(over),
-                                      'd_quota': quotas[over]})
-                    raise exception.VolumeSizeExceedsAvailableQuota(
-                        requested=vol_ref['size'],
-                        consumed=_consumed(over),
-                        quota=quotas[over])
-                elif 'volumes' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "volume (%(d_consumed)d volumes "
-                              "already consumed)")
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      'd_consumed': _consumed(over)})
-                    raise exception.VolumeLimitExceeded(allowed=quotas[over],
-                                                        name=over)
-
+            quota_utils.process_reserve_over_quota(context, e,
+                                                   resource='volumes',
+                                                   size=vol_ref.size)
         try:
             donor_id = vol_ref['project_id']
             reserve_opts = {'volumes': -1, 'gigabytes': -vol_ref.size}
@@ -220,6 +203,8 @@ class API(base.Base):
             LOG.exception(_LE("Failed to update quota donating volume"
                               " transfer id %s"), transfer_id)
 
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.start")
         try:
             # Transfer ownership of the volume now, must use an elevated
             # context.

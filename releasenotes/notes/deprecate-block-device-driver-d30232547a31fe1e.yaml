@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The block_driver is deprecated as of the Ocata release and will be
+    removed in the Queens release of Cinder.  Instead the LVM driver
+    with the LIO iSCSI target should be used.  For those that desire
+    higher performance, they should use LVM striping.

@@ -26,8 +26,8 @@ for a specific driver. There is no concept of managed vs unmanaged,
 ALL replication configurations are expected to work by using the same
 driver.  In other words, rather than trying to perform any magic
 by changing host entries in the DB for a Volume etc, all replication
-targets are considered "unmanged" BUT if a failover is issued, it's
-the drivers responsiblity to access replication volumes on the replicated
+targets are considered "unmanaged" BUT if a failover is issued, it's
+the drivers responsibility to access replication volumes on the replicated
 backend device.
 
 This results in no changes for the end-user.  For example, He/She can
@@ -53,7 +53,7 @@ like to configure.
 
 *NOTE:*
 
-There is one standaredized and REQUIRED key in the config
+There is one standardized and REQUIRED key in the config
 entry, all others are vendor-unique:
 
 * backend_id:<vendor-identifier-for-rep-target>
@@ -98,15 +98,15 @@ backend that supports replication, the extra-specs entry would be::
     {replication: enabled}
 
 Additionally you could provide additional details using scoped keys::
-    {replication: enabled, volume_backend_name: foo,
-     replication: replication_type: async}
+    {replication: enabled, replication_type: async, replication_count: 2,
+    replication_targets: [fake_id1, fake_id2]}
 
 It's up to the driver to parse the volume type info on create and set things up
 as requested.  While the scoping key can be anything, it's strongly recommended that all
 backends utilize the same key (replication) for consistency and to make things easier for
 the Cloud Administrator.
 
-Additionally it's expected that if a backend is configured with 3 replciation
+Additionally it's expected that if a backend is configured with 3 replication
 targets, that if a volume of type replication=enabled is issued against that
 backend then it will replicate to ALL THREE of the configured targets.
 
@@ -132,6 +132,7 @@ They include::
 
 Additionally we have freeze/thaw methods that will act on the scheduler
 but may or may not require something from the driver::
+
     freeze_backend(self, context)
     thaw_backend(self, context)
 
@@ -153,11 +154,11 @@ type should now be unavailable.
 NOTE:  We do not expect things like create requests to go to the driver and
 magically create volumes on the replication target.  The concept is that the
 backend is lost, and we're just providing a DR mechanism to preserve user data
-for volumes that were speicfied as such via type settings.
+for volumes that were specified as such via type settings.
 
 **freeze_backend**
 Puts a backend host/service into a R/O state for the control plane.  For
-example if a failover is issued, it is likely desireable that while data access
+example if a failover is issued, it is likely desirable that while data access
 to existing volumes is maintained, it likely would not be wise to continue
 doing things like creates, deletes, extends etc.
 

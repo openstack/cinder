@@ -16,8 +16,6 @@ Mock unit tests for the NetApp block storage driver interfaces
 """
 
 
-import mock
-
 from cinder import test
 from cinder.volume.drivers.netapp.dataontap import block_7mode
 from cinder.volume.drivers.netapp.dataontap import block_cmode
@@ -34,10 +32,10 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
 
         self.mock_object(block_cmode.NetAppBlockStorageCmodeLibrary,
                          '__init__',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(block_7mode.NetAppBlockStorage7modeLibrary,
                          '__init__',
-                         mock.Mock(return_value=None))
+                         return_value=None)
 
         self.iscsi_7mode_driver = iscsi_7mode.NetApp7modeISCSIDriver()
         self.iscsi_cmode_driver = iscsi_cmode.NetAppCmodeISCSIDriver()

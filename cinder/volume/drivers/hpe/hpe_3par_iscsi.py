@@ -36,32 +36,37 @@ except ImportError:
     hpeexceptions = None
 
 from oslo_log import log as logging
-import six
+from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
+
+# EXISTENT_PATH error code returned from hpe3parclient
+EXISTENT_PATH = 73
 DEFAULT_ISCSI_PORT = 3260
 CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
-class HPE3PARISCSIDriver(driver.TransferVD,
-                         driver.ManageableVD,
-                         driver.ExtendVD,
-                         driver.SnapshotVD,
+@interface.volumedriver
+class HPE3PARISCSIDriver(driver.ManageableVD,
                          driver.ManageableSnapshotsVD,
                          driver.MigrateVD,
-                         driver.ConsistencyGroupVD,
                          driver.BaseVD):
     """OpenStack iSCSI driver to enable 3PAR storage array.
 
     Version history:
+
+    .. code-block:: none
+
         1.0   - Initial driver
         1.1   - QoS, extend volume, multiple iscsi ports, remove domain,
                 session changes, faster clone, requires 3.1.2 MU2 firmware.
@@ -110,10 +115,19 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.7 - Optimize array ID retrieval
         3.0.8 - Update replication to version 2.1
         3.0.9 - Use same LUN ID for each VLUN path #1551994
+        3.0.10 - Remove metadata that tracks the instance ID. bug #1572665
+        3.0.11 - _create_3par_iscsi_host() now accepts iscsi_iqn as list only.
+                 Bug #1590180
+        3.0.12 - Added entry point tracing
+        3.0.13 - Handling HTTP conflict 409, host WWN/iSCSI name already used
+                by another host, while creating 3PAR iSCSI Host. bug #1642945
 
     """
 
-    VERSION = "3.0.9"
+    VERSION = "3.0.13"
+
+    # The name of the CI wiki page.
+    CI_WIKI_NAME = "HPE_Storage_CI"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -157,6 +171,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                           'san_password']
         common.check_flags(self.configuration, required_flags)
 
+    @utils.trace
     def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
@@ -250,6 +265,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
+    @utils.trace
     def create_volume(self, volume):
         common = self._login()
         try:
@@ -257,6 +273,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
         common = self._login()
@@ -265,6 +282,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_volume(self, volume):
         common = self._login()
         try:
@@ -272,6 +290,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -283,6 +302,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -290,6 +310,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -297,6 +318,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -306,6 +328,8 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         This driver returns a driver_volume_type of 'iscsi'.
         The format of the driver data is defined in _get_iscsi_properties.
         Example return value:
+
+        .. code-block:: json
 
             {
                 'driver_volume_type': 'iscsi'
@@ -424,7 +448,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                 if least_used_nsp is None:
                     LOG.warning(_LW("Least busy iSCSI port not found, "
                                     "using first iSCSI port in list."))
-                    iscsi_ip = iscsi_ips.keys()[0]
+                    iscsi_ip = list(iscsi_ips)[0]
                 else:
                     iscsi_ip = self._get_ip_using_nsp(least_used_nsp, common)
 
@@ -451,6 +475,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
@@ -495,7 +520,8 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         """
         # first search for an existing host
         host_found = None
-        hosts = common.client.queryHost(iqns=[iscsi_iqn])
+
+        hosts = common.client.queryHost(iqns=iscsi_iqn)
 
         if hosts and hosts['members'] and 'name' in hosts['members'][0]:
             host_found = hosts['members'][0]['name']
@@ -503,14 +529,30 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         if host_found is not None:
             return host_found
         else:
-            if isinstance(iscsi_iqn, six.string_types):
-                iqn = [iscsi_iqn]
-            else:
-                iqn = iscsi_iqn
             persona_id = int(persona_id)
-            common.client.createHost(hostname, iscsiNames=iqn,
-                                     optional={'domain': domain,
-                                               'persona': persona_id})
+            try:
+                common.client.createHost(hostname, iscsiNames=iscsi_iqn,
+                                         optional={'domain': domain,
+                                                   'persona': persona_id})
+            except hpeexceptions.HTTPConflict as path_conflict:
+                msg = _LE("Create iSCSI host caught HTTP conflict code: %s")
+                with save_and_reraise_exception(reraise=False) as ctxt:
+                    if path_conflict.get_code() is EXISTENT_PATH:
+                        # Handle exception : EXISTENT_PATH - host WWN/iSCSI
+                        # name already used by another host
+                        hosts = common.client.queryHost(iqns=iscsi_iqn)
+                        if hosts and hosts['members'] and (
+                                'name' in hosts['members'][0]):
+                            hostname = hosts['members'][0]['name']
+                        else:
+                            # re-raise last caught exception
+                            ctxt.reraise = True
+                            LOG.exception(msg, path_conflict.get_code())
+                    else:
+                        # re-raise last caught exception
+                        # for other HTTP conflict
+                        ctxt.reraise = True
+                        LOG.exception(msg, path_conflict.get_code())
             return hostname
 
     def _modify_3par_iscsi_host(self, common, hostname, iscsi_iqn):
@@ -556,7 +598,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             # host doesn't exist, we have to create it
             hostname = self._create_3par_iscsi_host(common,
                                                     hostname,
-                                                    connector['initiator'],
+                                                    [connector['initiator']],
                                                     domain,
                                                     persona_id)
             self._set_3par_chaps(common, hostname, volume, username, password)
@@ -659,6 +701,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         return model_update
 
+    @utils.trace
     def create_export(self, context, volume, connector):
         common = self._login()
         try:
@@ -666,6 +709,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def ensure_export(self, context, volume):
         """Ensure the volume still exists on the 3PAR.
 
@@ -773,6 +817,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         return current_least_used_nsp
 
+    @utils.trace
     def extend_volume(self, volume, new_size):
         common = self._login()
         try:
@@ -780,6 +825,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup(self, context, group):
         common = self._login()
         try:
@@ -787,6 +833,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
@@ -798,6 +845,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_consistencygroup(self, context, group, volumes):
         common = self._login()
         try:
@@ -805,6 +853,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         common = self._login()
@@ -814,6 +863,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -821,6 +871,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -828,6 +879,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing(self, volume, existing_ref):
         common = self._login()
         try:
@@ -835,6 +887,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -842,6 +895,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         common = self._login()
         try:
@@ -849,6 +903,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -857,6 +912,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage(self, volume):
         common = self._login()
         try:
@@ -864,6 +920,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -871,21 +928,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        common = self._login()
-        try:
-            common.attach_volume(volume, instance_uuid)
-        finally:
-            self._logout(common)
-
-    def detach_volume(self, context, volume, attachment=None):
-        common = self._login()
-        try:
-            common.detach_volume(volume, attachment)
-        finally:
-            self._logout(common)
-
+    @utils.trace
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         common = self._login()
@@ -894,6 +937,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
             protocol = host['capabilities']['storage_protocol']
@@ -908,6 +952,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
@@ -918,6 +963,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def get_pool(self, volume):
         common = self._login()
         try:
@@ -929,13 +975,14 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    @utils.trace
+    def failover_host(self, context, volumes, secondary_id=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
         try:
             # Update the active_backend_id in the driver and return it.
             active_backend_id, volume_updates = common.failover_host(
-                context, volumes, secondary_backend_id)
+                context, volumes, secondary_id)
             self._active_backend_id = active_backend_id
             return active_backend_id, volume_updates
         finally:

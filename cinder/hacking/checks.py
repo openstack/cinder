@@ -32,7 +32,8 @@ Guidelines for writing new hacking checks
 """
 
 # NOTE(thangp): Ignore N323 pep8 error caused by importing cinder objects
-UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py']
+UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py',
+                           'cinder/objects/manageableresources.py']
 
 translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
@@ -135,9 +136,10 @@ def no_translate_debug_logs(logical_line, filename):
     https://wiki.openstack.org/wiki/LoggingStandards#Log_Translation
     we shouldn't translate debug level logs.
 
-    * This check assumes that 'LOG' is a logger.
-    * Use filename so we can start enforcing this in specific folders instead
-      of needing to do so all at once.
+    - This check assumes that 'LOG' is a logger.
+    - Use filename so we can start enforcing this in specific folders
+      instead of needing to do so all at once.
+
     N319
     """
     if logical_line.startswith("LOG.debug(_("):
@@ -382,14 +384,6 @@ def validate_log_translations(logical_line, filename):
         yield (0, msg)
 
 
-def check_oslo_namespace_imports(logical_line):
-    if re.match(oslo_namespace_imports, logical_line):
-        msg = ("N333: '%s' must be used instead of '%s'.") % (
-            logical_line.replace('oslo.', 'oslo_'),
-            logical_line)
-        yield(0, msg)
-
-
 def check_datetime_now(logical_line, noqa):
     if noqa:
         return
@@ -414,15 +408,19 @@ def check_unicode_usage(logical_line, noqa):
 
 
 def check_no_print_statements(logical_line, filename, noqa):
-    # The files in cinder/cmd do need to use 'print()' so
-    # we don't need to check those files.  Other exemptions
-    # should use '# noqa' to avoid failing here.
-    if "cinder/cmd" not in filename and not noqa:
-        if re.match(no_print_statements, logical_line):
-            msg = ("C303: print() should not be used. "
-                   "Please use LOG.[info|error|warning|exception|debug]. "
-                   "If print() must be used, use '# noqa' to skip this check.")
-            yield(0, msg)
+    # CLI and utils programs do need to use 'print()' so
+    # we shouldn't check those files.
+    if noqa:
+        return
+
+    if "cinder/cmd" in filename or "tools/" in filename:
+        return
+
+    if re.match(no_print_statements, logical_line):
+        msg = ("C303: print() should not be used. "
+               "Please use LOG.[info|error|warning|exception|debug]. "
+               "If print() must be used, use '# noqa' to skip this check.")
+        yield(0, msg)
 
 
 def check_no_log_audit(logical_line):
@@ -436,15 +434,6 @@ def check_no_log_audit(logical_line):
 
     if no_audit_log.match(logical_line):
         yield(0, "C304: Found LOG.audit.  Use LOG.info instead.")
-
-
-def check_no_contextlib_nested(logical_line):
-    msg = ("C305: contextlib.nested is deprecated. With Python 2.7 and later "
-           "the with-statement supports multiple nested objects. See https://"
-           "docs.python.org/2/library/contextlib.html#contextlib.nested "
-           "for more information.")
-    if no_contextlib_nested.match(logical_line):
-        yield(0, msg)
 
 
 def check_timeutils_strtime(logical_line):
@@ -477,9 +466,6 @@ def check_timeutils_isotime(logical_line):
 def no_test_log(logical_line, filename, noqa):
     if "cinder/tests" not in filename or noqa:
         return
-    # Skip the "integrated" tests for now
-    if "cinder/tests/unit/integrated" in filename:
-        return
     msg = "C309: Unit tests should not perform logging."
     if logging_instance.match(logical_line):
         yield (0, msg)
@@ -507,7 +493,6 @@ def factory(register):
     register(CheckForStrUnicodeExc)
     register(CheckLoggingFormatArgs)
     register(CheckOptRegistrationArgs)
-    register(check_oslo_namespace_imports)
     register(check_datetime_now)
     register(check_timeutils_strtime)
     register(check_timeutils_isotime)
@@ -515,7 +500,6 @@ def factory(register):
     register(check_unicode_usage)
     register(check_no_print_statements)
     register(check_no_log_audit)
-    register(check_no_contextlib_nested)
     register(no_log_warn)
     register(dict_constructor_with_list_copy)
     register(no_test_log)

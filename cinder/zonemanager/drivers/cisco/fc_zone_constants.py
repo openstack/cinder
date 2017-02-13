@@ -23,7 +23,8 @@ CFG_ZONESET = 'zoneset'
 CFG_ZONE = 'zone'
 CFG_ZONE_MEMBER = 'pwwn'
 CFG_ZONES = 'zones'
-
+ZONE_ADD = 'zoneadd'
+ZONE_REMOVE = 'zoneremove'
 """
 CLI Commands for FC zoning operations.
 """

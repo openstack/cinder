@@ -17,18 +17,47 @@
 #    under the License.
 
 """Implementation of paginate query."""
+import datetime
 
 from oslo_log import log as logging
 from six.moves import range
 import sqlalchemy
+import sqlalchemy.sql as sa_sql
+from sqlalchemy.sql import type_api
 
+from cinder.db import api
 from cinder import exception
 from cinder.i18n import _, _LW
 
 
 LOG = logging.getLogger(__name__)
 
+_TYPE_SCHEMA = {
+    'datetime': datetime.datetime(1900, 1, 1),
+    'big_integer': 0,
+    'integer': 0,
+    'string': ''
+}
 
+
+def _get_default_column_value(model, column_name):
+    """Return the default value of the columns from DB table.
+
+    In postgreDB case, if no right default values are being set, an
+    psycopg2.DataError will be thrown.
+    """
+    attr = getattr(model, column_name)
+    # Return the default value directly if the model contains. Otherwise return
+    # a default value which is not None.
+    if attr.default and isinstance(attr.default, type_api.TypeEngine):
+        return attr.default.arg
+
+    attr_type = attr.type
+    return _TYPE_SCHEMA[attr_type.__visit_name__]
+
+
+# TODO(wangxiyuan): Use oslo_db.sqlalchemy.utils.paginate_query once it is
+# stable and afforded by the minimum version in requirement.txt.
 # copied from glance/db/sqlalchemy/api.py
 def paginate_query(query, model, limit, sort_keys, marker=None,
                    sort_dir=None, sort_dirs=None, offset=None):
@@ -57,6 +86,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
                     results after this value.
     :param sort_dir: direction in which results should be sorted (asc, desc)
     :param sort_dirs: per-column array of sort_dirs, corresponding to sort_keys
+    :param offset: the number of items to skip from the marker or from the
+                    first element.
 
     :rtype: sqlalchemy.orm.query.Query
     :return: The query with sorting/pagination added.
@@ -90,6 +121,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
             sort_key_attr = getattr(model, current_sort_key)
         except AttributeError:
             raise exception.InvalidInput(reason='Invalid sort key')
+        if not api.is_orm_value(sort_key_attr):
+            raise exception.InvalidInput(reason='Invalid sort key')
         query = query.order_by(sort_dir_func(sort_key_attr))
 
     # Add pagination
@@ -97,6 +130,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
         marker_values = []
         for sort_key in sort_keys:
             v = getattr(marker, sort_key)
+            if v is None:
+                v = _get_default_column_value(model, sort_key)
             marker_values.append(v)
 
         # Build up an array of sort criteria as in the docstring
@@ -105,13 +140,21 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
             crit_attrs = []
             for j in range(0, i):
                 model_attr = getattr(model, sort_keys[j])
-                crit_attrs.append((model_attr == marker_values[j]))
+                default = _get_default_column_value(model, sort_keys[j])
+                attr = sa_sql.expression.case([(model_attr.isnot(None),
+                                                model_attr), ],
+                                              else_=default)
+                crit_attrs.append((attr == marker_values[j]))
 
             model_attr = getattr(model, sort_keys[i])
+            default = _get_default_column_value(model, sort_keys[i])
+            attr = sa_sql.expression.case([(model_attr.isnot(None),
+                                            model_attr), ],
+                                          else_=default)
             if sort_dirs[i] == 'desc':
-                crit_attrs.append((model_attr < marker_values[i]))
+                crit_attrs.append((attr < marker_values[i]))
             elif sort_dirs[i] == 'asc':
-                crit_attrs.append((model_attr > marker_values[i]))
+                crit_attrs.append((attr > marker_values[i]))
             else:
                 raise ValueError(_("Unknown sort direction, "
                                    "must be 'desc' or 'asc'"))

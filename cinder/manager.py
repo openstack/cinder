@@ -56,12 +56,16 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_service import periodic_task
+from oslo_utils import timeutils
 
+from cinder import context
+from cinder import db
 from cinder.db import base
-from cinder.i18n import _LI
+from cinder import exception
+from cinder.i18n import _LE, _LI, _LW
+from cinder import objects
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import version
 
 from eventlet import greenpool
 
@@ -81,24 +85,34 @@ class Manager(base.Base, PeriodicTasks):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self, host=None, db_driver=None):
+    def __init__(self, host=None, db_driver=None, cluster=None, **kwargs):
         if not host:
             host = CONF.host
         self.host = host
+        self.cluster = cluster
         self.additional_endpoints = []
         super(Manager, self).__init__(db_driver)
+
+    @property
+    def service_topic_queue(self):
+        return self.cluster or self.host
 
     def periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
         return self.run_periodic_tasks(context, raise_on_error=raise_on_error)
 
-    def init_host(self):
+    def init_host(self, service_id=None, added_to_cluster=None):
         """Handle initialization if this is a standalone service.
 
         A hook point for services to execute tasks before the services are made
         available (i.e. showing up on RPC and starting to accept RPC calls) to
         other components.  Child classes should override this method.
 
+        :param service_id: ID of the service where the manager is running.
+        :param added_to_cluster: True when a host's cluster configuration has
+                                 changed from not being defined or being '' to
+                                 any other value and the DB service record
+                                 reflects this new value.
         """
         pass
 
@@ -112,19 +126,10 @@ class Manager(base.Base, PeriodicTasks):
         """
         pass
 
-    def service_version(self):
-        return version.version_string()
-
-    def service_config(self):
-        config = {}
-        for key in CONF:
-            config[key] = CONF.get(key, None)
-        return config
-
     def is_working(self):
         """Method indicating if service is working correctly.
 
-        This method is supposed to be overriden by subclasses and return if
+        This method is supposed to be overridden by subclasses and return if
         manager is working correctly.
         """
         return True
@@ -140,7 +145,16 @@ class Manager(base.Base, PeriodicTasks):
         rpc.LAST_RPC_VERSIONS = {}
 
 
-class SchedulerDependentManager(Manager):
+class ThreadPoolManager(Manager):
+    def __init__(self, *args, **kwargs):
+        self._tp = greenpool.GreenPool()
+        super(ThreadPoolManager, self).__init__(*args, **kwargs)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
+
+
+class SchedulerDependentManager(ThreadPoolManager):
     """Periodically send capability updates to the Scheduler services.
 
     Services that need to update the Scheduler of their capabilities
@@ -150,12 +164,13 @@ class SchedulerDependentManager(Manager):
 
     """
 
-    def __init__(self, host=None, db_driver=None, service_name='undefined'):
+    def __init__(self, host=None, db_driver=None, service_name='undefined',
+                 cluster=None):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
-        self._tp = greenpool.GreenPool()
-        super(SchedulerDependentManager, self).__init__(host, db_driver)
+        super(SchedulerDependentManager, self).__init__(host, db_driver,
+                                                        cluster=cluster)
 
     def update_service_capabilities(self, capabilities):
         """Remember these capabilities to send on next periodic update."""
@@ -170,11 +185,121 @@ class SchedulerDependentManager(Manager):
                 context,
                 self.service_name,
                 self.host,
-                self.last_capabilities)
-
-    def _add_to_threadpool(self, func, *args, **kwargs):
-        self._tp.spawn_n(func, *args, **kwargs)
+                self.last_capabilities,
+                self.cluster)
+            try:
+                self.scheduler_rpcapi.notify_service_capabilities(
+                    context,
+                    self.service_name,
+                    self.service_topic_queue,
+                    self.last_capabilities)
+            except exception.ServiceTooOld as e:
+                # This means we have Newton's c-sch in the deployment, so
+                # rpcapi cannot send the message. We can safely ignore the
+                # error. Log it because it shouldn't happen after upgrade.
+                msg = _LW("Failed to notify about cinder-volume service "
+                          "capabilities for host %(host)s. This is normal "
+                          "during a live upgrade. Error: %(e)s")
+                LOG.warning(msg, {'host': self.host, 'e': e})
 
     def reset(self):
         super(SchedulerDependentManager, self).reset()
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
+
+
+class CleanableManager(object):
+    def do_cleanup(self, context, cleanup_request):
+        LOG.info(_LI('Initiating service %s cleanup'),
+                 cleanup_request.service_id)
+
+        # If the 'until' field in the cleanup request is not set, we default to
+        # this very moment.
+        until = cleanup_request.until or timeutils.utcnow()
+        keep_entry = False
+
+        to_clean = db.worker_get_all(
+            context,
+            resource_type=cleanup_request.resource_type,
+            resource_id=cleanup_request.resource_id,
+            service_id=cleanup_request.service_id,
+            until=until)
+
+        for clean in to_clean:
+            original_service_id = clean.service_id
+            original_time = clean.updated_at
+            # Try to do a soft delete to mark the entry as being cleaned up
+            # by us (setting service id to our service id).
+            res = db.worker_claim_for_cleanup(context,
+                                              claimer_id=self.service_id,
+                                              orm_worker=clean)
+
+            # Claim may fail if entry is being cleaned by another service, has
+            # been removed (finished cleaning) by another service or the user
+            # started a new cleanable operation.
+            # In any of these cases we don't have to do cleanup or remove the
+            # worker entry.
+            if not res:
+                continue
+
+            # Try to get versioned object for resource we have to cleanup
+            try:
+                vo_cls = getattr(objects, clean.resource_type)
+                vo = vo_cls.get_by_id(context, clean.resource_id)
+                # Set the worker DB entry in the VO and mark it as being a
+                # clean operation
+                clean.cleaning = True
+                vo.worker = clean
+            except exception.NotFound:
+                LOG.debug('Skipping cleanup for non existent %(type)s %(id)s.',
+                          {'type': clean.resource_type,
+                           'id': clean.resource_id})
+            else:
+                # Resource status should match
+                if vo.status != clean.status:
+                    LOG.debug('Skipping cleanup for mismatching work on '
+                              '%(type)s %(id)s: %(exp_sts)s <> %(found_sts)s.',
+                              {'type': clean.resource_type,
+                               'id': clean.resource_id,
+                               'exp_sts': clean.status,
+                               'found_sts': vo.status})
+                else:
+                    LOG.info(_LI('Cleaning %(type)s with id %(id)s and status '
+                                 '%(status)s'),
+                             {'type': clean.resource_type,
+                              'id': clean.resource_id,
+                              'status': clean.status},
+                             resource=vo)
+                    try:
+                        # Some cleanup jobs are performed asynchronously, so
+                        # we don't delete the worker entry, they'll take care
+                        # of it
+                        keep_entry = self._do_cleanup(context, vo)
+                    except Exception:
+                        LOG.exception(_LE('Could not perform cleanup.'))
+                        # Return the worker DB entry to the original service
+                        db.worker_update(context, clean.id,
+                                         service_id=original_service_id,
+                                         updated_at=original_time)
+                        continue
+
+            # The resource either didn't exist or was properly cleaned, either
+            # way we can remove the entry from the worker table if the cleanup
+            # method doesn't want to keep the entry (for example for delayed
+            # deletion).
+            if not keep_entry and not db.worker_destroy(context, id=clean.id):
+                LOG.warning(_LW('Could not remove worker entry %s.'), clean.id)
+
+        LOG.info(_LI('Service %s cleanup completed.'),
+                 cleanup_request.service_id)
+
+    def _do_cleanup(self, ctxt, vo_resource):
+        return False
+
+    def init_host(self, service_id, **kwargs):
+        ctxt = context.get_admin_context()
+        self.service_id = service_id
+        # TODO(geguileo): Once we don't support MySQL 5.5 anymore we can remove
+        # call to workers_init.
+        db.workers_init()
+        cleanup_request = objects.CleanupRequest(service_id=service_id)
+        self.do_cleanup(ctxt, cleanup_request)

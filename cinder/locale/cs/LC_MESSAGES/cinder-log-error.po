@@ -6,11 +6,12 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2014
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 02:55+0000\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev178\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-10-06 03:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -70,6 +71,9 @@ msgstr "%s"
 msgid "'%(value)s' is an invalid value for extra spec '%(key)s'"
 msgstr "'%(value)s' je neplatná hodnota pro dodatečnou specifikaci '%(key)s'"
 
+msgid "A valid secondary target MUST be specified in order to failover."
+msgstr "Pro zavedení záložního systému MUSÍ být zadán platný druhotní cíl."
+
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
@@ -97,10 +101,6 @@ msgstr ""
 #, python-format
 msgid "Array Serial Number must be in the file %(fileName)s."
 msgstr "Sériové číslo pole musí být v souboru %(fileName)s."
-
-#, python-format
-msgid "Array mismatch %(myid)s vs %(arid)s"
-msgstr "Neshoda pole: %(myid)s proti %(arid)s"
 
 #, python-format
 msgid "Array query failed - No response (%d)!"
@@ -174,23 +174,11 @@ msgid "Call to json.loads() raised an exception: %s."
 msgstr "Volání json.loads() vyvolalo výjimku: %s."
 
 #, python-format
-msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
-msgstr "Nelze přidat lun %(lun)s do skupiny jednotnosti %(cg_name)s."
-
-#, python-format
 msgid "Can not discovery in %(target_ip)s with %(target_iqn)s."
 msgstr "Nelze zjišťovat v %(target_ip)s pomocí %(target_iqn)s."
 
 msgid "Can not open the recent url, login again."
 msgstr "Nelze otevřít nedávnou adresu url, probíhá znovu přihlašování."
-
-#, python-format
-msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "Nelze umístit nové LUN %(luns)s do skupiny jednotnosti %(cg_name)s."
-
-#, python-format
-msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "Nelze odebrat lun %(luns)s ze skupiny jednotnosti %(cg_name)s."
 
 #, python-format
 msgid "Can't find volume to map %(key)s, %(msg)s"
@@ -275,10 +263,6 @@ msgid "Clone %s not in prepared state!"
 msgstr "Klon %s není v stavu připraveno!"
 
 #, python-format
-msgid "Clone Volume:%(volume)s failed from source volume:%(src_vref)s"
-msgstr "Klonování svazku %(volume)s ze zdrojového svazku %(src_vref)s selhalo."
-
-#, python-format
 msgid ""
 "Clone volume \"%s\" already exists. Please check the results of \"dog vdi "
 "list\"."
@@ -355,10 +339,6 @@ msgid "Connection to %s failed and no secondary!"
 msgstr "Připojení k %s selhalo a žádné druhotné připojení není nastaveno!"
 
 #, python-format
-msgid "Consistency group %s: create failed"
-msgstr "Skupina jednotnosti %s: Vytvoření selhalo"
-
-#, python-format
 msgid "Controller GET failed (%d)"
 msgstr "Získání kontroléru selhalo (%d)!"
 
@@ -395,22 +375,6 @@ msgid "Could not delete the image volume %(id)s."
 msgstr "Nelze smazat svazek obrazu %(id)s."
 
 #, python-format
-msgid ""
-"Could not do delete of snapshot %s on filer, falling back to exec of \"rm\" "
-"command."
-msgstr ""
-"Nelze smazat snímek %s ve správci souborů, smazání bude provedeno spuštěním "
-"příkazu \"rm\"."
-
-#, python-format
-msgid ""
-"Could not do delete of volume %s on filer, falling back to exec of \"rm\" "
-"command."
-msgstr ""
-"Nelze smazat svazek %s ve správci souborů, smazání bude provedeno spuštěním "
-"příkazu \"rm\"."
-
-#, python-format
 msgid "Could not find a host for consistency group %(group_id)s."
 msgstr "Nelze najít hostitele pro skupinu jednotnosti %(group_id)s."
 
@@ -444,20 +408,12 @@ msgid "Could not validate device %s"
 msgstr "Nelze ověřit zařízení %s"
 
 #, python-format
-msgid "Create cg snapshot %s failed."
-msgstr "Vytvoření snímku skupiny jednotnosti %s selhalo."
-
-#, python-format
 msgid ""
 "Create clone_image_volume: %(volume_id)sfor image %(image_id)s, failed "
 "(Exception: %(except)s)"
 msgstr ""
 "Vytvoření klonu svazku obrazu: %(volume_id)s pro obraz %(image_id)s selhalo "
 "(Výjimka: %(except)s)"
-
-#, python-format
-msgid "Create consistency group %s failed."
-msgstr "Vytvoření skupiny jednotnosti %s selhalo."
 
 #, python-format
 msgid ""
@@ -517,10 +473,6 @@ msgstr ""
 msgid "DB error:"
 msgstr "Chyba databáze:"
 
-#, python-format
-msgid "DBError detected when purging from table=%(table)s"
-msgstr "Při čištění tabulky %(table)s byla zjištěna chyba databáze"
-
 msgid "DBError encountered: "
 msgstr "Zjištěna chyba databáze:"
 
@@ -532,14 +484,6 @@ msgid ""
 msgstr ""
 "Výchozí typ svazku nenalezen. Prosím zkontrolujte nastavení "
 "default_volume_type:"
-
-#, python-format
-msgid "Delete cgsnapshot %s failed."
-msgstr "Smazání snímku skupiny jednotnosti %s selhalo."
-
-#, python-format
-msgid "Delete consistency group %s failed."
-msgstr "Smazání skupiny jednotnosti %s selhalo."
 
 msgid "Delete consistency group failed to update usages."
 msgstr "Nelze aktualizovat využití při mazání skupin jednotnosti."
@@ -644,13 +588,6 @@ msgstr ""
 msgid "Error activating LV"
 msgstr "Chyba při aktivaci logického svazku"
 
-msgid "Error adding HBA to server"
-msgstr "Chyba při přidávání HBA k serveru"
-
-#, python-format
-msgid "Error attaching volume %s"
-msgstr "Chyba při připojování svazku %s"
-
 #, python-format
 msgid "Error cleaning up failed volume creation.  Msg - %s."
 msgstr "Chyba při čištění selhaného vytváření svazku. Zpráva - %s"
@@ -668,12 +605,6 @@ msgstr ""
 "Chyba při kontaktování serveru glance '%(netloc)s' pro '%(method)s', "
 "%(extra)s."
 
-msgid "Error copying key."
-msgstr "Chyba při kopírování klíče."
-
-msgid "Error creating Barbican client."
-msgstr "Chyba při vytváření klienta Barbican."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "Chyba při vytváření pravidla QOS %s"
@@ -690,9 +621,6 @@ msgstr "Chyba při vytváření záznamu chap."
 msgid "Error creating cloned volume"
 msgstr "Chyba při vytváření klonovaného svazku"
 
-msgid "Error creating key."
-msgstr "Chyba při vytváření klíče."
-
 msgid "Error creating snapshot"
 msgstr "Chyba při vytváření snímku"
 
@@ -706,14 +634,8 @@ msgstr "Chyba při vytváření svazku. Zpráva - %s."
 msgid "Error deactivating LV"
 msgstr "Chyba při deaktivaci logického svazku"
 
-msgid "Error deleting key."
-msgstr "Chyba při mazání klíče."
-
 msgid "Error deleting snapshot"
 msgstr "Chyba při mazání snímku"
-
-msgid "Error deleting volume"
-msgstr "Chyba při mazání svazku"
 
 #, python-format
 msgid "Error detaching snapshot %(snapshot)s, due to remove export failure."
@@ -783,31 +705,14 @@ msgstr "Chyba při získávání pole, zásobu, SLO a vytížení."
 msgid "Error getting chap record."
 msgstr "Chyba při získávání záznamu chap."
 
-#, python-format
-msgid "Error getting iSCSI target info from EVS %(evs)s."
-msgstr "Chyba při získávání informací o cíli iSCSI z EVS %(evs)s."
-
-msgid "Error getting key."
-msgstr "Chyba při získávání klíče."
-
 msgid "Error getting name server info."
 msgstr "Při získávání informací o jmenném serveru nastala chyba."
-
-msgid "Error getting secret data."
-msgstr "Chyba při získávání tajných dat."
-
-msgid "Error getting secret metadata."
-msgstr "Chyba při získávání tajných popisných dat."
 
 msgid "Error getting show fcns database info."
 msgstr "Při získávání informací o zobrazení databáze fcns nastala chyba."
 
 msgid "Error getting target pool name and array."
 msgstr "Chyba při získávání názvu cílového pole a zásoby."
-
-#, python-format
-msgid "Error happened during storage pool querying, %s."
-msgstr "Při dotazu na zásobu úložiště se stala chyba, %s."
 
 #, python-format
 msgid "Error in copying volume: %s"
@@ -946,17 +851,6 @@ msgstr "Při vytváření dočasné zálohy nastala chyba."
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr "Při vytváření svazku nastala chyba: %(id)s z obrazu %(image_id)s."
 
-msgid "Error occurred while selecting datastore."
-msgstr "Při zvolení datového úložiště nastala chyba."
-
-#, python-format
-msgid "Error on adding lun to consistency group. %s"
-msgstr "Chyba při přidávání lun do skupiny jednotnosti. %s"
-
-#, python-format
-msgid "Error on enable compression on lun %s."
-msgstr "Chyba při povolení komprimace v lun %s."
-
 #, python-format
 msgid ""
 "Error on execute %(command)s. Error code: %(exit_code)d Error msg: %(result)s"
@@ -1028,9 +922,6 @@ msgstr "Chyba při nastavování zásady mezipaměti Flash na %s - došlo k výj
 
 msgid "Error starting coordination backend."
 msgstr "Chyba při spouštění podpůrné vrstvy pro koordinaci."
-
-msgid "Error storing key."
-msgstr "Chyba při ukládání klíče."
 
 #, python-format
 msgid "Error unmapping volume: %s"
@@ -1150,12 +1041,6 @@ msgstr "Shromažďování informací databáze fcns pro fabric %s selhalo"
 #, python-format
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Shromáždění informací o jmenném serveru z fabric %s selhalo"
-
-msgid "Failed collecting nscamshow"
-msgstr "Shromažďování nscamshow selhalo"
-
-msgid "Failed collecting nsshow info for fabric"
-msgstr "Shromáždění informací nsshow pro fabric selhalo"
 
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
@@ -1335,10 +1220,6 @@ msgstr ""
 #, python-format
 msgid "Failed to commit reservations %s"
 msgstr "Nelze odevzdat rezervace %s"
-
-#, python-format
-msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
-msgstr "Nelze se připojit k daemonu sheep. Adresa: %(addr)s, port: %(port)s"
 
 #, python-format
 msgid "Failed to copy %(src)s to %(dest)s."
@@ -1550,10 +1431,6 @@ msgstr "Nelze rozšířit svazek %(name)s z %(current_size)sGB na %(new_size)sGB
 msgid "Failed to find %(s)s.  Result %(r)s"
 msgstr "Nelze najít %(s)s. Výsledek %(r)s"
 
-#, python-format
-msgid "Failed to find available iSCSI targets for %s."
-msgstr "Nelze získat dostupné cíle iSCSI pro %s."
-
 msgid "Failed to get IQN!"
 msgstr "Nelze získat IQN!"
 
@@ -1659,16 +1536,6 @@ msgid "Failed to issue mmlsfs command, error: %s."
 msgstr "Nelze zadat příkaz mmlsfs, chyba: %s."
 
 #, python-format
-msgid "Failed to load %s"
-msgstr "Nelze načíst %s"
-
-msgid "Failed to load conder-volume"
-msgstr "Nelze načíst svazek conder"
-
-msgid "Failed to load osapi_volume"
-msgstr "Nelze načíst svazek osapi"
-
-#, python-format
 msgid "Failed to open iet session list for %s"
 msgstr "Nelze otevřít seznam sezení iet pro %s"
 
@@ -1679,9 +1546,6 @@ msgstr "Nelze otevřít svazek z %(path)s."
 #, python-format
 msgid "Failed to present volume %(name)s (%(status)d)!"
 msgstr "Nelze darovat svazek %(name)s (%(status)d)!"
-
-msgid "Failed to query migration status of LUN."
-msgstr "Dotaz na stav přesunu LUN selhal."
 
 msgid "Failed to re-export volume, setting to ERROR."
 msgstr "Nelze znovu exportovat svazek, je nastavován na ERROR."
@@ -1847,14 +1711,6 @@ msgstr ""
 "snímku %(snapshot_id)s."
 
 #, python-format
-msgid ""
-"Failed to update initiator data for initiator %(initiator)s and backend "
-"%(backend)s"
-msgstr ""
-"Nelze aktualizovat data zavedení ovladače pro zavaděč %(initiator)s a "
-"podpůrnou vrstvu %(backend)s"
-
-#, python-format
 msgid "Failed to update quota donating volume transfer id %s"
 msgstr "Nelze aktualizovat id přenosu svazku dodávajícího kvótu %s."
 
@@ -1900,10 +1756,6 @@ msgstr "Nelze zapisovat do/etc/scst.conf."
 #, python-format
 msgid "Failed to write persistence file: %(path)s."
 msgstr "Nelze zapsat soubor přetrvání: %(path)s."
-
-#, python-format
-msgid "Failed updating %(object_type)s %(object_id)s with %(update)s"
-msgstr "Nelze aktualizovat %(object_type)s %(object_id)s pomocí %(update)s"
 
 #, python-format
 msgid ""
@@ -2020,13 +1872,6 @@ msgstr "Chyba při získávání přesunu LUN."
 msgid "Get method error."
 msgstr "Chyba získávání metody."
 
-msgid "Get replication status for volume failed."
-msgstr "Získání stavu replikace svazku selhalo."
-
-#, python-format
-msgid "HDP not found: %s"
-msgstr "HDP nenalezeno: %s"
-
 #, python-format
 msgid "Host PUT failed (%s)."
 msgstr "PUT hostitele selhal (%s)."
@@ -2064,10 +1909,6 @@ msgstr "Neplatné předání seznamu zpětného načtení: %s"
 #, python-format
 msgid "Invalid hostname %(host)s"
 msgstr "Neplatný název hostitele %(host)s"
-
-#, python-format
-msgid "Invalid value for %(key)s, value is %(value)s."
-msgstr "Neplatná hodnota pro %(key)s, hodnota je %(value)s."
 
 msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
@@ -2115,7 +1956,7 @@ msgstr "Lun %s má na sobě závislé snímky, smazání lun přeskočeno."
 
 #, python-format
 msgid "Lun create for %s failed!"
-msgstr "Vytvoření Lun pro %s selhalo!"
+msgstr "Vytvoření LUN pro %s selhalo!"
 
 #, python-format
 msgid "Lun create snapshot for volume %(vol)s snapshot %(snap)s failed!"
@@ -2124,10 +1965,6 @@ msgstr "Vytvoření snímku Lun pro svazek %(vol)s a snímek %(snap)s selhalo!"
 #, python-format
 msgid "Lun delete for %s failed!"
 msgstr "Smazání Lun pro %s selhalo!"
-
-#, python-format
-msgid "Lun delete snapshot for volume %(vol)s snapshot %(snap)s failed!"
-msgstr "Smazání snímku Lun pro svazek %(vol)s a snímek %(snap)s selhalo!"
 
 msgid "Lun mapping returned null!"
 msgstr "Mapování Lun vrátilo prázdný obsah!"
@@ -2163,10 +2000,6 @@ msgstr ""
 msgid "Message: %s"
 msgstr "Zpráva: %s"
 
-#, python-format
-msgid "Migration of LUN %s failed to complete."
-msgstr "Přesun LUN %s nelze dokončit."
-
 msgid "Model update failed."
 msgstr "Aktualizace modelu selhala."
 
@@ -2185,10 +2018,6 @@ msgstr "Selhání připojení pro %(share)s."
 #, python-format
 msgid "Multiple replay profiles under name %s"
 msgstr "Nalezeno mnoho profilů rychlého načtení s názvem %s."
-
-#, python-format
-msgid "NFS share %(share)s has no service entry: %(svc)s -> %(hdp)s"
-msgstr "Sdílení NFS %(share)s nemá žádnou položku o službě: %(svc)s -> %(hdp)s"
 
 msgid "No CLI output for firmware version check"
 msgstr ""
@@ -2212,17 +2041,6 @@ msgid ""
 msgstr ""
 "Není vyžadována žádná činnost. Svazek: %(volumeName)s již je součástí "
 "kombinace slo/vytížení: %(targetCombination)s."
-
-#, python-format
-msgid "No configuration found for service: %s"
-msgstr "Pro službu nebylo nalezeno žádné nastavení: %s"
-
-#, python-format
-msgid "No configuration found for service: %s."
-msgstr "Pro službu nebylo nalezeno žádné nastavení: %s."
-
-msgid "No more targets avaliable."
-msgstr "Žádné cíle nejsou dostupné."
 
 #, python-format
 msgid ""
@@ -2308,9 +2126,6 @@ msgstr ""
 #, python-format
 msgid "Problem cleaning up backup %(bkup)s."
 msgstr "Při čištění zálohy %(bkup)s se vyskytl problém."
-
-msgid "Promote volume replica failed."
-msgstr "Povýšení repliky svazku selhalo."
 
 #, python-format
 msgid ""
@@ -2492,17 +2307,9 @@ msgstr "Profil úložiště %s nebyl nalezen."
 msgid "Storage profile: %s cannot be found in vCenter."
 msgstr "Profil úložiště: %s nenalezen ve vCenter."
 
-msgid "Sync volume replica failed."
-msgstr "Synchronizace repliky svazku selhala."
-
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."
 msgstr "TSM [%s] nenalezeno v úložišti CloudByte."
-
-#, python-format
-msgid "Target end points do not exist for hardware Id: %(hardwareIdInstance)s."
-msgstr ""
-"Cílové koncové body neexistují u hardwaru s id: %(hardwareIdInstance)s."
 
 msgid "The Flexvisor service is unavailable."
 msgstr "Služba Flexvisor je nedostupná."
@@ -2521,12 +2328,6 @@ msgstr "Konektor neobsahuje požadované informace: zavaděč chybí"
 msgid ""
 "The connector does not contain the required information: wwpns is missing"
 msgstr "Konektor neobsahuje požadované informace: wwpns chybí"
-
-msgid "The given extra_spec or valid_values is None."
-msgstr "Zadané dodatečné specifikace, nebo platné hodnoty jsou None."
-
-msgid "The list of iscsi_ip_addresses is empty"
-msgstr "Seznam ip adres iscsi je prázdný."
 
 msgid "The snapshot cannot be deleted because it is a clone point."
 msgstr "Snímek nemůže být smazán protože je to bod klonování."
@@ -2568,14 +2369,6 @@ msgstr "Žádné platné datové úložiště splňující požadavky: %s."
 
 msgid "There must be at least one valid replication device configured."
 msgstr "Musí být zadáno alespoň jedno platné replikační zařízení."
-
-#, python-format
-msgid "There was an error deleting snapshot %(id)s: %(error)."
-msgstr "Při mazání snímku %(id)s nastala chyba: %(error)."
-
-#, python-format
-msgid "There was an error deleting volume %(id)s: %(error)."
-msgstr "Při mazání svazku %(id)s nastala chyba: %(error)."
 
 msgid "This usually means the volume was never successfully created."
 msgstr "To většinou znamená, že svazek nikdy nebyl úspěšně vytvořen."
@@ -2633,20 +2426,9 @@ msgstr ""
 msgid "Unable to determine whether %(volumeName)s is composite or not."
 msgstr "Nelze zjistit zda %(volumeName)s je složený nebo ne."
 
-msgid "Unable to find FC initiators"
-msgstr "Nelze najít zavaděče FC"
-
 #, python-format
 msgid "Unable to find VG: %s"
 msgstr "Nelze najít skupinu svazku: %s"
-
-#, python-format
-msgid "Unable to find controller port iscsi configuration: %s"
-msgstr "Nelze najít port kontroléru pro nastavení iscsi: %s"
-
-#, python-format
-msgid "Unable to find controller port: %s"
-msgstr "Nelze najít port kontroléru: %s"
 
 #, python-format
 msgid ""
@@ -2715,10 +2497,6 @@ msgstr "Nelze získat instanci zásoby %(poolName)s v poli %(array)s."
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s."
 msgstr "Nelze ukončit připojení ke svazku: %(err)s."
-
-#, python-format
-msgid "Unable to unmap Volume %s"
-msgstr "Nelze zrušit mapování svazku %s"
 
 msgid "Unexpected build error:"
 msgstr "Neočekávaná chyba při sestavování:"
@@ -2941,9 +2719,6 @@ msgstr ""
 msgid "Volume already exists. %s"
 msgstr "Svazek již existuje. %s"
 
-msgid "Volume appears unmapped"
-msgstr "Svazek se nezdá být mapován"
-
 msgid "Volume did not exist. It will not be deleted"
 msgstr "Svazek neexistuje. Nebude smazán"
 
@@ -3071,9 +2846,6 @@ msgstr ""
 "smazání: %(vol_id)s selhalo, standardní výstup: %(out)s.\n"
 "chybový výstup: %(err)s."
 
-msgid "delete_vol: provider location empty."
-msgstr "Smazání svazku: Umístění poskytovatele je prázdné."
-
 #, python-format
 msgid "ensure_export: Volume %s not found on storage."
 msgstr "Zajištění exportu: Svazek %s nebyl nalezen v úložišti."
@@ -3087,10 +2859,6 @@ msgstr "Při obnově statistik svazku došlo k chybě"
 
 msgid "horcm command timeout."
 msgstr "Příkazu horcm vypršel časový limit."
-
-#, python-format
-msgid "iSCSI portal not found for service: %s"
-msgstr "Nenalezen žádný portál iSCSI pro službu: %s"
 
 #, python-format
 msgid ""

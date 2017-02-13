@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,19 +15,27 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_iscsi
 from cinder.volume.drivers.lenovo import lenovo_common
 
 
+@interface.volumedriver
 class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
     """OpenStack iSCSI cinder drivers for Lenovo Storage arrays.
 
     Version history:
         1.0    - Inheriting from DotHill cinder drivers.
-
+        1.6    - Add management path redundancy and reduce load placed
+                 on management controller.
     """
 
-    VERSION = "1.0"
+    VERSION = "1.6"
+
+    SUPPORTED = True
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Lenovo_Storage_CI"
 
     def __init__(self, *args, **kwargs):
         super(LenovoISCSIDriver, self).__init__(*args, **kwargs)

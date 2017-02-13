@@ -58,7 +58,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
         self.zapi_client.features.SYSTEM_METRICS = True
         mock_get_base_counter_name = self.mock_object(
             self.perf_library, '_get_base_counter_name',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            side_effect=netapp_api.NaApiError)
 
         self.perf_library._init_counter_info()
 
@@ -74,7 +74,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
         self.zapi_client.features.SYSTEM_METRICS = True
         mock_get_base_counter_name = self.mock_object(
             self.perf_library, '_get_base_counter_name',
-            mock.Mock(return_value='cpu_elapsed_time1'))
+            return_value='cpu_elapsed_time1')
 
         self.perf_library._init_counter_info()
 
@@ -91,10 +91,10 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(return_value=21))
+            return_value=21)
         mock_get_node_utilization = self.mock_object(
             self.perf_library, '_get_node_utilization',
-            mock.Mock(return_value=25))
+            return_value=25)
 
         self.perf_library.update_performance_cache()
 
@@ -108,10 +108,9 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(return_value=11))
+            return_value=11)
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(return_value=25))
+            self.perf_library, '_get_node_utilization', return_value=25)
 
         self.perf_library.update_performance_cache()
 
@@ -126,10 +125,9 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
-            mock.Mock(return_value=None))
+            return_value=None)
         mock_get_node_utilization = self.mock_object(
-            self.perf_library, '_get_node_utilization',
-            mock.Mock(return_value=25))
+            self.perf_library, '_get_node_utilization', return_value=25)
 
         self.perf_library.update_performance_cache()
 
@@ -164,13 +162,13 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_node_utilization_system_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_system_counters',
-            mock.Mock(return_value=['A', 'B', 'C']))
+            return_value=['A', 'B', 'C'])
         mock_get_node_utilization_wafl_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_wafl_counters',
-            mock.Mock(return_value=['D', 'E', 'F']))
+            return_value=['D', 'E', 'F'])
         mock_get_node_utilization_processor_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_processor_counters',
-            mock.Mock(return_value=['G', 'H', 'I']))
+            return_value=['G', 'H', 'I'])
 
         result = self.perf_library._get_node_utilization_counters()
 
@@ -185,7 +183,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         self.mock_object(self.perf_library,
                          '_get_node_utilization_system_counters',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
+                         side_effect=netapp_api.NaApiError)
 
         result = self.perf_library._get_node_utilization_counters()
 
@@ -195,10 +193,10 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_names = self.mock_object(
             self.zapi_client, 'get_performance_instance_names',
-            mock.Mock(return_value=fake.SYSTEM_INSTANCE_NAMES))
+            return_value=fake.SYSTEM_INSTANCE_NAMES)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.SYSTEM_COUNTERS))
+            return_value=fake.SYSTEM_COUNTERS)
 
         result = self.perf_library._get_node_utilization_system_counters()
 
@@ -213,13 +211,13 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_names = self.mock_object(
             self.zapi_client, 'get_performance_instance_names',
-            mock.Mock(return_value=fake.WAFL_INSTANCE_NAMES))
+            return_value=fake.WAFL_INSTANCE_NAMES)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.WAFL_COUNTERS))
+            return_value=fake.WAFL_COUNTERS)
         mock_get_performance_counter_info = self.mock_object(
             self.zapi_client, 'get_performance_counter_info',
-            mock.Mock(return_value=fake.WAFL_CP_PHASE_TIMES_COUNTER_INFO))
+            return_value=fake.WAFL_CP_PHASE_TIMES_COUNTER_INFO)
 
         result = self.perf_library._get_node_utilization_wafl_counters()
 
@@ -236,13 +234,13 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         mock_get_performance_instance_names = self.mock_object(
             self.zapi_client, 'get_performance_instance_names',
-            mock.Mock(return_value=fake.PROCESSOR_INSTANCE_NAMES))
+            return_value=fake.PROCESSOR_INSTANCE_NAMES)
         mock_get_performance_counters = self.mock_object(
             self.zapi_client, 'get_performance_counters',
-            mock.Mock(return_value=fake.PROCESSOR_COUNTERS))
+            return_value=fake.PROCESSOR_COUNTERS)
         self.mock_object(
             self.zapi_client, 'get_performance_counter_info',
-            mock.Mock(return_value=fake.PROCESSOR_DOMAIN_BUSY_COUNTER_INFO))
+            return_value=fake.PROCESSOR_DOMAIN_BUSY_COUNTER_INFO)
 
         result = self.perf_library._get_node_utilization_processor_counters()
 

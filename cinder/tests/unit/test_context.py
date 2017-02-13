@@ -58,13 +58,13 @@ class ContextTestCase(test.TestCase):
 
     def test_request_context_elevated(self):
         user_context = context.RequestContext(
-            'fake_user', 'fake_project', admin=False)
+            'fake_user', 'fake_project', is_admin=False)
         self.assertFalse(user_context.is_admin)
         admin_context = user_context.elevated()
         self.assertFalse(user_context.is_admin)
         self.assertTrue(admin_context.is_admin)
-        self.assertFalse('admin' in user_context.roles)
-        self.assertTrue('admin' in admin_context.roles)
+        self.assertNotIn('admin', user_context.roles)
+        self.assertIn('admin', admin_context.roles)
 
     def test_service_catalog_nova_and_swift(self):
         service_catalog = [
@@ -134,3 +134,15 @@ class ContextTestCase(test.TestCase):
         mock_conf.cinder_internal_tenant_user_id = user_id
         ctx = context.get_internal_tenant_context()
         self.assertIsNone(ctx)
+
+    def test_request_context_no_roles(self):
+        ctxt = context.RequestContext('111',
+                                      '222')
+        self.assertEqual([], ctxt.roles)
+
+    def test_request_context_with_roles(self):
+        roles = ['alpha', 'beta']
+        ctxt = context.RequestContext('111',
+                                      '222',
+                                      roles=roles)
+        self.assertEqual(roles, ctxt.roles)

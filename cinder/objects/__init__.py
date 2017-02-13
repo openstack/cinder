@@ -25,10 +25,19 @@ def register_all():
     # function in order for it to be registered by services that may
     # need to receive it via RPC.
     __import__('cinder.objects.backup')
+    # NOTE(geguileo): Don't include cleanable to prevent circular imports
+    __import__('cinder.objects.cleanup_request')
     __import__('cinder.objects.cgsnapshot')
+    __import__('cinder.objects.cluster')
     __import__('cinder.objects.consistencygroup')
+    __import__('cinder.objects.qos_specs')
+    __import__('cinder.objects.request_spec')
     __import__('cinder.objects.service')
     __import__('cinder.objects.snapshot')
     __import__('cinder.objects.volume')
     __import__('cinder.objects.volume_attachment')
     __import__('cinder.objects.volume_type')
+    __import__('cinder.objects.group_type')
+    __import__('cinder.objects.group')
+    __import__('cinder.objects.group_snapshot')
+    __import__('cinder.objects.manageableresources')

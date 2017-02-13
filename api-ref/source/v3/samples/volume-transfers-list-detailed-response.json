@@ -1,0 +1,36 @@
+{
+    "transfers": [
+        {
+            "id": "cac5c677-73a9-4288-bb9c-b2ebfb547377",
+            "created_at": "2015-02-25T03:56:53.081642",
+            "name": "first volume transfer",
+            "volume_id": "894623a6-e901-4312-aa06-4275e6321cce",
+            "links": [
+                {
+                    "href": "http://localhost/v3/firstproject/volumes/1",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://localhost/firstproject/volumes/1",
+                    "rel": "bookmark"
+                }
+            ]
+        },
+        {
+            "id": "f26c0dee-d20d-4e80-8dee-a8d91b9742a1",
+            "created_at": "2015-03-25T03:56:53.081642",
+            "name": "second volume transfer",
+            "volume_id": "673db275-379f-41af-8371-e1652132b4c1",
+            "links": [
+                {
+                    "href": "http://localhost/v3/firstproject/volumes/2",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://localhost/firstproject/volumes/2",
+                    "rel": "bookmark"
+                }
+            ]
+        }
+    ]
+}

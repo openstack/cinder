@@ -1,0 +1,6 @@
+{
+    "os-attach": {
+        "instance_uuid": "95D9EF50-507D-11E5-B970-0800200C9A66",
+        "mountpoint": "/dev/vdc"
+    }
+}

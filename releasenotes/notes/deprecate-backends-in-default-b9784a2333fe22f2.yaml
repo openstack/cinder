@@ -1,0 +1,10 @@
+---
+upgrade:
+  - Any Volume Drivers configured in the ``DEFAULT`` config stanza should be moved
+    to their own stanza and enabled via the ``enabled_backends`` config option.
+    The older style of config with ``DEFAULT`` is deprecated and will be
+    removed in future releases.
+deprecations:
+  - Configuring Volume Drivers in the ``DEFAULT`` config stanza is not going to be
+    maintained and will be removed in the next release. All backends should use
+    the ``enabled_backends`` config option with separate stanza's for each.

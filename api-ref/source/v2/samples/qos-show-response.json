@@ -1,0 +1,21 @@
+{
+    "qos_specs": {
+        "specs": {
+            "availability": "100",
+            "numberOfFailures": "0"
+        },
+        "consumer": "back-end",
+        "name": "reliability-spec",
+        "id": "0388d6c6-d5d4-42a3-b289-95205c50dd15"
+    },
+    "links": [
+        {
+            "href": "http://23.253.228.211:8776/v2/e1cf63117ae74309a5bcc2002a23be8b/qos_specs/0388d6c6-d5d4-42a3-b289-95205c50dd15",
+            "rel": "self"
+        },
+        {
+            "href": "http://23.253.228.211:8776/e1cf63117ae74309a5bcc2002a23be8b/qos_specs/0388d6c6-d5d4-42a3-b289-95205c50dd15",
+            "rel": "bookmark"
+        }
+    ]
+}

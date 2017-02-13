@@ -64,7 +64,9 @@ def enforce(context, action, target):
     """
     init()
 
-    return _ENFORCER.enforce(action, target, context.to_dict(),
+    return _ENFORCER.enforce(action,
+                             target,
+                             context.to_policy_values(),
                              do_raise=True,
                              exc=exception.PolicyNotAuthorized,
                              action=action)
@@ -73,21 +75,16 @@ def enforce(context, action, target):
 def check_is_admin(roles, context=None):
     """Whether or not user is admin according to policy setting.
 
-       Can use roles or user_id from context to determine if user is admin.
-       In a multi-domain configuration, roles alone may not be sufficient.
     """
     init()
 
     # include project_id on target to avoid KeyError if context_is_admin
     # policy definition is missing, and default admin_or_owner rule
-    # attempts to apply.  Since our credentials dict does not include a
-    # project_id, this target can never match as a generic rule.
+    # attempts to apply.
     target = {'project_id': ''}
     if context is None:
         credentials = {'roles': roles}
     else:
-        credentials = {'roles': context.roles,
-                       'user_id': context.user_id
-                       }
+        credentials = context.to_dict()
 
     return _ENFORCER.enforce('context_is_admin', target, credentials)

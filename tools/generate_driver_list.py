@@ -14,38 +14,136 @@
 
 """Generate list of cinder drivers"""
 
-import importlib
-import inspect
-import pkgutil
-import pprint
+import argparse
+import os
+import json
 
-from cinder.volume import drivers
-from cinder.volume import driver
-
-package = drivers
+from cinder.interface import util
+from cinder import objects
 
 
-def get_driver_list():
-    dr_list = []
-    for _loader, modname, _ispkg in pkgutil.walk_packages(
-            path=package.__path__,
-            prefix=package.__name__ + '.',
-            onerror=lambda x: None):
-        try:
-            mod = importlib.import_module(modname)
-            list_classes = inspect.getmembers(mod, inspect.isclass)
-            dr_list += [
-                modname + '.' + dr_name for dr_name, dr in list_classes
-                if driver.BaseVD in inspect.getmro(dr)]
-        except ImportError:
-            print("%s module ignored!!" % modname)
-    return dr_list
+# Object loading can cause issues loading drivers, force it up front
+objects.register_all()
+
+
+parser = argparse.ArgumentParser(prog="generate_driver_list")
+
+parser.add_argument("--format", default='str', choices=['str', 'dict'],
+                    help="Output format type")
+
+# Keep backwards compatibilty with the gate-docs test
+# The tests pass ['docs'] on the cmdln, but it's never been used.
+parser.add_argument("output_list", default=None, nargs='?')
+
+CI_WIKI_ROOT = "https://wiki.openstack.org/wiki/ThirdPartySystems/"
+
+
+class Output(object):
+
+    def __init__(self, base_dir, output_list):
+        # At this point we don't care what was passed in, just a trigger
+        # to write this out to the doc tree for now
+        self.driver_file = None
+        if output_list:
+            self.driver_file = open(
+                '%s/doc/source/drivers.rst' % base_dir, 'w+')
+            self.driver_file.write('===================\n')
+            self.driver_file.write('Available Drivers\n')
+            self.driver_file.write('===================\n\n')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.driver_file:
+            self.driver_file.close()
+
+    def write(self, text):
+        if self.driver_file:
+            self.driver_file.write('%s\n' % text)
+        else:
+            print(text)
+
+
+def format_description(desc, output):
+    desc = desc or '<None>'
+    lines = desc.rstrip('\n').split('\n')
+    for line in lines:
+        output.write('    %s' % line)
+
+
+def print_drivers(drivers, config_name, output):
+    for driver in sorted(drivers, key=lambda x: x.class_fqn):
+        driver_name = driver.class_name
+        if not driver.supported:
+            driver_name += " (unsupported)"
+        output.write(driver_name)
+        output.write('-' * len(driver_name))
+        if driver.version:
+            output.write('* Version: %s' % driver.version)
+        output.write('* %s=%s' % (config_name, driver.class_fqn))
+        if driver.ci_wiki_name and 'Cinder_Jenkins' not in driver.ci_wiki_name:
+            output.write('* CI info: %s%s' % (CI_WIKI_ROOT,
+                                              driver.ci_wiki_name))
+        output.write('* Description:')
+        format_description(driver.desc, output)
+        output.write('')
+    output.write('')
+
+
+def output_str(cinder_root, args):
+    with Output(cinder_root, args.output_list) as output:
+        output.write('Volume Drivers')
+        output.write('==============')
+        print_drivers(util.get_volume_drivers(), 'volume_driver', output)
+
+        output.write('Backup Drivers')
+        output.write('==============')
+        print_drivers(util.get_backup_drivers(), 'backup_driver', output)
+
+        output.write('FC Zone Manager Drivers')
+        output.write('=======================')
+        print_drivers(util.get_fczm_drivers(), 'zone_driver', output)
+
+
+def collect_driver_info(driver):
+    """Build the dictionary that describes this driver."""
+
+    info = {'name': driver.class_name,
+            'version': driver.version,
+            'fqn': driver.class_fqn,
+            'description': driver.desc,
+            'ci_wiki_name': driver.ci_wiki_name}
+
+    return info
+
+
+def output_dict():
+    """Output the results as a json dict."""
+
+    driver_list = []
+    drivers = util.get_volume_drivers()
+    for driver in drivers:
+        driver_list.append(collect_driver_info(driver))
+
+    print(json.dumps(driver_list))
 
 
 def main():
-    dr_list = get_driver_list()
-    print("Drivers list:")
-    pprint.pprint(dr_list)
+    tools_dir = os.path.dirname(os.path.abspath(__file__))
+    cinder_root = os.path.dirname(tools_dir)
+    cur_dir = os.getcwd()
+    os.chdir(cinder_root)
+    args = parser.parse_args()
+
+    try:
+        if args.format == 'str':
+            output_str(cinder_root, args)
+        elif args.format == 'dict':
+            output_dict()
+
+    finally:
+        os.chdir(cur_dir)
 
 
 if __name__ == '__main__':

@@ -17,30 +17,21 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import db
 
 authorize = extensions.extension_authorizer('volume',
                                             'volume_encryption_metadata')
 
 
-class VolumeEncryptionMetadataTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.make_flat_dict('encryption', selector='encryption')
-        return xmlutil.MasterTemplate(root, 1)
-
-
 class VolumeEncryptionMetadataController(wsgi.Controller):
     """The volume encryption metadata API extension."""
 
-    @wsgi.serializers(xml=VolumeEncryptionMetadataTemplate)
     def index(self, req, volume_id):
         """Returns the encryption metadata for a given volume."""
         context = req.environ['cinder.context']
         authorize(context)
         return db.volume_encryption_metadata_get(context, volume_id)
 
-    @wsgi.serializers(xml=VolumeEncryptionMetadataTemplate)
     def show(self, req, volume_id, id):
         """Return a single encryption item."""
         encryption_item = self.index(req, volume_id)
@@ -55,8 +46,6 @@ class Volume_encryption_metadata(extensions.ExtensionDescriptor):
 
     name = "VolumeEncryptionMetadata"
     alias = "os-volume-encryption-metadata"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "os-volume-encryption-metadata/api/v1")
     updated = "2013-07-10T00:00:00+00:00"
 
     def get_resources(self):

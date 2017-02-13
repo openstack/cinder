@@ -1,0 +1,7 @@
+---
+upgrade:
+  - The volume_clear option to use `shred` was deprecated
+    in the Newton release and has now been removed. Since
+    deprecation, this option has performed the same action
+    as the `zero` option. Config settings for `shred` should
+    be updated to be set to `zero` for continued operation.

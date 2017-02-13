@@ -15,30 +15,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Weighers that weigh hosts by their capacity, including following two
-weighers:
-
-1. Capacity Weigher.  Weigh hosts by their virtual or actual free capacity.
-
-For thin provisioning, weigh hosts by their virtual free capacity calculated
-by the total capacity multiplied by the max over subscription ratio and
-subtracting the provisioned capacity; Otherwise, weigh hosts by their actual
-free capacity, taking into account the reserved space.
-
-The default is to spread volumes across all hosts evenly.  If you prefer
-stacking, you can set the 'capacity_weight_multiplier' option to a negative
-number and the weighing has the opposite effect of the default.
-
-2. Allocated Capacity Weigher.  Weigh hosts by their allocated capacity.
-
-The default behavior is to place new volume to the host allocated the least
-space.  This weigher is intended to simulate the behavior of SimpleScheduler.
-If you prefer to place volumes to host allocated the most space, you can
-set the 'allocated_capacity_weight_multiplier' option to a positive number
-and the weighing has the opposite effect of the default.
-"""
-
 
 import math
 
@@ -67,6 +43,18 @@ OFFSET_MULT = 100
 
 
 class CapacityWeigher(weights.BaseHostWeigher):
+    """Capacity Weigher weighs hosts by their virtual or actual free capacity.
+
+    For thin provisioning, weigh hosts by their virtual free capacity
+    calculated by the total capacity multiplied by the max over subscription
+    ratio and subtracting the provisioned capacity; Otherwise, weigh hosts by
+    their actual free capacity, taking into account the reserved space.
+
+    The default is to spread volumes across all hosts evenly. If you prefer
+    stacking, you can set the ``capacity_weight_multiplier`` option to a
+    negative number and the weighing has the opposite effect of the default.
+
+    """
     def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.capacity_weight_multiplier
@@ -84,7 +72,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
         largest weight value is being used a weight of -1 is used instead.
         See _weigh_object method.
         """
-        tmp_weights = super(weights.BaseHostWeigher, self).weigh_objects(
+        tmp_weights = super(CapacityWeigher, self).weigh_objects(
             weighed_obj_list, weight_properties)
 
         if math.isinf(self.maxval):
@@ -114,18 +102,39 @@ class CapacityWeigher(weights.BaseHostWeigher):
             # capacity anymore.
             free = -1 if CONF.capacity_weight_multiplier > 0 else float('inf')
         else:
+            # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
+            # we will not use max_over_subscription_ratio and
+            # provisioned_capacity_gb to determine whether a volume can be
+            # provisioned. Instead free capacity will be used to evaluate.
+            thin = True
+            vol_type = weight_properties.get('volume_type', {}) or {}
+            provision_type = vol_type.get('extra_specs', {}).get(
+                'provisioning:type')
+            if provision_type == 'thick':
+                thin = False
+
             free = utils.calculate_virtual_free_capacity(
                 total_space,
                 free_space,
                 host_state.provisioned_capacity_gb,
                 host_state.thin_provisioning_support,
                 host_state.max_over_subscription_ratio,
-                host_state.reserved_percentage)
+                host_state.reserved_percentage,
+                thin)
 
         return free
 
 
 class AllocatedCapacityWeigher(weights.BaseHostWeigher):
+    """Allocated Capacity Weigher weighs hosts by their allocated capacity.
+
+    The default behavior is to place new volume to the host allocated the least
+    space. This weigher is intended to simulate the behavior of
+    SimpleScheduler. If you prefer to place volumes to host allocated the most
+    space, you can set the ``allocated_capacity_weight_multiplier`` option to a
+    positive number and the weighing has the opposite effect of the default.
+    """
+
     def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.allocated_capacity_weight_multiplier

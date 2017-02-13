@@ -21,7 +21,6 @@ from cinder import quota_utils
 from cinder import test
 
 from keystoneclient import exceptions
-from keystonemiddleware import auth_token
 
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -43,11 +42,11 @@ class QuotaUtilsTest(test.TestCase):
 
         self.auth_url = 'http://localhost:5000'
         self.context = context.RequestContext('fake_user', 'fake_proj_id')
-        self.fixture = self.useFixture(config_fixture.Config(auth_token.CONF))
+        self.fixture = self.useFixture(config_fixture.Config(CONF))
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     @mock.patch('keystoneclient.client.Client')
-    @mock.patch('keystoneclient.session.Session')
+    @mock.patch('keystoneauth1.session.Session')
     def test_keystone_client_instantiation(self, ksclient_session,
                                            ksclient_class):
         quota_utils._keystone_client(self.context)
@@ -165,3 +164,89 @@ class QuotaUtilsTest(test.TestCase):
         self.assertRaises(exception.CinderException,
                           quota_utils.validate_setup_for_nested_quota_use,
                           self.context, [], None)
+
+    def _process_reserve_over_quota(self, overs, usages, quotas,
+                                    expected_ex,
+                                    resource='volumes'):
+        ctxt = context.get_admin_context()
+        ctxt.project_id = 'fake'
+        size = 1
+        kwargs = {'overs': overs,
+                  'usages': usages,
+                  'quotas': quotas}
+        exc = exception.OverQuota(**kwargs)
+
+        self.assertRaises(expected_ex,
+                          quota_utils.process_reserve_over_quota,
+                          ctxt, exc,
+                          resource=resource,
+                          size=size)
+
+    def test_volume_size_exceed_quota(self):
+        overs = ['gigabytes']
+        usages = {'gigabytes': {'reserved': 1, 'in_use': 9}}
+        quotas = {'gigabytes': 10, 'snapshots': 10}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.VolumeSizeExceedsAvailableQuota)
+
+    def test_snapshot_limit_exceed_quota(self):
+        overs = ['snapshots']
+        usages = {'snapshots': {'reserved': 1, 'in_use': 9}}
+        quotas = {'gigabytes': 10, 'snapshots': 10}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.SnapshotLimitExceeded,
+            resource='snapshots')
+
+    def test_backup_gigabytes_exceed_quota(self):
+        overs = ['backup_gigabytes']
+        usages = {'backup_gigabytes': {'reserved': 1, 'in_use': 9}}
+        quotas = {'backup_gigabytes': 10}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.VolumeBackupSizeExceedsAvailableQuota,
+            resource='backups')
+
+    def test_backup_limit_quota(self):
+        overs = ['backups']
+        usages = {'backups': {'reserved': 1, 'in_use': 9}}
+        quotas = {'backups': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.BackupLimitExceeded,
+            resource='backups')
+
+    def test_volumes_limit_quota(self):
+        overs = ['volumes']
+        usages = {'volumes': {'reserved': 1, 'in_use': 9}}
+        quotas = {'volumes': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.VolumeLimitExceeded)
+
+    def test_groups_limit_quota(self):
+        overs = ['groups']
+        usages = {'groups': {'reserved': 1, 'in_use': 9}}
+        quotas = {'groups': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.GroupLimitExceeded,
+            resource='groups')
+
+    def test_unknown_quota(self):
+        overs = ['unknown']
+        usages = {'volumes': {'reserved': 1, 'in_use': 9}}
+        quotas = {'volumes': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.UnexpectedOverQuota)
+
+    def test_unknown_quota2(self):
+        overs = ['volumes']
+        usages = {'volumes': {'reserved': 1, 'in_use': 9}}
+        quotas = {'volumes': 9}
+        self._process_reserve_over_quota(
+            overs, usages, quotas,
+            exception.UnexpectedOverQuota,
+            resource='snapshots')

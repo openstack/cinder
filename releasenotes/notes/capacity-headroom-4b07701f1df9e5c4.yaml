@@ -1,0 +1,5 @@
+---
+features:
+  - Cinder is now collecting capacity data, including
+    virtual free capacity etc from the backends. A notification
+    which includes that data is periodically emitted.

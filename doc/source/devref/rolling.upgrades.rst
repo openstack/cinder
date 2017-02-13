@@ -42,7 +42,7 @@ compatibility at the end of the release - we should keep things compatible
 through the whole release.
 
 To achieve compatibility, discipline is required from the developers. There are
-several planes on which incompatibility may occurr:
+several planes on which incompatibility may occur:
 
 * **REST API changes** - these are prohibited by definition and this document
   will not describe the subject. For further information one may use `API
@@ -55,7 +55,7 @@ several planes on which incompatibility may occurr:
   (assuming N has no notion of the column).
 
 * **Database data migrations** - if a migration requires big amount of data to
-  be transfered between columns or tables or converted, it will most likely
+  be transferred between columns or tables or converted, it will most likely
   lock the tables. This may cause services to be unresponsive, causing the
   downtime.
 
@@ -85,7 +85,7 @@ Adding a column
 
 This is the simplest case - we don't have any requirements when adding a new
 column apart from the fact that it should be added as the last one in the
-table. If that's covered, the DB engine will make sure the migraton won't be
+table. If that's covered, the DB engine will make sure the migration won't be
 disruptive.
 
 Dropping a column not referenced in SQLAlchemy code
@@ -127,7 +127,7 @@ create a new column with desired properties and start moving the data (in a
 live manner). In worst case old column can be removed in N+2. Whole procedure
 is described in more details below.
 
-In aforementioned case we need to make more complicated steps streching through
+In aforementioned case we need to make more complicated steps stretching through
 3 releases - always keeping the backwards compatibility. In short when we want
 to start to move data inside the DB, then in N we should:
 
@@ -211,7 +211,7 @@ service::
         cctxt.cast(ctxt, 'create_volume', **msg_args)
 
 As can be seen there's this magic :code:`self.client.can_send_version()` method
-which detects if we're running in a version-heterogenious environment and need
+which detects if we're running in a version-heterogeneous environment and need
 to downgrade the message. Detection is based on dynamic RPC version pinning. In
 general all the services (managers) report supported RPC API version. RPC API
 client gets all the versions from the DB, chooses the lowest one and starts to
@@ -243,7 +243,7 @@ will get updated before clients by stating the recommended order of upgrades
 for that release.
 
 RPC payload changes (oslo.versionedobjects)
-------------------------------------------
+-------------------------------------------
 
 `oslo.versionedobjects
 <http://docs.openstack.org/developer/oslo.versionedobjects>`_ is a library that

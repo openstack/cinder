@@ -45,9 +45,6 @@ class TgtAdm(iscsi.ISCSITarget):
                 </target>
                   """)
 
-    def __init__(self, *args, **kwargs):
-        super(TgtAdm, self).__init__(*args, **kwargs)
-
     def _get_target(self, iqn):
         (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')
@@ -121,6 +118,7 @@ class TgtAdm(iscsi.ISCSITarget):
         LOG.debug("StdOut from tgt-admin --update: %s", out)
         LOG.debug("StdErr from tgt-admin --update: %s", err)
 
+    @utils.retry(exception.NotFound)
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
 
@@ -163,8 +161,8 @@ class TgtAdm(iscsi.ISCSITarget):
         volume_path = os.path.join(volumes_dir, vol_id)
 
         if os.path.exists(volume_path):
-            LOG.warning(_LW('Persistence file already exists for volume, '
-                            'found file at: %s'), volume_path)
+            LOG.debug(('Persistence file already exists for volume, '
+                       'found file at: %s'), volume_path)
         utils.robust_file_write(volumes_dir, vol_id, volume_conf)
         LOG.debug(('Created volume path %(vp)s,\n'
                    'content: %(vc)s'),
@@ -174,7 +172,7 @@ class TgtAdm(iscsi.ISCSITarget):
         old_name = kwargs.get('old_name', None)
         if old_name is not None:
             LOG.debug('Detected old persistence file for volume '
-                      '%{vol}s at %{old_name}s',
+                      '%(vol)s at %(old_name)s',
                       {'vol': vol_id, 'old_name': old_name})
             old_persist_file = os.path.join(volumes_dir, old_name)
 
@@ -218,11 +216,13 @@ class TgtAdm(iscsi.ISCSITarget):
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
-            LOG.error(_LE("Failed to create iscsi target for Volume "
-                          "ID: %(vol_id)s. Please ensure your tgtd config "
-                          "file contains 'include %(volumes_dir)s/*'"), {
-                      'vol_id': vol_id,
-                      'volumes_dir': volumes_dir, })
+            LOG.warning(_LW("Failed to create iscsi target for Volume "
+                            "ID: %(vol_id)s. It could be caused by problem "
+                            "with concurrency. "
+                            "Also please ensure your tgtd config "
+                            "file contains 'include %(volumes_dir)s/*'"), {
+                        'vol_id': vol_id,
+                        'volumes_dir': volumes_dir, })
             raise exception.NotFound()
 
         # NOTE(jdg): Sometimes we have some issues with the backing lun
@@ -242,8 +242,8 @@ class TgtAdm(iscsi.ISCSITarget):
                 os.unlink(volume_path)
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        if old_persist_file is not None and os.path.exists(old_persist_file):
-            os.unlink(old_persist_file)
+        if old_persist_file is not None:
+            fileutils.delete_if_exists(old_persist_file)
 
         return tid
 

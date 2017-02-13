@@ -1,0 +1,3 @@
+---
+features:
+  - Added manage/unmanage snapshot support to the HNAS NFS driver.

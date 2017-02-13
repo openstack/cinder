@@ -14,10 +14,12 @@
 #    under the License.
 
 import os
+import sys
 
 import mock
 
 from cinder import context
+from cinder import test
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import cxt
@@ -53,6 +55,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             )
             self.assertTrue(m_exec.called)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute')
@@ -72,6 +75,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             self.assertTrue(mock_execute.called)
             self.assertTrue(mock_get_targ.called)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute', return_value=('fake out', 'fake err'))
@@ -117,6 +121,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
                 result = cfg_file.read()
                 self.assertEqual(expected_file, result)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute', return_value=('fake out', 'fake err'))
@@ -136,6 +141,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             self.assertTrue(mock_get_targ.called)
             self.assertTrue(mock_execute.called)
 
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute')

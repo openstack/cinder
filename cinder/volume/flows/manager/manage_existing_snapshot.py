@@ -17,13 +17,13 @@ from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
-from taskflow.utils import misc
 
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI
 from cinder import objects
 from cinder import quota
+from cinder import quota_utils
 from cinder.volume.flows import common as flow_common
 from cinder.volume import utils as volume_utils
 
@@ -57,11 +57,11 @@ class ExtractSnapshotRefTask(flow_utils.CinderTask):
         return snapshot_ref
 
     def revert(self, context, snapshot_id, result, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
-        flow_common.error_out_snapshot(context, self.db, snapshot_id)
-        LOG.error(_LE("Snapshot %s: create failed"), snapshot_id)
+        flow_common.error_out(result)
+        LOG.error(_LE("Snapshot %s: create failed"), result.id)
 
 
 class NotifySnapshotActionTask(flow_utils.CinderTask):
@@ -104,16 +104,14 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         self.driver = driver
 
     def execute(self, context, snapshot_ref, manage_existing_ref):
-        snapshot_id = snapshot_ref['id']
         if not self.driver.initialized:
             driver_name = (self.driver.configuration.
                            safe_get('volume_backend_name'))
             LOG.error(_LE("Unable to manage existing snapshot. "
                           "Volume driver %s not initialized."), driver_name)
-            flow_common.error_out_snapshot(context, self.db, snapshot_id,
-                                           reason=_("Volume driver %s "
-                                                    "not initialized.") %
-                                           driver_name)
+            flow_common.error_out(snapshot_ref, reason=_("Volume driver %s "
+                                                         "not initialized.") %
+                                  driver_name)
             raise exception.DriverNotInitialized()
 
         size = self.driver.manage_existing_snapshot_get_size(
@@ -154,15 +152,14 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 'reservations': reservations,
             }
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            quotas = e.kwargs['quotas']
-            usages = e.kwargs['usages']
-            volume_utils.process_reserve_over_quota(context, overs, usages,
-                                                    quotas, size)
+            quota_utils.process_reserve_over_quota(
+                context, e,
+                resource='snapshots',
+                size=size)
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
@@ -271,10 +268,6 @@ class CreateSnapshotOnFinishTask(NotifySnapshotActionTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db, event_suffix, host):
-        super(CreateSnapshotOnFinishTask, self).__init__(db, event_suffix,
-                                                         host)
-
     def execute(self, context, snapshot, new_status):
         LOG.debug("Begin to call CreateSnapshotOnFinishTask execute.")
         snapshot_id = snapshot['id']
@@ -304,7 +297,7 @@ class CreateSnapshotOnFinishTask(NotifySnapshotActionTask):
 def get_flow(context, db, driver, host, snapshot_id, ref):
     """Constructs and returns the manager entry point flow."""
 
-    LOG.debug("Input parmeter: context=%(context)s, db=%(db)s,"
+    LOG.debug("Input parameters: context=%(context)s, db=%(db)s,"
               "driver=%(driver)s, host=%(host)s, "
               "snapshot_id=(snapshot_id)s, ref=%(ref)s.",
               {'context': context,

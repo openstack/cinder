@@ -12,9 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-import six
-
 from cinder import exception
 from cinder import test
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
@@ -32,7 +29,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
     def test_new(self):
 
         self.mock_object(na_utils.OpenStackInfo, 'info',
-                         mock.Mock(return_value='fake_info'))
+                         return_value='fake_info')
         mock_create_driver = self.mock_object(na_common.NetAppDriver,
                                               'create_driver')
 
@@ -86,12 +83,15 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         def get_full_class_name(obj):
             return obj.__module__ + '.' + obj.__class__.__name__
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
-        for family in six.iterkeys(registry):
+        for family in registry:
             for protocol, full_class_name in registry[family].items():
                 driver = na_common.NetAppDriver.create_driver(
                     family, protocol, **kwargs)
@@ -99,8 +99,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_case_insensitive(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         driver = na_common.NetAppDriver.create_driver('ONTAP_CLUSTER', 'FC',
                                                       **kwargs)
@@ -109,8 +112,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_invalid_family(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         self.assertRaises(exception.InvalidInput,
                           na_common.NetAppDriver.create_driver,
@@ -118,8 +124,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_invalid_protocol(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         self.assertRaises(exception.InvalidInput,
                           na_common.NetAppDriver.create_driver,

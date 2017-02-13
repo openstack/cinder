@@ -19,6 +19,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
 from cinder.zonemanager import utils as fczm_utils
@@ -26,6 +27,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                   driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
@@ -216,7 +218,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
 
         return init_targ_map
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         """
@@ -337,7 +339,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         return {'driver_volume_type': 'fibre_channel',
                 'data': properties}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         """

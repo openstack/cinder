@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,19 +15,26 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_fc
 from cinder.volume.drivers.san.hp import hpmsa_common
 
 
+@interface.volumedriver
 class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
     """OpenStack Fibre Channel cinder drivers for HPMSA arrays.
 
     Version history:
         1.0    - Inheriting from DotHill cinder drivers.
-
+        1.6    - Add management path redundancy and reduce load placed
+                 on management controller.
     """
 
-    VERSION = "1.0"
+    VERSION = "1.6"
+
+    CI_WIKI_NAME = "Vedams-HPMSA_FCISCSIDriver_CI"
+
+    SUPPORTED = True
 
     def __init__(self, *args, **kwargs):
         super(HPMSAFCDriver, self).__init__(*args, **kwargs)

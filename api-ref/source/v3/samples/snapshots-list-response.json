@@ -1,0 +1,16 @@
+{
+    "snapshots": [
+        {
+            "status": "available",
+            "metadata": {
+                "name": "test"
+            },
+            "name": "test-volume-snapshot",
+            "volume_id": "173f7b48-c4c1-4e70-9acc-086b39073506",
+            "created_at": "2015-11-29T02:25:51.000000",
+            "size": 1,
+            "id": "b1323cda-8e4b-41c1-afc5-2fc791809c8c",
+            "description": "volume snapshot"
+        }
+    ]
+}

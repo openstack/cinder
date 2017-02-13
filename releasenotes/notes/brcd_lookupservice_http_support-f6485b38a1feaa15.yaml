@@ -1,0 +1,5 @@
+---
+features:
+  - Support for use of ``fc_southbound_protocol``
+    configuration setting in the Brocade FC SAN
+    lookup service.

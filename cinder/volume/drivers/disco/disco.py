@@ -1,4 +1,4 @@
-#    Copyright (c) 2015 Industrial Technology Research Institute.
+#    copyright (c) 2016 Industrial Technology Research Institute.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,7 +18,6 @@
 import os
 import time
 
-from os_brick.initiator import connector
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
@@ -31,8 +30,10 @@ from cinder.db.sqlalchemy import api
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder import utils
+from cinder import interface
 from cinder.volume import driver
+from cinder.volume.drivers.disco import disco_api
+from cinder.volume.drivers.disco import disco_attach_detach
 
 
 LOG = logging.getLogger(__name__)
@@ -46,11 +47,21 @@ disco_opts = [
                 help='The port to connect DMS client socket server'),
     cfg.StrOpt('disco_wsdl_path',
                default='/etc/cinder/DISCOService.wsdl',
+               deprecated_for_removal=True,
                help='Path to the wsdl file '
                     'to communicate with DISCO request manager'),
+    cfg.IPOpt('rest_ip',
+              help='The IP address of the REST server'),
+    cfg.StrOpt('choice_client',
+               help='Use soap client or rest client for communicating '
+                    'with DISCO. Possible values are "soap" or '
+                    '"rest".'),
+    cfg.PortOpt('disco_src_api_port',
+                default='8080',
+                help='The port of DISCO source API'),
     cfg.StrOpt('volume_name_prefix',
                default='openstack-',
-               help='Prefix before volume name to differenciate '
+               help='Prefix before volume name to differentiate '
                     'DISCO volume created through openstack '
                     'and the other ones'),
     cfg.IntOpt('snapshot_check_timeout',
@@ -82,50 +93,49 @@ CONF.register_opts(disco_opts)
 
 
 # Driver to communicate with DISCO storage solution
+@interface.volumedriver
 class DiscoDriver(driver.VolumeDriver):
-    """Execute commands related to DISCO Volumes."""
+    """Execute commands related to DISCO Volumes.
 
-    VERSION = "1.0"
+    Version history:
+        1.0 - disco volume driver using SOAP
+        1.1 - disco volume driver using REST and only compatible
+              with version greater than disco-1.6.4
+
+    """
+
+    VERSION = "1.1"
+    CI_WIKI_NAME = "ITRI_DISCO_CI"
 
     def __init__(self, *args, **kwargs):
         """Init Disco driver : get configuration, create client."""
         super(DiscoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(disco_opts)
         self.ctxt = context.get_admin_context()
-
-        self.connector = connector.InitiatorConnector.factory(
-            self._get_connector_identifier(), utils.get_root_helper(),
-            device_scan_attempts=(
-                self.configuration.num_volume_device_scan_tries)
-        )
-
-        self.connection_conf = {}
-        self.connection_conf['server_ip'] = self.configuration.disco_client
-        self.connection_conf['server_port'] = (
-            self.configuration.disco_client_port)
-
-        self.connection_properties = {}
-        self.connection_properties['name'] = None
-        self.connection_properties['disco_id'] = None
-        self.connection_properties['conf'] = self.connection_conf
+        self.attach_detach_volume = (
+            disco_attach_detach.AttachDetachDiscoVolume())
 
     def do_setup(self, context):
         """Create client for DISCO request manager."""
         LOG.debug("Enter in DiscoDriver do_setup.")
-        path = ''.join(['file:', self.configuration.disco_wsdl_path])
-        self.client = client.Client(path, cache=None)
+        if CONF.choice_client.lower() == "rest":
+            self.client = disco_api.DiscoApi(
+                CONF.rest_ip, CONF.disco_src_api_port)
+        else:
+            path = ''.join(['file:', self.configuration.disco_wsdl_path])
+            init_client = client.Client(path, cache=None)
+            self.client = init_client.service
 
     def check_for_setup_error(self):
         """Make sure we have the pre-requisites."""
-        LOG.debug("Enter in DiscoDriver check_for_setup_error.")
-        path = self.configuration.disco_wsdl_path
-        if not os.path.exists(path):
-            msg = _("Could not find DISCO wsdl file.")
+        if not CONF.rest_ip and CONF.choice_client.lower() == "rest":
+            msg = _("Could not find the IP address of the REST server.")
             raise exception.VolumeBackendAPIException(data=msg)
-
-    def _get_connector_identifier(self):
-        """Return connector identifier, put here to mock it in unit tests."""
-        return connector.DISCO
+        else:
+            path = self.configuration.disco_wsdl_path
+            if not os.path.exists(path):
+                msg = _("Could not find DISCO wsdl file.")
+                raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume(self, volume):
         """Create a disco volume."""
@@ -134,13 +144,13 @@ class DiscoDriver(driver.VolumeDriver):
         vol_size = volume['size'] * units.Ki
         LOG.debug("Create volume : [name] %(vname)s - [size] %(vsize)s.",
                   {'vname': vol_name, 'vsize': six.text_type(vol_size)})
-        reply = self.client.service.volumeCreate(vol_name, vol_size)
+        reply = self.client.volumeCreate(vol_name, vol_size)
         status = reply['status']
         result = reply['result']
         LOG.debug("Create volume : [status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error while creating volume "
                      "[status] %(stat)s - [result] %(res)s.") %
                    {'stat': six.text_type(status), 'res': result})
@@ -153,14 +163,14 @@ class DiscoDriver(driver.VolumeDriver):
         """Delete a logical volume."""
         disco_vol_id = volume['provider_location']
         LOG.debug("Delete disco volume : %s.", disco_vol_id)
-        reply = self.client.service.volumeDelete(disco_vol_id)
+        reply = self.client.volumeDelete(disco_vol_id)
         status = reply['status']
         result = reply['result']
 
         LOG.debug("Delete volume [status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error while deleting volume "
                      "[status] %(stat)s - [result] %(res)s.") %
                    {'stat': six.text_type(status), 'res': result})
@@ -179,15 +189,15 @@ class DiscoDriver(driver.VolumeDriver):
                   {'id': vol_id, 'desc': description})
 
         # Trigger an asynchronous local snapshot
-        reply = self.client.service.snapshotCreate(vol_id,
-                                                   -1, -1,
-                                                   description)
+        reply = self.client.snapshotCreate(vol_id,
+                                           -1, -1,
+                                           description)
         status = reply['status']
         result = reply['result']
         LOG.debug("Create snapshot : [status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error while creating snapshot "
                      "[status] %(stat)s - [result] %(res)s.") %
                    {'stat': six.text_type(status), 'res': result})
@@ -197,14 +207,12 @@ class DiscoDriver(driver.VolumeDriver):
         # Monitor the status until it becomes either success or fail
         params = {'snapshot_id': int(result)}
         start_time = int(time.time())
-
-        timer = loopingcall.FixedIntervalLoopingCall(
-            self._retry_get_detail,
-            start_time,
-            self.configuration.snapshot_check_timeout,
-            'snapshot_detail',
-            params)
-        reply = timer.start(interval=self.configuration.retry_interval).wait()
+        snapshot_request = DISCOCheck(self.client,
+                                      params,
+                                      start_time,
+                                      "snapshot_detail")
+        timeout = self.configuration.snapshot_check_timeout
+        snapshot_request._monitor_request(timeout)
 
         snapshot['provider_location'] = result
         LOG.debug("snapshot taken successfully on volume : %(volume)s.",
@@ -217,14 +225,14 @@ class DiscoDriver(driver.VolumeDriver):
 
         snap_id = snapshot['provider_location']
         LOG.debug("[start] Delete snapshot : %s.", snap_id)
-        reply = self.client.service.snapshotDelete(snap_id)
+        reply = self.client.snapshotDelete(snap_id)
         status = reply['status']
         result = reply['result']
         LOG.debug("[End] Delete snapshot : "
                   "[status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error while deleting snapshot "
                      "[status] %(stat)s - [result] %(res)s") %
                    {'stat': six.text_type(status), 'res': result})
@@ -240,14 +248,15 @@ class DiscoDriver(driver.VolumeDriver):
         LOG.debug("[start] Create volume from snapshot : "
                   "%(snap_id)s - name : %(vol_name)s.",
                   {'snap_id': snap_id, 'vol_name': vol_name})
-        reply = self.client.service.restoreFromSnapshot(snap_id, vol_name)
+        reply = self.client.restoreFromSnapshot(snap_id, vol_name, -1, None,
+                                                -1)
         status = reply['status']
         result = reply['result']
         LOG.debug("Restore  volume from snapshot "
                   "[status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error[%(stat)s - %(res)s] while restoring snapshot "
                      "[%(snap_id)s] into volume [%(vol)s].") %
                    {'stat': six.text_type(status), 'res': result,
@@ -259,20 +268,17 @@ class DiscoDriver(driver.VolumeDriver):
         # either success, fail or timeout
         params = {'restore_id': int(result)}
         start_time = int(time.time())
-
-        timer = loopingcall.FixedIntervalLoopingCall(
-            self._retry_get_detail,
-            start_time,
-            self.configuration.restore_check_timeout,
-            'restore_detail',
-            params)
-        reply = timer.start(interval=self.configuration.retry_interval).wait()
-
-        reply = self.client.service.volumeDetailByName(vol_name)
+        restore_request = DISCOCheck(self.client,
+                                     params,
+                                     start_time,
+                                     "restore_detail")
+        timeout = self.configuration.restore_check_timeout
+        restore_request._monitor_request(timeout)
+        reply = self.client.volumeDetailByName(vol_name)
         status = reply['status']
         new_vol_id = reply['volumeInfoResult']['volumeId']
 
-        if status != 0:
+        if status:
             msg = (_("Error[status] %(stat)s - [result] %(res)s] "
                      "while getting volume id.") %
                    {'stat': six.text_type(status), 'res': result})
@@ -295,13 +301,13 @@ class DiscoDriver(driver.VolumeDriver):
                   {'name': vol_name,
                    'source': src_vol_id,
                    'size': six.text_type(vol_size)})
-        reply = self.client.service.volumeClone(src_vol_id, vol_name)
+        reply = self.client.volumeClone(src_vol_id, vol_name)
         status = reply['status']
         result = reply['result']
         LOG.debug("Clone volume : [status] %(stat)s - [result] %(res)s.",
                   {'stat': six.text_type(status), 'res': result})
 
-        if status != 0:
+        if status:
             msg = (_("Error while creating volume "
                      "[status] %(stat)s - [result] %(res)s.") %
                    {'stat': six.text_type(status), 'res': result})
@@ -313,20 +319,16 @@ class DiscoDriver(driver.VolumeDriver):
         params = {'clone_id': int(result),
                   'vol_name': vol_name}
         start_time = int(time.time())
-
-        timer = loopingcall.FixedIntervalLoopingCall(
-            self._retry_get_detail,
-            start_time,
-            self.configuration.clone_check_timeout,
-            'clone_detail',
-            params)
-        reply = timer.start(interval=self.configuration.retry_interval).wait()
-
-        reply = self.client.service.volumeDetailByName(vol_name)
+        clone_request = DISCOCheck(self.client,
+                                   params,
+                                   start_time,
+                                   "clone_detail")
+        clone_request._monitor_request(self.configuration.clone_check_timeout)
+        reply = self.client.volumeDetailByName(vol_name)
         status = reply['status']
         new_vol_id = reply['volumeInfoResult']['volumeId']
 
-        if status != 0:
+        if status:
             msg = (_("Error[%(stat)s - %(res)s] "
                      "while getting volume id."),
                    {'stat': six.text_type(status), 'res': result})
@@ -343,7 +345,9 @@ class DiscoDriver(driver.VolumeDriver):
         LOG.debug("Enter in copy image to volume for disco.")
 
         try:
-            device_info = self._attach_volume(volume)
+            attach_detach_volume = (
+                disco_attach_detach.AttachDetachDiscoVolume())
+            device_info = attach_detach_volume._attach_volume(volume)
             image_utils.fetch_to_raw(context,
                                      image_service,
                                      image_id,
@@ -351,30 +355,21 @@ class DiscoDriver(driver.VolumeDriver):
                                      self.configuration.volume_dd_blocksize,
                                      size=volume['size'])
         finally:
-            self._detach_volume(volume)
-
-    def _attach_volume(self, volume):
-        """Call the connector.connect_volume()."""
-        connection_properties = self._get_connection_properties(volume)
-        device_info = self.connector.connect_volume(connection_properties)
-        return device_info
-
-    def _detach_volume(self, volume):
-        """Call the connector.disconnect_volume()."""
-        connection_properties = self._get_connection_properties(volume)
-        self.connector.disconnect_volume(connection_properties, volume)
+            attach_detach_volume._detach_volume(volume)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy a  volume to a new image."""
         LOG.debug("Enter in copy image to volume for disco.")
         try:
-            device_info = self._attach_volume(volume)
+            attach_detach_volume = (
+                disco_attach_detach.AttachDetachDiscoVolume())
+            device_info = attach_detach_volume._attach_volume(volume)
             image_utils.upload_volume(context,
                                       image_service,
                                       image_meta,
                                       device_info['path'])
         finally:
-            self._detach_volume(volume)
+            attach_detach_volume._detach_volume(volume)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume's size."""
@@ -382,11 +377,10 @@ class DiscoDriver(driver.VolumeDriver):
         LOG.debug("Extends volume : %(id)s, new size : %(size)s.",
                   {'id': vol_id, 'size': new_size})
         new_size_mb = new_size * units.Ki
-        reply = self.client.service.volumeExtend(vol_id, new_size_mb)
+        reply = self.client.volumeExtend(vol_id, new_size_mb)
         status = reply['status']
         result = reply['result']
-
-        if status != 0:
+        if status:
             msg = (_("Error while extending volume "
                      "[status] %(stat)s - [result] %(res)s."),
                    {'stat': six.text_type(status), 'res': result})
@@ -402,19 +396,13 @@ class DiscoDriver(driver.VolumeDriver):
         """Function called before attaching a volume."""
         LOG.debug("Enter in initialize connection with disco, "
                   "connector is %s.", connector)
+        cp = self.attach_detach_volume._get_connection_properties(volume)
         data = {
             'driver_volume_type': 'disco',
-            'data': self._get_connection_properties(volume)
+            'data': cp
         }
         LOG.debug("Initialize connection [data]: %s.", data)
         return data
-
-    def _get_connection_properties(self, volume):
-        """Return a dictionnary with the connection properties."""
-        connection_properties = dict(self.connection_properties)
-        connection_properties['name'] = volume['name']
-        connection_properties['disco_id'] = volume['provider_location']
-        return connection_properties
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Function called after attaching a volume."""
@@ -432,10 +420,10 @@ class DiscoDriver(driver.VolumeDriver):
         stats['QoS_support'] = False
 
         try:
-            reply = self.client.service.systemInformationList()
+            reply = self.client.systemInformationList()
             status = reply['status']
 
-            if status != 0:
+            if status:
                 msg = (_("Error while getting "
                          "disco information [%s].") %
                        six.text_type(status))
@@ -464,6 +452,72 @@ class DiscoDriver(driver.VolumeDriver):
         """Return the path to the DISCO volume."""
         return "/dev/dms%s" % volume['name']
 
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing volume."""
+        if 'source-name' not in existing_ref and'source-id'not in existing_ref:
+            msg = _("No source-id/source-name in existing_ref")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        elif 'source-name' not in existing_ref:
+            src_vol = self.client.volumeDetail(
+                existing_ref['source-id'])
+            if src_vol['status']:
+                vol_id = existing_ref['source-id']
+                msg = (_("Error while getting volume details, "
+                         "[status] %(stat)s - [volume id] %(vol_id)s") %
+                       {'stat': six.text_type(src_vol['status']),
+                        'vol_id': vol_id})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return {'display_name': src_vol['volumeInfoResult']['volumeName'],
+                    'provider_location': existing_ref['source-id']}
+        else:
+            src_vol = self.client.volumeDetailByName(
+                existing_ref['source-name'])
+            if src_vol['status']:
+                vol_name = existing_ref['source-name']
+                msg = (_("Error while getting volume details with the name "
+                         "%(name)s: [status] %(stat)s") % {'name': vol_name,
+                       'stat': src_vol['status']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return {
+                'provider_location': src_vol['volumeInfoResult']['volumeId']}
+
+    def unmanage(self, volume):
+        """Unmanage an existing volume."""
+        LOG.debug("unmanage is called", resource=volume)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of an existing volume."""
+        if 'source-name' not in existing_ref and'source-id'not in existing_ref:
+            msg = _("No source-id/source-name in existing_ref")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        elif 'source-name' not in existing_ref:
+            src_vol = self.client.volumeDetail(
+                existing_ref['source-id'])
+            if src_vol['status']:
+                vol_id = existing_ref['source-id']
+                msg = (_("Error while getting volume details, "
+                         "[status] %(stat)s - [volume id] %(vol_id)s") %
+                       {'stat': six.text_type(src_vol['status']),
+                        'vol_id': vol_id})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return src_vol['volumeInfoResult']['volSizeMb']
+        else:
+            src_vol = self.client.volumeDetailByName(
+                existing_ref['source-name'])
+            if src_vol['status']:
+                vol_name = existing_ref['source-name']
+                msg = (_("Error while getting volume details with the name "
+                         "%(name)s: [status] %(stat)s") % {'name': vol_name,
+                       'stat': src_vol['status']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return src_vol['volumeInfoResult']['volSizeMb']
+
     def ensure_export(self, context, volume):
         """Ensure an export."""
         pass
@@ -476,24 +530,30 @@ class DiscoDriver(driver.VolumeDriver):
         """Remove an export for a logical volume."""
         pass
 
+
+class DISCOCheck(object):
+    """Used to monitor DISCO operations."""
+
+    def __init__(self, client, param, start_time, function):
+        """Init some variables for checking some requests done in DISCO."""
+        self.start_time = start_time
+        self.function = function
+        self.client = client
+        self.param = param
+
     def is_timeout(self, start_time, timeout):
         """Check whether we reach the timeout."""
         current_time = int(time.time())
-        if current_time - start_time > timeout:
-            return True
-        else:
-            return False
+        return current_time - start_time > timeout
 
     def _retry_get_detail(self, start_time, timeout, operation, params):
         """Keep trying to query an item detail unless we reach the timeout."""
         reply = self._call_api(operation, params)
         status = reply['status']
-
         msg = (_("Error while getting %(op)s details, "
                  "returned code: %(status)s.") %
                {'op': operation, 'status': six.text_type(status)})
-
-        if status != 0:
+        if status:
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -512,12 +572,12 @@ class DiscoDriver(driver.VolumeDriver):
     def _call_api(self, operation, params):
         """Make the call to the SOAP api."""
         if operation == 'snapshot_detail':
-            return self.client.service.snapshotDetail(params['snapshot_id'])
+            return self.client.snapshotDetail(params['snapshot_id'])
         if operation == 'restore_detail':
-            return self.client.service.restoreDetail(params['restore_id'])
+            return self.client.restoreDetail(params['restore_id'])
         if operation == 'clone_detail':
-            return self.client.service.cloneDetail(params['clone_id'],
-                                                   params['vol_name'])
+            return self.client.cloneDetail(params['clone_id'],
+                                           params['vol_name'])
         else:
             msg = (_("Unknown operation %s."), operation)
             LOG.error(msg)
@@ -540,3 +600,13 @@ class DiscoDriver(driver.VolumeDriver):
                      "%s."), operation)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def _monitor_request(self, timeout):
+        """Monitor the request."""
+        timer = loopingcall.FixedIntervalLoopingCall(
+            self._retry_get_detail,
+            self.start_time,
+            timeout,
+            self.function,
+            self.param)
+        timer.start(interval=CONF.retry_interval).wait()

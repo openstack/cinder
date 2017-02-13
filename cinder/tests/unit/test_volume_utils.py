@@ -21,18 +21,28 @@ import io
 import mock
 import six
 
+import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import context
+from cinder import db
+from cinder.db.sqlalchemy import models
 from cinder import exception
+from cinder import keymgr
+from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
+
 
 CONF = cfg.CONF
 
@@ -118,22 +128,22 @@ class NotifyUsageTestCase(test.TestCase):
     @mock.patch('cinder.objects.Volume.get_by_id')
     def test_usage_from_snapshot(self, volume_get_by_id):
         raw_volume = {
-            'id': fake.volume_id,
+            'id': fake.VOLUME_ID,
             'availability_zone': 'nova'
         }
         ctxt = context.get_admin_context()
         volume_obj = fake_volume.fake_volume_obj(ctxt, **raw_volume)
         volume_get_by_id.return_value = volume_obj
         raw_snapshot = {
-            'project_id': fake.project_id,
-            'user_id': fake.user_id,
+            'project_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
             'volume': volume_obj,
-            'volume_id': fake.volume_id,
+            'volume_id': fake.VOLUME_ID,
             'volume_size': 1,
-            'id': fake.snapshot_id,
+            'id': fake.SNAPSHOT_ID,
             'display_name': '11',
             'created_at': '2014-12-11T10:10:00',
-            'status': 'pause',
+            'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'snapshot_metadata': [{'key': 'fake_snap_meta_key',
                                    'value': 'fake_snap_meta_value'}],
@@ -143,23 +153,69 @@ class NotifyUsageTestCase(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctxt, **raw_snapshot)
         usage_info = volume_utils._usage_from_snapshot(snapshot_obj)
         expected_snapshot = {
-            'tenant_id': fake.project_id,
-            'user_id': fake.user_id,
+            'tenant_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
             'availability_zone': 'nova',
-            'volume_id': fake.volume_id,
+            'volume_id': fake.VOLUME_ID,
             'volume_size': 1,
-            'snapshot_id': fake.snapshot_id,
+            'snapshot_id': fake.SNAPSHOT_ID,
             'display_name': '11',
-            'created_at': 'DONTCARE',
-            'status': 'pause',
+            'created_at': mock.ANY,
+            'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'metadata': six.text_type({'fake_snap_meta_key':
                                       u'fake_snap_meta_value'}),
         }
-        self.assertDictMatch(expected_snapshot, usage_info)
+        self.assertDictEqual(expected_snapshot, usage_info)
+
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_usage_from_deleted_snapshot(self, volume_get_by_id):
+        raw_volume = {
+            'id': fake.VOLUME_ID,
+            'availability_zone': 'nova',
+            'deleted': 1
+        }
+        ctxt = context.get_admin_context()
+        volume_obj = fake_volume.fake_volume_obj(ctxt, **raw_volume)
+        volume_get_by_id.side_effect = exception.VolumeNotFound(
+            volume_id=fake.VOLUME_ID)
+
+        raw_snapshot = {
+            'project_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
+            'volume': volume_obj,
+            'volume_id': fake.VOLUME_ID,
+            'volume_size': 1,
+            'id': fake.SNAPSHOT_ID,
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': fields.SnapshotStatus.ERROR,
+            'deleted': '',
+            'snapshot_metadata': [{'key': 'fake_snap_meta_key',
+                                   'value': 'fake_snap_meta_value'}],
+            'expected_attrs': ['metadata'],
+        }
+
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctxt, **raw_snapshot)
+        usage_info = volume_utils._usage_from_snapshot(snapshot_obj)
+        expected_snapshot = {
+            'tenant_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
+            'availability_zone': 'nova',
+            'volume_id': fake.VOLUME_ID,
+            'volume_size': 1,
+            'snapshot_id': fake.SNAPSHOT_ID,
+            'display_name': '11',
+            'created_at': mock.ANY,
+            'status': fields.SnapshotStatus.ERROR,
+            'deleted': '',
+            'metadata': six.text_type({'fake_snap_meta_key':
+                                      u'fake_snap_meta_value'}),
+        }
+        self.assertDictEqual(expected_snapshot, usage_info)
 
     @mock.patch('cinder.db.volume_glance_metadata_get')
-    @mock.patch('cinder.db.volume_attachment_get_used_by_volume_id')
+    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
     def test_usage_from_volume(self, mock_attachment, mock_image_metadata):
         mock_image_metadata.return_value = {'image_id': 'fake_image_id'}
         mock_attachment.return_value = [{'instance_uuid': 'fake_instance_id'}]
@@ -289,63 +345,126 @@ class NotifyUsageTestCase(test.TestCase):
 
     def test_usage_from_backup(self):
         raw_backup = {
-            'project_id': '12b0330ec2584a',
-            'user_id': '158cba1b8c2bb6008e',
+            'project_id': fake.PROJECT_ID,
+            'user_id': fake.USER_ID,
             'availability_zone': 'nova',
-            'id': 'fake_id',
+            'id': fake.BACKUP_ID,
             'host': 'fake_host',
             'display_name': 'test_backup',
-            'created_at': '2014-12-11T10:10:00',
+            'created_at': datetime.datetime(2015, 1, 1, 1, 1, 1),
             'status': 'available',
-            'volume_id': 'fake_volume_id',
+            'volume_id': fake.VOLUME_ID,
             'size': 1,
             'service_metadata': None,
             'service': 'cinder.backup.drivers.swift',
             'fail_reason': None,
-            'parent_id': 'fake_parent_id',
+            'parent_id': fake.BACKUP2_ID,
             'num_dependent_backups': 0,
             'snapshot_id': None,
         }
+
+        ctxt = context.get_admin_context()
+        backup_obj = fake_backup.fake_backup_obj(ctxt, **raw_backup)
 
         # Make it easier to find out differences between raw and expected.
         expected_backup = raw_backup.copy()
         expected_backup['tenant_id'] = expected_backup.pop('project_id')
         expected_backup['backup_id'] = expected_backup.pop('id')
+        expected_backup['created_at'] = (
+            six.text_type(expected_backup['created_at']) + '+00:00')
 
-        usage_info = volume_utils._usage_from_backup(raw_backup)
-        self.assertEqual(expected_backup, usage_info)
+        usage_info = volume_utils._usage_from_backup(backup_obj)
+        self.assertDictEqual(expected_backup, usage_info)
 
 
 class LVMVolumeDriverTestCase(test.TestCase):
     def test_convert_blocksize_option(self):
         # Test valid volume_dd_blocksize
-        bs, count = volume_utils._calculate_count(1024, '10M')
+        bs = volume_utils._check_blocksize('10M')
         self.assertEqual('10M', bs)
-        self.assertEqual(103, count)
 
-        bs, count = volume_utils._calculate_count(1024, '1xBBB')
+        bs = volume_utils._check_blocksize('1xBBB')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test 'volume_dd_blocksize' with fraction
-        bs, count = volume_utils._calculate_count(1024, '1.3M')
+        bs = volume_utils._check_blocksize('1.3M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test zero-size 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, '0M')
+        bs = volume_utils._check_blocksize('0M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test negative 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, '-1M')
+        bs = volume_utils._check_blocksize('-1M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test non-digital 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, 'ABM')
+        bs = volume_utils._check_blocksize('ABM')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
+
+    @mock.patch('cinder.volume.utils._usage_from_capacity')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_capacity_usage(self, mock_rpc,
+                                         mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_capacity_usage(
+            mock.sentinel.context,
+            mock.sentinel.capacity,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.capacity)
+        mock_rpc.get_notifier.assert_called_once_with('capacity', 'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'capacity.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_capacity')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_capacity_usage_with_kwargs(self, mock_rpc, mock_conf,
+                                                     mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_capacity_usage(
+            mock.sentinel.context,
+            mock.sentinel.capacity,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.capacity,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('capacity', 'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'capacity.test_suffix',
+            mock_usage.return_value)
+
+    def test_usage_from_capacity(self):
+        test_capacity = {
+            'name_to_id': 'host1@backend1#pool1',
+            'type': 'pool',
+            'total': '10.01',
+            'free': '8.01',
+            'allocated': '2',
+            'provisioned': '2',
+            'virtual_free': '8.01',
+            'reported_at': '2014-12-11T10:10:00',
+        }
+
+        usage_info = volume_utils._usage_from_capacity(
+            test_capacity)
+        expected_capacity = {
+            'name_to_id': 'host1@backend1#pool1',
+            'total': '10.01',
+            'free': '8.01',
+            'allocated': '2',
+            'provisioned': '2',
+            'virtual_free': '8.01',
+            'reported_at': '2014-12-11T10:10:00',
+        }
+        self.assertEqual(expected_capacity, usage_info)
 
 
 class OdirectSupportTestCase(test.TestCase):
@@ -414,7 +533,7 @@ class ClearVolumeTestCase(test.TestCase):
     @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_args(self, mock_conf, mock_copy):
-        mock_conf.volume_clear = 'shred'
+        mock_conf.volume_clear = 'should_override_with_arg'
         mock_conf.volume_clear_size = 0
         mock_conf.volume_dd_blocksize = '1M'
         mock_conf.volume_clear_ionice = '-c3'
@@ -425,28 +544,6 @@ class ClearVolumeTestCase(test.TestCase):
                                           '1M', sync=True,
                                           execute=utils.execute, ionice='-c0',
                                           throttle=None, sparse=False)
-
-    @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_clear_volume_shred(self, mock_conf, mock_exec):
-        mock_conf.volume_clear = 'shred'
-        mock_conf.volume_clear_size = 1
-        mock_conf.volume_clear_ionice = None
-        output = volume_utils.clear_volume(1024, 'volume_path')
-        self.assertIsNone(output)
-        mock_exec.assert_called_once_with(
-            'shred', '-n3', '-s1MiB', "volume_path", run_as_root=True)
-
-    @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_clear_volume_shred_not_clear_size(self, mock_conf, mock_exec):
-        mock_conf.volume_clear = 'shred'
-        mock_conf.volume_clear_size = None
-        mock_conf.volume_clear_ionice = None
-        output = volume_utils.clear_volume(1024, 'volume_path')
-        self.assertIsNone(output)
-        mock_exec.assert_called_once_with(
-            'shred', '-n3', "volume_path", run_as_root=True)
 
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_invalid_opt(self, mock_conf):
@@ -459,129 +556,121 @@ class ClearVolumeTestCase(test.TestCase):
 
 
 class CopyVolumeTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
     def test_copy_volume_dd_iflag_and_oflag(self, mock_conf, mock_exec,
-                                            mock_support, mock_count):
+                                            mock_support):
         fake_throttle = throttling.Throttle(['fake_throttle'])
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'iflag=direct',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes,direct',
                                           'oflag=direct', run_as_root=True)
 
         mock_exec.reset_mock()
 
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=False, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'iflag=direct',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes,direct',
                                           'oflag=direct', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec,
-                                              mock_support, mock_count):
+    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec, mock_support):
         fake_throttle = throttling.Throttle(['fake_throttle'])
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'conv=fdatasync',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes',
+                                          'conv=fdatasync', run_as_root=True)
+
+        mock_exec.reset_mock()
+
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
+                                          sync=False, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes',
                                           run_as_root=True)
 
-        mock_exec.reset_mock()
-
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
-                                          sync=False, execute=utils.execute,
-                                          ionice=None, throttle=fake_throttle)
-        self.assertIsNone(output)
-        mock_exec.assert_called_once_with('fake_throttle', 'dd',
-                                          'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', run_as_root=True)
-
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support,
-                                        mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_with_ionice(self, mock_exec,
-                                        mock_support, mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_with_ionice(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice='-c3')
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('ionice', '-c3', 'dd',
                                           'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_with_sparse(self, mock_exec,
-                                        mock_support, mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_with_sparse(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           sparse=True)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync,sparse',
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_with_sparse_iflag_and_oflag(self, mock_exec,
-                                                        mock_support,
-                                                        mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                                        mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           sparse=True)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
-                                          'iflag=direct', 'oflag=direct',
-                                          'conv=sparse', run_as_root=True)
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes,direct',
+                                          'oflag=direct', 'conv=sparse',
+                                          run_as_root=True)
 
     @mock.patch('cinder.volume.utils._copy_volume_with_file')
     def test_copy_volume_handles(self, mock_copy):
@@ -601,6 +690,7 @@ class CopyVolumeTestCase(test.TestCase):
                                               1073741824, mock.ANY)
 
 
+@ddt.ddt
 class VolumeUtilsTestCase(test.TestCase):
     def test_null_safe_str(self):
         self.assertEqual('', volume_utils.null_safe_str(None))
@@ -708,12 +798,10 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertEqual(pool,
                          volume_utils.extract_host(host, 'pool', True))
 
-    def test_get_volume_rpc_host(self):
-        host = 'Host@backend'
-        # default level is 'backend'
-        # check if host with backend is returned
-        self.assertEqual(volume_utils.extract_host(host),
-                         volume_utils.get_volume_rpc_host(host))
+    def test_extract_host_none_string(self):
+        self.assertRaises(exception.InvalidVolume,
+                          volume_utils.extract_host,
+                          None)
 
     def test_append_host(self):
         host = 'Host'
@@ -750,57 +838,116 @@ class VolumeUtilsTestCase(test.TestCase):
         host_2 = 'fake_host2@backend1'
         self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
 
-    def test_check_managed_volume_already_managed(self):
-        mock_db = mock.Mock()
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
-        self.assertTrue(result)
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_vol_id_pattern(self, conf_mock):
+        conf_mock.volume_name_template = 'volume-%s'
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
 
     @mock.patch('cinder.volume.utils.CONF')
-    def test_check_already_managed_with_vol_id_vol_pattern(self, conf_mock):
-        mock_db = mock.Mock()
+    def test_extract_id_from_volume_name_vol_id_vol_pattern(self, conf_mock):
         conf_mock.volume_name_template = 'volume-%s-volume'
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
-        self.assertTrue(result)
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
 
     @mock.patch('cinder.volume.utils.CONF')
-    def test_check_already_managed_with_id_vol_pattern(self, conf_mock):
-        mock_db = mock.Mock()
+    def test_extract_id_from_volume_name_id_vol_pattern(self, conf_mock):
         conf_mock.volume_name_template = '%s-volume'
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_no_match(self, conf_mock):
+        conf_mock.volume_name_template = '%s-volume'
+        vol_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertIsNone(result)
+        vol_name = 'blahblahblah'
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertIsNone(result)
+
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def test_check_managed_volume_already_managed(self, exists_mock):
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.check_already_managed_volume(id_)
         self.assertTrue(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    def test_check_managed_volume_not_managed_cinder_like_name(self):
-        mock_db = mock.Mock()
-        mock_db.volume_get = mock.Mock(
-            side_effect=exception.VolumeNotFound(
-                'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=False)
+    def test_check_managed_volume_not_managed_proper_uuid(self, exists_mock):
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.check_already_managed_volume(id_)
+        self.assertFalse(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
-
+    def test_check_managed_volume_not_managed_invalid_id(self):
+        result = volume_utils.check_already_managed_volume(1)
+        self.assertFalse(result)
+        result = volume_utils.check_already_managed_volume('not-a-uuid')
         self.assertFalse(result)
 
-    def test_check_managed_volume_not_managed(self):
-        mock_db = mock.Mock()
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_snapshot_name(self, conf_mock):
+        conf_mock.snapshot_name_template = '%s-snapshot'
+        snap_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        snap_name = conf_mock.snapshot_name_template % snap_id
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertEqual(snap_id, result)
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'test-volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_snapshot_name_no_match(self, conf_mock):
+        conf_mock.snapshot_name_template = '%s-snapshot'
+        snap_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertIsNone(result)
+        snap_name = 'blahblahblah'
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertIsNone(result)
 
-        self.assertFalse(result)
+    def test_paginate_entries_list_with_marker(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3},
+                   {'reference': {'name': 'vol02'}, 'size': 3},
+                   {'reference': {'name': 'vol04'}, 'size': 2},
+                   {'reference': {'name': 'vol06'}, 'size': 3},
+                   {'reference': {'name': 'vol07'}, 'size': 1},
+                   {'reference': {'name': 'vol05'}, 'size': 1}]
+        expected = [{'reference': {'name': 'vol04'}, 'size': 2},
+                    {'reference': {'name': 'vol03'}, 'size': 1},
+                    {'reference': {'name': 'vol05'}, 'size': 1}]
+        res = volume_utils.paginate_entries_list(entries, {'name': 'vol02'}, 3,
+                                                 1, ['size', 'reference'],
+                                                 ['desc', 'asc'])
+        self.assertEqual(expected, res)
 
-    def test_check_managed_volume_not_managed_id_like_uuid(self):
-        mock_db = mock.Mock()
+    def test_paginate_entries_list_without_marker(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3},
+                   {'reference': {'name': 'vol02'}, 'size': 3},
+                   {'reference': {'name': 'vol04'}, 'size': 2},
+                   {'reference': {'name': 'vol06'}, 'size': 3},
+                   {'reference': {'name': 'vol07'}, 'size': 1},
+                   {'reference': {'name': 'vol05'}, 'size': 1}]
+        expected = [{'reference': {'name': 'vol07'}, 'size': 1},
+                    {'reference': {'name': 'vol06'}, 'size': 3},
+                    {'reference': {'name': 'vol05'}, 'size': 1}]
+        res = volume_utils.paginate_entries_list(entries, None, 3, None,
+                                                 ['reference'], ['desc'])
+        self.assertEqual(expected, res)
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1fe')
-
-        self.assertFalse(result)
+    def test_paginate_entries_list_marker_not_found(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3}]
+        self.assertRaises(exception.InvalidInput,
+                          volume_utils.paginate_entries_list,
+                          entries, {'name': 'vol02'}, 3, None,
+                          ['size', 'reference'], ['desc', 'asc'])
 
     def test_convert_config_string_to_dict(self):
         test_string = "{'key-1'='val-1' 'key-2'='val-2' 'key-3'='val-3'}"
@@ -810,19 +957,92 @@ class VolumeUtilsTestCase(test.TestCase):
             expected_dict,
             volume_utils.convert_config_string_to_dict(test_string))
 
-    def test_process_reserve_over_quota(self):
-        ctxt = context.get_admin_context()
-        ctxt.project_id = 'fake'
-        overs_one = ['gigabytes']
-        over_two = ['snapshots']
-        usages = {'gigabytes': {'reserved': 1, 'in_use': 9},
-                  'snapshots': {'reserved': 1, 'in_use': 9}}
-        quotas = {'gigabytes': 10, 'snapshots': 10}
-        size = 1
+    @mock.patch('cinder.volume.volume_types.is_encrypted', return_value=False)
+    def test_create_encryption_key_unencrypted(self, is_encrypted):
+        result = volume_utils.create_encryption_key(mock.ANY,
+                                                    mock.ANY,
+                                                    fake.VOLUME_TYPE_ID)
+        self.assertIsNone(result)
 
-        self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
-                          volume_utils.process_reserve_over_quota,
-                          ctxt, overs_one, usages, quotas, size)
-        self.assertRaises(exception.SnapshotLimitExceeded,
-                          volume_utils.process_reserve_over_quota,
-                          ctxt, over_two, usages, quotas, size)
+    @mock.patch('cinder.volume.volume_types.is_encrypted', return_value=True)
+    @mock.patch('cinder.volume.volume_types.get_volume_type_encryption')
+    @mock.patch('cinder.keymgr.conf_key_mgr.ConfKeyManager.create_key')
+    def test_create_encryption_key_encrypted(self, create_key,
+                                             get_volume_type_encryption,
+                                             is_encryption):
+        enc_key = {'cipher': 'aes-xts-plain64',
+                   'key_size': 256,
+                   'provider': 'p1',
+                   'control_location': 'front-end',
+                   'encryption_id': 'uuid1'}
+        ctxt = context.get_admin_context()
+        type_ref1 = volume_types.create(ctxt, "type1")
+        encryption = db.volume_type_encryption_create(
+            ctxt, type_ref1['id'], enc_key)
+        get_volume_type_encryption.return_value = encryption
+        CONF.set_override(
+            'api_class',
+            'cinder.keymgr.conf_key_mgr.ConfKeyManager',
+            group='key_manager')
+        key_manager = keymgr.API()
+        volume_utils.create_encryption_key(ctxt,
+                                           key_manager,
+                                           fake.VOLUME_TYPE_ID)
+        is_encryption.assert_called_once_with(ctxt,
+                                              fake.VOLUME_TYPE_ID)
+        get_volume_type_encryption.assert_called_once_with(
+            ctxt,
+            fake.VOLUME_TYPE_ID)
+        create_key.assert_called_once_with(ctxt,
+                                           algorithm='aes',
+                                           length=256)
+
+    @ddt.data('<is> True', '<is> true', '<is> yes')
+    def test_is_replicated_spec_true(self, enabled):
+        res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
+        self.assertTrue(res)
+
+    @ddt.data({}, None, {'key': 'value'})
+    def test_is_replicated_no_specs(self, extra_specs):
+        res = volume_utils.is_replicated_spec(extra_specs)
+        self.assertFalse(res)
+
+    @ddt.data('<is> False', '<is> false', '<is> f', 'baddata', 'bad data')
+    def test_is_replicated_spec_false(self, enabled):
+        res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
+        self.assertFalse(res)
+
+    @mock.patch('cinder.db.group_get')
+    def test_group_get_by_id(self, mock_db_group_get):
+        expected = mock.Mock()
+        mock_db_group_get.return_value = expected
+        group_id = fake.GROUP_ID
+        actual = volume_utils.group_get_by_id(group_id)
+        self.assertEqual(expected, actual)
+
+    @mock.patch('cinder.db.group_get')
+    def test_group_get_by_id_group_not_found(self, mock_db_group_get):
+        group_id = fake.GROUP_ID
+        mock_db_group_get.side_effect = exception.GroupNotFound(
+            group_id=group_id)
+        self.assertRaises(
+            exception.GroupNotFound,
+            volume_utils.group_get_by_id,
+            group_id
+        )
+
+    @ddt.data('<is> False', None, 'notASpecValueWeCareAbout')
+    def test_is_group_a_cg_snapshot_type_is_false(self, spec_value):
+        with mock.patch('cinder.volume.group_types'
+                        '.get_group_type_specs') as mock_get_specs:
+            mock_get_specs.return_value = spec_value
+            group = fake_group.fake_group_obj(
+                None, group_type_id=fake.GROUP_TYPE_ID)
+            self.assertFalse(volume_utils.is_group_a_cg_snapshot_type(group))
+
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_is_group_a_cg_snapshot_type_is_true(self, mock_get_specs):
+        mock_get_specs.return_value = '<is> True'
+        group = fake_group.fake_group_obj(
+            None, group_type_id=fake.GROUP_TYPE_ID)
+        self.assertTrue(volume_utils.is_group_a_cg_snapshot_type(group))

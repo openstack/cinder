@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The Cinder database can now only be upgraded from changes since the
+    Liberty release. In order to upgrade from a version prior to that,
+    you must now upgrade to at least Liberty first, then to Ocata or
+    later.

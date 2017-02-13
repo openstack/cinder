@@ -1,0 +1,44 @@
+{
+    "choices": [
+        {
+            "status": "SUPPORTED",
+            "media-types": [
+                {
+                    "base": "application/xml",
+                    "type": "application/vnd.openstack.volume+xml;version=1"
+                },
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.volume+json;version=1"
+                }
+            ],
+            "id": "v1.0",
+            "links": [
+                {
+                    "href": "http://23.253.248.171:8776/v1/v2.json",
+                    "rel": "self"
+                }
+            ]
+        },
+        {
+            "status": "CURRENT",
+            "media-types": [
+                {
+                    "base": "application/xml",
+                    "type": "application/vnd.openstack.volume+xml;version=1"
+                },
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.volume+json;version=1"
+                }
+            ],
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://23.253.248.171:8776/v2/v2.json",
+                    "rel": "self"
+                }
+            ]
+        }
+    ]
+}

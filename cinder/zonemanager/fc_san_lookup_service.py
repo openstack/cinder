@@ -57,9 +57,12 @@ class FCSanLookupService(fc_common.FCCommon):
 
         Gets a filtered list of initiator ports and target ports for each SAN
         available.
-        :param initiator_list list of initiator port WWN
-        :param target_list list of target port WWN
+        :param initiator_list: list of initiator port WWN
+        :param target_list: list of target port WWN
         :returns: device wwn map in following format
+
+        .. code-block:: python
+
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -68,8 +71,9 @@ class FCSanLookupService(fc_common.FCCommon):
                     ('100000051E55A100', '100000051E55A121'..)
                 }
             }
-        :raise: Exception when a lookup service implementation is not specified
-        in cinder.conf:fc_san_lookup_service
+
+        :raises: Exception when a lookup service implementation is not
+                 specified in cinder.conf:fc_san_lookup_service
         """
         # Initialize vendor specific implementation of  FCZoneDriver
         if (self.configuration.fc_san_lookup_service):

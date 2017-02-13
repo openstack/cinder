@@ -1,7 +1,5 @@
-#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
-#
-#    Copyright 2014 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,17 +14,13 @@
 #    under the License.
 #
 
-from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
+from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder import ssh_utils
-from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 from cinder.zonemanager import fc_san_lookup_service as fc_service
 from cinder.zonemanager import utils as fczm_utils
 
@@ -38,10 +32,11 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
 
     Version History:
         1.0.0 - Initial version
+        1.1 - Add support to use config option for switch southbound protocol
 
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.1"
 
     def __init__(self, **kwargs):
         """Initializing the client."""
@@ -73,6 +68,9 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
         :param initiator_wwn_list: List of initiator port WWN
         :param target_wwn_list: List of target port WWN
         :returns: List -- device wwn map in following format
+
+        .. code-block:: json
+
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -81,6 +79,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                     ('100000051e55a100', '100000051e55a121'..)
                 }
             }
+
         :raises: Exception when connection to fabric is failed
         """
         device_map = {}
@@ -107,15 +106,6 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
             for fabric_name in fabrics:
                 fabric_ip = self.fabric_configs[fabric_name].safe_get(
                     'fc_fabric_address')
-                fabric_user = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_user')
-                fabric_pwd = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_password')
-                fabric_port = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_port')
-
-                ssh_pool = ssh_utils.SSHPool(fabric_ip, fabric_port, None,
-                                             fabric_user, password=fabric_pwd)
 
                 # Get name server data from fabric and find the targets
                 # logged in
@@ -123,7 +113,8 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                 try:
                     LOG.debug("Getting name server data for "
                               "fabric %s", fabric_ip)
-                    nsinfo = self.get_nameserver_info(ssh_pool)
+                    conn = self._get_southbound_client(fabric_name)
+                    nsinfo = conn.get_nameserver_info()
                 except exception.FCSanLookupServiceException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_LE("Failed collecting name server info from"
@@ -172,69 +163,28 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
         LOG.debug("Device map for SAN context: %s", device_map)
         return device_map
 
-    def get_nameserver_info(self, ssh_pool):
-        """Get name server data from fabric.
+    def _get_southbound_client(self, fabric):
+        """Implementation to get SouthBound Connector.
 
-        This method will return the connected node port wwn list(local
-        and remote) for the given switch fabric
+         South bound connector will be
+         dynamically selected based on the configuration
 
-        :param ssh_pool: SSH connections for the current fabric
+        :param fabric: fabric information
         """
-        cli_output = None
-        nsinfo_list = []
+        fabric_info = self.fabric_configs[fabric]
+        fc_ip = fabric_info.safe_get('fc_fabric_address')
+        sb_connector = fabric_info.safe_get('fc_southbound_protocol')
+        if sb_connector is None:
+            sb_connector = self.configuration.brcd_sb_connector
         try:
-            cli_output = self._get_switch_data(ssh_pool,
-                                               zone_constant.NS_SHOW)
-        except exception.FCSanLookupServiceException:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed collecting nsshow info for fabric"))
-        if cli_output:
-            nsinfo_list = self._parse_ns_output(cli_output)
-        try:
-            cli_output = self._get_switch_data(ssh_pool,
-                                               zone_constant.NS_CAM_SHOW)
-
-        except exception.FCSanLookupServiceException:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed collecting nscamshow"))
-        if cli_output:
-            nsinfo_list.extend(self._parse_ns_output(cli_output))
-        LOG.debug("Connector returning nsinfo-%s", nsinfo_list)
-        return nsinfo_list
-
-    def _get_switch_data(self, ssh_pool, cmd):
-        utils.check_ssh_injection([cmd])
-
-        with ssh_pool.item() as ssh:
-            try:
-                switch_data, err = processutils.ssh_execute(ssh, cmd)
-            except processutils.ProcessExecutionError as e:
-                msg = (_("SSH Command failed with error: '%(err)s', Command: "
-                         "'%(command)s'") % {'err': six.text_type(e),
-                                             'command': cmd})
-                LOG.error(msg)
-                raise exception.FCSanLookupServiceException(message=msg)
-
-        return switch_data
-
-    def _parse_ns_output(self, switch_data):
-        """Parses name server data.
-
-        Parses nameserver raw data and adds the device port wwns to the list
-
-        :returns: list of device port wwn from ns info
-        """
-        nsinfo_list = []
-        lines = switch_data.split('\n')
-        for line in lines:
-            if not(" NL " in line or " N " in line):
-                continue
-            linesplit = line.split(';')
-            if len(linesplit) > 2:
-                node_port_wwn = linesplit[2].strip()
-                nsinfo_list.append(node_port_wwn)
-            else:
-                msg = _("Malformed nameserver string: %s") % line
-                LOG.error(msg)
-                raise exception.InvalidParameterValue(err=msg)
-        return nsinfo_list
+            conn_factory = importutils.import_object(
+                "cinder.zonemanager.drivers.brocade."
+                "brcd_fc_zone_connector_factory."
+                "BrcdFCZoneFactory")
+            client = conn_factory.get_connector(fabric_info,
+                                                sb_connector.upper())
+        except Exception:
+            msg = _("Failed to create south bound connector for %s.") % fc_ip
+            LOG.exception(msg)
+            raise exception.FCZoneDriverException(msg)
+        return client

@@ -1,0 +1,5 @@
+---
+issues:
+  - Dell SC Cinder driver has limited support in a failed
+    over state so thaw_backend has been implemented to
+    reject the thaw call when in such a state.

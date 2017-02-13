@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import versionutils
+
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -20,26 +22,31 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from oslo_versionedobjects import fields
 
-OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
-
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
-                       base.CinderObjectDictCompat):
+                       base.CinderObjectDictCompat, base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Added cgsnapshots and volumes relationships
     # Version 1.2: Changed 'status' field to use ConsistencyGroupStatusField
-    VERSION = '1.2'
+    # Version 1.3: Added cluster fields
+    # Version 1.4: Added from_group
+    VERSION = '1.4'
+
+    OPTIONAL_FIELDS = ('cgsnapshots', 'volumes', 'cluster')
 
     fields = {
         'id': fields.UUIDField(),
-        'user_id': fields.UUIDField(),
-        'project_id': fields.UUIDField(),
+        'user_id': fields.StringField(),
+        'project_id': fields.StringField(),
+        'cluster_name': fields.StringField(nullable=True),
+        'cluster': fields.ObjectField('Cluster', nullable=True,
+                                      read_only=True),
         'host': fields.StringField(nullable=True),
         'availability_zone': fields.StringField(nullable=True),
         'name': fields.StringField(nullable=True),
         'description': fields.StringField(nullable=True),
-        'volume_type_id': fields.UUIDField(nullable=True),
+        'volume_type_id': fields.StringField(nullable=True),
         'status': c_fields.ConsistencyGroupStatusField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'source_cgid': fields.UUIDField(nullable=True),
@@ -47,20 +54,32 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'volumes': fields.ObjectField('VolumeList', nullable=True),
     }
 
-    @staticmethod
-    def _from_db_object(context, consistencygroup, db_consistencygroup,
+    def obj_make_compatible(self, primitive, target_version):
+        """Make a CG representation compatible with a target version."""
+        # Convert all related objects
+        super(ConsistencyGroup, self).obj_make_compatible(primitive,
+                                                          target_version)
+
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        # Before v1.3 we didn't have cluster fields so we have to remove them.
+        if target_version < (1, 3):
+            for obj_field in ('cluster', 'cluster_name'):
+                primitive.pop(obj_field, None)
+
+    @classmethod
+    def _from_db_object(cls, context, consistencygroup, db_consistencygroup,
                         expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
         for name, field in consistencygroup.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_consistencygroup.get(name)
             setattr(consistencygroup, name, value)
 
         if 'cgsnapshots' in expected_attrs:
             cgsnapshots = base.obj_make_list(
-                context, objects.CGSnapshotsList(context),
+                context, objects.CGSnapshotList(context),
                 objects.CGSnapshot,
                 db_consistencygroup['cgsnapshots'])
             consistencygroup.cgsnapshots = cgsnapshots
@@ -70,14 +89,31 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                 context, objects.VolumeList(context),
                 objects.Volume,
                 db_consistencygroup['volumes'])
-            consistencygroup.cgsnapshots = volumes
+            consistencygroup.volumes = volumes
+
+        if 'cluster' in expected_attrs:
+            db_cluster = db_consistencygroup.get('cluster')
+            # If this consistency group doesn't belong to a cluster the cluster
+            # field in the ORM instance will have value of None.
+            if db_cluster:
+                consistencygroup.cluster = objects.Cluster(context)
+                objects.Cluster._from_db_object(context,
+                                                consistencygroup.cluster,
+                                                db_cluster)
+            else:
+                consistencygroup.cluster = None
 
         consistencygroup._context = context
         consistencygroup.obj_reset_changes()
         return consistencygroup
 
-    @base.remotable
-    def create(self):
+    def create(self, cg_snap_id=None, cg_id=None):
+        """Create a consistency group.
+
+        If cg_snap_id or cg_id are specified then volume_type_id,
+        availability_zone, and host will be taken from the source Consistency
+        Group.
+        """
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already_created'))
@@ -91,12 +127,35 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('volumes assigned'))
 
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('cluster assigned'))
+
         db_consistencygroups = db.consistencygroup_create(self._context,
-                                                          updates)
+                                                          updates,
+                                                          cg_snap_id,
+                                                          cg_id)
         self._from_db_object(self._context, self, db_consistencygroups)
 
+    def from_group(self, group):
+        """Convert a generic volume group object to a cg object."""
+        self.id = group.id
+        self.user_id = group.user_id
+        self.project_id = group.project_id
+        self.cluster_name = group.cluster_name
+        self.host = group.host
+        self.availability_zone = group.availability_zone
+        self.name = group.name
+        self.description = group.description
+        self.volume_type_id = ""
+        for v_type in group.volume_types:
+            self.volume_type_id += v_type.id + ","
+        self.status = group.status
+        self.cgsnapshot_id = group.group_snapshot_id
+        self.source_cgid = group.source_group_id
+
     def obj_load_attr(self, attrname):
-        if attrname not in OPTIONAL_FIELDS:
+        if attrname not in self.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
@@ -112,9 +171,17 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             self.volumes = objects.VolumeList.get_all_by_group(self._context,
                                                                self.id)
 
+        # If this consistency group doesn't belong to a cluster (cluster_name
+        # is empty), then cluster field will be None.
+        if attrname == 'cluster':
+            if self.cluster_name:
+                self.cluster = objects.Cluster.get_by_id(
+                    self._context, name=self.cluster_name)
+            else:
+                self.cluster = None
+
         self.obj_reset_changes(fields=[attrname])
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -124,14 +191,19 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             if 'volumes' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('volumes changed'))
+            if 'cluster' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cluster changed'))
 
             db.consistencygroup_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
-            db.consistencygroup_destroy(self._context, self.id)
+            updated_values = db.consistencygroup_destroy(self._context,
+                                                         self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
 
 @base.CinderObjectRegistry.register
@@ -143,12 +215,28 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('ConsistencyGroup')
     }
-    child_version = {
-        '1.0': '1.0',
-        '1.1': '1.1',
-    }
 
-    @base.remotable_classmethod
+    @staticmethod
+    def include_in_cluster(context, cluster, partial_rename=True, **filters):
+        """Include all consistency groups matching the filters into a cluster.
+
+        When partial_rename is set we will not set the cluster_name with
+        cluster parameter value directly, we'll replace provided cluster_name
+        or host filter value with cluster instead.
+
+        This is useful when we want to replace just the cluster name but leave
+        the backend and pool information as it is.  If we are using
+        cluster_name to filter, we'll use that same DB field to replace the
+        cluster value and leave the rest as it is.  Likewise if we use the host
+        to filter.
+
+        Returns the number of consistency groups that have been changed.
+        """
+        return db.consistencygroup_include_in_cluster(context, cluster,
+                                                      partial_rename,
+                                                      **filters)
+
+    @classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,
                 offset=None, sort_keys=None, sort_dirs=None):
         consistencygroups = db.consistencygroup_get_all(
@@ -158,7 +246,7 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
                                   objects.ConsistencyGroup,
                                   consistencygroups)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, filters=None, marker=None,
                            limit=None, offset=None, sort_keys=None,
                            sort_dirs=None):

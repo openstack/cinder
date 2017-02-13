@@ -3,6 +3,7 @@
 # Copyright (c) 2015 Alex Meade
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Jose Porrua
 # Copyright (c) 2015 Michael Price
 #  All Rights Reserved.
 #
@@ -100,6 +101,7 @@ class RestClient(WebserviceClient):
     NAME = 'label'
 
     ASUP_VALID_VERSION = (1, 52, 9000, 3)
+    CHAP_VALID_VERSION = (1, 53, 9010, 15)
     # We need to check for both the release and the pre-release versions
     SSC_VALID_VERSIONS = ((1, 53, 9000, 1), (1, 53, 9010, 17))
     REST_1_3_VERSION = (1, 53, 9000, 1)
@@ -179,8 +181,19 @@ class RestClient(WebserviceClient):
         api_version_tuple = tuple(int(version)
                                   for version in self.api_version.split('.'))
 
+        chap_valid_version = self._validate_version(
+            self.CHAP_VALID_VERSION, api_version_tuple)
+        self.features.add_feature('CHAP_AUTHENTICATION',
+                                  supported=chap_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.CHAP_VALID_VERSION))
+
         asup_api_valid_version = self._validate_version(
             self.ASUP_VALID_VERSION, api_version_tuple)
+        self.features.add_feature('AUTOSUPPORT',
+                                  supported=asup_api_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.ASUP_VALID_VERSION))
 
         rest_1_3_api_valid_version = self._validate_version(
             self.REST_1_3_VERSION, api_version_tuple)
@@ -193,11 +206,6 @@ class RestClient(WebserviceClient):
                                                            api_version_tuple)
                                     for valid_version
                                     in self.SSC_VALID_VERSIONS)
-
-        self.features.add_feature('AUTOSUPPORT',
-                                  supported=asup_api_valid_version,
-                                  min_version=self._version_tuple_to_str(
-                                      self.ASUP_VALID_VERSION))
         self.features.add_feature('SSC_API_V2',
                                   supported=ssc_api_valid_version,
                                   min_version=self._version_tuple_to_str(
@@ -366,18 +374,18 @@ class RestClient(WebserviceClient):
         """Creates a volume on array with the configured attributes
 
         Note: if read_cache, write_cache, flash_cache, or data_assurance
-         are not provided, the default will be utilized by the Webservice.
+        are not provided, the default will be utilized by the Webservice.
 
         :param pool: The pool unique identifier
         :param label: The unqiue label for the volume
         :param size: The capacity in units
         :param unit: The unit for capacity
         :param seg_size: The segment size for the volume, expressed in KB.
-        Default will allow the Webservice to choose.
+                         Default will allow the Webservice to choose.
         :param read_cache: If true, enable read caching, if false,
-        explicitly disable it.
+                           explicitly disable it.
         :param write_cache: If true, enable write caching, if false,
-        explicitly disable it.
+                            explicitly disable it.
         :param flash_cache: If true, add the volume to a Flash Cache
         :param data_assurance: If true, enable the Data Assurance capability
         :returns: The created volume
@@ -558,8 +566,9 @@ class RestClient(WebserviceClient):
         :param name: the label for the view
         :param snap_id: E-Series snapshot view to locate
         :raise NetAppDriverException: if the snapshot view cannot be
-        located for the snapshot identified by snap_id
-        :return snapshot view for snapshot identified by snap_id
+                                      located for the snapshot identified
+                                      by snap_id
+        :return: snapshot view for snapshot identified by snap_id
         """
         path = self.RESOURCE_PATHS.get('cgroup_cgsnap_views')
 
@@ -603,15 +612,18 @@ class RestClient(WebserviceClient):
         """Retrieve the progress long-running operations on a storage pool
 
         Example:
-        [
-            {
-                "volumeRef": "3232....", # Volume being referenced
-                "progressPercentage": 0, # Approxmate percent complete
-                "estimatedTimeToCompletion": 0, # ETA in minutes
-                "currentAction": "none" # Current volume action
-            }
-            ...
-        ]
+
+        .. code-block:: python
+
+          [
+              {
+                  "volumeRef": "3232....", # Volume being referenced
+                  "progressPercentage": 0, # Approxmate percent complete
+                  "estimatedTimeToCompletion": 0, # ETA in minutes
+                  "currentAction": "none" # Current volume action
+              }
+              ...
+          ]
 
         :param object_id: A pool id
         :returns: A dict representing the action progress
@@ -930,6 +942,19 @@ class RestClient(WebserviceClient):
         path = "/storage-systems/{system-id}/volume-copy-jobs/{object-id}"
         return self._invoke('DELETE', path, **{'object-id': object_id})
 
+    def set_chap_authentication(self, target_iqn, chap_username,
+                                chap_password):
+        """Configures CHAP credentials for target IQN from backend."""
+        path = "/storage-systems/{system-id}/iscsi/target-settings/"
+        data = {
+            'iqn': target_iqn,
+            'enableChapAuthentication': True,
+            'alias': chap_username,
+            'authMethod': 'chap',
+            'chapSecret': chap_password,
+        }
+        return self._invoke('POST', path, data)
+
     def add_autosupport_data(self, key, data):
         """Register driver statistics via autosupport log."""
         path = ('/key-values/%s' % key)
@@ -997,8 +1022,8 @@ class RestClient(WebserviceClient):
         Example response: {"key": "cinder-snapshots", "value": "[]"}
 
         :param key: the persistent store to retrieve
-        :return a json body representing the value of the store,
-        or an empty json object
+        :returns: a json body representing the value of the store,
+                  or an empty json object
         """
         path = self.RESOURCE_PATHS.get('persistent-store')
         try:
@@ -1019,7 +1044,7 @@ class RestClient(WebserviceClient):
 
         :param key: The key utilized for storing/retrieving the data
         :param store_data: a python data structure that will be stored as a
-        json value
+                           json value
         """
         path = self.RESOURCE_PATHS.get('persistent-stores')
         store_data = json.dumps(store_data, separators=(',', ':'))

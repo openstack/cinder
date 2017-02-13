@@ -15,9 +15,10 @@
 
 import webob
 
+from oslo_utils import strutils
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
@@ -26,29 +27,12 @@ from cinder import quota
 from cinder import quota_utils
 from cinder import utils
 
-from oslo_config import cfg
-from oslo_utils import strutils
-
-
-CONF = cfg.CONF
 QUOTAS = quota.QUOTAS
 NON_QUOTA_KEYS = ['tenant_id', 'id']
 
 authorize_update = extensions.extension_authorizer('volume', 'quotas:update')
 authorize_show = extensions.extension_authorizer('volume', 'quotas:show')
 authorize_delete = extensions.extension_authorizer('volume', 'quotas:delete')
-
-
-class QuotaTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('quota_set', selector='quota_set')
-        root.set('id')
-
-        for resource in QUOTAS.resources:
-            elem = xmlutil.SubTemplateElement(root, resource)
-            elem.text = resource
-
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class QuotaSetsController(wsgi.Controller):
@@ -69,10 +53,12 @@ class QuotaSetsController(wsgi.Controller):
         if QUOTAS.using_nested_quotas():
             used += v.get('allocated', 0)
         if value < used:
-            # TODO(mc_nair): after N opens, update error message to include
-            # the current usage and requested limit
-            msg = _("Quota %s limit must be equal or greater than existing "
-                    "resources.") % key
+            msg = (_("Quota %(key)s limit must be equal or greater than "
+                     "existing resources. Current usage is %(usage)s "
+                     "and the requested limit is %(limit)s.")
+                   % {'key': key,
+                      'usage': used,
+                      'limit': value})
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _get_quotas(self, context, id, usages=False):
@@ -98,6 +84,10 @@ class QuotaSetsController(wsgi.Controller):
         :param parent_id: The parent id of the project in which the user
                           want to perform an update or delete operation.
         """
+        if context_project.is_admin_project:
+            # The calling project has admin privileges and should be able
+            # to operate on all quotas.
+            return
         if context_project.parent_id and parent_id != context_project.id:
             msg = _("Update and delete quota operations can only be made "
                     "by an admin of immediate parent or by the CLOUD admin.")
@@ -118,15 +108,20 @@ class QuotaSetsController(wsgi.Controller):
     def _authorize_show(self, context_project, target_project):
         """Checks if show is allowed in the current hierarchy.
 
-        With hierarchical projects, are allowed to perform quota show operation
-        users with admin role in, at least, one of the following projects: the
-        current project; the immediate parent project; or the root project.
+        With hierarchical projects, users are allowed to perform a quota show
+        operation if they have the cloud admin role or if they belong to at
+        least one of the following projects: the target project, its immediate
+        parent project, or the root project of its hierarchy.
 
         :param context_project: The project in which the user
                                 is scoped to.
         :param target_project: The project in which the user wants
                                to perform a show operation.
         """
+        if context_project.is_admin_project:
+            # The calling project has admin privileges and should be able
+            # to view all quotas.
+            return
         if target_project.parent_id:
             if target_project.id != context_project.id:
                 if not self._is_descendant(target_project.id,
@@ -155,7 +150,6 @@ class QuotaSetsController(wsgi.Controller):
                     return True
         return False
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def show(self, req, id):
         """Show quota for a particular tenant
 
@@ -173,7 +167,7 @@ class QuotaSetsController(wsgi.Controller):
         target_project_id = id
 
         if not hasattr(params, '__call__') and 'usage' in params:
-            usage = strutils.bool_from_string(params['usage'])
+            usage = utils.get_bool_param('usage', params)
         else:
             usage = False
 
@@ -184,7 +178,8 @@ class QuotaSetsController(wsgi.Controller):
             target_project = quota_utils.get_project_hierarchy(
                 context, target_project_id)
             context_project = quota_utils.get_project_hierarchy(
-                context, context.project_id, subtree_as_ids=True)
+                context, context.project_id, subtree_as_ids=True,
+                is_admin_project=context.is_admin)
 
             self._authorize_show(context_project, target_project)
 
@@ -197,7 +192,6 @@ class QuotaSetsController(wsgi.Controller):
         quotas = self._get_quotas(context, target_project_id, usage)
         return self._format_quota_set(target_project_id, quotas)
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def update(self, req, id, body):
         """Update Quota for a particular tenant
 
@@ -207,9 +201,8 @@ class QuotaSetsController(wsgi.Controller):
 
         :param req: request
         :param id: target project id that needs to be updated
-        :param body: key, value pair that that will be
-                     applied to the resources if the update
-                     succeeds
+        :param body: key, value pair that will be applied to
+                     the resources if the update succeeds
         """
         context = req.environ['cinder.context']
         authorize_update(context)
@@ -221,7 +214,7 @@ class QuotaSetsController(wsgi.Controller):
         # Get the optional argument 'skip_validation' from body,
         # if skip_validation is False, then validate existing resource.
         skip_flag = body.get('skip_validation', True)
-        if not utils.is_valid_boolstr(skip_flag):
+        if not strutils.is_valid_boolstr(skip_flag):
             msg = _("Invalid value '%s' for skip_validation.") % skip_flag
             raise exception.InvalidParameterValue(err=msg)
         skip_flag = strutils.bool_from_string(skip_flag)
@@ -253,7 +246,8 @@ class QuotaSetsController(wsgi.Controller):
                 # Get the children of the project which the token is scoped to
                 # in order to know if the target_project is in its hierarchy.
                 context_project = quota_utils.get_project_hierarchy(
-                    context, context.project_id, subtree_as_ids=True)
+                    context, context.project_id, subtree_as_ids=True,
+                    is_admin_project=context.is_admin)
                 self._authorize_update_or_delete(context_project,
                                                  target_project.id,
                                                  parent_id)
@@ -287,7 +281,7 @@ class QuotaSetsController(wsgi.Controller):
                 except exception.OverQuota as e:
                     if reservations:
                         db.reservation_rollback(context, reservations)
-                    raise webob.exc.HTTPBadRequest(explanation=e.message)
+                    raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
             valid_quotas[key] = value
 
@@ -337,7 +331,6 @@ class QuotaSetsController(wsgi.Controller):
 
         return reservations
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
@@ -345,7 +338,6 @@ class QuotaSetsController(wsgi.Controller):
         return self._format_quota_set(id, QUOTAS.get_defaults(
             context, project_id=id))
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def delete(self, req, id):
         """Delete Quota for a particular tenant.
 
@@ -436,7 +428,6 @@ class Quotas(extensions.ExtensionDescriptor):
 
     name = "Quotas"
     alias = "os-quota-sets"
-    namespace = "http://docs.openstack.org/volume/ext/quotas-sets/api/v1.1"
     updated = "2011-08-08T00:00:00+00:00"
 
     def get_resources(self):

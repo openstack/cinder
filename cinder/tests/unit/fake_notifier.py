@@ -15,7 +15,7 @@
 import collections
 import functools
 
-import anyjson
+import json
 import oslo_messaging as messaging
 
 from cinder import rpc
@@ -28,8 +28,8 @@ FakeMessage = collections.namedtuple('Message',
 
 class FakeNotifier(object):
 
-    def __init__(self, transport, publisher_id, serializer=None, driver=None,
-                 topic=None, retry=None):
+    def __init__(self, transport, publisher_id=None, serializer=None,
+                 driver=None, topic=None, retry=None):
         self.transport = transport
         self.publisher_id = publisher_id
         for priority in ['debug', 'info', 'warn', 'error', 'critical']:
@@ -53,7 +53,7 @@ class FakeNotifier(object):
         # NOTE(sileht): simulate the kombu serializer
         # this permit to raise an exception if something have not
         # been serialized correctly
-        anyjson.serialize(payload)
+        json.dumps(payload)
         msg = dict(publisher_id=self.publisher_id,
                    priority=priority,
                    event_type=event_type,
@@ -64,13 +64,14 @@ class FakeNotifier(object):
         del self.notifications[:]
 
 
-def stub_notifier(stubs):
-    stubs.Set(messaging, 'Notifier', FakeNotifier)
+def mock_notifier(testcase):
+    testcase.mock_object(messaging, 'Notifier', FakeNotifier)
     if rpc.NOTIFIER:
         serializer = getattr(rpc.NOTIFIER, '_serializer', None)
-        stubs.Set(rpc, 'NOTIFIER', FakeNotifier(rpc.NOTIFIER.transport,
-                                                rpc.NOTIFIER.publisher_id,
-                                                serializer=serializer))
+        testcase.mock_object(rpc, 'NOTIFIER',
+                             FakeNotifier(rpc.NOTIFIER.transport,
+                                          rpc.NOTIFIER.publisher_id,
+                                          serializer=serializer))
 
 
 def get_fake_notifier(service=None, host=None, publisher_id=None):

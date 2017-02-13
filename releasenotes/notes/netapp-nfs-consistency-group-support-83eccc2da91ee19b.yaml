@@ -1,0 +1,3 @@
+---
+features:
+  - Added Cinder consistency group for the NetApp NFS driver.

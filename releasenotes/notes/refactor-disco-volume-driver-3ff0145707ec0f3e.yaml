@@ -1,0 +1,5 @@
+---
+deprecations:
+  - Marked the ITRI DISCO driver option ``disco_wsdl_path`` as deprecated.
+    The new preferred protocol for array communication is REST and SOAP
+    support will be removed.

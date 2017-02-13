@@ -15,7 +15,6 @@
 
 import re
 
-from oslo_log import log as logging
 import paste.urlmap
 try:
     from urllib.request import parse_http_list   # pylint: disable=E0611
@@ -30,8 +29,6 @@ _option_header_piece_re = re.compile(
     r';\s*([^\s;=]+|%s)\s*'
     r'(?:=\s*([^;]+|%s))?\s*' %
     (_quoted_string_re, _quoted_string_re))
-
-LOG = logging.getLogger(__name__)
 
 
 def unquote_header_value(value):
@@ -258,7 +255,7 @@ class URLMap(paste.urlmap.URLMap):
 
         # The MIME type for the response is determined in one of two ways:
         # 1) URL path suffix (eg /servers/detail.json)
-        # 2) Accept header (eg application/json;q=0.8, application/xml;q=0.2)
+        # 2) Accept header (eg application/json;q=0.8)
 
         # The API version is determined in one of three ways:
         # 1) URL path prefix (eg /v1.1/tenant/servers/detail)
@@ -268,11 +265,6 @@ class URLMap(paste.urlmap.URLMap):
         supported_content_types = list(wsgi.SUPPORTED_CONTENT_TYPES)
 
         mime_type, app, app_url = self._path_strategy(host, port, path_info)
-
-        # Accept application/atom+xml for the index query of each API
-        # version mount point as well as the root index
-        if (app_url and app_url + '/' == path_info) or path_info == '/':
-            supported_content_types.append('application/atom+xml')
 
         if not app:
             app = self._content_type_strategy(host, port, environ)

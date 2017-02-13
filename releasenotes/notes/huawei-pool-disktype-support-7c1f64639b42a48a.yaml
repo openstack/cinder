@@ -1,0 +1,4 @@
+---
+features:
+  - Add support for reporting pool disk type in Huawei
+    driver.

@@ -16,11 +16,24 @@ vgs: EnvFilter, env, root, LC_ALL=C, vgs
 lvs: EnvFilter, env, root, LC_ALL=C, lvs
 lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
-# LVM conf var
-pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvs
-vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
-lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
-lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
+# -LVM related show commands with suppress fd warnings
+pvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvs2: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+
+
+# -LVM related show commands conf var
+pvs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, pvs
+vgs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, vgs
+lvs3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, lvs
+lvdisplay3: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, lvdisplay
+
+# -LVM conf var with suppress fd_warnings
+pvs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvdisplay4: EnvFilter, env, root, LC_ALL=C, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 # os-brick library commands
 # os_brick.privileged.run_as_root oslo.privsep context
@@ -40,6 +53,8 @@ vgcreate: CommandFilter, vgcreate, root
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
 lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
 lvcreate_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvcreate
+lvcreate_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvcreate
+lvcreate_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, LC_ALL=C, lvcreate
 
 # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
 dd: CommandFilter, dd, root
@@ -54,6 +69,8 @@ lvrename: CommandFilter, lvrename, root
 # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
 lvextend: EnvFilter, env, root, LC_ALL=C, lvextend
 lvextend_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvextend
+lvextend_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
+lvextend_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
 
 # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
 lvchange: CommandFilter, lvchange, root
@@ -64,10 +81,6 @@ lvconvert: CommandFilter, lvconvert, root
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
-
-# cinder/volume/drivers/lvm.py: 'shred', '-n3'
-# cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
-shred: CommandFilter, shred, root
 
 # cinder/volume/utils.py: utils.temporary_chown(path, 0)
 chown: CommandFilter, chown, root
@@ -102,6 +115,9 @@ du: CommandFilter, du, root
 truncate: CommandFilter, truncate, root
 chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
+
+# cinder/volume/drivers/remotefs.py
+mkdir: CommandFilter, mkdir, root
 
 # cinder/volume/drivers/netapp/nfs.py:
 netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -name, img-cache.*, -amin, \+\d+
@@ -151,7 +167,7 @@ mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py
-find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -inum, \d+
+find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -ignore_readdir_race, -inum, \d+, -print0, -quit
 
 # cinder/brick/initiator/connector.py:
 aoe-revalidate: CommandFilter, aoe-revalidate, root
@@ -202,6 +218,12 @@ vgc-cluster: CommandFilter, vgc-cluster, root
 # cinder/volume/drivers/vzstorage.py
 pstorage-mount: CommandFilter, pstorage-mount, root
 pstorage: CommandFilter, pstorage, root
+ploop: CommandFilter, ploop, root
 
 # initiator/connector.py:
 drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
+
+# cinder/volume/drivers/quobyte.py
+getfattr: CommandFilter, getfattr, root
+mount.quobyte: CommandFilter, getfattr, root
+

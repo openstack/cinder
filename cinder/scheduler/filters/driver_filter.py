@@ -24,32 +24,34 @@ from cinder.scheduler import filters
 LOG = logging.getLogger(__name__)
 
 
-class DriverFilter(filters.BaseHostFilter):
-    """DriverFilter filters hosts based on a 'filter function' and metrics.
+class DriverFilter(filters.BaseBackendFilter):
+    """DriverFilter filters backend based on a 'filter function' and metrics.
 
-    DriverFilter filters based on volume host's provided 'filter function'
+    DriverFilter filters based on volume backend's provided 'filter function'
     and metrics.
     """
 
-    def host_passes(self, host_state, filter_properties):
-        """Determines whether a host has a passing filter_function or not."""
-        stats = self._generate_stats(host_state, filter_properties)
+    def backend_passes(self, backend_state, filter_properties):
+        """Determines if a backend has a passing filter_function or not."""
+        stats = self._generate_stats(backend_state, filter_properties)
 
-        LOG.debug("Checking host '%s'", stats['host_stats']['host'])
+        LOG.debug("Checking backend '%s'",
+                  stats['backend_stats']['backend_id'])
         result = self._check_filter_function(stats)
         LOG.debug("Result: %s", result)
-        LOG.debug("Done checking host '%s'", stats['host_stats']['host'])
+        LOG.debug("Done checking backend '%s'",
+                  stats['backend_stats']['backend_id'])
 
         return result
 
     def _check_filter_function(self, stats):
-        """Checks if a volume passes a host's filter function.
+        """Checks if a volume passes a backend's filter function.
 
            Returns a tuple in the format (filter_passing, filter_invalid).
            Both values are booleans.
         """
         if stats['filter_function'] is None:
-            LOG.debug("Filter function not set :: passing host")
+            LOG.debug("Filter function not set :: passing backend")
             return True
 
         try:
@@ -59,7 +61,7 @@ class DriverFilter(filters.BaseHostFilter):
             # Warn the admin for now that there is an error in the
             # filter function.
             LOG.warning(_LW("Error in filtering function "
-                            "'%(function)s' : '%(error)s' :: failing host"),
+                            "'%(function)s' : '%(error)s' :: failing backend"),
                         {'function': stats['filter_function'],
                          'error': ex, })
             return False
@@ -68,8 +70,8 @@ class DriverFilter(filters.BaseHostFilter):
 
     def _run_evaluator(self, func, stats):
         """Evaluates a given function using the provided available stats."""
-        host_stats = stats['host_stats']
-        host_caps = stats['host_caps']
+        backend_stats = stats['backend_stats']
+        backend_caps = stats['backend_caps']
         extra_specs = stats['extra_specs']
         qos_specs = stats['qos_specs']
         volume_stats = stats['volume_stats']
@@ -77,37 +79,39 @@ class DriverFilter(filters.BaseHostFilter):
         result = evaluator.evaluate(
             func,
             extra=extra_specs,
-            stats=host_stats,
-            capabilities=host_caps,
+            stats=backend_stats,
+            capabilities=backend_caps,
             volume=volume_stats,
             qos=qos_specs)
 
         return result
 
-    def _generate_stats(self, host_state, filter_properties):
-        """Generates statistics from host and volume data."""
+    def _generate_stats(self, backend_state, filter_properties):
+        """Generates statistics from backend and volume data."""
 
-        host_stats = {
-            'host': host_state.host,
-            'volume_backend_name': host_state.volume_backend_name,
-            'vendor_name': host_state.vendor_name,
-            'driver_version': host_state.driver_version,
-            'storage_protocol': host_state.storage_protocol,
-            'QoS_support': host_state.QoS_support,
-            'total_capacity_gb': host_state.total_capacity_gb,
-            'allocated_capacity_gb': host_state.allocated_capacity_gb,
-            'free_capacity_gb': host_state.free_capacity_gb,
-            'reserved_percentage': host_state.reserved_percentage,
-            'updated': host_state.updated,
+        backend_stats = {
+            'host': backend_state.host,
+            'cluster_name': backend_state.cluster_name,
+            'backend_id': backend_state.backend_id,
+            'volume_backend_name': backend_state.volume_backend_name,
+            'vendor_name': backend_state.vendor_name,
+            'driver_version': backend_state.driver_version,
+            'storage_protocol': backend_state.storage_protocol,
+            'QoS_support': backend_state.QoS_support,
+            'total_capacity_gb': backend_state.total_capacity_gb,
+            'allocated_capacity_gb': backend_state.allocated_capacity_gb,
+            'free_capacity_gb': backend_state.free_capacity_gb,
+            'reserved_percentage': backend_state.reserved_percentage,
+            'updated': backend_state.updated,
         }
 
-        host_caps = host_state.capabilities
+        backend_caps = backend_state.capabilities
 
         filter_function = None
 
-        if ('filter_function' in host_caps and
-                host_caps['filter_function'] is not None):
-            filter_function = six.text_type(host_caps['filter_function'])
+        if ('filter_function' in backend_caps and
+                backend_caps['filter_function'] is not None):
+            filter_function = six.text_type(backend_caps['filter_function'])
 
         qos_specs = filter_properties.get('qos_specs', {})
 
@@ -118,8 +122,8 @@ class DriverFilter(filters.BaseHostFilter):
         volume_stats = request_spec.get('volume_properties', {})
 
         stats = {
-            'host_stats': host_stats,
-            'host_caps': host_caps,
+            'backend_stats': backend_stats,
+            'backend_caps': backend_caps,
             'extra_specs': extra_specs,
             'qos_specs': qos_specs,
             'volume_stats': volume_stats,

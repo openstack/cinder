@@ -31,6 +31,7 @@ from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import objects
 from cinder import utils
 from cinder.volume import driver
@@ -68,17 +69,25 @@ volume_opts = [
                  help='max_over_subscription_ratio setting for the LVM '
                       'driver.  If set, this takes precedence over the '
                       'general max_over_subscription_ratio option.  If '
-                      'None, the general option is used.')
+                      'None, the general option is used.'),
+    cfg.BoolOpt('lvm_suppress_fd_warnings',
+                default=False,
+                help='Suppress leaked file descriptor warnings in LVM '
+                     'commands.')
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class LVMVolumeDriver(driver.VolumeDriver):
     """Executes commands relating to Volumes."""
 
     VERSION = '3.0.0'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
 
     def __init__(self, vg_obj=None, *args, **kwargs):
         # Parent sets db, host, _execute and base config
@@ -175,6 +184,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if not snapshot_name.startswith('snapshot'):
             return snapshot_name
         return '_' + snapshot_name
+
+    def _unescape_snapshot(self, snapshot_name):
+        # Undo snapshot name change done by _escape_snapshot()
+        if not snapshot_name.startswith('_snapshot'):
+            return snapshot_name
+        return snapshot_name[1:]
 
     def _create_volume(self, name, size, lvm_type, mirror_count, vg=None):
         vg_ref = self.vg
@@ -276,11 +291,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 lvm_conf_file = None
 
             try:
-                self.vg = lvm.LVM(self.configuration.volume_group,
-                                  root_helper,
-                                  lvm_type=self.configuration.lvm_type,
-                                  executor=self._execute,
-                                  lvm_conf=lvm_conf_file)
+                self.vg = lvm.LVM(
+                    self.configuration.volume_group,
+                    root_helper,
+                    lvm_type=self.configuration.lvm_type,
+                    executor=self._execute,
+                    lvm_conf=lvm_conf_file,
+                    suppress_fd_warn=(
+                        self.configuration.lvm_suppress_fd_warnings))
 
             except exception.VolumeGroupNotFound:
                 message = (_("Volume Group %s does not exist") %
@@ -584,7 +602,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         lv_name = existing_ref['source-name']
         self.vg.get_volume(lv_name)
 
-        if volutils.check_already_managed_volume(self.db, lv_name):
+        vol_id = volutils.extract_id_from_volume_name(lv_name)
+        if volutils.check_already_managed_volume(vol_id):
             raise exception.ManageExistingAlreadyManaged(volume_ref=lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.
@@ -652,6 +671,61 @@ class LVMVolumeDriver(driver.VolumeDriver):
             existing_ref = {"source-name": existing_ref}
         return self.manage_existing(snapshot_temp, existing_ref)
 
+    def _get_manageable_resource_info(self, cinder_resources, resource_type,
+                                      marker, limit, offset, sort_keys,
+                                      sort_dirs):
+        entries = []
+        lvs = self.vg.get_volumes()
+        cinder_ids = [resource['id'] for resource in cinder_resources]
+
+        for lv in lvs:
+            is_snap = self.vg.lv_is_snapshot(lv['name'])
+            if ((resource_type == 'volume' and is_snap) or
+                    (resource_type == 'snapshot' and not is_snap)):
+                continue
+
+            if resource_type == 'volume':
+                potential_id = volutils.extract_id_from_volume_name(lv['name'])
+            else:
+                unescape = self._unescape_snapshot(lv['name'])
+                potential_id = volutils.extract_id_from_snapshot_name(unescape)
+            lv_info = {'reference': {'source-name': lv['name']},
+                       'size': int(math.ceil(float(lv['size']))),
+                       'cinder_id': None,
+                       'extra_info': None}
+
+            if potential_id in cinder_ids:
+                lv_info['safe_to_manage'] = False
+                lv_info['reason_not_safe'] = 'already managed'
+                lv_info['cinder_id'] = potential_id
+            elif self.vg.lv_is_open(lv['name']):
+                lv_info['safe_to_manage'] = False
+                lv_info['reason_not_safe'] = '%s in use' % resource_type
+            else:
+                lv_info['safe_to_manage'] = True
+                lv_info['reason_not_safe'] = None
+
+            if resource_type == 'snapshot':
+                origin = self.vg.lv_get_origin(lv['name'])
+                lv_info['source_reference'] = {'source-name': origin}
+
+            entries.append(lv_info)
+
+        return volutils.paginate_entries_list(entries, marker, limit, offset,
+                                              sort_keys, sort_dirs)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        return self._get_manageable_resource_info(cinder_volumes, 'volume',
+                                                  marker, limit,
+                                                  offset, sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        return self._get_manageable_resource_info(cinder_snapshots, 'snapshot',
+                                                  marker, limit,
+                                                  offset, sort_keys, sort_dirs)
+
     def retype(self, context, volume, new_type, diff, host):
         """Retypes a volume, allow QoS and extra_specs change."""
 
@@ -683,57 +757,56 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if (dest_type != 'LVMVolumeDriver' or dest_hostname != self.hostname):
             return false_ret
 
-        if dest_vg != self.vg.vg_name:
-            vg_list = volutils.get_all_volume_groups()
-            try:
-                next(vg for vg in vg_list if vg['name'] == dest_vg)
-            except StopIteration:
-                LOG.error(_LE("Destination Volume Group %s does not exist"),
-                          dest_vg)
-                return false_ret
-
-            helper = utils.get_root_helper()
-
-            lvm_conf_file = self.configuration.lvm_conf_file
-            if lvm_conf_file.lower() == 'none':
-                lvm_conf_file = None
-
-            dest_vg_ref = lvm.LVM(dest_vg, helper,
-                                  lvm_type=lvm_type,
-                                  executor=self._execute,
-                                  lvm_conf=lvm_conf_file)
-
-            self._create_volume(volume['name'],
-                                self._sizestr(volume['size']),
-                                lvm_type,
-                                lvm_mirrors,
-                                dest_vg_ref)
-            # copy_volume expects sizes in MiB, we store integer GiB
-            # be sure to convert before passing in
-            size_in_mb = int(volume['size']) * units.Ki
-            try:
-                volutils.copy_volume(self.local_path(volume),
-                                     self.local_path(volume, vg=dest_vg),
-                                     size_in_mb,
-                                     self.configuration.volume_dd_blocksize,
-                                     execute=self._execute,
-                                     sparse=self._sparse_copy_volume)
-            except Exception as e:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Volume migration failed due to "
-                                  "exception: %(reason)s."),
-                              {'reason': six.text_type(e)}, resource=volume)
-                    dest_vg_ref.delete(volume)
-            self._delete_volume(volume)
-
-            return (True, None)
-        else:
+        if dest_vg == self.vg.vg_name:
             message = (_("Refusing to migrate volume ID: %(id)s. Please "
                          "check your configuration because source and "
                          "destination are the same Volume Group: %(name)s.") %
                        {'id': volume['id'], 'name': self.vg.vg_name})
             LOG.error(message)
             raise exception.VolumeBackendAPIException(data=message)
+
+        vg_list = volutils.get_all_volume_groups()
+        try:
+            next(vg for vg in vg_list if vg['name'] == dest_vg)
+        except StopIteration:
+            LOG.error(_LE("Destination Volume Group %s does not exist"),
+                      dest_vg)
+            return false_ret
+
+        helper = utils.get_root_helper()
+
+        lvm_conf_file = self.configuration.lvm_conf_file
+        if lvm_conf_file.lower() == 'none':
+            lvm_conf_file = None
+
+        dest_vg_ref = lvm.LVM(dest_vg, helper,
+                              lvm_type=lvm_type,
+                              executor=self._execute,
+                              lvm_conf=lvm_conf_file)
+
+        self._create_volume(volume['name'],
+                            self._sizestr(volume['size']),
+                            lvm_type,
+                            lvm_mirrors,
+                            dest_vg_ref)
+        # copy_volume expects sizes in MiB, we store integer GiB
+        # be sure to convert before passing in
+        size_in_mb = int(volume['size']) * units.Ki
+        try:
+            volutils.copy_volume(self.local_path(volume),
+                                 self.local_path(volume, vg=dest_vg),
+                                 size_in_mb,
+                                 self.configuration.volume_dd_blocksize,
+                                 execute=self._execute,
+                                 sparse=self._sparse_copy_volume)
+        except Exception as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Volume migration failed due to "
+                              "exception: %(reason)s."),
+                          {'reason': six.text_type(e)}, resource=volume)
+                dest_vg_ref.delete(volume)
+        self._delete_volume(volume)
+        return (True, None)
 
     def get_pool(self, volume):
         return self.backend_name

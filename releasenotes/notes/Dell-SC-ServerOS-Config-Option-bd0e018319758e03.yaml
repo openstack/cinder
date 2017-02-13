@@ -1,0 +1,8 @@
+---
+features:
+  - Config option ``dell_server_os`` added to the Dell SC driver.
+    This option allows the selection of the server type
+    used when creating a server on the Dell DSM during
+    initialize connection. This is only used if the
+    server does not exist. Valid values are from the
+    Dell DSM create server list.

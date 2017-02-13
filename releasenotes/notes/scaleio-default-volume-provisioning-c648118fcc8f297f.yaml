@@ -1,0 +1,5 @@
+---
+upgrade:
+  - EMC ScaleIO driver now uses the config option
+    ``san_thin_provision`` to determine the default
+    provisioning type.

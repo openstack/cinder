@@ -17,9 +17,12 @@ import os
 import mock
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.windows import smbfs
 
 
@@ -35,18 +38,12 @@ class WindowsSmbFsTestCase(test.TestCase):
     _FAKE_TOTAL_SIZE = '2048'
     _FAKE_TOTAL_AVAILABLE = '1024'
     _FAKE_TOTAL_ALLOCATED = 1024
-    _FAKE_VOLUME = {'id': 'e8d76af4-cbb9-4b70-8e9e-5a133f1a1a66',
-                    'size': 1,
-                    'provider_location': _FAKE_SHARE}
-    _FAKE_SNAPSHOT = {'id': '35a23942-7625-4683-ad84-144b76e87a80',
-                      'volume': _FAKE_VOLUME,
-                      'volume_size': _FAKE_VOLUME['size']}
     _FAKE_SHARE_OPTS = '-o username=Administrator,password=12345'
     _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT,
                                      _FAKE_VOLUME_NAME + '.vhdx')
 
     @mock.patch.object(smbfs, 'utilsfactory')
-    @mock.patch.object(smbfs, 'remotefs')
+    @mock.patch.object(smbfs, 'remotefs_brick')
     def setUp(self, mock_remotefs, mock_utilsfactory):
         super(WindowsSmbFsTestCase, self).setUp()
 
@@ -56,6 +53,25 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver.local_path = mock.Mock(
             return_value=self._FAKE_VOLUME_PATH)
 
+    def _simple_volume(self, **kwargs):
+        updates = {'id': 'e8d76af4-cbb9-4b70-8e9e-5a133f1a1a66',
+                   'size': 1,
+                   'provider_location': self._FAKE_SHARE}
+        updates.update(kwargs)
+        ctxt = context.get_admin_context()
+        return fake_volume.fake_volume_obj(ctxt, **updates)
+
+    def _simple_snapshot(self, **kwargs):
+        volume = self._simple_volume()
+        ctxt = context.get_admin_context()
+        updates = {'id': '35a23942-7625-4683-ad84-144b76e87a80',
+                   'volume_size': volume.size,
+                   'volume_id': volume.id}
+        updates.update(kwargs)
+        snapshot = fake_snapshot.fake_snapshot_obj(ctxt, **updates)
+        snapshot.volume = volume
+        return snapshot
+
     def _test_create_volume(self, volume_exists=False, volume_format='vhdx'):
         self._smbfs_driver.create_dynamic_vhd = mock.MagicMock()
         fake_create = self._smbfs_driver._vhdutils.create_dynamic_vhd
@@ -63,15 +79,16 @@ class WindowsSmbFsTestCase(test.TestCase):
             return_value=volume_format)
 
         with mock.patch('os.path.exists', new=lambda x: volume_exists):
+            volume = self._simple_volume()
             if volume_exists or volume_format not in ('vhd', 'vhdx'):
                 self.assertRaises(exception.InvalidVolume,
                                   self._smbfs_driver._do_create_volume,
-                                  self._FAKE_VOLUME)
+                                  volume)
             else:
                 fake_vol_path = self._FAKE_VOLUME_PATH
-                self._smbfs_driver._do_create_volume(self._FAKE_VOLUME)
+                self._smbfs_driver._do_create_volume(volume)
                 fake_create.assert_called_once_with(
-                    fake_vol_path, self._FAKE_VOLUME['size'] << 30)
+                    fake_vol_path, volume.size << 30)
 
     def test_create_volume(self):
         self._test_create_volume()
@@ -120,7 +137,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._smbfs_driver._vhdutils.create_differencing_vhd)
 
         self._smbfs_driver._do_create_snapshot(
-            self._FAKE_SNAPSHOT,
+            self._simple_snapshot(),
             os.path.basename(self._FAKE_VOLUME_PATH),
             self._FAKE_SNAPSHOT_PATH)
 
@@ -156,8 +173,9 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         with mock.patch.object(image_utils, 'upload_volume') as (
                 fake_upload_volume):
+            volume = self._simple_volume()
             drv.copy_volume_to_image(
-                mock.sentinel.context, self._FAKE_VOLUME,
+                mock.sentinel.context, volume,
                 mock.sentinel.image_service, fake_image_meta)
 
             expected_conversion = (
@@ -165,7 +183,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
             if expected_conversion:
                 fake_temp_image_name = '%s.temp_image.%s.%s' % (
-                    self._FAKE_VOLUME['id'],
+                    volume.id,
                     fake_image_meta['id'],
                     drv._DISK_FORMAT_VHD)
                 fake_temp_image_path = os.path.join(
@@ -209,8 +227,9 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         with mock.patch.object(image_utils,
                                'fetch_to_volume_format') as fake_fetch:
+            volume = self._simple_volume()
             drv.copy_image_to_volume(
-                mock.sentinel.context, self._FAKE_VOLUME,
+                mock.sentinel.context, volume,
                 mock.sentinel.image_service,
                 mock.sentinel.image_id)
             fake_fetch.assert_called_once_with(
@@ -221,12 +240,14 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.block_size)
             drv._vhdutils.resize_vhd.assert_called_once_with(
                 self._FAKE_VOLUME_PATH,
-                self._FAKE_VOLUME['size'] * units.Gi)
+                volume.size * units.Gi,
+                is_file_max_size=False)
 
     def test_copy_volume_from_snapshot(self):
         drv = self._smbfs_driver
+        snapshot = self._simple_snapshot()
         fake_volume_info = {
-            self._FAKE_SNAPSHOT['id']: 'fake_snapshot_file_name'}
+            snapshot.id: 'fake_snapshot_file_name'}
         fake_img_info = mock.MagicMock()
         fake_img_info.backing_file = self._FAKE_VOLUME_NAME + '.vhdx'
 
@@ -241,9 +262,9 @@ class WindowsSmbFsTestCase(test.TestCase):
         drv.local_path = mock.Mock(
             return_value=mock.sentinel.new_volume_path)
 
-        drv._copy_volume_from_snapshot(
-            self._FAKE_SNAPSHOT, self._FAKE_VOLUME,
-            self._FAKE_VOLUME['size'])
+        volume = self._simple_volume()
+        drv._copy_volume_from_snapshot(snapshot,
+                                       volume, volume.size)
 
         drv._delete.assert_called_once_with(mock.sentinel.new_volume_path)
         drv._vhdutils.convert_vhd.assert_called_once_with(
@@ -251,7 +272,8 @@ class WindowsSmbFsTestCase(test.TestCase):
             mock.sentinel.new_volume_path)
         drv._vhdutils.resize_vhd.assert_called_once_with(
             mock.sentinel.new_volume_path,
-            self._FAKE_VOLUME['size'] * units.Gi)
+            volume.size * units.Gi,
+            is_file_max_size=False)
 
     def test_rebase_img(self):
         drv = self._smbfs_driver

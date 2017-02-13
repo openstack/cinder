@@ -1,0 +1,5 @@
+{
+    "os-attach": {
+        "host_name": "my_host"
+    }
+}

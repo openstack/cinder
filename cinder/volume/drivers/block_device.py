@@ -17,6 +17,7 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -24,6 +25,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import objects
 from cinder import utils
 from cinder.volume import driver
@@ -42,12 +44,24 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
-                        driver.CloneableImageVD, driver.TransferVD):
-    VERSION = '2.2.0'
+@interface.volumedriver
+class BlockDeviceDriver(driver.BaseVD,
+                        driver.CloneableImageVD):
+    VERSION = '2.3.0'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+    SUPPORTED = False
 
     def __init__(self, *args, **kwargs):
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
+        # This driver has been marked as deprecated in the Ocata release, as
+        # per the standard OpenStack deprecation policy it can be removed in
+        # the Queens release.
+        msg = _("The block_device driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
+
         self.configuration.append_config_values(volume_opts)
         self.backend_name = \
             self.configuration.safe_get('volume_backend_name') or "BlockDev"
@@ -62,12 +76,13 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
     def check_for_setup_error(self):
         pass
 
-    def _update_provider_location(self, object, device):
+    def _update_provider_location(self, obj, device):
         # We update provider_location and host to mark device as used to
         # avoid race with other threads.
         # TODO(ynesenenko): need to remove DB access from driver
-        object.update({'provider_location': device, 'host': self.host})
-        object.save()
+        host = '{host}#{pool}'.format(host=self.host, pool=self.get_pool(obj))
+        obj.update({'provider_location': device, 'host': host})
+        obj.save()
 
     @utils.synchronized('block_device', external=True)
     def create_volume(self, volume):
@@ -153,17 +168,25 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
             total_size += size
 
         LOG.debug("Updating volume stats.")
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data = {'total_capacity_gb': total_size / units.Ki,
-                'free_capacity_gb': free_size / units.Ki,
-                'reserved_percentage': self.configuration.reserved_percentage,
-                'QoS_support': False,
-                'volume_backend_name': backend_name or self.__class__.__name__,
-                'vendor_name': "Open Source",
-                'driver_version': self.VERSION,
-                'storage_protocol': 'unknown'}
+        data = {
+            'volume_backend_name': self.backend_name,
+            'vendor_name': "Open Source",
+            'driver_version': self.VERSION,
+            'storage_protocol': 'unknown',
+            'pools': []}
 
+        single_pool = {
+            'pool_name': data['volume_backend_name'],
+            'total_capacity_gb': total_size / units.Ki,
+            'free_capacity_gb': free_size / units.Ki,
+            'reserved_percentage': self.configuration.reserved_percentage,
+            'QoS_support': False}
+
+        data['pools'].append(single_pool)
         self._stats = data
+
+    def get_pool(self, volume):
+        return self.backend_name
 
     def _get_used_paths(self, lst):
         used_dev = set()

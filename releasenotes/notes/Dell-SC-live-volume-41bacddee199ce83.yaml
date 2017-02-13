@@ -1,0 +1,4 @@
+---
+features:
+  - Added support for the use of live volume in place of
+    standard replication in the Dell SC driver.

@@ -41,13 +41,14 @@ CONF = cfg.CONF
 CONF.register_opts(scheduler_driver_opts)
 
 
-def volume_update_db(context, volume_id, host):
-    """Set the host and set the scheduled_at field of a volume.
+def volume_update_db(context, volume_id, host, cluster_name):
+    """Set the host, cluster_name, and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
     """
     volume = objects.Volume.get_by_id(context, volume_id)
     volume.host = host
+    volume.cluster_name = cluster_name
     volume.scheduled_at = timeutils.utcnow()
     volume.save()
 
@@ -56,12 +57,24 @@ def volume_update_db(context, volume_id, host):
     return volume
 
 
-def group_update_db(context, group, host):
+def group_update_db(context, group, host, cluster_name):
     """Set the host and the scheduled_at field of a consistencygroup.
 
     :returns: A Consistencygroup with the updated fields set properly.
     """
-    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.update({'host': host, 'updated_at': timeutils.utcnow(),
+                  'cluster_name': cluster_name})
+    group.save()
+    return group
+
+
+def generic_group_update_db(context, group, host, cluster_name):
+    """Set the host and the scheduled_at field of a group.
+
+    :returns: A Group with the updated fields set properly.
+    """
+    group.update({'host': host, 'updated_at': timeutils.utcnow(),
+                  'cluster_name': cluster_name})
     group.save()
     return group
 
@@ -87,20 +100,38 @@ class Scheduler(object):
 
         return self.host_manager.has_all_capabilities()
 
-    def update_service_capabilities(self, service_name, host, capabilities):
+    def update_service_capabilities(self, service_name, host, capabilities,
+                                    cluster_name, timestamp):
         """Process a capability update from a service node."""
         self.host_manager.update_service_capabilities(service_name,
                                                       host,
-                                                      capabilities)
+                                                      capabilities,
+                                                      cluster_name,
+                                                      timestamp)
 
-    def host_passes_filters(self, context, volume_id, host, filter_properties):
-        """Check if the specified host passes the filters."""
-        raise NotImplementedError(_("Must implement host_passes_filters"))
+    def notify_service_capabilities(self, service_name, backend,
+                                    capabilities, timestamp):
+        """Notify capability update from a service node."""
+        self.host_manager.notify_service_capabilities(service_name,
+                                                      backend,
+                                                      capabilities,
+                                                      timestamp)
+
+    def host_passes_filters(self, context, backend, request_spec,
+                            filter_properties):
+        """Check if the specified backend passes the filters."""
+        raise NotImplementedError(_("Must implement backend_passes_filters"))
 
     def find_retype_host(self, context, request_spec, filter_properties=None,
                          migration_policy='never'):
-        """Find a host that can accept the volume with its new type."""
-        raise NotImplementedError(_("Must implement find_retype_host"))
+        """Find a backend that can accept the volume with its new type."""
+        raise NotImplementedError(_("Must implement find_retype_backend"))
+
+    # NOTE(geguileo): For backward compatibility with out of tree Schedulers
+    # we don't change host_passes_filters or find_retype_host method names but
+    # create an "alias" for them with the right name instead.
+    backend_passes_filters = host_passes_filters
+    find_retype_backend = find_retype_host
 
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
@@ -116,6 +147,15 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(
             "Must implement schedule_create_consistencygroup"))
+
+    def schedule_create_group(self, context, group,
+                              group_spec,
+                              request_spec_list,
+                              group_filter_properties,
+                              filter_properties_list):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement schedule_create_group"))
 
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""

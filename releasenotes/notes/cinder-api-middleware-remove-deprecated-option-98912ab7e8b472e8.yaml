@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Removed deprecated option ``osapi_max_request_body_size``.

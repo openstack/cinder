@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The EqualLogic driver is moved to the dell_emc directory and has been
+    rebranded to its current Dell EMC PS Series name. The volume_driver
+    entry in cinder.conf needs to be changed to
+    ``cinder.volume.drivers.dell_emc.ps.PSSeriesISCSIDriver``.

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import os
 import six
 import socket
@@ -22,9 +23,16 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from random import randint
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
+from cinder import utils
 from cinder.volume.drivers import nfs
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
+
+LOG = logging.getLogger(__name__)
 
 #
 # RPC Definition
@@ -54,15 +62,15 @@ COHO_V1 = 1
 COHO1_CREATE_SNAPSHOT = 1
 COHO1_DELETE_SNAPSHOT = 2
 COHO1_CREATE_VOLUME_FROM_SNAPSHOT = 3
+COHO1_SET_QOS_POLICY = 4
+
+COHO_MAX_RETRIES = 5
+
+COHO_NO_QOS = {'maxIOPS': 0, 'maxMBS': 0}
 
 #
 # Simple RPC Client
 #
-
-
-def make_auth_null():
-
-    return six.b('')
 
 
 class Client(object):
@@ -83,7 +91,6 @@ class Client(object):
     def init_socket(self):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.bind(('', 0))
             self.sock.connect((self.address, self.port))
         except socket.error:
             msg = _('Failed to establish connection with Coho cluster')
@@ -97,12 +104,12 @@ class Client(object):
 
     def make_cred(self):
         if self.cred is None:
-            self.cred = (AUTH_NULL, make_auth_null())
+            self.cred = (AUTH_NULL, six.b(''))
         return self.cred
 
     def make_verf(self):
         if self.verf is None:
-            self.verf = (AUTH_NULL, make_auth_null())
+            self.verf = (AUTH_NULL, six.b(''))
         return self.verf
 
     def pack_auth(self, auth):
@@ -226,8 +233,25 @@ class Client(object):
         self.unpacker.reset(reply)
         xid, verf = self.unpack_replyheader()
 
+    @utils.synchronized('coho-rpc', external=True)
     def _call(self, proc, args):
-        self._make_call(proc, args)
+        for retry in range(COHO_MAX_RETRIES):
+            try:
+                self._make_call(proc, args)
+                break
+            except socket.error as e:
+                if e.errno == errno.EPIPE:
+                    # Reopen connection to cluster and retry
+                    LOG.debug('Re-establishing socket, retry number %d', retry)
+                    self.init_socket()
+                else:
+                    msg = (_('Unable to send requests: %s') %
+                           six.text_type(e))
+                    raise exception.CohoException(msg)
+        else:
+            msg = _('Failed to establish a stable connection')
+            raise exception.CohoException(msg)
+
         res = self.unpacker.unpack_uint()
         if res != SUCCESS:
             raise exception.CohoException(os.strerror(res))
@@ -239,45 +263,62 @@ class CohoRPCClient(Client):
         Client.__init__(self, address, COHO_PROGRAM, 1, port)
 
     def create_snapshot(self, src, dst, flags):
+        LOG.debug('COHO1_CREATE_SNAPSHOT src %s to dst %s', src, dst)
         self._call(COHO1_CREATE_SNAPSHOT,
                    [(six.b(src), self.packer.pack_string),
-                       (six.b(dst), self.packer.pack_string),
-                       (flags, self.packer.pack_uint)])
+                    (six.b(dst), self.packer.pack_string),
+                    (flags, self.packer.pack_uint)])
 
     def delete_snapshot(self, name):
+        LOG.debug('COHO1_DELETE_SNAPSHOT name %s', name)
         self._call(COHO1_DELETE_SNAPSHOT,
                    [(six.b(name), self.packer.pack_string)])
 
     def create_volume_from_snapshot(self, src, dst):
+        LOG.debug('COHO1_CREATE_VOLUME_FROM_SNAPSHOT src %s to dst %s',
+                  src, dst)
         self._call(COHO1_CREATE_VOLUME_FROM_SNAPSHOT,
                    [(six.b(src), self.packer.pack_string),
-                       (six.b(dst), self.packer.pack_string)])
+                    (six.b(dst), self.packer.pack_string)])
+
+    def set_qos_policy(self, src, qos):
+        LOG.debug('COHO1_SET_QOS_POLICY volume %s, uuid %s, %d:%d',
+                  src, qos.get('uuid', ''), qos.get('maxIOPS', 0),
+                  qos.get('maxMBS', ''))
+        self._call(COHO1_SET_QOS_POLICY,
+                   [(six.b(src), self.packer.pack_string),
+                    (six.b(qos.get('uuid', '')), self.packer.pack_string),
+                    (0, self.packer.pack_uhyper),
+                    (qos.get('maxIOPS', 0), self.packer.pack_uhyper),
+                    (0, self.packer.pack_uhyper),
+                    (qos.get('maxMBS', 0), self.packer.pack_uhyper)])
 
 
 #
 # Coho Data Volume Driver
 #
 
-VERSION = '1.0.0'
-
-LOG = logging.getLogger(__name__)
+VERSION = '1.1.1'
 
 coho_opts = [
     cfg.IntOpt('coho_rpc_port',
                default=2049,
-               help='RPC port to connect to Coha Data MicroArray')
+               help='RPC port to connect to Coho Data MicroArray')
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(coho_opts)
 
 
+@interface.volumedriver
 class CohoDriver(nfs.NfsDriver):
     """Coho Data NFS based cinder driver.
 
     Creates file on NFS share for using it as block device on hypervisor.
     Version history:
     1.0.0 - Initial driver
+    1.1.0 - Added QoS support
+    1.1.1 - Stability fixes in the RPC client
     """
 
     # We have to overload this attribute of RemoteFSDriver because
@@ -287,22 +328,19 @@ class CohoDriver(nfs.NfsDriver):
     # We are more permissive.
     SHARE_FORMAT_REGEX = r'.+:/.*'
 
+    COHO_QOS_KEYS = ['maxIOPS', 'maxMBS']
+
+    # ThirdPartySystems wiki page name
+    CI_WIKI_NAME = "Coho_Data_CI"
+
     def __init__(self, *args, **kwargs):
         super(CohoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coho_opts)
-        self._rpcclients = dict()
         self._backend_name = (self.configuration.volume_backend_name or
                               self.__class__.__name__)
 
-    def _init_rpcclient(self, addr, port):
-        client = CohoRPCClient(addr, port)
-        self._rpcclients[(addr, port)] = client
-        return client
-
     def _get_rpcclient(self, addr, port):
-        if (addr, port) in self._rpcclients:
-            return self._rpcclients[(addr, port)]
-        return self._init_rpcclient(addr, port)
+        return CohoRPCClient(addr, port)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -333,6 +371,9 @@ class CohoDriver(nfs.NfsDriver):
         self._execute('cp', source_path, volume_path,
                       run_as_root=self._execute_as_root)
 
+        qos = self._retrieve_qos_setting(volume)
+        self._do_set_qos_policy(volume, qos)
+
     def _get_volume_location(self, volume_id):
         """Returns provider location for given volume."""
 
@@ -342,6 +383,47 @@ class CohoDriver(nfs.NfsDriver):
         volume = self.db.volume_get(self._context, volume_id)
         addr, path = volume.provider_location.split(":")
         return addr, path
+
+    def _do_set_qos_policy(self, volume, qos):
+        if qos:
+            addr, path = volume['provider_location'].split(':')
+            volume_path = os.path.join(path, volume['name'])
+
+            client = self._get_rpcclient(addr,
+                                         self.configuration.coho_rpc_port)
+            client.set_qos_policy(volume_path, qos)
+
+    def _get_qos_by_volume_type(self, ctxt, type_id):
+        qos = {}
+
+        # NOTE(bardia): we only honor qos_specs
+        if type_id:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            qos_specs_id = volume_type.get('qos_specs_id')
+
+            if qos_specs_id is not None:
+                kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+                qos['uuid'] = qos_specs_id
+            else:
+                kvs = {}
+
+            for key, value in kvs.items():
+                if key in self.COHO_QOS_KEYS:
+                    qos[key] = int(value)
+        return qos
+
+    def _retrieve_qos_setting(self, volume):
+        ctxt = context.get_admin_context()
+        type_id = volume['volume_type_id']
+
+        return self._get_qos_by_volume_type(ctxt, type_id)
+
+    def create_volume(self, volume):
+        resp = super(CohoDriver, self).create_volume(volume)
+        qos = self._retrieve_qos_setting(volume)
+        self._do_set_qos_policy(volume, qos)
+
+        return resp
 
     def create_snapshot(self, snapshot):
         """Create a volume snapshot."""
@@ -354,7 +436,7 @@ class CohoDriver(nfs.NfsDriver):
 
     def delete_snapshot(self, snapshot):
         """Delete a volume snapshot."""
-        addr, path = self._get_volume_location(snapshot['volume_id'])
+        addr, unused = self._get_volume_location(snapshot['volume_id'])
         snapshot_name = snapshot['name']
         client = self._get_rpcclient(addr, self.configuration.coho_rpc_port)
         client.delete_snapshot(snapshot_name)
@@ -365,8 +447,12 @@ class CohoDriver(nfs.NfsDriver):
         addr, path = volume['provider_location'].split(":")
         volume_path = os.path.join(path, volume['name'])
         snapshot_name = snapshot['name']
+
         client = self._get_rpcclient(addr, self.configuration.coho_rpc_port)
         client.create_volume_from_snapshot(snapshot_name, volume_path)
+
+        qos = self._retrieve_qos_setting(volume)
+        self._do_set_qos_policy(volume, qos)
 
         return {'provider_location': volume['provider_location']}
 
@@ -386,7 +472,23 @@ class CohoDriver(nfs.NfsDriver):
 
         self._extend_file_sparse(volume_path, new_size)
 
-    def get_volume_stats(self, refresh):
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Changes the volume's QoS policy if needed.
+        """
+        qos = self._get_qos_by_volume_type(ctxt, new_type['id'])
+
+        # Reset the QoS policy on the volume in case the previous
+        # type had a QoS policy
+        if not qos:
+            qos = COHO_NO_QOS
+
+        self._do_set_qos_policy(volume, qos)
+
+        return True, None
+
+    def get_volume_stats(self, refresh=False):
         """Pass in Coho Data information in volume stats."""
         _stats = super(CohoDriver, self).get_volume_stats(refresh)
         _stats["vendor_name"] = 'Coho Data'
@@ -396,5 +498,6 @@ class CohoDriver(nfs.NfsDriver):
         _stats["total_capacity_gb"] = 'unknown'
         _stats["free_capacity_gb"] = 'unknown'
         _stats["export_paths"] = self._mounted_shares
+        _stats["QoS_support"] = True
 
         return _stats

@@ -1,0 +1,6 @@
+---
+deprecations:
+  - Support for snapshots named in the backend as ``snapshot-<snapshot-id>``
+    is deprecated. Snapshots are now named in the backend as
+    ``<volume-name>.<snapshot-id>``.
+

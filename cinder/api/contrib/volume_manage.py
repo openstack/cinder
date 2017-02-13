@@ -13,13 +13,14 @@
 #   under the License.
 
 from oslo_log import log as logging
-from oslo_utils import uuidutils
-from webob import exc
+from six.moves import http_client
 
+from cinder.api import common
+from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
-from cinder.api.v2 import volumes
+from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
@@ -27,7 +28,9 @@ from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'volume_manage')
+authorize_manage = extensions.extension_authorizer('volume', 'volume_manage')
+authorize_list_manageable = extensions.extension_authorizer('volume',
+                                                            'list_manageable')
 
 
 class VolumeManageController(wsgi.Controller):
@@ -38,10 +41,9 @@ class VolumeManageController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(VolumeManageController, self).__init__(*args, **kwargs)
         self.volume_api = cinder_volume.API()
+        self._list_manageable_view = list_manageable_view.ViewBuilder()
 
-    @wsgi.response(202)
-    @wsgi.serializers(xml=volumes.VolumeTemplate)
-    @wsgi.deserializers(xml=volumes.CreateDeserializer)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Instruct Cinder to manage a storage object.
 
@@ -57,13 +59,16 @@ class VolumeManageController(wsgi.Controller):
 
         Required HTTP Body:
 
-        {
-         'volume':
-          {
-           'host': <Cinder host on which the existing storage resides>,
-           'ref':  <Driver-specific reference to the existing storage object>,
-          }
-        }
+        .. code-block:: json
+
+         {
+           'volume':
+           {
+             'host': <Cinder host on which the existing storage resides>,
+             'cluster': <Cinder cluster on which the storage resides>,
+             'ref':  <Driver-specific reference to existing storage object>,
+           }
+         }
 
         See the appropriate Cinder drivers' implementations of the
         manage_volume method to find out the accepted format of 'ref'.
@@ -75,24 +80,26 @@ class VolumeManageController(wsgi.Controller):
         The volume will later enter the error state if it is discovered that
         'ref' is bad.
 
-        Optional elements to 'volume' are:
-            name               A name for the new volume.
-            description        A description for the new volume.
-            volume_type        ID or name of a volume type to associate with
-                               the new Cinder volume.  Does not necessarily
-                               guarantee that the managed volume will have the
-                               properties described in the volume_type.  The
-                               driver may choose to fail if it identifies that
-                               the specified volume_type is not compatible with
-                               the backend storage object.
-            metadata           Key/value pairs to be associated with the new
-                               volume.
-            availability_zone  The availability zone to associate with the new
-                               volume.
-            bootable           If set to True, marks the volume as bootable.
+        Optional elements to 'volume' are::
+
+         name               A name for the new volume.
+         description        A description for the new volume.
+         volume_type        ID or name of a volume type to associate with
+                            the new Cinder volume. Does not necessarily
+                            guarantee that the managed volume will have the
+                            properties described in the volume_type. The
+                            driver may choose to fail if it identifies that
+                            the specified volume_type is not compatible with
+                            the backend storage object.
+         metadata           Key/value pairs to be associated with the new
+                            volume.
+         availability_zone  The availability zone to associate with the new
+                            volume.
+         bootable           If set to True, marks the volume as bootable.
+
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_manage(context)
 
         self.assert_valid_body(body, 'volume')
 
@@ -101,13 +108,10 @@ class VolumeManageController(wsgi.Controller):
 
         # Check that the required keys are present, return an error if they
         # are not.
-        required_keys = set(['ref', 'host'])
-        missing_keys = list(required_keys - set(volume.keys()))
+        if 'ref' not in volume:
+            raise exception.MissingRequired(element='ref')
 
-        if missing_keys:
-            msg = _("The following elements are required: %s") % \
-                ', '.join(missing_keys)
-            raise exc.HTTPBadRequest(explanation=msg)
+        cluster_name, host = common.get_cluster_host(req, volume, '3.16')
 
         LOG.debug('Manage volume request body: %s', body)
 
@@ -115,15 +119,12 @@ class VolumeManageController(wsgi.Controller):
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
             try:
-                if not uuidutils.is_uuid_like(req_volume_type):
-                    kwargs['volume_type'] = \
-                        volume_types.get_volume_type_by_name(
-                            context, req_volume_type)
-                else:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
-                        context, req_volume_type)
-            except exception.VolumeTypeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+                kwargs['volume_type'] = volume_types.get_by_name_or_id(
+                    context, req_volume_type)
+            except exception.VolumeTypeNotFound:
+                msg = _("Cannot find requested '%s' "
+                        "volume type") % req_volume_type
+                raise exception.InvalidVolumeType(reason=msg)
         else:
             kwargs['volume_type'] = {}
 
@@ -131,19 +132,41 @@ class VolumeManageController(wsgi.Controller):
         kwargs['description'] = volume.get('description', None)
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
-        kwargs['bootable'] = volume.get('bootable', False)
+        kwargs['bootable'] = utils.get_bool_param('bootable', volume)
+
+        utils.check_metadata_properties(kwargs['metadata'])
+
         try:
             new_volume = self.volume_api.manage_existing(context,
-                                                         volume['host'],
+                                                         host,
+                                                         cluster_name,
                                                          volume['ref'],
                                                          **kwargs)
         except exception.ServiceNotFound:
-            msg = _("Service not found.")
-            raise exc.HTTPNotFound(explanation=msg)
+            msg = _("Host '%s' not found") % volume['host']
+            raise exception.ServiceUnavailable(message=msg)
 
         utils.add_visible_admin_metadata(new_volume)
 
         return self._view_builder.detail(req, new_volume)
+
+    @wsgi.extends
+    def index(self, req):
+        """Returns a summary list of volumes available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, False, self.volume_api.get_manageable_volumes,
+            self._list_manageable_view)
+
+    @wsgi.extends
+    def detail(self, req):
+        """Returns a detailed list of volumes available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, True, self.volume_api.get_manageable_volumes,
+            self._list_manageable_view)
 
 
 class Volume_manage(extensions.ExtensionDescriptor):
@@ -151,12 +174,12 @@ class Volume_manage(extensions.ExtensionDescriptor):
 
     name = 'VolumeManage'
     alias = 'os-volume-manage'
-    namespace = ('http://docs.openstack.org/volume/ext/'
-                 'os-volume-manage/api/v1')
     updated = '2014-02-10T00:00:00+00:00'
 
     def get_resources(self):
         controller = VolumeManageController()
         res = extensions.ResourceExtension(Volume_manage.alias,
-                                           controller)
+                                           controller,
+                                           collection_actions=
+                                           {'detail': 'GET'})
         return [res]

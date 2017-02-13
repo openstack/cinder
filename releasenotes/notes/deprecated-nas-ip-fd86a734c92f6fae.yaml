@@ -1,0 +1,5 @@
+---
+deprecations:
+    - Deprecated the configuration option ``nas_ip``. Use option
+      ``nas_host`` to indicate the IP address or hostname of the
+      NAS system.

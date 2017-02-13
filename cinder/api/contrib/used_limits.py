@@ -51,7 +51,6 @@ class Used_limits(extensions.ExtensionDescriptor):
 
     name = "UsedLimits"
     alias = 'os-used-limits'
-    namespace = "http://docs.openstack.org/volume/ext/used-limits/api/v1.1"
     updated = "2013-10-03T00:00:00+00:00"
 
     def get_controller_extensions(self):

@@ -1,0 +1,463 @@
+###########################################################
+# Common
+###########################################################
+
+volume: &volume_base
+  _type: 'volume'
+  _properties: &volume_base_properties
+    status: 'creating'
+    size: 1
+    id:
+      _uuid: volume_id
+    provider_auth: 'None'
+    host: 'host@backendsec#unit_test_pool'
+    project_id:
+      _uuid: project_id
+    provider_location: &provider_location
+      _build_provider_location:  &provider_location_dict
+        id: 1
+        type: 'lun'
+        system: 'fake_serial'
+        base_lun_name: 'test'
+        version: '07.00.00'
+    display_name: 'volume-1'
+    display_description: 'test volume'
+    volume_type_id:
+    consistencygroup_id:
+    volume_attachment:
+      _properties: {}
+    volume_metadata:
+      _properties: {}
+
+host: &host_base
+  _properties:
+     host: 'host@backendsec#unit_test_pool'
+
+consistency_group: &cg_base
+  _type: 'cg'
+  _properties: &cg_base_properties
+    id:
+      _uuid: consistency_group_id
+    status: 'creating'
+    name: 'cg_name'
+    host: 'host@backend#unit_test_pool'
+
+consistency_group_with_type: &cg_base_with_type
+  _type: 'cg'
+  _properties:
+    <<: *cg_base_properties
+    volume_type_id: 'type1'
+
+snapshot: &snapshot_base
+  _type: 'snapshot'
+  _properties: &snapshot_base_properties
+    id:
+      _uuid: snapshot_id
+    status: available
+    name: 'snapshot_name'
+    volume:
+      _type: 'volume'
+      _properties:
+        <<: *volume_base_properties
+        name: 'attached_volume_name'
+    volume_name: 'attached_volume_name'
+
+cg_snapshot: &cg_snapshot_base
+  _type: 'cg_snapshot'
+  _properties: &cg_snapshot_base_properties
+    id:
+      _uuid: cgsnapshot_id
+    status: 'creating'
+
+
+###########################################################
+# TestCommonAdapter, TestISCSIAdapter, TestFCAdapter
+###########################################################
+test_mock_driver_input_inner:
+  volume: *volume_base
+
+test_create_volume: &test_create_volume
+  volume: *volume_base
+
+test_create_volume_error: *test_create_volume
+
+test_create_thick_volume: *test_create_volume
+
+test_migrate_volume:
+  volume: *volume_base
+
+test_migrate_volume_host_assisted:
+  volume: *volume_base
+
+test_delete_volume_not_force: &test_delete_volume_not_force
+  volume: *volume_base
+
+test_delete_volume_force: *test_delete_volume_not_force
+
+test_delete_async_volume:
+  volume: *volume_base
+
+test_delete_async_volume_migrating:
+  volume: *volume_base
+
+test_retype_need_migration_when_host_changed:
+  volume: *volume_base
+  host:
+    _properties:
+       host: 'host@backendsec#another_pool'
+
+test_retype_need_migration_for_smp_volume:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      provider_location:
+        _build_provider_location:
+          <<: *provider_location_dict
+          type: 'smp'
+  host: *host_base
+
+test_retype_need_migration_when_provision_changed:
+  volume: *volume_base
+  host: *host_base
+
+test_retype_not_need_migration_when_provision_changed:
+  volume: *volume_base
+  host: *host_base
+
+test_retype_not_need_migration:
+  volume: *volume_base
+  host: *host_base
+
+test_retype_need_migration:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      volume_type_id:
+        _uuid: volume_type_id
+  host: *host_base
+
+test_retype_lun_has_snap:
+  volume: *volume_base
+  host: *host_base
+
+test_retype_turn_on_compression_change_tier:
+  volume: *volume_base
+  host: *host_base
+
+test_retype_change_tier:
+  volume: *volume_base
+  host: *host_base
+
+test_create_consistencygroup:
+  cg: *cg_base
+
+test_delete_consistencygroup:
+  cg: *cg_base
+
+test_delete_consistencygroup_with_volume:
+  cg: *cg_base
+  vol1: *volume_base
+  vol2: *volume_base
+
+test_delete_consistencygroup_error:
+  cg: *cg_base
+  vol1: *volume_base
+  vol2: *volume_base
+
+test_delete_consistencygroup_volume_error:
+  cg: *cg_base
+  vol1: *volume_base
+  vol2: *volume_base
+
+test_extend_volume:
+  volume: *volume_base
+
+test_create_snapshot_adapter:
+  snapshot: *snapshot_base
+
+test_delete_snapshot_adapter:
+  snapshot: *snapshot_base
+
+test_do_create_cgsnap: &cg_snap_and_snaps
+  cg_snap: *cg_snapshot_base
+  snap1: *snapshot_base
+  snap2: *snapshot_base
+
+test_do_delete_cgsnap: *cg_snap_and_snaps
+
+test_manage_existing_lun_no_exist:
+  volume: *volume_base
+
+test_manage_existing_invalid_pool:
+  volume: *volume_base
+
+test_manage_existing_get_size:
+  volume: *volume_base
+
+test_manage_existing_type_mismatch:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_manage_existing:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_manage_existing_smp:
+  volume: *volume_base
+
+test_create_cloned_volume:
+  volume: *volume_base
+  src_vref:
+    _type: volume
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume2_id
+      size: 2
+
+test_create_cloned_volume_snapcopy:
+  volume:
+    _type: volume
+    _properties:
+      <<: *volume_base_properties
+  src_vref:
+    _type: volume
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume2_id
+      size: 2
+
+test_create_volume_from_snapshot:
+  volume: *volume_base
+  snapshot: *snapshot_base
+
+test_create_volume_from_snapshot_snapcopy:
+  volume: *volume_base
+  snapshot: *snapshot_base
+
+test_get_base_lun_name:
+  volume: *volume_base
+
+test_do_create_cg_from_cgsnap:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume_id
+  vol2:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume2_id
+  snap1:
+    _type: 'snapshot'
+    _properties:
+      <<: *snapshot_base_properties
+      id:
+        _uuid: snapshot_id
+  snap2:
+    _type: 'snapshot'
+    _properties:
+      <<: *snapshot_base_properties
+      id:
+        _uuid: snapshot2_id
+
+test_do_clone_cg:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: consistency_group_id
+
+  src_vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: consistency_group2_id
+
+test_assure_host_access:
+  volume: *volume_base
+
+test_assure_host_access_without_auto_register_new_sg:
+  volume: *volume_base
+
+test_assure_host_access_without_auto_register:
+  volume: *volume_base
+
+test_auto_register_initiator:
+  volume: *volume_base
+
+test_auto_register_initiator_no_white_list:
+  volume: *volume_base
+
+test_auto_register_initiator_no_port_to_reg:
+  volume: *volume_base
+
+test_remove_host_access:
+  volume: *volume_base
+
+test_remove_host_access_sg_absent:
+  volume: *volume_base
+
+test_remove_host_access_volume_not_in_sg:
+  volume: *volume_base
+
+test_do_update_cg:
+  cg: *cg_base
+  volume_add:
+    <<: *volume_base
+    _properties:
+      <<: *volume_base_properties
+      provider_location:
+        _build_provider_location:
+          <<: *provider_location_dict
+          id: 1
+  volume_remove:
+    <<: *volume_base
+    _properties:
+      <<: *volume_base_properties
+      provider_location:
+        _build_provider_location:
+          <<: *provider_location_dict
+          id: 2
+
+test_create_export_snapshot:
+  snapshot: *snapshot_base
+
+test_remove_export_snapshot:
+  snapshot: *snapshot_base
+
+test_initialize_connection_snapshot:
+  snapshot: *snapshot_base
+
+test_terminate_connection_snapshot:
+  snapshot: *snapshot_base
+
+test_setup_lun_replication:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume_id
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_cleanup_replication:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume2_id
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_failover_host:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume3_id
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_failover_host_invalid_backend_id:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume4_id
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_failover_host_failback:
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume5_id
+      volume_type_id:
+        _uuid: volume_type_id
+
+test_get_pool_name:
+  volume: *volume_base
+
+test_update_migrated_volume:
+  volume: *volume_base
+  new_volume: *volume_base
+
+test_update_migrated_volume_smp:
+  volume: *volume_base
+  new_volume:
+    <<: *volume_base
+    _properties:
+      <<: *volume_base_properties
+      provider_location:
+        _build_provider_location:
+          <<: *provider_location_dict
+          type: smp
+
+test_create_group_snap:
+
+test_create_cgsnapshot:
+
+test_create_cloned_cg:
+
+test_create_cloned_group:
+
+test_create_cg_from_cgsnapshot:
+
+test_create_group_from_group_snapshot:
+
+test_create_cgsnapshot:
+
+test_create_group_snapshot:
+
+test_delete_group_snapshot:
+
+test_delete_cgsnapshot:
+
+###########################################################
+# TestUtils
+###########################################################
+
+test_validate_cg_type:
+  cg:
+    _properties:
+      id:
+        _uuid: GROUP_ID
+      volume_type_ids: ['type1']
+
+
+###########################################################
+# TestClient
+###########################################################
+
+test_get_lun_id:
+  volume: *volume_base
+
+test_get_lun_id_without_provider_location:
+  volume:
+    <<: *volume_base
+    _properties:
+      <<: *volume_base_properties
+      provider_location:

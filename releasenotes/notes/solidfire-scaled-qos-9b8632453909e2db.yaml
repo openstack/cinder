@@ -1,0 +1,20 @@
+---
+features:
+  - The SolidFire driver will recognize 4 new QoS spec keys
+    to allow an administrator to specify QoS settings which
+    are scaled by the size of the volume. 'ScaledIOPS' is a
+    flag which will tell the driver to look for 'scaleMin',
+    'scaleMax' and 'scaleBurst' which provide the scaling
+    factor from the minimum values specified by the previous
+    QoS keys ('minIOPS', 'maxIOPS', 'burstIOPS'). The
+    administrator must take care to assure that no matter what
+    the final calculated QoS values follow minIOPS <= maxIOPS
+    <= burstIOPS. A exception will be thrown if not. The QoS
+    settings are also checked against the cluster min and max
+    allowed and truncated at the min or max if they exceed.
+fixes:
+  - For SolidFire, QoS specs are now checked to make sure
+    they fall within the min and max constraints. If not
+    the QoS specs are capped at the min or max (i.e. if
+    spec says 50 and minimum supported is 100, the driver
+    will set it to 100).

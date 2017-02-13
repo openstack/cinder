@@ -14,15 +14,11 @@
 
 """The Scheduler Stats extension"""
 
-from oslo_log import log as logging
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
 from cinder.scheduler import rpcapi
-
-
-LOG = logging.getLogger(__name__)
+from cinder import utils
 
 
 def authorize(context, action_name):
@@ -45,7 +41,7 @@ class SchedulerStatsController(wsgi.Controller):
         authorize(context, 'get_pools')
 
         # TODO(zhiteng) Add filters support
-        detail = req.params.get('detail', False)
+        detail = utils.get_bool_param('detail', req.params)
         pools = self.scheduler_api.get_pools(context, filters=None)
 
         return self._view_builder.pools(req, pools, detail)
@@ -56,7 +52,6 @@ class Scheduler_stats(extensions.ExtensionDescriptor):
 
     name = "Scheduler_stats"
     alias = "scheduler-stats"
-    namespace = "http://docs.openstack.org/volume/ext/scheduler-stats/api/v1"
     updated = "2014-09-07T00:00:00+00:00"
 
     def get_resources(self):

@@ -19,8 +19,10 @@ import webob
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 
 
@@ -40,7 +42,7 @@ class VolumeUnmanageTest(test.TestCase):
 
     def setUp(self):
         super(VolumeUnmanageTest, self).setUp()
-        self.ctxt = context.RequestContext('admin', 'fake_project', True)
+        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
         api = fakes.router.APIRouter()
         self.app = fakes.urlmap.URLMap()
@@ -67,18 +69,19 @@ class VolumeUnmanageTest(test.TestCase):
 
         mock_rpcapi.assert_called_once_with(self.ctxt, mock.ANY, True, False)
         vol = objects.volume.Volume.get_by_id(self.ctxt, vol.id)
-        self.assertEqual('deleting', vol.status)
+        self.assertEqual('unmanaging', vol.status)
         db.volume_destroy(self.ctxt, vol.id)
 
     def test_unmanage_volume_bad_volume_id(self):
         """Return 404 if the volume does not exist."""
-        res = self._get_resp('nonexistent-volume-id')
+        res = self._get_resp(fake.WILL_NOT_BE_FOUND_ID)
         self.assertEqual(404, res.status_int, res)
 
     def test_unmanage_volume_attached(self):
         """Return 400 if the volume exists but is attached."""
-        vol = utils.create_volume(self.ctxt, status='in-use',
-                                  attach_status='attached')
+        vol = utils.create_volume(
+            self.ctxt, status='in-use',
+            attach_status=fields.VolumeAttachStatus.ATTACHED)
         res = self._get_resp(vol.id)
         self.assertEqual(400, res.status_int, res)
         db.volume_destroy(self.ctxt, vol.id)

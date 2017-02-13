@@ -1,0 +1,11 @@
+---
+upgrade:
+  - The Scality driver has been marked as unsupported and is
+    now deprecated. ``enable_unsupported_drivers`` will need to
+    be set to ``True`` in cinder.conf to continue to use it.
+deprecations:
+  - The Scality driver has been marked as unsupported and is
+    now deprecated. ``enable_unsupported_drivers`` will need to
+    be set to ``True`` in cinder.conf to continue to use it. If
+    its support status does not change it will be removed in
+    the next release.

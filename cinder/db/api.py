@@ -37,7 +37,7 @@ these objects be simple dictionaries.
 """
 
 from oslo_config import cfg
-from oslo_db import concurrency as db_concurrency
+from oslo_db import api as oslo_db_api
 from oslo_db import options as db_options
 
 from cinder.api import common
@@ -62,12 +62,13 @@ db_opts = [
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
 db_options.set_defaults(CONF)
-CONF.set_default('sqlite_db', 'cinder.sqlite', group='database')
 
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
 
-IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
+IMPL = oslo_db_api.DBAPI.from_config(conf=CONF,
+                                     backend_mapping=_BACKEND_MAPPING,
+                                     lazy=True)
 
 # The maximum value a signed INT type may have
 MAX_INT = constants.DB_MAX_INT
@@ -97,34 +98,35 @@ def service_destroy(context, service_id):
     return IMPL.service_destroy(context, service_id)
 
 
-def service_get(context, service_id):
-    """Get a service or raise if it does not exist."""
-    return IMPL.service_get(context, service_id)
+def service_get(context, service_id=None, backend_match_level=None, **filters):
+    """Get a service that matches the criteria.
+
+    A possible filter is is_up=True and it will filter nodes that are down.
+
+    :param service_id: Id of the service.
+    :param filters: Filters for the query in the form of key/value.
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
+    :raise ServiceNotFound: If service doesn't exist.
+    """
+    return IMPL.service_get(context, service_id, backend_match_level,
+                            **filters)
 
 
-def service_get_by_host_and_topic(context, host, topic):
-    """Get a service by host it's on and topic it listens to."""
-    return IMPL.service_get_by_host_and_topic(context, host, topic)
+def service_get_all(context, backend_match_level=None, **filters):
+    """Get all services that match the criteria.
 
+    A possible filter is is_up=True and it will filter nodes that are down,
+    as well as host_or_cluster, that lets you look for services using both
+    of these properties.
 
-def service_get_all(context, filters=None):
-    """Get all services."""
-    return IMPL.service_get_all(context, filters)
-
-
-def service_get_all_by_topic(context, topic, disabled=None):
-    """Get all services for a given topic."""
-    return IMPL.service_get_all_by_topic(context, topic, disabled=disabled)
-
-
-def service_get_all_by_binary(context, binary, disabled=None):
-    """Get all services for a given binary."""
-    return IMPL.service_get_all_by_binary(context, binary, disabled)
-
-
-def service_get_by_args(context, host, binary):
-    """Get the state of a service by node name and binary."""
-    return IMPL.service_get_by_args(context, host, binary)
+    :param filters: Filters for the query in the form of key/value arguments.
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
+    """
+    return IMPL.service_get_all(context, backend_match_level, **filters)
 
 
 def service_create(context, values):
@@ -136,9 +138,80 @@ def service_update(context, service_id, values):
     """Set the given properties on an service and update it.
 
     Raises NotFound if service does not exist.
-
     """
     return IMPL.service_update(context, service_id, values)
+
+
+###############
+
+
+def is_backend_frozen(context, host, cluster_name):
+    """Check if a storage backend is frozen based on host and cluster_name."""
+    return IMPL.is_backend_frozen(context, host, cluster_name)
+
+
+###############
+
+
+def cluster_get(context, id=None, is_up=None, get_services=False,
+                services_summary=False, read_deleted='no',
+                name_match_level=None, **filters):
+    """Get a cluster that matches the criteria.
+
+    :param id: Id of the cluster.
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :param filters: Field based filters in the form of key/value.
+    :raise ClusterNotFound: If cluster doesn't exist.
+    """
+    return IMPL.cluster_get(context, id, is_up, get_services, services_summary,
+                            read_deleted, name_match_level, **filters)
+
+
+def cluster_get_all(context, is_up=None, get_services=False,
+                    services_summary=False, read_deleted='no',
+                    name_match_level=None, **filters):
+    """Get all clusters that match the criteria.
+
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :param filters: Field based filters in the form of key/value.
+    """
+    return IMPL.cluster_get_all(context, is_up, get_services, services_summary,
+                                read_deleted, name_match_level, **filters)
+
+
+def cluster_create(context, values):
+    """Create a cluster from the values dictionary."""
+    return IMPL.cluster_create(context, values)
+
+
+def cluster_update(context, id, values):
+    """Set the given properties on an cluster and update it.
+
+    Raises ClusterNotFound if cluster does not exist.
+    """
+    return IMPL.cluster_update(context, id, values)
+
+
+def cluster_destroy(context, id):
+    """Destroy the cluster or raise if it does not exist or has hosts.
+
+    :raise ClusterNotFound: If cluster doesn't exist.
+    """
+    return IMPL.cluster_destroy(context, id)
 
 
 ###############
@@ -188,8 +261,8 @@ def volume_get(context, volume_id):
     return IMPL.volume_get(context, volume_id)
 
 
-def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
-                   filters=None, offset=None):
+def volume_get_all(context, marker=None, limit=None, sort_keys=None,
+                   sort_dirs=None, filters=None, offset=None):
     """Get all volumes."""
     return IMPL.volume_get_all(context, marker, limit, sort_keys=sort_keys,
                                sort_dirs=sort_dirs, filters=filters,
@@ -206,6 +279,12 @@ def volume_get_all_by_group(context, group_id, filters=None):
     return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
+def volume_get_all_by_generic_group(context, group_id, filters=None):
+    """Get all volumes belonging to a generic volume group."""
+    return IMPL.volume_get_all_by_generic_group(context, group_id,
+                                                filters=filters)
+
+
 def volume_get_all_by_project(context, project_id, marker, limit,
                               sort_keys=None, sort_dirs=None, filters=None,
                               offset=None):
@@ -217,6 +296,16 @@ def volume_get_all_by_project(context, project_id, marker, limit,
                                           offset=offset)
 
 
+def get_volume_summary_all(context):
+    """Get all volume summary."""
+    return IMPL.get_volume_summary_all(context)
+
+
+def get_volume_summary_by_project(context, project_id):
+    """Get all volume summary belonging to a project."""
+    return IMPL.get_volume_summary_by_project(context, project_id)
+
+
 def volume_update(context, volume_id, values):
     """Set the given properties on a volume and update it.
 
@@ -226,25 +315,78 @@ def volume_update(context, volume_id, values):
     return IMPL.volume_update(context, volume_id, values)
 
 
+def volumes_update(context, values_list):
+    """Set the given properties on a list of volumes and update them.
+
+    Raises NotFound if a volume does not exist.
+    """
+    return IMPL.volumes_update(context, values_list)
+
+
+def volume_include_in_cluster(context, cluster, partial_rename=True,
+                              **filters):
+    """Include all volumes matching the filters into a cluster.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of volumes that have been changed.
+    """
+    return IMPL.volume_include_in_cluster(context, cluster, partial_rename,
+                                          **filters)
+
+
 def volume_attachment_update(context, attachment_id, values):
     return IMPL.volume_attachment_update(context, attachment_id, values)
 
 
-def volume_attachment_get(context, attachment_id, session=None):
-    return IMPL.volume_attachment_get(context, attachment_id, session)
+def volume_attachment_get(context, attachment_id):
+    return IMPL.volume_attachment_get(context, attachment_id)
 
 
-def volume_attachment_get_used_by_volume_id(context, volume_id):
-    return IMPL.volume_attachment_get_used_by_volume_id(context, volume_id)
+def volume_attachment_get_all_by_volume_id(context, volume_id,
+                                           session=None):
+    return IMPL.volume_attachment_get_all_by_volume_id(context,
+                                                       volume_id,
+                                                       session)
 
 
-def volume_attachment_get_by_host(context, volume_id, host):
-    return IMPL.volume_attachment_get_by_host(context, volume_id, host)
+def volume_attachment_get_all_by_host(context, host, filters=None):
+    # FIXME(jdg): Not using filters
+    return IMPL.volume_attachment_get_all_by_host(context, host)
 
 
-def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
-    return IMPL.volume_attachment_get_by_instance_uuid(context, volume_id,
-                                                       instance_uuid)
+def volume_attachment_get_all_by_instance_uuid(context,
+                                               instance_uuid, filters=None):
+    # FIXME(jdg): Not using filters
+    return IMPL.volume_attachment_get_all_by_instance_uuid(context,
+                                                           instance_uuid)
+
+
+def volume_attachment_get_all(context, filters=None, marker=None, limit=None,
+                              offset=None, sort_keys=None, sort_dirs=None):
+    return IMPL.volume_attachment_get_all(context, filters, marker, limit,
+                                          offset, sort_keys, sort_dirs)
+
+
+def volume_attachment_get_all_by_project(context, project_id, filters=None,
+                                         marker=None, limit=None, offset=None,
+                                         sort_keys=None, sort_dirs=None):
+    return IMPL.volume_attachment_get_all_by_project(context, project_id,
+                                                     filters, marker, limit,
+                                                     offset, sort_keys,
+                                                     sort_dirs)
+
+
+def attachment_destroy(context, attachment_id):
+    """Destroy the attachment or raise if it does not exist."""
+    return IMPL.attachment_destroy(context, attachment_id)
 
 
 def volume_update_status_based_on_attachment(context, volume_id):
@@ -260,8 +402,16 @@ def volume_has_undeletable_snapshots_filter():
     return IMPL.volume_has_undeletable_snapshots_filter()
 
 
+def volume_has_snapshots_in_a_cgsnapshot_filter():
+    return IMPL.volume_has_snapshots_in_a_cgsnapshot_filter()
+
+
 def volume_has_attachments_filter():
     return IMPL.volume_has_attachments_filter()
+
+
+def volume_qos_allows_retype(new_vol_type):
+    return IMPL.volume_qos_allows_retype(new_vol_type)
 
 
 ####################
@@ -298,18 +448,23 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
                                             sort_dirs, offset)
 
 
-def snapshot_get_by_host(context, host, filters=None):
+def snapshot_get_all_by_host(context, host, filters=None):
     """Get all snapshots belonging to a host.
 
     :param host: Include include snapshots only for specified host.
     :param filters: Filters for the query in the form of key/value.
     """
-    return IMPL.snapshot_get_by_host(context, host, filters)
+    return IMPL.snapshot_get_all_by_host(context, host, filters)
 
 
 def snapshot_get_all_for_cgsnapshot(context, project_id):
     """Get all snapshots belonging to a cgsnapshot."""
     return IMPL.snapshot_get_all_for_cgsnapshot(context, project_id)
+
+
+def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
+    """Get all snapshots belonging to a group snapshot."""
+    return IMPL.snapshot_get_all_for_group_snapshot(context, group_snapshot_id)
 
 
 def snapshot_get_all_for_volume(context, volume_id):
@@ -333,12 +488,14 @@ def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
                                               volume_type_id)
 
 
-def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
+def snapshot_get_all_active_by_window(context, begin, end=None,
+                                      project_id=None):
     """Get all the snapshots inside the window.
 
     Specifying a project_id will filter for a certain project.
     """
-    return IMPL.snapshot_get_active_by_window(context, begin, end, project_id)
+    return IMPL.snapshot_get_all_active_by_window(context, begin, end,
+                                                  project_id)
 
 
 ####################
@@ -503,12 +660,13 @@ def volume_type_destroy(context, id):
     return IMPL.volume_type_destroy(context, id)
 
 
-def volume_get_active_by_window(context, begin, end=None, project_id=None):
+def volume_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Get all the volumes inside the window.
 
     Specifying a project_id will filter for a certain project.
     """
-    return IMPL.volume_get_active_by_window(context, begin, end, project_id)
+    return IMPL.volume_get_all_active_by_window(context, begin, end,
+                                                project_id)
 
 
 def volume_type_access_get_all(context, type_id):
@@ -524,6 +682,99 @@ def volume_type_access_add(context, type_id, project_id):
 def volume_type_access_remove(context, type_id, project_id):
     """Remove volume type access for project."""
     return IMPL.volume_type_access_remove(context, type_id, project_id)
+
+
+####################
+
+
+def group_type_create(context, values, projects=None):
+    """Create a new group type."""
+    return IMPL.group_type_create(context, values, projects)
+
+
+def group_type_update(context, group_type_id, values):
+    return IMPL.group_type_update(context, group_type_id, values)
+
+
+def group_type_get_all(context, inactive=False, filters=None, marker=None,
+                       limit=None, sort_keys=None, sort_dirs=None,
+                       offset=None, list_result=False):
+    """Get all group types.
+
+    :param context: context to query under
+    :param inactive: Include inactive group types to the result set
+    :param filters: Filters for the query in the form of key/value.
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param list_result: For compatibility, if list_result = True, return a list
+                        instead of dict.
+
+        :is_public: Filter group types based on visibility:
+
+            * **True**: List public group types only
+            * **False**: List private group types only
+            * **None**: List both public and private group types
+
+    :returns: list/dict of matching group types
+    """
+
+    return IMPL.group_type_get_all(context, inactive, filters, marker=marker,
+                                   limit=limit, sort_keys=sort_keys,
+                                   sort_dirs=sort_dirs, offset=offset,
+                                   list_result=list_result)
+
+
+def group_type_get(context, id, inactive=False, expected_fields=None):
+    """Get group type by id.
+
+    :param context: context to query under
+    :param id: Group type id to get.
+    :param inactive: Consider inactive group types when searching
+    :param expected_fields: Return those additional fields.
+                            Supported fields are: projects.
+    :returns: group type
+    """
+    return IMPL.group_type_get(context, id, inactive, expected_fields)
+
+
+def group_type_get_by_name(context, name):
+    """Get group type by name."""
+    return IMPL.group_type_get_by_name(context, name)
+
+
+def group_types_get_by_name_or_id(context, group_type_list):
+    """Get group types by name or id."""
+    return IMPL.group_types_get_by_name_or_id(context, group_type_list)
+
+
+def group_type_destroy(context, id):
+    """Delete a group type."""
+    return IMPL.group_type_destroy(context, id)
+
+
+def group_type_access_get_all(context, type_id):
+    """Get all group type access of a group type."""
+    return IMPL.group_type_access_get_all(context, type_id)
+
+
+def group_type_access_add(context, type_id, project_id):
+    """Add group type access for project."""
+    return IMPL.group_type_access_add(context, type_id, project_id)
+
+
+def group_type_access_remove(context, type_id, project_id):
+    """Remove group type access for project."""
+    return IMPL.group_type_access_remove(context, type_id, project_id)
+
+
+def volume_type_get_all_by_group(context, group_id):
+    """Get all volumes in a group."""
+    return IMPL.volume_type_get_all_by_group(context, group_id)
 
 
 ####################
@@ -550,6 +801,32 @@ def volume_type_extra_specs_update_or_create(context,
     return IMPL.volume_type_extra_specs_update_or_create(context,
                                                          volume_type_id,
                                                          extra_specs)
+
+
+###################
+
+
+def group_type_specs_get(context, group_type_id):
+    """Get all group specs for a group type."""
+    return IMPL.group_type_specs_get(context, group_type_id)
+
+
+def group_type_specs_delete(context, group_type_id, key):
+    """Delete the given group specs item."""
+    return IMPL.group_type_specs_delete(context, group_type_id, key)
+
+
+def group_type_specs_update_or_create(context,
+                                      group_type_id,
+                                      group_specs):
+    """Create or update group type specs.
+
+    This adds or modifies the key/value pairs specified in the group specs dict
+    argument.
+    """
+    return IMPL.group_type_specs_update_or_create(context,
+                                                  group_type_id,
+                                                  group_specs)
 
 
 ###################
@@ -794,9 +1071,9 @@ def quota_class_get(context, class_name, resource):
     return IMPL.quota_class_get(context, class_name, resource)
 
 
-def quota_class_get_default(context):
+def quota_class_get_defaults(context):
     """Retrieve all default quotas."""
-    return IMPL.quota_class_get_default(context)
+    return IMPL.quota_class_get_defaults(context)
 
 
 def quota_class_get_all_by_name(context, class_name):
@@ -919,6 +1196,15 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
                                          filters=filters)
 
 
+def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
+    """Get all the backups inside the window.
+
+    Specifying a project_id will filter for a certain project.
+    """
+    return IMPL.backup_get_all_active_by_window(context, begin, end,
+                                                project_id)
+
+
 def backup_update(context, backup_id, values):
     """Set the given properties on a backup and update it.
 
@@ -982,9 +1268,9 @@ def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
                                          sort_dirs=sort_dirs)
 
 
-def consistencygroup_create(context, values):
+def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
     """Create a consistencygroup from the values dictionary."""
-    return IMPL.consistencygroup_create(context, values)
+    return IMPL.consistencygroup_create(context, values, cg_snap_id, cg_id)
 
 
 def consistencygroup_get_all_by_project(context, project_id, filters=None,
@@ -1010,6 +1296,157 @@ def consistencygroup_update(context, consistencygroup_id, values):
 def consistencygroup_destroy(context, consistencygroup_id):
     """Destroy the consistencygroup or raise if it does not exist."""
     return IMPL.consistencygroup_destroy(context, consistencygroup_id)
+
+
+def cg_has_cgsnapshot_filter():
+    """Return a filter that checks if a CG has CG Snapshots."""
+    return IMPL.cg_has_cgsnapshot_filter()
+
+
+def cg_has_volumes_filter(attached_or_with_snapshots=False):
+    """Return a filter to check if a CG has volumes.
+
+    When attached_or_with_snapshots parameter is given a True value only
+    attached volumes or those with snapshots will be considered.
+    """
+    return IMPL.cg_has_volumes_filter(attached_or_with_snapshots)
+
+
+def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
+    """Return a filter to check if a CG is being used as creation source.
+
+    Returned filter is meant to be used in the Conditional Update mechanism and
+    checks if provided CG ID or CG Snapshot ID is currently being used to
+    create another CG.
+
+    This filter will not include CGs that have used the ID but have already
+    finished their creation (status is no longer creating).
+
+    Filter uses a subquery that allows it to be used on updates to the
+    consistencygroups table.
+    """
+    return IMPL.cg_creating_from_src(cg_id, cgsnapshot_id)
+
+
+def consistencygroup_include_in_cluster(context, cluster, partial_rename=True,
+                                        **filters):
+    """Include all consistency groups matching the filters into a cluster.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of consistency groups that have been changed.
+    """
+    return IMPL.consistencygroup_include_in_cluster(context, cluster,
+                                                    partial_rename,
+                                                    **filters)
+
+
+def migrate_add_message_prefix(context, max_count, force=False):
+    """Change Message event ids to start with the VOLUME_ prefix.
+
+    :param max_count: The maximum number of messages to consider in
+                      this run.
+    :param force: Ignored in this migration
+    :returns: number of messages needing migration, number of
+              messages migrated (both will always be less than
+              max_count).
+    """
+    return IMPL.migrate_add_message_prefix(context, max_count, force)
+
+
+###################
+
+
+def group_get(context, group_id):
+    """Get a group or raise if it does not exist."""
+    return IMPL.group_get(context, group_id)
+
+
+def group_get_all(context, filters=None, marker=None, limit=None,
+                  offset=None, sort_keys=None, sort_dirs=None):
+    """Get all groups."""
+    return IMPL.group_get_all(context, filters=filters,
+                              marker=marker, limit=limit,
+                              offset=offset, sort_keys=sort_keys,
+                              sort_dirs=sort_dirs)
+
+
+def group_create(context, values, group_snapshot_id=None, group_id=None):
+    """Create a group from the values dictionary."""
+    return IMPL.group_create(context, values, group_snapshot_id, group_id)
+
+
+def group_get_all_by_project(context, project_id, filters=None,
+                             marker=None, limit=None, offset=None,
+                             sort_keys=None, sort_dirs=None):
+    """Get all groups belonging to a project."""
+    return IMPL.group_get_all_by_project(context, project_id,
+                                         filters=filters,
+                                         marker=marker, limit=limit,
+                                         offset=offset,
+                                         sort_keys=sort_keys,
+                                         sort_dirs=sort_dirs)
+
+
+def group_update(context, group_id, values):
+    """Set the given properties on a group and update it.
+
+    Raises NotFound if group does not exist.
+    """
+    return IMPL.group_update(context, group_id, values)
+
+
+def group_destroy(context, group_id):
+    """Destroy the group or raise if it does not exist."""
+    return IMPL.group_destroy(context, group_id)
+
+
+def group_has_group_snapshot_filter():
+    """Return a filter that checks if a Group has Group Snapshots."""
+    return IMPL.group_has_group_snapshot_filter()
+
+
+def group_has_volumes_filter(attached_or_with_snapshots=False):
+    """Return a filter to check if a Group has volumes.
+
+    When attached_or_with_snapshots parameter is given a True value only
+    attached volumes or those with snapshots will be considered.
+    """
+    return IMPL.group_has_volumes_filter(attached_or_with_snapshots)
+
+
+def group_creating_from_src(group_id=None, group_snapshot_id=None):
+    """Return a filter to check if a Group is being used as creation source.
+
+    Returned filter is meant to be used in the Conditional Update mechanism and
+    checks if provided Group ID or Group Snapshot ID is currently being used to
+    create another Group.
+
+    This filter will not include Groups that have used the ID but have already
+    finished their creation (status is no longer creating).
+
+    Filter uses a subquery that allows it to be used on updates to the
+    groups table.
+    """
+    return IMPL.group_creating_from_src(group_id, group_snapshot_id)
+
+
+def group_volume_type_mapping_create(context, group_id, volume_type_id):
+    """Create a group volume_type mapping entry."""
+    return IMPL.group_volume_type_mapping_create(context, group_id,
+                                                 volume_type_id)
+
+
+def migrate_consistencygroups_to_groups(context, max_count, force=False):
+    """Migrage CGs to generic volume groups"""
+    return IMPL.migrate_consistencygroups_to_groups(context, max_count, force)
 
 
 ###################
@@ -1053,6 +1490,60 @@ def cgsnapshot_destroy(context, cgsnapshot_id):
     return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
 
 
+def cgsnapshot_creating_from_src():
+    """Get a filter that checks if a CGSnapshot is being created from a CG."""
+    return IMPL.cgsnapshot_creating_from_src()
+
+
+###################
+
+
+def group_snapshot_get(context, group_snapshot_id):
+    """Get a group snapshot or raise if it does not exist."""
+    return IMPL.group_snapshot_get(context, group_snapshot_id)
+
+
+def group_snapshot_get_all(context, filters=None):
+    """Get all group snapshots."""
+    return IMPL.group_snapshot_get_all(context, filters)
+
+
+def group_snapshot_create(context, values):
+    """Create a group snapshot from the values dictionary."""
+    return IMPL.group_snapshot_create(context, values)
+
+
+def group_snapshot_get_all_by_group(context, group_id, filters=None):
+    """Get all group snapshots belonging to a group."""
+    return IMPL.group_snapshot_get_all_by_group(context, group_id, filters)
+
+
+def group_snapshot_get_all_by_project(context, project_id, filters=None):
+    """Get all group snapshots belonging to a project."""
+    return IMPL.group_snapshot_get_all_by_project(context, project_id, filters)
+
+
+def group_snapshot_update(context, group_snapshot_id, values):
+    """Set the given properties on a group snapshot and update it.
+
+    Raises NotFound if group snapshot does not exist.
+    """
+    return IMPL.group_snapshot_update(context, group_snapshot_id, values)
+
+
+def group_snapshot_destroy(context, group_snapshot_id):
+    """Destroy the group snapshot or raise if it does not exist."""
+    return IMPL.group_snapshot_destroy(context, group_snapshot_id)
+
+
+def group_snapshot_creating_from_src():
+    """Get a filter to check if a grp snapshot is being created from a grp."""
+    return IMPL.group_snapshot_creating_from_src()
+
+
+###################
+
+
 def purge_deleted_rows(context, age_in_days):
     """Purge deleted rows older than given age from cinder tables
 
@@ -1069,25 +1560,36 @@ def get_booleans_for_table(table_name):
 ###################
 
 
-def driver_initiator_data_update(context, initiator, namespace, updates):
-    """Create DriverPrivateData from the values dictionary."""
-    return IMPL.driver_initiator_data_update(context, initiator,
-                                             namespace, updates)
+def driver_initiator_data_insert_by_key(context, initiator,
+                                        namespace, key, value):
+    """Updates DriverInitiatorData entry.
+
+    Sets the value for the specified key within the namespace.
+
+    If the entry already exists return False, if it inserted successfully
+    return True.
+    """
+    return IMPL.driver_initiator_data_insert_by_key(context,
+                                                    initiator,
+                                                    namespace,
+                                                    key,
+                                                    value)
 
 
 def driver_initiator_data_get(context, initiator, namespace):
-    """Query for an DriverPrivateData that has the specified key"""
+    """Query for an DriverInitiatorData that has the specified key"""
     return IMPL.driver_initiator_data_get(context, initiator, namespace)
 
 
 ###################
 
 
-def image_volume_cache_create(context, host, image_id, image_updated_at,
-                              volume_id, size):
+def image_volume_cache_create(context, host, cluster_name, image_id,
+                              image_updated_at, volume_id, size):
     """Create a new image volume cache entry."""
     return IMPL.image_volume_cache_create(context,
                                           host,
+                                          cluster_name,
                                           image_id,
                                           image_updated_at,
                                           volume_id,
@@ -1099,11 +1601,11 @@ def image_volume_cache_delete(context, volume_id):
     return IMPL.image_volume_cache_delete(context, volume_id)
 
 
-def image_volume_cache_get_and_update_last_used(context, image_id, host):
+def image_volume_cache_get_and_update_last_used(context, image_id, **filters):
     """Query for an image volume cache entry."""
     return IMPL.image_volume_cache_get_and_update_last_used(context,
                                                             image_id,
-                                                            host)
+                                                            **filters)
 
 
 def image_volume_cache_get_by_volume_id(context, volume_id):
@@ -1111,12 +1613,106 @@ def image_volume_cache_get_by_volume_id(context, volume_id):
     return IMPL.image_volume_cache_get_by_volume_id(context, volume_id)
 
 
-def image_volume_cache_get_all_for_host(context, host):
+def image_volume_cache_get_all(context, **filters):
     """Query for all image volume cache entry for a host."""
-    return IMPL.image_volume_cache_get_all_for_host(context, host)
+    return IMPL.image_volume_cache_get_all(context, **filters)
+
+
+def image_volume_cache_include_in_cluster(context, cluster,
+                                          partial_rename=True, **filters):
+    """Include in cluster image volume cache entries matching the filters.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of volumes that have been changed.
+    """
+    return IMPL.image_volume_cache_include_in_cluster(
+        context, cluster, partial_rename, **filters)
 
 
 ###################
+
+
+def message_get(context, message_id):
+    """Return a message with the specified ID."""
+    return IMPL.message_get(context, message_id)
+
+
+def message_get_all(context, filters=None, marker=None, limit=None,
+                    offset=None, sort_keys=None, sort_dirs=None):
+    return IMPL.message_get_all(context, filters=filters, marker=marker,
+                                limit=limit, offset=offset,
+                                sort_keys=sort_keys, sort_dirs=sort_dirs)
+
+
+def message_create(context, values):
+    """Creates a new message with the specified values."""
+    return IMPL.message_create(context, values)
+
+
+def message_destroy(context, message_id):
+    """Deletes message with the specified ID."""
+    return IMPL.message_destroy(context, message_id)
+
+
+###################
+
+
+def workers_init():
+    """Check if DB supports subsecond resolution and set global flag.
+
+    MySQL 5.5 doesn't support subsecond resolution in datetime fields, so we
+    have to take it into account when working with the worker's table.
+
+    Once we drop support for MySQL 5.5 we can remove this method.
+    """
+    return IMPL.workers_init()
+
+
+def worker_create(context, **values):
+    """Create a worker entry from optional arguments."""
+    return IMPL.worker_create(context, **values)
+
+
+def worker_get(context, **filters):
+    """Get a worker or raise exception if it does not exist."""
+    return IMPL.worker_get(context, **filters)
+
+
+def worker_get_all(context, until=None, db_filters=None, **filters):
+    """Get all workers that match given criteria."""
+    return IMPL.worker_get_all(context, until=until, db_filters=db_filters,
+                               **filters)
+
+
+def worker_update(context, id, filters=None, orm_worker=None, **values):
+    """Update a worker with given values."""
+    return IMPL.worker_update(context, id, filters=filters,
+                              orm_worker=orm_worker, **values)
+
+
+def worker_claim_for_cleanup(context, claimer_id, orm_worker):
+    """Soft delete a worker, change the service_id and update the worker."""
+    return IMPL.worker_claim_for_cleanup(context, claimer_id, orm_worker)
+
+
+def worker_destroy(context, **filters):
+    """Delete a worker (no soft delete)."""
+    return IMPL.worker_destroy(context, **filters)
+
+
+###################
+
+
+def resource_exists(context, model, resource_id):
+    return IMPL.resource_exists(context, model, resource_id)
 
 
 def get_model_for_versioned_object(versioned_object):
@@ -1144,6 +1740,33 @@ class Condition(object):
         if not field:
             raise ValueError(_('Condition has no field.'))
         return field
+
+###################
+
+
+def attachment_specs_get(context, attachment_id):
+    """Get all specs for an attachment."""
+    return IMPL.attachment_specs_get(context, attachment_id)
+
+
+def attachment_specs_delete(context, attachment_id, key):
+    """Delete the given attachment specs item."""
+    return IMPL.attachment_specs_delete(context, attachment_id, key)
+
+
+def attachment_specs_update_or_create(context,
+                                      attachment_id,
+                                      specs):
+    """Create or update attachment specs.
+
+    This adds or modifies the key/value pairs specified in the attachment
+    specs dict argument.
+    """
+    return IMPL.attachment_specs_update_or_create(context,
+                                                  attachment_id,
+                                                  specs)
+
+###################
 
 
 class Not(Condition):
@@ -1183,55 +1806,57 @@ def is_orm_value(obj):
 
 
 def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False):
+                       include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update.
 
-       Update will only occur in the DB if conditions are met.
+    Update will only occur in the DB if conditions are met.
 
-       We have 4 different condition types we can use in expected_values:
-        - Equality:  {'status': 'available'}
-        - Inequality: {'status': vol_obj.Not('deleting')}
-        - In range: {'status': ['available', 'error']
-        - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
+    We have 4 different condition types we can use in expected_values:
+     - Equality:  {'status': 'available'}
+     - Inequality: {'status': vol_obj.Not('deleting')}
+     - In range: {'status': ['available', 'error']
+     - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
 
-       Method accepts additional filters, which are basically anything that
-       can be passed to a sqlalchemy query's filter method, for example:
-       [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
+    Method accepts additional filters, which are basically anything that can be
+    passed to a sqlalchemy query's filter method, for example:
 
-       We can select values based on conditions using Case objects in the
-       'values' argument. For example:
-       has_snapshot_filter = sql.exists().where(
-           models.Snapshot.volume_id == models.Volume.id)
-       case_values = db.Case([(has_snapshot_filter, 'has-snapshot')],
-                             else_='no-snapshot')
-       db.conditional_update(context, models.Volume, {'status': case_values},
-                             {'status': 'available'})
+    .. code-block:: python
 
-       And we can use DB fields for example to store previous status in the
-       corresponding field even though we don't know which value is in the db
-       from those we allowed:
-       db.conditional_update(context, models.Volume,
-                             {'status': 'deleting',
-                              'previous_status': models.Volume.status},
-                             {'status': ('available', 'error')})
+     [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
 
-       WARNING: SQLAlchemy does not allow selecting order of SET clauses, so
-       for now we cannot do things like
-           {'previous_status': model.status, 'status': 'retyping'}
-       because it will result in both previous_status and status being set to
-       'retyping'.  Issue has been reported [1] and a patch to fix it [2] has
-       been submitted.
-       [1]: https://bitbucket.org/zzzeek/sqlalchemy/issues/3541/
-       [2]: https://github.com/zzzeek/sqlalchemy/pull/200
+    We can select values based on conditions using Case objects in the 'values'
+    argument. For example:
 
-       :param values: Dictionary of key-values to update in the DB.
-       :param expected_values: Dictionary of conditions that must be met
-                               for the update to be executed.
-       :param filters: Iterable with additional filters
-       :param include_deleted: Should the update include deleted items, this
-                               is equivalent to read_deleted
-       :param project_only: Should the query be limited to context's project.
-       :returns number of db rows that were updated
+    .. code-block:: python
+
+     has_snapshot_filter = sql.exists().where(
+         models.Snapshot.volume_id == models.Volume.id)
+     case_values = db.Case([(has_snapshot_filter, 'has-snapshot')],
+                           else_='no-snapshot')
+     db.conditional_update(context, models.Volume, {'status': case_values},
+                           {'status': 'available'})
+
+    And we can use DB fields for example to store previous status in the
+    corresponding field even though we don't know which value is in the db from
+    those we allowed:
+
+    .. code-block:: python
+
+     db.conditional_update(context, models.Volume,
+                           {'status': 'deleting',
+                            'previous_status': models.Volume.status},
+                           {'status': ('available', 'error')})
+
+    :param values: Dictionary of key-values to update in the DB.
+    :param expected_values: Dictionary of conditions that must be met for the
+                            update to be executed.
+    :param filters: Iterable with additional filters.
+    :param include_deleted: Should the update include deleted items, this is
+                            equivalent to read_deleted.
+    :param project_only: Should the query be limited to context's project.
+    :param order: Specific order of fields in which to update the values
+    :returns number of db rows that were updated.
     """
     return IMPL.conditional_update(context, model, values, expected_values,
-                                   filters, include_deleted, project_only)
+                                   filters, include_deleted, project_only,
+                                   order)

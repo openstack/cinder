@@ -39,6 +39,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -50,6 +51,7 @@ import socket
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class V7000FCPDriver(driver.FibreChannelDriver):
     """Executes commands relating to fibre channel based Violin Memory arrays.
 
@@ -58,6 +60,9 @@ class V7000FCPDriver(driver.FibreChannelDriver):
     """
 
     VERSION = '1.0'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Violin_Memory_CI"
 
     def __init__(self, *args, **kwargs):
         super(V7000FCPDriver, self).__init__(*args, **kwargs)
@@ -130,7 +135,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         """Removes an export for a logical volume."""
         pass
 
-    @fczm_utils.AddFCZone
+    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -159,7 +164,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
 
         return {'driver_volume_type': 'fibre_channel', 'data': properties}
 
-    @fczm_utils.RemoveFCZone
+    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminates the connection (target<-->initiator)."""
 
@@ -312,7 +317,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         :returns: integer value of lun ID
         """
         v = self.common.vmem_mg
-        lun_id = -1
+        lun_id = None
 
         client_info = v.client.get_client_info(client_name)
 
@@ -321,7 +326,10 @@ class V7000FCPDriver(driver.FibreChannelDriver):
                 lun_id = x['lun']
                 break
 
-        return int(lun_id)
+        if lun_id:
+            lun_id = int(lun_id)
+
+        return lun_id
 
     def _is_lun_id_ready(self, volume_name, client_name):
         """Get the lun ID for an exported volume.
@@ -336,10 +344,10 @@ class V7000FCPDriver(driver.FibreChannelDriver):
 
         lun_id = -1
         lun_id = self._get_lun_id(volume_name, client_name)
-        if lun_id != -1:
-            return True
-        else:
+        if lun_id is None:
             return False
+        else:
+            return True
 
     def _build_initiator_target_map(self, connector):
         """Build the target_wwns and the initiator target map."""

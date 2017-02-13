@@ -59,11 +59,10 @@ class PerformanceLibraryTestCase(test.TestCase):
     def test_get_node_utilization_kahuna_overutilized(self):
 
         mock_get_kahuna_utilization = self.mock_object(
-            self.perf_library, '_get_kahuna_utilization',
-            mock.Mock(return_value=61.0))
+            self.perf_library, '_get_kahuna_utilization', return_value=61.0)
         mock_get_average_cpu_utilization = self.mock_object(
             self.perf_library, '_get_average_cpu_utilization',
-            mock.Mock(return_value=25.0))
+            return_value=25.0)
 
         result = self.perf_library._get_node_utilization('fake1',
                                                          'fake2',
@@ -80,20 +79,18 @@ class PerformanceLibraryTestCase(test.TestCase):
     def test_get_node_utilization_zero_time(self, cpu, cp_time, poll_time):
 
         mock_get_kahuna_utilization = self.mock_object(
-            self.perf_library, '_get_kahuna_utilization',
-            mock.Mock(return_value=59.0))
+            self.perf_library, '_get_kahuna_utilization', return_value=59.0)
         mock_get_average_cpu_utilization = self.mock_object(
             self.perf_library, '_get_average_cpu_utilization',
-            mock.Mock(return_value=cpu))
+            return_value=cpu)
         mock_get_total_consistency_point_time = self.mock_object(
             self.perf_library, '_get_total_consistency_point_time',
-            mock.Mock(return_value=cp_time))
+            return_value=cp_time)
         mock_get_consistency_point_p2_flush_time = self.mock_object(
             self.perf_library, '_get_consistency_point_p2_flush_time',
-            mock.Mock(return_value=cp_time))
+            return_value=cp_time)
         mock_get_total_time = self.mock_object(
-            self.perf_library, '_get_total_time',
-            mock.Mock(return_value=poll_time))
+            self.perf_library, '_get_total_time', return_value=poll_time)
         mock_get_adjusted_consistency_point_time = self.mock_object(
             self.perf_library, '_get_adjusted_consistency_point_time')
 
@@ -123,23 +120,21 @@ class PerformanceLibraryTestCase(test.TestCase):
     def test_get_node_utilization(self, cpu, adjusted_cp_time, expected):
 
         mock_get_kahuna_utilization = self.mock_object(
-            self.perf_library, '_get_kahuna_utilization',
-            mock.Mock(return_value=59.0))
+            self.perf_library, '_get_kahuna_utilization', return_value=59.0)
         mock_get_average_cpu_utilization = self.mock_object(
             self.perf_library, '_get_average_cpu_utilization',
-            mock.Mock(return_value=cpu))
+            return_value=cpu)
         mock_get_total_consistency_point_time = self.mock_object(
             self.perf_library, '_get_total_consistency_point_time',
-            mock.Mock(return_value=90.0))
+            return_value=90.0)
         mock_get_consistency_point_p2_flush_time = self.mock_object(
             self.perf_library, '_get_consistency_point_p2_flush_time',
-            mock.Mock(return_value=50.0))
+            return_value=50.0)
         mock_get_total_time = self.mock_object(
-            self.perf_library, '_get_total_time',
-            mock.Mock(return_value=10000))
+            self.perf_library, '_get_total_time', return_value=10000)
         mock_get_adjusted_consistency_point_time = self.mock_object(
             self.perf_library, '_get_adjusted_consistency_point_time',
-            mock.Mock(return_value=adjusted_cp_time))
+            return_value=adjusted_cp_time)
 
         result = self.perf_library._get_node_utilization('fake1',
                                                          'fake2',
@@ -164,22 +159,22 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         self.mock_object(self.perf_library,
                          '_get_kahuna_utilization',
-                         mock.Mock(return_value=59.0))
+                         return_value=59.0)
         self.mock_object(self.perf_library,
                          '_get_average_cpu_utilization',
-                         mock.Mock(return_value=25.0))
+                         return_value=25.0)
         self.mock_object(self.perf_library,
                          '_get_total_consistency_point_time',
-                         mock.Mock(return_value=90.0))
+                         return_value=90.0)
         self.mock_object(self.perf_library,
                          '_get_consistency_point_p2_flush_time',
-                         mock.Mock(return_value=50.0))
+                         return_value=50.0)
         self.mock_object(self.perf_library,
                          '_get_total_time',
-                         mock.Mock(return_value=10000))
+                         return_value=10000)
         self.mock_object(self.perf_library,
                          '_get_adjusted_consistency_point_time',
-                         mock.Mock(side_effect=ZeroDivisionError))
+                         side_effect=ZeroDivisionError)
 
         result = self.perf_library._get_node_utilization('fake1',
                                                          'fake2',
@@ -192,7 +187,7 @@ class PerformanceLibraryTestCase(test.TestCase):
         mock_get_performance_counter = self.mock_object(
             self.perf_library,
             '_get_performance_counter_average_multi_instance',
-            mock.Mock(return_value=[0.2, 0.3]))
+            return_value=[0.2, 0.3])
 
         result = self.perf_library._get_kahuna_utilization('fake_t1',
                                                            'fake_t2')
@@ -206,7 +201,7 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         mock_get_performance_counter_average = self.mock_object(
             self.perf_library, '_get_performance_counter_average',
-            mock.Mock(return_value=0.45))
+            return_value=0.45)
 
         result = self.perf_library._get_average_cpu_utilization('fake_t1',
                                                                 'fake_t2')
@@ -219,7 +214,7 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         mock_get_performance_counter_delta = self.mock_object(
             self.perf_library, '_get_performance_counter_delta',
-            mock.Mock(return_value=500))
+            return_value=500)
 
         result = self.perf_library._get_total_consistency_point_time(
             'fake_t1', 'fake_t2')
@@ -232,7 +227,7 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         mock_get_performance_counter_delta = self.mock_object(
             self.perf_library, '_get_performance_counter_delta',
-            mock.Mock(return_value=500))
+            return_value=500)
 
         result = self.perf_library._get_consistency_point_p2_flush_time(
             'fake_t1', 'fake_t2')
@@ -245,7 +240,7 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         mock_find_performance_counter_timestamp = self.mock_object(
             self.perf_library, '_find_performance_counter_timestamp',
-            mock.Mock(side_effect=[100, 105]))
+            side_effect=[100, 105])
 
         result = self.perf_library._get_total_time('fake_t1',
                                                    'fake_t2',
@@ -261,7 +256,7 @@ class PerformanceLibraryTestCase(test.TestCase):
         result = self.perf_library._get_adjusted_consistency_point_time(
             500, 200)
 
-        self.assertAlmostEqual(250, result)
+        self.assertAlmostEqual(360.0, result)
 
     def test_get_performance_counter_delta(self):
 

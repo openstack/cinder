@@ -1,0 +1,5 @@
+---
+upgrade:
+  - The default interval for polling vCenter tasks in the
+    VMware VMDK driver is changed to 2s.
+

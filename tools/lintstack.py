@@ -26,25 +26,55 @@ from pylint import lint
 from pylint.reporters import text
 from six.moves import cStringIO as StringIO
 
-# Note(maoy): E1103 is error code related to partial type inference
-ignore_codes = ["E1103"]
-# Note(maoy): the error message is the pattern of E0202. It should be ignored
-# for cinder.tests modules
-# Note(fengqian): the second error message is the pattern of [E0611].
-# It should be ignored because use six module to keep py3.X compatibility.
-# Note(e0ne): the third error message is for SQLAlchemy update() calls
-# in DB schema migrations.
-# Note(xyang): the fourth and fifth error messages are for the code [E1101].
-# They should be ignored because 'sha256' and 'sha224' are functions in
-# 'hashlib'.
-# Note(aarefiev): the sixth error message is for SQLAlchemy rename calls in
-# DB migration(033_add_encryption_unique_key).
-ignore_messages = ["An attribute affected in cinder.tests",
-                   "No name 'urllib' in module '_MovedItems'",
-                   "No value passed for parameter 'dml'",
-                   "Module 'hashlib' has no 'sha256' member",
-                   "Module 'hashlib' has no 'sha224' member",
-                   "Instance of 'Table' has no 'rename' member"]
+ignore_codes = [
+    # Note(maoy): E1103 is error code related to partial type inference
+    "E1103"
+]
+
+ignore_messages = [
+    # Note(maoy): this error message is the pattern of E0202. It should be
+    # ignored for cinder.tests modules
+    "An attribute affected in cinder.tests",
+
+    # Note(fengqian): this error message is the pattern of [E0611].
+    "No name 'urllib' in module '_MovedItems'",
+
+    # Note(e0ne): this error message is for SQLAlchemy update() calls
+    # It should be ignored because use six module to keep py3.X compatibility.
+    # in DB schema migrations.
+    "No value passed for parameter 'dml'",
+
+    # Note(xyang): these error messages are for the code [E1101].
+    # They should be ignored because 'sha256' and 'sha224' are functions in
+    # 'hashlib'.
+    "Module 'hashlib' has no 'sha256' member",
+    "Module 'hashlib' has no 'sha224' member",
+
+    # Note(aarefiev): this error message is for SQLAlchemy rename calls in
+    # DB migration(033_add_encryption_unique_key).
+    "Instance of 'Table' has no 'rename' member",
+
+    # NOTE(geguileo): these error messages are for code [E1101], and they can
+    # be ignored because a SQLAlchemy ORM class will have __table__ member
+    # during runtime.
+    "Class 'ConsistencyGroup' has no '__table__' member",
+    "Class 'Cgsnapshot' has no '__table__' member",
+    "Class 'Group' has no '__table__' member",
+    "Class 'GroupSnapshot' has no '__table__' member",
+
+    # NOTE(xyang): this error message is for code [E1120] when checking if
+    # there are already 'groups' entries in 'quota_classes' `in DB migration
+    # (078_add_groups_and_group_volume_type_mapping_table).
+    "No value passed for parameter 'functions' in function call",
+
+    # NOTE(dulek): This one is related to objects.
+    "No value passed for parameter 'id' in function call",
+
+    # NOTE(geguileo): v3 common manage class for volumes and snapshots
+    "Instance of 'ManageResource' has no 'volume_api' member",
+    "Instance of 'ManageResource' has no '_list_manageable_view' member",
+]
+
 # Note(maoy):  We ignore cinder.tests for now due to high false
 # positive rate.
 ignore_modules = ["cinder/tests/"]
@@ -56,28 +86,10 @@ ignore_modules = ["cinder/tests/"]
 # non-existent member of an object, but should be ignored because the object
 # member is created dynamically.
 objects_ignore_codes = ["E0213", "E1101", "E1102"]
-# Note(thangp): The error messages are for codes [E1120, E1101] appearing in
-# the cinder code base using objects. E1120 is an error code related no value
-# passed for a parameter in function call, but should be ignored because it is
-# reporting false positives. E1101 is error code related to accessing a
-# non-existent member of an object, but should be ignored because the object
-# member is created dynamically.
-objects_ignore_messages = [
-    "No value passed for parameter 'id' in function call",
-    "Module 'cinder.objects' has no 'Backup' member",
-    "Module 'cinder.objects' has no 'BackupImport' member",
-    "Module 'cinder.objects' has no 'BackupList' member",
-    "Module 'cinder.objects' has no 'CGSnapshot' member",
-    "Module 'cinder.objects' has no 'CGSnapshotList' member",
-    "Module 'cinder.objects' has no 'ConsistencyGroup' member",
-    "Module 'cinder.objects' has no 'ConsistencyGroupList' member",
-    "Module 'cinder.objects' has no 'Service' member",
-    "Module 'cinder.objects' has no 'ServiceList' member",
-    "Module 'cinder.objects' has no 'Snapshot' member",
-    "Module 'cinder.objects' has no 'SnapshotList' member",
-    "Module 'cinder.objects' has no 'Volume' member",
-    "Module 'cinder.objects' has no 'VolumeList' member",
-]
+# NOTE(dulek): We're ignoring messages related to non-existent objects in
+# cinder.objects namespace. This is because this namespace is populated when
+# registering the objects, and pylint is unable to detect that.
+objects_ignore_regexp = "Module 'cinder.objects' has no '.*' member"
 objects_ignore_modules = ["cinder/objects/"]
 
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
@@ -132,8 +144,9 @@ class LintOutput(object):
             return True
         if any(self.filename.startswith(name) for name in ignore_modules):
             return True
-        if any(msg in self.message for msg in
-               (ignore_messages + objects_ignore_messages)):
+        if any(msg in self.message for msg in ignore_messages):
+            return True
+        if re.match(objects_ignore_regexp, self.message):
             return True
         if (self.code in objects_ignore_codes and
             any(self.filename.startswith(name)
@@ -158,7 +171,12 @@ class LintOutput(object):
 
     def review_str(self):
         return ("File %(filename)s\nLine %(lineno)d:%(line_content)s\n"
-                "%(code)s: %(message)s" % self.__dict__)
+                "%(code)s: %(message)s" %
+                {'filename': self.filename,
+                 'lineno': self.lineno,
+                 'line_content': self.line_content,
+                 'code': self.code,
+                 'message': self.message})
 
 
 class ErrorKeys(object):

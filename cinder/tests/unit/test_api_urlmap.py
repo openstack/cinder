@@ -17,6 +17,8 @@
 Tests for cinder.api.urlmap.py
 """
 
+import mock
+
 from cinder.api import urlmap
 from cinder import test
 
@@ -57,7 +59,7 @@ class TestAccept(test.TestCase):
         accept = urlmap.Accept(arg)
         self.assertEqual(('application/json', {'q': '0.7'}),
                          accept.best_match(['application/json',
-                                            'application/xml', 'text/html']))
+                                            'text/html']))
 
     def test_match_mask_one_asterisk(self):
         arg = 'text/*; q=0.7'
@@ -77,14 +79,14 @@ class TestAccept(test.TestCase):
         self.assertEqual((None, {}), accept.best_match(['text/html']))
 
     def test_content_type_params(self):
-        arg = "application/xml; q=0.1, application/json; q=0.2," \
+        arg = "application/json; q=0.2," \
               " text/html; q=0.3"
         accept = urlmap.Accept(arg)
         self.assertEqual({'q': '0.2'},
                          accept.content_type_params('application/json'))
 
     def test_content_type_params_wrong_content_type(self):
-        arg = 'application/xml; q=0.1, text/html; q=0.1'
+        arg = 'text/html; q=0.1'
         accept = urlmap.Accept(arg)
         self.assertEqual({}, accept.content_type_params('application/json'))
 
@@ -94,64 +96,59 @@ class TestUrlMapFactory(test.TestCase):
         super(TestUrlMapFactory, self).setUp()
         self.global_conf = {'not_found_app': 'app_global',
                             'domain hoobar.com port 10 /': 'some_app_global'}
-        self.loader = self.mox.CreateMockAnything()
+        self.loader = mock.Mock()
 
     def test_not_found_app_in_local_conf(self):
         local_conf = {'not_found_app': 'app_local',
                       'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('app_local', global_conf=self.global_conf).\
-            AndReturn('app_local_loader')
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_loader')
-        self.mox.ReplayAll()
+
+        self.loader.get_app.side_effect = ['app_local_loader',
+                                           'some_app_loader']
+        calls = [mock.call('app_local', global_conf=self.global_conf),
+                 mock.call('some_app_local', global_conf=self.global_conf)]
+
         expected_urlmap = urlmap.URLMap(not_found_app='app_local_loader')
         expected_urlmap['http://foobar.com:20'] = 'some_app_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_has_calls(calls)
 
     def test_not_found_app_not_in_local_conf(self):
         local_conf = {'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('app_global', global_conf=self.global_conf).\
-            AndReturn('app_global_loader')
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_returned_by_loader')
-        self.mox.ReplayAll()
+
+        self.loader.get_app.side_effect = ['app_global_loader',
+                                           'some_app_returned_by_loader']
+        calls = [mock.call('app_global', global_conf=self.global_conf),
+                 mock.call('some_app_local', global_conf=self.global_conf)]
+
         expected_urlmap = urlmap.URLMap(not_found_app='app_global_loader')
         expected_urlmap['http://foobar.com:20'] = 'some_app_returned'\
                                                   '_by_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_has_calls(calls)
 
     def test_not_found_app_is_none(self):
         local_conf = {'not_found_app': None,
                       'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_returned_by_loader')
-        self.mox.ReplayAll()
+        self.loader.get_app.return_value = 'some_app_returned_by_loader'
+
         expected_urlmap = urlmap.URLMap(not_found_app=None)
         expected_urlmap['http://foobar.com:20'] = 'some_app_returned'\
                                                   '_by_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_called_once_with(
+            'some_app_local', global_conf=self.global_conf)
 
 
 class TestURLMap(test.TestCase):
     def setUp(self):
         super(TestURLMap, self).setUp()
         self.urlmap = urlmap.URLMap()
-        self.input_environ = {'HTTP_ACCEPT': "application/json;"
-                              "version=9.0", 'REQUEST_METHOD': "GET",
-                              'CONTENT_TYPE': 'application/xml',
-                              'SCRIPT_NAME': '/scriptname',
-                              'PATH_INFO': "/resource.xml"}
-        self.environ = {'HTTP_ACCEPT': "application/json;"
-                        "version=9.0", 'REQUEST_METHOD': "GET",
-                        'CONTENT_TYPE': 'application/xml',
-                        'SCRIPT_NAME': '/scriptname/app_url',
-                        'PATH_INFO': "/resource.xml"}
 
     def test_match_with_applications(self):
         self.urlmap[('http://10.20.30.40:50', '/path/somepath')] = 'app'
@@ -178,94 +175,18 @@ class TestURLMap(test.TestCase):
                          self.urlmap._match('http://20.30.40.50', '60',
                                             '/path/somepath/elsepath'))
 
-    def test_set_script_name(self):
-        app = self.mox.CreateMockAnything()
-        start_response = self.mox.CreateMockAnything()
-        app.__call__(self.environ, start_response).AndReturn('value')
-        self.mox.ReplayAll()
-        wrap = self.urlmap._set_script_name(app, '/app_url')
-        self.assertEqual('value', wrap(self.input_environ, start_response))
-
-    def test_munge_path(self):
-        app = self.mox.CreateMockAnything()
-        start_response = self.mox.CreateMockAnything()
-        app.__call__(self.environ, start_response).AndReturn('value')
-        self.mox.ReplayAll()
-        wrap = self.urlmap._munge_path(app, '/app_url/resource.xml',
-                                       '/app_url')
-        self.assertEqual('value', wrap(self.input_environ, start_response))
-
-    def test_content_type_strategy_without_version(self):
-        self.assertIsNone(self.urlmap._content_type_strategy('host', 20,
-                                                             self.environ))
-
-    def test_content_type_strategy_with_version(self):
-        environ = {'HTTP_ACCEPT': "application/vnd.openstack.melange+xml;"
-                   "version=9.0", 'REQUEST_METHOD': "GET",
-                   'PATH_INFO': "/resource.xml",
-                   'CONTENT_TYPE': 'application/xml; version=2.0'}
-        self.urlmap[('http://10.20.30.40:50', '/v2.0')] = 'app'
-        self.mox.StubOutWithMock(self.urlmap, '_set_script_name')
-        self.urlmap._set_script_name('app', '/v2.0').AndReturn('value')
-        self.mox.ReplayAll()
-        self.assertEqual('value',
-                         self.urlmap._content_type_strategy(
-                             'http://10.20.30.40', '50', environ))
-
     def test_path_strategy_wrong_path_info(self):
         self.assertEqual((None, None, None),
                          self.urlmap._path_strategy('http://10.20.30.40', '50',
                                                     '/resource'))
 
-    def test_path_strategy_mime_type_only(self):
-        self.assertEqual(('application/xml', None, None),
-                         self.urlmap._path_strategy('http://10.20.30.40', '50',
-                                                    '/resource.xml'))
-
-    def test_path_strategy(self):
-        self.urlmap[('http://10.20.30.40:50', '/path/elsepath/')] = 'app'
-        self.mox.StubOutWithMock(self.urlmap, '_munge_path')
-        self.urlmap._munge_path('app', '/path/elsepath/resource.xml',
-                                '/path/elsepath').AndReturn('value')
-        self.mox.ReplayAll()
-        self.assertEqual(
-            ('application/xml', 'value', '/path/elsepath'),
-            self.urlmap._path_strategy('http://10.20.30.40', '50',
-                                       '/path/elsepath/resource.xml'))
-
     def test_path_strategy_wrong_mime_type(self):
         self.urlmap[('http://10.20.30.40:50', '/path/elsepath/')] = 'app'
-        self.mox.StubOutWithMock(self.urlmap, '_munge_path')
-        self.urlmap._munge_path('app', '/path/elsepath/resource.abc',
-                                '/path/elsepath').AndReturn('value')
-        self.mox.ReplayAll()
-        self.assertEqual(
-            (None, 'value', '/path/elsepath'),
-            self.urlmap._path_strategy('http://10.20.30.40', '50',
-                                       '/path/elsepath/resource.abc'))
-
-    def test_accept_strategy_version_not_in_params(self):
-        environ = {'HTTP_ACCEPT': "application/xml; q=0.1, application/json; "
-                   "q=0.2", 'REQUEST_METHOD': "GET",
-                   'PATH_INFO': "/resource.xml",
-                   'CONTENT_TYPE': 'application/xml; version=2.0'}
-        self.assertEqual(('application/xml', None),
-                         self.urlmap._accept_strategy('http://10.20.30.40',
-                                                      '50',
-                                                      environ,
-                                                      ['application/xml']))
-
-    def test_accept_strategy_version(self):
-        environ = {'HTTP_ACCEPT': "application/xml; q=0.1; version=1.0,"
-                   "application/json; q=0.2; version=2.0",
-                   'REQUEST_METHOD': "GET", 'PATH_INFO': "/resource.xml",
-                   'CONTENT_TYPE': 'application/xml; version=2.0'}
-        self.urlmap[('http://10.20.30.40:50', '/v1.0')] = 'app'
-        self.mox.StubOutWithMock(self.urlmap, '_set_script_name')
-        self.urlmap._set_script_name('app', '/v1.0').AndReturn('value')
-        self.mox.ReplayAll()
-        self.assertEqual(('application/xml', 'value'),
-                         self.urlmap._accept_strategy('http://10.20.30.40',
-                                                      '50',
-                                                      environ,
-                                                      ['application/xml']))
+        with mock.patch.object(self.urlmap, '_munge_path') as mock_munge_path:
+            mock_munge_path.return_value = 'value'
+            self.assertEqual(
+                (None, 'value', '/path/elsepath'),
+                self.urlmap._path_strategy('http://10.20.30.40', '50',
+                                           '/path/elsepath/resource.abc'))
+            mock_munge_path.assert_called_once_with(
+                'app', '/path/elsepath/resource.abc', '/path/elsepath')

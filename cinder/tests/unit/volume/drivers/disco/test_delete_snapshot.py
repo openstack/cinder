@@ -27,12 +27,12 @@ class DeleteSnapshotTestCase(disco.TestDISCODriver):
         """Initialise variables and mock functions."""
         super(DeleteSnapshotTestCase, self).setUp()
 
-        # Mock snapshotDelete function from suds client.
+        # Mock snapshotDelete function.
         mock.patch.object(self.requester,
                           'snapshotDelete',
                           self.perform_disco_request).start()
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             self.ctx, **{'volume': self.volume})
 
@@ -46,6 +46,6 @@ class DeleteSnapshotTestCase(disco.TestDISCODriver):
 
     def test_delete_snapshot_fail(self):
         """Make the API returns an error while deleting."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_delete_snapshot)

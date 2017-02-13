@@ -1,0 +1,5 @@
+---
+features:
+  - Added support to querying snapshots filtered by metadata key/value
+    using 'metadata' optional URL parameter.
+    For example, "/v3/snapshots?metadata=={'key1':'value1'}".

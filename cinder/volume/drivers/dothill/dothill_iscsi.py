@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,6 +19,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common as dothillcommon
 from cinder.volume.drivers.san import san
@@ -27,6 +29,7 @@ DEFAULT_ISCSI_PORT = "3260"
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
     """OpenStack iSCSI cinder drivers for DotHill Arrays.
 
@@ -43,10 +46,18 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                      - added support for retype volume
                      - added support for manage/unmanage volume
                      - added https support
-
+        1.6    - Add management path redundancy and reduce load placed
+                 on management controller.
     """
 
-    VERSION = "1.0"
+    VERSION = "1.6"
+
+    # ThirdPartySystems CI wiki
+    CI_WIKI_NAME = "Vedams_DotHillDriver_CI"
+
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Pike release per normal deprecation
+    SUPPORTED = False
 
     def __init__(self, *args, **kwargs):
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
@@ -153,7 +164,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                         self.__class__.__name__)
         return stats
 
-    def create_export(self, context, volume, connector):
+    def create_export(self, context, volume, connector=None):
         pass
 
     def ensure_export(self, context, volume):

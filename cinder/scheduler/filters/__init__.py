@@ -20,13 +20,15 @@ Scheduler host filters
 from cinder.scheduler import base_filter
 
 
-class BaseHostFilter(base_filter.BaseFilter):
+class BaseBackendFilter(base_filter.BaseFilter):
     """Base class for host filters."""
     def _filter_one(self, obj, filter_properties):
         """Return True if the object passes the filter, otherwise False."""
-        return self.host_passes(obj, filter_properties)
+        # For backward compatibility with out of tree filters
+        passes_method = getattr(self, 'host_passes', self.backend_passes)
+        return passes_method(obj, filter_properties)
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, host_state, filter_properties):
         """Return True if the HostState passes the filter, otherwise False.
 
         Override this in a subclass.
@@ -34,6 +36,12 @@ class BaseHostFilter(base_filter.BaseFilter):
         raise NotImplementedError()
 
 
-class HostFilterHandler(base_filter.BaseFilterHandler):
+class BackendFilterHandler(base_filter.BaseFilterHandler):
     def __init__(self, namespace):
-        super(HostFilterHandler, self).__init__(BaseHostFilter, namespace)
+        super(BackendFilterHandler, self).__init__(BaseHostFilter, namespace)
+
+
+# NOTE(geguileo): For backward compatibility with external filters that
+# inherit from these classes
+BaseHostFilter = BaseBackendFilter
+HostFilterHandler = BackendFilterHandler

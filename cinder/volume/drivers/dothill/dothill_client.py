@@ -1,5 +1,6 @@
 #    Copyright 2014 Objectif Libre
-#    Copyright 2015 DotHill Systems
+#    Copyright 2015 Dot Hill Systems Corp.
+#    Copyright 2016 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,52 +15,110 @@
 #    under the License.
 #
 
-from hashlib import md5
+import hashlib
 import math
 import time
 
 from lxml import etree
 from oslo_log import log as logging
+from oslo_utils import units
 import requests
 import six
 
 from cinder import exception
-from cinder.i18n import _LE
+from cinder.i18n import _, _LE, _LW, _LI
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
 
 class DotHillClient(object):
     def __init__(self, host, login, password, protocol, ssl_verify):
+        self._mgmt_ip_addrs = list(map(str.strip, host.split(',')))
         self._login = login
         self._password = password
-        self._base_url = "%s://%s/api" % (protocol, host)
+        self._protocol = protocol
         self._session_key = None
         self.ssl_verify = ssl_verify
+        self._set_host(self._mgmt_ip_addrs[0])
+        self._fw = ''
+        self._luns_in_use_by_host = {}
+
+    def _set_host(self, ip_addr):
+        self._curr_ip_addr = ip_addr
+        self._base_url = "%s://%s/api" % (self._protocol, ip_addr)
 
     def _get_auth_token(self, xml):
         """Parse an XML authentication reply to extract the session key."""
         self._session_key = None
-        tree = etree.XML(xml)
-        if tree.findtext(".//PROPERTY[@name='response-type']") == "success":
-            self._session_key = tree.findtext(".//PROPERTY[@name='response']")
+        try:
+            tree = etree.XML(xml)
+            if (tree.findtext(".//PROPERTY[@name='response-type']") ==
+                    "success"):
+                self._session_key = (
+                    tree.findtext(".//PROPERTY[@name='response']"))
+        except Exception as e:
+            msg = _("Cannot parse session key: %s") % e.msg
+            raise exception.DotHillConnectionError(message=msg)
 
     def login(self):
-        """Authenticates the service on the device."""
+        if self._session_key is None:
+            return self.session_login()
+
+    def session_login(self):
+        """Authenticates the service on the device.
+
+        Tries all the IP addrs listed in the san_ip parameter
+        until a working one is found or the list is exhausted.
+        """
+
+        try:
+            self._get_session_key()
+            self.get_firmware_version()
+            LOG.debug("Logged in to array at %s (session %s)",
+                      self._base_url, self._session_key)
+            return
+        except exception.DotHillConnectionError:
+            not_responding = self._curr_ip_addr
+            LOG.exception(_LE('session_login failed to connect to %s'),
+                          self._curr_ip_addr)
+            # Loop through the remaining management addresses
+            # to find one that's up.
+            for host in self._mgmt_ip_addrs:
+                if host is not_responding:
+                    continue
+                self._set_host(host)
+                try:
+                    self._get_session_key()
+                    return
+                except exception.DotHillConnectionError:
+                    LOG.error(_LE('Failed to connect to %s'),
+                              self._curr_ip_addr)
+                    continue
+        raise exception.DotHillConnectionError(
+            message=_("Failed to log in to management controller"))
+
+    @utils.synchronized(__name__, external = True)
+    def _get_session_key(self):
+        """Retrieve a session key from the array."""
+
+        self._session_key = None
         hash_ = "%s_%s" % (self._login, self._password)
         if six.PY3:
             hash_ = hash_.encode('utf-8')
-        hash_ = md5(hash_)
+        hash_ = hashlib.md5(hash_)
         digest = hash_.hexdigest()
 
         url = self._base_url + "/login/" + digest
         try:
-            xml = requests.get(url, verify=self.ssl_verify)
+            xml = requests.get(url, verify=self.ssl_verify, timeout=30)
         except requests.exceptions.RequestException:
-            raise exception.DotHillConnectionError
+            msg = _("Failed to obtain MC session key")
+            LOG.exception(msg)
+            raise exception.DotHillConnectionError(message=msg)
 
         self._get_auth_token(xml.text.encode('utf8'))
-
+        LOG.debug("session key = %s", self._session_key)
         if self._session_key is None:
             raise exception.DotHillAuthenticationError
 
@@ -96,22 +155,64 @@ class DotHillClient(object):
         return url
 
     def _request(self, path, *args, **kargs):
-        """Performs an HTTP request on the device.
+        """Performs an API request on the array, with retry.
+
+        Propagates a DotHillConnectionError if no valid response is
+        received from the array, e.g. if the network is down.
+
+        Propagates a DotHillRequestError if the device returned a response
+        but the status is not 0. The device error message will be used
+        in the exception message.
+
+        If the status is OK, returns the XML data for further processing.
+        """
+        tries_left = 2
+        while tries_left > 0:
+            try:
+                return self._api_request(path, *args, **kargs)
+            except exception.DotHillConnectionError as e:
+                if tries_left < 1:
+                    LOG.error(_LE("Array Connection error: "
+                                  "%s (no more retries)"), e.msg)
+                    raise
+                # Retry on any network connection errors, SSL errors, etc
+                LOG.error(_LE("Array Connection error: %s (retrying)"), e.msg)
+            except exception.DotHillRequestError as e:
+                if tries_left < 1:
+                    LOG.error(_LE("Array Request error: %s (no more retries)"),
+                              e.msg)
+                    raise
+                # Retry specific errors which may succeed if we log in again
+                # -10027 => The user is not recognized on this system.
+                if '(-10027)' in e.msg:
+                    LOG.error(_LE("Array Request error: %s (retrying)"), e.msg)
+                else:
+                    raise
+
+            tries_left -= 1
+            self.session_login()
+
+    @utils.synchronized(__name__, external=True)
+    def _api_request(self, path, *args, **kargs):
+        """Performs an HTTP request on the device, with locking.
 
         Raises a DotHillRequestError if the device returned but the status is
         not 0. The device error message will be used in the exception message.
 
         If the status is OK, returns the XML data for further processing.
         """
-
         url = self._build_request_url(path, *args, **kargs)
-        LOG.debug("DotHill Request URL: %s", url)
+        LOG.debug("Array Request URL: %s (session %s)",
+                  url, self._session_key)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
         try:
-            xml = requests.get(url, headers=headers, verify=self.ssl_verify)
+            xml = requests.get(url, headers=headers,
+                               verify=self.ssl_verify, timeout=60)
             tree = etree.XML(xml.text.encode('utf8'))
-        except Exception:
-            raise exception.DotHillConnectionError
+        except Exception as e:
+            message = _("Exception handling URL %(url)s: %(msg)s") % {
+                'url': url, 'msg': e}
+            raise exception.DotHillConnectionError(message=message)
 
         if path == "/show/volumecopy-status":
             return tree
@@ -119,35 +220,77 @@ class DotHillClient(object):
         return tree
 
     def logout(self):
+        pass
+
+    def session_logout(self):
         url = self._base_url + '/exit'
         try:
-            requests.get(url, verify=self.ssl_verify)
+            requests.get(url, verify=self.ssl_verify, timeout=30)
             return True
         except Exception:
             return False
 
+    def is_titanium(self):
+        """True if array is an older generation."""
+        return True if len(self._fw) > 0 and self._fw[0] == 'T' else False
+
     def create_volume(self, name, size, backend_name, backend_type):
-        # NOTE: size is in this format: [0-9]+GB
+        # NOTE: size is in this format: [0-9]+GiB
         path_dict = {'size': size}
         if backend_type == "linear":
             path_dict['vdisk'] = backend_name
         else:
             path_dict['pool'] = backend_name
 
-        self._request("/create/volume", name, **path_dict)
+        try:
+            self._request("/create/volume", name, **path_dict)
+        except exception.DotHillRequestError as e:
+            # -10186 => The specified name is already in use.
+            # This can occur during controller failover.
+            if '(-10186)' in e.msg:
+                LOG.warning(_LW("Ignoring error in create volume: %s"), e.msg)
+                return None
+            raise
+
         return None
 
     def delete_volume(self, name):
-        self._request("/delete/volumes", name)
+        try:
+            self._request("/delete/volumes", name)
+        except exception.DotHillRequestError as e:
+            # -10075 => The specified volume was not found.
+            # This can occur during controller failover.
+            if '(-10075)' in e.msg:
+                LOG.warning(_LW("Ignorning error while deleting %(volume)s:"
+                                " %(reason)s"),
+                            {'volume': name, 'reason': e.msg})
+                return
+            raise
 
     def extend_volume(self, name, added_size):
         self._request("/expand/volume", name, size=added_size)
 
     def create_snapshot(self, volume_name, snap_name):
-        self._request("/create/snapshots", snap_name, volumes=volume_name)
+        try:
+            self._request("/create/snapshots", snap_name, volumes=volume_name)
+        except exception.DotHillRequestError as e:
+            # -10186 => The specified name is already in use.
+            # This can occur during controller failover.
+            if '(-10186)' in e.msg:
+                LOG.warning(_LW("Ignoring error attempting to create snapshot:"
+                                " %s"), e.msg)
+                return None
 
     def delete_snapshot(self, snap_name):
-        self._request("/delete/snapshot", "cleanup", snap_name)
+        try:
+            self._request("/delete/snapshot", "cleanup", snap_name)
+        except exception.DotHillRequestError as e:
+            # -10050 => The volume was not found on this system.
+            # This can occur during controller failover.
+            if '(-10050)' in e.msg:
+                LOG.warning(_LW("Ignoring unmap error -10050: %s"), e.msg)
+                return None
+            raise
 
     def backend_exists(self, backend_name, backend_type):
         try:
@@ -161,7 +304,7 @@ class DotHillClient(object):
             return False
 
     def _get_size(self, size):
-        return int(math.ceil(float(size) * 512 / (10 ** 9)))
+        return int(math.ceil(float(size) * 512 / (units.G)))
 
     def backend_stats(self, backend_name, backend_type):
         stats = {'free_capacity_gb': 0,
@@ -190,13 +333,40 @@ class DotHillClient(object):
                 "//PROPERTY[@name='lun']")]
 
     def _get_first_available_lun_for_host(self, host):
+        """Find next available LUN number.
+
+        Returns a lun number greater than 0 which is not known to be in
+        use between the array and the specified host.
+        """
         luns = self.list_luns_for_host(host)
+        self._luns_in_use_by_host[host] = luns
         lun = 1
         while True:
             if lun not in luns:
                 return lun
             lun += 1
 
+    def _get_next_available_lun_for_host(self, host, after=0):
+        # host can be a comma-separated list of WWPNs; we only use the first.
+        firsthost = host.split(',')[0]
+        LOG.debug('get_next_available_lun: host=%s, firsthost=%s, after=%d',
+                  host, firsthost, after)
+        if after == 0:
+            return self._get_first_available_lun_for_host(firsthost)
+        luns = self._luns_in_use_by_host[firsthost]
+        lun = after + 1
+        while lun < 1024:
+            LOG.debug('get_next_available_lun: host=%s, trying lun %d',
+                      firsthost, lun)
+            if lun not in luns:
+                LOG.debug('get_next_available_lun: host=%s, RETURNING lun %d',
+                          firsthost, lun)
+                return lun
+            lun += 1
+        raise exception.DotHillRequestError(
+            message=_("No LUNs available for mapping to host %s.") % host)
+
+    @utils.synchronized(__name__ + '.map_volume', external=True)
     def map_volume(self, volume_name, connector, connector_element):
         if connector_element == 'wwpns':
             lun = self._get_first_available_lun_for_host(connector['wwpns'][0])
@@ -206,22 +376,63 @@ class DotHillClient(object):
             host_status = self._check_host(host)
             if host_status != 0:
                 hostname = self._safe_hostname(connector['host'])
-                self._request("/create/host", hostname, id=host)
+                try:
+                    self._request("/create/host", hostname, id=host)
+                except exception.DotHillRequestError as e:
+                    # -10058: The host identifier or nickname is already in use
+                    if '(-10058)' in e.msg:
+                        LOG.error(_LE("While trying to create host nickname"
+                                      " %(nickname)s: %(error_msg)s"),
+                                  {'nickname': hostname,
+                                   'error_msg': e.msg})
+                    else:
+                        raise
             lun = self._get_first_available_lun_for_host(host)
 
-        self._request("/map/volume",
-                      volume_name,
-                      lun=str(lun),
-                      host=host,
-                      access="rw")
-        return lun
+        while lun < 255:
+            try:
+                self._request("/map/volume",
+                              volume_name,
+                              lun=str(lun),
+                              host=host,
+                              access="rw")
+                return lun
+            except exception.DotHillRequestError as e:
+                # -3177 => "The specified LUN overlaps a previously defined LUN
+                if '(-3177)' in e.msg:
+                    LOG.info(_LI("Unable to map volume"
+                                 " %(volume_name)s to lun %(lun)d:"
+                                 " %(reason)s"),
+                             {'volume_name': volume_name,
+                              'lun': lun, 'reason': e.msg})
+                    lun = self._get_next_available_lun_for_host(host,
+                                                                after=lun)
+                    continue
+                raise
+            except Exception as e:
+                LOG.error(_LE("Error while mapping volume"
+                              " %(volume_name)s to lun %(lun)d:"),
+                          {'volume_name': volume_name, 'lun': lun},
+                          e)
+                raise
+
+        raise exception.DotHillRequestError(
+            message=_("Failed to find a free LUN for host %s") % host)
 
     def unmap_volume(self, volume_name, connector, connector_element):
         if connector_element == 'wwpns':
             host = ",".join(connector['wwpns'])
         else:
             host = connector['initiator']
-        self._request("/unmap/volume", volume_name, host=host)
+        try:
+            self._request("/unmap/volume", volume_name, host=host)
+        except exception.DotHillRequestError as e:
+            # -10050 => The volume was not found on this system.
+            # This can occur during controller failover.
+            if '(-10050)' in e.msg:
+                LOG.warning(_LW("Ignoring unmap error -10050: %s"), e.msg)
+                return None
+            raise
 
     def get_active_target_ports(self):
         ports = []
@@ -331,14 +542,16 @@ class DotHillClient(object):
         """Modify an initiator name to match firmware requirements.
 
            Initiator name cannot include certain characters and cannot exceed
-           15 bytes in 'T' firmware (32 bytes in 'G' firmware).
+           15 bytes in 'T' firmware (31 bytes in 'G' firmware).
         """
         for ch in [',', '"', '\\', '<', '>']:
             if ch in hostname:
                 hostname = hostname.replace(ch, '')
+        hostname = hostname.replace('.', '_')
+        name_limit = 15 if self.is_titanium() else 31
         index = len(hostname)
-        if index > 15:
-            index = 15
+        if index > name_limit:
+            index = name_limit
         return hostname[:index]
 
     def get_active_iscsi_target_portals(self):
@@ -392,3 +605,9 @@ class DotHillClient(object):
         tree = self._request("/show/volumes", volume_name)
         size = tree.findtext(".//PROPERTY[@name='size-numeric']")
         return self._get_size(size)
+
+    def get_firmware_version(self):
+        tree = self._request("/show/controllers")
+        self._fw = tree.xpath("//PROPERTY[@name='sc-fw']")[0].text
+        LOG.debug("Array firmware is %s\n", self._fw)
+        return self._fw

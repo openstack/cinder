@@ -1,0 +1,17 @@
+{
+    "transfer": {
+        "id": "cac5c677-73a9-4288-bb9c-b2ebfb547377",
+        "name": "first volume transfer",
+        "volume_id": "894623a6-e901-4312-aa06-4275e6321cce",
+        "links": [
+            {
+                "href": "http://localhost/v2/firstproject/volumes/1",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost/firstproject/volumes/1",
+                "rel": "bookmark"
+            }
+        ]
+    }
+}

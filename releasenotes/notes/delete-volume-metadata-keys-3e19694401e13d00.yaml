@@ -1,0 +1,4 @@
+---
+features:
+  - Added using etags in API calls to avoid the lost update problem during
+    deleting volume metadata.

@@ -21,36 +21,10 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import types as views_types
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import volume_types
-
-
-def make_voltype(elem):
-    elem.set('id')
-    elem.set('name')
-    elem.set('description')
-    elem.set('qos_specs_id')
-    extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
-    elem.append(extra_specs)
-
-
-class VolumeTypeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume_type', selector='volume_type')
-        make_voltype(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class VolumeTypesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume_types')
-        elem = xmlutil.SubTemplateElement(root, 'volume_type',
-                                          selector='volume_types')
-        make_voltype(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class VolumeTypesController(wsgi.Controller):
@@ -58,14 +32,12 @@ class VolumeTypesController(wsgi.Controller):
 
     _view_builder_class = views_types.ViewBuilder
 
-    @wsgi.serializers(xml=VolumeTypesTemplate)
     def index(self, req):
         """Returns the list of volume types."""
         limited_types = self._get_volume_types(req)
         req.cache_resource(limited_types, name='types')
         return self._view_builder.index(req, limited_types)
 
-    @wsgi.serializers(xml=VolumeTypeTemplate)
     def show(self, req, id):
         """Return a single volume type item."""
         context = req.environ['cinder.context']
@@ -75,14 +47,12 @@ class VolumeTypesController(wsgi.Controller):
             vol_type = volume_types.get_default_volume_type()
             if not vol_type:
                 msg = _("Default volume type can not be found.")
-                raise exc.HTTPNotFound(explanation=msg)
+                raise exception.VolumeTypeNotFound(message=msg)
             req.cache_resource(vol_type, name='types')
         else:
-            try:
-                vol_type = volume_types.get_volume_type(context, id)
-                req.cache_resource(vol_type, name='types')
-            except exception.VolumeTypeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found  exception will be handled at wsgi level
+            vol_type = volume_types.get_volume_type(context, id)
+            req.cache_resource(vol_type, name='types')
 
         return self._view_builder.show(req, vol_type)
 

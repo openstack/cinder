@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Operator needs to perform ``cinder-manage db
+    online_data_migrations`` to migrate existing consistency
+    groups to generic volume groups.

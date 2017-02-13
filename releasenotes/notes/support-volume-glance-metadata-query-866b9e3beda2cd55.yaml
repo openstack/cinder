@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for querying volumes filtered by glance metadata key/value
+    using 'glance_metadata' optional URL parameter.
+    For example, "volumes/detail?glance_metadata={"image_name":"xxx"}".

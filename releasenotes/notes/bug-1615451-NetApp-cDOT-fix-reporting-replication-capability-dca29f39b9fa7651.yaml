@@ -1,0 +1,5 @@
+---
+fixes:
+  - NetApp cDOT block and file drivers now report replication capability
+    at the pool level; and are hence compatible with using the
+    ``replication_enabled`` extra-spec in volume types.

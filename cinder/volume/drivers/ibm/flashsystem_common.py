@@ -38,6 +38,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -62,25 +63,38 @@ CONF = cfg.CONF
 CONF.register_opts(flashsystem_opts)
 
 
-class FlashSystemDriver(san.SanDriver):
+class FlashSystemDriver(san.SanDriver,
+                        driver.ManageableVD,
+                        driver.BaseVD):
     """IBM FlashSystem volume driver.
 
     Version history:
-    1.0.0 - Initial driver
-    1.0.1 - Code clean up
-    1.0.2 - Add lock into vdisk map/unmap, connection
-            initialize/terminate
-    1.0.3 - Initial driver for iSCSI
-    1.0.4 - Split Flashsystem driver into common and FC
-    1.0.5 - Report capability of volume multiattach
-    1.0.6 - Fix bug #1469581, add I/T mapping check in
-            terminate_connection
-    1.0.7 - Fix bug #1505477, add host name check in
-            _find_host_exhaustive for FC
 
+    .. code-block:: none
+
+        1.0.0 - Initial driver
+        1.0.1 - Code clean up
+        1.0.2 - Add lock into vdisk map/unmap, connection
+                initialize/terminate
+        1.0.3 - Initial driver for iSCSI
+        1.0.4 - Split Flashsystem driver into common and FC
+        1.0.5 - Report capability of volume multiattach
+        1.0.6 - Fix bug #1469581, add I/T mapping check in
+                terminate_connection
+        1.0.7 - Fix bug #1505477, add host name check in
+                _find_host_exhaustive for FC
+        1.0.8 - Fix bug #1572743, multi-attach attribute
+                should not be hardcoded, only in iSCSI
+        1.0.9 - Fix bug #1570574, Cleanup host resource
+                leaking, changes only in iSCSI
+        1.0.10 - Fix bug #1585085, add host name check in
+                 _find_host_exhaustive for iSCSI
+        1.0.11 - Update driver to use ABC metaclasses
+        1.0.12 - Update driver to support Manage/Unmanage
+                 existing volume
     """
 
-    VERSION = "1.0.7"
+    VERSION = "1.0.12"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -90,6 +104,9 @@ class FlashSystemDriver(san.SanDriver):
         self._context = None
         self._system_name = None
         self._system_id = None
+        self._check_lock_interval = 5
+        self._vdisk_copy_in_progress = set()
+        self._vdisk_copy_lock = None
 
     def _ssh(self, ssh_cmd, check_exit_code=True):
         try:
@@ -135,6 +152,9 @@ class FlashSystemDriver(san.SanDriver):
                 map[idx].append(t_wwpn)
         return map
 
+    def _check_vdisk_params(self, params):
+        raise NotImplementedError()
+
     def _connector_to_hostname_prefix(self, connector):
         """Translate connector info to storage system host name.
 
@@ -166,7 +186,7 @@ class FlashSystemDriver(san.SanDriver):
             msg = _('_create_host: Can not translate host name. Host name '
                     'is not unicode or string.')
             LOG.error(msg)
-            raise exception.NoValidHost(reason=msg)
+            raise exception.NoValidBackend(reason=msg)
 
         host_name = six.text_type(host_name)
 
@@ -264,6 +284,9 @@ class FlashSystemDriver(san.SanDriver):
         finally:
             self._unset_vdisk_copy_in_progress(
                 [src_vdisk_name, dest_vdisk_name])
+
+    def _create_host(self, connector):
+        raise NotImplementedError()
 
     def _create_vdisk(self, name, size, unit, opts):
         """Create a new vdisk."""
@@ -375,6 +398,9 @@ class FlashSystemDriver(san.SanDriver):
              'attr': six.text_type(attributes)})
 
         return attributes
+
+    def _find_host_exhaustive(self, connector, hosts):
+        raise NotImplementedError()
 
     def _get_hdr_dic(self, header, row, delim):
         """Return CLI row data as a dictionary indexed by names from header.
@@ -516,17 +542,23 @@ class FlashSystemDriver(san.SanDriver):
             except KeyError:
                 self._handle_keyerror('lsnode', header)
 
-    def _get_vdisk_attributes(self, vdisk_name):
+    def _get_vdisk_attributes(self, vdisk_ref):
         """Return vdisk attributes
 
         Exception is raised if the information from system can not be
         parsed/matched to a single vdisk.
+
+        :param vdisk_ref: vdisk name or vdisk id
         """
 
         ssh_cmd = [
-            'svcinfo', 'lsvdisk', '-bytes', '-delim', '!', vdisk_name]
+            'svcinfo', 'lsvdisk', '-bytes', '-delim', '!', vdisk_ref]
 
         return self._execute_command_and_parse_attributes(ssh_cmd)
+
+    def _get_vdisk_map_properties(
+            self, connector, lun_id, vdisk_name, vdisk_id, vdisk_params):
+        raise NotImplementedError()
 
     def _get_vdiskhost_mappings(self, vdisk_name):
         """Return the defined storage mappings for a vdisk."""
@@ -670,6 +702,27 @@ class FlashSystemDriver(san.SanDriver):
                    'out': six.text_type(out),
                    'err': six.text_type(err)})
 
+    def _manage_input_check(self, existing_ref):
+        """Verify the input of manage function."""
+        # Check that the reference is valid
+        if 'source-name' in existing_ref:
+            manage_source = existing_ref['source-name']
+            vdisk = self._get_vdisk_attributes(manage_source)
+        elif 'source-id' in existing_ref:
+            manage_source = existing_ref['source-id']
+            vdisk = self._get_vdisk_attributes(manage_source)
+        else:
+            reason = _('Reference must contain source-id or '
+                       'source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        if vdisk is None:
+            reason = (_('No vdisk with the ID specified by ref %s.')
+                      % manage_source)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        return vdisk
+
     @utils.synchronized('flashsystem-map', external=True)
     def _map_vdisk_to_host(self, vdisk_name, connector):
         """Create a mapping between a vdisk to a host."""
@@ -771,6 +824,26 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug('leave: _remove_device')
 
+    def _rename_vdisk(self, vdisk_name, new_name):
+        """Rename vdisk"""
+        # Try to rename volume only if found on the storage
+        vdisk_defined = self._is_vdisk_defined(vdisk_name)
+        if not vdisk_defined:
+            LOG.warning(_LW('warning: Tried to rename vdisk %s but '
+                            'it does not exist.'), vdisk_name)
+            return
+        ssh_cmd = [
+            'svctask', 'chvdisk', '-name', new_name, vdisk_name]
+        out, err = self._ssh(ssh_cmd)
+        # No output should be returned from chvdisk
+        self._assert_ssh_return(
+            (not out.strip()),
+            '_rename_vdisk %(name)s' % {'name': vdisk_name},
+            ssh_cmd, out, err)
+
+        LOG.info(_LI('Renamed %(vdisk)s to %(newname)s .'),
+                 {'vdisk': vdisk_name, 'newname': new_name})
+
     def _scan_device(self, properties):
         LOG.debug('enter: _scan_device')
 
@@ -811,7 +884,7 @@ class FlashSystemDriver(san.SanDriver):
             LOG.warning(_LW('_unmap_vdisk_from_host: No mapping of volume '
                             '%(vol_name)s to any host found.'),
                         {'vol_name': vdisk_name})
-            return
+            return host_name
         if host_name is None:
             if len(mapping_data) > 1:
                 LOG.warning(_LW('_unmap_vdisk_from_host: Multiple mappings of '
@@ -826,7 +899,7 @@ class FlashSystemDriver(san.SanDriver):
                 LOG.error(_LE('_unmap_vdisk_from_host: No mapping of volume '
                               '%(vol_name)s to host %(host_name)s found.'),
                           {'vol_name': vdisk_name, 'host_name': host_name})
-                return
+                return host_name
 
         # We have a valid host_name now
         ssh_cmd = ['svctask', 'rmvdiskhostmap',
@@ -855,7 +928,7 @@ class FlashSystemDriver(san.SanDriver):
             'free_capacity_gb': 0,
             'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
-            'multiattach': True,
+            'multiattach': self.configuration.flashsystem_multihostmap_enabled,
         }
 
         pool = FLASHSYSTEM_VOLPOOL_NAME
@@ -1080,3 +1153,32 @@ class FlashSystemDriver(san.SanDriver):
             self._update_volume_stats()
 
         return self._stats
+
+    def manage_existing(self, volume, existing_ref):
+        """Manages an existing vdisk.
+
+        Renames the vdisk to match the expected name for the volume.
+        """
+        LOG.debug('enter: manage_existing: volume %(vol)s ref %(ref)s.',
+                  {'vol': volume, 'ref': existing_ref})
+        vdisk = self._manage_input_check(existing_ref)
+        new_name = 'volume-' + volume['id']
+        self._rename_vdisk(vdisk['name'], new_name)
+        LOG.debug('leave: manage_existing: volume %(vol)s ref %(ref)s.',
+                  {'vol': volume, 'ref': existing_ref})
+        return
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing."""
+        vdisk = self._manage_input_check(existing_ref)
+        if self._get_vdiskhost_mappings(vdisk['name']):
+            reason = _('The specified vdisk is mapped to a host.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        return int(vdisk['capacity']) / units.Gi
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+        LOG.debug('unmanage: volume %(vol)s is no longer managed by cinder.',
+                  {'vol': volume})
+        pass

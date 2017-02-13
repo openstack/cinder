@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    Old driver paths have been removed since they have been through our alloted
+    deprecation period. Make sure if you have any of these paths being set in
+    your cinder.conf for the volume_driver option, to update to the new driver
+    path listed here.
+
+    * Old path - cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver
+    * New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver
+    * Old path - cinder.volume.drivers.huawei.huawei_driver.Huawei18000ISCSIDriver
+    * New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver
+    * Old path - cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver
+    * New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver
+    * Old path - cinder.volume.drivers.huawei.huawei_driver.Huawei18000FCDriver
+    * New path - cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver
+    * Old path - cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver
+    * New path - cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver
+    * Old path - cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver
+    * New path - cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver
+    * Old path - cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver
+    * New path - cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver
+    * Old path - cinder.volume.drivers.san.hp.hp_xp_fc.HPXPFCDriver
+    * New path - cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver

@@ -25,63 +25,144 @@ import os
 import uuid
 
 from oslo_log import log as logging
-from oslo_service import loopingcall
 from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
+from cinder.objects import fields
 from cinder import utils
-from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import capabilities
+from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
+@interface.volumedriver
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
-class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
+class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
+                           data_motion.DataMotionMixin):
     """NetApp NFS driver for Data ONTAP (Cluster-mode)."""
 
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeNfsDriver, self).__init__(*args, **kwargs)
+        self.driver_name = 'NetApp_NFS_Cluster_direct'
+        self.driver_mode = 'cluster'
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
+        self.failed_over_backend_name = kwargs.get('active_backend_id')
+        self.failed_over = self.failed_over_backend_name is not None
+        self.replication_enabled = (
+            True if self.get_replication_backend_names(
+                self.configuration) else False)
 
     def do_setup(self, context):
         """Do the customized set up on client for cluster mode."""
         super(NetAppCmodeNfsDriver, self).do_setup(context)
         na_utils.check_flags(self.REQUIRED_CMODE_FLAGS, self.configuration)
 
-        self.vserver = self.configuration.netapp_vserver
+        # cDOT API client
+        self.zapi_client = dot_utils.get_client_for_backend(
+            self.failed_over_backend_name or self.backend_name)
+        self.vserver = self.zapi_client.vserver
 
-        self.zapi_client = client_cmode.Client(
-            transport_type=self.configuration.netapp_transport_type,
-            username=self.configuration.netapp_login,
-            password=self.configuration.netapp_password,
-            hostname=self.configuration.netapp_server_hostname,
-            port=self.configuration.netapp_server_port,
-            vserver=self.vserver)
-
-        self.ssc_enabled = True
-        self.ssc_vols = None
-        self.stale_vols = set()
+        # Performance monitoring library
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
             self.zapi_client)
 
+        # Storage service catalog
+        self.ssc_library = capabilities.CapabilitiesLibrary(
+            'nfs', self.vserver, self.zapi_client, self.configuration)
+
+    def _update_zapi_client(self, backend_name):
+        """Set cDOT API client for the specified config backend stanza name."""
+
+        self.zapi_client = dot_utils.get_client_for_backend(backend_name)
+        self.vserver = self.zapi_client.vserver
+        self.ssc_library._update_for_failover(self.zapi_client,
+                                              self._get_flexvol_to_pool_map())
+        ssc = self.ssc_library.get_ssc()
+        self.perf_library._update_for_failover(self.zapi_client, ssc)
+
+    @utils.trace_method
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
+        self.ssc_library.check_api_permissions()
+        self._add_looping_tasks()
         super(NetAppCmodeNfsDriver, self).check_for_setup_error()
-        ssc_cmode.check_ssc_api_permissions(self.zapi_client)
-        self._start_periodic_tasks()
+
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval."""
+
+        # Note(cknight): Run the update once in the current thread to prevent a
+        # race with the first invocation of _update_volume_stats.
+        self._update_ssc()
+
+        # Add the task that updates the slow-changing storage service catalog
+        self.loopingcalls.add_task(self._update_ssc,
+                                   loopingcalls.ONE_HOUR,
+                                   loopingcalls.ONE_HOUR)
+
+        # Add the task that harvests soft-deleted QoS policy groups.
+        self.loopingcalls.add_task(
+            self.zapi_client.remove_unused_qos_policy_groups,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
+
+        # Add the task that runs other housekeeping tasks, such as deletion
+        # of previously soft-deleted storage artifacts.
+        self.loopingcalls.add_task(
+            self._handle_housekeeping_tasks,
+            loopingcalls.TEN_MINUTES,
+            0)
+
+        super(NetAppCmodeNfsDriver, self)._add_looping_tasks()
+
+    def _handle_ems_logging(self):
+        """Log autosupport messages."""
+
+        base_ems_message = dot_utils.build_ems_log_message_0(
+            self.driver_name, self.app_version, self.driver_mode)
+        self.zapi_client.send_ems_log_message(base_ems_message)
+
+        pool_ems_message = dot_utils.build_ems_log_message_1(
+            self.driver_name, self.app_version, self.vserver,
+            self._get_backing_flexvol_names(), [])
+        self.zapi_client.send_ems_log_message(pool_ems_message)
+
+    def _handle_housekeeping_tasks(self):
+        """Handle various cleanup activities."""
+
+        # Harvest soft-deleted QoS policy groups
+        self.zapi_client.remove_unused_qos_policy_groups()
+
+        active_backend = self.failed_over_backend_name or self.backend_name
+
+        LOG.debug("Current service state: Replication enabled: %("
+                  "replication)s. Failed-Over: %(failed)s. Active Backend "
+                  "ID: %(active)s",
+                  {
+                      'replication': self.replication_enabled,
+                      'failed': self.failed_over,
+                      'active': active_backend,
+                  })
+
+        # Create pool mirrors if whole-backend replication configured
+        if self.replication_enabled and not self.failed_over:
+            self.ensure_snapmirrors(
+                self.configuration, self.backend_name,
+                self.ssc_library.get_ssc_flexvol_names())
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=True):
         try:
@@ -96,13 +177,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                     LOG.debug("Cleaning volume %s", volume['id'])
                     self._cleanup_volume_on_failure(volume)
 
-    def _start_periodic_tasks(self):
-        # Start the task that harvests soft-deleted QoS policy groups.
-        harvest_qos_periodic_task = loopingcall.FixedIntervalLoopingCall(
-            self.zapi_client.remove_unused_qos_policy_groups)
-        harvest_qos_periodic_task.start(
-            interval=QOS_CLEANUP_INTERVAL_SECONDS,
-            initial_delay=QOS_CLEANUP_INTERVAL_SECONDS)
+    def _get_volume_model_update(self, volume):
+        """Provide model updates for a volume being created."""
+        if self.replication_enabled:
+            return {'replication_status': fields.ReplicationStatus.ENABLED}
 
     def _set_qos_policy_group_on_volume(self, volume, qos_policy_group_info):
         if qos_policy_group_info is None:
@@ -120,21 +198,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                          qos_policy_group_name,
                                          target_path)
 
-    def _check_volume_type(self, volume, share, file_name, extra_specs):
-        """Match volume type for share file."""
-        if not self._is_share_vol_type_match(volume, share):
-            raise exception.ManageExistingVolumeTypeMismatch(
-                reason=(_("Volume type does not match for share %s."),
-                        share))
-
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
-                                       volume_id, share=None):
+                                       volume_id, share=None,
+                                       is_snapshot=False,
+                                       source_snapshot=None):
         """Clone backing file for Cinder volume."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
         self.zapi_client.clone_file(exp_volume, volume_name, clone_name,
-                                    vserver)
-        share = share if share else self._get_provider_location(volume_id)
-        self._post_prov_deprov_in_ssc(share)
+                                    vserver, is_snapshot=is_snapshot)
 
     def _get_vserver_and_exp_vol(self, volume_id=None, share=None):
         """Gets the vserver and export volume for share."""
@@ -148,16 +219,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from vserver."""
 
-        self._ensure_shares_mounted()
-        sync = True if self.ssc_vols is None else False
-        ssc_cmode.refresh_cluster_ssc(self, self.zapi_client.connection,
-                                      self.vserver, synchronous=sync)
-
         LOG.debug('Updating volume stats')
         data = {}
-        netapp_backend = 'NetApp_NFS_Cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or netapp_backend
+        data['volume_backend_name'] = backend_name or self.driver_name
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
@@ -166,108 +231,112 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             goodness_function=self.get_goodness_function())
         data['sparse_copy_volume'] = True
 
+        # Used for service state report
+        data['replication_enabled'] = self.replication_enabled
+
         self._spawn_clean_cache_job()
-        self.zapi_client.provide_ems(self, netapp_backend, self._app_version)
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):
-        """Retrieve pool (i.e. NFS share) stats info from SSC volumes."""
+        """Retrieve pool (Data ONTAP flexvol) stats.
 
-        self.perf_library.update_performance_cache(
-            self.ssc_vols.get('all', []))
+        Pool statistics are assembled from static driver capabilities, the
+        Storage Service Catalog of flexvol attributes, and real-time capacity
+        and controller utilization metrics.  The pool name is the NFS share
+        path.
+        """
 
         pools = []
 
-        for nfs_share in self._mounted_shares:
+        ssc = self.ssc_library.get_ssc()
+        if not ssc:
+            return pools
 
-            capacity = self._get_share_capacity_info(nfs_share)
+        # Get up-to-date node utilization metrics just once
+        self.perf_library.update_performance_cache(ssc)
+
+        # Get up-to-date aggregate capacities just once
+        aggregates = self.ssc_library.get_ssc_aggregates()
+        aggr_capacities = self.zapi_client.get_aggregate_capacities(aggregates)
+
+        for ssc_vol_name, ssc_vol_info in ssc.items():
 
             pool = dict()
-            pool['pool_name'] = nfs_share
+
+            # Add storage service catalog data
+            pool.update(ssc_vol_info)
+
+            # Add driver capabilities and config info
             pool['QoS_support'] = True
+            pool['consistencygroup_support'] = True
+            pool['multiattach'] = True
+
+            # Add up-to-date capacity info
+            nfs_share = ssc_vol_info['pool_name']
+            capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
 
-            # add SSC content if available
-            vol = self._get_vol_for_share(nfs_share)
-            if vol and self.ssc_vols:
-                pool['netapp_raid_type'] = vol.aggr['raid_type']
-                pool['netapp_disk_type'] = vol.aggr['disk_type']
+            dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
+                ssc_vol_name)
+            pool['netapp_dedupe_used_percent'] = na_utils.round_down(
+                dedupe_used)
 
-                mirrored = vol in self.ssc_vols['mirrored']
-                pool['netapp_mirrored'] = six.text_type(mirrored).lower()
-                pool['netapp_unmirrored'] = six.text_type(not mirrored).lower()
+            aggregate_name = ssc_vol_info.get('netapp_aggregate')
+            aggr_capacity = aggr_capacities.get(aggregate_name, {})
+            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
+                'percent-used', 0)
 
-                dedup = vol in self.ssc_vols['dedup']
-                pool['netapp_dedup'] = six.text_type(dedup).lower()
-                pool['netapp_nodedup'] = six.text_type(not dedup).lower()
+            # Add utilization data
+            utilization = self.perf_library.get_node_utilization_for_pool(
+                ssc_vol_name)
+            pool['utilization'] = na_utils.round_down(utilization)
+            pool['filter_function'] = filter_function
+            pool['goodness_function'] = goodness_function
 
-                compression = vol in self.ssc_vols['compression']
-                pool['netapp_compression'] = six.text_type(compression).lower()
-                pool['netapp_nocompression'] = six.text_type(
-                    not compression).lower()
-
-                flexvol_thin = vol in self.ssc_vols['thin']
-                pool['netapp_thin_provisioned'] = six.text_type(
-                    flexvol_thin).lower()
-                pool['netapp_thick_provisioned'] = six.text_type(
-                    not flexvol_thin).lower()
-
-                thick = (not flexvol_thin and
-                         not self.configuration.nfs_sparsed_volumes)
-                pool['thick_provisioning_support'] = thick
-                pool['thin_provisioning_support'] = not thick
-
-                utilization = self.perf_library.get_node_utilization_for_pool(
-                    vol.id['name'])
-                pool['utilization'] = na_utils.round_down(utilization, '0.01')
-                pool['filter_function'] = filter_function
-                pool['goodness_function'] = goodness_function
+            # Add replication capabilities/stats
+            pool.update(
+                self.get_replication_backend_stats(self.configuration))
 
             pools.append(pool)
 
         return pools
 
-    @utils.synchronized('update_stale')
-    def _update_stale_vols(self, volume=None, reset=False):
-        """Populates stale vols with vol and returns set copy."""
-        if volume:
-            self.stale_vols.add(volume)
-        set_copy = self.stale_vols.copy()
-        if reset:
-            self.stale_vols.clear()
-        return set_copy
+    def _update_ssc(self):
+        """Refresh the storage service catalog with the latest set of pools."""
 
-    @utils.synchronized("refresh_ssc_vols")
-    def refresh_ssc_vols(self, vols):
-        """Refreshes ssc_vols with latest entries."""
-        if not self._mounted_shares:
-            LOG.warning(_LW("No shares found hence skipping ssc refresh."))
-            return
-        mnt_share_vols = set()
-        vs_ifs = self.zapi_client.get_vserver_ips(self.vserver)
-        for vol in vols['all']:
-            for sh in self._mounted_shares:
-                host = sh.split(':')[0]
-                junction = sh.split(':')[1]
-                ip = na_utils.resolve_hostname(host)
-                if (self._ip_in_ifs(ip, vs_ifs) and
-                        junction == vol.id['junction_path']):
-                    mnt_share_vols.add(vol)
-                    vol.export['path'] = sh
-                    break
-        for key in vols.keys():
-            vols[key] = vols[key] & mnt_share_vols
-        self.ssc_vols = vols
+        self._ensure_shares_mounted()
+        self.ssc_library.update_ssc(self._get_flexvol_to_pool_map())
 
-    def _ip_in_ifs(self, ip, api_ifs):
-        """Checks if ip is listed for ifs in API format."""
-        if api_ifs is None:
-            return False
-        for ifc in api_ifs:
-            ifc_ip = ifc.get_child_content("address")
-            if ifc_ip == ip:
-                return True
-        return False
+    def _get_flexvol_to_pool_map(self):
+        """Get the flexvols that back all mounted shares.
+
+        The map is of the format suitable for seeding the storage service
+        catalog: {<flexvol_name> : {'pool_name': <share_path>}}
+        """
+
+        pools = {}
+        vserver_addresses = self.zapi_client.get_operational_lif_addresses()
+
+        for share in self._mounted_shares:
+
+            host = share.split(':')[0]
+            junction_path = share.split(':')[1]
+            address = na_utils.resolve_hostname(host)
+
+            if address not in vserver_addresses:
+                msg = _LW('Address not found for NFS share %s.')
+                LOG.warning(msg, share)
+                continue
+
+            try:
+                flexvol = self.zapi_client.get_flexvol(
+                    flexvol_path=junction_path)
+                pools[flexvol['name']] = {'pool_name': share}
+            except exception.VolumeBackendAPIException:
+                msg = _LE('Flexvol not found for NFS share %s.')
+                LOG.exception(msg, share)
+
+        return pools
 
     def _shortlist_del_eligible_files(self, share, old_files):
         """Prepares list of eligible files to be deleted from cache."""
@@ -308,44 +377,40 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         except Exception:
             return None
 
-    def _get_vol_for_share(self, nfs_share):
-        """Gets the ssc vol with given share."""
-        if self.ssc_vols:
-            for vol in self.ssc_vols['all']:
-                if vol.export['path'] == nfs_share:
-                    return vol
-        return None
-
     def _is_share_clone_compatible(self, volume, share):
         """Checks if share is compatible with volume to host its clone."""
-        thin = self._is_volume_thin_provisioned(volume)
-        compatible = self._share_has_space_for_clone(share,
-                                                     volume['size'],
-                                                     thin)
-        if compatible and self.ssc_enabled:
-            matched = self._is_share_vol_type_match(volume, share)
-            compatible = compatible and matched
-        return compatible
+        flexvol_name = self._get_flexvol_name_for_share(share)
+        thin = self._is_volume_thin_provisioned(flexvol_name)
+        return (
+            self._share_has_space_for_clone(share, volume['size'], thin) and
+            self._is_share_vol_type_match(volume, share, flexvol_name)
+        )
 
-    def _is_volume_thin_provisioned(self, volume):
-        if self.configuration.nfs_sparsed_volumes:
-            return True
-        if self.ssc_enabled and volume in self.ssc_vols['thin']:
-            return True
-        return False
+    def _is_volume_thin_provisioned(self, flexvol_name):
+        """Checks if a flexvol is thin (sparse file or thin provisioned)."""
+        ssc_info = self.ssc_library.get_ssc_for_flexvol(flexvol_name)
+        return ssc_info.get('thin_provisioning_support') or False
 
-    def _is_share_vol_type_match(self, volume, share):
+    def _is_share_vol_type_match(self, volume, share, flexvol_name):
         """Checks if share matches volume type."""
-        netapp_vol = self._get_vol_for_share(share)
         LOG.debug("Found volume %(vol)s for share %(share)s.",
-                  {'vol': netapp_vol, 'share': share})
+                  {'vol': flexvol_name, 'share': share})
         extra_specs = na_utils.get_volume_extra_specs(volume)
-        vols = ssc_cmode.get_volumes_for_specs(self.ssc_vols, extra_specs)
-        return netapp_vol in vols
+        flexvol_names = self.ssc_library.get_matching_flexvols_for_extra_specs(
+            extra_specs)
+        return flexvol_name in flexvol_names
 
+    def _get_flexvol_name_for_share(self, nfs_share):
+        """Queries the SSC for the flexvol containing an NFS share."""
+        ssc = self.ssc_library.get_ssc()
+        for ssc_vol_name, ssc_vol_info in ssc.items():
+            if nfs_share == ssc_vol_info.get('pool_name'):
+                return ssc_vol_name
+        return None
+
+    @utils.trace_method
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        share = volume['provider_location']
         self._delete_backing_file_for_volume(volume)
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
@@ -356,15 +421,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             # Don't blow up here if something went wrong de-provisioning the
             # QoS policy for the volume.
             pass
-        self._post_prov_deprov_in_ssc(share)
 
     def _delete_backing_file_for_volume(self, volume):
         """Deletes file on nfs share that backs a cinder volume."""
         try:
             LOG.debug('Deleting backing file for volume %s.', volume['id'])
-            self._delete_volume_on_filer(volume)
+            self._delete_file(volume['id'], volume['name'])
         except Exception:
-            LOG.exception(_LE('Could not do delete of volume %s on filer, '
+            LOG.exception(_LE('Could not delete volume %s on backend, '
                               'falling back to exec of "rm" command.'),
                           volume['id'])
             try:
@@ -373,51 +437,35 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                 LOG.exception(_LE('Exec of "rm" command on backing file for '
                                   '%s was unsuccessful.'), volume['id'])
 
-    def _delete_volume_on_filer(self, volume):
-        (_vserver, flexvol) = self._get_export_ip_path(volume_id=volume['id'])
-        path_on_filer = '/vol' + flexvol + '/' + volume['name']
-        LOG.debug('Attempting to delete backing file %s for volume %s on '
-                  'filer.', path_on_filer, volume['id'])
-        self.zapi_client.delete_file(path_on_filer)
+    def _delete_file(self, file_id, file_name):
+        (_vserver, flexvol) = self._get_export_ip_path(volume_id=file_id)
+        path_on_backend = '/vol' + flexvol + '/' + file_name
+        LOG.debug('Attempting to delete file %(path)s for ID %(file_id)s on '
+                  'backend.', {'path': path_on_backend, 'file_id': file_id})
+        self.zapi_client.delete_file(path_on_backend)
 
     @utils.trace_method
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        share = self._get_provider_location(snapshot.volume_id)
         self._delete_backing_file_for_snapshot(snapshot)
-        self._post_prov_deprov_in_ssc(share)
 
-    @utils.trace_method
     def _delete_backing_file_for_snapshot(self, snapshot):
         """Deletes file on nfs share that backs a cinder volume."""
         try:
             LOG.debug('Deleting backing file for snapshot %s.', snapshot['id'])
-            self._delete_snapshot_on_filer(snapshot)
+            self._delete_file(snapshot['volume_id'], snapshot['name'])
         except Exception:
-            LOG.exception(_LE('Could not do delete of snapshot %s on filer, '
+            LOG.exception(_LE('Could not delete snapshot %s on backend, '
                               'falling back to exec of "rm" command.'),
                           snapshot['id'])
             try:
+                # delete_file_from_share
                 super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
             except Exception:
                 LOG.exception(_LE('Exec of "rm" command on backing file for'
                                   ' %s was unsuccessful.'), snapshot['id'])
 
     @utils.trace_method
-    def _delete_snapshot_on_filer(self, snapshot):
-        (_vserver, flexvol) = self._get_export_ip_path(
-            volume_id=snapshot['volume_id'])
-        path_on_filer = '/vol' + flexvol + '/' + snapshot['name']
-        LOG.debug('Attempting to delete backing file %s for snapshot %s '
-                  'on filer.', path_on_filer, snapshot['id'])
-        self.zapi_client.delete_file(path_on_filer)
-
-    def _post_prov_deprov_in_ssc(self, share):
-        if self.ssc_enabled and share:
-            netapp_vol = self._get_vol_for_share(share)
-            if netapp_vol:
-                self._update_stale_vols(volume=netapp_vol)
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         copy_success = False
@@ -434,7 +482,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                  'using local image cache.'),
                              {'img': image_id, 'vol': volume['id']})
             # Image cache was not present, attempt copy offload workflow
-            if not copy_success and col_path and major == 1 and minor >= 20:
+            if (not copy_success and col_path and
+                    major == 1 and minor >= 20):
                 LOG.debug('No result found in image cache')
                 self._copy_from_img_service(context, volume, image_service,
                                             image_id)
@@ -448,9 +497,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             if not copy_success:
                 super(NetAppCmodeNfsDriver, self).copy_image_to_volume(
                     context, volume, image_service, image_id)
-            if self.ssc_enabled:
-                sh = self._get_provider_location(volume['id'])
-                self._update_stale_vols(self._get_vol_for_share(sh))
 
     def _get_ip_verify_on_cluster(self, host):
         """Verifies if host on same cluster and returns ip."""
@@ -465,41 +511,81 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         """Try copying image file_name from cached file_name."""
         LOG.debug("Trying copy from cache using copy offload.")
         copied = False
-        for res in cache_result:
-            try:
-                (share, file_name) = res
-                LOG.debug("Found cache file_name on share %s.", share)
-                if share != self._get_provider_location(volume['id']):
-                    col_path = self.configuration.netapp_copyoffload_tool_path
-                    src_ip = self._get_ip_verify_on_cluster(
-                        share.split(':')[0])
-                    src_path = os.path.join(share.split(':')[1], file_name)
-                    dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
-                        volume['id']))
-                    dst_path = os.path.join(
-                        self._get_export_path(volume['id']), volume['name'])
-                    # Always run copy offload as regular user, it's sufficient
-                    # and rootwrap doesn't allow copy offload to run as root
-                    # anyways.
-                    self._execute(col_path, src_ip, dst_ip,
-                                  src_path, dst_path,
-                                  run_as_root=False,
-                                  check_exit_code=0)
-                    self._register_image_in_cache(volume, image_id)
-                    LOG.debug("Copied image from cache to volume %s using"
-                              " copy offload.", volume['id'])
-                else:
-                    self._clone_file_dst_exists(share, file_name,
-                                                volume['name'],
-                                                dest_exists=True)
-                    LOG.debug("Copied image from cache to volume %s using"
-                              " cloning.", volume['id'])
-                self._post_clone_image(volume)
+        cache_copy, found_local = self._find_image_location(cache_result,
+                                                            volume['id'])
+
+        try:
+            if found_local:
+                (nfs_share, file_name) = cache_copy
+                self._clone_file_dst_exists(
+                    nfs_share, file_name, volume['name'], dest_exists=True)
+                LOG.debug("Copied image from cache to volume %s using "
+                          "cloning.", volume['id'])
                 copied = True
-                break
-            except Exception as e:
-                LOG.exception(_LE('Error in workflow copy from cache. %s.'), e)
+            elif cache_copy:
+                self._copy_from_remote_cache(volume, image_id, cache_copy)
+                copied = True
+
+            if copied:
+                self._post_clone_image(volume)
+
+        except Exception as e:
+            LOG.exception(_LE('Error in workflow copy from cache. %s.'), e)
         return copied
+
+    def _find_image_location(self, cache_result, volume_id):
+        """Finds the location of a cached image.
+
+        Returns image location local to the NFS share, that matches the
+        volume_id, if it exists. Otherwise returns the last entry in
+        cache_result or None if cache_result is empty.
+        """
+
+        found_local_copy = False
+        cache_copy = None
+        provider_location = self._get_provider_location(volume_id)
+        for res in cache_result:
+            (share, file_name) = res
+            if share == provider_location:
+                cache_copy = res
+                found_local_copy = True
+                break
+            else:
+                cache_copy = res
+        return cache_copy, found_local_copy
+
+    def _copy_from_remote_cache(self, volume, image_id, cache_copy):
+        """Copies the remote cached image to the provided volume.
+
+        Executes the copy offload binary which copies the cached image to
+        the destination path of the provided volume. Also registers the new
+        copy of the image as a cached image.
+        """
+
+        (nfs_share, file_name) = cache_copy
+        col_path = self.configuration.netapp_copyoffload_tool_path
+        src_ip, src_path = self._get_source_ip_and_path(nfs_share, file_name)
+        dest_ip, dest_path = self._get_destination_ip_and_path(volume)
+
+        # Always run copy offload as regular user, it's sufficient
+        # and rootwrap doesn't allow copy offload to run as root anyways.
+        self._execute(col_path, src_ip, dest_ip, src_path, dest_path,
+                      run_as_root=False, check_exit_code=0)
+        self._register_image_in_cache(volume, image_id)
+        LOG.debug("Copied image from cache to volume %s using copy offload.",
+                  volume['id'])
+
+    def _get_source_ip_and_path(self, nfs_share, file_name):
+        src_ip = self._get_ip_verify_on_cluster(nfs_share.split(':')[0])
+        src_path = os.path.join(nfs_share.split(':')[1], file_name)
+        return src_ip, src_path
+
+    def _get_destination_ip_and_path(self, volume):
+        dest_ip = self._get_ip_verify_on_cluster(
+            self._get_host_ip(volume['id']))
+        dest_path = os.path.join(self._get_export_path(
+            volume['id']), volume['name'])
+        return dest_ip, dest_path
 
     def _clone_file_dst_exists(self, share, src_name, dst_name,
                                dest_exists=False):
@@ -524,7 +610,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                     src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
                     selected_loc = location
                     break
-                except Exception.NotFound:
+                except exception.NotFound:
                     pass
         if src_ip is None:
             raise exception.NotFound(_("Source host details not found."))
@@ -602,6 +688,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             if os.path.exists(dst_img_local):
                 self._delete_file_at_path(dst_img_local)
 
+    @utils.trace_method
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -622,3 +709,39 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             pass
 
         super(NetAppCmodeNfsDriver, self).unmanage(volume)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover a backend to a secondary replication target."""
+
+        return self._failover_host(volumes, secondary_id=secondary_id)
+
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        return self.ssc_library.get_ssc().keys()
+
+    def _get_flexvol_names_from_hosts(self, hosts):
+        """Returns a set of flexvol names."""
+        flexvols = set()
+        ssc = self.ssc_library.get_ssc()
+
+        for host in hosts:
+            pool_name = volume_utils.extract_host(host, level='pool')
+
+            for flexvol_name, ssc_volume_data in ssc.items():
+                if ssc_volume_data['pool_name'] == pool_name:
+                    flexvols.add(flexvol_name)
+
+        return flexvols
+
+    @utils.trace_method
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Delete files backing each snapshot in the cgsnapshot.
+
+        :return: An implicit update of snapshot models that the manager will
+                 interpret and subsequently set the model state to deleted.
+        """
+        for snapshot in snapshots:
+            self._delete_backing_file_for_snapshot(snapshot)
+            LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+
+        return None, None

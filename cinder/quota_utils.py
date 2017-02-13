@@ -12,15 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import webob
-
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from keystoneclient.auth.identity.generic import token
+from keystoneauth1 import identity
+from keystoneauth1 import loading as ka_loading
 from keystoneclient import client
 from keystoneclient import exceptions
-from keystoneclient import session
 
 from cinder import db
 from cinder import exception
@@ -38,12 +36,14 @@ class GenericProjectInfo(object):
     def __init__(self, project_id, project_keystone_api_version,
                  project_parent_id=None,
                  project_subtree=None,
-                 project_parent_tree=None):
+                 project_parent_tree=None,
+                 is_admin_project=False):
         self.id = project_id
         self.keystone_api_version = project_keystone_api_version
         self.parent_id = project_parent_id
         self.subtree = project_subtree
         self.parents = project_parent_tree
+        self.is_admin_project = is_admin_project
 
 
 def get_volume_type_reservation(ctxt, volume, type_id,
@@ -70,37 +70,9 @@ def get_volume_type_reservation(ctxt, volume, type_id,
                                       project_id=project_id,
                                       **reserve_opts)
     except exception.OverQuota as e:
-        overs = e.kwargs['overs']
-        usages = e.kwargs['usages']
-        quotas = e.kwargs['quotas']
-
-        def _consumed(name):
-            return (usages[name]['reserved'] + usages[name]['in_use'])
-
-        for over in overs:
-            if 'gigabytes' in over:
-                s_size = volume['size']
-                d_quota = quotas[over]
-                d_consumed = _consumed(over)
-                LOG.warning(
-                    _LW("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume - (%(d_consumed)dG of "
-                        "%(d_quota)dG already consumed)"),
-                    {'s_pid': ctxt.project_id,
-                     's_size': s_size,
-                     'd_consumed': d_consumed,
-                     'd_quota': d_quota})
-                raise exception.VolumeSizeExceedsAvailableQuota(
-                    requested=s_size, quota=d_quota, consumed=d_consumed)
-            elif 'volumes' in over:
-                LOG.warning(
-                    _LW("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)"),
-                    {'s_pid': ctxt.project_id,
-                     'd_consumed': _consumed(over)})
-                raise exception.VolumeLimitExceeded(
-                    allowed=quotas[over])
+        process_reserve_over_quota(ctxt, e,
+                                   resource='volumes',
+                                   size=volume.size)
     return reservations
 
 
@@ -118,7 +90,7 @@ def _filter_domain_id_from_parents(domain_id, tree):
 
 
 def get_project_hierarchy(context, project_id, subtree_as_ids=False,
-                          parents_as_ids=False):
+                          parents_as_ids=False, is_admin_project=False):
     """A Helper method to get the project hierarchy.
 
     Along with hierarchical multitenancy in keystone API v3, projects can be
@@ -127,28 +99,26 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
     If the domain is being used as the top most parent, it is filtered out from
     the parent tree and parent_id.
     """
-    try:
-        keystone = _keystone_client(context)
-        generic_project = GenericProjectInfo(project_id, keystone.version)
-        if keystone.version == 'v3':
-            project = keystone.projects.get(project_id,
-                                            subtree_as_ids=subtree_as_ids,
-                                            parents_as_ids=parents_as_ids)
+    keystone = _keystone_client(context)
+    generic_project = GenericProjectInfo(project_id, keystone.version)
+    if keystone.version == 'v3':
+        project = keystone.projects.get(project_id,
+                                        subtree_as_ids=subtree_as_ids,
+                                        parents_as_ids=parents_as_ids)
 
-            generic_project.parent_id = None
-            if project.parent_id != project.domain_id:
-                generic_project.parent_id = project.parent_id
+        generic_project.parent_id = None
+        if project.parent_id != project.domain_id:
+            generic_project.parent_id = project.parent_id
 
-            generic_project.subtree = (
-                project.subtree if subtree_as_ids else None)
+        generic_project.subtree = (
+            project.subtree if subtree_as_ids else None)
 
-            generic_project.parents = None
-            if parents_as_ids:
-                generic_project.parents = _filter_domain_id_from_parents(
-                    project.domain_id, project.parents)
-    except exceptions.NotFound:
-        msg = (_("Tenant ID: %s does not exist.") % project_id)
-        raise webob.exc.HTTPNotFound(explanation=msg)
+        generic_project.parents = None
+        if parents_as_ids:
+            generic_project.parents = _filter_domain_id_from_parents(
+                project.domain_id, project.parents)
+
+        generic_project.is_admin_project = is_admin_project
 
     return generic_project
 
@@ -251,13 +221,79 @@ def _keystone_client(context, version=(3, 0)):
     :param version: version of Keystone to request
     :return: keystoneclient.client.Client object
     """
-    auth_plugin = token.Token(
+    auth_plugin = identity.Token(
         auth_url=CONF.keystone_authtoken.auth_uri,
         token=context.auth_token,
         project_id=context.project_id)
-    client_session = session.Session(auth=auth_plugin,
-                                     verify=False if
-                                     CONF.keystone_authtoken.insecure else
-                                     (CONF.keystone_authtoken.cafile or True))
+
+    client_session = ka_loading.session.Session().load_from_options(
+        auth=auth_plugin,
+        insecure=CONF.keystone_authtoken.insecure,
+        cacert=CONF.keystone_authtoken.cafile,
+        key=CONF.keystone_authtoken.keyfile,
+        cert=CONF.keystone_authtoken.certfile)
     return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
                          session=client_session, version=version)
+
+
+OVER_QUOTA_RESOURCE_EXCEPTIONS = {'snapshots': exception.SnapshotLimitExceeded,
+                                  'backups': exception.BackupLimitExceeded,
+                                  'volumes': exception.VolumeLimitExceeded,
+                                  'groups': exception.GroupLimitExceeded}
+
+
+def process_reserve_over_quota(context, over_quota_exception,
+                               resource, size=None):
+    """Handle OverQuota exception.
+
+    Analyze OverQuota exception, and raise new exception related to
+    resource type. If there are unexpected items in overs,
+    UnexpectedOverQuota is raised.
+
+    :param context: security context
+    :param over_quota_exception: OverQuota exception
+    :param resource: can be backups, snapshots, and volumes
+    :param size: requested size in reservation
+    """
+    def _consumed(name):
+        return (usages[name]['reserved'] + usages[name]['in_use'])
+
+    overs = over_quota_exception.kwargs['overs']
+    usages = over_quota_exception.kwargs['usages']
+    quotas = over_quota_exception.kwargs['quotas']
+    invalid_overs = []
+
+    for over in overs:
+        if 'gigabytes' in over:
+            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                      "%(s_size)dG %(s_resource)s (%(d_consumed)dG of "
+                      "%(d_quota)dG already consumed).")
+            LOG.warning(msg, {'s_pid': context.project_id,
+                              's_size': size,
+                              's_resource': resource[:-1],
+                              'd_consumed': _consumed(over),
+                              'd_quota': quotas[over]})
+            if resource == 'backups':
+                exc = exception.VolumeBackupSizeExceedsAvailableQuota
+            else:
+                exc = exception.VolumeSizeExceedsAvailableQuota
+            raise exc(
+                name=over,
+                requested=size,
+                consumed=_consumed(over),
+                quota=quotas[over])
+        if (resource in OVER_QUOTA_RESOURCE_EXCEPTIONS.keys() and
+                resource in over):
+            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                      "%(s_resource)s (%(d_consumed)d %(s_resource)ss "
+                      "already consumed).")
+            LOG.warning(msg, {'s_pid': context.project_id,
+                              'd_consumed': _consumed(over),
+                              's_resource': resource[:-1]})
+            raise OVER_QUOTA_RESOURCE_EXCEPTIONS[resource](
+                allowed=quotas[over],
+                name=over)
+        invalid_overs.append(over)
+
+    if invalid_overs:
+        raise exception.UnexpectedOverQuota(name=', '.join(invalid_overs))

@@ -12,14 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from oslo_versionedobjects import fields
 
 from cinder import db
+from cinder import exception
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-
-LOG = logging.getLogger(__name__)
+from cinder.objects import fields as c_fields
 
 
 @base.CinderObjectRegistry.register
@@ -27,7 +27,11 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
                        base.CinderObjectDictCompat,
                        base.CinderComparableObject):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Added volume relationship
+    VERSION = '1.1'
+
+    OPTIONAL_FIELDS = ['volume']
+    obj_extra_fields = ['project_id', 'volume_host']
 
     fields = {
         'id': fields.UUIDField(),
@@ -39,59 +43,152 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         'attach_time': fields.DateTimeField(nullable=True),
         'detach_time': fields.DateTimeField(nullable=True),
 
-        'attach_status': fields.StringField(nullable=True),
+        'attach_status': c_fields.VolumeAttachStatusField(nullable=True),
         'attach_mode': fields.StringField(nullable=True),
+
+        'volume': fields.ObjectField('Volume', nullable=False),
     }
 
-    @staticmethod
-    def _from_db_object(context, attachment, db_attachment):
+    @property
+    def project_id(self):
+        return self.volume.project_id
+
+    @property
+    def volume_host(self):
+        return self.volume.host
+
+    @classmethod
+    def _get_expected_attrs(cls, context, *args, **kwargs):
+        return ['volume']
+
+    @classmethod
+    def _from_db_object(cls, context, attachment, db_attachment,
+                        expected_attrs=None):
+        if expected_attrs is None:
+            expected_attrs = cls._get_expected_attrs(context)
+
         for name, field in attachment.fields.items():
+            if name in cls.OPTIONAL_FIELDS:
+                continue
             value = db_attachment.get(name)
             if isinstance(field, fields.IntegerField):
                 value = value or 0
             attachment[name] = value
 
+        if 'volume' in expected_attrs:
+            db_volume = db_attachment.get('volume')
+            if db_volume:
+                attachment.volume = objects.Volume._from_db_object(
+                    context, objects.Volume(), db_volume)
+
         attachment._context = context
         attachment.obj_reset_changes()
         return attachment
 
-    @base.remotable
+    def obj_load_attr(self, attrname):
+        if attrname not in self.OPTIONAL_FIELDS:
+            raise exception.ObjectActionError(
+                action='obj_load_attr',
+                reason=_('attribute %s not lazy-loadable') % attrname)
+        if not self._context:
+            raise exception.OrphanedObjectError(method='obj_load_attr',
+                                                objtype=self.obj_name())
+
+        if attrname == 'volume':
+            volume = objects.Volume.get_by_id(self._context, self.id)
+            self.volume = volume
+
+        self.obj_reset_changes(fields=[attrname])
+
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
+            if 'volume' in updates:
+                raise exception.ObjectActionError(action='save',
+                                                  reason=_('volume changed'))
+
             db.volume_attachment_update(self._context, self.id, updates)
             self.obj_reset_changes()
+
+    def finish_attach(self, instance_uuid, host_name,
+                      mount_point, attach_mode='rw'):
+        with self.obj_as_admin():
+            db_volume, updated_values = db.volume_attached(
+                self._context, self.id,
+                instance_uuid, host_name,
+                mount_point, attach_mode)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
+        return objects.Volume._from_db_object(self._context,
+                                              objects.Volume(),
+                                              db_volume)
+
+    def create(self):
+        if self.obj_attr_is_set('id'):
+            raise exception.ObjectActionError(action='create',
+                                              reason=_('already created'))
+        updates = self.cinder_obj_get_changes()
+        with self.obj_as_admin():
+            db_attachment = db.volume_attach(self._context, updates)
+        self._from_db_object(self._context, self, db_attachment)
+
+    def destroy(self):
+        updated_values = db.attachment_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
 
 @base.CinderObjectRegistry.register
 class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
-    VERSION = '1.0'
+    # Versoin 1.0: Iniitial version
+    # Version 1.1: Remove volume_id in get_by_host|instance
+    VERSION = '1.1'
 
     fields = {
         'objects': fields.ListOfObjectsField('VolumeAttachment'),
     }
 
-    child_versions = {
-        '1.0': '1.0',
-    }
-
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_volume_id(cls, context, volume_id):
-        attachments = db.volume_attachment_get_used_by_volume_id(context,
-                                                                 volume_id)
+        attachments = db.volume_attachment_get_all_by_volume_id(context,
+                                                                volume_id)
+        return base.obj_make_list(context,
+                                  cls(context),
+                                  objects.VolumeAttachment,
+                                  attachments)
+
+    @classmethod
+    def get_all_by_host(cls, context, host, search_opts=None):
+        attachments = db.volume_attachment_get_all_by_host(context,
+                                                           host,
+                                                           search_opts)
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)
 
-    @base.remotable_classmethod
-    def get_all_by_host(cls, context, volume_id, host):
-        attachments = db.volume_attachment_get_by_host(context, volume_id,
-                                                       host)
+    @classmethod
+    def get_all_by_instance_uuid(cls, context,
+                                 instance_uuid, search_opts=None):
+        attachments = db.volume_attachment_get_all_by_instance_uuid(
+            context, instance_uuid, search_opts)
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)
 
-    @base.remotable_classmethod
-    def get_all_by_instance_uuid(cls, context, volume_id, instance_uuid):
-        attachments = db.volume_attachment_get_by_instance_uuid(
-            context, volume_id, instance_uuid)
+    @classmethod
+    def get_all(cls, context, search_opts=None,
+                marker=None, limit=None, offset=None,
+                sort_keys=None, sort_direction=None):
+        attachments = db.volume_attachment_get_all(
+            context, search_opts, marker, limit, offset, sort_keys,
+            sort_direction)
+        return base.obj_make_list(context, cls(context),
+                                  objects.VolumeAttachment, attachments)
+
+    @classmethod
+    def get_all_by_project(cls, context, project_id, search_opts=None,
+                           marker=None, limit=None, offset=None,
+                           sort_keys=None, sort_direction=None):
+        attachments = db.volume_attachment_get_all_by_project(
+            context, project_id, search_opts, marker, limit, offset, sort_keys,
+            sort_direction)
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)

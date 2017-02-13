@@ -5,11 +5,12 @@
 # Translators:
 # Ying Chun Guo <daisy.ycguo@gmail.com>, 2015
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 05:24+0000\n"
+"Project-Id-Version: cinder 9.0.0.0rc2.dev161\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-10-05 02:09+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -30,8 +31,8 @@ msgid "%s"
 msgstr "%s"
 
 #, python-format
-msgid "AttachSnapTask.revert: detach mount point %s"
-msgstr "AttachSnapTask.revert: %s bağlantı noktasını ayır"
+msgid "%s is already mounted"
+msgstr "%s zaten bağlı"
 
 msgid "Attempted to delete a space that's not there."
 msgstr "Orada olmayan bir alan silinmeye çalışıldı."
@@ -58,23 +59,6 @@ msgid ""
 msgstr ""
 "Yedek servisi %(service)s doğrulamayı desteklemiyor. Yedek %(id)s "
 "doğrulanmamış. Doğrulama atlanıyor."
-
-msgid ""
-"Both 'storagetype:prvosioning' and 'provisioning:type' are set in the extra "
-"specs, the value of 'provisioning:type' will be used. The key 'storagetype:"
-"provisioning' may be deprecated in the next release."
-msgstr ""
-"Hem 'storagetype:prvosioning' hem 'provisioning:type' ek özelliklerde "
-"ayarlanmış, 'provisioning:type' değeri kullanılacak. 'storagetype:"
-"provisioning' anahtarı sonraki sürümlerde kaldırılabilir."
-
-#, python-format
-msgid "CG %(cg_name)s does not exist. Message: %(msg)s"
-msgstr "CG %(cg_name)s mevcut değil. İleti: %(msg)s"
-
-#, python-format
-msgid "CG %(cg_name)s is deleting. Message: %(msg)s"
-msgstr "CG %(cg_name)s siliyor. İleti: %(msg)s"
 
 #, python-format
 msgid "CHAP is enabled, but server secret not configured on server %s"
@@ -112,10 +96,6 @@ msgstr ""
 "idi ve yeni isim %(new_name)s."
 
 #, python-format
-msgid "Cgsnapshot name %(name)s already exists. Message: %(msg)s"
-msgstr "Cgsnapshot ismi %(name)s zaten mevcut. İleti: %(msg)s"
-
-#, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr "Değişiklik, şu kaynaklar için kullanımı 0'ın altına düşürecek: %s"
 
@@ -133,27 +113,6 @@ msgstr ""
 "V3 üzerinde kopya başarısız. Hedef mantıksal sürücü temizleniyor. Kopya "
 "ismi: %(cloneName)s "
 
-msgid ""
-"Configuration options eqlx_use_chap, eqlx_chap_login and eqlx_chap_password "
-"are deprecated. Use use_chap_auth, chap_username and chap_password "
-"respectively for the same."
-msgstr ""
-"Yapılandırma seçenekleri eqlx_use_chap, eqlx_chap_login ve "
-"eqlx_chap_password artık kullanılmıyor. Aynıları için sırayla chap_auth, "
-"chap_username ve chap_password kullanın."
-
-#, python-format
-msgid "Consistency group %(name)s already exists. Message: %(msg)s"
-msgstr "Tutarlılık grubu %(name)s zaten mevcut. İleti: %(msg)s"
-
-#, python-format
-msgid ""
-"CopySnapshotTask.revert: delete the copied snapshot %(new_name)s of "
-"%(source_name)s."
-msgstr ""
-"CopySnapshotTask.revert: %(source_name)s'in %(new_name)s kopyalanan anlık "
-"görüntüsünü sil."
-
 #, python-format
 msgid "Could not create target because it already exists for volume: %s"
 msgstr "Hedef oluşturulamadı çünkü mantıksal sürücü: %s için zaten mevcut"
@@ -161,22 +120,6 @@ msgstr "Hedef oluşturulamadı çünkü mantıksal sürücü: %s için zaten mev
 #, python-format
 msgid "Could not determine root volume name on %s."
 msgstr "%s üzerinde kök mantıksal sürücü ismi belirlenemiyor."
-
-#, python-format
-msgid "CreateDestLunTask.revert: delete temp lun %s"
-msgstr "CreateDestLunTask.revert: geçici lun %s'i sil"
-
-#, python-format
-msgid "CreateSMPTask.revert: delete mount point %s"
-msgstr "CreateSMPTask.revert: %s bağlantı noktasını sil"
-
-#, python-format
-msgid "CreateSnapshotTask.revert: delete temp cgsnapshot %s"
-msgstr "CreateSnapshotTask.revert: geçici cgsnapshot %s'i sil"
-
-#, python-format
-msgid "CreateSnapshotTask.revert: delete temp snapshot %s"
-msgstr "CreateSnapshotTask.revert: geçici anlık görüntü %s'i sil"
 
 #, python-format
 msgid ""
@@ -196,10 +139,6 @@ msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 "Anlık görüntü kimliği sil bulunamadı. Cinder'den kaldırılıyor: %(id)s "
 "İstisna: %(msg)s"
-
-#, python-format
-msgid "Delete temp LUN after migration start failed. LUN: %s"
-msgstr "Göç başladıktan sonra geçici LUN silme başarısız. LUN: %s"
 
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
@@ -278,12 +217,13 @@ msgstr "Tanımlayıcı silinirken hata oluştu: %s."
 msgid "Error occurred while deleting temporary disk: %s."
 msgstr "Geçici disk silinirken hata oluştu: %s."
 
-msgid "Error on parsing target_pool_name/target_array_serial."
-msgstr "target_pool_name/target_array_serial ayrıştırmada hata."
-
 #, python-format
 msgid "Error refreshing volume info. Message: %s"
 msgstr "Mantıksal sürücü bilgisi tazelenirken hata. İleti: %s"
+
+#, python-format
+msgid "Error running SSH command: %s"
+msgstr "SSH komutu çalıştırılırken hata: %s"
 
 #, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
@@ -296,6 +236,10 @@ msgstr "%(share)s zula temizliği sırasında istisna. İleti - %(ex)s"
 #, python-format
 msgid "Exception during deleting %s"
 msgstr "%s silme sırasında istisna"
+
+#, python-format
+msgid "Exception during mounting %s"
+msgstr "%s bağlama sırasında olağandışı durum"
 
 #, python-format
 msgid "Exception during unmounting %s"
@@ -343,22 +287,9 @@ msgstr ""
 "Ek özellik anahtarı 'storagetype:pool' sürücü sürümü 5.1.0'dan itibaren "
 "kullanılmıyor. Bu anahtar atlanıyor."
 
-msgid ""
-"Extra spec key 'storagetype:provisioning' may be deprecated in the next "
-"release. It is recommended to use extra spec key 'provisioning:type' instead."
-msgstr ""
-"Ek özellik anahtarı 'storagetype:provisioning' sonraki sürümde "
-"kaldırılabilir. Bunun yerine 'provisioning:type' ek özellik anahtarının "
-"kullanımı önerilir."
-
 #, python-format
 msgid "FAST is enabled. Policy: %(fastPolicyName)s."
 msgstr "FAST etkin. İlke: %(fastPolicyName)s."
-
-#, python-format
-msgid "Fail to connect host %(host)s back to storage group %(sg)s."
-msgstr ""
-"%(host)s istemcisinin %(sg)s depolama grubuna geri bağlanması başarısız."
 
 #, python-format
 msgid ""
@@ -390,10 +321,6 @@ msgid "Failed to create pair: %s"
 msgstr "Çift oluşturma başarısız: %s"
 
 #, python-format
-msgid "Failed to deregister %(itor)s because: %(msg)s."
-msgstr "%(itor)s kaydı silinmesi başarısız çünkü: %(msg)s."
-
-#, python-format
 msgid "Failed to destroy Storage Group %s."
 msgstr "Depolama Grubu %s silinemedi."
 
@@ -409,25 +336,12 @@ msgstr "Qos özellikleri %s ilişkisi kesilemedi."
 msgid "Failed to discard zero page: %s"
 msgstr "Sıfır sayfası atılamadı: %s"
 
-#, python-format
-msgid "Failed to extract initiators of %s, so ignore deregistration operation."
-msgstr ""
-"%s ilklendiricilerinin çıkarılması başarısız, kayıt silme işlemini göz ardı "
-"et."
-
 msgid "Failed to get Raid Snapshot ID and did not store in snapshot."
 msgstr ""
 "Raid Anlık Görüntü Kimliği alınamadı ve anlık görüntü içine kaydedilmedi."
 
 msgid "Failed to get target pool id."
 msgstr "Hedef havuz kimliği alınamadı."
-
-msgid ""
-"Failed to get target_pool_name and target_array_serial. 'location_info' is "
-"not in host['capabilities']."
-msgstr ""
-"target_pool_name ve target_array_serial alınamadı. 'location_info' "
-"host['capabilities'] içinde değil."
 
 #, python-format
 msgid "Failed to invoke ems. Message : %s"
@@ -474,12 +388,6 @@ msgstr "%(id)s havuzu sorgulanamadı durum %(ret)d."
 #, python-format
 msgid "Failed to refresh mounts, reason=%s"
 msgstr "Bağlar tazelenemedi, sebep=%s"
-
-#, python-format
-msgid ""
-"Failed to register %(itor)s to SP%(sp)s port %(portid)s because: %(msg)s."
-msgstr ""
-"%(itor)s'in SP%(sp)s %(portid)s bağlantı noktasına kaydı başarısız: %(msg)s."
 
 #, python-format
 msgid "Failed to restart horcm: %s"
@@ -550,10 +458,6 @@ msgstr ""
 "ismi bulunamadı."
 
 #, python-format
-msgid "HLU %(hlu)s has already been removed from %(sgname)s. Message: %(msg)s"
-msgstr "HLU %(hlu)s zaten %(sgname)s'den ayrılmış. İleti: %(msg)s"
-
-#, python-format
 msgid ""
 "Hint \"%s\" dropped because ExtendedServerAttributes not active in Nova."
 msgstr ""
@@ -568,14 +472,6 @@ msgstr ""
 "\"%s\" ipucu düşürüldü çünkü Nova yeterli bilgi döndürmedi. Nova ilkesinin "
 "değiştirilmesi gerekiyor ya da yapılandırmada Nova için ayrıcalıklı bir "
 "hesap belirtilmeli."
-
-#, python-format
-msgid ""
-"Host %(host)s has already disconnected from storage group %(sgname)s. "
-"Message: %(msg)s"
-msgstr ""
-"İstemci %(host)s bağlantısı %(sgname)s depolama grubundan zaten kesilmiş. "
-"İleti: %(msg)s"
 
 msgid ""
 "Host exists without CHAP credentials set and has iSCSI attachments but CHAP "
@@ -595,17 +491,6 @@ msgstr "IQN eşleştirme oluşturmak için kullanılmış."
 
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr "ISCSI provider_location kaydedilmemiş, keşif kullanılıyor"
-
-msgid ""
-"ISERTgtAdm is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use. In order to "
-"enable iser, please set iscsi_protocol=iser with lioadm or tgtadm target "
-"helpers."
-msgstr ""
-"ISERTgtAdm artık kullanılmıyor, artık yalnızca LVMVolumeDriver kullanmalı ve "
-"kullanmak istediğiniz hedef sürücü için iscsi_helper belirtmelisiniz. iser'i "
-"etkinleştirmek için, lütfen iscsi_protocol=iser ayarını hedef yardımcılar "
-"olarak lioadm veya tgtadm ile ayarlayın."
 
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr "Id sort_keys içinde değil, sort_keys benzersiz mi?"
@@ -674,34 +559,6 @@ msgstr ""
 "erişmek için NetAppDriver kullanın."
 
 #, python-format
-msgid "LUN %(name)s is already expanded. Message: %(msg)s"
-msgstr "LUN %(name)s zaten genişletildi. İleti: %(msg)s"
-
-#, python-format
-msgid "LUN %(name)s is not ready for extension: %(out)s"
-msgstr "LUN %(name)s eklenti için hazır değil: %(out)s"
-
-#, python-format
-msgid "LUN %(name)s is not ready for snapshot: %(out)s"
-msgstr "LUN %(name)s anlık görüntü için hazır değil: %(out)s"
-
-#, python-format
-msgid "LUN already exists, LUN name %(name)s. Message: %(msg)s"
-msgstr "LUN zaten mevcut, LUN ismi %(name)s. İleti: %(msg)s"
-
-#, python-format
-msgid ""
-"LUN corresponding to %s is still in some Storage Groups.Try to bring the LUN "
-"out of Storage Groups and retry the deletion."
-msgstr ""
-"%s'e denk gelen LUN hala bazı Depolama Gruplarında. LUN'u Depolama "
-"Gruplarından çıkarmaya ve silmeyi tekrarlamaya çalışın."
-
-#, python-format
-msgid "LUN is already deleted, LUN name %(name)s. Message: %(msg)s"
-msgstr "LUN zaten silindi, LUN ismi %(name)s. İleti: %(msg)s"
-
-#, python-format
 msgid ""
 "LUN misalignment may occur for current initiator group %(ig_nm)s) with host "
 "OS type %(ig_os)s. Please configure initiator group manually according to "
@@ -711,33 +568,14 @@ msgstr ""
 "hizalaması oluşabilir. Lütfen istemci OS türüne göre başlatıcı grubunu elle "
 "ayarlayın."
 
-#, python-format
-msgid "LUN with id %(remove_id)s is not present in cg %(cg_name)s, skip it."
-msgstr "%(remove_id)s kimlikli LUN %(cg_name)s cg de mevcut değil, atla."
-
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
 "En az meşgul iSCSI bağlantı noktası bulunamadı, listedeki ilk iSCSI bağlantı "
 "noktası kullanılıyor."
 
 #, python-format
-msgid ""
-"Maximum number of Pool LUNs, %s, have been created. No more LUN creation can "
-"be done."
-msgstr ""
-"Azami Havuz LUN'ları sayısı, %s, oluşturuldu. Daha fazla LUN oluşturulamaz."
-
-#, python-format
 msgid "Message - %s."
 msgstr "İleti - %s."
-
-#, python-format
-msgid ""
-"Migration command may get network timeout. Double check whether migration in "
-"fact started successfully. Message: %(msg)s"
-msgstr ""
-"Göç komutu ağ zaman aşımı alabilir. Göçün başarılı başladığını iki kere "
-"kontrol edin. İleti: %(msg)s"
 
 #, python-format
 msgid "More than one valid preset was detected, using %s"
@@ -750,10 +588,6 @@ msgstr "Bağlantı noktası %(name)s zaten mevcut. İleti: %(msg)s"
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
 msgstr ""
 "Hiçbir VLUN CHAP kimlik bilgileri içermiyor. Yeni CHAP anahtarı üretiliyor."
-
-msgid "No array serial number returned, set as unknown."
-msgstr ""
-"Herhangi bir dizi seri numarası dönmedi, bilinmeyen olarak ayarlanıyor."
 
 #, python-format
 msgid "No backing file found for %s, allowing snapshot to be deleted."
@@ -777,9 +611,6 @@ msgstr "%(mv)s maskeleme görünümünde bağlantı noktası grubu bulunamadı."
 
 msgid "No protection domain name or id was specified in configuration."
 msgstr "Yapılandırmada herhangi bir koruma alan adı veya kimliği belirtilmedi."
-
-msgid "No shares found hence skipping ssc refresh."
-msgstr "Paylaşım bulunamadı ssc tazelemesi atlanıyor."
 
 #, python-format
 msgid ""
@@ -844,62 +675,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG backup "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"%(s_pid)s için kota aşıldı, %(s_size)sG yedek oluşturulmaya çalışıldı "
-"(%(d_consumed)dG / %(d_quota)dG zaten tüketilmiş)"
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)."
-msgstr ""
-"%(s_pid)s için kota aşıldı, %(s_size)sG anlık görüntü oluşturulmaya "
-"çalışıldı (%(d_consumed)dG / %(d_quota)dG zaten tüketildi)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"%(s_pid)s için kota aşıldı, %(s_size)sG mantıksal sürücü oluşturulmaya "
-"çalışıldı (%(d_consumed)dG / %(d_quota)dG zaten tüketilmiş)"
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume - "
-"(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr ""
-"%(s_pid)s için kota aşıldı, %(s_size)sG mantıksal sürücü oluşturulmaya "
-"çalışıldı - (%(d_consumed)dG / %(d_quota)dG zaten kullanılmış)"
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create backups (%(d_consumed)d "
-"backups already consumed)"
-msgstr ""
-"%(s_pid)s için kota aşıldı, yedek oluşturulmaya çalışıldı (%(d_consumed)d "
-"yedek zaten tüketilmiş)"
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
-"snapshots already consumed)."
-msgstr ""
-"%(s_pid)s için kota aşıldı, anlık görüntü oluşturulmaya çalışıldı "
-"(%(d_consumed)d anlık görüntü zaten tüketilmiş)."
-
-#, python-format
-msgid ""
-"Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d volumes "
-"already consumed)"
-msgstr ""
-"%(s_pid)s için kota aşıldı, mantıksal sürücü oluşturulmaya çalışıldı "
-"(%(d_consumed)d mantıksal sürücü zaten tüketilmiş)"
-
-#, python-format
-msgid ""
 "RBD image for backup %(backup)s of volume %(volume)s not found. Deleting "
 "backup metadata."
 msgstr ""
@@ -930,8 +705,11 @@ msgid "Returning as clean tmp vol job already running."
 msgstr "Geçici mantıksal sürücü temizleme işi hala çalıştığından dönülüyor."
 
 #, python-format
-msgid "See unavailable iSCSI target: %s"
-msgstr "Kullanılamaz iSCSI hedefine bak: %s"
+msgid ""
+"Share %s ignored due to invalid format. Must be of form address:/export."
+msgstr ""
+"%s paylaşımı geçersiz biçim nedeniyle yoksayılır. Form adresi olmalıdır:/"
+"export."
 
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Hedef silmenin sessizce başarısız olduğu algılandı, tekrar dene..."
@@ -939,28 +717,6 @@ msgstr "Hedef silmenin sessizce başarısız olduğu algılandı, tekrar dene...
 #, python-format
 msgid "Snapshot %(name)s already exists. Message: %(msg)s"
 msgstr "Anlık görüntü %(name)s zaten mevcut. İleti: %(msg)s"
-
-#, python-format
-msgid ""
-"Snapshot %(name)s for consistency group does not exist. Message: %(msg)s"
-msgstr ""
-"Tutarlılık grubu için %(name)s anlık görüntüsü mevcut değil. İleti: %(msg)s"
-
-#, python-format
-msgid "Snapshot %(name)s is in use, retry. Message: %(msg)s"
-msgstr "Anlık görüntü %(name)s kullanımda, tekrar dene. İleti: %(msg)s"
-
-#, python-format
-msgid "Snapshot %(name)s may deleted already. Message: %(msg)s"
-msgstr "Anlık görüntü %(name)s zaten silinmiş olabilir. İleti: %(msg)s"
-
-#, python-format
-msgid ""
-"Snapshot %(snapname)s is attached to snapshot mount point %(mpname)s "
-"already. Message: %(msg)s"
-msgstr ""
-"Anlık görüntü %(snapname)s anlık görüntü bağlantı noktası %(mpname)s'e zaten "
-"bağlı. İleti: %(msg)s"
 
 #, python-format
 msgid "Snapshot %s already deleted."
@@ -971,35 +727,8 @@ msgid "Snapshot still %(status)s Cannot delete snapshot."
 msgstr "Anlık görüntü hala %(status)s Anlık görüntü silinemiyor."
 
 #, python-format
-msgid "Start migration failed. Message: %s"
-msgstr "Göç başlatma başarısız. İleti: %s"
-
-#, python-format
-msgid "Storage Group %s is not found."
-msgstr "Depolama Grubu %s bulunamadı."
-
-#, python-format
-msgid "Storage Group %s is not found. Create it."
-msgstr "Depolama Grubu %s bulunamadı. Oluştur."
-
-#, python-format
-msgid "Storage Group %s is not found. terminate_connection() is unnecessary."
-msgstr "Depolama Grubu %s bulunamadı. terminate_connection() gereksiz."
-
-#, python-format
-msgid "Storage Pool '%(pool)s' is '%(state)s'."
-msgstr "Depolama Havuzu '%(pool)s' '%(state)s'."
-
-#, python-format
 msgid "Storage group %(name)s already exists. Message: %(msg)s"
 msgstr "Depolama grubu %(name)s zaten mevcut. İleti: %(msg)s"
-
-#, python-format
-msgid ""
-"Storage group %(name)s doesn't exist, may have already been deleted. "
-"Message: %(msg)s"
-msgstr ""
-"Depolama grubu %(name)s mevcut değil, zaten silinmiş olabilir. İleti: %(msg)s"
 
 #, python-format
 msgid "Storage sync name not found for target %(target)s on %(storageSystem)s."
@@ -1043,36 +772,8 @@ msgstr ""
 "version 2 retype <volumeId> <volumeType> --migration-policy on-demand"
 
 #, python-format
-msgid ""
-"The following specified storage pools do not exist: %(unexist)s. This host "
-"will only manage the storage pools: %(exist)s"
-msgstr ""
-"Belirtilen şu depolama havuzları mevcut değil: %(unexist)s. İstemci yalnızca "
-"şu depolama havuzlarını yönetecek: %(exist)s"
-
-#, python-format
 msgid "The provisioning: %(provisioning)s is not valid."
 msgstr "Hazırlık: %(provisioning)s geçerli değil."
-
-#, python-format
-msgid ""
-"The source volume is a legacy volume. Create volume in the pool where the "
-"source volume %s is created."
-msgstr ""
-"Kaynak mantıksal sürücü eski bir mantıksal sürücü. Mantıksal sürücüyü %s "
-"kaynak mantıksal sürücüsünün oluşturulduğu yerde oluştur."
-
-#, python-format
-msgid "The specified Snapshot mount point %s is not currently attached."
-msgstr "Belirtilen Anlık Görüntü bağlama noktası %s şu an eklenmiş değil."
-
-#, python-format
-msgid ""
-"The user does not have access or sufficient privileges to use all netapp "
-"APIs. The following extra_specs will fail or be ignored: %s"
-msgstr ""
-"Kullanıcının tüm netapp API'lerini kullanmaya erişimi ya da yeterli izni "
-"yok. Şu ek_özellikler başarısız olacak ya da atlanacak: %s"
 
 #, python-format
 msgid ""
@@ -1122,10 +823,6 @@ msgid "Unable to delete space %(space)s"
 msgstr "%(space)s alanı silinemedi"
 
 #, python-format
-msgid "Unable to fetch datastores connected to host %s."
-msgstr "%s istemcisine bağlı veri depoları getirilemedi."
-
-#, python-format
 msgid "Unable to find Masking view: %(view)s."
 msgstr "Maskeleme görünümü bulunamadı: %(view)s."
 
@@ -1170,13 +867,12 @@ msgstr "Kullanılan paylaşım kısaca listelenirken beklenmedik istisna."
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr "Sürücü durumu güncelleme başarısız: %(config_group)s ilklendirilmemiş."
 
+msgid "Use of empty request context is deprecated"
+msgstr "Boş istek içeriği kullanımı önerilmiyor"
+
 msgid "Verify certificate is not set, using default of False."
 msgstr ""
 "Sertifika doğrulama ayarlanmamış, varsayılan değer olan False kullanılıyor."
-
-#, python-format
-msgid "Volume %(vol)s was not in Storage Group %(sg)s."
-msgstr "Mantıksal sürücü %(vol)s Depolama Grubu %(sg)s'de değildi."
 
 #, python-format
 msgid "Volume %(volume)s is not in any masking view."
@@ -1240,8 +936,10 @@ msgid "Volume deletion failed with message: %s"
 msgstr "Mantıksal sürücü silme şu iletiyle başarısız oldu: %s"
 
 #, python-format
-msgid "Volume initialization failure. (%s)"
-msgstr "Mantıksal sürücü ilklendirme başarısız. (%s)"
+msgid "Volume is not writable. Please broaden the file permissions. Mount: %s"
+msgstr ""
+"Mantıksal sürücü yazılabilir değil. Lütfen dosya izinlerinin kapsamını "
+"artırın. Bağlama yeri: %s"
 
 #, python-format
 msgid "Volume path %s does not exist, nothing to remove."
@@ -1315,51 +1013,8 @@ msgstr ""
 "_unmap_vdisk_from_host: %(vol_name)s mantıksal sürücüsünün hiçbir istemciye "
 "eşleşmesi bulunamadı."
 
-msgid ""
-"config option keymgr.fixed_key has not been defined: some operations may "
-"fail unexpectedly"
-msgstr ""
-"keymgr.fixed_key yapılandırma seçeneği tanımlanmamış. bazı işlemler "
-"beklenmedik şekilde başarısız olabilir"
-
-#, python-format
-msgid "delete_volume: unable to find volume %s"
-msgstr "delete_volume: %s mantıksal sürücüsü bulunamadı"
-
-msgid ""
-"destroy_empty_storage_group: True. Empty storage group will be deleted after "
-"volume is detached."
-msgstr ""
-"destroy_empty_storage_group: True. Boş depolama grubu mantıksal sürücü "
-"ayrıldıktan sonra silinecek."
-
 msgid "flush() not supported in this version of librbd"
 msgstr "flush() librbd'nin bu sürümünde desteklenmiyor"
-
-msgid "force_delete_lun_in_storagegroup=True"
-msgstr "force_delete_lun_in_storagegroup=True"
-
-#, python-format
-msgid "get_evs: %(out)s -- No find for %(fsid)s"
-msgstr "get_evs: %(out)s -- %(fsid)s için bulgu yok"
-
-#, python-format
-msgid "get_fsid: %(out)s -- No info for %(fslabel)s"
-msgstr "get_fsid: %(out)s -- %(fslabel)s için bilgi yok"
-
-msgid ""
-"glance_num_retries shouldn't be a negative value. The number of retries will "
-"be set to 0 until this iscorrected in the cinder.conf."
-msgstr ""
-"glance_num_retries negatif bir değer olmamalı. Bu cinder.conf'da düzeltilene "
-"kadar tekrar deneme sayıları 0 olarak ayarlanacak."
-
-msgid ""
-"ignore_pool_full_threshold: True. LUN creation will still be forced even if "
-"the pool full threshold is exceeded."
-msgstr ""
-"ignore_pool_full_threshold: True. Havuz dolu eşiği aşılsa bile LUN oluşturma "
-"zorlanacak."
 
 #, python-format
 msgid "initialize_connection: Did not find a preferred node for volume %s."
@@ -1378,12 +1033,6 @@ msgstr "%(typ)s türündeki %(key)s nesnesi bulunamadı, %(err_msg)s"
 msgid "qemu-img is not installed."
 msgstr "qemu-img kurulu değil."
 
-msgid "refresh stale ssc job in progress. Returning... "
-msgstr "vadesi geçmiş ssc işi tazeleme sürüyor. Dönülüyor... "
-
-msgid "san_secondary_ip is configured as the same value as san_ip."
-msgstr "san_secondary_ip san_ip ile aynı değer olarak yapılandırılmış."
-
 #, python-format
 msgid "snapshot: %s not found, skipping delete operation"
 msgstr "anlık görüntü: %s bulunamadı, silme işlemi atlanıyor"
@@ -1391,12 +1040,6 @@ msgstr "anlık görüntü: %s bulunamadı, silme işlemi atlanıyor"
 #, python-format
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr "anlık görüntü: %s bulunamadı, silme işlemleri atlanıyor"
-
-msgid "ssc job in progress. Returning... "
-msgstr "ssc işi sürüyor. Dönülüyor... "
-
-msgid "terminate_conn: provider location empty."
-msgstr "terminate_conn: sağlayıcı konumu boş."
 
 msgid "terminate_connection: lun map not found"
 msgstr "terminate_connection: lun eşleştirmesi bulunamadı"

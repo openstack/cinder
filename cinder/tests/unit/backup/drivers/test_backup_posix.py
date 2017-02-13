@@ -33,10 +33,10 @@ FAKE_SHA_BLOCK_SIZE_BYTES = 1024
 FAKE_BACKUP_ENABLE_PROGRESS_TIMER = True
 
 FAKE_CONTAINER = 'fake/container'
-FAKE_BACKUP_ID = fake.backup_id
-FAKE_BACKUP_ID_PART1 = fake.backup_id[:2]
-FAKE_BACKUP_ID_PART2 = fake.backup_id[2:4]
-FAKE_BACKUP_ID_REST = fake.backup_id[4:]
+FAKE_BACKUP_ID = fake.BACKUP_ID
+FAKE_BACKUP_ID_PART1 = fake.BACKUP_ID[:2]
+FAKE_BACKUP_ID_PART2 = fake.BACKUP_ID[2:4]
+FAKE_BACKUP_ID_REST = fake.BACKUP_ID[4:]
 FAKE_BACKUP = {'id': FAKE_BACKUP_ID, 'container': None}
 
 UPDATED_CONTAINER_NAME = os.path.join(FAKE_BACKUP_ID_PART1,
@@ -91,7 +91,7 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.assertEqual(UPDATED_CONTAINER_NAME, result)
 
     def test_put_container(self):
-        self.mock_object(os.path, 'exists', mock.Mock(return_value=False))
+        self.mock_object(os.path, 'exists', return_value=False)
         self.mock_object(os, 'makedirs')
         self.mock_object(os, 'chmod')
         path = os.path.join(self.driver.backup_path, FAKE_CONTAINER)
@@ -103,7 +103,7 @@ class PosixBackupDriverTestCase(test.TestCase):
         os.chmod.assert_called_once_with(path, 0o770)
 
     def test_put_container_already_exists(self):
-        self.mock_object(os.path, 'exists', mock.Mock(return_value=True))
+        self.mock_object(os.path, 'exists', return_value=True)
         self.mock_object(os, 'makedirs')
         self.mock_object(os, 'chmod')
         path = os.path.join(self.driver.backup_path, FAKE_CONTAINER)
@@ -115,9 +115,8 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.assertEqual(0, os.chmod.call_count)
 
     def test_put_container_exception(self):
-        self.mock_object(os.path, 'exists', mock.Mock(return_value=False))
-        self.mock_object(os, 'makedirs', mock.Mock(
-            side_effect=OSError))
+        self.mock_object(os.path, 'exists', return_value=False)
+        self.mock_object(os, 'makedirs', side_effect=OSError)
         self.mock_object(os, 'chmod')
         path = os.path.join(self.driver.backup_path, FAKE_CONTAINER)
 
@@ -128,24 +127,21 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.assertEqual(0, os.chmod.call_count)
 
     def test_get_container_entries(self):
-        self.mock_object(os, 'listdir', mock.Mock(
-            return_value=FAKE_CONTAINER_ENTRIES))
+        self.mock_object(os, 'listdir', return_value=FAKE_CONTAINER_ENTRIES)
 
         result = self.driver.get_container_entries(FAKE_CONTAINER, FAKE_PREFIX)
 
         self.assertEqual(EXPECTED_CONTAINER_ENTRIES, result)
 
     def test_get_container_entries_no_list(self):
-        self.mock_object(os, 'listdir', mock.Mock(
-            return_value=[]))
+        self.mock_object(os, 'listdir', return_value=[])
 
         result = self.driver.get_container_entries(FAKE_CONTAINER, FAKE_PREFIX)
 
         self.assertEqual([], result)
 
     def test_get_container_entries_no_match(self):
-        self.mock_object(os, 'listdir', mock.Mock(
-            return_value=FAKE_CONTAINER_ENTRIES))
+        self.mock_object(os, 'listdir', return_value=FAKE_CONTAINER_ENTRIES)
 
         result = self.driver.get_container_entries(FAKE_CONTAINER,
                                                    FAKE_PREFIX + 'garbage')
@@ -174,8 +170,7 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.driver.delete_object(FAKE_CONTAINER, FAKE_OBJECT_NAME)
 
     def test_delete_nonexistent_object(self):
-        self.mock_object(os, 'remove', mock.Mock(
-            side_effect=OSError))
+        self.mock_object(os, 'remove', side_effect=OSError)
 
         self.assertRaises(OSError,
                           self.driver.delete_object, FAKE_CONTAINER,
