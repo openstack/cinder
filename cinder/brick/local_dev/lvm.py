@@ -805,7 +805,8 @@ class LVM(executor.Executor):
         # deactivated, but Thin Volumes with snaps have attribute 'V'
         # and won't be deactivated because the lv_has_snapshot method looks
         # for 'o' or 'O'
-        if self.lv_has_snapshot(lv_name):
+        has_snapshot = self.lv_has_snapshot(lv_name)
+        if has_snapshot:
             self.deactivate_lv(lv_name)
         try:
             cmd = LVM.LVM_CMD_PREFIX + ['lvextend', '-L', new_size,
@@ -818,6 +819,8 @@ class LVM(executor.Executor):
             LOG.error(_LE('StdOut  :%s'), err.stdout)
             LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
+        if has_snapshot:
+            self.activate_lv(lv_name)
 
     def vg_mirror_free_space(self, mirror_count):
         free_capacity = 0.0
