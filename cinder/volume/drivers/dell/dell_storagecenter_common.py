@@ -571,6 +571,7 @@ class DellCommonDriver(driver.ManageableVD,
                     # Create our volume
                     scvolume = api.create_cloned_volume(
                         volume_name, srcvol,
+                        specs.get('storagetype:storageprofile'),
                         specs.get('storagetype:replayprofiles'),
                         specs.get('storagetype:volumeqos'),
                         specs.get('storagetype:groupqos'),

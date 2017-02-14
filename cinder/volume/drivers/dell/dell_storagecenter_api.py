@@ -22,6 +22,7 @@ from oslo_utils import excutils
 import requests
 from simplejson import scanner
 import six
+import uuid
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -2167,30 +2168,109 @@ class StorageCenterApi(object):
 
         return volume
 
-    def create_cloned_volume(self, volumename, scvolume, replay_profile_list,
-                             volume_qos, group_qos, dr_profile):
+    def _expire_all_replays(self, scvolume):
+        # We just try to grab the replay list and then expire them.
+        # If this doens't work we aren't overly concerned.
+        r = self.client.get('StorageCenter/ScVolume/%s/ReplayList'
+                            % self._get_id(scvolume))
+        if self._check_result(r):
+            replays = self._get_json(r)
+            # This will be a list.  If it isn't bail
+            if isinstance(replays, list):
+                for replay in replays:
+                    if not replay['active']:
+                        # Send down an async expire.
+                        # We don't care if this fails.
+                        self.client.post('StorageCenter/ScReplay/%s/Expire' %
+                                         self._get_id(replay), {}, True)
+
+    def _wait_for_cmm(self, cmm, scvolume, replayid):
+        # We wait for either the CMM to indicate that our copy has finished or
+        # for our marker replay to show up. We do this because the CMM might
+        # have been cleaned up by the system before we have a chance to check
+        # it. Great.
+
+        # Pick our max number of loops to run AFTER the CMM has gone away and
+        # the time to wait between loops.
+        # With a 3 second wait time this will be up to a 1 minute timeout
+        # after the system claims to have finished.
+        sleep = 3
+        waitforreplaymarkerloops = 20
+        while waitforreplaymarkerloops >= 0:
+            r = self.client.get('StorageCenter/ScCopyMirrorMigrate/%s'
+                                % self._get_id(cmm))
+            if self._check_result(r):
+                cmm = self._get_json(r)
+                if cmm['state'] == 'Erred' or cmm['state'] == 'Paused':
+                    return False
+                elif cmm['state'] == 'Finished':
+                    return True
+            elif self.find_replay(scvolume, replayid):
+                return True
+            else:
+                waitforreplaymarkerloops -= 1
+            eventlet.sleep(sleep)
+        return False
+
+    def create_cloned_volume(self, volumename, scvolume, storage_profile,
+                             replay_profile_list, volume_qos, group_qos,
+                             dr_profile):
         """Creates a volume named volumename from a copy of scvolume.
-
-        This is done by creating a replay and then a view volume from
-        that replay.  The replay is set to expire after an hour.  It is only
-        needed long enough to create the volume.  (1 minute should be enough
-        but we set an hour in case the world has gone mad.)
-
 
         :param volumename: Name of new volume.  This is the cinder volume ID.
         :param scvolume: Dell volume object.
+        :param storage_profile: Storage profile.
         :param replay_profile_list: List of snapshot profiles.
         :param volume_qos: Volume QOS Profile to use.
         :param group_qos: Group QOS Profile to use.
         :param dr_profile: Data reduction profile to use.
         :returns: The new volume's Dell volume object.
+        :raises: VolumeBackendAPIException if error doing copy.
         """
-        replay = self.create_replay(scvolume, 'Cinder Clone Replay', 60)
-        if replay is not None:
-            return self.create_view_volume(volumename, replay,
-                                           replay_profile_list, volume_qos,
-                                           group_qos, dr_profile)
-        LOG.error(_LE('Error: unable to snap replay'))
+        LOG.info(_LI('create_cloned_volume: Creating %(dst)s from %(src)s'),
+                 {'dst': volumename,
+                  'src': scvolume['name']})
+
+        n = scvolume['configuredSize'].split(' ', 1)
+        size = int(float(n[0]) // 1073741824)
+        # Create our new volume.
+        newvol = self.create_volume(
+            volumename, size, storage_profile, replay_profile_list,
+            volume_qos, group_qos, dr_profile)
+        if newvol:
+            try:
+                replayid = str(uuid.uuid4())
+                screplay = self.create_replay(scvolume, replayid, 60)
+                if not screplay:
+                    raise exception.VolumeBackendAPIException(
+                        message='Unable to create replay marker.')
+                # Copy our source.
+                payload = {}
+                payload['CopyReplays'] = True
+                payload['DestinationVolume'] = self._get_id(newvol)
+                payload['SourceVolume'] = self._get_id(scvolume)
+                payload['StorageCenter'] = self.ssn
+                payload['Priority'] = 'High'
+                r = self.client.post('StorageCenter/ScCopyMirrorMigrate/Copy',
+                                     payload, True)
+                if self._check_result(r):
+                    cmm = self._get_json(r)
+                    if (cmm['state'] == 'Erred' or cmm['state'] == 'Paused' or
+                       not self._wait_for_cmm(cmm, newvol, replayid)):
+                        raise exception.VolumeBackendAPIException(
+                            message='ScCopyMirrorMigrate error.')
+                    LOG.debug('create_cloned_volume: Success')
+                    self._expire_all_replays(newvol)
+                    return newvol
+                else:
+                    raise exception.VolumeBackendAPIException(
+                        message='ScCopyMirrorMigrate fail.')
+            except exception.VolumeBackendAPIException:
+                # It didn't. Delete the volume.
+                self.delete_volume(volumename, self._get_id(newvol))
+                raise
+        # Tell the user.
+        LOG.error(_LE('create_cloned_volume: Unable to clone volume'))
         return None
 
     def expand_volume(self, scvolume, newsize):

@@ -1806,7 +1806,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None, None)
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
 
@@ -1823,6 +1823,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             mock_find_volume, mock_create_replications, mock_close_connection,
             mock_open_connection, mock_init):
         mock_get_volume_extra_specs.return_value = {
+            'storagetype:storageprofile': 'storageprofile',
             'storagetype:replayprofiles': 'replayprofiles',
             'storagetype:volumeqos': 'volumeqos',
             'storagetype:groupqos': 'groupqos',
@@ -1835,8 +1836,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID, self.VOLUME, 'replayprofiles', 'volumeqos',
-            'groupqos', 'drprofile')
+            fake.VOLUME_ID, self.VOLUME, 'storageprofile', 'replayprofiles',
+            'volumeqos', 'groupqos', 'drprofile')
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
 
@@ -1865,7 +1866,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None, None)
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
         self.assertTrue(mock_expand_volume.called)
@@ -1979,7 +1980,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
-            fake.VOLUME_ID, self.VOLUME, None, None, None, None)
+            fake.VOLUME_ID, self.VOLUME, None, None, None, None, None)
         self.assertTrue(mock_find_volume.called)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
