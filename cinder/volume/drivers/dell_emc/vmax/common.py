@@ -26,7 +26,9 @@ import six
 from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects.consistencygroup import ConsistencyGroup
 from cinder.objects import fields
+from cinder.objects.group import Group
 from cinder.volume.drivers.dell_emc.vmax import fast
 from cinder.volume.drivers.dell_emc.vmax import https
 from cinder.volume.drivers.dell_emc.vmax import masking
@@ -2655,10 +2657,13 @@ class VMAXCommon(object):
                 {'volumeName': volumeName,
                  'storageGroupInstanceNames': storageGroupInstanceNames})
             for storageGroupInstanceName in storageGroupInstanceNames:
+                storageGroupInstance = self.conn.GetInstance(
+                    storageGroupInstanceName)
                 self.masking.remove_device_from_storage_group(
                     self.conn, controllerConfigurationService,
                     storageGroupInstanceName, volumeInstanceName,
-                    volumeName, extraSpecs)
+                    volumeName, storageGroupInstance['ElementName'],
+                    extraSpecs)
 
     def _find_lunmasking_scsi_protocol_controller(self, storageSystemName,
                                                   connector):
@@ -4388,10 +4393,10 @@ class VMAXCommon(object):
             replicationService, six.text_type(cgsnapshot['id']))
 
         if cgInstanceName is None:
-            exception_message = (_(
-                "Cannot find CG group %s.") % six.text_type(cgsnapshot['id']))
-            raise exception.VolumeBackendAPIException(
-                data=exception_message)
+            LOG.error(_LE("Cannot find CG group %(cgName)s."),
+                      {'cgName': cgsnapshot['id']})
+            modelUpdate = {'status': fields.ConsistencyGroupStatus.DELETED}
+            return modelUpdate, []
 
         memberInstanceNames = self._get_members_of_replication_group(
             cgInstanceName)
@@ -4720,7 +4725,7 @@ class VMAXCommon(object):
         try:
             replicationService, storageSystem, __, __ = (
                 self._get_consistency_group_utils(self.conn, group))
-            cgInstanceName = (
+            cgInstanceName, __ = (
                 self._find_consistency_group(
                     replicationService, six.text_type(group['id'])))
             if cgInstanceName is None:
@@ -5061,37 +5066,29 @@ class VMAXCommon(object):
         extraSpecsDictList = []
         isV3 = False
 
-        volumeTypeIds = group.get('volume_type_ids')
-        if not volumeTypeIds:
-            volumeTypeIds = group.volume_type_id.split(",")
-
-        for volumeTypeId in volumeTypeIds:
-            if volumeTypeId:
-                extraSpecsDict = {}
-                extraSpecs = self.utils.get_volumetype_extraspecs(
-                    None, volumeTypeId)
-                if 'pool_name' in extraSpecs:
-                    isV3 = True
-                    extraSpecs = self.utils.update_extra_specs(
-                        extraSpecs)
-                    extraSpecs[ISV3] = True
-                else:
-                    # Without multipool we cannot support multiple volumetypes.
-                    if len(volumeTypeIds) == 1:
-                        extraSpecs = self._initial_setup(None, volumeTypeId)
-                    else:
-                        msg = (_("We cannot support multiple volume types if "
-                                 "multi pool functionality is not enabled."))
-                        LOG.error(msg)
-                        raise exception.VolumeBackendAPIException(data=msg)
-
-                __, storageSystem = (
-                    self._get_pool_and_storage_system(extraSpecs))
-                if storageSystem:
-                    storageSystems.add(storageSystem)
-                extraSpecsDict["volumeTypeId"] = volumeTypeId
-                extraSpecsDict["extraSpecs"] = extraSpecs
+        if isinstance(group, Group):
+            for volume_type in group.volume_types:
+                extraSpecsDict, storageSystems, isV3 = (
+                    self._update_extra_specs_list(
+                        volume_type.extra_specs, len(group.volume_types),
+                        volume_type.id))
                 extraSpecsDictList.append(extraSpecsDict)
+        elif isinstance(group, ConsistencyGroup):
+            volumeTypeIds = group.volume_type_id.split(",")
+            volumeTypeIds = list(filter(None, volumeTypeIds))
+            for volumeTypeId in volumeTypeIds:
+                if volumeTypeId:
+                    extraSpecs = self.utils.get_volumetype_extraspecs(
+                        None, volumeTypeId)
+                    extraSpecsDict, storageSystems, isV3 = (
+                        self._update_extra_specs_list(
+                            extraSpecs, len(volumeTypeIds),
+                            volumeTypeId))
+                extraSpecsDictList.append(extraSpecsDict)
+        else:
+            msg = (_("Unable to get volume type ids."))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         if len(storageSystems) != 1:
             if not storageSystems:
@@ -5108,6 +5105,40 @@ class VMAXCommon(object):
         replicationService = self.utils.find_replication_service(
             conn, storageSystem)
         return replicationService, storageSystem, extraSpecsDictList, isV3
+
+    def _update_extra_specs_list(
+            self, extraSpecs, list_size, volumeTypeId):
+        """Update the extra specs list.
+
+        :param extraSpecs: extraSpecs
+        :param list_size: the size of volume type list
+        :param volumeTypeId: volume type identifier
+        :return: extraSpecsDictList, storageSystems, isV3
+        """
+        storageSystems = set()
+        extraSpecsDict = {}
+        if 'pool_name' in extraSpecs:
+            isV3 = True
+            extraSpecs = self.utils.update_extra_specs(
+                extraSpecs)
+            extraSpecs[ISV3] = True
+        else:
+            # Without multipool we cannot support multiple volumetypes.
+            if list_size == 1:
+                extraSpecs = self._initial_setup(None, volumeTypeId)
+                isV3 = extraSpecs[ISV3]
+            else:
+                msg = (_("We cannot support multiple volume types if "
+                         "multi pool functionality is not enabled."))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        __, storageSystem = (
+            self._get_pool_and_storage_system(extraSpecs))
+        if storageSystem:
+            storageSystems.add(storageSystem)
+        extraSpecsDict["volumeTypeId"] = volumeTypeId
+        extraSpecsDict["extraSpecs"] = extraSpecs
+        return extraSpecsDict, storageSystems, isV3
 
     def _update_consistency_group_name(self, group):
         """Format id and name consistency group

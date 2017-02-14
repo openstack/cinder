@@ -2807,10 +2807,10 @@ class VMAXMasking(object):
         return portGroupName, errorMessage
 
     @coordination.synchronized('emc-sg-'
-                               '{storageGroupInstanceName[ElementName]}')
+                               '{storageGroupName}')
     def remove_device_from_storage_group(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance, volumeName, extraSpecs):
+            volumeInstance, volumeName, storageGroupName, extraSpecs):
         """Remove a device from a storage group.
 
         :param conn: the connection to the ecom server
