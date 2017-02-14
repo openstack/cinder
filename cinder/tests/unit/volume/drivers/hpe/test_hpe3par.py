@@ -1843,17 +1843,9 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
-            common = hpecommon.HPE3PARCommon(None)
-            vol_name = common._get_3par_vol_name(src_vref['id'])
-            # snapshot name is random
-            snap_name = mock.ANY
-            optional = mock.ANY
-
             expected = [
-                mock.call.createSnapshot(snap_name, vol_name, optional),
-                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    snap_name,
+                    self.VOLUME_NAME_3PAR,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -1888,17 +1880,9 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
-            common = hpecommon.HPE3PARCommon(None)
-            vol_name = common._get_3par_vol_name(src_vref['id'])
-            # snapshot name is random
-            snap_name = mock.ANY
-            optional = mock.ANY
-
             expected = [
-                mock.call.createSnapshot(snap_name, vol_name, optional),
-                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    snap_name,
+                    self.VOLUME_NAME_3PAR,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -1937,17 +1921,12 @@ class HPE3PARBaseDriver(object):
 
             common = hpecommon.HPE3PARCommon(None)
             vol_name = common._get_3par_vol_name(src_vref['id'])
-            # snapshot name is random
-            snap_name = mock.ANY
-            optional = mock.ANY
 
             expected = [
                 mock.call.getVolumeMetaData(vol_name,
                                             'HPQ-cinder-CHAP-name'),
-                mock.call.createSnapshot(snap_name, vol_name, optional),
-                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    snap_name,
+                    self.VOLUME_NAME_3PAR,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2082,18 +2061,10 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
-            # creation of the temp snapshot
-            common = hpecommon.HPE3PARCommon(None)
-            snap_name = mock.ANY
-            vol_name = common._get_3par_vol_name(src_vref['id'])
-            optional = mock.ANY
-
             expected = [
-                mock.call.createSnapshot(snap_name, vol_name, optional),
-                mock.call.getVolume(snap_name),
                 mock.call.getCPG(expected_cpg),
                 mock.call.copyVolume(
-                    snap_name,
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
                     self.VOLUME_3PAR_NAME,
                     expected_cpg,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
