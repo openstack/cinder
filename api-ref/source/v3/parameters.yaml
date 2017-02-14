@@ -1421,6 +1421,12 @@ reserved_percentage:
   in: body
   required: true
   type: integer
+reset_status:
+  description: |
+    The ``reset_status`` action.
+  in: body
+  required: true
+  type: object
 restore:
   description: |
     A ``restore`` object.

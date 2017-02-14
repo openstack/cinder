@@ -178,3 +178,31 @@ Response Parameters
    - group_id: group_id
    - id: id
    - name: name
+
+
+Reset group snapshot status
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/group_snapshots/{group_snapshot_id}/action
+
+Resets the status for a group snapshot. Specifies the ``reset_status`` action in the request body.
+
+Normal response codes: 202
+Error response codes: badRequest(400), itemNotFound(404)
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - reset_status: reset_status
+   - status: status
+   - project_id: project_id
+   - group_snapshot_id: group_snapshot_id
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/group-snapshot-reset-status-request.json
+   :language: javascript
