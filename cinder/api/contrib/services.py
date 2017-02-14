@@ -77,7 +77,7 @@ class ServiceController(wsgi.Controller):
                 if abs(delta_sec) >= abs(delta_mod.total_seconds()):
                     updated_at = svc.modified_at
             alive = abs(delta_sec) <= CONF.service_down_time
-            art = (alive and "up") or "down"
+            art = "up" if alive else "down"
             active = 'enabled'
             if svc.disabled:
                 active = 'disabled'

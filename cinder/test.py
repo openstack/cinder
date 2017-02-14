@@ -302,7 +302,7 @@ class TestCase(testtools.TestCase):
             self.override_config(k, v)
 
     def start_service(self, name, host=None, **kwargs):
-        host = host and host or uuid.uuid4().hex
+        host = host if host else uuid.uuid4().hex
         kwargs.setdefault('host', host)
         kwargs.setdefault('binary', 'cinder-%s' % name)
         svc = service.Service.create(**kwargs)
