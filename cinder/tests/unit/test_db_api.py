@@ -2282,14 +2282,12 @@ class DBAPIEncryptionTestCase(BaseTest):
             self._assertEqualObjects(values[i], encryption, self._ignored_keys)
 
     def test_volume_type_encryption_update(self):
-        update_values = self._get_values(updated=True)
-        self.updated = \
-            [db.volume_type_encryption_update(self.ctxt,
-                                              values['volume_type_id'], values)
-             for values in update_values]
-        for i, encryption in enumerate(self.updated):
-            self._assertEqualObjects(update_values[i], encryption,
-                                     self._ignored_keys)
+        for values in self._get_values(updated=True):
+            db.volume_type_encryption_update(self.ctxt,
+                                             values['volume_type_id'], values)
+            db_enc = db.volume_type_encryption_get(self.ctxt,
+                                                   values['volume_type_id'])
+            self._assertEqualObjects(values, db_enc, self._ignored_keys)
 
     def test_volume_type_encryption_get(self):
         for encryption in self.created:
@@ -2757,8 +2755,8 @@ class DBAPIBackupTestCase(BaseTest):
     def test_backup_update(self):
         updated_values = self._get_values(one=True)
         update_id = self.created[1]['id']
-        updated_backup = db.backup_update(self.ctxt, update_id,
-                                          updated_values)
+        db.backup_update(self.ctxt, update_id, updated_values)
+        updated_backup = db.backup_get(self.ctxt, update_id)
         self._assertEqualObjects(updated_values, updated_backup,
                                  self._ignored_keys)
 
@@ -2768,9 +2766,8 @@ class DBAPIBackupTestCase(BaseTest):
         updated_values['fail_reason'] = fail_reason
 
         update_id = self.created[1]['id']
-        updated_backup = db.backup_update(self.ctxt, update_id,
-                                          updated_values)
-
+        db.backup_update(self.ctxt, update_id, updated_values)
+        updated_backup = db.backup_get(self.ctxt, update_id)
         updated_values['fail_reason'] = fail_reason[:255]
         self._assertEqualObjects(updated_values, updated_backup,
                                  self._ignored_keys)

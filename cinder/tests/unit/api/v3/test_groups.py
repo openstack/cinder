@@ -197,11 +197,16 @@ class GroupsAPITestCase(test.TestCase):
 
     def test_list_groups_json(self):
         self.group2.group_type_id = fake.GROUP_TYPE2_ID
-        self.group2.volume_type_ids = [fake.VOLUME_TYPE2_ID]
+        # TODO(geguileo): One `volume_type_ids` gets sorted out make proper
+        # changes here
+        # self.group2.volume_type_ids = [fake.VOLUME_TYPE2_ID]
+
         self.group2.save()
 
         self.group3.group_type_id = fake.GROUP_TYPE3_ID
-        self.group3.volume_type_ids = [fake.VOLUME_TYPE3_ID]
+        # TODO(geguileo): One `volume_type_ids` gets sorted out make proper
+        # changes here
+        # self.group3.volume_type_ids = [fake.VOLUME_TYPE3_ID]
         self.group3.save()
 
         req = fakes.HTTPRequest.blank('/v3/%s/groups' % fake.PROJECT_ID,
@@ -332,12 +337,14 @@ class GroupsAPITestCase(test.TestCase):
                                            objects=vol_type_objs)
         mock_vol_type_get_all_by_group.return_value = vol_types
 
-        self.group1.volume_type_ids = volume_type_ids
-        self.group1.save()
-        self.group2.volume_type_ids = volume_type_ids
-        self.group2.save()
-        self.group3.volume_type_ids = volume_type_ids
-        self.group3.save()
+        # TODO(geguileo): One `volume_type_ids` gets sorted out make proper
+        # changes here
+        # self.group1.volume_type_ids = volume_type_ids
+        # self.group1.save()
+        # self.group2.volume_type_ids = volume_type_ids
+        # self.group2.save()
+        # self.group3.volume_type_ids = volume_type_ids
+        # self.group3.save()
         req = fakes.HTTPRequest.blank('/v3/%s/groups/detail' %
                                       fake.PROJECT_ID,
                                       version=GROUP_MICRO_VERSION)
@@ -680,7 +687,9 @@ class GroupsAPITestCase(test.TestCase):
         volume_type_id = fake.VOLUME_TYPE_ID
         self.group1.status = fields.GroupStatus.AVAILABLE
         self.group1.host = 'test_host'
-        self.group1.volume_type_ids = [volume_type_id]
+        # TODO(geguileo): One `volume_type_ids` gets sorted out make proper
+        # changes here
+        # self.group1.volume_type_ids = [volume_type_id]
         self.group1.save()
 
         remove_volume = utils.create_volume(

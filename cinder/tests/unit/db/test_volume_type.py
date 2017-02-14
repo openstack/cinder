@@ -84,9 +84,9 @@ class VolumeTypeTestCase(test.TestCase):
         updates = dict(name = 'test_volume_type_update',
                        description = None,
                        is_public = None)
-        updated_vol_type = db.volume_type_update(
-            self.ctxt, vol_type_ref.id, updates)
-        self.assertEqual('test_volume_type_update', updated_vol_type.name)
+        db.volume_type_update(self.ctxt, vol_type_ref.id, updates)
+        updated_vol_type = db.volume_type_get(self.ctxt, vol_type_ref.id)
+        self.assertEqual('test_volume_type_update', updated_vol_type['name'])
         volume_types.destroy(self.ctxt, vol_type_ref.id)
 
     def test_volume_type_get_with_qos_specs(self):
