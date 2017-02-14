@@ -22,6 +22,7 @@ SQLAlchemy models for cinder data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
+from oslo_db.sqlalchemy import ndb
 from oslo_utils import timeutils
 from sqlalchemy import and_, func, select
 from sqlalchemy import bindparam
@@ -264,17 +265,17 @@ class Volume(BASE, CinderBase):
     cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
-    availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    status = Column(String(255))  # TODO(vish): enum?
-    attach_status = Column(String(255))  # TODO(vish): enum
-    migration_status = Column(String(255))
+    availability_zone = Column(ndb.AutoStringTinyText(255))  # TODO(vish):fkey?
+    status = Column(ndb.AutoStringSize(255, 64))  # TODO(vish): enum?
+    attach_status = Column(ndb.AutoStringSize(255, 64))  # TODO(vish): enum
+    migration_status = Column(ndb.AutoStringSize(255, 64))
 
     scheduled_at = Column(DateTime)
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
 
     display_name = Column(String(255))
-    display_description = Column(String(255))
+    display_description = Column(ndb.AutoStringTinyText(255))
 
     provider_location = Column(String(255))
     provider_auth = Column(String(255))
@@ -291,9 +292,9 @@ class Volume(BASE, CinderBase):
     bootable = Column(Boolean, default=False)
     multiattach = Column(Boolean, default=False)
 
-    replication_status = Column(String(255))
-    replication_extended_status = Column(String(255))
-    replication_driver_data = Column(String(255))
+    replication_status = Column(ndb.AutoStringSize(255, 64))
+    replication_extended_status = Column(ndb.AutoStringTinyText(255))
+    replication_driver_data = Column(ndb.AutoStringTinyText(255))
 
     previous_status = Column(String(255))
 
