@@ -116,6 +116,36 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                          scheduler_rpcapi.client.serializer._base.version_cap)
         self.assertIsNone(scheduler_rpcapi.client.serializer._base.manifest)
 
+    @mock.patch('oslo_utils.importutils.import_object')
+    def test_backend_availability_zone(self, mock_import_object):
+        # NOTE(smcginnis): This isn't really the best place for this test,
+        # but we don't currently have a pure VolumeManager test class. So
+        # until we create a good suite for that class, putting here with
+        # other tests that use VolumeManager.
+
+        opts = {
+            'backend_availability_zone': 'caerbannog'
+        }
+
+        def conf_get(option):
+            if option in opts:
+                return opts[option]
+            return None
+
+        mock_driver = mock.Mock()
+        mock_driver.configuration.safe_get.side_effect = conf_get
+        mock_driver.configuration.extra_capabilities = 'null'
+
+        def import_obj(*args, **kwargs):
+            return mock_driver
+
+        mock_import_object.side_effect = import_obj
+
+        manager = vol_manager.VolumeManager(volume_driver=mock_driver)
+        self.assertIsNotNone(manager)
+        self.assertEqual(opts['backend_availability_zone'],
+                         manager.availability_zone)
+
     @mock.patch.object(vol_manager.VolumeManager,
                        'update_service_capabilities')
     def test_report_filter_goodness_function(self, mock_update):

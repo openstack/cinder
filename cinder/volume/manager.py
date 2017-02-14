@@ -268,6 +268,12 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error(_LE("Invalid JSON: %s"),
                           self.driver.configuration.extra_capabilities)
 
+        # Check if a per-backend AZ has been specified
+        backend_zone = self.driver.configuration.safe_get(
+            'backend_availability_zone')
+        if backend_zone:
+            self.availability_zone = backend_zone
+
         if self.driver.configuration.safe_get(
                 'image_volume_cache_enabled'):
 

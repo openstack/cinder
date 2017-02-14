@@ -117,7 +117,9 @@ global_opts = [
     # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
                default='nova',
-               help='Availability zone of this node'),
+               help='Availability zone of this node. Can be overridden per '
+                    'volume backend with the option '
+                    '"backend_availability_zone".'),
     cfg.StrOpt('default_availability_zone',
                help='Default availability zone for new volumes. If not set, '
                     'the storage_availability_zone option value is used as '

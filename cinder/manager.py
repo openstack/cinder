@@ -91,6 +91,7 @@ class Manager(base.Base, PeriodicTasks):
         self.host = host
         self.cluster = cluster
         self.additional_endpoints = []
+        self.availability_zone = CONF.storage_availability_zone
         super(Manager, self).__init__(db_driver)
 
     @property
