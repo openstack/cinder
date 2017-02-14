@@ -2070,7 +2070,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param volume: New Volume object
         :param snapshot: Reference to snapshot entity
         """
-        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
             LOG.info(_LI("There is no backing for the snapshotted volume: "
@@ -2107,7 +2106,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param volume: New Volume object
         :param src_vref: Source Volume object
         """
-        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(src_vref['name'])
         if not backing:
             LOG.info(_LI("There is no backing for the source volume: %(src)s. "

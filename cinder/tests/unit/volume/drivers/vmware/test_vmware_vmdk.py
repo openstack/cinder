@@ -226,6 +226,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 'volume_name': volume['name'],
                 'name': name,
                 'display_description': description,
+                'volume_size': volume['size']
                 }
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -1981,124 +1982,98 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._test_clone_backing(
             clone_type=volumeops.LINKED_CLONE_TYPE, vc60=True)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_create_volume_from_snapshot_without_backing(self, mock_vops):
-        """Test create_volume_from_snapshot without a backing."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'name': 'mock_vol'}
-        snapshot = {'volume_name': 'mock_vol', 'name': 'mock_snap'}
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = None
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_volume_from_snapshot_without_backing(self, clone_backing,
+                                                         vops):
+        vops.get_backing.return_value = None
 
-        # invoke the create_volume_from_snapshot api
-        driver.create_volume_from_snapshot(volume, snapshot)
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        snapshot = self._create_snapshot_dict(src_vref)
+        self._driver.create_volume_from_snapshot(volume, snapshot)
 
-        # verify calls
-        driver._verify_volume_creation.assert_called_once_with(volume)
-        mock_vops.get_backing.assert_called_once_with('mock_vol')
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        clone_backing.assert_not_called()
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_create_volume_from_snap_without_backing_snap(self, mock_vops):
-        """Test create_volume_from_snapshot without a backing snapshot."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'volume_type_id': None, 'name': 'mock_vol'}
-        snapshot = {'volume_name': 'mock_vol', 'name': 'mock_snap'}
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_volume_from_snapshot_without_backing_snapshot(
+            self, clone_backing, vops):
         backing = mock.sentinel.backing
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = backing
-        mock_vops.get_snapshot.return_value = None
+        vops.get_backing.return_value = backing
 
-        # invoke the create_volume_from_snapshot api
-        driver.create_volume_from_snapshot(volume, snapshot)
+        vops.get_snapshot.return_value = None
 
-        # verify calls
-        driver._verify_volume_creation.assert_called_once_with(volume)
-        mock_vops.get_backing.assert_called_once_with('mock_vol')
-        mock_vops.get_snapshot.assert_called_once_with(backing,
-                                                       'mock_snap')
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        snapshot = self._create_snapshot_dict(src_vref)
+        self._driver.create_volume_from_snapshot(volume, snapshot)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_create_volume_from_snapshot(self, mock_vops):
-        """Test create_volume_from_snapshot."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'volume_type_id': None, 'name': 'mock_vol'}
-        snapshot = {'volume_name': 'mock_vol', 'name': 'mock_snap',
-                    'volume_size': 2}
-        backing = mock.sentinel.backing
-        snap_moref = mock.sentinel.snap_moref
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = backing
-        mock_vops.get_snapshot.return_value = snap_moref
-        driver._clone_backing = mock.MagicMock()
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        vops.get_snapshot.assert_called_once_with(backing, snapshot['name'])
+        clone_backing.assert_not_called()
 
-        # invoke the create_volume_from_snapshot api
-        driver.create_volume_from_snapshot(volume, snapshot)
-
-        # verify calls
-        driver._verify_volume_creation.assert_called_once_with(volume)
-        mock_vops.get_backing.assert_called_once_with('mock_vol')
-        mock_vops.get_snapshot.assert_called_once_with(backing,
-                                                       'mock_snap')
-        default_clone_type = volumeops.FULL_CLONE_TYPE
-        driver._clone_backing.assert_called_once_with(volume,
-                                                      backing,
-                                                      snap_moref,
-                                                      default_clone_type,
-                                                      snapshot['volume_size'])
-
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_create_cloned_volume_without_backing(self, mock_vops):
-        """Test create_cloned_volume without a backing."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'name': 'mock_vol'}
-        src_vref = {'name': 'src_snapshot_name'}
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = None
-
-        # invoke the create_volume_from_snapshot api
-        driver.create_cloned_volume(volume, src_vref)
-
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_create_cloned_volume_with_backing(self, mock_vops):
-        """Test create_cloned_volume with clone type - full."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'volume_type_id': None, 'name': 'mock_vol'}
-        src_vref = {'name': 'src_snapshot_name', 'size': 1}
-        backing = mock.sentinel.backing
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = backing
-        default_clone_type = volumeops.FULL_CLONE_TYPE
-        driver._clone_backing = mock.MagicMock()
-
-        # invoke the create_volume_from_snapshot api
-        driver.create_cloned_volume(volume, src_vref)
-
-        # verify calls
-        driver._verify_volume_creation.assert_called_once_with(volume)
-        mock_vops.get_backing.assert_called_once_with('src_snapshot_name')
-        driver._clone_backing.assert_called_once_with(volume,
-                                                      backing,
-                                                      None,
-                                                      default_clone_type,
-                                                      src_vref['size'])
-
-    @mock.patch.object(VMDK_DRIVER, '_verify_volume_creation')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
     @mock.patch.object(VMDK_DRIVER, '_clone_backing')
-    def test_create_linked_cloned_volume_with_backing(
-            self, clone_backing, get_clone_type, vops, verify_volume_creation):
+    def test_create_volume_from_snapshot(self, clone_backing, get_clone_type,
+                                         vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
 
+        snapshot_moref = mock.sentinel.snap_moref
+        vops.get_snapshot.return_value = snapshot_moref
+
+        get_clone_type.return_value = volumeops.FULL_CLONE_TYPE
+
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        snapshot = self._create_snapshot_dict(src_vref)
+        self._driver.create_volume_from_snapshot(volume, snapshot)
+
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        vops.get_snapshot.assert_called_once_with(backing, snapshot['name'])
+        get_clone_type.assert_called_once_with(volume)
+        clone_backing.assert_called_once_with(
+            volume, backing, snapshot_moref, volumeops.FULL_CLONE_TYPE,
+            snapshot['volume_size'])
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_cloned_volume_without_backing(self, clone_backing, vops):
+        vops.get_backing.return_value = None
+
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        self._driver.create_cloned_volume(volume, src_vref)
+
+        vops.get_backing.assert_called_once_with(src_vref['name'])
+        clone_backing.assert_not_called()
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_cloned_volume(self, clone_backing, get_clone_type, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        get_clone_type.return_value = volumeops.FULL_CLONE_TYPE
+
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
+        self._driver.create_cloned_volume(volume, src_vref)
+
+        vops.get_backing.assert_called_once_with(src_vref['name'])
+        get_clone_type.assert_called_once_with(volume)
+        clone_backing.assert_called_once_with(
+            volume, backing, None, volumeops.FULL_CLONE_TYPE, src_vref['size'])
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_cloned_volume_linked(
+            self, clone_backing, get_clone_type, vops):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -2111,43 +2086,34 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID)
         self._driver.create_cloned_volume(volume, src_vref)
 
-        verify_volume_creation.assert_called_once_with(volume)
         vops.get_backing.assert_called_once_with(src_vref['name'])
         get_clone_type.assert_called_once_with(volume)
         temp_snap_name = 'temp-snapshot-%s' % volume['id']
         vops.create_snapshot.assert_called_once_with(
             backing, temp_snap_name, None)
-        self._driver._clone_backing.assert_called_once_with(
+        clone_backing.assert_called_once_with(
             volume, backing, temp_snapshot, volumeops.LINKED_CLONE_TYPE,
             src_vref['size'])
         vops.delete_snapshot.assert_called_once_with(backing, temp_snap_name)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_clone_type')
-    def test_create_linked_cloned_volume_when_attached(self, get_clone_type,
-                                                       mock_vops):
-        """Test create_cloned_volume linked clone when volume is attached."""
-        mock_vops = mock_vops.return_value
-        driver = self._driver
-        volume = {'volume_type_id': None, 'name': 'mock_vol', 'id': 'mock_id'}
-        src_vref = {'name': 'src_snapshot_name', 'status': 'in-use'}
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_clone_type')
+    @mock.patch.object(VMDK_DRIVER, '_clone_backing')
+    def test_create_cloned_volume_linked_when_attached(
+            self, clone_backing, get_clone_type, vops):
         backing = mock.sentinel.backing
-        driver._verify_volume_creation = mock.MagicMock()
-        mock_vops.get_backing.return_value = backing
-        linked_clone = volumeops.LINKED_CLONE_TYPE
-        get_clone_type.return_value = linked_clone
+        vops.get_backing.return_value = backing
 
-        # invoke the create_volume_from_snapshot api
+        get_clone_type.return_value = volumeops.LINKED_CLONE_TYPE
+
+        volume = self._create_volume_dict()
+        src_vref = self._create_volume_dict(vol_id=self.SRC_VOL_ID,
+                                            status='in-use')
         self.assertRaises(cinder_exceptions.InvalidVolume,
-                          driver.create_cloned_volume,
+                          self._driver.create_cloned_volume,
                           volume,
                           src_vref)
-
-        # verify calls
-        driver._verify_volume_creation.assert_called_once_with(volume)
-        mock_vops.get_backing.assert_called_once_with('src_snapshot_name')
+        vops.get_backing.assert_called_once_with(src_vref['name'])
         get_clone_type.assert_called_once_with(volume)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.'
