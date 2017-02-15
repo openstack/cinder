@@ -1814,6 +1814,24 @@ class SolidFireVolumeTestCase(test.TestCase):
                               cgsnapshot,
                               snapshots)
 
+    def test_create_vol_from_cgsnap(self):
+        # cgsnaps on the backend yield numerous identically named snapshots.
+        # create_volume_from_snapshot now searches for the correct snapshot.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        snapshot = {'cgsnapshot_id': 'typical_cgsnap_id',
+                    'volume_id': 'typical_vol_id'}
+        name = (self.configuration.sf_volume_prefix
+                + snapshot.get('cgsnapshot_id'))
+        with mock.patch.object(sfv,
+                               '_get_group_snapshot_by_name',
+                               return_value={}) as get,\
+            mock.patch.object(sfv,
+                              '_create_clone_from_sf_snapshot',
+                              return_value='model'):
+            result = sfv.create_volume_from_snapshot({}, snapshot)
+            get.assert_called_once_with(name)
+            self.assertEqual('model', result)
+
     def test_getattr_failure(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         try:
