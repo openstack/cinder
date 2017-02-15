@@ -1,0 +1,4 @@
+---
+features:
+  - Added new BoolOpt ``backup_ceph_image_journals`` for enabling the Ceph
+    image features required to support RBD mirroring of Cinder backup pool.
