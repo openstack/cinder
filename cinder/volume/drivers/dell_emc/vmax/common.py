@@ -95,7 +95,11 @@ emc_opts = [
     cfg.StrOpt('multi_pool_support',
                default=False,
                help='Use this value to specify '
-                    'multi-pool support for VMAX3')]
+                    'multi-pool support for VMAX3'),
+    cfg.StrOpt('initiator_check',
+               default=False,
+               help='Use this value to enable '
+                    'the initiator_check')]
 
 CONF.register_opts(emc_opts)
 
@@ -155,6 +159,7 @@ class VMAXCommon(object):
         self.failover = False
         self._get_replication_info()
         self.multiPoolSupportEnabled = False
+        self.initiatorCheck = False
         self._gather_info()
 
     def _gather_info(self):
@@ -1635,13 +1640,28 @@ class VMAXCommon(object):
         return extraSpecs, configurationFile, qosSpecs
 
     def _get_multi_pool_support_enabled_flag(self):
-        """Reads the configuration fpr multi pool support flag.
+        """Reads the configuration for multi pool support flag.
 
         :returns: MultiPoolSupportEnabled flag
         """
 
         confString = (
             self.configuration.safe_get('multi_pool_support'))
+        retVal = False
+        stringTrue = "True"
+        if confString:
+            if confString.lower() == stringTrue.lower():
+                retVal = True
+        return retVal
+
+    def _get_initiator_check_flag(self):
+        """Reads the configuration for initator_check flag.
+
+        :returns:  flag
+        """
+
+        confString = (
+            self.configuration.safe_get('initiator_check'))
         retVal = False
         stringTrue = "True"
         if confString:
@@ -2247,6 +2267,10 @@ class VMAXCommon(object):
         maskingViewDict['volumeInstance'] = volumeInstance
         maskingViewDict['volumeName'] = volumeName
         maskingViewDict['storageSystemName'] = storageSystemName
+        if self._get_initiator_check_flag():
+            maskingViewDict['initiatorCheck'] = True
+        else:
+            maskingViewDict['initiatorCheck'] = False
 
         return maskingViewDict
 
