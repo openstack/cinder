@@ -207,8 +207,7 @@ class HostCommands(object):
 class DbCommands(object):
     """Class for managing the database."""
 
-    online_migrations = (db.migrate_consistencygroups_to_groups,
-                         db.migrate_add_message_prefix)
+    online_migrations = ()
 
     def __init__(self):
         pass
