@@ -36,6 +36,8 @@ class NovaClientTestCase(test.TestCase):
                              'http://novahost:8774/v2/%(project_id)s')
         self.override_config('nova_endpoint_admin_template',
                              'http://novaadmhost:4778/v2/%(project_id)s')
+        self.override_config('nova_catalog_admin_info',
+                             'compute:Compute Service:adminURL')
         self.override_config('os_privileged_user_name', 'adminuser')
         self.override_config('os_privileged_user_password', 'strongpassword')
 
