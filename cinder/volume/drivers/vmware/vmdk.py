@@ -2113,12 +2113,23 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         "in state: %s.") % src_vref['status']
                 LOG.error(msg)
                 raise exception.InvalidVolume(msg)
-            # For performing a linked clone, we snapshot the volume and
-            # then create the linked clone out of this snapshot point.
-            name = 'snapshot-%s' % volume['id']
-            snapshot = self.volumeops.create_snapshot(backing, name, None)
-        self._clone_backing(volume, backing, snapshot, clone_type,
-                            src_vref['size'])
+            # To create a linked clone, we create a temporary snapshot of the
+            # source volume, and then create the clone off the temporary
+            # snapshot.
+            snap_name = 'temp-snapshot-%s' % volume['id']
+            snapshot = self.volumeops.create_snapshot(backing, snap_name, None)
+        try:
+            self._clone_backing(volume, backing, snapshot, clone_type,
+                                src_vref['size'])
+        finally:
+            if snapshot:
+                # Delete temporary snapshot.
+                try:
+                    self.volumeops.delete_snapshot(backing, snap_name)
+                except exceptions.VimException:
+                    LOG.debug("Unable to delete temporary snapshot: %s of "
+                              "volume backing.", snap_name, resource=volume,
+                              exc_info=True)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates volume clone.
