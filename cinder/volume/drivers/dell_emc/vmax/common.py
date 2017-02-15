@@ -2814,10 +2814,11 @@ class VMAXCommon(object):
 
         # Find storage system.
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, __, __ = (
                 self._get_consistency_group_utils(self.conn, group))
+            interval_retries_dict = self.utils.get_default_intervals_retries()
             self.provision.create_consistency_group(
-                self.conn, replicationService, cgName, extraSpecs)
+                self.conn, replicationService, cgName, interval_retries_dict)
         except Exception:
             exceptionMessage = (_("Failed to create consistency group:"
                                   " %(cgName)s.")
@@ -2846,7 +2847,7 @@ class VMAXCommon(object):
             self.conn = self._get_ecom_connection()
 
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, __, isV3 = (
                 self._get_consistency_group_utils(self.conn, group))
 
             storageConfigservice = (
@@ -2865,17 +2866,17 @@ class VMAXCommon(object):
 
             memberInstanceNames = self._get_members_of_replication_group(
                 cgInstanceName)
-
+            interval_retries_dict = self.utils.get_default_intervals_retries()
             self.provision.delete_consistency_group(self.conn,
                                                     replicationService,
                                                     cgInstanceName, cgName,
-                                                    extraSpecs)
+                                                    interval_retries_dict)
 
             # Do a bulk delete, a lot faster than single deletes.
             if memberInstanceNames:
                 volumes_model_update, modelUpdate = self._do_bulk_delete(
                     storageSystem, memberInstanceNames, storageConfigservice,
-                    volumes, group, extraSpecs[ISV3], extraSpecs)
+                    volumes, group, isV3, interval_retries_dict)
 
         except Exception:
             exceptionMessage = (_(
@@ -2950,7 +2951,7 @@ class VMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, extraSpecsDictList, isV3 = (
                 self._get_consistency_group_utils(self.conn, consistencyGroup))
 
             cgInstanceName, cgName = (
@@ -2964,30 +2965,34 @@ class VMAXCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
-            memberInstanceNames = self._get_members_of_replication_group(
-                cgInstanceName)
-
             # Create the target consistency group.
             targetCgName = self._update_consistency_group_name(cgsnapshot)
+            interval_retries_dict = self.utils.get_default_intervals_retries()
             self.provision.create_consistency_group(
-                self.conn, replicationService, targetCgName, extraSpecs)
+                self.conn, replicationService, targetCgName,
+                interval_retries_dict)
             targetCgInstanceName, targetCgName = self._find_consistency_group(
                 replicationService, cgsnapshot['id'])
             LOG.info(_LI("Create target consistency group %(targetCg)s."),
                      {'targetCg': targetCgInstanceName})
 
-            for memberInstanceName in memberInstanceNames:
-                volInstance = self.conn.GetInstance(
-                    memberInstanceName, LocalOnly=False)
-                numOfBlocks = volInstance['NumberOfBlocks']
-                blockSize = volInstance['BlockSize']
-                volumeSizeInbits = numOfBlocks * blockSize
-
+            for snapshot in snapshots:
+                volume = snapshot['volume']
+                for extraSpecsDict in extraSpecsDictList:
+                    if volume['volume_type_id'] in extraSpecsDict.values():
+                        extraSpecs = extraSpecsDict.get('extraSpecs')
+                        if 'pool_name' in extraSpecs:
+                            extraSpecs = self.utils.update_extra_specs(
+                                extraSpecs)
+                if 'size' in volume:
+                    volumeSizeInbits = int(self.utils.convert_gb_to_bits(
+                        volume['size']))
+                else:
+                    volumeSizeInbits = int(self.utils.convert_gb_to_bits(
+                        volume['volume_size']))
                 targetVolumeName = 'targetVol'
-                volume = {'size': int(self.utils.convert_bits_to_gbs(
-                    volumeSizeInbits))}
 
-                if extraSpecs[ISV3]:
+                if isV3:
                     _rc, volumeDict, _storageSystemName = (
                         self._create_v3_volume(
                             volume, targetVolumeName, volumeSizeInbits,
@@ -3002,7 +3007,7 @@ class VMAXCommon(object):
                 LOG.debug("Create target volume for member volume "
                           "Source volume: %(memberVol)s "
                           "Target volume %(targetVol)s.",
-                          {'memberVol': memberInstanceName,
+                          {'memberVol': volume['id'],
                            'targetVol': targetVolumeInstance.path})
                 self.provision.add_volume_to_cg(self.conn,
                                                 replicationService,
@@ -3012,39 +3017,9 @@ class VMAXCommon(object):
                                                 targetVolumeName,
                                                 extraSpecs)
 
-            # Less than 5 characters relationship name.
-            relationName = self.utils.truncate_string(cgsnapshot['id'], 5)
-            if extraSpecs[ISV3]:
-                self.provisionv3.create_group_replica(
-                    self.conn, replicationService, cgInstanceName,
-                    targetCgInstanceName, relationName, extraSpecs)
-            else:
-                self.provision.create_group_replica(
-                    self.conn, replicationService, cgInstanceName,
-                    targetCgInstanceName, relationName, extraSpecs)
-            # Break the replica group relationship.
-            rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
-                self.conn, storageSystem, targetCgInstanceName, extraSpecs,
-                True)
-            if rgSyncInstanceName is not None:
-                repservice = self.utils.find_replication_service(
-                    self.conn, storageSystem)
-                if repservice is None:
-                    exception_message = (_(
-                        "Cannot find Replication service on system %s.") %
-                        storageSystem)
-                    raise exception.VolumeBackendAPIException(
-                        data=exception_message)
-            if extraSpecs[ISV3]:
-                # Operation 7: dissolve for snapVx.
-                operation = self.utils.get_num(9, '16')
-                self.provisionv3.break_replication_relationship(
-                    self.conn, repservice, rgSyncInstanceName, operation,
-                    extraSpecs)
-            else:
-                self.provision.delete_clone_relationship(self.conn, repservice,
-                                                         rgSyncInstanceName,
-                                                         extraSpecs)
+            self._create_group_and_break_relationship(
+                isV3, cgsnapshot['id'], replicationService, cgInstanceName,
+                targetCgInstanceName, storageSystem, interval_retries_dict)
 
         except Exception:
             exceptionMessage = (_("Failed to create snapshot for cg:"
@@ -3061,6 +3036,53 @@ class VMAXCommon(object):
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
         return modelUpdate, snapshots_model_update
+
+    def _create_group_and_break_relationship(
+            self, isV3, cgsnapshotId, replicationService, cgInstanceName,
+            targetCgInstanceName, storageSystem, interval_retries_dict):
+        """Creates a cg group and deletes the relationship.
+
+        :param isV3: the context
+        :param cgsnapshotId: the consistency group snapshot id
+        :param replicationService: replication service
+        :param cgInstanceName: cg instance name
+        :param targetCgInstanceName: target cg instance name
+        :param storageSystem: storage system
+        :param interval_retries_dict:
+        """
+        # Less than 5 characters relationship name.
+        relationName = self.utils.truncate_string(cgsnapshotId, 5)
+        if isV3:
+            self.provisionv3.create_group_replica(
+                self.conn, replicationService, cgInstanceName,
+                targetCgInstanceName, relationName, interval_retries_dict)
+        else:
+            self.provision.create_group_replica(
+                self.conn, replicationService, cgInstanceName,
+                targetCgInstanceName, relationName, interval_retries_dict)
+        # Break the replica group relationship.
+        rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
+            self.conn, storageSystem, targetCgInstanceName,
+            interval_retries_dict, True)
+        if rgSyncInstanceName is not None:
+            repservice = self.utils.find_replication_service(
+                self.conn, storageSystem)
+            if repservice is None:
+                exception_message = (_(
+                    "Cannot find Replication service on system %s.") %
+                    storageSystem)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+        if isV3:
+            # Operation 7: dissolve for snapVx.
+            operation = self.utils.get_num(9, '16')
+            self.provisionv3.break_replication_relationship(
+                self.conn, repservice, rgSyncInstanceName, operation,
+                interval_retries_dict)
+        else:
+            self.provision.delete_clone_relationship(self.conn, repservice,
+                                                     rgSyncInstanceName,
+                                                     interval_retries_dict)
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Delete a cgsnapshot.
@@ -3086,11 +3108,12 @@ class VMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, __, isV3 = (
                 self._get_consistency_group_utils(self.conn, consistencyGroup))
+            interval_retries_dict = self.utils.get_default_intervals_retries()
             model_update, snapshots = self._delete_cg_and_members(
                 storageSystem, cgsnapshot, model_update,
-                snapshots, extraSpecs)
+                snapshots, isV3, interval_retries_dict)
             for snapshot in snapshots:
                 snapshots_model_update.append(
                     {'id': snapshot['id'],
@@ -4342,13 +4365,15 @@ class VMAXCommon(object):
             deviceId, extraSpecs)
 
     def _delete_cg_and_members(
-            self, storageSystem, cgsnapshot, modelUpdate, volumes, extraSpecs):
+            self, storageSystem, cgsnapshot, modelUpdate, volumes, isV3,
+            extraSpecs):
         """Helper function to delete a consistencygroup and its member volumes.
 
         :param storageSystem: storage system
         :param cgsnapshot: consistency group snapshot
         :param modelUpdate: dict -- the model update dict
         :param volumes: the list of member volumes
+        :param isV3: boolean
         :param extraSpecs: extra specifications
         :returns: dict -- modelUpdate
         :returns: list -- the updated list of member volumes
@@ -4390,7 +4415,7 @@ class VMAXCommon(object):
                           {'cg': cgInstanceName,
                            'numVols': len(memberInstanceNames),
                            'memVols': memberInstanceNames})
-                if extraSpecs[ISV3]:
+                if isV3:
                     self.provisionv3.delete_volume_from_pool(
                         self.conn, storageConfigservice,
                         memberInstanceNames, None, extraSpecs)
@@ -4694,7 +4719,7 @@ class VMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, __, __ = (
                 self._get_consistency_group_utils(self.conn, group))
             cgInstanceName = (
                 self._find_consistency_group(
@@ -4703,17 +4728,18 @@ class VMAXCommon(object):
                 raise exception.ConsistencyGroupNotFound(
                     consistencygroup_id=cg_name)
             # Add volume(s) to a consistency group
+            interval_retries_dict = self.utils.get_default_intervals_retries()
             if add_instance_names:
                 self.provision.add_volume_to_cg(
                     self.conn, replicationService, cgInstanceName,
                     add_instance_names, cg_name, None,
-                    extraSpecs)
+                    interval_retries_dict)
             # Remove volume(s) from a consistency group
             if remove_instance_names:
                 self.provision.remove_volume_from_cg(
                     self.conn, replicationService, cgInstanceName,
                     remove_instance_names, cg_name, None,
-                    extraSpecs)
+                    interval_retries_dict)
         except exception.ConsistencyGroupNotFound:
             raise
         except Exception as ex:
@@ -4746,8 +4772,6 @@ class VMAXCommon(object):
                                          cgsnapshot, snapshots, source_cg,
                                          source_vols):
         """Creates the consistency group from source.
-
-        Currently the source can only be a cgsnapshot.
 
         :param context: the context
         :param group: the consistency group object to be created
@@ -4784,7 +4808,7 @@ class VMAXCommon(object):
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
         try:
-            replicationService, storageSystem, extraSpecs = (
+            replicationService, storageSystem, extraSpecsDictList, isV3 = (
                 self._get_consistency_group_utils(self.conn, group))
             if replicationService is None:
                 exceptionMessage = (_(
@@ -4805,67 +4829,22 @@ class VMAXCommon(object):
                 else:
                     volumeSizeInbits = int(self.utils.convert_gb_to_bits(
                         source_vol_or_snapshot['volume_size']))
-                targetVolumeName = 'targetVol'
-                volume = {'size': int(self.utils.convert_bits_to_gbs(
-                    volumeSizeInbits))}
-                if extraSpecs[ISV3]:
-                    _rc, volumeDict, _storageSystemName = (
-                        self._create_v3_volume(
-                            volume, targetVolumeName, volumeSizeInbits,
-                            extraSpecs))
-                else:
-                    _rc, volumeDict, _storageSystemName = (
-                        self._create_composite_volume(
-                            volume, targetVolumeName, volumeSizeInbits,
-                            extraSpecs))
-                targetVolumeInstance = self.utils.find_volume_instance(
-                    self.conn, volumeDict, targetVolumeName)
-                LOG.debug("Create target volume for member snapshot. "
-                          "Source : %(snapshot)s, "
-                          "Target volume: %(targetVol)s.",
-                          {'snapshot': source_vol_or_snapshot['id'],
-                           'targetVol': targetVolumeInstance.path})
+                for extraSpecsDict in extraSpecsDictList:
+                    if volume['volume_type_id'] in extraSpecsDict.values():
+                        extraSpecs = extraSpecsDict.get('extraSpecs')
+                        if 'pool_name' in extraSpecs:
+                            extraSpecs = self.utils.update_extra_specs(
+                                extraSpecs)
+                        self._create_vol_and_add_to_cg(
+                            volumeSizeInbits, replicationService,
+                            targetCgInstanceName, targetCgName,
+                            source_vol_or_snapshot['id'], extraSpecs)
 
-                self.provision.add_volume_to_cg(self.conn,
-                                                replicationService,
-                                                targetCgInstanceName,
-                                                targetVolumeInstance.path,
-                                                targetCgName,
-                                                targetVolumeName,
-                                                extraSpecs)
-            sourceCgInstanceName, sourceCgName = self._find_consistency_group(
-                replicationService, source_id)
-            if sourceCgInstanceName is None:
-                exceptionMessage = (_("Cannot find source CG instance. "
-                                      "consistencygroup_id: %s.") %
-                                    source_id)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
-            relationName = self.utils.truncate_string(group['id'], TRUNCATE_5)
-            if extraSpecs[ISV3]:
-                self.provisionv3.create_group_replica(
-                    self.conn, replicationService, sourceCgInstanceName,
-                    targetCgInstanceName, relationName, extraSpecs)
-            else:
-                self.provision.create_group_replica(
-                    self.conn, replicationService, sourceCgInstanceName,
-                    targetCgInstanceName, relationName, extraSpecs)
-            # Break the replica group relationship.
-            rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
-                self.conn, storageSystem, targetCgInstanceName, extraSpecs,
-                True)
-
-            if rgSyncInstanceName is not None:
-                if extraSpecs[ISV3]:
-                    # Operation 9: dissolve for snapVx
-                    operation = self.utils.get_num(9, '16')
-                    self.provisionv3.break_replication_relationship(
-                        self.conn, replicationService, rgSyncInstanceName,
-                        operation, extraSpecs)
-                else:
-                    self.provision.delete_clone_relationship(
-                        self.conn, replicationService,
-                        rgSyncInstanceName, extraSpecs)
+            interval_retries_dict = self.utils.get_default_intervals_retries()
+            self._break_replica_group_relationship(
+                replicationService, source_id, group['id'],
+                targetCgInstanceName, storageSystem, interval_retries_dict,
+                isV3)
         except Exception:
             exceptionMessage = (_("Failed to create CG %(cgName)s "
                                   "from source %(cgSnapshot)s.")
@@ -4877,6 +4856,94 @@ class VMAXCommon(object):
             volumes, group['id'], modelUpdate['status'])
 
         return modelUpdate, volumes_model_update
+
+    def _break_replica_group_relationship(
+            self, replicationService, source_id, group_id,
+            targetCgInstanceName, storageSystem, extraSpecs, isV3):
+        """Breaks the replica group relationship.
+
+        :param replicationService: replication service
+        :param source_id: source identifier
+        :param group_id: group identifier
+        :param targetCgInstanceName: target CG instance
+        :param storageSystem: storage system
+        :param extraSpecs: additional info
+        """
+        sourceCgInstanceName, sourceCgName = self._find_consistency_group(
+            replicationService, source_id)
+        if sourceCgInstanceName is None:
+            exceptionMessage = (_("Cannot find source CG instance. "
+                                  "consistencygroup_id: %s.") %
+                                source_id)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        relationName = self.utils.truncate_string(group_id, TRUNCATE_5)
+        if isV3:
+            self.provisionv3.create_group_replica(
+                self.conn, replicationService, sourceCgInstanceName,
+                targetCgInstanceName, relationName, extraSpecs)
+        else:
+            self.provision.create_group_replica(
+                self.conn, replicationService, sourceCgInstanceName,
+                targetCgInstanceName, relationName, extraSpecs)
+        # Break the replica group relationship.
+        rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
+            self.conn, storageSystem, targetCgInstanceName, extraSpecs,
+            True)
+
+        if rgSyncInstanceName is not None:
+            if isV3:
+                # Operation 9: dissolve for snapVx
+                operation = self.utils.get_num(9, '16')
+                self.provisionv3.break_replication_relationship(
+                    self.conn, replicationService, rgSyncInstanceName,
+                    operation, extraSpecs)
+            else:
+                self.provision.delete_clone_relationship(
+                    self.conn, replicationService,
+                    rgSyncInstanceName, extraSpecs)
+
+    def _create_vol_and_add_to_cg(
+            self, volumeSizeInbits, replicationService,
+            targetCgInstanceName, targetCgName, source_id, extraSpecs):
+        """Creates volume and adds to CG.
+
+        :param context: the context
+        :param volumeSizeInbits: volume size in bits
+        :param replicationService: replication service
+        :param targetCgInstanceName: target cg instance
+        :param targetCgName: target cg name
+        :param source_id: source identifier
+        :param extraSpecs: additional info
+        """
+        targetVolumeName = 'targetVol'
+        volume = {'size': int(self.utils.convert_bits_to_gbs(
+            volumeSizeInbits))}
+        if extraSpecs[ISV3]:
+            _rc, volumeDict, _storageSystemName = (
+                self._create_v3_volume(
+                    volume, targetVolumeName, volumeSizeInbits,
+                    extraSpecs))
+        else:
+            _rc, volumeDict, _storageSystemName = (
+                self._create_composite_volume(
+                    volume, targetVolumeName, volumeSizeInbits,
+                    extraSpecs))
+        targetVolumeInstance = self.utils.find_volume_instance(
+            self.conn, volumeDict, targetVolumeName)
+        LOG.debug("Create target volume for member snapshot. "
+                  "Source : %(snapshot)s, "
+                  "Target volume: %(targetVol)s.",
+                  {'snapshot': source_id,
+                   'targetVol': targetVolumeInstance.path})
+
+        self.provision.add_volume_to_cg(self.conn,
+                                        replicationService,
+                                        targetCgInstanceName,
+                                        targetVolumeInstance.path,
+                                        targetCgName,
+                                        targetVolumeName,
+                                        extraSpecs)
 
     def _find_ip_protocol_endpoints(self, conn, storageSystemName,
                                     portgroupname):
@@ -4989,20 +5056,43 @@ class VMAXCommon(object):
 
         :param conn: ecom connection
         :param group: the consistency group object to be created
-        :return: replicationService, storageSystem, extraSpecs
+        :return: replicationService, storageSystem, extraSpecs, isV3
         """
         storageSystems = set()
+        extraSpecsDictList = []
+        isV3 = False
 
-        volumeTypeIds = group.volume_type_id.split(",")
+        volumeTypeIds = group.get('volume_type_ids')
+        if not volumeTypeIds:
+            volumeTypeIds = group.volume_type_id.split(",")
 
         for volumeTypeId in volumeTypeIds:
             if volumeTypeId:
-                extraSpecs = self._initial_setup(None, volumeTypeId)
+                extraSpecsDict = {}
+                extraSpecs = self.utils.get_volumetype_extraspecs(
+                    None, volumeTypeId)
+                if 'pool_name' in extraSpecs:
+                    isV3 = True
+                    extraSpecs = self.utils.update_extra_specs(
+                        extraSpecs)
+                    extraSpecs[ISV3] = True
+                else:
+                    # Without multipool we cannot support multiple volumetypes.
+                    if len(volumeTypeIds) == 1:
+                        extraSpecs = self._initial_setup(None, volumeTypeId)
+                    else:
+                        msg = (_("We cannot support multiple volume types if "
+                                 "multi pool functionality is not enabled."))
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
 
                 __, storageSystem = (
                     self._get_pool_and_storage_system(extraSpecs))
                 if storageSystem:
                     storageSystems.add(storageSystem)
+                extraSpecsDict["volumeTypeId"] = volumeTypeId
+                extraSpecsDict["extraSpecs"] = extraSpecs
+                extraSpecsDictList.append(extraSpecsDict)
 
         if len(storageSystems) != 1:
             if not storageSystems:
@@ -5018,8 +5108,7 @@ class VMAXCommon(object):
         storageSystem = storageSystems.pop()
         replicationService = self.utils.find_replication_service(
             conn, storageSystem)
-
-        return replicationService, storageSystem, extraSpecs
+        return replicationService, storageSystem, extraSpecsDictList, isV3
 
     def _update_consistency_group_name(self, group):
         """Format id and name consistency group

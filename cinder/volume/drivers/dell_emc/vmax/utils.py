@@ -80,6 +80,7 @@ class VMAXUtils(object):
     SLO = 'storagetype:slo'
     WORKLOAD = 'storagetype:workload'
     POOL = 'storagetype:pool'
+    ARRAY = 'storagetype:array'
     DISABLECOMPRESSION = 'storagetype:disablecompression'
 
     def __init__(self, prtcl):
@@ -2996,3 +2997,30 @@ class VMAXUtils(object):
                     return True
                 else:
                     return False
+
+    def update_extra_specs(self, extraSpecs):
+        """Update extra specs.
+
+        :param extraSpecs: the additional info
+        :return: extraSpecs
+        """
+        try:
+            poolDetails = extraSpecs['pool_name'].split('+')
+            extraSpecs[self.SLO] = poolDetails[0]
+            extraSpecs[self.WORKLOAD] = poolDetails[1]
+            extraSpecs[self.POOL] = poolDetails[2]
+            extraSpecs[self.ARRAY] = poolDetails[3]
+        except KeyError:
+            LOG.error(_LE("Error parsing SLO, workload from "
+                          "the provided extra_specs."))
+        return extraSpecs
+
+    def get_default_intervals_retries(self):
+        """Get the default intervals and retries.
+
+        :return: default_dict
+        """
+        default_dict = {}
+        default_dict[INTERVAL] = INTERVAL_10_SEC
+        default_dict[RETRIES] = JOB_RETRIES
+        return default_dict
