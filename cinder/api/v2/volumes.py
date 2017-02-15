@@ -30,10 +30,10 @@ from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _, _LI
 from cinder.image import glance
+from cinder import objects
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
-from cinder.volume import volume_types
 
 CONF = cfg.CONF
 
@@ -199,7 +199,7 @@ class VolumeController(wsgi.Controller):
         if req_volume_type:
             # Not found exception will be handled at the wsgi level
             kwargs['volume_type'] = (
-                volume_types.get_by_name_or_id(context, req_volume_type))
+                objects.VolumeType.get_by_name_or_id(context, req_volume_type))
 
         kwargs['metadata'] = volume.get('metadata', None)
 

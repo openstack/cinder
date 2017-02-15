@@ -154,6 +154,13 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes(fields=[attrname])
 
+    @classmethod
+    def get_by_name_or_id(cls, context, identity):
+        orm_obj = volume_types.get_by_name_or_id(context, identity)
+        expected_attrs = cls._get_expected_attrs(context)
+        return cls._from_db_object(context, cls(context),
+                                   orm_obj, expected_attrs=expected_attrs)
+
 
 @base.CinderObjectRegistry.register
 class VolumeTypeList(base.ObjectListBase, base.CinderObject):

@@ -65,6 +65,14 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
+    @mock.patch('cinder.volume.volume_types.get_by_name_or_id')
+    def test_get_by_name_or_id(self, volume_type_get):
+        db_volume_type = fake_volume.fake_db_volume_type()
+        volume_type_get.return_value = db_volume_type
+        volume_type = objects.VolumeType.get_by_name_or_id(
+            self.context, fake.VOLUME_TYPE_ID)
+        self._compare(self, db_volume_type, volume_type)
+
     @ddt.data('1.0', '1.1')
     def test_obj_make_compatible(self, version):
         volume_type = objects.VolumeType(context=self.context)
