@@ -44,9 +44,4 @@ event_id_message_map = {
 
 
 def get_message_text(event_id):
-    # FIXME(ameade): In the Ocata release, this check can be removed as
-    # there should no longer be any event ids that do not start with the prefix
-    if not event_id.startswith("VOLUME_"):
-        event_id = "VOLUME_" + event_id
-
     return event_id_message_map[event_id]

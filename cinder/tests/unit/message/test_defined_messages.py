@@ -41,6 +41,3 @@ class DefinedMessagesTest(test.TestCase):
                 value = getattr(defined_messages.EventIds, attr_name)
                 self.assertTrue(defined_messages.event_id_message_map.get(
                     value))
-
-    def test_event_id_missing_prefix(self):
-        self.assertTrue(defined_messages.get_message_text('000001'))
