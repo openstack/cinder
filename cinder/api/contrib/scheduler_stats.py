@@ -20,6 +20,8 @@ from cinder.api.views import scheduler_stats as scheduler_stats_view
 from cinder.scheduler import rpcapi
 from cinder import utils
 
+GET_POOL_NAME_FILTER_MICRO_VERSION = '3.28'
+
 
 def authorize(context, action_name):
     action = 'scheduler_stats:%s' % action_name
@@ -40,9 +42,16 @@ class SchedulerStatsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, 'get_pools')
 
-        # TODO(zhiteng) Add filters support
         detail = utils.get_bool_param('detail', req.params)
-        pools = self.scheduler_api.get_pools(context, filters=None)
+
+        req_version = req.api_version_request
+
+        if req_version.matches(GET_POOL_NAME_FILTER_MICRO_VERSION):
+            filters = req.params.copy()
+            filters.pop('detail', None)
+            pools = self.scheduler_api.get_pools(context, filters=filters)
+        else:
+            pools = self.scheduler_api.get_pools(context, filters=None)
 
         return self._view_builder.pools(req, pools, detail)
 

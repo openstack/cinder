@@ -18,6 +18,7 @@ Tests For HostManager
 
 from datetime import datetime
 from datetime import timedelta
+import ddt
 
 import mock
 from oslo_serialization import jsonutils
@@ -45,6 +46,7 @@ class FakeFilterClass2(filters.BaseBackendFilter):
         pass
 
 
+@ddt.ddt
 class HostManagerTestCase(test.TestCase):
     """Test case for HostManager class."""
 
@@ -964,6 +966,158 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(len(expected2), len(res2))
         self.assertEqual(sorted(expected2, key=sort_func),
                          sorted(res2, key=sort_func))
+
+    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
+    def test_get_pools_filter_name(self, _mock_service_is_up,
+                                   _mock_service_get_all_by_topic):
+        context = 'fake_context'
+
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2@back1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow())
+        ]
+
+        mocked_service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0,
+                          provisioned_capacity_gb=312),
+            'host2@back1': dict(volume_backend_name='BBB',
+                                total_capacity_gb=256, free_capacity_gb=100,
+                                timestamp=None, reserved_percentage=0,
+                                provisioned_capacity_gb=156)
+        }
+
+        _mock_service_get_all_by_topic.return_value = services
+        _mock_service_is_up.return_value = True
+        _mock_warning = mock.Mock()
+        host_manager.LOG.warn = _mock_warning
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             mocked_service_states):
+            filters = {'name': 'host1#AAA'}
+            res = self.host_manager.get_pools(context, filters=filters)
+
+            expected = [
+                {
+                    'name': 'host1#AAA',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'AAA',
+                        'free_capacity_gb': 200,
+                        'driver_version': None,
+                        'total_capacity_gb': 512,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'provisioned_capacity_gb': 312},
+                }
+            ]
+
+            self.assertEqual(expected, res)
+
+    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.objects.service.Service.is_up',
+                new_callable=mock.PropertyMock)
+    def test_get_pools_filter_mulitattach(self, _mock_service_is_up,
+                                          _mock_service_get_all_by_topic):
+        context = 'fake_context'
+
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2@back1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow())
+        ]
+
+        mocked_service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0,
+                          multiattach=True),
+            'host2@back1': dict(volume_backend_name='BBB',
+                                total_capacity_gb=256, free_capacity_gb=100,
+                                timestamp=None, reserved_percentage=0,
+                                multiattach=False)
+        }
+
+        _mock_service_get_all_by_topic.return_value = services
+        _mock_service_is_up.return_value = True
+        _mock_warning = mock.Mock()
+        host_manager.LOG.warn = _mock_warning
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             mocked_service_states):
+            filters_t = {'multiattach': 'true'}
+            filters_f = {'multiattach': False}
+            res_t = self.host_manager.get_pools(context, filters=filters_t)
+            res_f = self.host_manager.get_pools(context, filters=filters_f)
+
+            expected_t = [
+                {
+                    'name': 'host1#AAA',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'AAA',
+                        'free_capacity_gb': 200,
+                        'driver_version': None,
+                        'total_capacity_gb': 512,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'multiattach': True},
+                }
+            ]
+            expected_f = [
+                {
+                    'name': 'host2@back1#BBB',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'BBB',
+                        'free_capacity_gb': 100,
+                        'driver_version': None,
+                        'total_capacity_gb': 256,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'multiattach': False},
+                }
+            ]
+
+            self.assertEqual(expected_t, res_t)
+            self.assertEqual(expected_f, res_f)
+
+    @ddt.data(
+        (None, None, True),
+        (None, 'value', False),
+        ('cap', None, False),
+        (False, 'True', False),
+        (True, 'True', True),
+        (True, True, True),
+        (False, 'false', True),
+        (1.1, '1.1', True),
+        (0, '0', True),
+        (1.1, '1.11', False),
+        ('str', 'str', True),
+        ('str1', 'str2', False),
+        ('str', 'StR', False),
+        ([], [], True),
+        (['hdd', 'ssd'], ['ssd'], False),
+        (['hdd', 'ssd'], ['ssd', 'hdd'], False),
+        (['hdd', 'ssd'], "['hdd', 'ssd']", True),
+        ({}, {}, True),
+        ({'a': 'a', 'b': 'b'}, {'b': 'b', 'a': 'a'}, True),
+        ({'a': 'a', 'b': 'b'}, {'b': 'b'}, False),
+        ({'a': 'a'}, "{'a': 'a'}", True),
+    )
+    @ddt.unpack
+    def test_equal_after_convert(self, cap, value, ret_value):
+        self.assertEqual(ret_value,
+                         self.host_manager._equal_after_convert(cap, value))
 
 
 class BackendStateTestCase(test.TestCase):

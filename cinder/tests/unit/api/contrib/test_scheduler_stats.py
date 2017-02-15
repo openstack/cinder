@@ -17,6 +17,7 @@
 import mock
 
 from cinder.api.contrib import scheduler_stats
+from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
 from cinder import test
@@ -44,8 +45,6 @@ def schedule_rpcapi_get_pools(self, context, filters=None):
     return all_pools
 
 
-@mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools',
-            schedule_rpcapi_get_pools)
 class SchedulerStatsAPITest(test.TestCase):
     def setUp(self):
         super(SchedulerStatsAPITest, self).setUp()
@@ -53,7 +52,9 @@ class SchedulerStatsAPITest(test.TestCase):
         self.controller = scheduler_stats.SchedulerStatsController()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-    def test_get_pools_summery(self):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools',
+                schedule_rpcapi_get_pools)
+    def test_get_pools_summary(self):
         req = fakes.HTTPRequest.blank('/v2/%s/scheduler_stats' %
                                       fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
@@ -74,6 +75,55 @@ class SchedulerStatsAPITest(test.TestCase):
 
         self.assertDictEqual(expected, res)
 
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools')
+    def test_get_pools_summary_filter_name(self, mock_rpcapi):
+        req = fakes.HTTPRequest.blank('/v3/%s/scheduler_stats?name=pool1' %
+                                      fake.PROJECT_ID)
+        mock_rpcapi.return_value = [dict(name='pool1',
+                                         capabilities=dict(foo='bar'))]
+        req.api_version_request = api_version.APIVersionRequest('3.28')
+        req.environ['cinder.context'] = self.ctxt
+        res = self.controller.get_pools(req)
+
+        expected = {
+            'pools': [
+                {
+                    'name': 'pool1',
+                }
+            ]
+        }
+
+        self.assertDictEqual(expected, res)
+        filters = {'name': 'pool1'}
+        mock_rpcapi.assert_called_with(mock.ANY, filters=filters)
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools')
+    def test_get_pools_summary_filter_capabilities(self, mock_rpcapi):
+        req = fakes.HTTPRequest.blank('/v3/%s/scheduler_stats?detail=True'
+                                      '&foo=bar' % fake.PROJECT_ID)
+        mock_rpcapi.return_value = [dict(name='pool1',
+                                         capabilities=dict(foo='bar'))]
+        req.api_version_request = api_version.APIVersionRequest('3.28')
+        req.environ['cinder.context'] = self.ctxt
+        res = self.controller.get_pools(req)
+
+        expected = {
+            'pools': [
+                {
+                    'name': 'pool1',
+                    'capabilities': {
+                        'foo': 'bar'
+                    }
+                }
+            ]
+        }
+
+        self.assertDictEqual(expected, res)
+        filters = {'foo': 'bar'}
+        mock_rpcapi.assert_called_with(mock.ANY, filters=filters)
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools',
+                schedule_rpcapi_get_pools)
     def test_get_pools_detail(self):
         req = fakes.HTTPRequest.blank('/v2/%s/scheduler_stats?detail=True' %
                                       fake.PROJECT_ID)
