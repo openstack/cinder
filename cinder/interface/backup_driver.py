@@ -57,12 +57,35 @@ class BackupDriver(base.CinderInterface):
         If the parent backup is of different size, a full backup should be
         performed to ensure all data is included.
 
-        TODO(smcginnis) Document backup variable structure.
-
         :param backup: The backup information.
         :param volume_file: The volume or file to write the backup to.
         :param backup_metadata: Whether to include volume metadata in the
                                 backup.
+
+        The variable structure of backup in the following format::
+
+           {
+              'id': id,
+              'availability_zone': availability_zone,
+              'service': driver_name,
+              'user_id': context.user_id,
+              'project_id': context.project_id,
+              'display_name': name,
+              'display_description': description,
+              'volume_id': volume_id,
+              'status': fields.BackupStatus.CREATING,
+              'container': container,
+              'parent_id': parent_id,
+              'size': size,
+              'host': host,
+              'snapshot_id': snapshot_id,
+              'data_timestamp': data_timestamp,
+           }
+
+        service: backup driver
+        parent_id: parent backup id
+        size: equal to volume size
+        data_timestamp: backup creation time
         """
 
     def restore(self, backup, volume_id, volume_file):
