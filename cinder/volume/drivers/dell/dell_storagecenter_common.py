@@ -929,13 +929,15 @@ class DellCommonDriver(driver.ManageableVD,
                     msg = (_('Unable to delete Consistency Group snapshot %s')
                            % snapshotid)
                     raise exception.VolumeBackendAPIException(data=msg)
-
+            snapshot_updates = []
             for snapshot in snapshots:
-                snapshot.status = fields.SnapshotStatus.DELETED
+                snapshot_updates.append(
+                    {'id': snapshot['id'],
+                     'status': fields.SnapshotStatus.DELETED})
 
             model_update = {'status': fields.SnapshotStatus.DELETED}
 
-            return model_update, snapshots
+            return model_update, snapshot_updates
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.

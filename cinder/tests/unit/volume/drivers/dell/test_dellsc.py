@@ -2494,8 +2494,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                mock_close_connection,
                                mock_open_connection,
                                mock_init):
-        mock_snapshot = mock.MagicMock()
-        expected_snapshots = [mock_snapshot]
+        mock_snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
         cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
                   'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
@@ -2506,7 +2505,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
                                                       fake.CGSNAPSHOT_ID)
         self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual(expected_snapshots, snapshots)
+        self.assertEqual([{'id': fake.SNAPSHOT_ID, 'status': 'deleted'}],
+                         snapshots)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_cg_replay')
@@ -2519,8 +2519,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
-        mock_snapshot = mock.MagicMock()
-        expected_snapshots = [mock_snapshot]
+        mock_snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
         cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
                   'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
@@ -2530,7 +2529,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             fake.CONSISTENCY_GROUP_ID)
         self.assertFalse(mock_delete_cg_replay.called)
         self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual(expected_snapshots, snapshots)
+        self.assertEqual([{'id': fake.SNAPSHOT_ID, 'status': 'deleted'}],
+                         snapshots)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_cg_replay',
