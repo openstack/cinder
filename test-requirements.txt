@@ -25,3 +25,4 @@ os-testr>=0.8.0 # Apache-2.0
 tempest>=14.0.0 # Apache-2.0
 bandit>=1.1.0 # Apache-2.0
 reno>=1.8.0 # Apache-2.0
+doc8 # Apache-2.0
