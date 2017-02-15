@@ -2294,17 +2294,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                      mock_close_connection,
                                      mock_open_connection,
                                      mock_init):
-        mock_volume = mock.MagicMock()
-        expected_volumes = [mock_volume]
+        volume = {'id': fake.VOLUME_ID}
+        expected_volumes = [{'id': fake.VOLUME_ID,
+                             'status': 'deleted'}]
         context = {}
         group = {'id': fake.CONSISTENCY_GROUP_ID,
                  'status': fields.ConsistencyGroupStatus.DELETED}
         model_update, volumes = self.driver.delete_consistencygroup(
-            context, group, [mock_volume])
+            context, group, [volume])
         mock_find_replay_profile.assert_called_once_with(
             fake.CONSISTENCY_GROUP_ID)
         mock_delete_replay_profile.assert_called_once_with(self.SCRPLAYPROFILE)
-        mock_delete_volume.assert_called_once_with(mock_volume)
+        mock_delete_volume.assert_called_once_with(volume)
         self.assertEqual(group['status'], model_update['status'])
         self.assertEqual(expected_volumes, volumes)
 
@@ -2494,12 +2495,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                mock_close_connection,
                                mock_open_connection,
                                mock_init):
-        mock_snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
+        snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
         cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
                   'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
         model_update, snapshots = self.driver.delete_cgsnapshot(
-            context, cgsnap, [mock_snapshot])
+            context, cgsnap, [snapshot])
         mock_find_replay_profile.assert_called_once_with(
             fake.CONSISTENCY_GROUP_ID)
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
@@ -2519,12 +2520,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
-        mock_snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
+        snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
         cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
                   'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
         model_update, snapshots = self.driver.delete_cgsnapshot(
-            context, cgsnap, [mock_snapshot])
+            context, cgsnap, [snapshot])
         mock_find_replay_profile.assert_called_once_with(
             fake.CONSISTENCY_GROUP_ID)
         self.assertFalse(mock_delete_cg_replay.called)
