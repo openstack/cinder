@@ -820,13 +820,15 @@ class DellCommonDriver(driver.ManageableVD,
         # as we are trying to delete it anyway.
 
         # Trundle through the list deleting the volumes.
+        volume_updates = []
         for volume in volumes:
             self.delete_volume(volume)
-            volume['status'] = 'deleted'
+            volume_updates.append({'id': volume['id'],
+                                   'status': 'deleted'})
 
         model_update = {'status': group['status']}
 
-        return model_update, volumes
+        return model_update, volume_updates
 
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
