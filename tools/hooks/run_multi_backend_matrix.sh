@@ -33,10 +33,7 @@ function configure_tempest_backends {
     be1=$1
     be2=$2
     echo "Configuring tempest conf in ${TEMPEST_CONFIG}"
-    # TODO(erlon): Call iniset using sudo
-    #sudo -HE -u ${TEMPEST_USER} iniset $TEMPEST_CONFIG 'volume' \
-    #'backend_names' ${be1},${be2}
-    iniset $TEMPEST_CONFIG 'volume' 'backend_names' ${be1},${be2}
+    iniset -sudo $TEMPEST_CONFIG 'volume' 'backend_names' ${be1},${be2}
 
 }
 
