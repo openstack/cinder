@@ -254,19 +254,22 @@ class UnityClient(object):
         This function removes the colons and returns the last 16 bits:
         5006016C09200925.
         """
+        wwns = set()
         if logged_in_only:
-            ports = []
             for paths in filter(None, host.fc_host_initiators.paths):
                 paths = paths.shadow_copy(is_logged_in=True)
                 # `paths.fc_port` is just a list, not a UnityFcPortList,
                 # so use filter instead of shadow_copy here.
-                ports.extend(filter(lambda p: (allowed_ports is None or
-                                               p.get_id() in allowed_ports),
-                                    paths.fc_port))
+                wwns.update(p.wwn.upper()
+                            for p in filter(
+                                lambda fcp: (allowed_ports is None or
+                                             fcp.get_id() in allowed_ports),
+                                paths.fc_port))
         else:
             ports = self.get_fc_ports()
             ports = ports.shadow_copy(port_ids=allowed_ports)
-        return [po.wwn.replace(':', '')[16:] for po in ports]
+            wwns.update(p.wwn.upper() for p in ports)
+        return [wwn.replace(':', '')[16:] for wwn in wwns]
 
     def create_io_limit_policy(self, name, max_iops=None, max_kbps=None):
         try:
