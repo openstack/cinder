@@ -427,7 +427,9 @@ def get_file_spec():
             file_spec = list(set(dir(_io.TextIOWrapper)).union(
                 set(dir(_io.BytesIO))))
         else:
-            file_spec = file
+            # NOTE(jsbryant): Pep8 on py3 based systems will fail because
+            # 'file' has been removed.  Using noqa here to avoid the failure.
+            file_spec = file  # noqa
 
 
 def generate_timeout_series(timeout):
