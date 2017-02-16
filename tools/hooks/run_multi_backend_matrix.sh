@@ -41,9 +41,7 @@ function configure_tempest_backends {
 }
 
 BACKENDS='lvm ceph nfs'
-# NOTE(erlon): Skipping test_volume_migrate_attached while bug #1644214 is not
-# fixed.
-RGEX="(.*test_volume_retype_with_migration.*)"
+RGEX="(.*test_volume_retype_with_migration.*|.*test_volume_migrate_attached.*)"
 final_result=0
 final_message='Migrations tests finished SUCCESSFULLY!'
 declare -A TEST_RESULTS
