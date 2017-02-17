@@ -49,9 +49,10 @@ def define_tables(meta):
         Column('disabled_reason', String(255)),
         Column('modified_at', DateTime(timezone=False)),
         Column('rpc_current_version', String(36)),
-        Column('rpc_available_version', String(36)),
         Column('object_current_version', String(36)),
-        Column('object_available_version', String(36)),
+        Column('replication_status', String(36), default='not-capable'),
+        Column('frozen', Boolean, default=False),
+        Column('active_backend_id', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -242,7 +243,7 @@ def define_tables(meta):
         Column('volume_type_id', String(36),
                ForeignKey('volume_types.id')),
         Column('project_id', String(255)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
+        Column('deleted', Integer),
         UniqueConstraint('volume_type_id', 'project_id', 'deleted'),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
@@ -295,21 +296,6 @@ def define_tables(meta):
         mysql_charset='utf8'
     )
 
-    iscsi_targets = Table(
-        'iscsi_targets', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('target_num', Integer),
-        Column('host', String(255)),
-        Column('volume_id', String(36), ForeignKey('volumes.id'),
-               nullable=True),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
-    )
-
     quota_classes = Table(
         'quota_classes', meta,
         Column('created_at', DateTime(timezone=False)),
@@ -354,11 +340,13 @@ def define_tables(meta):
         Column('usage_id',
                Integer(),
                ForeignKey('quota_usages.id'),
-               nullable=False),
+               nullable=True),
         Column('project_id', String(255), index=True),
         Column('resource', String(255)),
         Column('delta', Integer(), nullable=False),
         Column('expire', DateTime(timezone=False)),
+        Column('allocated_id', Integer, ForeignKey('quotas.id'),
+               nullable=True),
         Index('reservations_deleted_expire_idx',
               'deleted', 'expire'),
         mysql_engine='InnoDB',
@@ -409,6 +397,7 @@ def define_tables(meta):
         Column('num_dependent_backups', Integer, default=0),
         Column('snapshot_id', String(36)),
         Column('data_timestamp', DateTime),
+        Column('restore_volume_id', String(36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -510,7 +499,6 @@ def define_tables(meta):
             quality_of_service_specs,
             volume_types,
             volume_type_projects,
-            iscsi_targets,
             quotas,
             services,
             volume_metadata,
@@ -548,7 +536,6 @@ def upgrade(migrate_engine):
                   "volume_type_projects",
                   "volumes",
                   "volume_attachment",
-                  "iscsi_targets",
                   "migrate_version",
                   "quotas",
                   "services",
