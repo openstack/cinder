@@ -2310,10 +2310,11 @@ class VolumeManager(manager.CleanableManager,
         # We already got the new reservations
         new_reservations = reservations
 
-        # If volume types have the same contents, no need to do anything
+        # If volume types have the same contents, no need to do anything.
+        # Use the admin contex to be able to access volume extra_specs
         retyped = False
         diff, all_equal = volume_types.volume_types_diff(
-            context, volume.volume_type_id, new_type_id)
+            context.elevated(), volume.volume_type_id, new_type_id)
         if all_equal:
             retyped = True
 
@@ -2333,12 +2334,14 @@ class VolumeManager(manager.CleanableManager,
                 not diff.get('encryption') and
                 self._is_our_backend(host['host'], host.get('cluster_name'))):
             try:
-                new_type = volume_types.get_volume_type(context, new_type_id)
-                ret = self.driver.retype(context,
-                                         volume,
-                                         new_type,
-                                         diff,
-                                         host)
+                new_type = volume_types.get_volume_type(context.elevated(),
+                                                        new_type_id)
+                with volume.obj_as_admin():
+                    ret = self.driver.retype(context,
+                                             volume,
+                                             new_type,
+                                             diff,
+                                             host)
                 # Check if the driver retype provided a model update or
                 # just a retype indication
                 if type(ret) == tuple:

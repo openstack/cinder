@@ -102,8 +102,8 @@ def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
     metadata = metadata or {}
     snap = objects.Snapshot(ctxt or context.get_admin_context())
     snap.volume_size = size
-    snap.user_id = fake.USER_ID
-    snap.project_id = fake.PROJECT_ID
+    snap.user_id = kwargs.get('user_id', fake.USER_ID)
+    snap.project_id = kwargs.get('project_id', fake.PROJECT_ID)
     snap.volume_id = volume_id
     snap.status = "creating"
     if metadata is not None:
@@ -5625,7 +5625,10 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         volume.previous_status = 'available'
         volume.save()
         if snap:
-            create_snapshot(volume.id, size=volume.size)
+            create_snapshot(volume.id, size=volume.size,
+                            user_id=self.user_context.user_id,
+                            project_id=self.user_context.project_id,
+                            ctxt=self.user_context)
         if driver or diff_equal:
             host_obj = {'host': CONF.host, 'capabilities': {}}
         else:
@@ -5661,9 +5664,11 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver, 'retype') as _retype,\
                 mock.patch.object(volume_types, 'volume_types_diff') as _diff,\
                 mock.patch.object(self.volume, 'migrate_volume') as _mig,\
-                mock.patch.object(db.sqlalchemy.api, 'volume_get') as mock_get:
-            mock_get.return_value = volume
+                mock.patch.object(db.sqlalchemy.api, 'volume_get') as _vget,\
+                mock.patch.object(context.RequestContext, 'elevated') as _ctx:
+            _vget.return_value = volume
             _retype.return_value = driver
+            _ctx.return_value = self.context
             returned_diff = {
                 'encryption': {},
                 'qos_specs': {},
