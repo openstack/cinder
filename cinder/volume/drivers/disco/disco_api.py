@@ -17,12 +17,8 @@
 
 import json
 
-from oslo_log import log as logging
 import requests
 import six
-
-
-LOG = logging.getLogger(__name__)
 
 
 class DiscoApi(object):
