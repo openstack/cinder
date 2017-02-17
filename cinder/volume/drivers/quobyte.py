@@ -16,6 +16,7 @@
 
 import errno
 import os
+import psutil
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -30,7 +31,7 @@ from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1'
+VERSION = '1.1.1'
 
 LOG = logging.getLogger(__name__)
 
@@ -79,6 +80,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     Version history:
         1.0   - Initial driver.
         1.1   - Adds optional insecure NAS settings
+        1.1.1 - Removes getfattr calls from driver
+
     """
 
     driver_volume_type = 'quobyte'
@@ -465,16 +468,40 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             self._validate_volume(mount_path)
 
     def _validate_volume(self, mount_path):
-        """Wraps execute calls for checking validity of a Quobyte volume"""
-        command = ['getfattr', "-n", "quobyte.info", mount_path]
-        try:
-            self._execute(*command, run_as_root=self._execute_as_root)
-        except processutils.ProcessExecutionError as exc:
-            msg = (_("The mount %(mount_path)s is not a valid"
-                     " Quobyte USP volume. Error: %(exc)s")
-                   % {'mount_path': mount_path, 'exc': exc})
-            raise exception.VolumeDriverException(msg)
-
-        if not os.access(mount_path, os.W_OK | os.X_OK):
-            LOG.warning(_LW("Volume is not writable. Please broaden the file"
-                            " permissions. Mount: %s"), mount_path)
+        """Runs a number of tests on the expect Quobyte mount"""
+        partitions = psutil.disk_partitions(all=True)
+        for p in partitions:
+            if mount_path == p.mountpoint:
+                if p.device.startswith("quobyte@"):
+                    try:
+                        statresult = os.stat(mount_path)
+                        if statresult.st_size == 0:
+                            # client looks healthy
+                            if not os.access(mount_path,
+                                             os.W_OK | os.X_OK):
+                                LOG.warning(_LW("Volume is not writable. "
+                                                "Please broaden the file"
+                                                " permissions."
+                                                " Mount: %s"),
+                                            mount_path)
+                            return  # we're happy here
+                        else:
+                            msg = (_("The mount %(mount_path)s is not a "
+                                     "valid Quobyte volume. Stale mount?")
+                                   % {'mount_path': mount_path})
+                        raise exception.VolumeDriverException(msg)
+                    except Exception as exc:
+                        msg = (_("The mount %(mount_path)s is not a valid"
+                                 " Quobyte volume. Error: %(exc)s . "
+                                 " Possibly a Quobyte client crash?")
+                               % {'mount_path': mount_path, 'exc': exc})
+                        raise exception.VolumeDriverException(msg)
+                else:
+                    msg = (_("The mount %(mount_path)s is not a valid"
+                             " Quobyte volume according to partition list.")
+                           % {'mount_path': mount_path})
+                    raise exception.VolumeDriverException(msg)
+        msg = (_("No matching Quobyte mount entry for %(mount_path)s"
+                 " could be found for validation in partition list.")
+               % {'mount_path': mount_path})
+        raise exception.VolumeDriverException(msg)
