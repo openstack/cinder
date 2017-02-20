@@ -50,6 +50,8 @@ TEST_LUN_ID = '00'
 TEST_POOLS_STR = 'P0,P1'
 TEST_POOL_ID_1 = 'P0'
 TEST_POOL_ID_2 = 'P1'
+TEST_POOL_NAME_1 = 'OPENSTACK_DEV_0'
+TEST_POOL_NAME_2 = 'OPENSTACK_DEV_1'
 TEST_SOURCE_DS8K_IP = '1.1.1.1'
 TEST_TARGET_DS8K_IP = '2.2.2.2'
 TEST_SOURCE_WWNN = '5000000000FFC111'
@@ -67,6 +69,7 @@ TEST_PPRC_PATH_ID_2 = (TEST_TARGET_WWNN + "_" + TEST_LSS_ID_1 + ":" +
                        TEST_SOURCE_WWNN + "_" + TEST_LSS_ID_1)
 TEST_ECKD_VOLUME_ID = '1001'
 TEST_ECKD_POOL_ID = 'P10'
+TEST_ECKD_POOL_NAME = 'OPENSTACK_DEV_10'
 TEST_LCU_ID = '10'
 TEST_ECKD_PPRC_PATH_ID = (TEST_SOURCE_WWNN + "_" + TEST_LCU_ID + ":" +
                           TEST_TARGET_WWNN + "_" + TEST_LCU_ID)
@@ -426,7 +429,7 @@ FAKE_GET_POOL_RESPONSE_1 = {
         [
             {
                 "id": TEST_POOL_ID_1,
-                "name": "P0_OpenStack",
+                "name": TEST_POOL_NAME_1,
                 "node": "0",
                 "stgtype": "fb",
                 "cap": "10737418240",
@@ -448,7 +451,7 @@ FAKE_GET_POOL_RESPONSE_2 = {
         [
             {
                 "id": TEST_POOL_ID_2,
-                "name": "P1_OpenStack",
+                "name": TEST_POOL_NAME_2,
                 "node": "1",
                 "stgtype": "fb",
                 "cap": "10737418240",
@@ -470,7 +473,7 @@ FAKE_GET_ECKD_POOL_RESPONSE = {
         [
             {
                 "id": TEST_ECKD_POOL_ID,
-                "name": "P10_OpenStack",
+                "name": TEST_ECKD_POOL_NAME,
                 "node": "0",
                 "stgtype": "ckd",
                 "cap": "10737418240",
@@ -1237,7 +1240,7 @@ class DS8KProxyTest(test.TestCase):
         """create volume should choose biggest pool."""
         self.configuration.san_clustername = TEST_POOLS_STR
         cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
-        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, None)
+        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, set())
         self.assertEqual(TEST_POOL_ID_1, pool_id)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_all_lss')
@@ -1251,7 +1254,7 @@ class DS8KProxyTest(test.TestCase):
             "configvols": "0"
         }]
         cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
-        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, None)
+        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, set())
         self.assertNotEqual(TEST_LSS_ID_1, lss_id)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_all_lss')
@@ -1266,7 +1269,7 @@ class DS8KProxyTest(test.TestCase):
             "configvols": "0"
         }]
         cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
-        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, None)
+        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, set())
         self.assertEqual(TEST_LSS_ID_2, lss_id)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_all_lss')
@@ -1296,7 +1299,7 @@ class DS8KProxyTest(test.TestCase):
             }
         ]
         cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
-        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, None)
+        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, set())
         self.assertEqual(TEST_LSS_ID_2, lss_id)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_all_lss')
@@ -1312,7 +1315,7 @@ class DS8KProxyTest(test.TestCase):
             "configvols": "256"
         }]
         cmn_helper = FakeDS8KCommonHelper(self.configuration, None)
-        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, None)
+        pool_id, lss_id = cmn_helper.find_pool_lss_pair(None, False, set())
         self.assertTrue(mock_find_lss.called)
 
     @mock.patch.object(helper.DS8KCommonHelper, '_find_lss')
@@ -1487,6 +1490,68 @@ class DS8KProxyTest(test.TestCase):
             TEST_VOLUME_ID,
             ast.literal_eval(vol['provider_location'])['vol_hex_id'])
         self.assertEqual('050 FB 520UV', vol['metadata']['data_type'])
+
+    def test_create_volume_when_specify_area(self):
+        """create volume and put it in specific pool and lss."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
+            'drivers:storage_pool_ids': TEST_POOL_ID_1,
+            'drivers:storage_lss_ids': TEST_LSS_ID_1
+        })
+        volume = self._create_volume(volume_type_id=vol_type.id)
+        lun = ds8kproxy.Lun(volume)
+        pool, lss = self.driver._find_pool_lss_pair_from_spec(lun, set())
+        self.assertEqual(TEST_POOL_ID_1, pool)
+        self.assertEqual(TEST_LSS_ID_1, lss)
+
+    def test_create_volume_only_specify_lss(self):
+        """create volume and put it in specific lss."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
+            'drivers:storage_lss_ids': TEST_LSS_ID_1
+        })
+        volume = self._create_volume(volume_type_id=vol_type.id)
+        lun = ds8kproxy.Lun(volume)
+        pool, lss = self.driver._find_pool_lss_pair_from_spec(lun, set())
+        # if not specify pool, choose pools set in configuration file.
+        self.assertTrue(pool in self.configuration.san_clustername.split(','))
+        self.assertEqual(TEST_LSS_ID_1, lss)
+
+    def test_create_volume_only_specify_pool(self):
+        """create volume and put it in specific pool."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
+            'drivers:storage_pool_ids': TEST_POOL_ID_1
+        })
+        volume = self._create_volume(volume_type_id=vol_type.id)
+        lun = ds8kproxy.Lun(volume)
+        pool, lss = self.driver._find_pool_lss_pair_from_spec(lun, set())
+        self.assertEqual(TEST_POOL_ID_1, pool)
+
+    def test_create_volume_but_specify_wrong_lss_id(self):
+        """create volume, but specify a wrong lss id."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
+            'drivers:storage_pool_ids': TEST_POOL_ID_1,
+            'drivers:storage_lss_ids': '100'
+        })
+        volume = self._create_volume(volume_type_id=vol_type.id)
+        lun = ds8kproxy.Lun(volume)
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.driver._find_pool_lss_pair_from_spec,
+                          lun, set())
 
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     def test_create_eckd_volume(self, mock_create_lun):
@@ -2185,8 +2250,8 @@ class DS8KProxyTest(test.TestCase):
 
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_retype_from_thin_and_replicated_to_thick(self, mock_get_flashcopy,
-                                                      mock_sleep):
+    def test_retype_thin_replicated_vol_to_thick_vol(self, mock_get_flashcopy,
+                                                     mock_sleep):
         """retype from thin-provision and replicated to thick-provision."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2217,7 +2282,10 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    def test_retype_replicated_volume_from_thin_to_thick(self):
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    @mock.patch.object(eventlet, 'sleep')
+    def test_retype_replicated_volume_from_thin_to_thick(self, mock_sleep,
+                                                         mock_get_flashcopy):
         """retype replicated volume from thin-provision to thick-provision."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2243,8 +2311,135 @@ class DS8KProxyTest(test.TestCase):
                                      provider_location=location,
                                      replication_driver_data=data)
 
-        self.assertRaises(exception.CinderException, self.driver.retype,
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        retyped, retype_model_update = self.driver.retype(
+            self.ctxt, volume, new_type, diff, host)
+        self.assertTrue(retyped)
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_lun_pool')
+    @mock.patch.object(eventlet, 'sleep')
+    def test_retype_thin_vol_to_thick_vol_in_specific_area(
+            self, mock_sleep, mock_get_lun_pool, mock_get_flashcopy):
+        """retype thin volume to thick volume located in specific area."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        new_type = {}
+        diff = {
+            'encryption': {},
+            'qos_specs': {},
+            'extra_specs': {
+                'drivers:thin_provision': ('True', 'False'),
+                'drivers:storage_pool_ids': (None, TEST_POOL_ID_1),
+                'drivers:storage_lss_ids': (None, TEST_LSS_ID_1)
+            }
+        }
+        host = None
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'drivers:thin_provision': 'False'})
+        location = six.text_type({'vol_hex_id': '0400'})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location)
+
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        mock_get_lun_pool.return_value = {'id': TEST_POOL_ID_1}
+        retyped, retype_model_update = self.driver.retype(
+            self.ctxt, volume, new_type, diff, host)
+        location = ast.literal_eval(retype_model_update['provider_location'])
+        self.assertEqual(TEST_LSS_ID_1, location['vol_hex_id'][:2])
+        self.assertTrue(retyped)
+
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_lun_pool')
+    @mock.patch.object(eventlet, 'sleep')
+    def test_retype_replicated_vol_to_vol_in_specific_area(
+            self, mock_sleep, mock_get_lun_pool, mock_get_flashcopy):
+        """retype replicated volume to a specific area."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        new_type = {}
+        diff = {
+            'encryption': {},
+            'qos_specs': {},
+            'extra_specs': {
+                'replication_enabled': ('<is> True', '<is> True'),
+                'drivers:storage_pool_ids': (None, TEST_POOL_ID_1),
+                'drivers:storage_lss_ids': (None, TEST_LSS_ID_1)
+            }
+        }
+        host = None
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': '0400'})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location)
+
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        mock_get_lun_pool.return_value = {'id': TEST_POOL_ID_1}
+        retyped, retype_model_update = self.driver.retype(
+            self.ctxt, volume, new_type, diff, host)
+        location = ast.literal_eval(retype_model_update['provider_location'])
+        self.assertEqual(TEST_LSS_ID_1, location['vol_hex_id'][:2])
+        self.assertTrue(retyped)
+
+    def test_retype_vol_in_specific_area_to_another_area(self):
+        """retype volume from a specific area to another area."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        new_type = {}
+        diff = {
+            'encryption': {},
+            'qos_specs': {},
+            'extra_specs': {
+                'drivers:storage_pool_ids': (TEST_POOL_ID_1, TEST_POOL_ID_2),
+                'drivers:storage_lss_ids': (TEST_LSS_ID_1, TEST_LSS_ID_2)
+            }
+        }
+        host = None
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
+            'drivers:storage_pool_ids': TEST_POOL_ID_1,
+            'drivers:storage_lss_ids': TEST_LSS_ID_1})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location)
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype,
                           self.ctxt, volume, new_type, diff, host)
+
+    def test_migrate_replicated_volume(self):
+        """migrate replicated volume should be failed."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        self.driver._update_stats()
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
+                                       {'replication_enabled': '<is> True'})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        data = json.dumps(
+            {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location,
+                                     replication_driver_data=data)
+        backend = {
+            'host': 'host@backend#pool_id',
+            'capabilities': {
+                'extent_pools': TEST_POOL_ID_1,
+                'serial_number': TEST_SOURCE_SYSTEM_UNIT,
+                'vendor_name': 'IBM',
+                'storage_protocol': 'fibre_channel'
+            }
+        }
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.migrate_volume,
+                          self.ctxt, volume, backend)
 
     def test_migrate_and_try_pools_in_same_rank(self):
         """migrate volume and try pool in same rank."""

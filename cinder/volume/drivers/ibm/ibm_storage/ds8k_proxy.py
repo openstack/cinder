@@ -95,7 +95,9 @@ EXTRA_SPECS_DEFAULTS = {
     'thin': True,
     'replication_enabled': False,
     'consistency': False,
-    'os400': ''
+    'os400': '',
+    'storage_pool_ids': '',
+    'storage_lss_ids': ''
 }
 
 ds8k_opts = [
@@ -125,23 +127,35 @@ CONF.register_opts(ds8k_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class Lun(object):
-    """provide volume information for driver from volume db object."""
+    """provide volume information for driver from volume db object.
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - initial revision.
+        2.1.0 - Added support for specify pool and lss, also improve the code.
+    """
+
+    VERSION = "2.1.0"
 
     class FakeLun(object):
 
         def __init__(self, lun, **overrides):
             self.size = lun.size
-            self.os_id = 'fake_os_id'
+            self.os_id = lun.os_id
             self.cinder_name = lun.cinder_name
             self.is_snapshot = lun.is_snapshot
             self.ds_name = lun.ds_name
-            self.ds_id = None
+            self.ds_id = lun.ds_id
             self.type_thin = lun.type_thin
             self.type_os400 = lun.type_os400
             self.data_type = lun.data_type
             self.type_replication = lun.type_replication
             self.group = lun.group
-            if not self.is_snapshot and self.type_replication:
+            self.specified_pool = lun.specified_pool
+            self.specified_lss = lun.specified_lss
+            if not self.is_snapshot:
                 self.replica_ds_name = lun.replica_ds_name
                 self.replication_driver_data = (
                     lun.replication_driver_data.copy())
@@ -149,6 +163,7 @@ class Lun(object):
             self.pool_lss_pair = lun.pool_lss_pair
 
         def update_volume(self, lun):
+            lun.data_type = self.data_type
             volume_update = lun.get_volume_update()
             volume_update['provider_location'] = six.text_type({
                 'vol_hex_id': self.ds_id})
@@ -157,6 +172,9 @@ class Lun(object):
                     self.replication_driver_data)
                 volume_update['metadata']['replication'] = six.text_type(
                     self.replication_driver_data)
+            else:
+                volume_update.pop('replication_driver_data', None)
+                volume_update['metadata'].pop('replication', None)
             volume_update['metadata']['vol_hex_id'] = self.ds_id
             return volume_update
 
@@ -169,11 +187,19 @@ class Lun(object):
         ).strip().upper()
         self.type_thin = self.specs.get(
             'drivers:thin_provision', '%s' % EXTRA_SPECS_DEFAULTS['thin']
-        ).upper() == 'True'.upper()
+        ).upper() == 'TRUE'
         self.type_replication = self.specs.get(
             'replication_enabled',
             '<is> %s' % EXTRA_SPECS_DEFAULTS['replication_enabled']
         ).upper() == strings.METADATA_IS_TRUE
+        self.specified_pool = self.specs.get(
+            'drivers:storage_pool_ids',
+            EXTRA_SPECS_DEFAULTS['storage_pool_ids']
+        )
+        self.specified_lss = self.specs.get(
+            'drivers:storage_lss_ids',
+            EXTRA_SPECS_DEFAULTS['storage_lss_ids']
+        )
 
         if volume.provider_location:
             provider_location = ast.literal_eval(volume.provider_location)
@@ -386,6 +412,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                         'pools exist on the storage.')
                 LOG.error(msg)
                 raise exception.CinderException(message=msg)
+            self._helper.update_storage_pools(storage_pools)
         else:
             raise exception.VolumeDriverException(
                 message=(_('Backend %s is not initialized.')
@@ -419,24 +446,34 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
     @proxy.logger
     def _create_lun_helper(self, lun, pool=None, find_new_pid=True):
-        # DS8K supports ECKD ESE volume from 8.1
         connection_type = self._helper.get_connection_type()
         if connection_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
-            thin_provision = self._helper.get_thin_provision()
-            if lun.type_thin and thin_provision:
+            if lun.type_thin:
+                if self._helper.get_thin_provision():
+                    msg = (_("Backend %s can not support ECKD ESE volume.")
+                           % self._helper.backend['storage_unit'])
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
                 if lun.type_replication:
-                    msg = _("The primary or the secondary storage "
-                            "can not support ECKD ESE volume.")
-                else:
-                    msg = _("Backend can not support ECKD ESE volume.")
-                LOG.error(msg)
-                raise restclient.APIException(message=msg)
+                    target_helper = self._replication._target_helper
+                    # PPRC can not copy from ESE volume to standard volume
+                    # or vice versa.
+                    if target_helper.get_thin_provision():
+                        msg = (_("Secondary storage %s can not support ECKD "
+                                 "ESE volume.")
+                               % target_helper.backend['storage_unit'])
+                        LOG.error(msg)
+                        raise exception.VolumeDriverException(message=msg)
         # There is a time gap between find available LSS slot and
         # lun actually occupies it.
         excluded_lss = set()
         while True:
             try:
-                if lun.group and lun.group.consisgroup_enabled:
+                if lun.specified_pool or lun.specified_lss:
+                    lun.pool_lss_pair = {
+                        'source': self._find_pool_lss_pair_from_spec(
+                            lun, excluded_lss)}
+                elif lun.group and lun.group.consisgroup_enabled:
                     lun.pool_lss_pair = {
                         'source': self._find_pool_lss_pair_for_cg(
                             lun, excluded_lss)}
@@ -454,6 +491,17 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 LOG.warning("LSS %s is full, find another one.",
                             lun.pool_lss_pair['source'][1])
                 excluded_lss.add(lun.pool_lss_pair['source'][1])
+
+    def _find_pool_lss_pair_from_spec(self, lun, excluded_lss):
+        if lun.group and lun.group.consisgroup_enabled:
+            msg = _("No support for specifying pool or lss for "
+                    "volumes that belong to consistency group.")
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        else:
+            pool, lss = self._helper.find_biggest_pool_and_lss(
+                excluded_lss, (lun.specified_pool, lun.specified_lss))
+        return (pool, lss)
 
     @coordination.synchronized('{self.prefix}-consistency-group')
     def _find_pool_lss_pair_for_cg(self, lun, excluded_lss):
@@ -640,7 +688,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._replication.extend_replica(lun, param)
                 self._replication.create_pprc_pairs(lun)
             else:
-                raise exception.CinderException(
+                raise exception.VolumeDriverException(
                     message=(_("The volume %s has been failed over, it is "
                                "not suggested to extend it.") % lun.ds_id))
         else:
@@ -674,6 +722,11 @@ class DS8KProxy(proxy.IBMStorageProxy):
         # volume not allowed to get here if cg or repl
         # should probably check volume['status'] in ['available', 'in-use'],
         # especially for flashcopy
+        lun = Lun(volume)
+        if lun.type_replication:
+            raise exception.VolumeDriverException(
+                message=_('Driver does not support migrate replicated '
+                          'volume, it can be done via retype.'))
         stats = self.meta['stat']
         if backend['capabilities']['vendor_name'] != stats['vendor_name']:
             raise exception.VolumeDriverException(_(
@@ -684,8 +737,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
         new_pools = self._helper.get_pools(
             backend['capabilities']['extent_pools'])
 
-        lun = Lun(volume)
-        cur_pool_id = self._helper.get_lun(lun.ds_id)['pool']['id']
+        cur_pool_id = self._helper.get_lun_pool(lun.ds_id)['id']
         cur_node = self._helper.get_storage_pools()[cur_pool_id]['node']
 
         # try pools in same rank
@@ -703,7 +755,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 try:
                     new_lun = lun.shallow_copy()
                     self._create_lun_helper(new_lun, pid, False)
-                    lun.data_type = new_lun.data_type
                     self._clone_lun(lun, new_lun)
                     volume_update = new_lun.update_volume(lun)
                     try:
@@ -729,70 +780,114 @@ class DS8KProxy(proxy.IBMStorageProxy):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        def _get_volume_type(key, value):
+        def _check_extra_specs(key, value=None):
             extra_specs = diff.get('extra_specs')
             specific_type = extra_specs.get(key) if extra_specs else None
+            old_type = None
+            new_type = None
             if specific_type:
-                old_type = (True if str(specific_type[0]).upper() == value
-                            else False)
-                new_type = (True if str(specific_type[1]).upper() == value
-                            else False)
-            else:
-                old_type = None
-                new_type = None
-
+                old_type, new_type = specific_type
+                if value:
+                    old_type = (True if old_type and old_type.upper() == value
+                                else False)
+                    new_type = (True if new_type and new_type.upper() == value
+                                else False)
             return old_type, new_type
 
-        def _convert_thin_and_thick(lun, new_type):
+        lun = Lun(volume)
+        # check user specify pool or lss or not
+        old_specified_pool, new_specified_pool = _check_extra_specs(
+            'drivers:storage_pool_ids')
+        old_specified_lss, new_specified_lss = _check_extra_specs(
+            'drivers:storage_lss_ids')
+
+        # check thin or thick
+        old_type_thick, new_type_thick = _check_extra_specs(
+            'drivers:thin_provision', 'FALSE')
+
+        # check replication capability
+        old_type_replication, new_type_replication = _check_extra_specs(
+            'replication_enabled', strings.METADATA_IS_TRUE)
+
+        # start retype, please note that the order here is important
+        # because of rollback problem once failed to retype.
+        new_props = {}
+        if old_type_thick != new_type_thick:
+            new_props['type_thin'] = not new_type_thick
+
+        if (old_specified_pool == new_specified_pool and
+           old_specified_lss == new_specified_lss):
+            LOG.info("Same pool and lss.")
+        elif ((old_specified_pool or old_specified_lss) and
+              (new_specified_pool or new_specified_lss)):
+            raise exception.VolumeDriverException(
+                message=_("Retype does not support to move volume from "
+                          "specified pool or lss to another specified "
+                          "pool or lss."))
+        elif ((old_specified_pool is None and new_specified_pool) or
+              (old_specified_lss is None and new_specified_lss)):
+            storage_pools = self._helper.get_pools(new_specified_pool)
+            self._helper.verify_pools(storage_pools)
+            storage_lss = self._helper.verify_lss_ids(new_specified_lss)
+            vol_pool = self._helper.get_lun_pool(lun.ds_id)['id']
+            vol_lss = lun.ds_id[:2].upper()
+            # if old volume is in the specified LSS, but it is needed
+            # to be changed from thin to thick or vice versa, driver
+            # needs to make sure the new volume will be created in the
+            # specified LSS.
+            if ((storage_lss and vol_lss not in storage_lss) or
+               new_props.get('type_thin')):
+                new_props['specified_pool'] = new_specified_pool
+                new_props['specified_lss'] = new_specified_lss
+            elif vol_pool not in storage_pools.keys():
+                vol_node = int(vol_lss, 16) % 2
+                new_pool_id = None
+                for pool_id, pool in storage_pools.items():
+                    if vol_node == pool['node']:
+                        new_pool_id = pool_id
+                        break
+                if new_pool_id:
+                    self._helper.change_lun(lun.ds_id, {'pool': new_pool_id})
+                else:
+                    raise exception.VolumeDriverException(
+                        message=_("Can not change the pool volume allocated."))
+
+        new_lun = None
+        if new_props:
             new_lun = lun.shallow_copy()
-            new_lun.type_thin = new_type
-            self._create_lun_helper(new_lun)
+            for key, value in new_props.items():
+                setattr(new_lun, key, value)
             self._clone_lun(lun, new_lun)
+
+        volume_update = None
+        if new_lun:
+            # if new lun meets all requirements of retype sucessfully,
+            # exception happens during clean up can be ignored.
+            if new_type_replication:
+                new_lun.type_replication = True
+                new_lun = self._replication.enable_replication(new_lun, True)
+            elif old_type_replication:
+                new_lun.type_replication = False
+                try:
+                    self._replication.delete_replica(lun)
+                except Exception:
+                    pass
             try:
                 self._helper.delete_lun(lun)
             except Exception:
                 pass
-            lun.ds_id = new_lun.ds_id
-            lun.data_type = new_lun.data_type
-            lun.type_thin = new_type
-
-            return lun
-
-        lun = Lun(volume)
-        # check thin or thick
-        old_type_thin, new_type_thin = _get_volume_type(
-            'drivers:thin_provision', 'True'.upper())
-
-        # check replication capability
-        old_type_replication, new_type_replication = _get_volume_type(
-            'replication_enabled', strings.METADATA_IS_TRUE)
-
-        # start retype
-        if old_type_thin != new_type_thin:
-            if old_type_replication:
-                if not new_type_replication:
-                    lun = self._replication.delete_replica(lun)
-                    lun = _convert_thin_and_thick(lun, new_type_thin)
-                else:
-                    raise exception.CinderException(
-                        message=(_("The volume %s is in replication "
-                                   "relationship, it is not supported to "
-                                   "retype from thin to thick or vice "
-                                   "versa.") % lun.ds_id))
-            else:
-                lun = _convert_thin_and_thick(lun, new_type_thin)
-                if new_type_replication:
-                    lun.type_replication = True
-                    lun = self._replication.enable_replication(lun)
+            volume_update = new_lun.update_volume(lun)
         else:
+            # if driver does not create new lun, don't delete source
+            # lun when failed to enable replication or delete replica.
             if not old_type_replication and new_type_replication:
                 lun.type_replication = True
                 lun = self._replication.enable_replication(lun)
             elif old_type_replication and not new_type_replication:
                 lun = self._replication.delete_replica(lun)
                 lun.type_replication = False
-
-        return True, lun.get_volume_update()
+            volume_update = lun.get_volume_update()
+        return True, volume_update
 
     @proxy._trace_time
     @proxy.logger
@@ -935,7 +1030,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 new_lun = self._clone_lun_for_group(group, lun)
             self._helper.delete_lun(lun)
             volume_update = new_lun.update_volume(lun)
-            volume_update['id'] = lun.os_id
+            volume_update['id'] = new_lun.os_id
             add_volumes_update.append(volume_update)
         return add_volumes_update
 
@@ -943,7 +1038,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
         lun.group = Group(group)
         new_lun = lun.shallow_copy()
         new_lun.type_replication = False
-        self._create_lun_helper(new_lun)
         self._clone_lun(lun, new_lun)
         return new_lun
 

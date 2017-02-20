@@ -374,7 +374,18 @@ class MetroMirrorManager(object):
 
 
 class Replication(object):
-    """Metro Mirror and Global Mirror will be used by it."""
+    """Metro Mirror and Global Mirror will be used by it.
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - initial revision.
+        2.1.0 - ignore exception during cleanup when creating or deleting
+                replica failed.
+    """
+
+    VERSION = "2.1.0"
 
     def __init__(self, source_helper, target_device):
         self._source_helper = source_helper
@@ -405,13 +416,6 @@ class Replication(object):
                            "%(secondary)s")
                          % {'primary': src_conn_type,
                             'secondary': tgt_conn_type}))
-        # PPRC can not copy from ESE volume to standard volume or vice versus.
-        if src_conn_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
-            src_thin = self._source_helper.get_thin_provision()
-            tgt_thin = self._target_helper.get_thin_provision()
-            if src_thin != tgt_thin:
-                self._source_helper.disable_thin_provision()
-                self._target_helper.disable_thin_provision()
 
     def check_physical_links(self):
         self._mm_manager.check_physical_links()
@@ -480,19 +484,31 @@ class Replication(object):
             self._mm_manager.create_pprc_pairs(lun)
         except restclient.APIException:
             with excutils.save_and_reraise_exception():
-                self.delete_replica(lun)
-                if delete_source:
-                    self._source_helper.delete_lun(lun)
+                try:
+                    self.delete_replica(lun)
+                    if delete_source:
+                        self._source_helper.delete_lun(lun)
+                except restclient.APIException as ex:
+                    LOG.info("Failed to cleanup replicated volume %(id)s, "
+                             "Exception: %(ex)s.",
+                             {'id': lun.ds_id, 'ex': ex})
         lun.replication_status = 'enabled'
         return lun
 
     @proxy.logger
-    def delete_replica(self, lun):
+    def delete_replica(self, lun, delete_source=False):
         if lun.ds_id is not None:
             try:
                 self._mm_manager.delete_pprc_pairs(lun)
                 self._delete_replica(lun)
             except restclient.APIException as e:
+                if delete_source:
+                    try:
+                        self._source_helper.delete_lun(lun)
+                    except restclient.APIException as ex:
+                        LOG.info("Failed to delete source volume %(id)s, "
+                                 "Exception: %(ex)s.",
+                                 {'id': lun.ds_id, 'ex': ex})
                 raise exception.VolumeDriverException(
                     message=(_('Failed to delete the target volume for '
                                'volume %(volume)s, Exception: %(ex)s.')
