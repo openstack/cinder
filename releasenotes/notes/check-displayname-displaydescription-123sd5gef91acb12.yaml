@@ -1,0 +1,4 @@
+---
+fixes:
+  - Add 'display_name' and 'display_description' validation
+    for creating/updating snapshot and volume operations.
