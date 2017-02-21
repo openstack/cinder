@@ -1525,36 +1525,6 @@ class VolumeOpsTestCase(test.TestCase):
                                            datacenter=dc_ref)
         self.session.wait_for_task.assert_called_once_with(task)
 
-    @mock.patch('oslo_vmware.pbm.get_profiles_by_ids')
-    @mock.patch('oslo_vmware.pbm.get_profiles')
-    def test_get_profile(self, get_profiles, get_profiles_by_ids):
-
-        profile_ids = [mock.sentinel.profile_id]
-        get_profiles.return_value = profile_ids
-
-        profile_name = mock.sentinel.profile_name
-        profile = mock.Mock()
-        profile.name = profile_name
-        get_profiles_by_ids.return_value = [profile]
-
-        backing = mock.sentinel.backing
-        self.assertEqual(profile_name, self.vops.get_profile(backing))
-        get_profiles.assert_called_once_with(self.session, backing)
-        get_profiles_by_ids.assert_called_once_with(self.session, profile_ids)
-
-    @mock.patch('oslo_vmware.pbm.get_profiles_by_ids')
-    @mock.patch('oslo_vmware.pbm.get_profiles')
-    def test_get_profile_with_no_profile(self, get_profiles,
-                                         get_profiles_by_ids):
-
-        get_profiles.return_value = []
-
-        backing = mock.sentinel.backing
-        self.assertIsNone(self.vops.get_profile(backing))
-
-        get_profiles.assert_called_once_with(self.session, backing)
-        self.assertFalse(get_profiles_by_ids.called)
-
     def test_extend_virtual_disk(self):
         """Test volumeops.extend_virtual_disk."""
         task = mock.sentinel.task

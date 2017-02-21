@@ -1951,7 +1951,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         datastore = self.volumeops.get_datastore(backing)
         backing_profile = None
         if self._storage_policy_enabled:
-            backing_profile = self.volumeops.get_profile(backing)
+            backing_profile = self._get_storage_profile(volume)
         if (self.volumeops.is_datastore_accessible(datastore, host) and
                 self.ds_sel.is_datastore_compliant(datastore,
                                                    backing_profile)):

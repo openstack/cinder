@@ -21,7 +21,6 @@ Implements operations on volumes residing on VMware datastores.
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
-from oslo_vmware import pbm
 from oslo_vmware import vim_util
 from six.moves import urllib
 
@@ -1520,16 +1519,6 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deleting vmdk file via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Deleted vmdk file: %s."), vmdk_file_path)
-
-    def get_profile(self, backing):
-        """Query storage profile associated with the given backing.
-
-        :param backing: backing reference
-        :return: profile name
-        """
-        profile_ids = pbm.get_profiles(self._session, backing)
-        if profile_ids:
-            return pbm.get_profiles_by_ids(self._session, profile_ids)[0].name
 
     def _get_all_clusters(self):
         clusters = {}
