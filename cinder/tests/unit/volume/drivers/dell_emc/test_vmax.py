@@ -8662,7 +8662,7 @@ class VMAXUtilsTest(test.TestCase):
         self.driver.utils.insert_live_migration_record(
             self.data.test_volume, maskingviewdict, connector, extraSpecs)
         mock_open.assert_called_once_with(
-            utils.LIVE_MIGRATION_FILE, "wb")
+            utils.LIVE_MIGRATION_FILE, "w")
 
     @mock.patch.object(
         common.VMAXCommon,
@@ -8685,12 +8685,12 @@ class VMAXUtilsTest(test.TestCase):
                                      '/livemigrationarray')
         m = mock.mock_open()
         with mock.patch('{}.open'.format(__name__), m, create=True):
-            with open(utils.LIVE_MIGRATION_FILE, "wb") as f:
+            with open(utils.LIVE_MIGRATION_FILE, "w") as f:
                 f.write('live migration details')
         self.driver.utils.insert_live_migration_record(
             self.data.test_volume, maskingviewdict, connector, extraSpecs)
         self.driver.utils.delete_live_migration_record(self.data.test_volume)
-        m.assert_called_once_with(utils.LIVE_MIGRATION_FILE, "wb")
+        m.assert_called_once_with(utils.LIVE_MIGRATION_FILE, "w")
         shutil.rmtree(tempdir)
 
     @mock.patch.object(
