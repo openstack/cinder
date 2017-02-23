@@ -700,13 +700,19 @@ class XtremIOVolumeDriver(san.SanDriver):
         self.client.req('consistency-groups', 'DELETE', name=group['id'],
                         ver='v2')
 
+        volumes_model_update = []
+
         for volume in volumes:
             self.delete_volume(volume)
-            volume.status = 'deleted'
+
+            update_item = {'id': volume['id'],
+                           'status': 'deleted'}
+
+            volumes_model_update.append(update_item)
 
         model_update = {'status': group['status']}
 
-        return model_update, volumes
+        return model_update, volumes_model_update
 
     def _get_snapset_ancestors(self, snapset_name):
         snapset = self.client.req('snapshot-sets',
@@ -803,7 +809,6 @@ class XtremIOVolumeDriver(san.SanDriver):
         """Deletes a cgsnapshot."""
         self.client.req('snapshot-sets', 'DELETE',
                         name=self._get_cgsnap_name(cgsnapshot), ver='v2')
-
         return None, None
 
     def create_group(self, context, group):

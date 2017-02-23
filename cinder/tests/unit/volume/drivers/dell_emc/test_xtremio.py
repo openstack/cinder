@@ -869,6 +869,23 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         self.driver.create_cgsnapshot(d.context, d.cgsnapshot, [snapshot_obj])
         self.driver.delete_consistencygroup(d.context, d.group, [])
 
+    def test_cg_delete_with_volume(self, req):
+        req.side_effect = xms_request
+        d = self.data
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.create_volume(d.test_volume)
+        self.driver.update_consistencygroup(d.context, d.group,
+                                            add_volumes=[d.test_volume])
+        self.driver.db = mock.Mock()
+
+        results, volumes = \
+            self.driver.delete_consistencygroup(d.context,
+                                                d.group,
+                                                [d.test_volume])
+
+        self.assertTrue(all(volume['status'] == 'deleted' for volume in
+                            volumes))
+
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_snapshot(self, get_all_for_cgsnapshot, req):
         req.side_effect = xms_request
@@ -1040,6 +1057,21 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         self.driver.create_group_snapshot(d.context, d.cgsnapshot,
                                           [snapshot_obj])
         self.driver.delete_group(d.context, d.group, [])
+
+    def test_group_delete_with_volume(self, req):
+        req.side_effect = xms_request
+        d = self.data
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.create_volume(d.test_volume)
+        self.driver.update_consistencygroup(d.context, d.group,
+                                            add_volumes=[d.test_volume])
+        self.driver.db = mock.Mock()
+
+        results, volumes = \
+            self.driver.delete_group(d.context, d.group, [d.test_volume])
+
+        self.assertTrue(all(volume['status'] == 'deleted' for volume in
+                            volumes))
 
     def test_group_snapshot(self, req):
         """test group snapshot."""
