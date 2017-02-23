@@ -191,12 +191,12 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch.object(volume.api.API, "update_snapshot",
                        side_effect=v2_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
-    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_snapshot_update(
-            self, mock_validate, snapshot_get_by_id, volume_get_by_id,
+            self, mock_validate, snapshot_get_by_id, volume_get,
             snapshot_metadata_get, update_snapshot):
         snapshot = {
             'id': UUID,
@@ -211,7 +211,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
-        volume_get_by_id.return_value = fake_volume_obj
+        volume_get.return_value = fake_volume_obj
 
         updates = {
             "name": "Updated Test Name",
