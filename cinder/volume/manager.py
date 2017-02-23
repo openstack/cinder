@@ -2281,32 +2281,6 @@ class VolumeManager(manager.CleanableManager,
                 volume.update(status_update)
                 volume.save()
 
-        # If old_reservations has been passed in from the API, we should
-        # skip quotas.
-        # TODO(ntpttr): These reservation checks are left in to be backwards
-        #               compatible with Liberty and can be removed in N.
-        if not old_reservations:
-            # Get old reservations
-            try:
-                reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
-                QUOTAS.add_volume_type_opts(context,
-                                            reserve_opts,
-                                            volume.volume_type_id)
-                # NOTE(wanghao): We don't need to reserve volumes and gigabytes
-                # quota for retyping operation since they didn't changed, just
-                # reserve volume_type and type gigabytes is fine.
-                reserve_opts.pop('volumes')
-                reserve_opts.pop('gigabytes')
-                old_reservations = QUOTAS.reserve(context,
-                                                  project_id=project_id,
-                                                  **reserve_opts)
-            except Exception:
-                volume.update(status_update)
-                volume.save()
-                msg = _("Failed to update quota usage while retyping volume.")
-                LOG.exception(msg, resource=volume)
-                raise exception.CinderException(msg)
-
         # We already got the new reservations
         new_reservations = reservations
 
