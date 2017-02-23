@@ -55,7 +55,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         # Get a given backup
         backup = self.backups_client.show_backup(
             backup['id'])['backup']
-        waiters.wait_for_backup_status(
+        waiters.wait_for_volume_resource_status(
             self.backups_client,
             backup['id'], 'available')
         self.assertEqual(volume['id'], backup['volume_id'])
@@ -78,17 +78,17 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         backup = self.backups_client.create_backup(
             volume_id=src_vol['id'])['backup']
         self.addCleanup(self.backups_client.delete_backup, backup['id'])
-        waiters.wait_for_backup_status(
+        waiters.wait_for_volume_resource_status(
             self.backups_client,
             backup['id'], 'available')
         # Restore to existing volume
         restore = self.backups_client.restore_backup(
             backup_id=backup['id'],
             volume_id=src_vol['id'])['restore']
-        waiters.wait_for_backup_status(
+        waiters.wait_for_volume_resource_status(
             self.backups_client,
             backup['id'], 'available')
-        waiters.wait_for_volume_status(
+        waiters.wait_for_volume_resource_status(
             self.volumes_client,
             src_vol['id'], 'available')
         self.assertEqual(src_vol['id'], restore['volume_id'])
@@ -106,9 +106,8 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         # Create backup
         backup = self.backups_client.create_backup(
             volume_id=volume['id'])['backup']
-        waiters.wait_for_backup_status(self.backups_client,
-                                       backup['id'],
-                                       'available')
+        waiters.wait_for_volume_resource_status(self.backups_client,
+                                                backup['id'], 'available')
         # Create a server
         bd_map = [{'volume_id': volume['id'],
                    'delete_on_termination': '0'}]
@@ -122,15 +121,15 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         # Delete VM
         self.servers_client.delete_server(server['id'])
         # Create incremental backup
-        waiters.wait_for_volume_status(self.volumes_client, volume['id'],
-                                       'available')
+        waiters.wait_for_volume_resource_status(self.volumes_client,
+                                                volume['id'], 'available')
         backup_incr = self.backups_client.create_backup(
             volume_id=volume['id'],
             incremental=True)['backup']
 
-        waiters.wait_for_backup_status(self.backups_client,
-                                       backup_incr['id'],
-                                       'available')
+        waiters.wait_for_volume_resource_status(self.backups_client,
+                                                backup_incr['id'],
+                                                'available')
 
         is_incremental = self.backups_client.show_backup(
             backup_incr['id'])['backup']['is_incremental']
