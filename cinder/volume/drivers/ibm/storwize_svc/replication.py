@@ -396,11 +396,21 @@ class StorwizeSVCReplicationManager(object):
                     client.mkfcpartnership(remote_name)
                 else:
                     client.mkippartnership(remote_ip)
-                partnership_info = client.get_partnership_info(remote_name)
-            if partnership_info['partnership'] != 'fully_configured':
-                client.chpartnership(partnership_info['id'])
         except Exception:
             msg = (_('Unable to establish the partnership with '
+                     'the Storwize cluster %s.'), remote_name)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+    def _partnership_start(self, client, remote_name):
+        try:
+            partnership_info = client.get_partnership_info(
+                remote_name)
+            if (partnership_info and
+                    partnership_info['partnership'] != 'fully_configured'):
+                client.chpartnership(partnership_info['id'])
+        except Exception:
+            msg = (_('Unable to start the partnership with '
                      'the Storwize cluster %s.'), remote_name)
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -419,3 +429,5 @@ class StorwizeSVCReplicationManager(object):
                                               target_system_name, target_ip)
             self._partnership_validate_create(self.target_helpers,
                                               local_system_name, local_ip)
+            self._partnership_start(self._master_helpers, target_system_name)
+            self._partnership_start(self.target_helpers, local_system_name)

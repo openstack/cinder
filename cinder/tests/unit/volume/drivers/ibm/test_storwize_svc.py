@@ -5979,7 +5979,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     def _create_test_volume(self, rep_type):
         volume = self._generate_vol_info(rep_type)
         model_update = self.driver.create_volume(volume)
-        volume['status'] = 'available'
         return volume, model_update
 
     def _get_vdisk_uid(self, vdisk_name):
@@ -6630,10 +6629,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
 
-        # Create metro mirror replication.
+        # Create replication volume.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual('enabled', model_update['replication_status'])
         mm_vol['status'] = 'in-use'
+        gm_vol, model_update = self._create_test_volume(self.gm_type)
+        self.assertEqual('enabled', model_update['replication_status'])
+        gm_vol['status'] = 'available'
 
         # Create non-replication volume.
         non_replica_vol1, model_update = self._create_test_volume(
@@ -6645,12 +6647,14 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         non_replica_vol1['status'] = 'error'
         non_replica_vol2['status'] = 'available'
 
-        volumes = [mm_vol, non_replica_vol1, non_replica_vol2]
+        volumes = [mm_vol, non_replica_vol1, non_replica_vol2, gm_vol]
 
         rep_data0 = json.dumps({'previous_status': mm_vol['status']})
         rep_data1 = json.dumps({'previous_status': non_replica_vol1['status']})
         rep_data2 = json.dumps({'previous_status': non_replica_vol2['status']})
-        failover_expect = [{'updates': {'status': 'error',
+        failover_expect = [{'updates': {'replication_status': 'failed-over'},
+                            'volume_id': gm_vol['id']},
+                           {'updates': {'status': 'error',
                                         'replication_driver_data': rep_data0},
                             'volume_id': mm_vol['id']},
                            {'updates': {'status': 'error',
@@ -6658,15 +6662,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                             'volume_id': non_replica_vol1['id']},
                            {'updates': {'status': 'error',
                                         'replication_driver_data': rep_data2},
-                            'volume_id': non_replica_vol2['id']}]
-        failback_expect = [{'updates': {'status': 'in-use',
-                                        'replication_driver_data': ''},
-                            'volume_id': mm_vol['id']},
-                           {'updates': {'status': 'error',
-                                        'replication_driver_data': ''},
-                            'volume_id': non_replica_vol1['id']},
-                           {'updates': {'status': 'available',
-                                        'replication_driver_data': ''},
                             'volume_id': non_replica_vol2['id']}]
         # Already failback
         target_id, volume_list = self.driver.failover_host(
@@ -6689,6 +6684,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             {'previous_status': 'error'})
         non_replica_vol2['replication_driver_data'] = json.dumps(
             {'previous_status': 'available'})
+        gm_vol['status'] = 'in-use'
+        rep_data3 = json.dumps({'previous_status': gm_vol['status']})
+        failback_expect = [{'updates': {'status': 'in-use',
+                                        'replication_driver_data': ''},
+                            'volume_id': mm_vol['id']},
+                           {'updates': {'status': 'error',
+                                        'replication_driver_data': ''},
+                            'volume_id': non_replica_vol1['id']},
+                           {'updates': {'status': 'available',
+                                        'replication_driver_data': ''},
+                            'volume_id': non_replica_vol2['id']},
+                           {'updates': {'status': 'error',
+                                        'replication_driver_data': rep_data3},
+                            'volume_id': gm_vol['id']}]
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, 'default')
         self.assertEqual('default', target_id)
@@ -6734,6 +6743,30 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             source_system_name)
         self.assertIsNotNone(partner_info)
         self.assertEqual(partner_info['name'], source_system_name)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_partnership_info')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'chpartnership')
+    def test_start_partnership(self, chpartnership, get_partnership_info):
+        get_partnership_info.side_effect = [
+            None,
+            {'partnership': 'fully_configured',
+             'id': '0'},
+            {'partnership': 'fully_configured_stopped',
+             'id': '0'}]
+
+        rep_mgr = self.driver._get_replica_mgr()
+        rep_mgr._partnership_start(rep_mgr._master_helpers,
+                                   'storwize-svc-sim')
+        self.assertFalse(chpartnership.called)
+        rep_mgr._partnership_start(rep_mgr._master_helpers,
+                                   'storwize-svc-sim')
+        self.assertFalse(chpartnership.called)
+
+        rep_mgr._partnership_start(rep_mgr._master_helpers,
+                                   'storwize-svc-sim')
+        chpartnership.assert_called_once_with('0')
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'start_relationship')

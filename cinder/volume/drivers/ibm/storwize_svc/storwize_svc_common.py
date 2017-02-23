@@ -387,7 +387,7 @@ class StorwizeSSH(object):
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkvdisk(self, name, size, units, pool, opts, params):
-        ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
+        ssh_cmd = ['svctask', 'mkvdisk', '-name', '"%s"' % name, '-mdiskgrp',
                    '"%s"' % pool, '-iogrp', six.text_type(opts['iogrp']),
                    '-size', size, '-unit', units] + params
         try:
@@ -1247,7 +1247,6 @@ class StorwizeHelpers(object):
         return params
 
     def create_vdisk(self, name, size, units, pool, opts):
-        name = '"%s"' % name
         LOG.debug('Enter: create_vdisk: vdisk %s.', name)
         params = self._get_vdisk_create_params(opts)
         self.ssh.mkvdisk(name, size, units, pool, opts, params)
@@ -2739,7 +2738,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.error(msg)
             raise exception.UnableToFailOver(reason=msg)
 
-        normal_volumes, rep_volumes = self._classify_volume(ctxt, volumes)
+        unrep_volumes, rep_volumes = self._classify_volume(ctxt, volumes)
 
         # start synchronize from aux volume to master volume
         self._sync_with_aux(ctxt, rep_volumes)
@@ -2749,8 +2748,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                             rep_volumes)
         volumes_update.extend(rep_volumes_update)
 
-        normal_volumes_update = self._failback_normal_volumes(normal_volumes)
-        volumes_update.extend(normal_volumes_update)
+        unrep_volumes_update = self._failover_unreplicated_volume(
+            unrep_volumes)
+        volumes_update.extend(unrep_volumes_update)
 
         self._helpers = self._master_backend_helpers
         self._active_backend_id = None
@@ -2806,18 +2806,22 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                   {'volumes_update': volumes_update})
         return volumes_update
 
-    def _failback_normal_volumes(self, normal_volumes):
+    def _failover_unreplicated_volume(self, unreplicated_vols):
         volumes_update = []
-        for vol in normal_volumes:
-            pre_status = 'available'
-            if ('replication_driver_data' in vol and
-                    vol['replication_driver_data']):
-                rep_data = json.loads(vol['replication_driver_data'])
-                pre_status = rep_data['previous_status']
+        for vol in unreplicated_vols:
+            if vol.replication_driver_data:
+                rep_data = json.loads(vol.replication_driver_data)
+                update_status = rep_data['previous_status']
+                rep_data = ''
+            else:
+                update_status = 'error'
+                rep_data = json.dumps({'previous_status': vol.status})
+
             volumes_update.append(
-                {'volume_id': vol['id'],
-                 'updates': {'status': pre_status,
-                             'replication_driver_data': ''}})
+                {'volume_id': vol.id,
+                 'updates': {'status': update_status,
+                             'replication_driver_data': rep_data}})
+
         return volumes_update
 
     def _sync_with_aux(self, ctxt, volumes):
@@ -2928,13 +2932,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.error(msg)
             raise exception.UnableToFailOver(reason=msg)
 
-        normal_volumes, rep_volumes = self._classify_volume(ctxt, volumes)
+        unrep_volumes, rep_volumes = self._classify_volume(ctxt, volumes)
 
         rep_volumes_update = self._failover_replica_volumes(ctxt, rep_volumes)
         volumes_update.extend(rep_volumes_update)
 
-        normal_volumes_update = self._failover_normal_volumes(normal_volumes)
-        volumes_update.extend(normal_volumes_update)
+        unrep_volumes_update = self._failover_unreplicated_volume(
+            unrep_volumes)
+        volumes_update.extend(unrep_volumes_update)
 
         self._helpers = self._aux_backend_helpers
         self._active_backend_id = self._replica_target['backend_id']
@@ -2991,19 +2996,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.debug('leave: _failover_replica_volumes '
                   'volumes_update=%(volumes_update)s',
                   {'volumes_update': volumes_update})
-        return volumes_update
-
-    def _failover_normal_volumes(self, normal_volumes):
-        volumes_update = []
-        for volume in normal_volumes:
-            # If the volume is not of replicated type, we need to
-            # force the status into error state so a user knows they
-            # do not have access to the volume.
-            rep_data = json.dumps({'previous_status': volume['status']})
-            volumes_update.append(
-                {'volume_id': volume['id'],
-                 'updates': {'status': 'error',
-                             'replication_driver_data': rep_data}})
         return volumes_update
 
     def _classify_volume(self, ctxt, volumes):
