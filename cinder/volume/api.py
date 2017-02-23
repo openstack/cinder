@@ -1563,7 +1563,6 @@ class API(base.Base):
                     'group_id': (None, ''),
                     'volume_type_id': db.Not(vol_type_id)}
 
-        # We don't support changing encryption requirements yet
         # We don't support changing QoS at the front-end yet for in-use volumes
         # TODO(avishay): Call Nova to change QoS setting (libvirt has support
         # - virDomainSetBlockIoTune() - Nova does not have support yet).
