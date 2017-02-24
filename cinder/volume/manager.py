@@ -4579,7 +4579,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vref.id,
                                   {'status': 'error_attaching'})
             self.message_api.create(
-                context, defined_messages.ATTACH_READONLY_VOLUME,
+                context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
                 context.project_id, resource_type=resource_types.VOLUME,
                 resource_uuid=vref.id)
             raise exception.InvalidVolumeAttachMode(mode=mode,
