@@ -111,14 +111,10 @@ class XIVProxy(proxy.IBMStorageProxy):
     Supports IBM XIV, Spectrum Accelerate, A9000, A9000R
     """
     async_rates = (
-        Rate(rpo=30, schedule='00:00:20'),
-        Rate(rpo=60, schedule='00:00:20'),
+        Rate(rpo=120, schedule='00:01:00'),
         Rate(rpo=300, schedule='00:02:00'),
         Rate(rpo=600, schedule='00:05:00'),
-        Rate(rpo=3600, schedule='00:15:00'),
-        Rate(rpo=7200, schedule='00:30:00'),
-        Rate(rpo=14400, schedule='01:00:00'),
-        Rate(rpo=43200, schedule='03:00:00'),
+        Rate(rpo=1200, schedule='00:10:00'),
     )
 
     def __init__(self, storage_info, logger, exception,
@@ -213,9 +209,18 @@ class XIVProxy(proxy.IBMStorageProxy):
                         data=msg)
             else:
                 LOG.debug('create %(sch)s', {'sch': name})
-                self._call_xiv_xcli("schedule_create",
-                                    schedule=name, type='interval',
-                                    interval=rate.schedule)
+                try:
+                    self._call_xiv_xcli("schedule_create",
+                                        schedule=name, type='interval',
+                                        interval=rate.schedule)
+                except errors.XCLIError:
+                    msg = (_("Setting up Async mirroring failed, "
+                             "schedule %(sch)s is not supported on system: "
+                             " %(id)s.")
+                           % {'sch': name, 'id': self.system_id})
+                    LOG.error(msg)
+                    raise self.meta['exception'].VolumeBackendAPIException(
+                        data=msg)
 
     @proxy._trace_time
     def _update_remote_schedule_objects(self):
@@ -240,9 +245,18 @@ class XIVProxy(proxy.IBMStorageProxy):
                     raise self.meta['exception'].VolumeBackendAPIException(
                         data=msg)
             else:
-                self._call_remote_xiv_xcli("schedule_create",
-                                           schedule=name, type='interval',
-                                           interval=rate.schedule)
+                try:
+                    self._call_remote_xiv_xcli("schedule_create",
+                                               schedule=name, type='interval',
+                                               interval=rate.schedule)
+                except errors.XCLIError:
+                    msg = (_("Setting up Async mirroring failed, "
+                             "schedule %(sch)s is not supported on system: "
+                             " %(id)s.")
+                           % {'sch': name, 'id': self.system_id})
+                    LOG.error(msg)
+                    raise self.meta['exception'].VolumeBackendAPIException(
+                        data=msg)
 
     def _get_extra_specs(self, type_id):
         """get extra specs to match the type_id

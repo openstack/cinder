@@ -255,6 +255,80 @@ class XIVProxyTest(unittest.TestCase):
         self.assertEqual("BLA", p.meta.get('ibm_storage_iqn'))
         self.assertEqual("WTF32:3260", p.meta.get('ibm_storage_portal'))
 
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage.xiv_proxy."
+                "client.XCLIClient")
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.storage.get_online_iscsi_ports",
+                mock.MagicMock(return_value=['WTF32']))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.socket.getfqdn", new=mock.MagicMock(
+                    return_value='test_hostname'))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target_params",
+                mock.MagicMock(return_value=REPLICA_PARAMS))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target",
+                mock.MagicMock(return_value="BLABLA"))
+    def test_setup_should_succeed_if_replica_is_set(self, mock_xcli):
+        """Test setup
+
+        Setup should succeed if replica is set
+        """
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception)
+
+        cmd = mock_xcli.connect_multiendpoint_ssl.return_value.cmd
+        item = cmd.config_get.return_value.as_dict.return_value.__getitem__
+        item.return_value.value = "BLA"
+
+        SCHEDULE_LIST_RESPONSE = {
+            '00:01:00': {'interval': 120},
+            '00:02:00': {'interval': 300},
+            '00:05:00': {'interval': 600},
+            '00:10:00': {'interval': 1200},
+        }
+        cmd = mock_xcli.connect_multiendpoint_ssl.return_value.cmd
+        cmd.schedule_list.return_value\
+            .as_dict.return_value = SCHEDULE_LIST_RESPONSE
+
+        p.setup({})
+
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage.xiv_proxy."
+                "client.XCLIClient")
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.storage.get_online_iscsi_ports",
+                mock.MagicMock(return_value=['WTF32']))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.socket.getfqdn", new=mock.MagicMock(
+                    return_value='test_hostname'))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target_params",
+                mock.MagicMock(return_value=REPLICA_PARAMS))
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._get_target",
+                mock.MagicMock(return_value="BLABLA"))
+    def test_setup_should_fail_if_schedule_create_fails(self, mock_xcli):
+        """Test setup
+
+        Setup should fail if replica is set and schedule_create fails
+        """
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception)
+
+        cmd = mock_xcli.connect_multiendpoint_ssl.return_value.cmd
+        item = cmd.config_get.return_value.as_dict.return_value.__getitem__
+        item.return_value.value = "BLA"
+        cmd.schedule_list.return_value.as_dict.return_value = {}
+        cmd.schedule_create.side_effect = (
+            errors.XCLIError('bla'))
+
+        self.assertRaises(exception.VolumeBackendAPIException, p.setup, {})
+
     def test_create_volume_should_call_xcli(self):
         """Create volume should call xcli with the correct parameters"""
         driver = mock.MagicMock()
