@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    The Cinder v2 API has now been marked as deprecated. All new client code
+    should use the v3 API. API v3 adds support for microversioned API calls.
+    If no microversion is requested, the base 3.0 version for the v3 API is
+    identical to v2.

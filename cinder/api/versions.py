@@ -50,10 +50,10 @@ _KNOWN_VERSIONS = {
     },
     "v2.0": {
         "id": "v2.0",
-        "status": "SUPPORTED",
+        "status": "DEPRECATED",
         "version": "",
         "min_version": "",
-        "updated": "2014-06-28T12:20:21Z",
+        "updated": "2017-02-25T12:00:00Z",
         "links": _LINKS,
         "media-types": _MEDIA_TYPES,
     },
