@@ -901,6 +901,16 @@ FAKE_ISCSI_INITIATOR_RESPONSE = """
         "RUNNINGSTATUS":"28",
         "TYPE":222,
         "USECHAP":"true"
+    },
+    {
+        "ISFREE":"true",
+        "ID":"ini-1"
+    },
+    {
+        "ISFREE":"false",
+        "ID":"ini-2",
+        "PARENTNAME":"Host2",
+        "PARENTID":"2"
     }]
 }
 """
@@ -1384,7 +1394,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/iscsidevicename'] = (
     FAKE_GET_ISCSI_DEVICE_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator?range=[0-256]/GET'] = (
-    FAKE_COMMON_SUCCESS_RESPONSE)
+    FAKE_ISCSI_INITIATOR_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
@@ -5138,6 +5148,17 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.assertEqual('available',
                          model_update['status'],
                          "Consistency Group created failed")
+
+    def test_is_initiator_associated_to_host_raise(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.client.is_initiator_associated_to_host,
+                          'ini-2', '1')
+
+    def test_is_initiator_associated_to_host_true(self):
+        ret = self.driver.client.is_initiator_associated_to_host('ini-1', '1')
+        self.assertFalse(ret)
+        ret = self.driver.client.is_initiator_associated_to_host('ini-2', '2')
+        self.assertTrue(ret)
 
 
 class HuaweiConfTestCase(test.TestCase):
