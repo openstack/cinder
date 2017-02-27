@@ -476,3 +476,35 @@ class TestClient(test.TestCase):
         lun_id = client.get_lun_id(cinder_input['volume'])
         self.assertIsInstance(lun_id, int)
         self.assertEqual(mocked['lun'].lun_id, lun_id)
+
+    @res_mock.patch_client
+    def test_get_ioclass(self, client, mocked):
+        qos_specs = {'id': 'qos', vnx_common.QOS_MAX_IOPS: 10,
+                     vnx_common.QOS_MAX_BWS: 100}
+        ioclasses = client.get_ioclass(qos_specs)
+        self.assertEqual(2, len(ioclasses))
+
+    @res_mock.patch_client
+    def test_create_ioclass_iops(self, client, mocked):
+        ioclass = client.create_ioclass_iops('test', 1000)
+        self.assertIsNotNone(ioclass)
+
+    @res_mock.patch_client
+    def test_create_ioclass_bws(self, client, mocked):
+        ioclass = client.create_ioclass_bws('test', 100)
+        self.assertIsNotNone(ioclass)
+
+    @res_mock.patch_client
+    def test_create_policy(self, client, mocked):
+        policy = client.create_policy('policy_name')
+        self.assertIsNotNone(policy)
+
+    @res_mock.patch_client
+    def test_get_running_policy(self, client, mocked):
+        policy, is_new = client.get_running_policy()
+        self.assertEqual(policy.state in ['Running', 'Measuring'], True)
+        self.assertFalse(is_new)
+
+    @res_mock.patch_client
+    def test_add_lun_to_ioclass(self, client, mocked):
+        client.add_lun_to_ioclass('test_ioclass', 1)

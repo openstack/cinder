@@ -117,3 +117,12 @@ class Enum(enum.Enum):
     @classmethod
     def enum_name(cls):
         return cls.__name__
+
+
+class VNXCtrlMethod(object):
+    LIMIT_CTRL = 'limit'
+
+    def __init__(self, method, metric, value):
+        self.method = method
+        self.metric = metric
+        self.value = value

@@ -380,3 +380,30 @@ def calc_migrate_and_provision(volume):
     else:
         specs = common.ExtraSpecs.from_volume(volume)
         return is_async_migrate_enabled(volume), specs.provision
+
+
+def get_backend_qos_specs(volume):
+    qos_specs = volume.volume_type.qos_specs
+    if qos_specs is None:
+        return None
+
+    qos_specs = qos_specs['qos_specs']
+    if qos_specs is None:
+        return None
+
+    consumer = qos_specs['consumer']
+    # Front end QoS specs are handled by nova. Just ignore them here.
+    if consumer not in common.BACKEND_QOS_CONSUMERS:
+        return None
+
+    max_iops = qos_specs['specs'].get(common.QOS_MAX_IOPS)
+    max_bws = qos_specs['specs'].get(common.QOS_MAX_BWS)
+
+    if max_iops is None and max_bws is None:
+        return None
+
+    return {
+        'id': qos_specs['id'],
+        common.QOS_MAX_IOPS: max_iops,
+        common.QOS_MAX_BWS: max_bws,
+    }

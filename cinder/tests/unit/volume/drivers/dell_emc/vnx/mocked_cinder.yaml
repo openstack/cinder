@@ -83,6 +83,15 @@ test_create_volume_error: *test_create_volume
 
 test_create_thick_volume: *test_create_volume
 
+test_create_volume_with_qos:
+  volume:
+    _type: 'volume'
+    _properties:
+       <<: *volume_base_properties
+       name: "volume_with_qos"
+       volume_type_id:
+         _uuid: volume_type_id
+
 test_migrate_volume:
   volume: *volume_base
 
@@ -467,6 +476,14 @@ test_calc_migrate_and_provision_image_cache:
 
 test_calc_migrate_and_provision:
   volume: *volume_base
+
+test_get_backend_qos_specs:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      volume_type_id:
+        _uuid: volume_type_id
 
 ###########################################################
 # TestClient

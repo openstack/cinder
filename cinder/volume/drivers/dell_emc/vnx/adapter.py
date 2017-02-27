@@ -237,11 +237,13 @@ class CommonAdapter(object):
                   'provision': provision,
                   'tier': tier})
 
+        qos_specs = utils.get_backend_qos_specs(volume)
         cg_id = volume.group_id
         lun = self.client.create_lun(
             pool, volume_name, volume_size,
             provision, tier, cg_id,
-            ignore_thresholds=self.config.ignore_pool_full_threshold)
+            ignore_thresholds=self.config.ignore_pool_full_threshold,
+            qos_specs=qos_specs)
         location = self._build_provider_location(
             lun_type='lun',
             lun_id=lun.lun_id,
@@ -747,6 +749,7 @@ class CommonAdapter(object):
                 stats['consistent_group_snapshot_enabled'])
             pool_stats['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
+            pool_stats['QoS_support'] = True
             # Add replication v2.1 support
             self.append_replication_stats(pool_stats)
             pools_stats.append(pool_stats)
