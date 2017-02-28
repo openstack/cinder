@@ -155,6 +155,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                 and tflow
         2.0.6 - Add a lock decorator around the clone_image method
         2.0.7 - Add scaled IOPS
+        2.0.8 - Add active status filter to get volume ops
         2.0.9 - Always purge on delete volume
     """
 
@@ -485,6 +486,10 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return response
 
+    def _get_active_volumes_by_sfaccount(self, account_id, endpoint=None):
+        return [v for v in self._get_volumes_by_sfaccount(account_id, endpoint)
+                if v['status'] == "active"]
+
     def _get_volumes_by_sfaccount(self, account_id, endpoint=None):
         """Get all volumes on cluster for specified account."""
         params = {'accountID': account_id}
@@ -791,8 +796,9 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def _get_sf_volume(self, uuid, params=None):
         if params:
-            vols = self._issue_api_request(
-                'ListVolumesForAccount', params)['result']['volumes']
+            vols = [v for v in self._issue_api_request(
+                'ListVolumesForAccount', params)['result']['volumes'] if
+                v['status'] == "active"]
         else:
             vols = self._issue_api_request(
                 'ListActiveVolumes', params)['result']['volumes']
@@ -1014,9 +1020,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # ListVolumesForAccount gives both Active and Deleted
         # we require the solidfire accountID, uuid of volume
         # is optional
-        params = {'accountID': sf_account_id}
-        vols = self._issue_api_request('ListVolumesForAccount',
-                                       params)['result']['volumes']
+        vols = self._get_active_volumes_by_sfaccount(sf_account_id)
         if cinder_uuid:
             vlist = [v for v in vols if
                      cinder_uuid in v['name']]
