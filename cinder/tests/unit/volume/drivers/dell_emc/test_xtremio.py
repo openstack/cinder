@@ -27,7 +27,6 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.volume.drivers.dell_emc import xtremio
 
-
 typ2id = {'volumes': 'vol-id',
           'snapshots': 'vol-id',
           'initiators': 'initiator-id',
@@ -625,6 +624,14 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         i1['chap-discovery-initiator-password'] = None
         self.driver.initialize_connection(self.data.test_volume2,
                                           self.data.connector)
+
+    @mock.patch('oslo_utils.strutils.mask_dict_password')
+    def test_initialize_connection_masks_password(self, mask_dict, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+        self.assertTrue(mask_dict.called)
 
     def test_add_auth(self, req):
         req.side_effect = xms_request

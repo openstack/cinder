@@ -38,6 +38,7 @@ import string
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import strutils
 from oslo_utils import units
 import six
 
@@ -1004,7 +1005,8 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             properties['discovery_auth_method'] = 'CHAP'
             properties['discovery_auth_username'] = 'chap_user'
             properties['discovery_auth_password'] = discovery_passwd
-        LOG.debug('init conn params:\n%s', properties)
+        LOG.debug('init conn params:\n%s',
+                  strutils.mask_dict_password(properties))
         return {
             'driver_volume_type': 'iscsi',
             'data': properties
