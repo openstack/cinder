@@ -156,9 +156,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         2.0.6 - Add a lock decorator around the clone_image method
         2.0.7 - Add scaled IOPS
         2.0.9 - Always purge on delete volume
+        2.0.10 - Add response to debug on retryable errors
     """
 
-    VERSION = '2.0.9'
+    VERSION = '2.0.10'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "SolidFire_CI"
@@ -477,6 +478,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             msg = ('Retryable error (%s) encountered during '
                    'SolidFire API call.' % response['error']['name'])
             LOG.debug(msg)
+            LOG.debug("API response: %s", response)
             raise exception.SolidFireRetryableException(message=msg)
 
         if 'error' in response:
