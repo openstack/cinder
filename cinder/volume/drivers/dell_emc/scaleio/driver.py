@@ -181,20 +181,20 @@ class ScaleIODriver(driver.VolumeDriver):
             self.configuration.sio_max_over_subscription_ratio)
         self.connector = connector.InitiatorConnector.factory(
             connector.SCALEIO, utils.get_root_helper(),
-            device_scan_attempts=
             self.configuration.num_volume_device_scan_tries
         )
 
-        self.connection_properties = {}
-        self.connection_properties['scaleIO_volname'] = None
-        self.connection_properties['hostIP'] = None
-        self.connection_properties['serverIP'] = self.server_ip
-        self.connection_properties['serverPort'] = self.server_port
-        self.connection_properties['serverUsername'] = self.server_username
-        self.connection_properties['serverPassword'] = self.server_password
-        self.connection_properties['serverToken'] = self.server_token
-        self.connection_properties['iopsLimit'] = None
-        self.connection_properties['bandwidthLimit'] = None
+        self.connection_properties = {
+            'scaleIO_volname': None,
+            'hostIP': None,
+            'serverIP': self.server_ip,
+            'serverPort': self.server_port,
+            'serverUsername': self.server_username,
+            'serverPassword': self.server_password,
+            'serverToken': self.server_token,
+            'iopsLimit': None,
+            'bandwidthLimit': None,
+        }
 
     def check_for_setup_error(self):
         if (not self.protection_domain_name and
@@ -290,7 +290,8 @@ class ScaleIODriver(driver.VolumeDriver):
         else:
             return self.provisioning_type
 
-    def _find_limit(self, storage_type, qos_key, extraspecs_key):
+    @staticmethod
+    def _find_limit(storage_type, qos_key, extraspecs_key):
         qos_limit = (storage_type.get(qos_key)
                      if qos_key is not None else None)
         extraspecs_limit = (storage_type.get(extraspecs_key)
@@ -304,7 +305,8 @@ class ScaleIODriver(driver.VolumeDriver):
                              "of OpenStack. Please use QoS specs."))
         return qos_limit if qos_limit is not None else extraspecs_limit
 
-    def _id_to_base64(self, id):
+    @staticmethod
+    def _id_to_base64(id):
         # Base64 encode the id to get a volume name less than 32 characters due
         # to ScaleIO limitation.
         name = six.text_type(id).replace("-", "")
@@ -585,7 +587,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return self._snapshot_volume(volume_id, snapname)
 
-    def _get_headers(self):
+    @staticmethod
+    def _get_headers():
         return {'content-type': 'application/json'}
 
     def _get_verify_cert(self):
@@ -641,12 +644,14 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def _round_to_num_gran(self, size, num=8):
+    @staticmethod
+    def _round_to_num_gran(size, num=8):
         if size % num == 0:
             return size
         return size + num - (size % num)
 
-    def _round_down_to_num_gran(self, size, num=8):
+    @staticmethod
+    def _round_down_to_num_gran(size, num=8):
         return size - (size % num)
 
     def create_cloned_volume(self, volume, src_vref):
@@ -741,7 +746,7 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info(_LI("ScaleIO delete snapshot."))
         return self._delete_volume(snap_id)
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, **kwargs):
         """Initializes the connection and returns connection info.
 
         The scaleio driver returns a driver_volume_type of 'scaleio'.
@@ -1000,7 +1005,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return self._stats
 
-    def _get_volumetype_extraspecs(self, volume):
+    @staticmethod
+    def _get_volumetype_extraspecs(volume):
         specs = {}
         ctxt = context.get_admin_context()
         type_id = volume['volume_type_id']
@@ -1183,6 +1189,7 @@ class ScaleIODriver(driver.VolumeDriver):
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Manage an existing ScaleIO snapshot.
 
+        :param snapshot: the snapshot to manage
         :param existing_ref: dictionary of the form:
             {'source-id': <id of ScaleIO snapshot>}
         """
@@ -1254,7 +1261,8 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info(_LI("ScaleIO get volume by id request: %s."), request)
         return request
 
-    def _manage_existing_check_legal_response(self, response, existing_ref):
+    @staticmethod
+    def _manage_existing_check_legal_response(response, existing_ref):
         if response.status_code != OK_STATUS_CODE:
             reason = (_("Error managing volume: %s.") % response.json()[
                 'message'])
@@ -1313,8 +1321,8 @@ class ScaleIODriver(driver.VolumeDriver):
         get_scaleio_snapshot_params = lambda snapshot: {
             'volumeId': snapshot.volume['provider_id'],
             'snapshotName': self._id_to_base64(snapshot['id'])}
-        snapshotDefs = list(map(get_scaleio_snapshot_params, snapshots))
-        r, response = self._snapshot_volume_group(snapshotDefs)
+        snapshot_defs = list(map(get_scaleio_snapshot_params, snapshots))
+        r, response = self._snapshot_volume_group(snapshot_defs)
         LOG.info(_LI("Snapshot volume response: %s."), response)
         if r.status_code != OK_STATUS_CODE and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
@@ -1365,11 +1373,14 @@ class ScaleIODriver(driver.VolumeDriver):
             'volumeId': src_volume['provider_id'],
             'snapshotName': self._id_to_base64(trg_volume['id'])}
         if cgsnapshot and snapshots:
-            snapshotDefs = map(get_scaleio_snapshot_params, snapshots, volumes)
+            snapshot_defs = map(get_scaleio_snapshot_params,
+                                snapshots,
+                                volumes)
         else:
-            snapshotDefs = map(get_scaleio_snapshot_params, source_vols,
-                               volumes)
-        r, response = self._snapshot_volume_group(list(snapshotDefs))
+            snapshot_defs = map(get_scaleio_snapshot_params,
+                                source_vols,
+                                volumes)
+        r, response = self._snapshot_volume_group(list(snapshot_defs))
         LOG.info(_LI("Snapshot volume response: %s."), response)
         if r.status_code != OK_STATUS_CODE and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
@@ -1395,9 +1406,9 @@ class ScaleIODriver(driver.VolumeDriver):
         """
         return None, None, None
 
-    def _snapshot_volume_group(self, snapshotDefs):
+    def _snapshot_volume_group(self, snapshot_defs):
         LOG.info(_LI("ScaleIO snapshot group of volumes"))
-        params = {'snapshotDefs': snapshotDefs}
+        params = {'snapshotDefs': snapshot_defs}
         req_vars = {'server_ip': self.server_ip,
                     'server_port': self.server_port}
         request = ("https://%(server_ip)s:%(server_port)s"
