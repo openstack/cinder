@@ -1194,7 +1194,7 @@ class DS8KProxyTest(test.TestCase):
             "reserved_percentage": 0,
             "consistencygroup_support": True,
             "consistent_group_snapshot_enabled": True,
-            "multiattach": True
+            "multiattach": False
         }
 
         self.driver._update_stats()

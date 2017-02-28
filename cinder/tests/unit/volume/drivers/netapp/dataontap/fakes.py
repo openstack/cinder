@@ -375,7 +375,7 @@ FAKE_7MODE_POOLS = [
         'total_capacity_gb': 0.0,
         'free_capacity_gb': 0.0,
         'max_over_subscription_ratio': 20.0,
-        'multiattach': True,
+        'multiattach': False,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb': 0.0,

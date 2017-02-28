@@ -291,7 +291,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
 
             # Add driver capabilities and config info
             pool['QoS_support'] = True
-            pool['multiattach'] = True
+            pool['multiattach'] = False
             pool['consistencygroup_support'] = True
             pool['reserved_percentage'] = self.reserved_percentage
             pool['max_over_subscription_ratio'] = (

@@ -1347,7 +1347,7 @@ class HPE3PARCommon(object):
                     AVG_BUSY_PERC: stat_capabilities[AVG_BUSY_PERC],
                     'filter_function': filter_function,
                     'goodness_function': goodness_function,
-                    'multiattach': True,
+                    'multiattach': False,
                     'consistencygroup_support': True,
                     }
 

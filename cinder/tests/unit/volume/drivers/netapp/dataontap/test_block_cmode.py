@@ -403,7 +403,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'consistencygroup_support': True,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10.0,
-            'multiattach': True,
+            'multiattach': False,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
             'provisioned_capacity_gb': 8.0,

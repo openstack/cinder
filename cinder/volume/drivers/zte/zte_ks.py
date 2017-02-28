@@ -664,7 +664,7 @@ class ZTEVolumeDriver(driver.VolumeDriver):
             'vendor_name': sys_info['cVendor'],
             'driver_version': sys_info['cVersionName'],
             'storage_protocol': 'iSCSI',
-            'multiattach': True,
+            'multiattach': False,
             'total_capacity_gb': pool_info['total'],
             'free_capacity_gb': pool_info['free'],
             'reserved_percentage': 0,

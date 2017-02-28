@@ -580,7 +580,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             'total_capacity_gb': 1342.21,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10.0,
-            'multiattach': True,
+            'multiattach': False,
             'utilization': 30.0,
             'filter_function': 'filter',
             'goodness_function': 'goodness',

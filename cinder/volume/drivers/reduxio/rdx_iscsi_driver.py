@@ -361,7 +361,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
                     "reserved_percentage":
                         self.configuration.reserved_percentage,
                     "QoS_support": False,
-                    'multiattach': True
+                    'multiattach': False
                 }]}
 
         return self._stats

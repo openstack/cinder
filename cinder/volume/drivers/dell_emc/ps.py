@@ -300,7 +300,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
 
         data['total_capacity_gb'] = 0
         data['free_capacity_gb'] = 0
-        data['multiattach'] = True
+        data['multiattach'] = False
 
         provisioned_capacity = 0
 
