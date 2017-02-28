@@ -21,7 +21,6 @@ import ddt
 import mock
 
 from cinder import context
-from cinder import db
 from cinder import exception
 import cinder.group
 from cinder import objects
@@ -29,6 +28,7 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils
 
 
@@ -369,7 +369,7 @@ class GroupAPITestCase(test.TestCase):
         self.group_api.delete_group_snapshot(self.ctxt, ret_group_snap)
         mock_delete_api.assert_called_once_with(mock.ANY, ret_group_snap)
 
-    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
@@ -382,8 +382,10 @@ class GroupAPITestCase(test.TestCase):
                                     mock_volume_api_create,
                                     mock_mapping_create,
                                     mock_get_volume_type):
-        vol_type = utils.create_volume_type(self.ctxt,
-                                            name = 'fake_volume_type')
+        vol_type = fake_volume.fake_volume_type_obj(
+            self.ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake_volume_type')
         mock_get_volume_type.return_value = vol_type
 
         grp_snap = utils.create_group_snapshot(
@@ -439,9 +441,8 @@ class GroupAPITestCase(test.TestCase):
         snap.destroy()
         vol1.destroy()
         grp_snap.destroy()
-        db.volume_type_destroy(self.ctxt, vol_type['id'])
 
-    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.Group.get_by_id')
@@ -454,8 +455,10 @@ class GroupAPITestCase(test.TestCase):
                                      mock_volume_api_create,
                                      mock_mapping_create,
                                      mock_get_volume_type):
-        vol_type = utils.create_volume_type(self.ctxt,
-                                            name = 'fake_volume_type')
+        vol_type = fake_volume.fake_volume_type_obj(
+            self.ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            name='fake_volume_type')
         mock_get_volume_type.return_value = vol_type
 
         grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
@@ -503,7 +506,6 @@ class GroupAPITestCase(test.TestCase):
         grp2.destroy()
         vol.destroy()
         grp.destroy()
-        db.volume_type_destroy(self.ctxt, vol_type['id'])
 
     @mock.patch('cinder.group.api.API._create_group_from_group_snapshot')
     @mock.patch('cinder.group.api.API._create_group_from_source_group')

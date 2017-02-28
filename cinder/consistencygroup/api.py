@@ -240,8 +240,9 @@ class API(base.Base):
                 kwargs['snapshot'] = snapshot
                 volume_type_id = snapshot.volume_type_id
                 if volume_type_id:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
-                        context, volume_type_id)
+                    kwargs['volume_type'] = (
+                        objects.VolumeType.get_by_name_or_id(
+                            context, volume_type_id))
 
                 # Since cgsnapshot is passed in, the following call will
                 # create a db entry for the volume, but will not call the
@@ -303,8 +304,9 @@ class API(base.Base):
                 kwargs['source_volume'] = source_vol
                 volume_type_id = source_vol.get('volume_type_id')
                 if volume_type_id:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
-                        context, volume_type_id)
+                    kwargs['volume_type'] = (
+                        objects.VolumeType.get_by_name_or_id(
+                            context, volume_type_id))
 
                 # Since source_cg is passed in, the following call will
                 # create a db entry for the volume, but will not call the
