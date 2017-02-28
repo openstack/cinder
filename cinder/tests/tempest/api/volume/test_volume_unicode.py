@@ -45,9 +45,9 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
         volume = cls.volumes_client.create_volume(**kwargs)['volume']
         cls.volumes.append(volume)
 
-        waiters.wait_for_volume_status(cls.volumes_client,
-                                       volume['id'],
-                                       'available')
+        waiters.wait_for_volume_resource_status(cls.volumes_client,
+                                                volume['id'],
+                                                'available')
 
         return volume
 
