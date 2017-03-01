@@ -28,6 +28,7 @@ from cinder import quota_utils
 from cinder import utils
 
 QUOTAS = quota.QUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 NON_QUOTA_KEYS = ['tenant_id', 'id']
 
 authorize_update = extensions.extension_authorizer('volume', 'quotas:update')
@@ -63,6 +64,9 @@ class QuotaSetsController(wsgi.Controller):
 
     def _get_quotas(self, context, id, usages=False):
         values = QUOTAS.get_project_quotas(context, id, usages=usages)
+        group_values = GROUP_QUOTAS.get_project_quotas(context, id,
+                                                       usages=usages)
+        values.update(group_values)
 
         if usages:
             return values
@@ -225,7 +229,8 @@ class QuotaSetsController(wsgi.Controller):
         # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
         # we figure out if we have any bad keys.
         for key, value in body['quota_set'].items():
-            if (key not in QUOTAS and key not in NON_QUOTA_KEYS):
+            if (key not in QUOTAS and key not in GROUP_QUOTAS and key not in
+                    NON_QUOTA_KEYS):
                 bad_keys.append(key)
                 continue
 
@@ -259,6 +264,10 @@ class QuotaSetsController(wsgi.Controller):
         # resources.
         quota_values = QUOTAS.get_project_quotas(context, target_project_id,
                                                  defaults=False)
+        group_quota_values = GROUP_QUOTAS.get_project_quotas(context,
+                                                             target_project_id,
+                                                             defaults=False)
+        quota_values.update(group_quota_values)
         valid_quotas = {}
         reservations = []
         for key in body['quota_set'].keys():
@@ -326,17 +335,20 @@ class QuotaSetsController(wsgi.Controller):
         res_change = new_quota_from_target_proj - orig_quota_from_target_proj
         if res_change != 0:
             deltas = {res: res_change}
+            resources = QUOTAS.resources
+            resources.update(GROUP_QUOTAS.resources)
             reservations += quota_utils.update_alloc_to_next_hard_limit(
-                ctxt, QUOTAS.resources, deltas, res, None, target_project.id)
+                ctxt, resources, deltas, res, None, target_project.id)
 
         return reservations
 
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
-
-        return self._format_quota_set(id, QUOTAS.get_defaults(
-            context, project_id=id))
+        defaults = QUOTAS.get_defaults(context, project_id=id)
+        group_defaults = GROUP_QUOTAS.get_defaults(context, project_id=id)
+        defaults.update(group_defaults)
+        return self._format_quota_set(id, defaults)
 
     def delete(self, req, id):
         """Delete Quota for a particular tenant.
@@ -366,6 +378,9 @@ class QuotaSetsController(wsgi.Controller):
         try:
             project_quotas = QUOTAS.get_project_quotas(
                 ctxt, proj_id, usages=True, defaults=False)
+            project_group_quotas = GROUP_QUOTAS.get_project_quotas(
+                ctxt, proj_id, usages=True, defaults=False)
+            project_quotas.update(project_group_quotas)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
@@ -382,6 +397,7 @@ class QuotaSetsController(wsgi.Controller):
                                              parent_id)
 
         defaults = QUOTAS.get_defaults(ctxt, proj_id)
+        defaults.update(GROUP_QUOTAS.get_defaults(ctxt, proj_id))
         # If the project which is being deleted has allocated part of its
         # quota to its subprojects, then subprojects' quotas should be
         # deleted first.
@@ -416,8 +432,11 @@ class QuotaSetsController(wsgi.Controller):
         ctxt = req.environ['cinder.context']
         params = req.params
         try:
+            resources = QUOTAS.resources
+            resources.update(GROUP_QUOTAS.resources)
+
             quota_utils.validate_setup_for_nested_quota_use(
-                ctxt, QUOTAS.resources, quota.NestedDbQuotaDriver(),
+                ctxt, resources, quota.NestedDbQuotaDriver(),
                 fix_allocated_quotas=params.get('fix_allocated_quotas'))
         except exception.InvalidNestedQuotaSetup as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)

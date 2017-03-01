@@ -33,19 +33,21 @@ from cinder.volume import volume_types
 
 
 QUOTAS = quota.QUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10,
               backup_gigabytes=1000, per_volume_gigabytes=-1,
               volume_types_faked=None,
-              tenant_id=fake.PROJECT_ID):
+              tenant_id=fake.PROJECT_ID, groups=10):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
                  'backups': backups,
                  'per_volume_gigabytes': per_volume_gigabytes,
-                 'backup_gigabytes': backup_gigabytes}
+                 'backup_gigabytes': backup_gigabytes,
+                 'groups': groups}
     if not volume_types_faked:
         volume_types_faked = {'fake_type': None}
     for volume_type in volume_types_faked:
@@ -68,6 +70,7 @@ def make_response_body(root=True, ctxt=None, quota_class='foo',
     if not ctxt:
         ctxt = context.get_admin_context()
     resources.update(QUOTAS.get_class_quotas(ctxt, quota_class))
+    resources.update(GROUP_QUOTAS.get_class_quotas(ctxt, quota_class))
     if not request_body and not request_body['quota_class_set']:
         resources.update(request_body['quota_class_set'])
 

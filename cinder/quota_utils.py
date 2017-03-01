@@ -147,6 +147,7 @@ def update_alloc_to_next_hard_limit(context, resources, deltas, res,
                                     expire, project_id):
     from cinder import quota
     QUOTAS = quota.QUOTAS
+    GROUP_QUOTAS = quota.GROUP_QUOTAS
     reservations = []
     projects = get_project_hierarchy(context, project_id,
                                      parents_as_ids=True).parents
@@ -156,8 +157,12 @@ def update_alloc_to_next_hard_limit(context, resources, deltas, res,
     while projects and not hard_limit_found:
         cur_proj_id = list(projects)[0]
         projects = projects[cur_proj_id]
-        cur_quota_lim = QUOTAS.get_by_project_or_default(
-            context, cur_proj_id, res)
+        if res == 'groups':
+            cur_quota_lim = GROUP_QUOTAS.get_by_project_or_default(
+                context, cur_proj_id, res)
+        else:
+            cur_quota_lim = QUOTAS.get_by_project_or_default(
+                context, cur_proj_id, res)
         hard_limit_found = (cur_quota_lim != -1)
         cur_quota = {res: cur_quota_lim}
         cur_delta = {res: deltas[res]}
