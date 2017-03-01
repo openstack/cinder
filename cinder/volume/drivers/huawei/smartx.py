@@ -19,6 +19,7 @@ from oslo_utils import excutils
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 from cinder.volume.drivers.huawei import constants
 from cinder.volume import qos_specs
 
@@ -44,6 +45,10 @@ class SmartQos(object):
         qos = {}
         io_type_flag = None
         ctxt = context.get_admin_context()
+        consumer = qos_specs.get_qos_specs(ctxt, qos_specs_id)['consumer']
+        if consumer == 'front-end':
+            return {}
+
         kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
         LOG.info('The QoS sepcs is: %s.', kvs)
         for k, v in kvs.items():
@@ -96,6 +101,7 @@ class SmartQos(object):
 
         return False
 
+    @utils.synchronized('huawei_qos', external=True)
     def add(self, qos, lun_id):
         policy_id = None
         try:
@@ -119,13 +125,14 @@ class SmartQos(object):
                 if policy_id is not None:
                     self.client.delete_qos_policy(policy_id)
 
+    @utils.synchronized('huawei_qos', external=True)
     def remove(self, qos_id, lun_id):
         qos_info = self.client.get_qos_info(qos_id)
         lun_list = self.client.get_lun_list_in_qos(qos_id, qos_info)
         if len(lun_list) <= 1:
             qos_status = qos_info['RUNNINGSTATUS']
             # 2: Active status.
-            if qos_status == constants.STATUS_QOS_ACTIVE:
+            if qos_status != constants.STATUS_QOS_INACTIVE:
                 self.client.activate_deactivate_qos(qos_id, False)
             self.client.delete_qos_policy(qos_id)
         else:

@@ -2934,7 +2934,6 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.assertEqual(test_info, pool_info)
 
     def test_get_smartx_specs_opts(self):
-
         smartx_opts = smartx.SmartX().get_smartx_specs_opts(smarttier_opts)
         self.assertEqual('3', smartx_opts['policy'])
 
@@ -2947,6 +2946,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         lun_info = self.driver.create_volume(self.volume)
         self.assertEqual('1', lun_info['provider_location'])
 
+    @ddt.data('front-end', 'back-end')
     @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
                        return_value={'smarttier': 'true',
                                      'smartcache': 'true',
@@ -2958,14 +2958,14 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                      'partitionname': 'partition-test'})
     @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_type',
                        return_value={'qos_specs_id': u'025ce295-15e9-41a7'})
-    @mock.patch.object(qos_specs, 'get_qos_specs',
-                       return_value={'specs': {'maxBandWidth': '100',
-                                               'IOType': '0'},
-                                     'consumer': 'back-end'})
     def test_create_smartqos_success(self,
+                                     mock_consumer,
                                      mock_qos_specs,
-                                     mock_value_type,
-                                     mock_volume_params):
+                                     mock_value_type):
+        self.mock_object(qos_specs, 'get_qos_specs',
+                         return_value={'specs': {'maxBandWidth': '100',
+                                                 'IOType': '0'},
+                                       'consumer': mock_consumer})
         self.driver.support_func = FAKE_POOLS_SUPPORT_REPORT
         lun_info = self.driver.create_volume(self.volume)
         self.assertEqual('1', lun_info['provider_location'])
