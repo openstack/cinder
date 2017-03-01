@@ -15,8 +15,8 @@
 Stochastic weight handler
 
 This weight handler differs from the default weight
-handler by giving every pool a chance to be chosed
-wheret the probability is proportional to each pools'
+handler by giving every pool a chance to be chosen
+where the probability is proportional to each pools'
 weight.
 """
 
