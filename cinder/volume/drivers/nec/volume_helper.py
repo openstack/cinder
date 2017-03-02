@@ -1392,7 +1392,7 @@ class MStorageDriver(object):
         self._cli.backup_restore(volume_properties, cli.UnpairWaitForBackup)
 
         LOG.debug('_create_snapshot'
-                  '(Volume ID = %(voi_id)s, Snapshot ID = %(snap_id)s) End.',
+                  '(Volume ID = %(vol_id)s, Snapshot ID = %(snap_id)s) End.',
                   {'vol_id': snapshot['volume_id'],
                    'snap_id': snapshot['id']})
 
