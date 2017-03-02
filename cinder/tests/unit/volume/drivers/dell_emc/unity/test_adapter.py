@@ -66,6 +66,9 @@ class MockDriver(object):
 
 
 class MockClient(object):
+    def __init__(self):
+        self._system = test_client.MockSystem()
+
     @staticmethod
     def get_pools():
         return test_client.MockResourceList(['pool0', 'pool1'])
@@ -165,6 +168,10 @@ class MockClient(object):
     @staticmethod
     def get_ethernet_ports():
         return test_client.MockResourceList(ids=['spa_eth0', 'spb_eth0'])
+
+    @property
+    def system(self):
+        return self._system
 
 
 class MockLookupService(object):
@@ -337,6 +344,14 @@ class CommonAdapterTest(unittest.TestCase):
         self.assertEqual('pass', self.adapter.password)
         self.assertFalse(self.adapter.array_cert_verify)
         self.assertIsNone(self.adapter.array_ca_cert_path)
+
+    def test_do_setup_version_before_4_1(self):
+        def f():
+            with mock.patch('cinder.volume.drivers.dell_emc.unity.adapter.'
+                            'CommonAdapter.validate_ports'):
+                self.adapter._client.system.system_version = '4.0.0'
+                self.adapter.do_setup(self.adapter.driver, MockConfig())
+        self.assertRaises(exception.VolumeBackendAPIException, f)
 
     def test_verify_cert_false_path_none(self):
         self.adapter.array_cert_verify = False
