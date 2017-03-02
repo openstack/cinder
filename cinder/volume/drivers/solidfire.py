@@ -155,9 +155,10 @@ class SolidFireDriver(san.SanISCSIDriver):
                 and tflow
         2.0.6 - Add a lock decorator around the clone_image method
         2.0.7 - Add scaled IOPS
+        2.0.9 - Always purge on delete volume
     """
 
-    VERSION = '2.0.7'
+    VERSION = '2.0.9'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "SolidFire_CI"
@@ -942,6 +943,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             params = {'accountID': self.template_account_id}
             params['volumeID'] = sf_vol['volumeID']
             self._issue_api_request('DeleteVolume', params)
+            self._issue_api_request('PurgeDeletedVolume', params)
             self._create_image_volume(context,
                                       image_meta,
                                       image_service,
@@ -1289,6 +1291,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             with excutils.save_and_reraise_exception():
                 sf_volid = int(model_update['provider_id'].split()[0])
                 self._issue_api_request('DeleteVolume', {'volumeID': sf_volid})
+                self._issue_api_request('PurgeDeletedVolume',
+                                        {'volumeID': sf_volid})
         return model_update
 
     def _retrieve_replication_settings(self, volume):
@@ -1415,10 +1419,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                                    'parameters': params})
                         self._issue_api_request('DeleteVolume', params,
                                                 endpoint=cluster['endpoint'])
+                        self._issue_api_request('PurgeDeletedVolume', params,
+                                                endpoint=cluster['endpoint'])
 
             if sf_vol['status'] == 'active':
                 params = {'volumeID': sf_vol['volumeID']}
                 self._issue_api_request('DeleteVolume', params)
+                self._issue_api_request('PurgeDeletedVolume', params)
             if volume.get('multiattach'):
                 self._remove_volume_from_vags(sf_vol['volumeID'])
         else:
