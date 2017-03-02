@@ -1,0 +1,9 @@
+---
+features:
+  - Allow users to specify the copy speed while using Huawei
+    driver to create volume from snapshot or clone volume, by
+    the new added metadata 'copyspeed'.
+    For example, user can add --metadata copyspeed=1 when
+    creating volume from source volume/snapshot.
+    The valid optional range of copyspeed is [1, 2, 3, 4],
+    respectively representing LOW, MEDIUM, HIGH and HIGHEST.

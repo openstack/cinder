@@ -2203,6 +2203,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
                                               self.configuration)
 
 
+@ddt.ddt
 class HuaweiTestBase(test.TestCase):
     """Base class for Huawei test cases.
 
@@ -2263,6 +2264,55 @@ class HuaweiTestBase(test.TestCase):
         self.snapshot.volume = self.volume
         lun_info = self.driver.create_snapshot(self.snapshot)
         self.assertEqual(11, lun_info['provider_location'])
+
+    @ddt.data('1', '', '0')
+    def test_copy_volume(self, input_speed):
+        self.driver.configuration.lun_copy_wait_interval = 0
+        self.volume.metadata = {'copyspeed': input_speed}
+
+        mocker = self.mock_object(
+            self.driver.client, 'create_luncopy',
+            mock.Mock(wraps=self.driver.client.create_luncopy))
+
+        self.driver._copy_volume(self.volume,
+                                 'fake_copy_name',
+                                 'fake_src_lun',
+                                 'fake_tgt_lun')
+
+        mocker.assert_called_once_with('fake_copy_name',
+                                       'fake_src_lun',
+                                       'fake_tgt_lun',
+                                       input_speed)
+
+    @ddt.data({'input_speed': '1',
+               'actual_speed': '1'},
+              {'input_speed': '',
+               'actual_speed': '2'},
+              {'input_speed': None,
+               'actual_speed': '2'},
+              {'input_speed': '5',
+               'actual_speed': '2'})
+    @ddt.unpack
+    def test_client_create_luncopy(self, input_speed, actual_speed):
+        mocker = self.mock_object(
+            self.driver.client, 'call',
+            mock.Mock(wraps=self.driver.client.call))
+
+        self.driver.client.create_luncopy('fake_copy_name',
+                                          'fake_src_lun',
+                                          'fake_tgt_lun',
+                                          input_speed)
+
+        mocker.assert_called_once_with(
+            mock.ANY,
+            {"TYPE": 219,
+             "NAME": 'fake_copy_name',
+             "DESCRIPTION": 'fake_copy_name',
+             "COPYSPEED": actual_speed,
+             "LUNCOPYTYPE": "1",
+             "SOURCELUN": "INVALID;fake_src_lun;INVALID;INVALID;INVALID",
+             "TARGETLUN": "INVALID;fake_tgt_lun;INVALID;INVALID;INVALID"}
+        )
 
 
 @ddt.ddt
