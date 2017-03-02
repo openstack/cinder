@@ -18,6 +18,8 @@ from cinder import objects
 objects.register_all()
 
 from cinder.api import common as cinder_api_common
+from cinder.api.contrib import types_extra_specs as \
+    cinder_api_contrib_typesextraspecs
 from cinder.api.middleware import auth as cinder_api_middleware_auth
 from cinder.api.views import versions as cinder_api_views_versions
 from cinder.backup import api as cinder_backup_api
@@ -212,6 +214,7 @@ def list_opts():
         ('DEFAULT',
             itertools.chain(
                 cinder_api_common.api_common_opts,
+                cinder_api_contrib_typesextraspecs.extraspec_opts,
                 [cinder_api_middleware_auth.use_forwarded_for_opt],
                 cinder_api_views_versions.versions_opts,
                 cinder_backup_api.backup_api_opts,

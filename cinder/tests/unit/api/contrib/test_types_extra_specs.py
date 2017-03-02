@@ -16,6 +16,7 @@
 #    under the License.
 
 import mock
+from oslo_config import cfg
 import webob
 
 from cinder.api.contrib import types_extra_specs
@@ -24,6 +25,8 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 import cinder.wsgi
+
+CONF = cfg.CONF
 
 
 def return_create_volume_type_extra_specs(context, volume_type_id,
@@ -249,3 +252,30 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def test_create_invalid_too_many_key(self):
         body = {"key1": "value1", "ke/y2": "value2", "key3": "value3"}
         self._extra_specs_create_bad_body(body=body)
+
+    def test_create_volumes_exist(self):
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
+        body = {"extra_specs": {"key1": "value1"}}
+        req = fakes.HTTPRequest.blank(self.api_path)
+        with mock.patch.object(
+                cinder.db,
+                'volume_get_all',
+                return_value=['a']):
+            req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+                fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+            req.method = 'POST'
+
+            body = {"extra_specs": {"key1": "value1"}}
+            req = fakes.HTTPRequest.blank(self.api_path)
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create,
+                              req,
+                              fake.VOLUME_ID, body)
+
+            # Again but with conf set to allow modification
+            CONF.set_default('allow_inuse_volume_type_modification', True)
+            res_dict = self.controller.create(req, fake.VOLUME_ID, body)
+            self.assertEqual({'extra_specs': {'key1': 'value1'}},
+                             res_dict)
