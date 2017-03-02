@@ -223,13 +223,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 1.5.0 - restrict volume placement to specific vCenter clusters
     # 1.6.0 - support for manage existing
     # 1.7.0 - new config option 'vmware_connection_pool_size'
-    VERSION = '1.7.0'
+    # 1.7.1 - enforce vCenter server version 5.5
+    VERSION = '1.7.1'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
 
     # Minimum supported vCenter version.
-    MIN_SUPPORTED_VC_VERSION = '5.1'
+    MIN_SUPPORTED_VC_VERSION = '5.5'
     NEXT_MIN_SUPPORTED_VC_VERSION = '5.5'
 
     # PBM is enabled only for vCenter versions 5.5 and above
@@ -1866,11 +1867,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         elif not versionutils.is_compatible(self.NEXT_MIN_SUPPORTED_VC_VERSION,
                                             vc_version,
                                             same_major=False):
-            # TODO(vbala): enforce vCenter version 5.5 in Pike release.
             LOG.warning('Running Cinder with a VMware vCenter version '
                         'less than %(ver)s is deprecated. The minimum '
                         'required version of vCenter server will be raised'
-                        ' to %(ver)s in the 11.0.0 release.',
+                        ' to %(ver)s in a future release.',
                         {'ver': self.NEXT_MIN_SUPPORTED_VC_VERSION})
 
     def do_setup(self, context):
