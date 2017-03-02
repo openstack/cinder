@@ -1263,23 +1263,17 @@ class Controller(object):
 
     @staticmethod
     def validate_name_and_description(body):
-        name = body.get('name')
-        if name is not None:
-            if isinstance(name, six.string_types):
-                body['name'] = name.strip()
-            try:
-                utils.check_string_length(body['name'], 'Name',
-                                          min_length=0, max_length=255)
-            except exception.InvalidInput as error:
-                raise webob.exc.HTTPBadRequest(explanation=error.msg)
-
-        description = body.get('description')
-        if description is not None:
-            try:
-                utils.check_string_length(description, 'Description',
-                                          min_length=0, max_length=255)
-            except exception.InvalidInput as error:
-                raise webob.exc.HTTPBadRequest(explanation=error.msg)
+        for attribute in ['name', 'description',
+                          'display_name', 'display_description']:
+            value = body.get(attribute)
+            if value is not None:
+                if isinstance(value, six.string_types):
+                    body[attribute] = value.strip()
+                try:
+                    utils.check_string_length(body[attribute], attribute,
+                                              min_length=0, max_length=255)
+                except exception.InvalidInput as error:
+                    raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
     @staticmethod
     def validate_string_length(value, entity_name, min_length=0,

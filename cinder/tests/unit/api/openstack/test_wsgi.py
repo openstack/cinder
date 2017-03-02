@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import ddt
 import inspect
 
 import mock
@@ -820,6 +821,7 @@ class ResponseObjectTest(test.TestCase):
         self.assertEqual({}, robj.serializers)
 
 
+@ddt.data
 class ValidBodyTest(test.TestCase):
 
     def setUp(self):
@@ -855,51 +857,32 @@ class ValidBodyTest(test.TestCase):
                           name, 'Name', min_length=1, max_length=255,
                           remove_whitespaces=False)
 
-    def test_validate_string_length_with_name_contains_white_spaces(
-            self):
-        body = {'name': 'a' * 255 + "  "}
-        self.controller.validate_string_length(
-            body['name'], 'name', min_length=1, max_length=255,
-            remove_whitespaces=True)
-
-    def test_validate_name_and_description_with_name_too_long(self):
-        body = {'name': 'a' * 256}
+    @ddt.data('name', 'display_name', 'description', 'display_description')
+    def test_validate_name_and_description_with_name_too_long(self, attribute):
+        body = {attribute: 'a' * 256}
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.validate_name_and_description,
                           body)
 
-    def test_validate_name_and_description_with_desc_too_long(self):
-        body = {'description': 'a' * 256}
+    @ddt.data('name', 'display_name', 'description', 'display_description')
+    def test_validate_name_and_description_with_name_as_int(self, attribute):
+        body = {attribute: 1234}
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.validate_name_and_description,
                           body)
 
-    def test_validate_name_and_description_with_name_as_int(self):
-        body = {'name': 1234}
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_name_and_description,
-                          body)
-
-    def test_validate_name_and_description_with_desc_as_int(self):
-        body = {'description': 1234}
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_name_and_description,
-                          body)
-
-    def test_validate_name_and_description_with_name_zero_length(self):
+    @ddt.data('name', 'display_name', 'description', 'display_description')
+    def test_validate_name_and_description_with_name_zero_length(self,
+                                                                 attribute):
         # NOTE(jdg): We allow zero length names currently, particularly
         # from Nova, changes to this require an API version bump
-        body = {'name': ""}
+        body = {attribute: ""}
         self.controller.validate_name_and_description(body)
-        self.assertEqual('', body['name'])
+        self.assertEqual('', body[attribute])
 
-    def test_validate_name_and_description_with_desc_zero_length(self):
-        body = {'description': ""}
-        self.controller.validate_name_and_description(body)
-        self.assertEqual('', body['description'])
-
+    @ddt.data('name', 'display_name', 'description', 'display_description')
     def test_validate_name_and_description_with_name_contains_white_spaces(
-            self):
-        body = {'name': 'a' * 255 + "  "}
+            self, attribute):
+        body = {attribute: 'a' * 255 + "  "}
         self.controller.validate_name_and_description(body)
-        self.assertEqual('a' * 255, body['name'])
+        self.assertEqual('a' * 255, body[attribute])
