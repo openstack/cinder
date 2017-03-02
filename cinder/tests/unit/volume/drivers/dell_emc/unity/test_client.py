@@ -413,7 +413,8 @@ class ClientTest(unittest.TestCase):
 
     def test_get_fc_target_info_without_host(self):
         ret = self.client.get_fc_target_info()
-        self.assertListEqual(['8899AABBCCDDEEFF', '8899AABBCCDDFFEE'], ret)
+        self.assertListEqual(['8899AABBCCDDEEFF', '8899AABBCCDDFFEE'],
+                             sorted(ret))
 
     def test_get_fc_target_info_without_host_but_allowed_ports(self):
         ret = self.client.get_fc_target_info(allowed_ports=['spa_fc0'])
@@ -422,7 +423,7 @@ class ClientTest(unittest.TestCase):
     def test_get_fc_target_info_with_host(self):
         host = MockResource('host0')
         ret = self.client.get_fc_target_info(host, True)
-        self.assertListEqual(['8899AABBCCDDEEFF', '8899AABBCCDDEEFF'], ret)
+        self.assertListEqual(['8899AABBCCDDEEFF'], ret)
 
     def test_get_fc_target_info_with_host_and_allowed_ports(self):
         host = MockResource('host0')
