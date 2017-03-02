@@ -15,187 +15,88 @@
 
 """The volumes snapshots api."""
 
-from oslo_log import log as logging
-from oslo_utils import strutils
-import webob
 from webob import exc
 
-from cinder.api import common
 from cinder.api.openstack import wsgi
-from cinder import exception
-from cinder.i18n import _, _LI
-from cinder import utils
-from cinder import volume
+from cinder.api.v2 import snapshots as snapshots_v2
 
 
-LOG = logging.getLogger(__name__)
+def _snapshot_v2_to_v1(snapv2_result):
+    """Transform a v2 snapshot dict to v1."""
+    snapshots = snapv2_result.get('snapshots')
+    if snapshots is None:
+        snapshots = [snapv2_result['snapshot']]
+
+    for snapv1 in snapshots:
+        # The updated_at property was added in v2
+        snapv1.pop('updated_at', None)
+
+        # Name and description were renamed
+        snapv1['display_name'] = snapv1.pop('name', '')
+        snapv1['display_description'] = snapv1.pop('description', '')
+
+    return snapv2_result
 
 
-def _translate_snapshot_detail_view(snapshot):
-    """Maps keys for snapshots details view."""
+def _update_search_opts(req):
+    """Update the requested search options.
 
-    d = _translate_snapshot_summary_view(snapshot)
-
-    # NOTE(gagupta): No additional data / lookups at the moment
-    return d
-
-
-def _translate_snapshot_summary_view(snapshot):
-    """Maps keys for snapshots summary view."""
-    d = {}
-
-    d['id'] = snapshot['id']
-    d['created_at'] = snapshot['created_at']
-    d['display_name'] = snapshot['display_name']
-    d['display_description'] = snapshot['display_description']
-    d['volume_id'] = snapshot['volume_id']
-    d['status'] = snapshot['status']
-    d['size'] = snapshot['volume_size']
-
-    if snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
-                                               dict):
-        d['metadata'] = snapshot['metadata']
-    else:
-        d['metadata'] = {}
-    return d
+    This is a little silly, as ``display_name`` needs to be switched
+    to just ``name``, which internally to v2 gets switched to be
+    ``display_name``. Oh well.
+    """
+    if 'display_name' in req.GET:
+        req.GET['name'] = req.GET.pop('display_name')
+    return req
 
 
-class SnapshotsController(wsgi.Controller):
+class SnapshotsController(snapshots_v2.SnapshotsController):
     """The Snapshots API controller for the OpenStack API."""
-
-    def __init__(self, ext_mgr=None):
-        self.volume_api = volume.API()
-        self.ext_mgr = ext_mgr
-        super(SnapshotsController, self).__init__()
 
     def show(self, req, id):
         """Return data about the given snapshot."""
-        context = req.environ['cinder.context']
-
-        # Not found exception will be handled at the wsgi level
-        snapshot = self.volume_api.get_snapshot(context, id)
-        req.cache_db_snapshot(snapshot)
-
-        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
-
-    def delete(self, req, id):
-        """Delete a snapshot."""
-        context = req.environ['cinder.context']
-
-        LOG.info(_LI("Delete snapshot with id: %s"), id)
-
-        # Not found exception will be handled at the wsgi level
-        snapshot = self.volume_api.get_snapshot(context, id)
-        self.volume_api.delete_snapshot(context, snapshot)
-        return webob.Response(status_int=202)
+        result = super(SnapshotsController, self).show(req, id)
+        return _snapshot_v2_to_v1(result)
 
     def index(self, req):
         """Returns a summary list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_summary_view)
+        return _snapshot_v2_to_v1(
+            super(SnapshotsController, self).index(
+                _update_search_opts(req)))
 
     def detail(self, req):
         """Returns a detailed list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_detail_view)
+        return _snapshot_v2_to_v1(
+            super(SnapshotsController, self).detail(
+                _update_search_opts(req)))
 
-    def _items(self, req, entity_maker):
-        """Returns a list of snapshots, transformed through entity_maker."""
-        context = req.environ['cinder.context']
-
-        # pop out limit and offset , they are not search_opts
-        search_opts = req.GET.copy()
-        search_opts.pop('limit', None)
-        search_opts.pop('offset', None)
-
-        # filter out invalid option
-        allowed_search_options = ('status', 'volume_id', 'display_name')
-        utils.remove_invalid_filter_options(context, search_opts,
-                                            allowed_search_options)
-
-        snapshots = self.volume_api.get_all_snapshots(context,
-                                                      search_opts=search_opts)
-        limited_list = common.limited(snapshots.objects, req)
-        req.cache_db_snapshots(limited_list)
-        res = [entity_maker(snapshot) for snapshot in limited_list]
-        return {'snapshots': res}
-
+    @wsgi.response(200)
     def create(self, req, body):
         """Creates a new snapshot."""
-        kwargs = {}
-        context = req.environ['cinder.context']
-
-        if not self.is_valid_body(body, 'snapshot'):
+        if (body is None or not body.get('snapshot') or
+                not isinstance(body['snapshot'], dict)):
             raise exc.HTTPUnprocessableEntity()
 
-        snapshot = body['snapshot']
-        kwargs['metadata'] = snapshot.get('metadata', None)
+        if 'display_name' in body['snapshot']:
+            body['snapshot']['name'] = body['snapshot'].pop('display_name')
 
-        try:
-            volume_id = snapshot['volume_id']
-        except KeyError:
-            msg = _("'volume_id' must be specified")
-            raise exc.HTTPBadRequest(explanation=msg)
+        if 'display_description' in body['snapshot']:
+            body['snapshot']['description'] = body['snapshot'].pop(
+                'display_description')
 
-        # Not found exception will be handled at the wsgi level
-        volume = self.volume_api.get(context, volume_id)
+        if 'metadata' not in body['snapshot']:
+            body['snapshot']['metadata'] = {}
 
-        force = snapshot.get('force', False)
-        msg = _LI("Create snapshot from volume %s")
-        LOG.info(msg, volume_id)
-
-        if not strutils.is_valid_boolstr(force):
-            msg = _("Invalid value '%s' for force. ") % force
-            raise exception.InvalidParameterValue(err=msg)
-
-        if strutils.bool_from_string(force):
-            new_snapshot = self.volume_api.create_snapshot_force(
-                context,
-                volume,
-                snapshot.get('display_name'),
-                snapshot.get('display_description'),
-                **kwargs)
-        else:
-            new_snapshot = self.volume_api.create_snapshot(
-                context,
-                volume,
-                snapshot.get('display_name'),
-                snapshot.get('display_description'),
-                **kwargs)
-        req.cache_db_snapshot(new_snapshot)
-
-        retval = _translate_snapshot_detail_view(new_snapshot)
-
-        return {'snapshot': retval}
+        return _snapshot_v2_to_v1(
+            super(SnapshotsController, self).create(req, body))
 
     def update(self, req, id, body):
         """Update a snapshot."""
-        context = req.environ['cinder.context']
-
-        if not body:
+        try:
+            return _snapshot_v2_to_v1(
+                super(SnapshotsController, self).update(req, id, body))
+        except exc.HTTPBadRequest:
             raise exc.HTTPUnprocessableEntity()
-
-        if 'snapshot' not in body:
-            raise exc.HTTPUnprocessableEntity()
-
-        snapshot = body['snapshot']
-        update_dict = {}
-
-        valid_update_keys = (
-            'display_name',
-            'display_description',
-        )
-
-        for key in valid_update_keys:
-            if key in snapshot:
-                update_dict[key] = snapshot[key]
-
-        # Not found exception will be handled at the wsgi level
-        snapshot = self.volume_api.get_snapshot(context, id)
-        self.volume_api.update_snapshot(context, snapshot, update_dict)
-
-        snapshot.update(update_dict)
-        req.cache_db_snapshot(snapshot)
-
-        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
 
 
 def create_resource(ext_mgr):
