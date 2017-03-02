@@ -764,7 +764,6 @@ class BackupManager(manager.ThreadPoolManager):
                 raise exception.InvalidBackup(reason=msg)
 
             # Overwrite some fields
-            backup_options['status'] = fields.BackupStatus.AVAILABLE
             backup_options['service'] = self.driver_name
             backup_options['availability_zone'] = self.az
             backup_options['host'] = self.host
@@ -772,7 +771,7 @@ class BackupManager(manager.ThreadPoolManager):
             # Remove some values which are not actual fields and some that
             # were set by the API node
             for key in ('name', 'user_id', 'project_id', 'deleted_at',
-                        'deleted', 'fail_reason'):
+                        'deleted', 'fail_reason', 'status'):
                 backup_options.pop(key, None)
 
             # Update the database
@@ -792,6 +791,10 @@ class BackupManager(manager.ThreadPoolManager):
             except exception.InvalidBackup as err:
                 with excutils.save_and_reraise_exception():
                     self._update_backup_error(backup, six.text_type(err))
+
+            # Update the backup's status
+            backup.update({"status": fields.BackupStatus.AVAILABLE})
+            backup.save()
 
             LOG.info(_LI('Import record id %s metadata from driver '
                          'finished.'), backup.id)

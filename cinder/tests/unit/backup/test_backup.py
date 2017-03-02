@@ -1227,7 +1227,13 @@ class BackupTestCaseWithVerify(BaseBackupTest):
                                      (backup_driver.__module__,
                                       backup_driver.__class__.__name__,
                                       'verify'))
-        with mock.patch(_mock_backup_verify_class):
+
+        def mock_verify(backup_id):
+            backup = db.backup_get(self.ctxt, backup_id)
+            self.assertEqual(fields.BackupStatus.CREATING, backup['status'])
+
+        with mock.patch(_mock_backup_verify_class) as mock_backup_verify:
+            mock_backup_verify.side_effect = mock_verify
             self.backup_mgr.import_record(self.ctxt,
                                           imported_record,
                                           export['backup_service'],
