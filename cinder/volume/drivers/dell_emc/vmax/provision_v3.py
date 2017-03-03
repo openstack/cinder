@@ -782,7 +782,8 @@ class VMAXProvisionV3(object):
             RelationshipName=relationName,
             SourceGroup=srcGroupInstanceName,
             TargetGroup=tgtGroupInstanceName,
-            SyncType=self.utils.get_num(SNAPSYNCTYPE, '16'))
+            SyncType=self.utils.get_num(SNAPSYNCTYPE, '16'),
+            WaitForCopyState=self.utils.get_num(4, '16'))
 
         if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
