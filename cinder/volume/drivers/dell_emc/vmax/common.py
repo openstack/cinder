@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import re
 import six
+import uuid
 
 from cinder import exception
 from cinder import utils as cinder_utils
@@ -1759,6 +1760,7 @@ class VMAXCommon(object):
         :returns: foundVolumeinstance
         """
         foundVolumeinstance = None
+        targetVolName = None
         volumename = volume['id']
 
         loc = volume['provider_location']
@@ -1769,7 +1771,11 @@ class VMAXCommon(object):
             name = ast.literal_eval(loc)
             keys = name['keybindings']
             systemName = keys['SystemName']
-
+            admin_metadata = {}
+            if 'admin_metadata' in volume:
+                admin_metadata = volume.admin_metadata
+            if 'targetVolumeName' in admin_metadata:
+                targetVolName = admin_metadata['targetVolumeName']
             prefix1 = 'SYMMETRIX+'
             prefix2 = 'SYMMETRIX-+-'
             smiversion = self.utils.get_smi_version(self.conn)
@@ -1788,7 +1794,10 @@ class VMAXCommon(object):
                                      get_volume_element_name(volumename))
                 if not (volumeElementName ==
                         foundVolumeinstance['ElementName']):
-                    foundVolumeinstance = None
+                    # Check if it is a vol created as part of a clone group
+                    if not (targetVolName ==
+                            foundVolumeinstance['ElementName']):
+                        foundVolumeinstance = None
             except Exception as e:
                 LOG.info(_LI("Exception in retrieving volume: %(e)s."),
                          {'e': e})
@@ -4848,7 +4857,8 @@ class VMAXCommon(object):
                 replicationService, six.text_type(group['id']))
             LOG.debug("Create CG %(targetCg)s from snapshot.",
                       {'targetCg': targetCgInstanceName})
-
+            dictOfVolumeDicts = {}
+            targetVolumeNames = {}
             for volume, source_vol_or_snapshot in zip(
                     volumes, source_vols_or_snapshots):
                 if 'size' in source_vol_or_snapshot:
@@ -4863,10 +4873,15 @@ class VMAXCommon(object):
                         if 'pool_name' in extraSpecs:
                             extraSpecs = self.utils.update_extra_specs(
                                 extraSpecs)
-                        self._create_vol_and_add_to_cg(
+                        # Create a random UUID and use it as volume name
+                        targetVolumeName = six.text_type(uuid.uuid4())
+                        volumeDict = self._create_vol_and_add_to_cg(
                             volumeSizeInbits, replicationService,
                             targetCgInstanceName, targetCgName,
-                            source_vol_or_snapshot['id'], extraSpecs)
+                            source_vol_or_snapshot['id'],
+                            extraSpecs, targetVolumeName)
+                        dictOfVolumeDicts[volume['id']] = volumeDict
+                        targetVolumeNames[volume['id']] = targetVolumeName
 
             interval_retries_dict = self.utils.get_default_intervals_retries()
             self._break_replica_group_relationship(
@@ -4883,7 +4898,35 @@ class VMAXCommon(object):
         volumes_model_update = self.utils.get_volume_model_updates(
             volumes, group['id'], modelUpdate['status'])
 
+        # Update the provider_location
+        for volume_model_update in volumes_model_update:
+            if volume_model_update['id'] in dictOfVolumeDicts:
+                volume_model_update.update(
+                    {'provider_location': six.text_type(
+                        dictOfVolumeDicts[volume_model_update['id']])})
+
+        # Update the volumes_model_update with admin_metadata
+        self.update_admin_metadata(volumes_model_update,
+                                   key='targetVolumeName',
+                                   values=targetVolumeNames)
+
         return modelUpdate, volumes_model_update
+
+    def update_admin_metadata(
+            self, volumes_model_update, key, values):
+        """Update the volume_model_updates with admin metadata
+
+        :param volumes_model_update: List of volume model updates
+        :param key: Key to be updated in the admin_metadata
+        :param values: Dictionary of values per volume id
+        """
+        for volume_model_update in volumes_model_update:
+            volume_id = volume_model_update['id']
+            if volume_id in values:
+                    admin_metadata = {}
+                    admin_metadata.update({key: values[volume_id]})
+                    volume_model_update.update(
+                        {'admin_metadata': admin_metadata})
 
     def _break_replica_group_relationship(
             self, replicationService, source_id, group_id,
@@ -4933,7 +4976,8 @@ class VMAXCommon(object):
 
     def _create_vol_and_add_to_cg(
             self, volumeSizeInbits, replicationService,
-            targetCgInstanceName, targetCgName, source_id, extraSpecs):
+            targetCgInstanceName, targetCgName, source_id,
+            extraSpecs, targetVolumeName):
         """Creates volume and adds to CG.
 
         :param context: the context
@@ -4943,8 +4987,9 @@ class VMAXCommon(object):
         :param targetCgName: target cg name
         :param source_id: source identifier
         :param extraSpecs: additional info
+        :param targetVolumeName: volume name for the target volume
+        :returns volumeDict: volume dictionary for the newly created volume
         """
-        targetVolumeName = 'targetVol'
         volume = {'size': int(self.utils.convert_bits_to_gbs(
             volumeSizeInbits))}
         if extraSpecs[ISV3]:
@@ -4972,6 +5017,7 @@ class VMAXCommon(object):
                                         targetCgName,
                                         targetVolumeName,
                                         extraSpecs)
+        return volumeDict
 
     def _find_ip_protocol_endpoints(self, conn, storageSystemName,
                                     portgroupname):
