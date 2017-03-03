@@ -567,6 +567,7 @@ class LVM(executor.Executor):
             LOG.error(_LE('Cmd     :%s'), err.cmd)
             LOG.error(_LE('StdOut  :%s'), err.stdout)
             LOG.error(_LE('StdErr  :%s'), err.stderr)
+            LOG.error(_LE('Current state: %s'), self.get_all_volume_groups())
             raise
 
     @utils.retry(putils.ProcessExecutionError)
