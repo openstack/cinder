@@ -159,7 +159,6 @@ class TestGlanceImageService(test.TestCase):
         expected = {
             'id': image_id,
             'name': 'test image',
-            'is_public': False,
             'protected': False,
             'size': None,
             'min_disk': None,
@@ -169,11 +168,12 @@ class TestGlanceImageService(test.TestCase):
             'checksum': None,
             'created_at': self.NOW_DATETIME,
             'updated_at': self.NOW_DATETIME,
-            'deleted_at': None,
             'deleted': None,
             'status': None,
-            'properties': {'instance_id': '42', 'user_id': 'fake'},
+            'properties': {'instance_id': '42', 'is_public': False,
+                           'user_id': 'fake'},
             'owner': None,
+            'visibility': None,
         }
         self.assertDictEqual(expected, image_meta)
 
@@ -194,7 +194,6 @@ class TestGlanceImageService(test.TestCase):
         expected = {
             'id': image_id,
             'name': 'test image',
-            'is_public': False,
             'protected': False,
             'size': None,
             'min_disk': None,
@@ -204,11 +203,11 @@ class TestGlanceImageService(test.TestCase):
             'checksum': None,
             'created_at': self.NOW_DATETIME,
             'updated_at': self.NOW_DATETIME,
-            'deleted_at': None,
             'deleted': None,
             'status': None,
-            'properties': {},
+            'properties': {'is_public': False},
             'owner': None,
+            'visibility': None,
         }
         actual = self.service.show(self.context, image_id)
         self.assertDictEqual(expected, actual)
@@ -250,7 +249,7 @@ class TestGlanceImageService(test.TestCase):
 
         self.assertEqual(1, len(image_metas))
         self.assertEqual('test image', image_metas[0]['name'])
-        self.assertFalse(image_metas[0]['is_public'])
+        self.assertEqual('private', image_metas[0]['visibility'])
 
     def test_detail_v1(self):
         """Confirm we send is_public = None as default when using Glance v1."""
@@ -286,10 +285,9 @@ class TestGlanceImageService(test.TestCase):
             expected = {
                 'id': ids[i],
                 'status': None,
-                'is_public': None,
                 'protected': None,
                 'name': 'TestImage %d' % (i),
-                'properties': {},
+                'properties': {'properties': {}},
                 'size': None,
                 'min_disk': None,
                 'min_ram': None,
@@ -298,9 +296,9 @@ class TestGlanceImageService(test.TestCase):
                 'checksum': None,
                 'created_at': self.NOW_DATETIME,
                 'updated_at': self.NOW_DATETIME,
-                'deleted_at': None,
                 'deleted': None,
                 'owner': None,
+                'visibility': None,
             }
 
             self.assertDictEqual(expected, meta)
@@ -344,10 +342,9 @@ class TestGlanceImageService(test.TestCase):
             expected = {
                 'id': ids[i],
                 'status': None,
-                'is_public': None,
                 'protected': None,
                 'name': 'TestImage %d' % (i),
-                'properties': {},
+                'properties': {'properties': {}},
                 'size': None,
                 'min_disk': None,
                 'min_ram': None,
@@ -356,9 +353,9 @@ class TestGlanceImageService(test.TestCase):
                 'checksum': None,
                 'created_at': self.NOW_DATETIME,
                 'updated_at': self.NOW_DATETIME,
-                'deleted_at': None,
                 'deleted': None,
                 'owner': None,
+                'visibility': None,
             }
             self.assertDictEqual(expected, meta)
             i = i + 1
@@ -461,7 +458,6 @@ class TestGlanceImageService(test.TestCase):
         expected = {
             'id': image_id,
             'name': 'image1',
-            'is_public': True,
             'protected': None,
             'size': None,
             'min_disk': None,
@@ -471,19 +467,18 @@ class TestGlanceImageService(test.TestCase):
             'checksum': None,
             'created_at': self.NOW_DATETIME,
             'updated_at': self.NOW_DATETIME,
-            'deleted_at': None,
             'deleted': None,
             'status': None,
-            'properties': {},
+            'properties': {'is_public': True, 'properties': {}},
             'owner': None,
+            'visibility': None
         }
         self.assertEqual(expected, image_meta)
 
     def test_show_raises_when_no_authtoken_in_the_context(self):
         fixture = self._make_fixture(name='image1',
                                      is_public=False,
-                                     protected=False,
-                                     properties={'one': 'two'})
+                                     protected=False)
         image_id = self.service.create(self.context, fixture)['id']
         self.context.auth_token = False
         self.assertRaises(exception.ImageNotFound,
@@ -499,7 +494,6 @@ class TestGlanceImageService(test.TestCase):
             {
                 'id': image_id,
                 'name': 'image10',
-                'is_public': True,
                 'protected': None,
                 'size': None,
                 'min_disk': None,
@@ -509,11 +503,11 @@ class TestGlanceImageService(test.TestCase):
                 'checksum': None,
                 'created_at': self.NOW_DATETIME,
                 'updated_at': self.NOW_DATETIME,
-                'deleted_at': None,
                 'deleted': None,
                 'status': None,
-                'properties': {},
+                'properties': {'is_public': True, 'properties': {}},
                 'owner': None,
+                'visibility': None
             },
         ]
         self.assertEqual(expected, image_metas)
@@ -694,7 +688,6 @@ class TestGlanceImageService(test.TestCase):
         expected = {
             'id': 1,
             'name': None,
-            'is_public': None,
             'protected': None,
             'size': None,
             'min_disk': None,
@@ -709,6 +702,7 @@ class TestGlanceImageService(test.TestCase):
             'status': None,
             'properties': {},
             'owner': None,
+            'visibility': None,
         }
         self.assertEqual(expected, actual)
 
@@ -850,10 +844,10 @@ class TestGlanceClientVersion(test.TestCase):
     def test_glance_version_by_flag(self, _mockglanceclient):
         """Test glance version set by flag is honoured."""
         glance.GlanceClientWrapper('fake', 'fake_host', 9292)
-        self.assertEqual('1', _mockglanceclient.call_args[0][0])
-        self.flags(glance_api_version=2)
-        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
+        self.flags(glance_api_version=1)
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        self.assertEqual('1', _mockglanceclient.call_args[0][0])
         CONF.reset()
 
     @mock.patch('cinder.image.glance.glanceclient.Client')
@@ -914,7 +908,7 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         class MyGlanceStubClient(object):
             def __init__(inst, version, *args, **kwargs):
-                self.assertEqual('1', version)
+                self.assertEqual('2', version)
                 self.assertEqual("http://fake_host:9292", args[0])
                 self.assertTrue(kwargs['token'])
                 self.assertEqual(60, kwargs['timeout'])
@@ -930,7 +924,7 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         class MyGlanceStubClient(object):
             def __init__(inst, version, *args, **kwargs):
-                self.assertEqual('1', version)
+                self.assertEqual('2', version)
                 self.assertEqual('http://fake_host:9292', args[0])
                 self.assertNotIn('token', kwargs)
                 self.assertEqual(60, kwargs['timeout'])
@@ -946,7 +940,7 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         class MyGlanceStubClient(object):
             def __init__(inst, version, *args, **kwargs):
-                self.assertEqual("1", version)
+                self.assertEqual("2", version)
                 self.assertEqual("http://fake_host:9292", args[0])
                 self.assertTrue(kwargs['token'])
                 self.assertNotIn('timeout', kwargs)
