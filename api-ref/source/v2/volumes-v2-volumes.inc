@@ -572,3 +572,25 @@ Response Example
 
 .. literalinclude:: ./samples/volume-metadata-update-response.json
    :language: javascript
+
+
+
+
+Delete volume metadata
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  DELETE /v2/{tenant_id}/volumes/{volume_id}/metadata/{key}
+
+Deletes metadata for a volume.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - tenant_id: tenant_id
+   - volume_id: volume_id
+   - key: key
