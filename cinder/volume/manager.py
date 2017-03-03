@@ -147,12 +147,8 @@ CONF.register_opts(volume_manager_opts)
 MAPPING = {
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
     'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
-    'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
-    'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
     'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver':
     'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
-    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver':
-    'cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver',
     'cinder.volume.drivers.ibm.xiv_ds8k':
     'cinder.volume.drivers.ibm.ibm_storage',
     'cinder.volume.drivers.emc.scaleio':

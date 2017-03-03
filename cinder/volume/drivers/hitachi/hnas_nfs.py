@@ -105,7 +105,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
             # Trying to get HNAS configuration from cinder.conf
             self.config = hnas_utils.read_cinder_conf(
-                self.configuration, 'nfs')
+                self.configuration)
 
             # If HNAS configuration are not set on cinder.conf, tries to use
             # the deprecated XML configuration file
