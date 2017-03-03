@@ -1,8 +1,0 @@
-{
-    "volume_type": {
-        "name": "vol-type-001",
-        "extra_specs": {
-            "capabilities": "gpu"
-        }
-    }
-}
