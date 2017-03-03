@@ -158,7 +158,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
                 LOG.info('Filesystem %s already exists, using it.', filesystem)
             else:
                 raise
-        host = self.vip or self.nef_host
+        host = self.vip.split(',')[0] if self.vip else self.nef_host
         volume['provider_location'] = '%s:/%s/%s' % (
             host, self.share, volume['name'])
         try:
@@ -448,7 +448,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         total, free, allocated = self._get_capacity_info(self.share)
         total_space = utils.str2gib_size(total)
         free_space = utils.str2gib_size(free)
-        host = self.vip or self.nef_host
+        host = self.vip.split(',')[0] if self.vip else self.nef_host
         share = ':/'.join([host, self.share])
 
         location_info = '%(driver)s:%(share)s' % {

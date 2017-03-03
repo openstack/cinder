@@ -78,7 +78,7 @@ class RESTCaller(object):
             data = args[1]
             kwargs['json'] = data
 
-        LOG.debug('Issuing call to NS: %s, data: %s',
+        LOG.debug('Issuing call to NS: %s %s, data: %s',
                   url, self.__method, data)
 
         try:
@@ -86,7 +86,7 @@ class RESTCaller(object):
                 self.__proxy.session, self.__method)(url, **kwargs)
         except requests.exceptions.ConnectionError:
             self.handle_failover()
-            LOG.debug('Issuing call to NS: %s, data: %s',
+            LOG.debug('Issuing call to NS: %s %s, data: %s',
                       self.__proxy.url, self.__method, data)
             response = getattr(
                 self.__proxy.session, self.__method)(url, **kwargs)
@@ -181,16 +181,16 @@ class HTTPSAuth(requests.auth.AuthBase):
         data = {'username': self.username, 'password': self.password}
         response = requests.post(url, json=data, verify=False,
                                  headers=headers, timeout=TIMEOUT)
+        content = json.loads(response.content) if response.content else None
+        LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
+            'code': response.status_code,
+            'reason': response.reason,
+            'content': content})
         check_error(response)
         response.close()
         if response.content:
-            content = jsonutils.loads(response.content)
             token = content['token']
             del content['token']
-            LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
-                'code': response.status_code,
-                'reason': response.reason,
-                'content': content})
             return token
         raise exception.VolumeBackendAPIException(
             data=_(

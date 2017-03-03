@@ -112,7 +112,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             else:
                 raise
 
-        self._fetch_volumes()
+        # self._fetch_volumes()
 
     def _fetch_volumes(self):
         url = 'san/iscsi/targets?fields=alias,name&limit=50000'
@@ -328,9 +328,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         data = self.nef.get(url)['data']
         if data:
             url = 'san/lunMappings/%s' % data[0]['id']
-            self.nef.delete(url)
-        else:
-            LOG.debug('LU already deleted from appliance')
+            try:
+                self.nef.delete(url)
+            except exception.NexentaException as e:
+                if 'No such lun mapping' in e.args[0]:
+                    LOG.debug('LU already deleted from appliance')
+                else:
+                    raise
 
         for tg in self.volumes:
             if volume_path in self.volumes[tg]:
@@ -361,7 +365,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         free_amount = utils.str2gib_size(
             stats['bytesAvailable'] - stats['bytesUsed'])
 
-        host = self.vip or self.nef_host
+        host = self.vip.split(',')[0] if self.vip else self.nef_host
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
             'host': host,
@@ -429,7 +433,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
                 # Create new target
                 url = 'san/iscsi/targets'
-                portal = self.vip or self.nef_host
+                portal = self.vip.split(',')[0] if self.vip else self.nef_host
                 data = {
                     "portals": [
                         {"address": portal}
@@ -461,7 +465,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             except exception.NexentaException as e:
                 if 'No such target group' in e.args[0]:
                     self._create_target_group(tg_name, target_name)
-                    self._fill_volumes(tg_name)
+                    # self._fill_volumes(tg_name)
                     self.nef.post(url, data)
                 else:
                     raise
@@ -475,7 +479,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
-            host = self.vip or self.nef_host
+            host = self.vip.split(',')[0] if self.vip else self.nef_host
+            LOG.warning(host)
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
                 'host': host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
