@@ -21,9 +21,6 @@ NEXENTA_EDGE_OPTS = [
                default='/dev/disk/by-path',
                help='NexentaEdge logical path of directory to store symbolic '
                     'links to NBDs'),
-    cfg.StrOpt('nexenta_rest_address',
-               default='',
-               help='IP address of NexentaEdge management REST API endpoint'),
     cfg.StrOpt('nexenta_rest_user',
                default='admin',
                help='User name to connect to NexentaEdge'),
@@ -47,6 +44,9 @@ NEXENTA_EDGE_OPTS = [
 ]
 
 NEXENTA_CONNECTION_OPTS = [
+    cfg.StrOpt('nexenta_rest_address',
+               default='',
+               help='IP address of NexentaEdge management REST API endpoint'),
     cfg.StrOpt('nexenta_host',
                default='',
                help='IP address of Nexenta SA'),
