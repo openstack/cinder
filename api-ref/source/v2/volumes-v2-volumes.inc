@@ -345,7 +345,7 @@ Request
    - volume: volume
    - description: description
    - name: name
-   - metadata: metadata
+   - metadata: metadata_2
    - tenant_id: tenant_id
    - volume_id: volume_id
 
@@ -373,7 +373,7 @@ Response Parameters
    - id: id
    - size: size
    - user_id: user_id
-   - metadata: metadata
+   - metadata: metadata_3
    - status: status_3
    - description: description
    - multiattach: multiattach
