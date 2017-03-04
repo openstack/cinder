@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -26,7 +26,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
@@ -536,31 +535,30 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         LOG.debug('Cloning image %(image)s to volume %(volume)s',
                   {'image': image_meta['id'], 'volume': volume['name']})
         lcfg = self.configuration
-        cachevol_size = 0
         if not lcfg.zfssa_enable_local_cache:
             return None, False
 
-        with image_utils.TemporaryImages.fetch(image_service,
-                                               context,
-                                               image_meta['id']) as tmp_image:
-            info = image_utils.qemu_img_info(tmp_image)
-            cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
+        cachevol_size = image_meta['size']
+        if 'virtual_size' in image_meta and image_meta['virtual_size']:
+            cachevol_size = image_meta['virtual_size']
+
+        cachevol_size_gb = int(math.ceil(float(cachevol_size) / units.Gi))
 
         # Make sure the volume is big enough since cloning adds extra metadata.
         # Having it as X Gi can cause creation failures.
-        if info.virtual_size % units.Gi == 0:
-            cachevol_size += 1
+        if cachevol_size % units.Gi == 0:
+            cachevol_size_gb += 1
 
-        if cachevol_size > volume['size']:
+        if cachevol_size_gb > volume['size']:
             exception_msg = ('Image size %(img_size)dGB is larger '
                              'than volume size %(vol_size)dGB.',
-                             {'img_size': cachevol_size,
+                             {'img_size': cachevol_size_gb,
                               'vol_size': volume['size']})
             LOG.error(exception_msg)
             return None, False
 
         specs = self._get_voltype_specs(volume)
-        cachevol_props = {'size': cachevol_size}
+        cachevol_props = {'size': cachevol_size_gb}
 
         try:
             cache_vol, cache_snap = self._verify_cache_volume(context,
@@ -576,7 +574,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                       cache_snap,
                                       lcfg.zfssa_project,
                                       volume['name'])
-            if cachevol_size < volume['size']:
+            if cachevol_size_gb < volume['size']:
                 self.extend_volume(volume, volume['size'])
         except exception.VolumeBackendAPIException as exc:
             exception_msg = ('Cannot clone image %(image)s to '
