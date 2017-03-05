@@ -63,6 +63,10 @@ class ViewBuilder(common.ViewBuilder):
         """Provide a view for a list of group_snapshots."""
         group_snapshots_list = [func(request, group_snapshot)['group_snapshot']
                                 for group_snapshot in group_snapshots]
+        group_snapshot_links = self._get_collection_links(
+            request, group_snapshots_list, self._collection_name)
         group_snapshots_dict = dict(group_snapshots=group_snapshots_list)
+        if group_snapshot_links:
+            group_snapshots_dict['group_snapshot_links'] = group_snapshot_links
 
         return group_snapshots_dict

@@ -105,16 +105,23 @@ class GroupSnapshotsController(wsgi.Controller):
 
     def _get_group_snapshots(self, req, is_detail):
         """Returns a list of group_snapshots through view builder."""
-        context = req.environ['cinder.context']
-        group_snapshots = self.group_snapshot_api.get_all_group_snapshots(
-            context)
-        limited_list = common.limited(group_snapshots, req)
 
+        context = req.environ['cinder.context']
+        req_version = req.api_version_request
+        filters = marker = limit = offset = sort_keys = sort_dirs = None
+        if req_version.matches("3.29"):
+            filters = req.params.copy()
+            marker, limit, offset = common.get_pagination_params(filters)
+            sort_keys, sort_dirs = common.get_sort_params(filters)
+        group_snapshots = self.group_snapshot_api.get_all_group_snapshots(
+            context, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
         if is_detail:
-            group_snapshots = self._view_builder.detail_list(req, limited_list)
+            group_snapshots = self._view_builder.detail_list(req,
+                                                             group_snapshots)
         else:
             group_snapshots = self._view_builder.summary_list(req,
-                                                              limited_list)
+                                                              group_snapshots)
 
         new_group_snapshots = []
         for grp_snap in group_snapshots['group_snapshots']:
@@ -128,7 +135,8 @@ class GroupSnapshotsController(wsgi.Controller):
                 # Skip migrated group snapshot
                 pass
 
-        return {'group_snapshots': new_group_snapshots}
+        group_snapshots['group_snapshots'] = new_group_snapshots
+        return group_snapshots
 
     @wsgi.Controller.api_version(GROUP_SNAPSHOT_API_VERSION)
     @wsgi.response(http_client.ACCEPTED)

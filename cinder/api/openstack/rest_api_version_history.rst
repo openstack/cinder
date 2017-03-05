@@ -288,3 +288,7 @@ user documentation.
 3.28
 ----
   Add filters support to get_pools
+
+3.29
+----
+  Add filter, sorter and pagination support in group snapshot.

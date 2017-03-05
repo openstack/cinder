@@ -310,7 +310,7 @@ class GroupAPITestCase(test.TestCase):
 
         if is_admin:
             grp_snaps = self.group_api.get_all_group_snapshots(
-                self.ctxt, search_opts={'all_tenants': True})
+                self.ctxt, filters={'all_tenants': True})
             self.assertEqual(fake_group_snaps, grp_snaps)
         else:
             grp_snaps = self.group_api.get_all_group_snapshots(

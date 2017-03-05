@@ -868,18 +868,23 @@ class API(base.Base):
                                                           group_snapshot_id)
         return group_snapshots
 
-    def get_all_group_snapshots(self, context, search_opts=None):
+    def get_all_group_snapshots(self, context, filters=None, marker=None,
+                                limit=None, offset=None, sort_keys=None,
+                                sort_dirs=None):
         check_policy(context, 'get_all_group_snapshots')
-        search_opts = search_opts or {}
+        filters = filters or {}
 
-        if context.is_admin and 'all_tenants' in search_opts:
+        if context.is_admin and 'all_tenants' in filters:
             # Need to remove all_tenants to pass the filtering below.
-            del search_opts['all_tenants']
-            group_snapshots = objects.GroupSnapshotList.get_all(context,
-                                                                search_opts)
+            del filters['all_tenants']
+            group_snapshots = objects.GroupSnapshotList.get_all(
+                context, filters=filters, marker=marker, limit=limit,
+                offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
         else:
             group_snapshots = objects.GroupSnapshotList.get_all_by_project(
-                context.elevated(), context.project_id, search_opts)
+                context.elevated(), context.project_id, filters=filters,
+                marker=marker, limit=limit, offset=offset, sort_keys=sort_keys,
+                sort_dirs=sort_dirs)
         return group_snapshots
 
     def reset_group_snapshot_status(self, context, gsnapshot, status):

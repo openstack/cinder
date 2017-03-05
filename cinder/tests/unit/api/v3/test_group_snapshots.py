@@ -35,6 +35,7 @@ from cinder.tests.unit import utils
 import cinder.volume
 
 GROUP_MICRO_VERSION = '3.14'
+SUPPORT_FILTER_VERSION = '3.29'
 
 
 @ddt.ddt
@@ -86,6 +87,179 @@ class GroupSnapshotsAPITestCase(test.TestCase):
 
         group_snapshot.destroy()
 
+    @ddt.data(True, False)
+    def test_list_group_snapshots_with_limit(self, is_detail):
+
+        url = '/v3/%s/group_snapshots?limit=1' % fake.PROJECT_ID
+        if is_detail:
+            url = '/v3/%s/group_snapshots/detail?limit=1' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION)
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+
+        self.assertEqual(2, len(res_dict))
+        self.assertEqual(1, len(res_dict['group_snapshots']))
+        self.assertEqual(self.g_snapshots_array[2].id,
+                         res_dict['group_snapshots'][0]['id'])
+        next_link = (
+            'http://localhost/v3/%s/group_snapshots?limit='
+            '1&marker=%s' %
+            (fake.PROJECT_ID, res_dict['group_snapshots'][0]['id']))
+        self.assertEqual(next_link,
+                         res_dict['group_snapshot_links'][0]['href'])
+        if is_detail:
+            self.assertIn('description', res_dict['group_snapshots'][0].keys())
+        else:
+            self.assertNotIn('description',
+                             res_dict['group_snapshots'][0].keys())
+
+    @ddt.data(True, False)
+    def test_list_group_snapshot_with_offset(self, is_detail):
+        url = '/v3/%s/group_snapshots?offset=1' % fake.PROJECT_ID
+        if is_detail:
+            url = '/v3/%s/group_snapshots/detail?offset=1' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION)
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(2, len(res_dict['group_snapshots']))
+        self.assertEqual(self.g_snapshots_array[1].id,
+                         res_dict['group_snapshots'][0]['id'])
+        self.assertEqual(self.g_snapshots_array[0].id,
+                         res_dict['group_snapshots'][1]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['group_snapshots'][0].keys())
+        else:
+            self.assertNotIn('description',
+                             res_dict['group_snapshots'][0].keys())
+
+    @ddt.data(True, False)
+    def test_list_group_snapshot_with_offset_out_of_range(self, is_detail):
+        url = ('/v3/%s/group_snapshots?offset=234523423455454' %
+               fake.PROJECT_ID)
+        if is_detail:
+            url = ('/v3/%s/group_snapshots/detail?offset=234523423455454' %
+                   fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION)
+        if is_detail:
+            self.assertRaises(webob.exc.HTTPBadRequest, self.controller.detail,
+                              req)
+        else:
+            self.assertRaises(webob.exc.HTTPBadRequest, self.controller.index,
+                              req)
+
+    @ddt.data(False, True)
+    def test_list_group_snapshot_with_limit_and_offset(self, is_detail):
+        group_snapshot = utils.create_group_snapshot(
+            self.context,
+            group_id=self.group.id,
+            group_type_id=self.group.group_type_id)
+        url = '/v3/%s/group_snapshots?limit=2&offset=1' % fake.PROJECT_ID
+        if is_detail:
+            url = ('/v3/%s/group_snapshots/detail?limit=2&offset=1' %
+                   fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION)
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+
+        self.assertEqual(2, len(res_dict))
+        self.assertEqual(2, len(res_dict['group_snapshots']))
+        self.assertEqual(self.g_snapshots_array[2].id,
+                         res_dict['group_snapshots'][0]['id'])
+        self.assertEqual(self.g_snapshots_array[1].id,
+                         res_dict['group_snapshots'][1]['id'])
+        self.assertIsNotNone(res_dict['group_snapshot_links'][0]['href'])
+        if is_detail:
+            self.assertIn('description', res_dict['group_snapshots'][0].keys())
+        else:
+            self.assertNotIn('description',
+                             res_dict['group_snapshots'][0].keys())
+        group_snapshot.destroy()
+
+    @ddt.data(False, True)
+    def test_list_group_snapshot_with_filter(self, is_detail):
+        url = ('/v3/%s/group_snapshots?'
+               'all_tenants=True&id=%s') % (fake.PROJECT_ID,
+                                            self.g_snapshots_array[0].id)
+        if is_detail:
+            url = ('/v3/%s/group_snapshots/detail?'
+                   'all_tenants=True&id=%s') % (fake.PROJECT_ID,
+                                                self.g_snapshots_array[0].id)
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION,
+                                      use_admin_context=True)
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(1, len(res_dict['group_snapshots']))
+        self.assertEqual(self.g_snapshots_array[0].id,
+                         res_dict['group_snapshots'][0]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['group_snapshots'][0].keys())
+        else:
+            self.assertNotIn('description',
+                             res_dict['group_snapshots'][0].keys())
+
+    @ddt.data({'is_detail': True, 'version': GROUP_MICRO_VERSION},
+              {'is_detail': False, 'version': GROUP_MICRO_VERSION},
+              {'is_detail': True, 'version': '3.28'},
+              {'is_detail': False, 'version': '3.28'},)
+    @ddt.unpack
+    def test_list_group_snapshot_with_filter_previous_version(self, is_detail,
+                                                              version):
+        url = ('/v3/%s/group_snapshots?'
+               'all_tenants=True&id=%s') % (fake.PROJECT_ID,
+                                            self.g_snapshots_array[0].id)
+        if is_detail:
+            url = ('/v3/%s/group_snapshots/detail?'
+                   'all_tenants=True&id=%s') % (fake.PROJECT_ID,
+                                                self.g_snapshots_array[0].id)
+        req = fakes.HTTPRequest.blank(url, version=version,
+                                      use_admin_context=True)
+
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(3, len(res_dict['group_snapshots']))
+
+    @ddt.data(False, True)
+    def test_list_group_snapshot_with_sort(self, is_detail):
+        url = '/v3/%s/group_snapshots?sort=id:asc' % fake.PROJECT_ID
+        if is_detail:
+            url = ('/v3/%s/group_snapshots/detail?sort=id:asc' %
+                   fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank(url, version=SUPPORT_FILTER_VERSION)
+        expect_result = [snapshot.id for snapshot in self.g_snapshots_array]
+        expect_result.sort()
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(3, len(res_dict['group_snapshots']))
+        self.assertEqual(expect_result[0],
+                         res_dict['group_snapshots'][0]['id'])
+        self.assertEqual(expect_result[1],
+                         res_dict['group_snapshots'][1]['id'])
+        self.assertEqual(expect_result[2],
+                         res_dict['group_snapshots'][2]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['group_snapshots'][0].keys())
+        else:
+            self.assertNotIn('description',
+                             res_dict['group_snapshots'][0].keys())
+
     def test_show_group_snapshot_with_group_snapshot_not_found(self):
         req = fakes.HTTPRequest.blank('/v3/%s/group_snapshots/%s' %
                                       (fake.PROJECT_ID,
@@ -112,14 +286,15 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         self.assertEqual(3, len(res_dict['group_snapshots']))
         for index, snapshot in enumerate(self.g_snapshots_array):
             self.assertEqual(snapshot.id,
-                             res_dict['group_snapshots'][index]['id'])
-            self.assertIsNotNone(res_dict['group_snapshots'][index]['name'])
+                             res_dict['group_snapshots'][2 - index]['id'])
+            self.assertIsNotNone(
+                res_dict['group_snapshots'][2 - index]['name'])
             if is_detail:
                 self.assertIn('description',
-                              res_dict['group_snapshots'][index].keys())
+                              res_dict['group_snapshots'][2 - index].keys())
             else:
                 self.assertNotIn('description',
-                                 res_dict['group_snapshots'][index].keys())
+                                 res_dict['group_snapshots'][2 - index].keys())
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
