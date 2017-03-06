@@ -16,14 +16,15 @@
 Tests for Zadara VPSA volume driver
 """
 import copy
-
 import mock
-from six.moves import http_client
+import requests
+from six.moves.urllib import parse
 
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import zadara
+
 
 DEFAULT_RUNTIME_VARS = {
     'status': 200,
@@ -81,7 +82,7 @@ DEFAULT_RUNTIME_VARS = {
 RUNTIME_VARS = None
 
 
-class FakeRequest(object):
+class FakeResponse(object):
     def __init__(self, method, url, body):
         self.method = method
         self.url = url
@@ -436,33 +437,18 @@ class FakeRequest(object):
         return RUNTIME_VARS['bad_volume']
 
 
-class FakeHTTPConnection(object):
-    """A fake http_client.HTTPConnection for zadara volume driver tests."""
-    def __init__(self, host, port, use_ssl=False):
-        self.host = host
-        self.port = port
-        self.use_ssl = use_ssl
-        self.req = None
-
-    def request(self, method, url, body):
-        self.req = FakeRequest(method, url, body)
-
-    def getresponse(self):
-        return self.req
-
-    def close(self):
-        self.req = None
-
-
-class FakeHTTPSConnection(FakeHTTPConnection):
-    def __init__(self, host, port):
-        super(FakeHTTPSConnection, self).__init__(host, port, use_ssl=True)
+class FakeRequests(object):
+    """A fake requests for zadara volume driver tests."""
+    def __init__(self, method, api_url, data, verify):
+        url = parse.urlparse(api_url).path
+        res = FakeResponse(method, url, data)
+        self.content = res.read()
+        self.status_code = res.status
 
 
 class ZadaraVPSADriverTestCase(test.TestCase):
     """Test case for Zadara VPSA volume driver."""
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def setUp(self):
         super(ZadaraVPSADriverTestCase, self).setUp()
 
@@ -480,21 +466,20 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.configuration.zadara_vol_encrypt = False
         self.configuration.zadara_vol_name_template = 'OS_%s'
         self.configuration.zadara_vpsa_use_ssl = False
+        self.configuration.zadara_ssl_cert_verify = False
         self.configuration.zadara_default_snap_policy = False
         self.driver = (zadara.ZadaraVPSAISCSIDriver(
                        configuration=self.configuration))
         self.driver.do_setup(None)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_create_destroy(self):
         """Create/Delete volume."""
         volume = {'name': 'test_volume_01', 'size': 1}
         self.driver.create_volume(volume)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_create_destroy_multiple(self):
         """Create/Delete multiple volumes."""
         self.driver.create_volume({'name': 'test_volume_01', 'size': 1})
@@ -505,15 +490,13 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_volume({'name': 'test_volume_01'})
         self.driver.delete_volume({'name': 'test_volume_04'})
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_destroy_non_existent(self):
         """Delete non-existent volume."""
         volume = {'name': 'test_volume_02', 'size': 1}
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_empty_apis(self):
         """Test empty func (for coverage only)."""
         context = None
@@ -526,8 +509,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           None)
         self.driver.check_for_setup_error()
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_volume_attach_detach(self):
         """Test volume attachment and detach."""
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
@@ -547,8 +529,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.terminate_connection(volume, connector)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_volume_attach_multiple_detach(self):
         """Test multiple volume attachment and detach."""
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
@@ -566,8 +547,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.terminate_connection(volume, connector2)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_wrong_attach_params(self):
         """Test different wrong attach scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
@@ -576,8 +556,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.initialize_connection,
                           volume1, connector1)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_wrong_detach_params(self):
         """Test different wrong detachment scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
@@ -600,8 +579,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.terminate_connection,
                           volume1, connector2)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_wrong_login_reply(self):
         """Test wrong login reply."""
 
@@ -627,16 +605,25 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertRaises(exception.MalformedResponse,
                           self.driver.do_setup, None)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
-    def test_ssl_use(self):
+    @mock.patch.object(requests, 'request')
+    def test_ssl_use(self, request):
         """Coverage test for SSL connection."""
-        self.flags(zadara_vpsa_use_ssl=True)
-        self.driver.do_setup(None)
-        self.flags(zadara_vpsa_use_ssl=False)
+        self.configuration.zadara_ssl_cert_verify = True
+        self.configuration.zadara_vpsa_use_ssl = True
+        self.configuration.driver_ssl_cert_path = '/path/to/cert'
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+        good_response = mock.MagicMock()
+        good_response.status_code = RUNTIME_VARS['status']
+        good_response.content = RUNTIME_VARS['login']
+
+        def request_verify_cert(*args, **kwargs):
+            self.assertEqual(kwargs['verify'], '/path/to/cert')
+            return good_response
+
+        request.side_effect = request_verify_cert
+        self.driver.do_setup(None)
+
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_bad_http_response(self):
         """Coverage test for non-good HTTP response."""
         RUNTIME_VARS['status'] = 400
@@ -645,8 +632,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertRaises(exception.BadHTTPResponseStatus,
                           self.driver.create_volume, volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_delete_without_detach(self):
         """Test volume deletion without detach."""
 
@@ -654,15 +640,13 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         connector1 = dict(initiator='test_iqn.1')
         connector2 = dict(initiator='test_iqn.2')
         connector3 = dict(initiator='test_iqn.3')
-
         self.driver.create_volume(volume1)
         self.driver.initialize_connection(volume1, connector1)
         self.driver.initialize_connection(volume1, connector2)
         self.driver.initialize_connection(volume1, connector3)
         self.driver.delete_volume(volume1)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_no_active_ctrl(self):
 
         RUNTIME_VARS['controllers'] = []
@@ -673,8 +657,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.initialize_connection,
                           volume, connector)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_create_destroy_snapshot(self):
         """Create/Delete snapshot test."""
         volume = {'name': 'test_volume_01', 'size': 1}
@@ -699,8 +682,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_expand_volume(self):
         """Expand volume test."""
         volume = {'name': 'test_volume_01', 'size': 10}
@@ -718,8 +700,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.extend_volume(volume, 15)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_create_destroy_clones(self):
         """Create/Delete clones test."""
         volume1 = {'name': 'test_volume_01', 'id': '01', 'size': 1}
@@ -758,8 +739,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         self.driver.delete_volume(volume1)
 
-    @mock.patch.object(http_client, 'HTTPConnection', FakeHTTPConnection)
-    @mock.patch.object(http_client, 'HTTPSConnection', FakeHTTPSConnection)
+    @mock.patch.object(requests, 'request', FakeRequests)
     def test_get_volume_stats(self):
         """Get stats test."""
         self.configuration.safe_get.return_value = 'ZadaraVPSAISCSIDriver'
