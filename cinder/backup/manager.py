@@ -355,7 +355,10 @@ class BackupManager(manager.ThreadPoolManager):
     def create_backup(self, context, backup):
         """Create volume backups using configured backup service."""
         volume_id = backup.volume_id
+        snapshot_id = backup.snapshot_id
         volume = objects.Volume.get_by_id(context, volume_id)
+        snapshot = objects.Snapshot.get_by_id(
+            context, snapshot_id) if snapshot_id else None
         previous_status = volume.get('previous_status', None)
         LOG.info('Create backup started, backup: %(backup_id)s '
                  'volume: %(volume_id)s.',
@@ -368,7 +371,7 @@ class BackupManager(manager.ThreadPoolManager):
         backup.availability_zone = self.az
         backup.save()
 
-        expected_status = 'backing-up'
+        expected_status = 'available' if snapshot_id else "backing-up"
         actual_status = volume['status']
         if actual_status != expected_status:
             err = _('Create backup aborted, expected volume status '
@@ -378,6 +381,18 @@ class BackupManager(manager.ThreadPoolManager):
             }
             self._update_backup_error(backup, err)
             raise exception.InvalidVolume(reason=err)
+
+        if snapshot_id:
+            expected_status = fields.SnapshotStatus.BACKING_UP
+            actual_status = snapshot['status']
+            if actual_status != expected_status:
+                err = _('Create backup aborted, expected snapshot status '
+                        '%(expected_status)s but got %(actual_status)s.') % {
+                    'expected_status': expected_status,
+                    'actual_status': actual_status,
+                }
+                self._update_backup_error(backup, err)
+                raise exception.InvalidSnapshot(reason=err)
 
         expected_status = fields.BackupStatus.CREATING
         actual_status = backup.status
@@ -401,9 +416,13 @@ class BackupManager(manager.ThreadPoolManager):
                 self._update_backup_error(backup, six.text_type(err))
 
         # Restore the original status.
-        self.db.volume_update(context, volume_id,
-                              {'status': previous_status,
-                               'previous_status': 'backing-up'})
+        if snapshot_id:
+            self.db.snapshot_update(context, snapshot_id,
+                                    {'status': fields.BackupStatus.AVAILABLE})
+        else:
+            self.db.volume_update(context, volume_id,
+                                  {'status': previous_status,
+                                   'previous_status': 'backing-up'})
         backup.status = fields.BackupStatus.AVAILABLE
         backup.size = volume['size']
         backup.save()

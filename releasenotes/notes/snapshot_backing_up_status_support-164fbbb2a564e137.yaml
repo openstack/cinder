@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fix the unreasonable status change for volumes and snapshots when creating
+    backups from snapshots.
+upgrade:
+  - The "backing-up" status is added to snapshot's status matrix.

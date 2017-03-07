@@ -78,7 +78,8 @@ class BaseBackupTest(test.TestCase):
                                 project_id=str(uuid.uuid4()),
                                 service=None,
                                 temp_volume_id=None,
-                                temp_snapshot_id=None):
+                                temp_snapshot_id=None,
+                                snapshot_id=None):
         """Create a backup entry in the DB.
 
         Return the entry ID
@@ -96,7 +97,7 @@ class BaseBackupTest(test.TestCase):
         kwargs['status'] = status
         kwargs['fail_reason'] = ''
         kwargs['service'] = service or CONF.backup_driver
-        kwargs['snapshot'] = False
+        kwargs['snapshot_id'] = snapshot_id
         kwargs['parent_id'] = None
         kwargs['size'] = size
         kwargs['object_count'] = object_count
@@ -617,6 +618,28 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertEqual(vol_size, backup['size'])
+
+    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    @ddt.data(fields.SnapshotStatus.BACKING_UP,
+              fields.SnapshotStatus.AVAILABLE)
+    def test_create_backup_with_snapshot(self, snapshot_status,
+                                         mock_run_backup):
+        vol_id = self._create_volume_db_entry(status='available')
+        snapshot = self._create_snapshot_db_entry(volume_id=vol_id,
+                                                  status=snapshot_status)
+        backup = self._create_backup_db_entry(volume_id=vol_id,
+                                              snapshot_id=snapshot.id)
+        if snapshot_status == fields.SnapshotStatus.BACKING_UP:
+            self.backup_mgr.create_backup(self.ctxt, backup)
+
+            vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+            snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
+
+            self.assertEqual('available', vol.status)
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
+        else:
+            self.assertRaises(exception.InvalidSnapshot,
+                              self.backup_mgr.create_backup, self.ctxt, backup)
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
@@ -1494,6 +1517,32 @@ class BackupAPITestCase(BaseBackupTest):
                                                  size=1)
         backup = self.api.create(self.ctxt, None, None, volume_id, None)
         self.assertEqual('testhost', backup.host)
+
+    @mock.patch.object(api.API, '_get_available_backup_service_host',
+                       return_value='fake_host')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @ddt.data(True, False)
+    def test_create_backup_resource_status(self, is_snapshot, mock_create,
+                                           mock_get_service):
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        volume_id = self._create_volume_db_entry(status='available')
+        snapshot = self._create_snapshot_db_entry(volume_id=volume_id)
+        if is_snapshot:
+            self.api.create(self.ctxt, None, None, volume_id, None,
+                            snapshot_id=snapshot.id)
+            volume = objects.Volume.get_by_id(self.ctxt, volume_id)
+            snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
+
+            self.assertEqual('backing-up', snapshot.status)
+            self.assertEqual('available', volume.status)
+        else:
+            self.api.create(self.ctxt, None, None, volume_id, None)
+            volume = objects.Volume.get_by_id(self.ctxt, volume_id)
+            snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
+
+            self.assertEqual('available', snapshot.status)
+            self.assertEqual('backing-up', volume.status)
 
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')

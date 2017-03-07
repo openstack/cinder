@@ -129,6 +129,7 @@ OBJ_VERSIONS.add('1.21', {'ManageableSnapshot': '1.0',
                           'ManageableVolume': '1.0',
                           'ManageableVolumeList': '1.0',
                           'ManageableSnapshotList': '1.0'})
+OBJ_VERSIONS.add('1.22', {'Snapshot': '1.4'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

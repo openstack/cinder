@@ -291,10 +291,13 @@ class API(base.Base):
         if snapshot_id:
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
             data_timestamp = snapshot.created_at
-
-        self.db.volume_update(context, volume_id,
-                              {'status': 'backing-up',
-                               'previous_status': previous_status})
+            self.db.snapshot_update(
+                context, snapshot_id,
+                {'status': fields.SnapshotStatus.BACKING_UP})
+        else:
+            self.db.volume_update(context, volume_id,
+                                  {'status': 'backing-up',
+                                   'previous_status': previous_status})
 
         backup = None
         try:

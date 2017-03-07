@@ -231,7 +231,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                       fake.SNAPSHOT_ID)])
 
     @ddt.data('1.1', '1.3')
-    def test_obj_make_compatible(self, version):
+    def test_obj_make_compatible_1_3(self, version):
         snapshot = objects.Snapshot(context=self.context)
         snapshot.status = 'unmanaging'
         primitive = snapshot.obj_to_primitive(version)
@@ -240,6 +240,18 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
             status = fields.SnapshotStatus.UNMANAGING
         else:
             status = fields.SnapshotStatus.DELETING
+        self.assertEqual(status, snapshot.status)
+
+    @ddt.data('1.3', '1.4')
+    def test_obj_make_compatible_1_4(self, version):
+        snapshot = objects.Snapshot(context=self.context)
+        snapshot.status = fields.SnapshotStatus.BACKING_UP
+        primitive = snapshot.obj_to_primitive(version)
+        snapshot = objects.Snapshot.obj_from_primitive(primitive)
+        if version == '1.4':
+            status = fields.SnapshotStatus.BACKING_UP
+        else:
+            status = fields.SnapshotStatus.AVAILABLE
         self.assertEqual(status, snapshot.status)
 
 
