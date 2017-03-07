@@ -145,6 +145,11 @@ class Service(service.Service):
             manager_class = profiler.trace_cls("rpc")(manager_class)
 
         self.service = None
+        self.manager = manager_class(host=self.host,
+                                     cluster=self.cluster,
+                                     service_name=service_name,
+                                     *args, **kwargs)
+        self.availability_zone = self.manager.availability_zone
 
         # NOTE(geguileo): We need to create the Service DB entry before we
         # create the manager, otherwise capped versions for serializer and rpc
@@ -201,10 +206,6 @@ class Service(service.Service):
             # start while we are still doing the rolling upgrade.
             self.added_to_cluster = not self.is_upgrading_to_n
 
-        self.manager = manager_class(host=self.host,
-                                     cluster=self.cluster,
-                                     service_name=service_name,
-                                     *args, **kwargs)
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
@@ -356,13 +357,12 @@ class Service(service.Service):
                     pass
 
     def _create_service_ref(self, context, rpc_version=None):
-        zone = CONF.storage_availability_zone
         kwargs = {
             'host': self.host,
             'binary': self.binary,
             'topic': self.topic,
             'report_count': 0,
-            'availability_zone': zone,
+            'availability_zone': self.availability_zone,
             'rpc_current_version': rpc_version or self.manager.RPC_API_VERSION,
             'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
         }
@@ -486,7 +486,6 @@ class Service(service.Service):
             return
 
         ctxt = context.get_admin_context()
-        zone = CONF.storage_availability_zone
         try:
             try:
                 service_ref = objects.Service.get_by_id(ctxt,
@@ -499,8 +498,8 @@ class Service(service.Service):
                                                         Service.service_id)
 
             service_ref.report_count += 1
-            if zone != service_ref.availability_zone:
-                service_ref.availability_zone = zone
+            if self.availability_zone != service_ref.availability_zone:
+                service_ref.availability_zone = self.availability_zone
 
             service_ref.save()
 

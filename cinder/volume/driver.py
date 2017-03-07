@@ -266,6 +266,11 @@ volume_opts = [
                      "working CI system and testing are marked as unsupported "
                      "until CI is working again.  This also marks a driver as "
                      "deprecated and may be removed in the next release."),
+    cfg.StrOpt('backend_availability_zone',
+               default=None,
+               help='Availability zone for this volume backend. If not set, '
+                    'the storage_availability_zone option value is used as '
+                    'the default for all backends.'),
 ]
 
 # for backward compatibility

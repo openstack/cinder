@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Availability zones may now be configured per backend in a multi-backend
+    configuration. Individual backend sections can now set the configuration
+    option ``backend_availability_zone``. If set, this value will override
+    the [DEFAULT] ``storage_availability_zone`` setting.
