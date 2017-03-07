@@ -17,10 +17,7 @@ import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
-try:
-    from urllib import urlencode
-except ImportError:
-    from urllib.parse import urlencode
+from six.moves.urllib.parse import urlencode
 import webob
 
 from cinder import context
