@@ -118,7 +118,7 @@ class VMAXCommon(object):
              'reserved_percentage': 0,
              'storage_protocol': None,
              'total_capacity_gb': 0,
-             'vendor_name': 'EMC',
+             'vendor_name': 'Dell EMC',
              'volume_backend_name': None,
              'replication_enabled': False,
              'replication_targets': None}
@@ -985,7 +985,7 @@ class VMAXCommon(object):
                         array_max_over_subscription))
             pools.append(pool)
 
-        data = {'vendor_name': "EMC",
+        data = {'vendor_name': "Dell EMC",
                 'driver_version': self.version,
                 'storage_protocol': 'unknown',
                 'volume_backend_name': self.pool_info['backend_name'] or
