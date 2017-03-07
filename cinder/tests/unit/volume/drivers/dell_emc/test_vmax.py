@@ -3446,41 +3446,32 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
                                           self.data.connector)
 
     @mock.patch.object(
-        masking.VMAXMasking,
-        '_check_adding_volume_to_storage_group',
-        return_value=None)
-    @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
         return_value=False)
-    @mock.patch.object(
-        utils.VMAXUtils,
-        'find_storage_masking_group',
-        return_value=VMAXCommonData.default_sg_instance_name)
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': VMAXCommonData.storage_system})
     @mock.patch.object(
-        masking.VMAXMasking,
-        '_wrap_get_storage_group_from_volume',
-        return_value=None)
-    @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_map_live_migration_no_fast_success(self,
                                                 _mock_volume_type,
-                                                mock_wrap_group,
                                                 mock_wrap_device,
-                                                mock_storage_group,
-                                                mock_same_host,
-                                                mock_check):
+                                                mock_same_host):
         utils.LIVE_MIGRATION_FILE = (self.tempdir +
                                      '/livemigrationarray')
-        self.driver.initialize_connection(self.data.test_volume,
-                                          self.data.connector)
+        extraSpecs = self.data.extra_specs
+        rollback_dict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        with mock.patch.object(self.driver.common.masking,
+                               'setup_masking_view',
+                               return_value=rollback_dict):
+            self.driver.initialize_connection(self.data.test_volume,
+                                              self.data.connector)
 
     @mock.patch.object(
         masking.VMAXMasking,
@@ -6169,22 +6160,24 @@ class EMCV3DriverTestCase(test.TestCase):
         storagegroup['ElementName'] = 'no_masking_view'
         return storagegroup
 
-    def test_last_vol_in_SG_with_MV(self):
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_delete_mv_ig_and_sg')
+    def test_last_vol_in_SG_with_MV(self, mock_delete):
         conn = self.fake_ecom_connection()
+        common = self.driver.common
         controllerConfigService = (
-            self.driver.common.utils.find_controller_configuration_service(
+            common.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
 
         extraSpecs = self.default_extraspec()
 
         storageGroupName = self.data.storagegroupname
         storageGroupInstanceName = (
-            self.driver.common.utils.find_storage_masking_group(
+            common.utils.find_storage_masking_group(
                 conn, controllerConfigService, storageGroupName))
-
         vol = self.default_vol()
-        self.driver.common.masking._delete_mv_ig_and_sg = mock.Mock()
-        self.assertTrue(self.driver.common.masking._last_vol_in_SG(
+        self.assertTrue(common.masking._last_vol_in_SG(
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, vol, vol['name'], extraSpecs))
 
@@ -6724,6 +6717,9 @@ class EMCV3DriverTestCase(test.TestCase):
                           self.data.connector)
 
     @mock.patch.object(
+        masking.VMAXMasking,
+        'remove_and_reset_members')
+    @mock.patch.object(
         utils.VMAXUtils,
         'get_volume_element_name',
         return_value='1')
@@ -6753,20 +6749,18 @@ class EMCV3DriverTestCase(test.TestCase):
         return_value={'volume_backend_name': 'V3_BE'})
     def test_detach_v3_success(self, mock_volume_type, mock_maskingview,
                                mock_ig, mock_igc, mock_mv, mock_check_ig,
-                               mock_element_name):
+                               mock_element_name, mock_remove):
         common = self.driver.common
-        common.get_target_wwns = mock.Mock(
-            return_value=VMAXCommonData.target_wwns)
-        common.masking.utils.find_storage_masking_group = mock.Mock(
-            return_value=self.data.storagegroups[0])
-        self.driver.common._initial_setup = mock.Mock(
-            return_value=self.default_extraspec())
-        data = self.driver.terminate_connection(self.data.test_volume_v3,
-                                                self.data.connector)
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
-        numTargetWwns = len(VMAXCommonData.target_wwns)
-        self.assertEqual(numTargetWwns, len(data['data']))
+        with mock.patch.object(common, 'get_target_wwns',
+                               return_value=VMAXCommonData.target_wwns):
+            with mock.patch.object(common, '_initial_setup',
+                                   return_value=self.default_extraspec()):
+                data = self.driver.terminate_connection(
+                    self.data.test_volume_v3, self.data.connector)
+                common.get_target_wwns.assert_called_once_with(
+                    VMAXCommonData.storage_system, VMAXCommonData.connector)
+                numTargetWwns = len(VMAXCommonData.target_wwns)
+                self.assertEqual(numTargetWwns, len(data['data']))
 
     # Bug https://bugs.launchpad.net/cinder/+bug/1440154
     @mock.patch.object(
@@ -8433,6 +8427,36 @@ class VMAXFCTest(test.TestCase):
         self.assertEqual('fibre_channel', data['driver_volume_type'])
         self.assertEqual(2, len(data['data']['target_wwn']))
 
+    @mock.patch.object(
+        provision.VMAXProvision,
+        'remove_device_from_storage_group')
+    def test_remove_device_from_storage_group(self, mock_remove):
+        conn = FakeEcomConnection()
+        common = self.driver.common
+        controllerConfigService = (
+            common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeName = 'vol1'
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        masking = common.masking
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            common.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+        masking.remove_device_from_storage_group(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, extraSpecs)
+        masking.provision.remove_device_from_storage_group.assert_called_with(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstanceName, volumeName, extraSpecs)
+
 
 @ddt.ddt
 class VMAXUtilsTest(test.TestCase):
@@ -9458,7 +9482,10 @@ class VMAXProvisionTest(test.TestCase):
         self.driver = driver
         self.driver.utils = utils.VMAXUtils(object)
 
-    def test_remove_device_from_storage_group(self):
+    @mock.patch.object(
+        provision.VMAXProvision,
+        'remove_device_from_storage_group')
+    def test_remove_device_from_storage_group(self, mock_remove):
         conn = FakeEcomConnection()
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
@@ -9471,8 +9498,6 @@ class VMAXProvisionTest(test.TestCase):
                       'storagetype:pool': 'SRP_1',
                       'storagetype:workload': 'DSS',
                       'storagetype:slo': 'Bronze'}
-        masking = self.driver.common.masking
-        masking.provision.remove_device_from_storage_group = mock.Mock()
         masking = self.driver.common.masking
         volumeInstance = conn.GetInstance(volumeInstanceName)
         storageGroupName = self.data.storagegroupname
