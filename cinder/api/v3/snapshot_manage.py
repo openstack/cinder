@@ -12,6 +12,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from six.moves import http_client
+
 from cinder.api.contrib import snapshot_manage as snapshot_manage_v2
 from cinder.api.openstack import wsgi
 from cinder.api.v3 import resource_common_manage as common
@@ -23,7 +25,7 @@ class SnapshotManageController(common.ManageResource,
         super(SnapshotManageController, self).__init__(*args, **kwargs)
         self._set_resource_type('snapshot')
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         self._ensure_min_version(req, "3.8")
         return super(SnapshotManageController, self).create(req, body)

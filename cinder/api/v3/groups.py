@@ -17,6 +17,7 @@
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import uuidutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -105,7 +106,7 @@ class GroupsController(wsgi.Controller):
                            {'error_message': error.msg,
                             'id': id})
             raise exc.HTTPBadRequest(explanation=error.msg)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(GROUP_API_VERSION)
     @wsgi.action("delete")
@@ -146,7 +147,7 @@ class GroupsController(wsgi.Controller):
         except exception.InvalidGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(GROUP_API_VERSION)
     def index(self, req):
@@ -188,7 +189,7 @@ class GroupsController(wsgi.Controller):
         return groups
 
     @wsgi.Controller.api_version(GROUP_API_VERSION)
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Create a new group."""
         LOG.debug('Creating new group %s', body)
@@ -235,7 +236,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(GROUP_CREATE_FROM_SRC_API_VERSION)
     @wsgi.action("create-from-src")
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create_from_src(self, req, body):
         """Create a new group from a source.
 
@@ -361,7 +362,7 @@ class GroupsController(wsgi.Controller):
         except exception.InvalidGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 def create_resource():

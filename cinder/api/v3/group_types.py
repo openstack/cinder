@@ -16,6 +16,7 @@
 
 from oslo_utils import strutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -55,7 +56,7 @@ class GroupTypesController(wsgi.Controller):
         rpc.get_notifier('groupType').info(context, method, payload)
 
     @wsgi.Controller.api_version('3.11')
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Creates a new group type."""
         context = req.environ['cinder.context']
@@ -185,7 +186,7 @@ class GroupTypesController(wsgi.Controller):
                 context, 'group_type.delete', err, id=id)
             raise webob.exc.HTTPNotFound(explanation=err.msg)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('3.11')
     def index(self, req):

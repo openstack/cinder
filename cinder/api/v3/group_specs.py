@@ -14,6 +14,7 @@
 
 """The group types specs controller"""
 
+from six.moves import http_client
 import webob
 
 from cinder.api import common
@@ -59,7 +60,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         return self._get_group_specs(context, group_type_id)
 
     @wsgi.Controller.api_version('3.11')
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, group_type_id, body=None):
         context = req.environ['cinder.context']
         self._check_policy(context)
@@ -140,7 +141,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         notifier.info(context,
                       'group_type_specs.delete',
                       notifier_info)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _check_key_names(self, keys):
         if not common.validate_key_names(keys):
