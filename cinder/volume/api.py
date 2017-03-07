@@ -1718,10 +1718,12 @@ class API(base.Base):
                            'binary': constants.VOLUME_BINARY})
 
         if not services:
-            msg = _('No service found with ') + (
-                'host=%(host)s' if host else 'cluster=%(cluster_name)s')
-            raise exception.ServiceNotFound(msg, host=host,
-                                            cluster_name=cluster_name)
+            if host:
+                msg = _("No service found with host=%s") % host
+            else:
+                msg = _("No service found with cluster=%s") % cluster_name
+
+            raise exception.ServiceNotFound(msg)
 
         cluster = services[0].cluster
         # Check that the host or cluster we received only results in 1 host or
