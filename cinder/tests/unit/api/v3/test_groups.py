@@ -233,7 +233,11 @@ class GroupsAPITestCase(test.TestCase):
         if is_detail:
             url = '/v3/%s/groups/detail?limit=1' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url, version=GROUP_MICRO_VERSION)
-        res_dict = self.controller.index(req)
+
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
 
         self.assertEqual(2, len(res_dict))
         self.assertEqual(1, len(res_dict['groups']))
@@ -245,6 +249,8 @@ class GroupsAPITestCase(test.TestCase):
             (fake.PROJECT_ID, res_dict['groups'][0]['id']))
         self.assertEqual(next_link,
                          res_dict['group_links'][0]['href'])
+        if is_detail:
+            self.assertIn('description', res_dict['groups'][0].keys())
 
     @ddt.data(False, True)
     def test_list_groups_with_offset(self, is_detail):
@@ -269,8 +275,12 @@ class GroupsAPITestCase(test.TestCase):
             url = ('/v3/%s/groups/detail?offset=234523423455454' %
                    fake.PROJECT_ID)
         req = fakes.HTTPRequest.blank(url, version=GROUP_MICRO_VERSION)
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.index,
-                          req)
+        if is_detail:
+            self.assertRaises(webob.exc.HTTPBadRequest, self.controller.detail,
+                              req)
+        else:
+            self.assertRaises(webob.exc.HTTPBadRequest, self.controller.index,
+                              req)
 
     @ddt.data(False, True)
     def test_list_groups_with_limit_and_offset(self, is_detail):
@@ -279,7 +289,11 @@ class GroupsAPITestCase(test.TestCase):
             url = ('/v3/%s/groups/detail?limit=2&offset=1' %
                    fake.PROJECT_ID)
         req = fakes.HTTPRequest.blank(url, version=GROUP_MICRO_VERSION)
-        res_dict = self.controller.index(req)
+
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
 
         self.assertEqual(2, len(res_dict))
         self.assertEqual(2, len(res_dict['groups']))
@@ -287,6 +301,8 @@ class GroupsAPITestCase(test.TestCase):
                          res_dict['groups'][0]['id'])
         self.assertEqual(self.group1.id,
                          res_dict['groups'][1]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['groups'][0].keys())
 
     @ddt.data(False, True)
     def test_list_groups_with_filter(self, is_detail):
@@ -300,12 +316,18 @@ class GroupsAPITestCase(test.TestCase):
                                                 self.group3.id)
         req = fakes.HTTPRequest.blank(url, version=GROUP_MICRO_VERSION,
                                       use_admin_context=True)
-        res_dict = self.controller.index(req)
+
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
 
         self.assertEqual(1, len(res_dict))
         self.assertEqual(1, len(res_dict['groups']))
         self.assertEqual(self.group3.id,
                          res_dict['groups'][0]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['groups'][0].keys())
 
     @ddt.data(False, True)
     def test_list_groups_with_sort(self, is_detail):
@@ -317,7 +339,11 @@ class GroupsAPITestCase(test.TestCase):
         expect_result = [self.group1.id, self.group2.id,
                          self.group3.id]
         expect_result.sort()
-        res_dict = self.controller.index(req)
+
+        if is_detail:
+            res_dict = self.controller.detail(req)
+        else:
+            res_dict = self.controller.index(req)
 
         self.assertEqual(1, len(res_dict))
         self.assertEqual(3, len(res_dict['groups']))
@@ -327,6 +353,8 @@ class GroupsAPITestCase(test.TestCase):
                          res_dict['groups'][1]['id'])
         self.assertEqual(expect_result[2],
                          res_dict['groups'][2]['id'])
+        if is_detail:
+            self.assertIn('description', res_dict['groups'][0].keys())
 
     @mock.patch('cinder.objects.volume_type.VolumeTypeList.get_all_by_group')
     def test_list_groups_detail_json(self, mock_vol_type_get_all_by_group):
@@ -351,44 +379,18 @@ class GroupsAPITestCase(test.TestCase):
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict))
-        self.assertEqual('az1',
-                         res_dict['groups'][0]['availability_zone'])
-        self.assertEqual('this is a test group',
-                         res_dict['groups'][0]['description'])
-        self.assertEqual('test_group',
-                         res_dict['groups'][0]['name'])
-        self.assertEqual(self.group3.id,
-                         res_dict['groups'][0]['id'])
-        self.assertEqual('creating',
-                         res_dict['groups'][0]['status'])
-        self.assertEqual([fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID],
-                         res_dict['groups'][0]['volume_types'])
-
-        self.assertEqual('az1',
-                         res_dict['groups'][1]['availability_zone'])
-        self.assertEqual('this is a test group',
-                         res_dict['groups'][1]['description'])
-        self.assertEqual('test_group',
-                         res_dict['groups'][1]['name'])
-        self.assertEqual(self.group2.id,
-                         res_dict['groups'][1]['id'])
-        self.assertEqual('creating',
-                         res_dict['groups'][1]['status'])
-        self.assertEqual([fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID],
-                         res_dict['groups'][1]['volume_types'])
-
-        self.assertEqual('az1',
-                         res_dict['groups'][2]['availability_zone'])
-        self.assertEqual('this is a test group',
-                         res_dict['groups'][2]['description'])
-        self.assertEqual('test_group',
-                         res_dict['groups'][2]['name'])
-        self.assertEqual(self.group1.id,
-                         res_dict['groups'][2]['id'])
-        self.assertEqual('creating',
-                         res_dict['groups'][2]['status'])
-        self.assertEqual([fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID],
-                         res_dict['groups'][2]['volume_types'])
+        index = 0
+        for group in [self.group3, self.group2, self.group1]:
+            self.assertEqual(group.id,
+                             res_dict['groups'][index]['id'])
+            self.assertEqual([fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID],
+                             res_dict['groups'][index]['volume_types'])
+            self.assertEqual('test_group',
+                             res_dict['groups'][index]['name'])
+            self.assertTrue({'availability_zone', 'description',
+                             'status'}.issubset(
+                                 set(res_dict['groups'][index].keys())))
+            index += 1
 
     @ddt.data(False, True)
     @mock.patch(
