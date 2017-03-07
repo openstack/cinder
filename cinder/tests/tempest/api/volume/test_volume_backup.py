@@ -20,7 +20,7 @@ from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
+from tempest.lib import decorators
 
 # TODO(obutenko): Remove this when liberty-eol happens.
 snapshot_backup_opt = cfg.BoolOpt('snapshot_backup',
@@ -42,7 +42,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
 
     @testtools.skipUnless(CONF.volume_feature_enabled.snapshot_backup,
                           "Skip. Not implemented in Liberty.")
-    @test.idempotent_id('885410c6-cd1d-452c-a409-7c32b7e0be15')
+    @decorators.idempotent_id('885410c6-cd1d-452c-a409-7c32b7e0be15')
     def test_volume_snapshot_backup(self):
         """Create backup from snapshot."""
         volume = self.create_volume()
@@ -67,7 +67,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         self.volumes_client.delete_volume(volume['id'])
         self.volumes_client.wait_for_resource_deletion(volume['id'])
 
-    @test.idempotent_id('b5d837b0-7066-455d-88fc-4a721a899306')
+    @decorators.idempotent_id('b5d837b0-7066-455d-88fc-4a721a899306')
     def test_backup_create_and_restore_to_an_existing_volume(self):
         """Test backup create and restore to an existing volume."""
         # Create volume
@@ -94,7 +94,7 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         self.assertEqual(src_vol['id'], restore['volume_id'])
         self.assertEqual(backup['id'], restore['backup_id'])
 
-    @test.idempotent_id('c810fe2c-cb40-43ab-96aa-471b74516a98')
+    @decorators.idempotent_id('c810fe2c-cb40-43ab-96aa-471b74516a98')
     def test_incremental_backup(self):
         """Test create incremental backup."""
         # Create volume from image
