@@ -15,18 +15,36 @@
 
 """The volume types extra specs extension"""
 
+from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
 from six.moves import http_client
 import webob
 
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder import context as ctxt
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
+
+LOG = logging.getLogger(__name__)
+
+extraspec_opts = [
+    cfg.BoolOpt('allow_inuse_volume_type_modification',
+                default=False,
+                deprecated_for_removal=True,
+                help="DEPRECATED: Allow the ability to modify the "
+                     "extra-spec settings of an in-use volume-type."),
+
+]
+
+CONF = cfg.CONF
+CONF.register_opts(extraspec_opts)
 
 authorize = extensions.extension_authorizer('volume', 'types_extra_specs')
 
@@ -52,9 +70,27 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
+    def _allow_update(self, context, type_id):
+        if (not CONF.allow_inuse_volume_type_modification):
+            vols = db.volume_get_all(
+                ctxt.get_admin_context(),
+                limit=1,
+                filters={'volume_type_id': type_id})
+            if len(vols):
+                expl = _('Volume Type is currently in use.')
+                raise webob.exc.HTTPBadRequest(explanation=expl)
+        else:
+            msg = _LW("The option 'allow_inuse_volume_type_modification' "
+                      "is deprecated and will be removed in a future "
+                      "release.  The default behavior going forward will "
+                      "be to disallow modificaton of in-use types.")
+            versionutils.report_deprecated_feature(LOG, msg)
+        return
+
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
+        self._allow_update(context, type_id)
 
         self.assert_valid_body(body, 'extra_specs')
 
@@ -75,6 +111,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def update(self, req, type_id, id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
+        self._allow_update(context, type_id)
+
         if not body:
             expl = _('Request body empty')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -115,6 +153,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         self._check_type(context, type_id)
         authorize(context)
+        self._allow_update(context, type_id)
 
         # Not found exception will be handled at the wsgi level
         db.volume_type_extra_specs_delete(context, type_id, id)

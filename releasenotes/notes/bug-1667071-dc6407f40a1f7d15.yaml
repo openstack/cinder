@@ -1,0 +1,13 @@
+---
+fixes:
+  - Modifying the extra-specs of an in use Volume Type was something that
+    we've unintentionally allowed.  The result is unexpected or unknown
+    volume behaviors in cases where a type was modified while a volume was
+    assigned that type.  This has been particularly annoying for folks that
+    have assigned the volume-type to a different/new backend device.
+
+    In case there are customers using this "bug" we add a config option to
+    retain the bad behavior "allow_inuse_volume_type_modification", with a
+    default setting of False (Don't allow).  Note this config option is being
+    introduced as deprecated and will be removed in a future release.  It's
+    being provided as a bridge to not break upgrades without notice.
