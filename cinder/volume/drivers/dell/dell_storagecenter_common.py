@@ -25,6 +25,7 @@ from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.san.san import san_opts
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 
@@ -155,17 +156,20 @@ class DellCommonDriver(driver.ManageableVD,
 
         return {}
 
-    def _add_volume_to_consistency_group(self, api, scvolume, volume):
-        """Just a helper to add a volume to a consistency group.
+    def _add_volume_to_group(self, api, scvolume, volume):
+        """Just a helper to add a volume to a group.
 
         :param api: Dell SC API opbject.
         :param scvolume: Dell SC Volume object.
         :param volume: Cinder Volume object.
         :returns: Nothing.
         """
-        if scvolume and volume.get('consistencygroup_id'):
+        if scvolume and volume.get('group_id'):
             profile = api.find_replay_profile(
-                volume.get('consistencygroup_id'))
+                volume.get('group_id'))
+            # If there is a profile then we need to add our
+            # volumes to it. If there isn't then it was a normal
+            # group.
             if profile:
                 api.update_cg_volumes(profile, [volume])
 
@@ -310,8 +314,8 @@ class DellCommonDriver(driver.ManageableVD,
                         message=_('Unable to create volume %s') %
                         volume_name)
 
-                # Update Consistency Group
-                self._add_volume_to_consistency_group(api, scvolume, volume)
+                # Update Group
+                self._add_volume_to_group(api, scvolume, volume)
 
                 # Create replications. (Or not. It checks.)
                 model_update = self._create_replications(api, volume, scvolume)
@@ -480,11 +484,12 @@ class DellCommonDriver(driver.ManageableVD,
         src_volume_name = snapshot.get('volume_id')
         # This snapshot could have been created on its own or as part of a
         # cgsnapshot.  If it was a cgsnapshot it will be identified on the Dell
-        # backend under cgsnapshot_id.  Given the volume ID and the
-        # cgsnapshot_id we can find the appropriate snapshot.
-        # So first we look for cgsnapshot_id.  If that is blank then it must
-        # have been a normal snapshot which will be found under snapshot_id.
-        snapshot_id = snapshot.get('cgsnapshot_id')
+        # backend under group_snapshot_id.  Given the volume ID and the
+        # group_snapshot_id we can find the appropriate snapshot.
+        # So first we look for group_snapshot_id.  If that is blank then it
+        # must have been a normal snapshot which will be found under
+        # snapshot_id.
+        snapshot_id = snapshot.get('group_snapshot_id')
         if not snapshot_id:
             snapshot_id = snapshot.get('id')
         LOG.debug(
@@ -522,10 +527,8 @@ class DellCommonDriver(driver.ManageableVD,
                                 {'name': volume_name,
                                  'snap': snapshot_id})
 
-                        # Update Consistency Group
-                        self._add_volume_to_consistency_group(api,
-                                                              scvolume,
-                                                              volume)
+                        # Update Group
+                        self._add_volume_to_group(api, scvolume, volume)
                         # Replicate if we are supposed to.
                         model_update = self._create_replications(api,
                                                                  volume,
@@ -587,10 +590,8 @@ class DellCommonDriver(driver.ManageableVD,
                             {'name': volume_name,
                              'vol': src_volume_name})
 
-                    # Update Consistency Group
-                    self._add_volume_to_consistency_group(api,
-                                                          scvolume,
-                                                          volume)
+                    # Update Group
+                    self._add_volume_to_group(api, scvolume, volume)
                     # Replicate if we are supposed to.
                     model_update = self._create_replications(api,
                                                              volume,
@@ -708,6 +709,7 @@ class DellCommonDriver(driver.ManageableVD,
             data['storage_protocol'] = self.storage_protocol
             data['reserved_percentage'] = 0
             data['consistencygroup_support'] = True
+            data['consistent_group_snapshot_enabled'] = True
             data['thin_provisioning_support'] = True
             data['QoS_support'] = False
             data['replication_enabled'] = self.replication_enabled
@@ -783,57 +785,115 @@ class DellCommonDriver(driver.ManageableVD,
 
         return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
-    def create_consistencygroup(self, context, group):
-        """This creates a replay profile on the storage backend.
+    def create_group(self, context, group):
+        """Creates a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the consistency group to be created.
-        :returns: Nothing on success.
-        :raises VolumeBackendAPIException:
+        :param group: the Group object of the group to be created.
+        :returns: model_update
+
+        model_update will be in this format: {'status': xxx, ......}.
+
+        If the status in model_update is 'error', the manager will throw
+        an exception and it will be caught in the try-except block in the
+        manager. If the driver throws an exception, the manager will also
+        catch it in the try-except block. The group status in the db will
+        be changed to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and return it or return None. The group status will
+        be set to 'available'.
         """
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        model_update = {'status': fields.GroupStatus.ERROR}
         gid = group['id']
         with self._client.open_connection() as api:
             cgroup = api.create_replay_profile(gid)
             if cgroup:
-                LOG.info('Created Consistency Group %s', gid)
-                return
-        msg = _('Unable to create consistency group %s') % gid
-        raise exception.VolumeBackendAPIException(data=msg)
+                LOG.info('Created group %s', gid)
+                model_update['status'] = fields.GroupStatus.AVAILABLE
+        return model_update
 
-    def delete_consistencygroup(self, context, group, volumes):
-        """Delete the Dell SC profile associated with this consistency group.
+    def delete_group(self, context, group, volumes):
+        """Deletes a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the consistency group to be created.
-        :returns: Updated model_update, volumes.
+        :param group: the Group object of the group to be deleted.
+        :param volumes: a list of Volume objects in the group.
+        :returns: model_update, volumes_model_update
+
+        param volumes is a list of objects retrieved from the db. It cannot
+        be assigned to volumes_model_update. volumes_model_update is a list
+        of dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate volumes_model_update and model_update
+        and return them.
+
+        The manager will check volumes_model_update and update db accordingly
+        for each volume. If the driver successfully deleted some volumes
+        but failed to delete others, it should set statuses of the volumes
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of volumes_model_update is 'error_deleting'
+        or 'error', the status in model_update will be set to the same if it
+        is not already 'error_deleting' or 'error'.
+
+        If the status in model_update is 'error_deleting' or 'error', the
+        manager will raise an exception and the status of the group will be
+        set to 'error' in the db. If volumes_model_update is not returned by
+        the driver, the manager will set the status of every volume in the
+        group to 'error' in the except block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager. The statuses of the
+        group and all volumes in it will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and volumes_model_update and return them or
+        return None, None. The statuses of the group and all volumes
+        will be set to 'deleted' after the manager deletes them from db.
         """
-        gid = group['id']
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        model_update = {'status': fields.GroupStatus.DELETED}
         with self._client.open_connection() as api:
+            gid = group['id']
             profile = api.find_replay_profile(gid)
             if profile:
-                api.delete_replay_profile(profile)
-        # If we are here because we found no profile that should be fine
-        # as we are trying to delete it anyway.
+                try:
+                    api.delete_replay_profile(profile)
+                except exception.VolumeBackendAPIException:
+                    LOG.error('delete_group: error deleting %s', gid)
+                    model_update['status'] = fields.GroupStatus.ERROR
 
         # Trundle through the list deleting the volumes.
-        volume_updates = []
+        volumes_model_update = []
         for volume in volumes:
-            self.delete_volume(volume)
-            volume_updates.append({'id': volume['id'],
-                                   'status': 'deleted'})
+            status = fields.GroupStatus.ERROR
+            try:
+                if self.delete_volume(volume):
+                    status = fields.GroupStatus.DELETED
+            except (exception.VolumeBackendAPIException,
+                    exception.VolumeIsBusy):
+                LOG.error('delete_group: error deleting volume %s',
+                          volume['id'])
+            volumes_model_update.append({'id': volume['id'], 'status': status})
 
-        model_update = {'status': group['status']}
+        return model_update, volumes_model_update
 
-        return model_update, volume_updates
-
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
-        """Updates a consistency group.
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the consistency group to be updated.
-        :param add_volumes: a list of volume dictionaries to be added.
-        :param remove_volumes: a list of volume dictionaries to be removed.
+        :param group: the Group object of the group to be updated.
+        :param add_volumes: a list of Volume objects to be added.
+        :param remove_volumes: a list of Volume objects to be removed.
         :returns: model_update, add_volumes_update, remove_volumes_update
 
         model_update is a dictionary that the driver wants the manager
@@ -846,96 +906,226 @@ class DellCommonDriver(driver.ManageableVD,
         volume entry can be updated. If None is returned, the volume will
         remain its original status. Also note that you cannot directly
         assign add_volumes to add_volumes_update as add_volumes is a list of
-        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
-        db update directly. Same with remove_volumes.
+        volume objects and cannot be used for db update directly. Same with
+        remove_volumes.
 
         If the driver throws an exception, the status of the group as well as
         those of the volumes to be added/removed will be set to 'error'.
         """
-        gid = group['id']
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
         with self._client.open_connection() as api:
+            gid = group['id']
             profile = api.find_replay_profile(gid)
             if not profile:
-                LOG.error('Cannot find Consistency Group %s', gid)
+                LOG.error('update_group: Cannot find volume Group %s', gid)
             elif api.update_cg_volumes(profile,
                                        add_volumes,
                                        remove_volumes):
-                LOG.info('Updated Consistency Group %s', gid)
+                LOG.info('update_group: Updated volume group %s', gid)
                 # we need nothing updated above us so just return None.
                 return None, None, None
         # Things did not go well so throw.
-        msg = _('Unable to update consistency group %s') % gid
+        msg = _('Unable to update group %s') % gid
         raise exception.VolumeBackendAPIException(data=msg)
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Takes a snapshot of the consistency group.
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source.
 
         :param context: the context of the caller.
-        :param cgsnapshot: Information about the snapshot to take.
-        :param snapshots: List of snapshots for this cgsnapshot.
-        :returns: Updated model_update, snapshots.
-        :raises VolumeBackendAPIException:
-        """
-        cgid = cgsnapshot['consistencygroup_id']
-        snapshotid = cgsnapshot['id']
+        :param group: the Group object to be created.
+        :param volumes: a list of Volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of Snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of Volume objects in the source_group.
+        :returns: model_update, volumes_model_update
 
+        The source can be group_snapshot or a source_group.
+
+        param volumes is a list of objects retrieved from the db. It cannot
+        be assigned to volumes_model_update. volumes_model_update is a list
+        of dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        To be consistent with other volume operations, the manager will
+        assume the operation is successful if no exception is thrown by
+        the driver. For a successful operation, the driver can either build
+        the model_update and volumes_model_update and return them or
+        return None, None.
+        """
+        if not (group_snapshot and snapshots and not source_group or
+                source_group and source_vols and not group_snapshot):
+            msg = _("create_group_from_src only supports a "
+                    "group_snapshot source or a group source. "
+                    "Multiple sources cannot be used.")
+            raise exception.InvalidInput(msg)
+
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        # Mark us as working. If we are a CG then that will be settled below.
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        volumes_model_update = []
+        if source_group:
+            for volume, src_vol in zip(volumes, source_vols):
+                update = self.create_cloned_volume(volume, src_vol)
+                update['status'] = fields.GroupStatus.AVAILABLE
+                volumes_model_update.append(update.copy())
+        else:
+            for volume, src_snap in zip(volumes, snapshots):
+                update = self.create_volume_from_snapshot(volume, src_snap)
+                update['status'] = fields.GroupStatus.AVAILABLE
+                volumes_model_update.append(update.copy())
+
+        # So, in theory, everything has been created. Now is the time to
+        #  add the volumes to the group.
+        model_update = self.create_group(context, group)
+        if model_update['status'] == fields.GroupStatus.AVAILABLE:
+            self.update_group(context, group, volumes, None)
+
+        return model_update, volumes_model_update
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot.
+
+        :param context: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be created.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+
+        param snapshots is a list of Snapshot objects. It cannot be assigned
+        to snapshots_model_update. snapshots_model_update is a list of
+        dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate snapshots_model_update and model_update
+        and return them.
+
+        The manager will check snapshots_model_update and update db accordingly
+        for each snapshot. If the driver successfully deleted some snapshots
+        but failed to delete others, it should set statuses of the snapshots
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of snapshots_model_update is 'error', the
+        status in model_update will be set to the same if it is not already
+        'error'.
+
+        If the status in model_update is 'error', the manager will raise an
+        exception and the status of group_snapshot will be set to 'error' in
+        the db. If snapshots_model_update is not returned by the driver, the
+        manager will set the status of every snapshot to 'error' in the except
+        block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager and the statuses of
+        group_snapshot and all snapshots will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and snapshots_model_update and return them or
+        return None, None. The statuses of group_snapshot and all snapshots
+        will be set to 'available' at the end of the manager function.
+        """
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+
+        model_update = {'status': fields.GroupSnapshotStatus.ERROR}
+        snapshot_updates = None
         with self._client.open_connection() as api:
-            profile = api.find_replay_profile(cgid)
-            if profile:
-                LOG.debug('profile %s replayid %s', profile, snapshotid)
-                if api.snap_cg_replay(profile, snapshotid, 0):
+            gid = group_snapshot['group_id']
+            snapshotid = group_snapshot['id']
+            profile = api.find_replay_profile(gid)
+            if not profile:
+                LOG.error('create_group_snapshot: profile %s not found', gid)
+            else:
+                if not api.snap_cg_replay(profile, snapshotid, 0):
+                    LOG.error('create_group_snapshot: '
+                              'failed to snap %(ss)s on %(pro)s',
+                              {'ss': snapshotid, 'pro': profile})
+                else:
+                    LOG.info('create_group_snapshot: '
+                             'created %(ss)s on %(pro)s',
+                             {'ss': snapshotid, 'pro': profile})
+                    # Set our returns
+                    model_update['status'] = (
+                        fields.GroupSnapshotStatus.AVAILABLE)
                     snapshot_updates = []
                     for snapshot in snapshots:
                         snapshot_updates.append({
                             'id': snapshot.id,
-                            'status': fields.SnapshotStatus.AVAILABLE
-                        })
+                            'status': fields.SnapshotStatus.AVAILABLE})
 
-                    model_update = {'status': fields.SnapshotStatus.AVAILABLE}
+        return model_update, snapshot_updates
 
-                    return model_update, snapshot_updates
-
-                # That didn't go well.  Tell them why.  Then bomb out.
-                LOG.error('Failed to snap Consistency Group %s', cgid)
-            else:
-                LOG.error('Cannot find Consistency Group %s', cgid)
-
-        msg = _('Unable to snap Consistency Group %s') % cgid
-        raise exception.VolumeBackendAPIException(data=msg)
-
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot.
-
-        If profile isn't found return success.  If failed to delete the
-        replay (the snapshot) then raise an exception.
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group_snapshot.
 
         :param context: the context of the caller.
-        :param cgsnapshot: Information about the snapshot to delete.
-        :returns: Updated model_update, snapshots.
-        :raises VolumeBackendAPIException.:
+        :param group_snapshot: the GroupSnapshot object to be deleted.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+
+        param snapshots is a list of objects. It cannot be assigned to
+        snapshots_model_update. snapshots_model_update is a list of of
+        dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate snapshots_model_update and model_update
+        and return them.
+
+        The manager will check snapshots_model_update and update db accordingly
+        for each snapshot. If the driver successfully deleted some snapshots
+        but failed to delete others, it should set statuses of the snapshots
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of snapshots_model_update is
+        'error_deleting' or 'error', the status in model_update will be set to
+        the same if it is not already 'error_deleting' or 'error'.
+
+        If the status in model_update is 'error_deleting' or 'error', the
+        manager will raise an exception and the status of group_snapshot will
+        be set to 'error' in the db. If snapshots_model_update is not returned
+        by the driver, the manager will set the status of every snapshot to
+        'error' in the except block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager and the statuses of
+        group_snapshot and all snapshots will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and snapshots_model_update and return them or
+        return None, None. The statuses of group_snapshot and all snapshots
+        will be set to 'deleted' after the manager deletes them from db.
         """
-        cgid = cgsnapshot['consistencygroup_id']
-        snapshotid = cgsnapshot['id']
+        # Setup a generic error return.
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
 
+        model_update = {'status': fields.GroupSnapshotStatus.ERROR}
+        snapshot_updates = None
         with self._client.open_connection() as api:
-            profile = api.find_replay_profile(cgid)
+            snapshotid = group_snapshot['id']
+            profile = api.find_replay_profile(group_snapshot['group_id'])
             if profile:
-                LOG.info('Deleting snapshot %(ss)s from %(pro)s',
-                         {'ss': snapshotid,
-                          'pro': profile})
+                LOG.info('delete_group_snapshot: %(ss)s from %(pro)s',
+                         {'ss': snapshotid, 'pro': profile})
                 if not api.delete_cg_replay(profile, snapshotid):
-                    msg = (_('Unable to delete Consistency Group snapshot %s')
-                           % snapshotid)
-                    raise exception.VolumeBackendAPIException(data=msg)
-            snapshot_updates = []
-            for snapshot in snapshots:
-                snapshot_updates.append(
-                    {'id': snapshot['id'],
-                     'status': fields.SnapshotStatus.DELETED})
-
-            model_update = {'status': fields.SnapshotStatus.DELETED}
-
-            return model_update, snapshot_updates
+                    model_update['status'] = (
+                        fields.GroupSnapshotStatus.ERROR_DELETING)
+                else:
+                    model_update['status'] = fields.GroupSnapshotStatus.DELETED
+                    snapshot_updates = []
+                    for snapshot in snapshots:
+                        snapshot_updates.append(
+                            {'id': snapshot['id'],
+                             'status': fields.SnapshotStatus.DELETED})
+        return model_update, snapshot_updates
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
