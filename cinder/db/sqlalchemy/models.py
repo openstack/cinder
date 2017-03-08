@@ -418,7 +418,7 @@ class VolumeTypeProjects(BASE, CinderBase):
         name="uniq_volume_type_projects0volume_type_id0project_id0deleted"),
     )
     id = Column(Integer, primary_key=True)
-    volume_type_id = Column(Integer, ForeignKey('volume_types.id'),
+    volume_type_id = Column(String, ForeignKey('volume_types.id'),
                             nullable=False)
     project_id = Column(String(255))
     deleted = Column(Integer, default=0)
@@ -440,7 +440,7 @@ class GroupTypeProjects(BASE, CinderBase):
         name="uniq_group_type_projects0group_type_id0project_id0deleted"),
     )
     id = Column(Integer, primary_key=True)
-    group_type_id = Column(Integer, ForeignKey('group_types.id'),
+    group_type_id = Column(String, ForeignKey('group_types.id'),
                            nullable=False)
     project_id = Column(String(255))
     deleted = Column(Integer, default=0)
