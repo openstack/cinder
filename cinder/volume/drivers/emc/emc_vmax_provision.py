@@ -14,10 +14,10 @@
 #    under the License.
 import time
 
-from oslo_concurrency import lockutils
 from oslo_log import log as logging
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.emc import emc_vmax_utils
@@ -160,9 +160,8 @@ class EMCVMAXProvision(object):
         """
         startTime = time.time()
 
-        @lockutils.synchronized(storageGroupName,
-                                "emc-sg-", True)
-        def do_create_storage_group():
+        @coordination.synchronized("emc-sg-{storageGroupName}")
+        def do_create_storage_group(storageGroupName):
             rc, job = conn.InvokeMethod(
                 'CreateGroup', controllerConfigService,
                 GroupName=storageGroupName,
@@ -191,7 +190,7 @@ class EMCVMAXProvision(object):
                 conn, job, storageGroupName)
 
             return foundStorageGroupInstanceName
-        return do_create_storage_group()
+        return do_create_storage_group(storageGroupName)
 
     def create_storage_group_no_members(
             self, conn, controllerConfigService, groupName, extraSpecs):
@@ -296,8 +295,6 @@ class EMCVMAXProvision(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
 
-        @lockutils.synchronized(storageGroupInstance['ElementName'],
-                                "emc-sg-", True)
         def do_remove_volume_from_sg():
             startTime = time.time()
             rc, jobDict = conn.InvokeMethod('RemoveMembers',
@@ -347,9 +344,9 @@ class EMCVMAXProvision(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
 
-        @lockutils.synchronized(storageGroupInstance['ElementName'],
-                                "emc-sg-", True)
-        def do_add_volume_to_sg():
+        @coordination.synchronized('emc-sg-'
+                                   '{storageGroupInstance[ElementName]}')
+        def do_add_volume_to_sg(storageGroupInstance):
             startTime = time.time()
             rc, job = conn.InvokeMethod(
                 'AddMembers', controllerConfigService,
@@ -374,7 +371,7 @@ class EMCVMAXProvision(object):
                       {'delta': self.utils.get_time_delta(startTime,
                                                           time.time())})
             return rc
-        return do_add_volume_to_sg()
+        return do_add_volume_to_sg(storageGroupInstance)
 
     def unbind_volume_from_storage_pool(
             self, conn, storageConfigService,

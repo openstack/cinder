@@ -2327,10 +2327,10 @@ class EMCVMAXCommon(object):
                 {'volumeName': volumeName,
                  'storageGroupInstanceNames': storageGroupInstanceNames})
             for storageGroupInstanceName in storageGroupInstanceNames:
-                self.provision.remove_device_from_storage_group(
+                self.masking.remove_device_from_storage_group(
                     self.conn, controllerConfigurationService,
-                    storageGroupInstanceName,
-                    volumeInstanceName, volumeName, extraSpecs)
+                    storageGroupInstanceName, volumeInstanceName,
+                    volumeName, extraSpecs)
 
     def _find_lunmasking_scsi_protocol_controller(self, storageSystemName,
                                                   connector):

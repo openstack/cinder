@@ -251,6 +251,7 @@ class EMCVMAXCommonData(object):
     fabric_name_prefix = "fakeFabric"
     end_point_map = {connector['wwpns'][0]: [target_wwns[0]],
                      connector['wwpns'][1]: [target_wwns[1]]}
+
     device_map = {}
     for wwn in connector['wwpns']:
         fabric_name = ''.join([fabric_name_prefix,
@@ -5841,12 +5842,12 @@ class EMCV3DriverTestCase(test.TestCase):
         self.data = EMCVMAXCommonData()
 
         self.data.storage_system = 'SYMMETRIX-+-000197200056'
-        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
 
         self.tempdir = tempfile.mkdtemp()
         super(EMCV3DriverTestCase, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file_v3()
+        self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
         self.addCleanup(self._cleanup)
         self.set_configuration()
 
@@ -6013,22 +6014,24 @@ class EMCV3DriverTestCase(test.TestCase):
             'OS-fakehost-SRP_1-NONE-NONE-MV',
             maskingViewDict['maskingViewName'])
 
-    def test_last_vol_in_SG_with_MV(self):
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_delete_mv_ig_and_sg')
+    def test_last_vol_in_SG_with_MV(self, mock_delete):
         conn = self.fake_ecom_connection()
+        common = self.driver.common
         controllerConfigService = (
-            self.driver.common.utils.find_controller_configuration_service(
+            common.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
 
         extraSpecs = self.default_extraspec()
 
         storageGroupName = self.data.storagegroupname
         storageGroupInstanceName = (
-            self.driver.common.utils.find_storage_masking_group(
+            common.utils.find_storage_masking_group(
                 conn, controllerConfigService, storageGroupName))
-
         vol = self.default_vol()
-        self.driver.common.masking._delete_mv_ig_and_sg = mock.Mock()
-        self.assertTrue(self.driver.common.masking._last_vol_in_SG(
+        self.assertTrue(common.masking._last_vol_in_SG(
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, vol, vol['name'], extraSpecs))
 
@@ -6533,6 +6536,13 @@ class EMCV3DriverTestCase(test.TestCase):
                           self.data.connector)
 
     @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        'remove_and_reset_members')
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_volume_element_name',
+        return_value='1')
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         'check_ig_instance_name',
         return_value='myInitGroup')
@@ -6557,20 +6567,20 @@ class EMCV3DriverTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
     def test_detach_v3_success(self, mock_volume_type, mock_maskingview,
-                               mock_ig, mock_igc, mock_mv, mock_check_ig):
+                               mock_ig, mock_igc, mock_mv, mock_check_ig,
+                               mock_element_name, mock_remove):
         common = self.driver.common
-        common.get_target_wwns = mock.Mock(
-            return_value=EMCVMAXCommonData.target_wwns)
-        common.masking.utils.find_storage_masking_group = mock.Mock(
-            return_value=self.data.storagegroups[0])
-        self.driver.common._initial_setup = mock.Mock(
-            return_value=self.default_extraspec())
-        data = self.driver.terminate_connection(self.data.test_volume_v3,
-                                                self.data.connector)
-        common.get_target_wwns.assert_called_once_with(
-            EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
-        numTargetWwns = len(EMCVMAXCommonData.target_wwns)
-        self.assertEqual(numTargetWwns, len(data['data']))
+        with mock.patch.object(common, 'get_target_wwns',
+                               return_value=EMCVMAXCommonData.target_wwns):
+            with mock.patch.object(common, '_initial_setup',
+                                   return_value=self.default_extraspec()):
+                data = self.driver.terminate_connection(
+                    self.data.test_volume_v3, self.data.connector)
+                common.get_target_wwns.assert_called_once_with(
+                    EMCVMAXCommonData.storage_system,
+                    EMCVMAXCommonData.connector)
+                numTargetWwns = len(EMCVMAXCommonData.target_wwns)
+                self.assertEqual(numTargetWwns, len(data['data']))
 
     # Bug https://bugs.launchpad.net/cinder/+bug/1440154
     @mock.patch.object(
@@ -8183,6 +8193,36 @@ class EMCVMAXFCTest(test.TestCase):
             portGroupInstanceName, initiatorGroupInstanceName)
         self.assertEqual(0, len(mvInstances))
 
+    @mock.patch.object(
+        emc_vmax_provision.EMCVMAXProvision,
+        'remove_device_from_storage_group')
+    def test_remove_device_from_storage_group(self, mock_remove):
+        conn = FakeEcomConnection()
+        common = self.driver.common
+        controllerConfigService = (
+            common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeName = 'vol1'
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        masking = common.masking
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            common.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+        masking.remove_device_from_storage_group(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, extraSpecs)
+        masking.provision.remove_device_from_storage_group.assert_called_with(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstanceName, volumeName, extraSpecs)
+
 
 @ddt.ddt
 class EMCVMAXUtilsTest(test.TestCase):
@@ -8689,7 +8729,10 @@ class EMCVMAXProvisionTest(test.TestCase):
         self.driver = driver
         self.driver.utils = emc_vmax_utils.EMCVMAXUtils(object)
 
-    def test_remove_device_from_storage_group(self):
+    @mock.patch.object(
+        emc_vmax_provision.EMCVMAXProvision,
+        'remove_device_from_storage_group')
+    def test_remove_device_from_storage_group(self, mock_remove):
         conn = FakeEcomConnection()
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
@@ -8702,8 +8745,6 @@ class EMCVMAXProvisionTest(test.TestCase):
                       'storagetype:pool': 'SRP_1',
                       'storagetype:workload': 'DSS',
                       'storagetype:slo': 'Bronze'}
-        masking = self.driver.common.masking
-        masking.provision.remove_device_from_storage_group = mock.Mock()
         masking = self.driver.common.masking
         volumeInstance = conn.GetInstance(volumeInstanceName)
         storageGroupName = self.data.storagegroupname
