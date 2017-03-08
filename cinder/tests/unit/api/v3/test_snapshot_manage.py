@@ -16,10 +16,7 @@ import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-try:
-    from urllib import urlencode
-except ImportError:
-    from urllib.parse import urlencode
+from six.moves.urllib.parse import urlencode
 import webob
 
 from cinder.api.v3 import router as router_v3
