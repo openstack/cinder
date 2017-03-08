@@ -59,7 +59,6 @@ CONF.register_opts(nova_opts)
 
 LOG = logging.getLogger(__name__)
 
-# TODO(e0ne): Make Nova version configurable in Mitaka.
 NOVA_API_VERSION = "2.1"
 
 nova_extensions = [ext for ext in
