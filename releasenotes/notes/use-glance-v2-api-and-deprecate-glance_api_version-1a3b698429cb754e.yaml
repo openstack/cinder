@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Cinder now defaults to using the Glance v2 API.
+    The ``glance_api_version`` configuration option has been
+    deprecated and will be removed in the 11.0.0 Queens release.
