@@ -23,14 +23,14 @@ Jenkins performs tasks such as:
     Calculate test coverage metrics.
 
 `cinder-docs`_
-    Build this documentation and push it to http://cinder.openstack.org.
+    Build this documentation and push it to https://docs.openstack.org/developer/cinder.
 
 `cinder-merge-release-tags`_
     Merge reviewed code into the git repository.
 
 `cinder-tarball`_
     Do ``python setup.py sdist`` to create a tarball of the cinder code and upload
-    it to http://cinder.openstack.org/tarballs
+    it to http://tarballs.openstack.org/cinder
 
 .. _Jenkins: http://jenkins-ci.org
 .. _Launchpad: http://launchpad.net

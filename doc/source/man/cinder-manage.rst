@@ -19,7 +19,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-cinder-manage provides control of cinder database migration, and provides an interface to get information about the current state of cinder.  More information about OpenStack Cinder is available at http://cinder.openstack.org.
+cinder-manage provides control of cinder database migration, and provides an interface to get information about the current state of cinder.  More information about OpenStack Cinder is available at https://docs.openstack.org/developer/cinder.
 
 OPTIONS
 =======
