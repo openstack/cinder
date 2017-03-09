@@ -1692,7 +1692,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         """Silent cleanup of volumes from CG.
 
         Silently cleanup volumes and created consistency-group from
-        storage. This function is called after a failure already occured
+        storage. This function is called after a failure already occurred
         and just logs errors, but does not raise exceptions
         """
         for volume in volumes:
