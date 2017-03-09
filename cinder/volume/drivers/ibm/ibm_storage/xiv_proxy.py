@@ -1242,8 +1242,6 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(msg)
             return False, msg
 
-        return False, None
-
     @proxy._trace_time
     def failover_host(self, context, volumes, secondary_id):
         """Failover a full backend.
