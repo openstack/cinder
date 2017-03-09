@@ -22,11 +22,11 @@ WSGI middleware for OpenStack Volume API.
 from cinder.api import extensions
 import cinder.api.openstack
 from cinder.api.v1 import snapshots
-from cinder.api.v1 import types
-from cinder.api.v1 import volume_metadata
 from cinder.api.v1 import volumes
 from cinder.api.v2 import limits
 from cinder.api.v2 import snapshot_metadata
+from cinder.api.v2 import types
+from cinder.api.v2 import volume_metadata
 from cinder.api import versions
 
 
