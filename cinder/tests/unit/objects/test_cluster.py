@@ -25,7 +25,6 @@ from cinder import utils
 
 def _get_filters_sentinel():
     return {'session': mock.sentinel.session,
-            'name_match_level': mock.sentinel.name_match_level,
             'read_deleted': mock.sentinel.read_deleted,
             'get_services': mock.sentinel.get_services,
             'services_summary': mock.sentinel.services_summary,
