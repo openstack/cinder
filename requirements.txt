@@ -2,7 +2,7 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-pbr>=1.8 # Apache-2.0
+pbr<2.0.0,>=1.8 # Apache-2.0
 Babel>=2.3.4 # BSD
 decorator>=3.4.0 # BSD
 enum34;python_version=='2.7' or python_version=='2.6' or python_version=='3.3' # BSD
