@@ -54,12 +54,6 @@ oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
                                     "|config|utils|serialization|log)")
 no_contextlib_nested = re.compile(r"\s*with (contextlib\.)?nested\(")
 
-log_translation_LI = re.compile(
-    r"(.)*LOG\.(info)\(\s*(_\(|'|\")")
-log_translation_LE = re.compile(
-    r"(.)*LOG\.(exception|error)\(\s*(_\(|'|\")")
-log_translation_LW = re.compile(
-    r"(.)*LOG\.(warning|warn)\(\s*(_\(|'|\")")
 logging_instance = re.compile(
     r"(.)*LOG\.(warning|info|debug|error|exception)\(")
 
@@ -366,24 +360,6 @@ class CheckOptRegistrationArgs(BaseASTChecker):
         return super(CheckOptRegistrationArgs, self).generic_visit(node)
 
 
-def validate_log_translations(logical_line, filename):
-    # Translations are not required in the test directory.
-    # This will not catch all instances of violations, just direct
-    # misuse of the form LOG.info('Message').
-    if "cinder/tests" in filename:
-        return
-    msg = "N328: LOG.info messages require translations `_LI()`!"
-    if log_translation_LI.match(logical_line):
-        yield (0, msg)
-    msg = ("N329: LOG.exception and LOG.error messages require "
-           "translations `_LE()`!")
-    if log_translation_LE.match(logical_line):
-        yield (0, msg)
-    msg = "N330: LOG.warning messages require translations `_LW()`!"
-    if log_translation_LW.match(logical_line):
-        yield (0, msg)
-
-
 def check_datetime_now(logical_line, noqa):
     if noqa:
         return
@@ -496,7 +472,6 @@ def factory(register):
     register(check_datetime_now)
     register(check_timeutils_strtime)
     register(check_timeutils_isotime)
-    register(validate_log_translations)
     register(check_unicode_usage)
     register(check_no_print_statements)
     register(check_no_log_audit)
