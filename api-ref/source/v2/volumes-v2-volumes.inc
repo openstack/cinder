@@ -575,6 +575,43 @@ Response Example
 
 
 
+Show volume metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v2/{tenant_id}/volumes/{volume_id}/metadata/{key}
+
+Shows metadata for a volume for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - tenant_id: tenant_id
+   - volume_id: volume_id_1
+   - key: key_2
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata_3
+
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-metadata-show-response.json
+   :language: javascript
+
+
+
 
 Delete volume metadata
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -592,5 +629,5 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id
-   - key: key
+   - volume_id: volume_id_1
+   - key: key_1

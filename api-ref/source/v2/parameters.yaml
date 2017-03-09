@@ -45,6 +45,20 @@ hostname:
   in: path
   required: false
   type: string
+key_1:
+  description: |
+    The metadata key name for the metadata that you
+    want to remove.
+  in: path
+  required: true
+  type: string
+key_2:
+  description: |
+    The metadata key name for the metadata that you
+    want to see.
+  in: path
+  required: true
+  type: string
 qos_id:
   description: |
     The ID of the QoS specification.
