@@ -75,6 +75,20 @@ hostname:
   in: path
   required: false
   type: string
+key_1:
+  description: |
+    The metadata key name for the metadata that you
+    want to remove.
+  in: path
+  required: true
+  type: string
+key_2:
+  description: |
+    The metadata key name for the metadata that you
+    want to see.
+  in: path
+  required: true
+  type: string
 project_id_path:
   description: |
     The UUID of the project in a multi-tenancy cloud.

@@ -575,6 +575,63 @@ Response Example
    :language: javascript
 
 
+Show a volume's metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/volumes/{volume_id}/metadata/{key}
+
+Shows metadata for a volume for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_1
+   - key: key_2
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata_3
+
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-metadata-show-response.json
+   :language: javascript
+
+
+
+Delete a volume's metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  DELETE /v3/{project_id}/volumes/{volume_id}/metadata/{key}
+
+Deletes metadata for a volume.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_1
+   - key: key_1
+
+
 
 Get volumes summary
 ~~~~~~~~~~~~~~~~~~~
