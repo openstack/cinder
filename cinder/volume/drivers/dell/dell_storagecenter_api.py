@@ -862,22 +862,25 @@ class StorageCenterApi(object):
                     self.map_volume(scvolume, scserver)
                     # We have changed the volume so grab a new copy of it.
                     scvolume = self.get_volume(self._get_id(scvolume))
-                    if not scvolume.get('active', False):
-                        LOG.info(_LI('Failed to activate volume %(name)s, '
-                                     'operations such as snapshot and clone '
-                                     'may fail due to inactive volume. '
-                                     '(%(obj)r)'),
-                                 {'name': scvolume['name'],
-                                  'obj': scvolume})
+                    # Unmap
                     self.unmap_volume(scvolume, scserver)
-                    return
+                    # Did it work?
+                    if not scvolume.get('active', False):
+                        LOG.debug('Failed to activate volume %(name)s via  '
+                                  'server %(srvr)s)',
+                                  {'name': scvolume['name'],
+                                   'srvr': scserver['name']})
+                    else:
+                        return
         # We didn't map/unmap the volume.  So no initialization done.
         # Warn the user before we leave.  Note that this is almost certainly
         # a tempest test failure we are trying to catch here.  A snapshot
         # has likely been attempted before the volume has been instantiated
         # on the Storage Center.  In the real world no one will snapshot
         # a volume without first putting some data in that volume.
-        LOG.warning(_LW('Volume %s initialization failure.'), scvolume['name'])
+        LOG.warning(_LW('Volume %(name)s initialization failure.  '
+                        'Operations such as snapshot and clone may fail due '
+                        'to inactive volume.)'), {'name': scvolume['name']})
 
     def _find_storage_profile(self, storage_profile):
         """Looks for a Storage Profile on the array.
