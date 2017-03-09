@@ -21,7 +21,6 @@ WSGI middleware for OpenStack Volume API.
 
 from cinder.api import extensions
 import cinder.api.openstack
-from cinder.api.v2 import limits
 from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import types
 from cinder.api.v3 import attachments
@@ -32,6 +31,7 @@ from cinder.api.v3 import group_snapshots
 from cinder.api.v3 import group_specs
 from cinder.api.v3 import group_types
 from cinder.api.v3 import groups
+from cinder.api.v3 import limits
 from cinder.api.v3 import messages
 from cinder.api.v3 import resource_filters
 from cinder.api.v3 import snapshot_manage

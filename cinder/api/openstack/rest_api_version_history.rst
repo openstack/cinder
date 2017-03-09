@@ -330,3 +330,7 @@ user documentation.
 ----
   Added enable_replication/disable_replication/failover_replication/
   list_replication_targets for replication groups (Tiramisu).
+
+3.39
+----
+  Add ``project_id`` admin filters support to limits.
