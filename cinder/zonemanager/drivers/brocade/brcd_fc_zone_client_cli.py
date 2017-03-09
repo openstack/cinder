@@ -29,7 +29,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
@@ -84,8 +84,8 @@ class BrcdFCZoneClientCLI(object):
                 [zone_constant.GET_ACTIVE_ZONE_CFG])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed getting active zone set "
-                              "from fabric %s"), self.switch_ip)
+                LOG.error("Failed getting active zone set "
+                          "from fabric %s", self.switch_ip)
         try:
             for line in switch_data:
                 line_split = re.split('\\t', line)
@@ -333,8 +333,8 @@ class BrcdFCZoneClientCLI(object):
             cli_output = self._get_switch_info([cmd])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed collecting nsshow "
-                              "info for fabric %s"), self.switch_ip)
+                LOG.error("Failed collecting nsshow "
+                          "info for fabric %s", self.switch_ip)
         if (cli_output):
             return_list = self._parse_ns_output(cli_output)
         cli_output = None
@@ -405,7 +405,7 @@ class BrcdFCZoneClientCLI(object):
                             firmware = int(ver[0] + ver[1])
                 return firmware > 63
             else:
-                LOG.error(_LE("No CLI output for firmware version check"))
+                LOG.error("No CLI output for firmware version check")
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
@@ -474,7 +474,7 @@ class BrcdFCZoneClientCLI(object):
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                        LOG.exception(_LE('Error executing SSH command.'))
+                        LOG.exception('Error executing SSH command.')
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
@@ -491,7 +491,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s"), command)
+                LOG.error("Error running SSH command: %s", command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -537,7 +537,7 @@ class BrcdFCZoneClientCLI(object):
                         else:
                             return True
                     except Exception as e:
-                        LOG.exception(_LE('Error executing SSH command.'))
+                        LOG.exception('Error executing SSH command.')
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 LOG.debug("Handling error case after "
@@ -556,7 +556,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error executing command via ssh: %s"), e)
+                LOG.error("Error executing command via ssh: %s", e)
         finally:
             if stdin:
                 stdin.flush()
@@ -615,7 +615,7 @@ exit
             try:
                 channel.close()
             except Exception:
-                LOG.exception(_LE('Error closing channel.'))
+                LOG.exception('Error closing channel.')
             LOG.debug("_execute_cmd: stdout to return: %s", stdout)
             LOG.debug("_execute_cmd: stderr to return: %s", stderr)
         return (stdout, stderr)

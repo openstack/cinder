@@ -42,7 +42,7 @@ from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import manager
 from cinder import objects
 from cinder.objects import fields
@@ -117,7 +117,7 @@ class BackupManager(manager.ThreadPoolManager):
                 LOG.debug("Got backend '%s'.", backend)
                 return backend
 
-        LOG.info(_LI("Backend not found in hostname (%s) so using default."),
+        LOG.info("Backend not found in hostname (%s) so using default.",
                  host)
 
         if 'default' not in self.volume_managers:
@@ -168,15 +168,15 @@ class BackupManager(manager.ThreadPoolManager):
             self.volume_managers['default'] = default
 
     def _init_volume_driver(self, ctxt, driver):
-        LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s)."),
+        LOG.info("Starting volume driver %(driver_name)s (%(version)s).",
                  {'driver_name': driver.__class__.__name__,
                   'version': driver.get_version()})
         try:
             driver.do_setup(ctxt)
             driver.check_for_setup_error()
         except Exception:
-            LOG.exception(_LE("Error encountered during initialization of "
-                              "driver: %(name)s."),
+            LOG.exception("Error encountered during initialization of "
+                          "driver: %(name)s.",
                           {'name': driver.__class__.__name__})
             # we don't want to continue since we failed
             # to initialize the driver correctly.
@@ -213,8 +213,7 @@ class BackupManager(manager.ThreadPoolManager):
             self._cleanup_incomplete_backup_operations(ctxt)
         except Exception:
             # Don't block startup of the backup service.
-            LOG.exception(_LE("Problem cleaning incomplete backup "
-                              "operations."))
+            LOG.exception("Problem cleaning incomplete backup operations.")
 
     def reset(self):
         super(BackupManager, self).reset()
@@ -222,7 +221,7 @@ class BackupManager(manager.ThreadPoolManager):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
     def _cleanup_incomplete_backup_operations(self, ctxt):
-        LOG.info(_LI("Cleaning up incomplete backup operations."))
+        LOG.info("Cleaning up incomplete backup operations.")
 
         # TODO(smulcahy) implement full resume of backup and restore
         # operations on restart (rather than simply resetting)
@@ -231,35 +230,35 @@ class BackupManager(manager.ThreadPoolManager):
             try:
                 self._cleanup_one_backup(ctxt, backup)
             except Exception:
-                LOG.exception(_LE("Problem cleaning up backup %(bkup)s."),
+                LOG.exception("Problem cleaning up backup %(bkup)s.",
                               {'bkup': backup['id']})
             try:
                 self._cleanup_temp_volumes_snapshots_for_one_backup(ctxt,
                                                                     backup)
             except Exception:
-                LOG.exception(_LE("Problem cleaning temp volumes and "
-                                  "snapshots for backup %(bkup)s."),
+                LOG.exception("Problem cleaning temp volumes and "
+                              "snapshots for backup %(bkup)s.",
                               {'bkup': backup['id']})
 
     def _cleanup_one_volume(self, ctxt, volume):
         if volume['status'] == 'backing-up':
             self._detach_all_attachments(ctxt, volume)
-            LOG.info(_LI('Resetting volume %(vol_id)s to previous '
-                         'status %(status)s (was backing-up).'),
+            LOG.info('Resetting volume %(vol_id)s to previous '
+                     'status %(status)s (was backing-up).',
                      {'vol_id': volume['id'],
                       'status': volume['previous_status']})
             self.db.volume_update(ctxt, volume['id'],
                                   {'status': volume['previous_status']})
         elif volume['status'] == 'restoring-backup':
             self._detach_all_attachments(ctxt, volume)
-            LOG.info(_LI('setting volume %s to error_restoring '
-                         '(was restoring-backup).'), volume['id'])
+            LOG.info('Setting volume %s to error_restoring '
+                     '(was restoring-backup).', volume['id'])
             self.db.volume_update(ctxt, volume['id'],
                                   {'status': 'error_restoring'})
 
     def _cleanup_one_backup(self, ctxt, backup):
         if backup['status'] == fields.BackupStatus.CREATING:
-            LOG.info(_LI('Resetting backup %s to error (was creating).'),
+            LOG.info('Resetting backup %s to error (was creating).',
                      backup['id'])
 
             volume = objects.Volume.get_by_id(ctxt, backup.volume_id)
@@ -268,8 +267,8 @@ class BackupManager(manager.ThreadPoolManager):
             err = 'incomplete backup reset on manager restart'
             self._update_backup_error(backup, err)
         elif backup['status'] == fields.BackupStatus.RESTORING:
-            LOG.info(_LI('Resetting backup %s to '
-                         'available (was restoring).'),
+            LOG.info('Resetting backup %s to '
+                     'available (was restoring).',
                      backup['id'])
             volume = objects.Volume.get_by_id(ctxt, backup.restore_volume_id)
             self._cleanup_one_volume(ctxt, volume)
@@ -277,7 +276,7 @@ class BackupManager(manager.ThreadPoolManager):
             backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
         elif backup['status'] == fields.BackupStatus.DELETING:
-            LOG.info(_LI('Resuming delete on backup: %s.'), backup['id'])
+            LOG.info('Resuming delete on backup: %s.', backup['id'])
             if CONF.backup_service_inithost_offload:
                 # Offload all the pending backup delete operations to the
                 # threadpool to prevent the main backup service thread
@@ -296,8 +295,7 @@ class BackupManager(manager.ThreadPoolManager):
                     rpcapi = self.volume_rpcapi
                     rpcapi.detach_volume(ctxt, volume, attachment['id'])
                 except Exception:
-                    LOG.exception(_LE("Detach attachment %(attach_id)s"
-                                      " failed."),
+                    LOG.exception("Detach attachment %(attach_id)s failed.",
                                   {'attach_id': attachment['id']},
                                   resource=volume)
 
@@ -359,8 +357,8 @@ class BackupManager(manager.ThreadPoolManager):
         volume_id = backup.volume_id
         volume = objects.Volume.get_by_id(context, volume_id)
         previous_status = volume.get('previous_status', None)
-        LOG.info(_LI('Create backup started, backup: %(backup_id)s '
-                     'volume: %(volume_id)s.'),
+        LOG.info('Create backup started, backup: %(backup_id)s '
+                 'volume: %(volume_id)s.',
                  {'backup_id': backup.id, 'volume_id': volume_id})
 
         self._notify_about_backup_usage(context, backup, "create.start")
@@ -417,7 +415,7 @@ class BackupManager(manager.ThreadPoolManager):
                                                      backup.parent_id)
             parent_backup.num_dependent_backups += 1
             parent_backup.save()
-        LOG.info(_LI('Create backup finished. backup: %s.'), backup.id)
+        LOG.info('Create backup finished. backup: %s.', backup.id)
         self._notify_about_backup_usage(context, backup, "create.end")
 
     def _run_backup(self, context, backup, volume):
@@ -457,8 +455,8 @@ class BackupManager(manager.ThreadPoolManager):
 
     def restore_backup(self, context, backup, volume_id):
         """Restore volume backups from configured backup service."""
-        LOG.info(_LI('Restore backup started, backup: %(backup_id)s '
-                     'volume: %(volume_id)s.'),
+        LOG.info('Restore backup started, backup: %(backup_id)s '
+                 'volume: %(volume_id)s.',
                  {'backup_id': backup.id, 'volume_id': volume_id})
 
         volume = objects.Volume.get_by_id(context, volume_id)
@@ -490,9 +488,9 @@ class BackupManager(manager.ThreadPoolManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.info(_LI('Volume: %(vol_id)s, size: %(vol_size)d is '
-                         'larger than backup: %(backup_id)s, '
-                         'size: %(backup_size)d, continuing with restore.'),
+            LOG.info('Volume: %(vol_id)s, size: %(vol_size)d is '
+                     'larger than backup: %(backup_id)s, '
+                     'size: %(backup_size)d, continuing with restore.',
                      {'vol_id': volume['id'],
                       'vol_size': volume['size'],
                       'backup_id': backup['id'],
@@ -525,8 +523,8 @@ class BackupManager(manager.ThreadPoolManager):
         self.db.volume_update(context, volume_id, {'status': 'available'})
         backup.status = fields.BackupStatus.AVAILABLE
         backup.save()
-        LOG.info(_LI('Restore backup finished, backup %(backup_id)s restored'
-                     ' to volume %(volume_id)s.'),
+        LOG.info('Restore backup finished, backup %(backup_id)s restored'
+                 ' to volume %(volume_id)s.',
                  {'backup_id': backup.id, 'volume_id': volume_id})
         self._notify_about_backup_usage(context, backup, "restore.end")
 
@@ -557,7 +555,7 @@ class BackupManager(manager.ThreadPoolManager):
 
     def delete_backup(self, context, backup):
         """Delete volume backup from configured backup service."""
-        LOG.info(_LI('Delete backup started, backup: %s.'), backup.id)
+        LOG.info('Delete backup started, backup: %s.', backup.id)
 
         self._notify_about_backup_usage(context, backup, "delete.start")
         backup.host = self.host
@@ -604,7 +602,7 @@ class BackupManager(manager.ThreadPoolManager):
                                           **reserve_opts)
         except Exception:
             reservations = None
-            LOG.exception(_LE("Failed to update usages deleting backup"))
+            LOG.exception("Failed to update usages deleting backup")
 
         backup.destroy()
         # If this backup is incremental backup, handle the
@@ -620,7 +618,7 @@ class BackupManager(manager.ThreadPoolManager):
             QUOTAS.commit(context, reservations,
                           project_id=backup.project_id)
 
-        LOG.info(_LI('Delete backup finished, backup %s deleted.'), backup.id)
+        LOG.info('Delete backup finished, backup %s deleted.', backup.id)
         self._notify_about_backup_usage(context, backup, "delete.end")
 
     def _notify_about_backup_usage(self,
@@ -646,7 +644,7 @@ class BackupManager(manager.ThreadPoolManager):
         :returns: 'backup_service' describing the needed driver.
         :raises: InvalidBackup
         """
-        LOG.info(_LI('Export record started, backup: %s.'), backup.id)
+        LOG.info('Export record started, backup: %s.', backup.id)
 
         expected_status = fields.BackupStatus.AVAILABLE
         actual_status = backup.status
@@ -680,7 +678,7 @@ class BackupManager(manager.ThreadPoolManager):
             msg = six.text_type(err)
             raise exception.InvalidBackup(reason=msg)
 
-        LOG.info(_LI('Export record finished, backup %s exported.'), backup.id)
+        LOG.info('Export record finished, backup %s exported.', backup.id)
         return backup_record
 
     def import_record(self,
@@ -699,7 +697,7 @@ class BackupManager(manager.ThreadPoolManager):
         :raises: InvalidBackup
         :raises: ServiceNotFound
         """
-        LOG.info(_LI('Import record started, backup_url: %s.'), backup_url)
+        LOG.info('Import record started, backup_url: %s.', backup_url)
 
         # Can we import this backup?
         if (backup_service != self.driver_name):
@@ -783,9 +781,9 @@ class BackupManager(manager.ThreadPoolManager):
                 if isinstance(backup_service, driver.BackupDriverWithVerify):
                     backup_service.verify(backup.id)
                 else:
-                    LOG.warning(_LW('Backup service %(service)s does not '
-                                    'support verify. Backup id %(id)s is '
-                                    'not verified. Skipping verify.'),
+                    LOG.warning('Backup service %(service)s does not '
+                                'support verify. Backup id %(id)s is '
+                                'not verified. Skipping verify.',
                                 {'service': self.driver_name,
                                  'id': backup.id})
             except exception.InvalidBackup as err:
@@ -796,8 +794,8 @@ class BackupManager(manager.ThreadPoolManager):
             backup.update({"status": fields.BackupStatus.AVAILABLE})
             backup.save()
 
-            LOG.info(_LI('Import record id %s metadata from driver '
-                         'finished.'), backup.id)
+            LOG.info('Import record id %s metadata from driver '
+                     'finished.', backup.id)
 
     def reset_status(self, context, backup, status):
         """Reset volume backup status.
@@ -809,13 +807,13 @@ class BackupManager(manager.ThreadPoolManager):
         :raises: BackupVerifyUnsupportedDriver
         :raises: AttributeError
         """
-        LOG.info(_LI('Reset backup status started, backup_id: '
-                     '%(backup_id)s, status: %(status)s.'),
+        LOG.info('Reset backup status started, backup_id: '
+                 '%(backup_id)s, status: %(status)s.',
                  {'backup_id': backup.id,
                   'status': status})
 
         backup_service_name = self._map_service_to_driver(backup.service)
-        LOG.info(_LI('Backup service: %s.'), backup_service_name)
+        LOG.info('Backup service: %s.', backup_service_name)
         if backup_service_name is not None:
             configured_service = self.driver_name
             if backup_service_name != configured_service:
@@ -857,14 +855,14 @@ class BackupManager(manager.ThreadPoolManager):
                         backup.save()
             except exception.InvalidBackup:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Backup id %s is not invalid. "
-                                  "Skipping reset."), backup.id)
+                    LOG.error("Backup id %s is not invalid. Skipping reset.",
+                              backup.id)
             except exception.BackupVerifyUnsupportedDriver:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Backup service %(configured_service)s '
-                                  'does not support verify. Backup id '
-                                  '%(id)s is not verified. '
-                                  'Skipping verify.'),
+                    LOG.error('Backup service %(configured_service)s '
+                              'does not support verify. Backup id '
+                              '%(id)s is not verified. '
+                              'Skipping verify.',
                               {'configured_service': self.driver_name,
                                'id': backup.id})
             except AttributeError:
@@ -882,8 +880,8 @@ class BackupManager(manager.ThreadPoolManager):
                 self._cleanup_temp_volumes_snapshots_for_one_backup(
                     context, backup)
             except Exception:
-                LOG.exception(_LE("Problem cleaning temp volumes and "
-                                  "snapshots for backup %(bkup)s."),
+                LOG.exception("Problem cleaning temp volumes and "
+                              "snapshots for backup %(bkup)s.",
                               {'bkup': backup.id})
 
             # send notification to ceilometer
@@ -928,9 +926,9 @@ class BackupManager(manager.ThreadPoolManager):
                                                             properties,
                                                             force=True)
                 except Exception:
-                    LOG.warning(_LW("Failed to terminate the connection "
-                                    "of volume %(volume_id)s, but it is "
-                                    "acceptable."),
+                    LOG.warning("Failed to terminate the connection "
+                                "of volume %(volume_id)s, but it is "
+                                "acceptable.",
                                 {'volume_id', volume.id})
 
     def _connect_device(self, conn):

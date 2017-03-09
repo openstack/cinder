@@ -28,7 +28,7 @@ from cinder.api.views import cgsnapshots as cgsnapshot_views
 from cinder import consistencygroup as consistencygroup_api
 from cinder import exception
 from cinder import group as group_api
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.objects import cgsnapshot as cgsnap_obj
 from cinder.objects import consistencygroup as cg_obj
 from cinder.objects import group as grp_obj
@@ -62,7 +62,7 @@ class CgsnapshotsController(wsgi.Controller):
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_LI('Delete cgsnapshot with id: %s'), id)
+        LOG.info('Delete cgsnapshot with id: %s', id)
 
         try:
             cgsnapshot = self._get_cgsnapshot(context, id)
@@ -167,7 +167,7 @@ class CgsnapshotsController(wsgi.Controller):
         name = cgsnapshot.get('name', None)
         description = cgsnapshot.get('description', None)
 
-        LOG.info(_LI("Creating cgsnapshot %(name)s."),
+        LOG.info("Creating cgsnapshot %(name)s.",
                  {'name': name},
                  context=context)
 

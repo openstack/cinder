@@ -37,7 +37,7 @@ import six
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import utils
 from cinder.volume import driver
@@ -157,8 +157,8 @@ class NetAppNfsDriver(driver.ManageableVD,
             model_update['provider_location'] = volume['provider_location']
             return model_update
         except Exception:
-            LOG.exception(_LE("Exception creating vol %(name)s on "
-                          "pool %(pool)s."),
+            LOG.exception("Exception creating vol %(name)s on "
+                          "pool %(pool)s.",
                           {'name': volume['name'],
                            'pool': volume['provider_location']})
             # We need to set this for the model update in order for the
@@ -204,8 +204,8 @@ class NetAppNfsDriver(driver.ManageableVD,
 
             return model_update
         except Exception:
-            LOG.exception(_LE("Exception creating volume %(name)s from source "
-                              "%(source)s on share %(share)s."),
+            LOG.exception("Exception creating volume %(name)s from source "
+                          "%(source)s on share %(share)s.",
                           {'name': destination_volume['id'],
                            'source': source['name'],
                            'share': destination_volume['provider_location']})
@@ -229,8 +229,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                     self.extend_volume(destination_volume,
                                        destination_volume_size)
                 except Exception:
-                    LOG.error(_LE("Resizing %s failed. Cleaning "
-                                  "volume."), destination_volume['name'])
+                    LOG.error("Resizing %s failed. Cleaning "
+                              "volume.", destination_volume['name'])
                     self._cleanup_volume_on_failure(destination_volume)
                     raise exception.CinderException(
                         _("Resizing clone %s failed.")
@@ -336,8 +336,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                 tries += 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
-                LOG.exception(_LE("Recovering from a failed execute.  "
-                                  "Try number %s"), tries)
+                LOG.exception("Recovering from a failed execute. "
+                              "Try number %s", tries)
                 time.sleep(tries ** 2)
 
     def _get_volume_path(self, nfs_share, volume_name):
@@ -369,21 +369,21 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Fetch the image from image_service and write it to the volume."""
         super(NetAppNfsDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
-        LOG.info(_LI('Copied image to volume %s using regular download.'),
+        LOG.info('Copied image to volume %s using regular download.',
                  volume['id'])
         self._register_image_in_cache(volume, image_id)
 
     def _register_image_in_cache(self, volume, image_id):
         """Stores image in the cache."""
         file_name = 'img-cache-%s' % image_id
-        LOG.info(_LI("Registering image in cache %s"), file_name)
+        LOG.info("Registering image in cache %s", file_name)
         try:
             self._do_clone_rel_img_cache(
                 volume['name'], file_name,
                 volume['provider_location'], file_name)
         except Exception as e:
-            LOG.warning(_LW('Exception while registering image %(image_id)s'
-                            ' in cache. Exception: %(exc)s'),
+            LOG.warning('Exception while registering image %(image_id)s'
+                        ' in cache. Exception: %(exc)s',
                         {'image_id': image_id, 'exc': e})
 
     def _find_image_in_cache(self, image_id):
@@ -408,7 +408,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             dir = self._get_mount_point_for_share(share)
             file_path = '%s/%s' % (dir, dst)
             if not os.path.exists(file_path):
-                LOG.info(_LI('Cloning from cache to destination %s'), dst)
+                LOG.info('Cloning from cache to destination %s', dst)
                 self._clone_backing_file_for_volume(src, dst, volume_id=None,
                                                     share=share)
                 src_path = '%s/%s' % (dir, src)
@@ -441,7 +441,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                         self._get_capacity_info(share)
                     avl_percent = int((float(total_avl) / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
-                        LOG.info(_LI('Cleaning cache for share %s.'), share)
+                        LOG.info('Cleaning cache for share %s.', share)
                         eligible_files = self._find_old_cache_files(share)
                         threshold_size = int(
                             (thres_size_perc_stop * total_size) / 100)
@@ -453,8 +453,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                     else:
                         continue
                 except Exception as e:
-                    LOG.warning(_LW('Exception during cache cleaning'
-                                    ' %(share)s. Message - %(ex)s'),
+                    LOG.warning('Exception during cache cleaning'
+                                ' %(share)s. Message - %(ex)s',
                                 {'share': share, 'ex': e})
                     continue
         finally:
@@ -511,7 +511,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as ex:
-            LOG.warning(_LW('Exception during deleting %s'), ex)
+            LOG.warning('Exception during deleting %s', ex)
             return False
 
     def clone_image(self, context, volume,
@@ -544,8 +544,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
             msg = e.msg if getattr(e, 'msg', None) else e
-            LOG.info(_LI('Image cloning unsuccessful for image'
-                         ' %(image_id)s. Message: %(msg)s'),
+            LOG.info('Image cloning unsuccessful for image'
+                     ' %(image_id)s. Message: %(msg)s',
                      {'image_id': image_id, 'msg': msg})
         finally:
             cloned = cloned and post_clone
@@ -556,7 +556,7 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _clone_from_cache(self, volume, image_id, cache_result):
         """Clones a copy from image cache."""
         cloned = False
-        LOG.info(_LI('Cloning image %s from cache'), image_id)
+        LOG.info('Cloning image %s from cache', image_id)
         for res in cache_result:
             # Repeat tries in other shares if failed in some
             (share, file_name) = res
@@ -570,13 +570,13 @@ class NetAppNfsDriver(driver.ManageableVD,
                     volume['provider_location'] = share
                     break
                 except Exception:
-                    LOG.warning(_LW('Unexpected exception during'
-                                    ' image cloning in share %s'), share)
+                    LOG.warning('Unexpected exception during'
+                                ' image cloning in share %s', share)
         return cloned
 
     def _direct_nfs_clone(self, volume, image_location, image_id):
         """Clone directly in nfs share."""
-        LOG.info(_LI('Checking image clone %s from glance share.'), image_id)
+        LOG.info('Checking image clone %s from glance share.', image_id)
         cloned = False
         image_locations = self._construct_image_nfs_url(image_location)
         run_as_root = self._execute_as_root
@@ -599,7 +599,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                     break
                 else:
                     LOG.info(
-                        _LI('Image will locally be converted to raw %s'),
+                        'Image will locally be converted to raw %s',
                         image_id)
                     dst = '%s/%s' % (dir_path, volume['name'])
                     image_utils.convert_image(img_path, dst, 'raw',
@@ -619,7 +619,7 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def _post_clone_image(self, volume):
         """Do operations post image cloning."""
-        LOG.info(_LI('Performing post clone for %s'), volume['name'])
+        LOG.info('Performing post clone for %s', volume['name'])
         vol_path = self.local_path(volume)
         if self._discover_file_till_timeout(vol_path):
             self._set_rw_permissions(vol_path)
@@ -634,7 +634,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         if self._is_file_size_equal(path, new_size):
             return
         else:
-            LOG.info(_LI('Resizing file to %sG'), new_size)
+            LOG.info('Resizing file to %sG', new_size)
             image_utils.resize_image(path, new_size,
                                      run_as_root=self._execute_as_root)
             if self._is_file_size_equal(path, new_size):
@@ -669,7 +669,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                 return True
             else:
                 if retry_seconds <= 0:
-                    LOG.warning(_LW('Discover file retries exhausted.'))
+                    LOG.warning('Discover file retries exhausted.')
                     return False
                 else:
                     time.sleep(sleep_interval)
@@ -727,8 +727,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                               share_candidates)
                     return self._share_match_for_ip(ip, share_candidates)
         except Exception:
-            LOG.warning(_LW("Unexpected exception while "
-                            "short listing used share."))
+            LOG.warning("Unexpected exception while "
+                        "short listing used share.")
         return None
 
     def _construct_image_nfs_url(self, image_location):
@@ -770,7 +770,7 @@ class NetAppNfsDriver(driver.ManageableVD,
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
 
-        LOG.info(_LI('Extending volume %s.'), volume['name'])
+        LOG.info('Extending volume %s.', volume['name'])
 
         try:
             path = self.local_path(volume)
@@ -829,7 +829,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         @utils.synchronized(dest_path, external=True)
         def _move_file(src, dst):
             if os.path.exists(dst):
-                LOG.warning(_LW("Destination %s already exists."), dst)
+                LOG.warning("Destination %s already exists.", dst)
                 return False
             self._execute('mv', src, dst, run_as_root=self._execute_as_root)
             return True
@@ -837,7 +837,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         try:
             return _move_file(source_path, dest_path)
         except Exception as e:
-            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s'),
+            LOG.warning('Exception moving file %(src)s. Message - %(e)s',
                         {'src': source_path, 'e': e})
         return False
 
@@ -1055,8 +1055,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         """
         vol_str = CONF.volume_name_template % volume['id']
         vol_path = os.path.join(volume['provider_location'], vol_str)
-        LOG.info(_LI("Cinder NFS volume with current path \"%(cr)s\" is "
-                     "no longer being managed."), {'cr': vol_path})
+        LOG.info('Cinder NFS volume with current path "%(cr)s" is '
+                 'no longer being managed.', {'cr': vol_path})
 
     @utils.trace_method
     def create_consistencygroup(self, context, group):
@@ -1088,8 +1088,8 @@ class NetAppNfsDriver(driver.ManageableVD,
             except Exception:
                 volumes_model_update.append(
                     {'id': volume['id'], 'status': 'error_deleting'})
-                LOG.exception(_LE("Volume %(vol)s in the consistency group "
-                                  "could not be deleted."), {'vol': volume})
+                LOG.exception("Volume %(vol)s in the consistency group "
+                              "could not be deleted.", {'vol': volume})
         return model_update, volumes_model_update
 
     @utils.trace_method
@@ -1203,8 +1203,8 @@ class NetAppNfsDriver(driver.ManageableVD,
                     flexvol_name, snapshot_name)
                 self.zapi_client.delete_snapshot(flexvol_name, snapshot_name)
         else:
-            LOG.error(_LE("Unexpected set of parameters received when "
-                          "creating consistency group from source."))
+            LOG.error("Unexpected set of parameters received when "
+                      "creating consistency group from source.")
             model_update = {}
             model_update['status'] = 'error'
 

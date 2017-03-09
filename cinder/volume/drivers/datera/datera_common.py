@@ -21,7 +21,7 @@ import time
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LE
+from cinder.i18n import _
 
 
 LOG = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ def _api_lookup(func):
                 name = "_" + "_".join(
                     (func.__name__, api_version.replace(".", "_")))
             try:
-                LOG.info(_LI("Trying method: %s"), name)
+                LOG.info("Trying method: %s", name)
                 return getattr(obj, name)(*args[1:], **kwargs)
             except AttributeError as e:
                 # If we find the attribute name in the error message
@@ -206,6 +206,6 @@ def _get_supported_api_versions(driver):
                     str(resp.json().get("code")) == "99"):
                 results.append(version)
             else:
-                LOG.error(_LE("No supported API versions available, "
-                              "Please upgrade your Datera EDF software"))
+                LOG.error("No supported API versions available, "
+                          "Please upgrade your Datera EDF software")
     return results

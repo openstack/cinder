@@ -25,7 +25,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
 from cinder.volume import utils
@@ -246,8 +246,8 @@ class FilterScheduler(driver.Scheduler):
             return  # no previously attempted hosts, skip
 
         last_backend = backends[-1]
-        LOG.error(_LE("Error scheduling %(volume_id)s from last vol-service: "
-                      "%(last_backend)s : %(exc)s"),
+        LOG.error("Error scheduling %(volume_id)s from last vol-service: "
+                  "%(last_backend)s : %(exc)s",
                   {'volume_id': volume_id,
                    'last_backend': last_backend,
                    'exc': exc})
@@ -631,8 +631,8 @@ class FilterScheduler(driver.Scheduler):
                 if backend_id != group_backend:
                     weighed_backends.remove(backend)
         if not weighed_backends:
-            LOG.warning(_LW('No weighed backend found for volume '
-                            'with properties: %s'),
+            LOG.warning('No weighed backend found for volume '
+                        'with properties: %s',
                         filter_properties['request_spec'].get('volume_type'))
             return None
         return self._choose_top_backend(weighed_backends, request_spec)

@@ -48,7 +48,7 @@ from oslo_log import log as logging
 from cinder import i18n
 i18n.enable_lazy()
 from cinder import context
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
 from cinder import utils
@@ -104,7 +104,7 @@ def _vol_notify_usage(LOG, volume_ref, extra_info, admin_context):
         cinder.volume.utils.notify_about_volume_usage(
             admin_context, volume_ref, 'exists', extra_usage_info=extra_info)
     except Exception as exc_msg:
-        LOG.error(_LE("Exists volume notification failed: %s"),
+        LOG.error("Exists volume notification failed: %s",
                   exc_msg, resource=volume_ref)
 
 
@@ -119,7 +119,7 @@ def _snap_notify_usage(LOG, snapshot_ref, extra_info, admin_context):
         cinder.volume.utils.notify_about_snapshot_usage(
             admin_context, snapshot_ref, 'exists', extra_info)
     except Exception as exc_msg:
-        LOG.error(_LE("Exists snapshot notification failed: %s"),
+        LOG.error("Exists snapshot notification failed: %s",
                   exc_msg, resource=snapshot_ref)
 
 
@@ -134,7 +134,7 @@ def _backup_notify_usage(LOG, backup_ref, extra_info, admin_context):
                    'project_id': backup_ref.project_id,
                    'extra_info': extra_info})
     except Exception as exc_msg:
-        LOG.error(_LE("Exists backups notification failed: %s"), exc_msg)
+        LOG.error("Exists backups notification failed: %s", exc_msg)
 
 
 def _create_action(obj_ref, admin_context, LOG, notify_about_usage,
@@ -155,7 +155,7 @@ def _create_action(obj_ref, admin_context, LOG, notify_about_usage,
         notify_about_usage(admin_context, obj_ref,
                            'create.end', extra_usage_info=local_extra_info)
     except Exception as exc_msg:
-        LOG.error(_LE("Create %(type)s notification failed: %(exc_msg)s"),
+        LOG.error("Create %(type)s notification failed: %(exc_msg)s",
                   {'type': type_name, 'exc_msg': exc_msg}, resource=obj_ref)
 
 
@@ -177,7 +177,7 @@ def _delete_action(obj_ref, admin_context, LOG, notify_about_usage,
         notify_about_usage(admin_context, obj_ref,
                            'delete.end', extra_usage_info=local_extra_info)
     except Exception as exc_msg:
-        LOG.error(_LE("Delete %(type)s notification failed: %(exc_msg)s"),
+        LOG.error("Delete %(type)s notification failed: %(exc_msg)s",
                   {'type': type_name, 'exc_msg': exc_msg}, resource=obj_ref)
 
 
@@ -206,9 +206,9 @@ def main():
     begin, end = utils.last_completed_audit_period()
     begin, end = _time_error(LOG, begin, end)
 
-    LOG.info(_LI("Starting volume usage audit"))
-    msg = _LI("Creating usages for %(begin_period)s until %(end_period)s")
-    LOG.info(msg, {"begin_period": str(begin), "end_period": str(end)})
+    LOG.info("Starting volume usage audit")
+    LOG.info("Creating usages for %(begin_period)s until %(end_period)s",
+             {"begin_period": begin, "end_period": end})
 
     extra_info = {
         'audit_period_beginning': str(begin),
@@ -219,7 +219,7 @@ def main():
                                                           begin,
                                                           end)
 
-    LOG.info(_LI("Found %d volumes"), len(volumes))
+    LOG.info("Found %d volumes", len(volumes))
     for volume_ref in volumes:
         _obj_ref_action(_vol_notify_usage, LOG, volume_ref, extra_info,
                         admin_context, begin, end,
@@ -228,7 +228,7 @@ def main():
 
     snapshots = objects.SnapshotList.get_all_active_by_window(admin_context,
                                                               begin, end)
-    LOG.info(_LI("Found %d snapshots"), len(snapshots))
+    LOG.info("Found %d snapshots", len(snapshots))
     for snapshot_ref in snapshots:
         _obj_ref_action(_snap_notify_usage, LOG, snapshot_ref, extra_info,
                         admin_context, begin,
@@ -238,10 +238,10 @@ def main():
     backups = objects.BackupList.get_all_active_by_window(admin_context,
                                                           begin, end)
 
-    LOG.info(_LI("Found %d backups"), len(backups))
+    LOG.info("Found %d backups", len(backups))
     for backup_ref in backups:
         _obj_ref_action(_backup_notify_usage, LOG, backup_ref, extra_info,
                         admin_context, begin,
                         end, cinder.volume.utils.notify_about_backup_usage,
                         "backup_id", "backup")
-    LOG.info(_LI("Volume usage audit completed"))
+    LOG.info("Volume usage audit completed")

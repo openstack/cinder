@@ -34,11 +34,11 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder import ssh_utils
-from cinder import utils as cinder_utils
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder import ssh_utils
+from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.ibm.storwize_svc import (
     replication as storwize_rep)
@@ -282,14 +282,14 @@ class StorwizeSSH(object):
         except Exception as ex:
             if (not multihostmap and hasattr(ex, 'message') and
                     'CMMVC6071E' in ex.message):
-                LOG.error(_LE('storwize_svc_multihostmap_enabled is set '
-                              'to False, not allowing multi host mapping.'))
+                LOG.error('storwize_svc_multihostmap_enabled is set '
+                          'to False, not allowing multi host mapping.')
                 raise exception.VolumeDriverException(
                     message=_('CMMVC6071E The VDisk-to-host mapping was not '
                               'created because the VDisk is already mapped '
                               'to a host.\n"'))
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Error mapping VDisk-to-host'))
+                LOG.error('Error mapping VDisk-to-host')
 
     def mkrcrelationship(self, master, aux, system, asyncmirror):
         ssh_cmd = ['svctask', 'mkrcrelationship', '-master', master,
@@ -396,13 +396,13 @@ class StorwizeSSH(object):
             if hasattr(ex, 'msg') and 'CMMVC6372W' in ex.msg:
                 vdisk = self.lsvdisk(name)
                 if vdisk:
-                    LOG.warning(_LW('CMMVC6372W The virtualized storage '
-                                    'capacity that the cluster is using is '
-                                    'approaching the virtualized storage '
-                                    'capacity that is licensed.'))
+                    LOG.warning('CMMVC6372W The virtualized storage '
+                                'capacity that the cluster is using is '
+                                'approaching the virtualized storage '
+                                'capacity that is licensed.')
                     return vdisk['id']
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to create vdisk %(vol)s.'),
+                LOG.exception('Failed to create vdisk %(vol)s.',
                               {'vol': name})
 
     def rmvdisk(self, vdisk, force=True):
@@ -620,7 +620,7 @@ class StorwizeHelpers(object):
             if resp.get('license_scheme', '0') == '9846':
                 return True
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE("Failed to fetch licensing scheme."))
+            LOG.exception("Failed to fetch licensing scheme.")
         return False
 
     def replication_licensed(self):
@@ -633,8 +633,7 @@ class StorwizeHelpers(object):
             if product_key in storwize_const.REP_CAP_DEVS:
                 return True
         except exception.VolumeBackendAPIException as war:
-            LOG.warning(_LW("Failed to run lsguicapability. "
-                            "Exception: %s."), war)
+            LOG.warning("Failed to run lsguicapability. Exception: %s.", war)
         return False
 
     def get_system_info(self):
@@ -767,7 +766,7 @@ class StorwizeHelpers(object):
                         port_info['status'] == 'active'):
                     wwpns.add(port_info['WWPN'])
             node['WWPN'] = list(wwpns)
-            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.'),
+            LOG.info('WWPN on node %(node)s: %(wwpn)s.',
                      {'node': node['id'], 'wwpn': node['WWPN']})
 
     def add_chap_secret_to_host(self, host_name):
@@ -983,15 +982,15 @@ class StorwizeHelpers(object):
         # Check if the mapping exists
         resp = self.ssh.lsvdiskhostmap(volume_name)
         if not len(resp):
-            LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
-                            '%(vol_name)s to any host found.'),
+            LOG.warning('unmap_vol_from_host: No mapping of volume '
+                        '%(vol_name)s to any host found.',
                         {'vol_name': volume_name})
             return host_name
         if host_name is None:
             if len(resp) > 1:
-                LOG.warning(_LW('unmap_vol_from_host: Multiple mappings of '
-                                'volume %(vol_name)s found, no host '
-                                'specified.'), {'vol_name': volume_name})
+                LOG.warning('unmap_vol_from_host: Multiple mappings of '
+                            'volume %(vol_name)s found, no host '
+                            'specified.', {'vol_name': volume_name})
                 return
             else:
                 host_name = resp[0]['host_name']
@@ -1001,8 +1000,8 @@ class StorwizeHelpers(object):
                 if h == host_name:
                     found = True
             if not found:
-                LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
-                                '%(vol_name)s to host %(host)s found.'),
+                LOG.warning('unmap_vol_from_host: No mapping of volume '
+                            '%(vol_name)s to host %(host)s found.',
                             {'vol_name': volume_name, 'host': host_name})
                 return host_name
         # We now know that the mapping exists
@@ -1103,8 +1102,8 @@ class StorwizeHelpers(object):
                 key = 'replication'
                 words = value.split()
                 if not (words and len(words) == 2 and words[0] == '<is>'):
-                    LOG.error(_LE('Replication must be specified as '
-                                  '\'<is> True\' or \'<is> False\'.'))
+                    LOG.error('Replication must be specified as '
+                              '\'<is> True\' or \'<is> False\'.')
                 del words[0]
                 value = words[0]
 
@@ -1169,8 +1168,8 @@ class StorwizeHelpers(object):
                 testValue = testmethod()
             except Exception as ex:
                 if raise_exception:
-                    LOG.exception(_LE("_wait_for_a_condition: %s"
-                                      " execution failed."),
+                    LOG.exception("_wait_for_a_condition: %s"
+                                  " execution failed.",
                                   testmethod.__name__)
                     raise exception.VolumeBackendAPIException(data=ex)
                 else:
@@ -1366,8 +1365,8 @@ class StorwizeHelpers(object):
             model_update['status'] = fields.ConsistencyGroupStatus.ERROR
             # Release cg
             self.delete_fc_consistgrp(fc_consistgrp)
-            LOG.error(_LE("Failed to create CGSnapshot. "
-                          "Exception: %s."), err)
+            LOG.error("Failed to create CGSnapshot. "
+                      "Exception: %s.", err)
 
         for snapshot in snapshots:
             snapshots_model_update.append(
@@ -1387,8 +1386,8 @@ class StorwizeHelpers(object):
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
                 fields.ConsistencyGroupStatus.ERROR_DELETING)
-            LOG.error(_LE("Failed to delete the snapshot %(snap)s of "
-                          "CGSnapshot. Exception: %(exception)s."),
+            LOG.error("Failed to delete the snapshot %(snap)s of "
+                      "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot['name'], 'exception': err})
 
         for snapshot in snapshots:
@@ -1454,8 +1453,8 @@ class StorwizeHelpers(object):
             with excutils.save_and_reraise_exception():
                 # Release cg
                 self.delete_fc_consistgrp(fc_consistgrp)
-                LOG.error(_LE("Failed to create CG from CGsnapshot. "
-                              "Exception: %s"), err)
+                LOG.error("Failed to create CG from CGsnapshot. "
+                          "Exception: %s", err)
             return model_update, volumes_model_update
 
         LOG.debug('Leave: create_cg_from_source.')
@@ -1465,15 +1464,14 @@ class StorwizeHelpers(object):
                                   status='available'):
         """Update the volume model's status and return it."""
         volume_model_updates = []
-        LOG.info(_LI(
-            "Updating status for CG: %(id)s."),
-            {'id': cgId})
+        LOG.info("Updating status for CG: %(id)s.",
+                 {'id': cgId})
         if volumes:
             for volume in volumes:
                 volume_model_updates.append({'id': volume['id'],
                                              'status': status})
         else:
-            LOG.info(_LI("No volume found for CG: %(cg)s."),
+            LOG.info("No volume found for CG: %(cg)s.",
                      {'cg': cgId})
         return volume_model_updates
 
@@ -1652,8 +1650,8 @@ class StorwizeHelpers(object):
     def get_relationship_info(self, volume_name):
         vol_attrs = self.get_vdisk_attributes(volume_name)
         if not vol_attrs or not vol_attrs['RC_name']:
-            LOG.info(_LI("Unable to get remote copy information for "
-                         "volume %s"), volume_name)
+            LOG.info("Unable to get remote copy information for "
+                     "volume %s", volume_name)
             return
 
         relationship = self.ssh.lsrcrelationship(vol_attrs['RC_name'])
@@ -1703,7 +1701,7 @@ class StorwizeHelpers(object):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
         LOG.debug('Enter: delete_vdisk: vdisk %s.', vdisk)
         if not self.is_vdisk_defined(vdisk):
-            LOG.info(_LI('Tried to delete non-existent vdisk %s.'), vdisk)
+            LOG.info('Tried to delete non-existent vdisk %s.', vdisk)
             return
         self.ensure_vdisk_no_fc_mappings(vdisk, allow_snaps=True,
                                          allow_fctgt=True)
@@ -2209,16 +2207,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 self.sshpool = self._set_up_sshpool(self.active_ip)
             except paramiko.SSHException:
-                LOG.warning(_LW('Unable to use san_ip to create SSHPool. Now '
-                                'attempting to use storwize_san_secondary_ip '
-                                'to create SSHPool.'))
+                LOG.warning('Unable to use san_ip to create SSHPool. Now '
+                            'attempting to use storwize_san_secondary_ip '
+                            'to create SSHPool.')
                 if self._toggle_ip():
                     self.sshpool = self._set_up_sshpool(self.active_ip)
                 else:
-                    LOG.warning(_LW('Unable to create SSHPool using san_ip '
-                                    'and not able to use '
-                                    'storwize_san_secondary_ip since it is '
-                                    'not configured.'))
+                    LOG.warning('Unable to create SSHPool using san_ip '
+                                'and not able to use '
+                                'storwize_san_secondary_ip since it is '
+                                'not configured.')
                     raise
         try:
             return self._ssh_execute(self.sshpool, command,
@@ -2229,22 +2227,22 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             # before raising an error.
             try:
                 if self._toggle_ip():
-                    LOG.warning(_LW("Unable to execute SSH command with "
-                                    "%(inactive)s. Attempting to execute SSH "
-                                    "command with %(active)s."),
+                    LOG.warning("Unable to execute SSH command with "
+                                "%(inactive)s. Attempting to execute SSH "
+                                "command with %(active)s.",
                                 {'inactive': self.inactive_ip,
                                  'active': self.active_ip})
                     self.sshpool = self._set_up_sshpool(self.active_ip)
                     return self._ssh_execute(self.sshpool, command,
                                              check_exit_code, attempts)
                 else:
-                    LOG.warning(_LW('Not able to use '
-                                    'storwize_san_secondary_ip since it is '
-                                    'not configured.'))
+                    LOG.warning('Not able to use '
+                                'storwize_san_secondary_ip since it is '
+                                'not configured.')
                     raise
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Error running SSH command: %s"),
+                    LOG.error("Error running SSH command: %s",
                               command)
 
     def _set_up_sshpool(self, ip):
@@ -2276,7 +2274,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                        LOG.error(_LE('Error has occurred: %s'), e)
+                        LOG.error('Error has occurred: %s', e)
                         last_exception = e
                         greenthread.sleep(self.DEFAULT_GR_SLEEP)
                     try:
@@ -2294,7 +2292,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s"), command)
+                LOG.error("Error running SSH command: %s", command)
 
     def _toggle_ip(self):
         # Change active_ip if storwize_san_secondary_ip is set.
@@ -2302,8 +2300,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             return False
 
         self.inactive_ip, self.active_ip = self.active_ip, self.inactive_ip
-        LOG.info(_LI('Toggle active_ip from %(old)s to '
-                     '%(new)s.'),
+        LOG.info('Toggle active_ip from %(old)s to %(new)s.',
                  {'old': self.inactive_ip,
                   'new': self.active_ip})
         return True
@@ -2318,7 +2315,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         volume_defined = self._helpers.is_vdisk_defined(vol_name)
 
         if not volume_defined:
-            LOG.error(_LE('ensure_export: Volume %s not found on storage.'),
+            LOG.error('ensure_export: Volume %s not found on storage.',
                       volume['name'])
 
     def create_export(self, ctxt, volume, connector):
@@ -2384,8 +2381,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     self._master_backend_helpers.delete_rc_volume(
                         volume['name'])
                 except Exception as ex:
-                    LOG.error(_LE('Failed to get delete volume %(volume)s in '
-                                  'master backend. Exception: %(err)s.'),
+                    LOG.error('Failed to get delete volume %(volume)s in '
+                              'master backend. Exception: %(err)s.',
                               {'volume': volume['name'],
                                'err': ex})
         else:
@@ -2542,8 +2539,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         rel_info = self._helpers.get_relationship_info(volume_name)
         if rel_info:
-            LOG.warning(_LW('_extend_volume_op: Extending a volume with '
-                            'remote copy is not recommended.'))
+            LOG.warning('_extend_volume_op: Extending a volume with '
+                        'remote copy is not recommended.')
             try:
                 tgt_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX +
                            volume['name'])
@@ -2607,13 +2604,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self._vdiskcopyops_loop.stop()
                 self._vdiskcopyops_loop = None
         except KeyError:
-            LOG.error(_LE('_rm_vdisk_copy_op: Volume %s does not have any '
-                          'registered vdisk copy operations.'), volume['id'])
+            LOG.error('_rm_vdisk_copy_op: Volume %s does not have any '
+                      'registered vdisk copy operations.', volume['id'])
             return
         except ValueError:
-            LOG.error(_LE('_rm_vdisk_copy_op: Volume %(vol)s does not have '
-                          'the specified vdisk copy operation: orig=%(orig)s '
-                          'new=%(new)s.'),
+            LOG.error('_rm_vdisk_copy_op: Volume %(vol)s does not have '
+                      'the specified vdisk copy operation: orig=%(orig)s '
+                      'new=%(new)s.',
                       {'vol': volume['id'], 'orig': orig_copy_id,
                        'new': new_copy_id})
             return
@@ -2622,17 +2619,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                      volume['id'])
         curr_ops = metadata.get('vdiskcopyops', None)
         if not curr_ops:
-            LOG.error(_LE('_rm_vdisk_copy_op: Volume metadata %s does not '
-                          'have any registered vdisk copy operations.'),
+            LOG.error('_rm_vdisk_copy_op: Volume metadata %s does not '
+                      'have any registered vdisk copy operations.',
                       volume['id'])
             return
         curr_ops_list = [tuple(x.split(':')) for x in curr_ops.split(';')]
         try:
             curr_ops_list.remove((orig_copy_id, new_copy_id))
         except ValueError:
-            LOG.error(_LE('_rm_vdisk_copy_op: Volume %(vol)s metadata does '
-                          'not have the specified vdisk copy operation: '
-                          'orig=%(orig)s new=%(new)s.'),
+            LOG.error('_rm_vdisk_copy_op: Volume %(vol)s metadata does '
+                      'not have the specified vdisk copy operation: '
+                      'orig=%(orig)s new=%(new)s.',
                       {'vol': volume['id'], 'orig': orig_copy_id,
                        'new': new_copy_id})
             return
@@ -2676,7 +2673,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 volume = self.db.volume_get(ctxt, vol_id)
             except Exception:
-                LOG.warning(_LW('Volume %s does not exist.'), vol_id)
+                LOG.warning('Volume %s does not exist.', vol_id)
                 del self._vdiskcopyops[vol_id]
                 if not len(self._vdiskcopyops):
                     self._vdiskcopyops_loop.stop()
@@ -2688,9 +2685,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     synced = self._helpers.is_vdisk_copy_synced(volume['name'],
                                                                 copy_op[1])
                 except Exception:
-                    LOG.info(_LI('_check_volume_copy_ops: Volume %(vol)s does '
-                                 'not have the specified vdisk copy '
-                                 'operation: orig=%(orig)s new=%(new)s.'),
+                    LOG.info('_check_volume_copy_ops: Volume %(vol)s does '
+                             'not have the specified vdisk copy '
+                             'operation: orig=%(orig)s new=%(new)s.',
                              {'vol': volume['id'], 'orig': copy_op[0],
                               'new': copy_op[1]})
                 else:
@@ -2731,8 +2728,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """Fail back all the volume on the secondary backend."""
         volumes_update = []
         if not self._active_backend_id:
-            LOG.info(_LI("Host has been failed back. doesn't need "
-                         "to fail back again"))
+            LOG.info("Host has been failed back. doesn't need "
+                     "to fail back again")
             return None, volumes_update
 
         try:
@@ -2777,11 +2774,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     {'volume_id': volume['id'],
                      'updates': {'replication_status': 'error',
                                  'status': 'error'}})
-                LOG.error(_LE('_failback_replica_volumes:no rc-releationship '
-                              'is established between master: %(master)s and '
-                              'aux %(aux)s. Please re-establish the '
-                              'relationship and synchronize the volumes on '
-                              'backend storage.'),
+                LOG.error('_failback_replica_volumes:no rc-releationship '
+                          'is established between master: %(master)s and '
+                          'aux %(aux)s. Please re-establish the '
+                          'relationship and synchronize the volumes on '
+                          'backend storage.',
                           {'master': volume['name'], 'aux': tgt_volume})
                 continue
             LOG.debug('_failover_replica_volumes: vol=%(vol)s, master_vol='
@@ -2798,7 +2795,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     {'volume_id': volume['id'],
                      'updates': model_updates})
             except exception.VolumeDriverException:
-                LOG.error(_LE('Unable to fail back volume %(volume_id)s'),
+                LOG.error('Unable to fail back volume %(volume_id)s',
                           {'volume_id': volume.id})
                 volumes_update.append(
                     {'volume_id': volume['id'],
@@ -2829,18 +2826,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             rep_mgr = self._get_replica_mgr()
             rep_mgr.establish_target_partnership()
         except Exception as ex:
-            LOG.warning(_LW('Fail to establish partnership in backend. '
-                            'error=%(ex)s'), {'error': ex})
+            LOG.warning('Fail to establish partnership in backend. '
+                        'error=%(ex)s', {'error': ex})
         for volume in volumes:
             tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
             rep_info = self._helpers.get_relationship_info(tgt_volume)
             if not rep_info:
-                LOG.error(_LE('_sync_with_aux: no rc-releationship is '
-                              'established between master: %(master)s and aux '
-                              '%(aux)s. Please re-establish the relationship '
-                              'and synchronize the volumes on backend '
-                              'storage.'), {'master': volume['name'],
-                                            'aux': tgt_volume})
+                LOG.error('_sync_with_aux: no rc-releationship is '
+                          'established between master: %(master)s and aux '
+                          '%(aux)s. Please re-establish the relationship '
+                          'and synchronize the volumes on backend '
+                          'storage.', {'master': volume['name'],
+                                       'aux': tgt_volume})
                 continue
             LOG.debug('_sync_with_aux: volume: %(volume)s rep_info:master_vol='
                       '%(master_vol)s, aux_vol=%(aux_vol)s, state=%(state)s, '
@@ -2858,13 +2855,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         self._helpers.start_relationship(tgt_volume,
                                                          primary='aux')
             except Exception as ex:
-                LOG.warning(_LW('Fail to copy data from aux to master. master:'
-                                ' %(master)s and aux %(aux)s. Please '
-                                're-establish the relationship and synchronize'
-                                ' the volumes on backend storage. error='
-                                '%(ex)s'), {'master': volume['name'],
-                                            'aux': tgt_volume,
-                                            'error': ex})
+                LOG.warning('Fail to copy data from aux to master. master:'
+                            ' %(master)s and aux %(aux)s. Please '
+                            're-establish the relationship and synchronize'
+                            ' the volumes on backend storage. error='
+                            '%(ex)s', {'master': volume['name'],
+                                       'aux': tgt_volume,
+                                       'error': ex})
         LOG.debug('leave: _sync_with_aux.')
 
     def _wait_replica_ready(self, ctxt, volumes):
@@ -2873,10 +2870,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 self._wait_replica_vol_ready(ctxt, tgt_volume)
             except Exception as ex:
-                LOG.error(_LE('_wait_replica_ready: wait for volume:%(volume)s'
-                              ' remote copy synchronization failed due to '
-                              'error:%(err)s.'), {'volume': tgt_volume,
-                                                  'err': ex})
+                LOG.error('_wait_replica_ready: wait for volume:%(volume)s'
+                          ' remote copy synchronization failed due to '
+                          'error:%(err)s.', {'volume': tgt_volume,
+                                             'err': ex})
 
     def _wait_replica_vol_ready(self, ctxt, volume):
         LOG.debug('enter: _wait_replica_vol_ready: volume=%(volume)s',
@@ -2919,7 +2916,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def _replication_failover(self, ctxt, volumes):
         volumes_update = []
         if self._active_backend_id:
-            LOG.info(_LI("Host has been failed over to %s"),
+            LOG.info("Host has been failed over to %s",
                      self._active_backend_id)
             return self._active_backend_id, volumes_update
 
@@ -2965,11 +2962,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'updates':
                              {'replication_status': 'error_failing-over',
                               'status': 'error'}})
-                    LOG.error(_LE('_failover_replica_volumes: no rc-'
-                                  'releationship is established for master:'
-                                  '%(master)s. Please re-establish the rc-'
-                                  'relationship and synchronize the volumes on'
-                                  ' backend storage.'),
+                    LOG.error('_failover_replica_volumes: no rc-'
+                              'releationship is established for master:'
+                              '%(master)s. Please re-establish the rc-'
+                              'relationship and synchronize the volumes on'
+                              ' backend storage.',
                               {'master': volume['name']})
                     continue
                 LOG.debug('_failover_replica_volumes: vol=%(vol)s, '
@@ -2985,8 +2982,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     {'volume_id': volume['id'],
                      'updates': model_updates})
             except exception.VolumeDriverException:
-                LOG.error(_LE('Unable to failover to aux volume. Please make '
-                              'sure that the aux volume is ready.'))
+                LOG.error('Unable to failover to aux volume. Please make '
+                          'sure that the aux volume is ready.')
                 volumes_update.append(
                     {'volume_id': volume['id'],
                      'updates': {'status': 'error',
@@ -3129,9 +3126,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 rep_manager.establish_target_partnership()
             except exception.VolumeDriverException:
-                LOG.error(_LE('The replication src %(src)s has not '
-                              'successfully established partnership with the '
-                              'replica target %(tgt)s.'),
+                LOG.error('The replication src %(src)s has not '
+                          'successfully established partnership with the '
+                          'replica target %(tgt)s.',
                           {'src': self.configuration.san_ip,
                            'tgt': target['backend_id']})
 
@@ -3326,8 +3323,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         try:
             self._helpers.rename_vdisk(current_name, original_volume_name)
         except exception.VolumeBackendAPIException:
-            LOG.error(_LE('Unable to rename the logical volume '
-                          'for volume: %s'), volume['id'])
+            LOG.error('Unable to rename the logical volume '
+                      'for volume: %s', volume['id'])
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
         # If the back-end name(id) for the volume has been renamed,
         # it is OK for the volume to keep the original name(id) and there is
@@ -3509,8 +3506,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = (
                     fields.ConsistencyGroupStatus.ERROR_DELETING)
-                LOG.error(_LE("Failed to delete the volume %(vol)s of CG. "
-                              "Exception: %(exception)s."),
+                LOG.error("Failed to delete the volume %(vol)s of CG. "
+                          "Exception: %(exception)s.",
                           {'vol': volume['name'], 'exception': err})
                 volumes_model_update.append(
                     {'id': volume['id'], 'status': 'error_deleting'})

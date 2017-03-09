@@ -43,7 +43,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils as cinder_utils
@@ -331,9 +331,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         """Set up LeftHand client."""
         if not hpelefthandclient:
             # Checks if client was successfully imported
-            ex_msg = (_("HPELeftHand client is not installed. Please"
-                        " install using 'pip install "
-                        "python-lefthandclient'."))
+            ex_msg = _("HPELeftHand client is not installed. Please"
+                       " install using 'pip install "
+                       "python-lefthandclient'.")
             LOG.error(ex_msg)
             raise exception.VolumeDriverException(ex_msg)
 
@@ -356,12 +356,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         try:
             self.api_version = client.getApiVersion()
 
-            LOG.info(_LI("HPELeftHand API version %s"), self.api_version)
+            LOG.info("HPELeftHand API version %s", self.api_version)
 
             if self.api_version < MIN_API_VERSION:
-                LOG.warning(_LW("HPELeftHand API is version %(current)s. "
-                                "A minimum version of %(min)s is needed for "
-                                "manage/unmanage support."),
+                LOG.warning("HPELeftHand API is version %(current)s. "
+                            "A minimum version of %(min)s is needed for "
+                            "manage/unmanage support.",
                             {'current': self.api_version,
                              'min': MIN_API_VERSION})
         finally:
@@ -446,7 +446,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             volume_info = client.getVolumeByName(volume['name'])
             client.deleteVolume(volume_info['id'])
         except hpeexceptions.HTTPNotFound:
-            LOG.error(_LE("Volume did not exist. It will not be deleted"))
+            LOG.error("Volume did not exist. It will not be deleted")
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
@@ -493,10 +493,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 self.delete_volume(volume)
                 volume_update['status'] = 'deleted'
             except Exception as ex:
-                LOG.error(_LE("There was an error deleting volume %(id)s: "
-                              "%(error)s."),
+                LOG.error("There was an error deleting volume %(id)s: "
+                          "%(error)s.",
                           {'id': volume.id,
-                           'error': six.text_type(ex)})
+                           'error': ex})
                 volume_update['status'] = 'error'
             volume_model_updates.append(volume_update)
 
@@ -532,8 +532,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     volume_info = client.getVolumeByName(volume_name)
                 except Exception as ex:
                     error = six.text_type(ex)
-                    LOG.error(_LE("Could not find volume with name %(name)s. "
-                                  "Error: %(error)s"),
+                    LOG.error("Could not find volume with name %(name)s. "
+                              "Error: %(error)s",
                               {'name': volume_name,
                                'error': error})
                     raise exception.VolumeBackendAPIException(data=error)
@@ -558,7 +558,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 client.createSnapshotSet(source_volume_id, snap_set, optional)
             except Exception as ex:
                 error = six.text_type(ex)
-                LOG.error(_LE("Could not create snapshot set. Error: '%s'"),
+                LOG.error("Could not create snapshot set. Error: '%s'",
                           error)
                 raise exception.VolumeBackendAPIException(
                     data=error)
@@ -591,12 +591,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 in_use_msg = ('cannot be deleted because it is a clone '
                               'point')
                 if in_use_msg in ex.get_description():
-                    LOG.error(_LE("The snapshot cannot be deleted because "
-                                  "it is a clone point."))
+                    LOG.error("The snapshot cannot be deleted because "
+                              "it is a clone point.")
                 snapshot_update['status'] = fields.SnapshotStatus.ERROR
             except Exception as ex:
-                LOG.error(_LE("There was an error deleting snapshot %(id)s: "
-                              "%(error)s."),
+                LOG.error("There was an error deleting snapshot %(id)s: "
+                          "%(error)s.",
                           {'id': snapshot['id'],
                            'error': six.text_type(ex)})
                 snapshot_update['status'] = fields.SnapshotStatus.ERROR
@@ -632,7 +632,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             snap_info = client.getSnapshotByName(snapshot['name'])
             client.deleteSnapshot(snap_info['id'])
         except hpeexceptions.HTTPNotFound:
-            LOG.error(_LE("Snapshot did not exist. It will not be deleted"))
+            LOG.error("Snapshot did not exist. It will not be deleted")
         except hpeexceptions.HTTPServerError as ex:
             in_use_msg = 'cannot be deleted because it is a clone point'
             if in_use_msg in ex.get_description():
@@ -782,13 +782,13 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # return out of the terminate connection in order for things
             # to be updated correctly.
             if self._active_backend_id:
-                LOG.warning(_LW("Because the host is currently in a "
-                                "failed-over state, the volume will not "
-                                "be properly detached from the primary "
-                                "array. The detach will be considered a "
-                                "success as far as Cinder is concerned. "
-                                "The volume can now be attached to the "
-                                "secondary target."))
+                LOG.warning("Because the host is currently in a "
+                            "failed-over state, the volume will not "
+                            "be properly detached from the primary "
+                            "array. The detach will be considered a "
+                            "success as far as Cinder is concerned. "
+                            "The volume can now be attached to the "
+                            "secondary target.")
                 return
             else:
                 raise exception.VolumeBackendAPIException(ex)
@@ -866,8 +866,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             if key in valid_keys:
                 prefix = key.split(":")
                 if prefix[0] == "hplh":
-                    LOG.warning(_LW("The 'hplh' prefix is deprecated. Use "
-                                    "'hpelh' instead."))
+                    LOG.warning("The 'hplh' prefix is deprecated. Use "
+                                "'hpelh' instead.")
                 extra_specs_of_interest[key] = value
         return extra_specs_of_interest
 
@@ -884,8 +884,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 client_value = value_map[value]
                 client_options[client_key] = client_value
             except KeyError:
-                LOG.error(_LE("'%(value)s' is an invalid value "
-                              "for extra spec '%(key)s'"),
+                LOG.error("'%(value)s' is an invalid value "
+                          "for extra spec '%(key)s'",
                           {'value': value, 'key': key})
         return client_options
 
@@ -906,11 +906,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             server_info = client.getServerByName(connector['host'])
             chap_secret = server_info['chapTargetSecret']
             if not chap_enabled and chap_secret:
-                LOG.warning(_LW('CHAP secret exists for host %s but CHAP is '
-                                'disabled'), connector['host'])
+                LOG.warning('CHAP secret exists for host %s but CHAP is '
+                            'disabled', connector['host'])
             if chap_enabled and chap_secret is None:
-                LOG.warning(_LW('CHAP is enabled, but server secret not '
-                                'configured on server %s'), connector['host'])
+                LOG.warning('CHAP is enabled, but server secret not '
+                            'configured on server %s', connector['host'])
             return server_info
         except hpeexceptions.HTTPNotFound:
             # server does not exist, so create one
@@ -984,7 +984,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         except hpeexceptions.HTTPNotFound:
             raise exception.VolumeNotFound(volume_id=volume['id'])
         except Exception as ex:
-            LOG.warning(_LW("%s"), ex)
+            LOG.warning("%s", ex)
         finally:
             self._logout(client)
 
@@ -1031,20 +1031,20 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             virtual_ips = cluster_info['virtualIPAddresses']
 
             if driver != self.__class__.__name__:
-                LOG.info(_LI("Cannot provide backend assisted migration for "
-                             "volume: %s because volume is from a different "
-                             "backend."), volume['name'])
+                LOG.info("Cannot provide backend assisted migration for "
+                         "volume: %s because volume is from a different "
+                         "backend.", volume['name'])
                 return false_ret
             if vip != virtual_ips[0]['ipV4Address']:
-                LOG.info(_LI("Cannot provide backend assisted migration for "
-                             "volume: %s because cluster exists in different "
-                             "management group."), volume['name'])
+                LOG.info("Cannot provide backend assisted migration for "
+                         "volume: %s because cluster exists in different "
+                         "management group.", volume['name'])
                 return false_ret
 
         except hpeexceptions.HTTPNotFound:
-            LOG.info(_LI("Cannot provide backend assisted migration for "
-                         "volume: %s because cluster exists in different "
-                         "management group."), volume['name'])
+            LOG.info("Cannot provide backend assisted migration for "
+                     "volume: %s because cluster exists in different "
+                     "management group.", volume['name'])
             return false_ret
         finally:
             self._logout(client)
@@ -1056,9 +1056,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
             # can't migrate if server is attached
             if volume_info['iscsiSessions'] is not None:
-                LOG.info(_LI("Cannot provide backend assisted migration "
-                             "for volume: %s because the volume has been "
-                             "exported."), volume['name'])
+                LOG.info("Cannot provide backend assisted migration "
+                         "for volume: %s because the volume has been "
+                         "exported.", volume['name'])
                 return false_ret
 
             # can't migrate if volume has snapshots
@@ -1067,20 +1067,20 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 'fields=snapshots,snapshots[resource[members[name]]]')
             LOG.debug('Snapshot info: %s', snap_info)
             if snap_info['snapshots']['resource'] is not None:
-                LOG.info(_LI("Cannot provide backend assisted migration "
-                             "for volume: %s because the volume has "
-                             "snapshots."), volume['name'])
+                LOG.info("Cannot provide backend assisted migration "
+                         "for volume: %s because the volume has "
+                         "snapshots.", volume['name'])
                 return false_ret
 
             options = {'clusterName': cluster}
             client.modifyVolume(volume_info['id'], options)
         except hpeexceptions.HTTPNotFound:
-            LOG.info(_LI("Cannot provide backend assisted migration for "
-                         "volume: %s because volume does not exist in this "
-                         "management group."), volume['name'])
+            LOG.info("Cannot provide backend assisted migration for "
+                     "volume: %s because volume does not exist in this "
+                     "management group.", volume['name'])
             return false_ret
         except hpeexceptions.HTTPServerError as ex:
-            LOG.error(_LE("Exception: %s"), ex)
+            LOG.error("Exception: %s", ex)
             return false_ret
         finally:
             self._logout(client)
@@ -1109,11 +1109,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 volume_info = client.getVolumeByName(current_name)
                 volumeMods = {'name': original_name}
                 client.modifyVolume(volume_info['id'], volumeMods)
-                LOG.info(_LI("Volume name changed from %(tmp)s to %(orig)s."),
+                LOG.info("Volume name changed from %(tmp)s to %(orig)s.",
                          {'tmp': current_name, 'orig': original_name})
             except Exception as e:
-                LOG.error(_LE("Changing the volume name from %(tmp)s to "
-                              "%(orig)s failed because %(reason)s."),
+                LOG.error("Changing the volume name from %(tmp)s to "
+                          "%(orig)s failed because %(reason)s.",
                           {'tmp': current_name, 'orig': original_name,
                            'reason': e})
                 name_id = new_volume['_name_id'] or new_volume['id']
@@ -1172,7 +1172,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         finally:
             self._logout(client)
 
-        LOG.info(_LI("Virtual volume '%(ref)s' renamed to '%(new)s'."),
+        LOG.info("Virtual volume '%(ref)s' renamed to '%(new)s'.",
                  {'ref': existing_ref['source-name'], 'new': new_vol_name})
 
         display_name = None
@@ -1180,8 +1180,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             display_name = volume['display_name']
 
         if volume_type:
-            LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
-                         "being retyped."),
+            LOG.info("Virtual volume %(disp)s '%(new)s' is being retyped.",
                      {'disp': display_name, 'new': new_vol_name})
 
             try:
@@ -1190,14 +1189,14 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                             volume_type,
                             volume_type['extra_specs'],
                             volume['host'])
-                LOG.info(_LI("Virtual volume %(disp)s successfully retyped to "
-                             "%(new_type)s."),
+                LOG.info("Virtual volume %(disp)s successfully retyped to "
+                         "%(new_type)s.",
                          {'disp': display_name,
                           'new_type': volume_type.get('name')})
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.warning(_LW("Failed to manage virtual volume %(disp)s "
-                                    "due to error during retype."),
+                    LOG.warning("Failed to manage virtual volume %(disp)s "
+                                "due to error during retype.",
                                 {'disp': display_name})
                     # Try to undo the rename and clear the new comment.
                     client = self._login()
@@ -1210,8 +1209,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         updates = {'display_name': display_name}
 
-        LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
-                     "now being managed."),
+        LOG.info("Virtual volume %(disp)s '%(new)s' is now being managed.",
                  {'disp': display_name, 'new': new_vol_name})
 
         # Return display name to update the name displayed in the GUI and
@@ -1293,7 +1291,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                      "Snapshot '%s'.") % snapshot_info['id'])
             LOG.error(err)
 
-        LOG.info(_LI("Snapshot '%(ref)s' renamed to '%(new)s'."),
+        LOG.info("Snapshot '%(ref)s' renamed to '%(new)s'.",
                  {'ref': existing_ref['source-name'], 'new': new_snap_name})
 
         display_name = None
@@ -1302,8 +1300,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         updates = {'display_name': display_name}
 
-        LOG.info(_LI("Snapshot %(disp)s '%(new)s' is "
-                     "now being managed."),
+        LOG.info("Snapshot %(disp)s '%(new)s' is now being managed.",
                  {'disp': display_name, 'new': new_snap_name})
 
         return updates
@@ -1393,8 +1390,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         finally:
             self._logout(client)
 
-        LOG.info(_LI("Virtual volume %(disp)s '%(vol)s' is no longer managed. "
-                     "Volume renamed to '%(new)s'."),
+        LOG.info("Virtual volume %(disp)s '%(vol)s' is no longer managed. "
+                 "Volume renamed to '%(new)s'.",
                  {'disp': volume['display_name'],
                   'vol': volume['name'],
                   'new': new_vol_name})
@@ -1424,8 +1421,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             new_snap_name = 'ums-' + six.text_type(snapshot['id'])
             options = {'name': new_snap_name}
             client.modifySnapshot(snapshot_info['id'], options)
-            LOG.info(_LI("Snapshot %(disp)s '%(vol)s' is no longer managed. "
-                         "Snapshot renamed to '%(new)s'."),
+            LOG.info("Snapshot %(disp)s '%(vol)s' is no longer managed. "
+                     "Snapshot renamed to '%(new)s'.",
                      {'disp': snapshot['display_name'],
                       'vol': snapshot['name'],
                       'new': new_snap_name})
@@ -1493,9 +1490,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                             "_Pri")
                         client.stopRemoteSnapshotSchedule(name)
                     except Exception:
-                        LOG.warning(_LW("The primary array is currently "
-                                        "offline, remote copy has been "
-                                        "automatically paused."))
+                        LOG.warning("The primary array is currently "
+                                    "offline, remote copy has been "
+                                    "automatically paused.")
                     finally:
                         self._logout(client)
 
@@ -1525,13 +1522,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                                          'provider_location':
                                          prov_location['provider_location']}})
                     except Exception as ex:
-                        msg = (_LE("There was a problem with the failover "
-                                   "(%(error)s) and it was unsuccessful. "
-                                   "Volume '%(volume)s will not be available "
-                                   "on the failed over target."),
-                               {'error': six.text_type(ex),
-                                'volume': volume['id']})
-                        LOG.error(msg)
+                        LOG.error("There was a problem with the failover "
+                                  "(%(error)s) and it was unsuccessful. "
+                                  "Volume '%(volume)s will not be available "
+                                  "on the failed over target.",
+                                  {'error': six.text_type(ex),
+                                   'volume': volume['id']})
                         volume_update_list.append(
                             {'volume_id': volume['id'],
                              'updates': {'replication_status': 'error'}})
@@ -1592,32 +1588,29 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     remote_array['cluster_vip'] = virtual_ips[0]['ipV4Address']
 
                     if api_version < MIN_API_VERSION:
-                        msg = (_LW("The secondary array must have an API "
-                                   "version of %(min_ver)s or higher. "
-                                   "Array '%(target)s' is on %(target_ver)s, "
-                                   "therefore it will not be added as a valid "
-                                   "replication target.") %
-                               {'min_ver': MIN_API_VERSION,
-                                'target': array_name,
-                                'target_ver': api_version})
-                        LOG.warning(msg)
+                        LOG.warning("The secondary array must have an API "
+                                    "version of %(min_ver)s or higher. "
+                                    "Array '%(target)s' is on %(target_ver)s, "
+                                    "therefore it will not be added as a "
+                                    "valid replication target.",
+                                    {'min_ver': MIN_API_VERSION,
+                                     'target': array_name,
+                                     'target_ver': api_version})
                     elif not self._is_valid_replication_array(remote_array):
-                        msg = (_LW("'%s' is not a valid replication array. "
-                                   "In order to be valid, backend_id, "
-                                   "hpelefthand_api_url, "
-                                   "hpelefthand_username, "
-                                   "hpelefthand_password, and "
-                                   "hpelefthand_clustername, "
-                                   "must be specified. If the target is "
-                                   "managed, managed_backend_name must be set "
-                                   "as well.") % array_name)
-                        LOG.warning(msg)
+                        LOG.warning("'%s' is not a valid replication array. "
+                                    "In order to be valid, backend_id, "
+                                    "hpelefthand_api_url, "
+                                    "hpelefthand_username, "
+                                    "hpelefthand_password, and "
+                                    "hpelefthand_clustername, "
+                                    "must be specified. If the target is "
+                                    "managed, managed_backend_name must be "
+                                    "set as well.", array_name)
                     else:
                         replication_targets.append(remote_array)
                 except Exception:
-                    msg = (_LE("Could not log in to LeftHand array (%s) with "
-                               "the provided credentials.") % array_name)
-                    LOG.error(msg)
+                    LOG.error("Could not log in to LeftHand array (%s) with "
+                              "the provided credentials.", array_name)
                 finally:
                     self._destroy_replication_client(cl)
 
@@ -1667,13 +1660,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     # The secondary array was not able to execute the fail-back
                     # properly. The replication status is now in an unknown
                     # state, so we will treat it as an error.
-                    msg = (_LE("There was a problem with the failover "
-                               "(%(error)s) and it was unsuccessful. "
-                               "Volume '%(volume)s will not be available "
-                               "on the failed over target."),
-                           {'error': six.text_type(ex),
-                            'volume': volume['id']})
-                    LOG.error(msg)
+                    LOG.error("There was a problem with the failover "
+                              "(%(error)s) and it was unsuccessful. "
+                              "Volume '%(volume)s will not be available "
+                              "on the failed over target.",
+                              {'error': ex,
+                               'volume': volume['id']})
                     volume_update_list.append(
                         {'volume_id': volume['id'],
                          'updates': {'replication_status': 'error'}})
@@ -1715,9 +1707,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                         is_ready = False
                         break
         except Exception as ex:
-            LOG.error(_LW("There was a problem when trying to determine if "
-                          "the volume can be failed-back: %s") %
-                      six.text_type(ex))
+            LOG.error("There was a problem when trying to determine if "
+                      "the volume can be failed-back: %s", ex)
             is_ready = False
         finally:
             self._destroy_replication_client(cl)
@@ -1745,8 +1736,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         rep_flag = True
         # Make sure there is at least one replication target.
         if len(self._replication_targets) < 1:
-            LOG.error(_LE("There must be at least one valid replication "
-                          "device configured."))
+            LOG.error("There must be at least one valid replication "
+                      "device configured.")
             rep_flag = False
         return rep_flag
 
@@ -1820,10 +1811,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # If there is no extra_spec value for replication sync period, we
             # will default it to the required minimum and log a warning.
             replication_sync_period = self.MIN_REP_SYNC_PERIOD
-            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
-                            "so the default value of %(def_val)s will be "
-                            "used. To overwrite this, set this value in the "
-                            "volume type extra_specs."),
+            LOG.warning("There was no extra_spec value for %(spec_name)s, "
+                        "so the default value of %(def_val)s will be "
+                        "used. To overwrite this, set this value in the "
+                        "volume type extra_specs.",
                         {'spec_name': self.EXTRA_SPEC_REP_SYNC_PERIOD,
                          'def_val': self.MIN_REP_SYNC_PERIOD})
 
@@ -1841,10 +1832,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # If there is no extra_spec value for retention count, we
             # will default it and log a warning.
             retention_count = self.DEFAULT_RETENTION_COUNT
-            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
-                            "so the default value of %(def_val)s will be "
-                            "used. To overwrite this, set this value in the "
-                            "volume type extra_specs."),
+            LOG.warning("There was no extra_spec value for %(spec_name)s, "
+                        "so the default value of %(def_val)s will be "
+                        "used. To overwrite this, set this value in the "
+                        "volume type extra_specs.",
                         {'spec_name': self.EXTRA_SPEC_REP_RETENTION_COUNT,
                          'def_val': self.DEFAULT_RETENTION_COUNT})
 
@@ -1863,10 +1854,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # will default it and log a warning.
             remote_retention_count = self.DEFAULT_REMOTE_RETENTION_COUNT
             spec_name = self.EXTRA_SPEC_REP_REMOTE_RETENTION_COUNT
-            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
-                            "so the default value of %(def_val)s will be "
-                            "used. To overwrite this, set this value in the "
-                            "volume type extra_specs."),
+            LOG.warning("There was no extra_spec value for %(spec_name)s, "
+                        "so the default value of %(def_val)s will be "
+                        "used. To overwrite this, set this value in the "
+                        "volume type extra_specs.",
                         {'spec_name': spec_name,
                          'def_val': self.DEFAULT_REMOTE_RETENTION_COUNT})
 

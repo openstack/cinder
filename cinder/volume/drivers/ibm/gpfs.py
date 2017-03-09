@@ -29,7 +29,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
@@ -143,7 +143,7 @@ class GPFSDriver(driver.CloneableImageVD,
             (out, err) = self.gpfs_execute('mmgetstate', '-Y')
             return out
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmgetstate command, error: %s.'),
+            LOG.error('Failed to issue mmgetstate command, error: %s.',
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -154,7 +154,7 @@ class GPFSDriver(driver.CloneableImageVD,
         state_token = lines[0].split(':').index('state')
         gpfs_state = lines[1].split(':')[state_token]
         if gpfs_state != 'active':
-            LOG.error(_LE('GPFS is not active.  Detailed output: %s.'), out)
+            LOG.error('GPFS is not active.  Detailed output: %s.', out)
             raise exception.VolumeBackendAPIException(
                 data=_('GPFS is not running, state: %s.') % gpfs_state)
 
@@ -166,8 +166,8 @@ class GPFSDriver(driver.CloneableImageVD,
             filesystem = lines[1].split()[0]
             return filesystem
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue df command for path %(path)s, '
-                          'error: %(error)s.'),
+            LOG.error('Failed to issue df command for path %(path)s, '
+                      'error: %(error)s.',
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -181,7 +181,7 @@ class GPFSDriver(driver.CloneableImageVD,
             cluster_id = lines[1].split(':')[value_token]
             return cluster_id
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsconfig command, error: %s.'),
+            LOG.error('Failed to issue mmlsconfig command, error: %s.',
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -191,8 +191,8 @@ class GPFSDriver(driver.CloneableImageVD,
         try:
             (out, err) = self.gpfs_execute('mmlsattr', '-L', path)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsattr command on path %(path)s, '
-                          'error: %(error)s'),
+            LOG.error('Failed to issue mmlsattr command on path %(path)s, '
+                      'error: %(error)s',
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -231,8 +231,8 @@ class GPFSDriver(driver.CloneableImageVD,
             LOG.debug('Updated storage pool with mmchattr to %s.', new_pool)
             return True
         except processutils.ProcessExecutionError as exc:
-            LOG.info(_LI('Could not update storage pool with mmchattr to '
-                         '%(pool)s, error: %(error)s'),
+            LOG.info('Could not update storage pool with mmchattr to '
+                     '%(pool)s, error: %(error)s',
                      {'pool': new_pool,
                       'error': exc.stderr})
             return False
@@ -246,8 +246,8 @@ class GPFSDriver(driver.CloneableImageVD,
         try:
             (out, err) = self.gpfs_execute('mmlsfs', filesystem, '-V', '-Y')
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsfs command for path %(path)s, '
-                          'error: %(error)s.'),
+            LOG.error('Failed to issue mmlsfs command for path %(path)s, '
+                      'error: %(error)s.',
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -267,7 +267,7 @@ class GPFSDriver(driver.CloneableImageVD,
                                            'minreleaseLeveldaemon',
                                            '-Y')
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsconfig command, error: %s.'),
+            LOG.error('Failed to issue mmlsconfig command, error: %s.',
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -284,9 +284,9 @@ class GPFSDriver(driver.CloneableImageVD,
         try:
             self.gpfs_execute('mmlsattr', directory)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsattr command '
-                          'for path %(path)s, '
-                          'error: %(error)s.'),
+            LOG.error('Failed to issue mmlsattr command '
+                      'for path %(path)s, '
+                      'error: %(error)s.',
                       {'path': directory,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -361,10 +361,10 @@ class GPFSDriver(driver.CloneableImageVD,
         if _gpfs_cluster_release_level >= GPFS_ENC_MIN_RELEASE:
             self._encryption_state = self._get_gpfs_encryption_status()
         else:
-            LOG.info(_LI('Downlevel GPFS Cluster Detected. GPFS '
-                         'encryption-at-rest feature not enabled in cluster '
-                         'daemon level %(cur)s - must be at least at '
-                         'level %(min)s.'),
+            LOG.info('Downlevel GPFS Cluster Detected. GPFS '
+                     'encryption-at-rest feature not enabled in cluster '
+                     'daemon level %(cur)s - must be at least at '
+                     'level %(min)s.',
                      {'cur': _gpfs_cluster_release_level,
                       'min': GPFS_ENC_MIN_RELEASE})
 
@@ -755,7 +755,7 @@ class GPFSDriver(driver.CloneableImageVD,
             encryption_status = lines[1].split(':')[value_token]
             return encryption_status
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Failed to issue mmlsfs command, error: %s.'),
+            LOG.error('Failed to issue mmlsfs command, error: %s.',
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -920,8 +920,8 @@ class GPFSDriver(driver.CloneableImageVD,
         try:
             image_utils.resize_image(vol_path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE("Failed to resize volume "
-                          "%(volume_id)s, error: %(error)s."),
+            LOG.error("Failed to resize volume "
+                      "%(volume_id)s, error: %(error)s.",
                       {'volume_id': volume['id'],
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -1001,9 +1001,9 @@ class GPFSDriver(driver.CloneableImageVD,
             self.gpfs_execute('mv', local_path, new_path)
             return (True, None)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_LE('Driver-based migration of volume %(vol)s failed. '
-                          'Move from %(src)s to %(dst)s failed with error: '
-                          '%(error)s.'),
+            LOG.error('Driver-based migration of volume %(vol)s failed. '
+                      'Move from %(src)s to %(dst)s failed with error: '
+                      '%(error)s.',
                       {'vol': volume['name'],
                        'src': local_path,
                        'dst': new_path,
@@ -1202,8 +1202,8 @@ class GPFSDriver(driver.CloneableImageVD,
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
                 fields.ConsistencyGroupStatus.ERROR)
-            LOG.error(_LE("Failed to create the snapshot %(snap)s of "
-                          "CGSnapshot. Exception: %(exception)s."),
+            LOG.error("Failed to create the snapshot %(snap)s of "
+                      "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot.name, 'exception': err})
 
         for snapshot in snapshots:
@@ -1224,8 +1224,8 @@ class GPFSDriver(driver.CloneableImageVD,
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
                 fields.ConsistencyGroupStatus.ERROR_DELETING)
-            LOG.error(_LE("Failed to delete the snapshot %(snap)s of "
-                          "CGSnapshot. Exception: %(exception)s."),
+            LOG.error("Failed to delete the snapshot %(snap)s of "
+                      "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot.name, 'exception': err})
 
         for snapshot in snapshots:

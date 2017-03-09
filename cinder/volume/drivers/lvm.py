@@ -29,7 +29,7 @@ import six
 
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import objects
@@ -203,8 +203,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         LOG.debug("Updating volume stats")
         if self.vg is None:
-            LOG.warning(_LW('Unable to update stats on non-initialized '
-                            'Volume Group: %s'),
+            LOG.warning('Unable to update stats on non-initialized '
+                        'Volume Group: %s',
                         self.configuration.volume_group)
             return
 
@@ -326,12 +326,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
             if volutils.supports_thin_provisioning():
                 if self.vg.get_volume(pool_name) is not None:
-                    LOG.info(_LI('Enabling LVM thin provisioning by default '
-                                 'because a thin pool exists.'))
+                    LOG.info('Enabling LVM thin provisioning by default '
+                             'because a thin pool exists.')
                     self.configuration.lvm_type = 'thin'
                 elif len(self.vg.get_volumes()) == 0:
-                    LOG.info(_LI('Enabling LVM thin provisioning by default '
-                                 'because no LVs exist.'))
+                    LOG.info('Enabling LVM thin provisioning by default '
+                             'because no LVs exist.')
                     self.configuration.lvm_type = 'thin'
 
         if self.configuration.lvm_type == 'thin':
@@ -387,8 +387,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             try:
                 self.vg.rename_volume(current_name, original_volume_name)
             except processutils.ProcessExecutionError:
-                LOG.error(_LE('Unable to rename the logical volume '
-                              'for volume: %s'), volume['id'])
+                LOG.error('Unable to rename the logical volume '
+                          'for volume: %s', volume['id'])
                 # If the rename fails, _name_id should be set to the new
                 # volume id and provider_location should be set to the
                 # one from the new volume as well.
@@ -432,12 +432,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return True
 
         if self.vg.lv_has_snapshot(volume['name']):
-            LOG.error(_LE('Unable to delete due to existing snapshot '
-                          'for volume: %s'), volume['name'])
+            LOG.error('Unable to delete due to existing snapshot '
+                      'for volume: %s', volume['name'])
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
-        LOG.info(_LI('Successfully deleted volume: %s'), volume['id'])
+        LOG.info('Successfully deleted volume: %s', volume['id'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -450,9 +450,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Deletes a snapshot."""
         if self._volume_not_present(self._escape_snapshot(snapshot['name'])):
             # If the snapshot isn't present, then don't attempt to delete
-            LOG.warning(_LW("snapshot: %s not found, "
-                            "skipping delete operations"), snapshot['name'])
-            LOG.info(_LI('Successfully deleted snapshot: %s'), snapshot['id'])
+            LOG.warning("snapshot: %s not found, "
+                        "skipping delete operations", snapshot['name'])
+            LOG.info('Successfully deleted snapshot: %s', snapshot['id'])
             return True
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.
@@ -499,7 +499,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         mirror_count = 0
         if self.configuration.lvm_mirrors:
             mirror_count = self.configuration.lvm_mirrors
-        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
+        LOG.info('Creating clone of volume: %s', src_vref['id'])
         volume_name = src_vref['name']
         temp_id = 'tmp-snap-%s' % volume['id']
         temp_snapshot = {'volume_name': volume_name,
@@ -769,7 +769,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         try:
             next(vg for vg in vg_list if vg['name'] == dest_vg)
         except StopIteration:
-            LOG.error(_LE("Destination Volume Group %s does not exist"),
+            LOG.error("Destination Volume Group %s does not exist",
                       dest_vg)
             return false_ret
 
@@ -801,8 +801,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  sparse=self._sparse_copy_volume)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Volume migration failed due to "
-                              "exception: %(reason)s."),
+                LOG.error("Volume migration failed due to "
+                          "exception: %(reason)s.",
                           {'reason': six.text_type(e)}, resource=volume)
                 dest_vg_ref.delete(volume)
         self._delete_volume(volume)

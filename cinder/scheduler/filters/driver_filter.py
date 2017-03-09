@@ -16,7 +16,6 @@
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LW
 from cinder.scheduler.evaluator import evaluator
 from cinder.scheduler import filters
 
@@ -60,8 +59,8 @@ class DriverFilter(filters.BaseBackendFilter):
         except Exception as ex:
             # Warn the admin for now that there is an error in the
             # filter function.
-            LOG.warning(_LW("Error in filtering function "
-                            "'%(function)s' : '%(error)s' :: failing backend"),
+            LOG.warning("Error in filtering function "
+                        "'%(function)s' : '%(error)s' :: failing backend",
                         {'function': stats['filter_function'],
                          'error': ex, })
             return False

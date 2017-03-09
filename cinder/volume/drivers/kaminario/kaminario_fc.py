@@ -19,7 +19,7 @@ from oslo_log import log as logging
 
 from cinder import coordination
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume.drivers.kaminario import kaminario_common as common
 from cinder.zonemanager import utils as fczm_utils
@@ -138,7 +138,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                 host = self.client.new("hosts", name=host_name,
                                        type="Linux").save()
             except Exception as ex:
-                LOG.exception(_LE("Unable to create host : %s in K2."),
+                LOG.exception("Unable to create host : %s in K2.",
                               host_name)
                 raise exception.KaminarioCinderDriverException(
                     reason=six.text_type(ex.message))
@@ -160,8 +160,8 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                 except Exception as ex:
                     if host_rs.total == 0:
                         self._delete_host_by_name(host_name)
-                    LOG.exception(_LE("Unable to add wwpn : %(wwpn)s to "
-                                      "host: %(host)s in K2."),
+                    LOG.exception("Unable to add wwpn : %(wwpn)s to "
+                                  "host: %(host)s in K2.",
                                   {'wwpn': wwpn, 'host': host_name})
                     raise exception.KaminarioCinderDriverException(
                         reason=six.text_type(ex.message))

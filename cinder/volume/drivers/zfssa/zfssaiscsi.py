@@ -25,10 +25,10 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder import utils
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -145,7 +145,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         Project, initiators, initiatorgroup, target and targetgroup.
         """
         lcfg = self.configuration
-        LOG.info(_LI('Connecting to host: %s.'), lcfg.san_ip)
+        LOG.info('Connecting to host: %s.', lcfg.san_ip)
         self.zfssa = factory_zfssa()
         self.tgt_zfssa = factory_zfssa()
         self.zfssa.set_host(lcfg.san_ip, timeout=lcfg.zfssa_rest_timeout)
@@ -193,13 +193,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                             zfssa_initiator['iqn'],
                             zfssa_initiator_group)
         else:
-            LOG.warning(_LW('zfssa_initiator_config not found. '
-                            'Using deprecated configuration options.'))
+            LOG.warning('zfssa_initiator_config not found. '
+                        'Using deprecated configuration options.')
             if (not lcfg.zfssa_initiator and
                 (not lcfg.zfssa_initiator_group and
                  lcfg.zfssa_initiator_group != 'default')):
-                LOG.error(_LE('zfssa_initiator cannot be empty when '
-                              'creating a zfssa_initiator_group.'))
+                LOG.error('zfssa_initiator cannot be empty when '
+                          'creating a zfssa_initiator_group.')
                 raise exception.InvalidConfigurationValue(
                     value='',
                     option='zfssa_initiator')
@@ -207,9 +207,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             if (lcfg.zfssa_initiator != '' and
                 (lcfg.zfssa_initiator_group == '' or
                  lcfg.zfssa_initiator_group == 'default')):
-                LOG.warning(_LW('zfssa_initiator: %(ini)s'
-                                ' wont be used on '
-                                'zfssa_initiator_group= %(inigrp)s.'),
+                LOG.warning('zfssa_initiator: %(ini)s  wont be used on '
+                            'zfssa_initiator_group= %(inigrp)s.',
                             {'ini': lcfg.zfssa_initiator,
                              'inigrp': lcfg.zfssa_initiator_group})
 
@@ -339,9 +338,9 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             # if for some reason the volume no longer exists
             # on the backend
             if 'Error Getting Volume' in ex.message:
-                LOG.error(_LE("Volume ID %s was not found on "
-                              "the zfssa device while attempting "
-                              "delete_volume operation."), volume['id'])
+                LOG.error("Volume ID %s was not found on "
+                          "the zfssa device while attempting "
+                          "delete_volume operation.", volume['id'])
                 return
 
         # Delete clone temp snapshot. see create_cloned_volume()
@@ -390,7 +389,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                           snapshot['volume_name'],
                                           snapshot['name'])
         if numclones > 0:
-            LOG.error(_LE('Snapshot %s: has clones'), snapshot['name'])
+            LOG.error('Snapshot %s: has clones', snapshot['name'])
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
 
         self.zfssa.delete_snapshot(lcfg.zfssa_pool,
@@ -502,9 +501,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         try:
             self.create_volume_from_snapshot(volume, zfssa_snapshot)
         except exception.VolumeBackendAPIException:
-            LOG.error(_LE('Clone Volume: '
-                          '%(volume)s failed from source volume: '
-                          '%(src_vref)s'),
+            LOG.error('Clone Volume: %(volume)s failed from source volume: '
+                      '%(src_vref)s',
                       {'volume': volume['name'],
                        'src_vref': src_vref['name']})
             # Cleanup snapshot
@@ -549,8 +547,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
 
         if cachevol_size > volume['size']:
-            exception_msg = (_LE('Image size %(img_size)dGB is larger '
-                                 'than volume size %(vol_size)dGB.'),
+            exception_msg = ('Image size %(img_size)dGB is larger '
+                             'than volume size %(vol_size)dGB.',
                              {'img_size': cachevol_size,
                               'vol_size': volume['size']})
             LOG.error(exception_msg)
@@ -576,8 +574,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             if cachevol_size < volume['size']:
                 self.extend_volume(volume, volume['size'])
         except exception.VolumeBackendAPIException as exc:
-            exception_msg = (_LE('Cannot clone image %(image)s to '
-                                 'volume %(volume)s. Error: %(error)s.'),
+            exception_msg = ('Cannot clone image %(image)s to '
+                             'volume %(volume)s. Error: %(error)s.',
                              {'volume': volume['name'],
                               'image': image_meta['id'],
                               'error': exc.msg})
@@ -853,25 +851,24 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             (tgt_host, auth_str, tgt_pool, tgt_project, tgt_tgtgroup,
              tgt_repl_ip) = loc_info.split(':')
         except ValueError:
-            LOG.error(_LE("Location info needed for backend enabled volume "
-                          "migration not in correct format: %s. Continuing "
-                          "with generic volume migration."), loc_info)
+            LOG.error("Location info needed for backend enabled volume "
+                      "migration not in correct format: %s. Continuing "
+                      "with generic volume migration.", loc_info)
             return default_ret
 
         if tgt_repl_ip == '':
-            msg = _LE("zfssa_replication_ip not set in cinder.conf. "
+            LOG.error("zfssa_replication_ip not set in cinder.conf. "
                       "zfssa_replication_ip is needed for backend enabled "
                       "volume migration. Continuing with generic volume "
                       "migration.")
-            LOG.error(msg)
             return default_ret
 
         src_pool = lcfg.zfssa_pool
         src_project = lcfg.zfssa_project
 
         try:
-            LOG.info(_LI('Connecting to target host: %s for backend enabled '
-                         'migration.'), tgt_host)
+            LOG.info('Connecting to target host: %s for backend enabled '
+                     'migration.', tgt_host)
             self.tgt_zfssa.set_host(tgt_host)
             self.tgt_zfssa.login(auth_str)
 
@@ -945,7 +942,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             return(True, None)
 
         except Exception:
-            LOG.error(_LE("Error migrating volume: %s"), volume['name'])
+            LOG.error("Error migrating volume: %s", volume['name'])
             raise
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
@@ -1017,7 +1014,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                       lcfg.zfssa_cache_project,
                                       cache['share'])
             except exception.VolumeBackendAPIException:
-                LOG.warning(_LW("Volume %s exists but can't be deleted."),
+                LOG.warning("Volume %s exists but can't be deleted.",
                             cache['share'])
 
     def manage_existing(self, volume, existing_ref):
@@ -1041,8 +1038,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                      schema={"custom:cinder_managed": True})
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to rename volume %(existing)s to "
-                              "%(new)s. Volume manage failed."),
+                LOG.error("Failed to rename volume %(existing)s to "
+                          "%(new)s. Volume manage failed.",
                           {'existing': existing_vol['name'],
                            'new': new_vol_name})
         return None
@@ -1069,8 +1066,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                      schema={"custom:cinder_managed": False})
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to rename volume %(existing)s to "
-                              "%(new)s. Volume unmanage failed."),
+                LOG.error("Failed to rename volume %(existing)s to "
+                          "%(new)s. Volume unmanage failed.",
                           {'existing': volume['name'],
                            'new': new_name})
         return None

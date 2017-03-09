@@ -18,7 +18,7 @@ from oslo_utils import excutils
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.volume.drivers.huawei import constants
 from cinder.volume import qos_specs
 
@@ -45,7 +45,7 @@ class SmartQos(object):
         io_type_flag = None
         ctxt = context.get_admin_context()
         kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
-        LOG.info(_LI('The QoS sepcs is: %s.'), kvs)
+        LOG.info('The QoS sepcs is: %s.', kvs)
         for k, v in kvs.items():
             if k not in constants.HUAWEI_VALID_KEYS:
                 continue

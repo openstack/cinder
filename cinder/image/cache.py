@@ -19,7 +19,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 
-from cinder.i18n import _LW
 from cinder import objects
 from cinder import rpc
 from cinder import utils
@@ -176,8 +175,8 @@ class ImageVolumeCache(object):
         # to 0.
         if self.max_cache_size_gb > 0:
             if current_size > self.max_cache_size_gb > 0:
-                LOG.warning(_LW('Image-volume cache for %(service)s does '
-                                'not have enough space (GB).'),
+                LOG.warning('Image-volume cache for %(service)s does '
+                            'not have enough space (GB).',
                             {'service': volume.service_topic_queue})
                 return False
 

@@ -18,7 +18,6 @@ Performance metrics functions and cache for NetApp cDOT systems.
 
 from oslo_log import log as logging
 
-from cinder.i18n import _LE
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.performance import perf_base
 
@@ -55,9 +54,9 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time'
             else:
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time1'
-            LOG.exception(_LE('Could not get performance base counter '
-                              'name. Performance-based scheduler '
-                              'functions may not be available.'))
+            LOG.exception('Could not get performance base counter '
+                          'name. Performance-based scheduler '
+                          'functions may not be available.')
 
     def update_performance_cache(self, ssc_pools):
         """Called periodically to update per-pool node utilization metrics."""
@@ -147,8 +146,8 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
                     self._get_node_utilization_wafl_counters(node_name) +
                     self._get_node_utilization_processor_counters(node_name))
         except netapp_api.NaApiError:
-            LOG.exception(_LE('Could not get utilization counters from node '
-                              '%s'), node_name)
+            LOG.exception('Could not get utilization counters from node %s',
+                          node_name)
             return None
 
     def _get_node_utilization_system_counters(self, node_name):

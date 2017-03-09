@@ -33,7 +33,6 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _LW
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_volume
@@ -91,10 +90,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         reserved_percentage = 100 * int(reserved_ratio)
 
         self.assertEqual(reserved_percentage, result)
-        msg = _LW('The "netapp_size_multiplier" configuration option is '
-                  'deprecated and will be removed in the Mitaka release. '
-                  'Please set "reserved_percentage = %d" instead.') % (
-                      result)
+        msg = ('The "netapp_size_multiplier" configuration option is '
+               'deprecated and will be removed in the Mitaka release. '
+               'Please set "reserved_percentage = %d" instead.' %
+               result)
         mock_report.assert_called_once_with(block_base.LOG, msg)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,

@@ -34,7 +34,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
@@ -216,8 +216,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             if remote_info:
                 self._set_active_cluster_info(remote_info['endpoint'])
             else:
-                LOG.error(_LE('Failed to initialize SolidFire driver to '
-                              'a remote cluster specified at id: %s'),
+                LOG.error('Failed to initialize SolidFire driver to '
+                          'a remote cluster specified at id: %s',
                           self.failed_over_id)
         else:
             self._set_active_cluster_info()
@@ -303,7 +303,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                 LOG.debug('Pairing already exists during init.')
             else:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Cluster pairing failed: %s'), ex.msg)
+                    LOG.error('Cluster pairing failed: %s', ex.msg)
         LOG.debug(('Initialized Cluster pair with ID: %s'), pair_id)
         remote_device['clusterPairID'] = pair_id
         return pair_id
@@ -591,8 +591,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             iteration_count += 1
 
         if not found_volume:
-            LOG.error(_LE('Failed to retrieve volume SolidFire-'
-                          'ID: %s in get_by_account!'), sf_volume_id)
+            LOG.error('Failed to retrieve volume SolidFire-'
+                      'ID: %s in get_by_account!', sf_volume_id)
             raise exception.VolumeNotFound(volume_id=sf_volume_id)
 
         model_update = {}
@@ -726,8 +726,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                    if i.key == 'sf-qos' and i.value in valid_presets]
         if len(presets) > 0:
             if len(presets) > 1:
-                LOG.warning(_LW('More than one valid preset was '
-                                'detected, using %s'), presets[0])
+                LOG.warning('More than one valid preset was '
+                            'detected, using %s', presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
             # look for explicit settings
@@ -827,10 +827,10 @@ class SolidFireDriver(san.SanISCSIDriver):
             # NOTE(jdg): Previously we would raise here, but there are cases
             # where this might be a cleanup for a failed delete.
             # Until we get better states we'll just log an error
-            LOG.error(_LE("Volume %s, not found on SF Cluster."), uuid)
+            LOG.error("Volume %s, not found on SF Cluster.", uuid)
 
         if found_count > 1:
-            LOG.error(_LE("Found %(count)s volumes mapped to id: %(uuid)s."),
+            LOG.error("Found %(count)s volumes mapped to id: %(uuid)s.",
                       {'count': found_count,
                        'uuid': uuid})
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
@@ -913,8 +913,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                                                            file_format})
             except Exception as exc:
                 vol = self._get_sf_volume(image_id)
-                LOG.error(_LE('Failed image conversion during '
-                              'cache creation: %s'),
+                LOG.error('Failed image conversion during '
+                          'cache creation: %s',
                           exc)
                 LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
                           vol['volumeID'])
@@ -1204,8 +1204,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             if image_meta['owner'] == volume['project_id']:
                 public = True
         if not public:
-            LOG.warning(_LW("Requested image is not "
-                            "accessible by current Tenant."))
+            LOG.warning("Requested image is not "
+                        "accessible by current Tenant.")
             return None, False
 
         try:
@@ -1398,11 +1398,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         sf_vol = None
         accounts = self._get_sfaccounts_for_tenant(volume['project_id'])
         if accounts is None:
-            LOG.error(_LE("Account for Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "delete_volume operation!"), volume['id'])
-            LOG.error(_LE("This usually means the volume was never "
-                          "successfully created."))
+            LOG.error("Account for Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "delete_volume operation!", volume['id'])
+            LOG.error("This usually means the volume was never "
+                      "successfully created.")
             return
 
         for acc in accounts:
@@ -1435,9 +1435,9 @@ class SolidFireDriver(san.SanISCSIDriver):
             if volume.get('multiattach'):
                 self._remove_volume_from_vags(sf_vol['volumeID'])
         else:
-            LOG.error(_LE("Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "delete_volume operation!"), volume['id'])
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "delete_volume operation!", volume['id'])
 
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot from the SolidFire cluster."""
@@ -1465,9 +1465,9 @@ class SolidFireDriver(san.SanISCSIDriver):
     def create_snapshot(self, snapshot):
         sfaccount = self._get_sfaccount(snapshot['project_id'])
         if sfaccount is None:
-            LOG.error(_LE("Account for Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "create_snapshot operation!"), snapshot['volume_id'])
+            LOG.error("Account for Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "create_snapshot operation!", snapshot['volume_id'])
 
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(snapshot['volume_id'], params)
@@ -1708,9 +1708,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         sf_vol = self._get_sf_volume(volume['id'], params)
 
         if sf_vol is None:
-            LOG.error(_LE("Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "extend_volume operation!"), volume['id'])
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "extend_volume operation!", volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         params = {
@@ -1780,9 +1780,9 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_LE("Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "attach_volume operation!"), volume['id'])
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "attach_volume operation!", volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -1806,9 +1806,9 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_LE("Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "detach_volume operation!"), volume['id'])
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "detach_volume operation!", volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -1828,9 +1828,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_LE("Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "accept_transfer operation!"), volume['id'])
+            LOG.error("Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "accept_transfer operation!", volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
         if new_project != volume['project_id']:
             # do a create_sfaccount here as this tenant
@@ -1947,9 +1947,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Mark SolidFire Volume as unmanaged (export from Cinder)."""
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
-            LOG.error(_LE("Account for Volume ID %s was not found on "
-                          "the SolidFire Cluster while attempting "
-                          "unmanage operation!"), volume['id'])
+            LOG.error("Account for Volume ID %s was not found on "
+                      "the SolidFire Cluster while attempting "
+                      "unmanage operation!", volume['id'])
             raise exception.SolidFireAPIException(_("Failed to find account "
                                                     "for volume."))
 
@@ -1990,18 +1990,18 @@ class SolidFireDriver(san.SanISCSIDriver):
                     remote = rc
                     break
             if not remote:
-                LOG.error(_LE("SolidFire driver received failover_host "
-                              "but was unable to find specified replication "
-                              "pair with id: %s."), secondary_id)
+                LOG.error("SolidFire driver received failover_host "
+                          "but was unable to find specified replication "
+                          "pair with id: %s.", secondary_id)
                 raise exception.InvalidReplicationTarget
         else:
             remote = self.cluster_pairs[0]
 
         if not remote or not self.replication_enabled:
-            LOG.error(_LE("SolidFire driver received failover_host "
-                          "request, however replication is NOT "
-                          "enabled, or there are no available "
-                          "targets to fail-over to."))
+            LOG.error("SolidFire driver received failover_host "
+                      "request, however replication is NOT "
+                      "enabled, or there are no available "
+                      "targets to fail-over to.")
             raise exception.UnableToFailOver(reason=_("Failover requested "
                                                       "on non replicated "
                                                       "backend."))

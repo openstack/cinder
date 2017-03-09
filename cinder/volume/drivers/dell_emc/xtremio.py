@@ -44,7 +44,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
@@ -156,18 +156,18 @@ class XtremIOClient(object):
             error = response.json()
             err_msg = error.get('message')
             if err_msg.endswith(OBJ_NOT_FOUND_ERR):
-                LOG.warning(_LW("object %(key)s of "
-                                "type %(typ)s not found, %(err_msg)s"),
+                LOG.warning("object %(key)s of "
+                            "type %(typ)s not found, %(err_msg)s",
                             {'key': key, 'typ': object_type,
                              'err_msg': err_msg, })
                 raise exception.NotFound()
             elif err_msg == VOL_NOT_UNIQUE_ERR:
-                LOG.error(_LE("can't create 2 volumes with the same name, %s"),
+                LOG.error("can't create 2 volumes with the same name, %s",
                           err_msg)
-                msg = (_('Volume by this name already exists'))
+                msg = _('Volume by this name already exists')
                 raise exception.VolumeBackendAPIException(data=msg)
             elif err_msg == VOL_OBJ_NOT_FOUND_ERR:
-                LOG.error(_LE("Can't find volume to map %(key)s, %(msg)s"),
+                LOG.error("Can't find volume to map %(key)s, %(msg)s",
                           {'key': key, 'msg': err_msg, })
                 raise exception.VolumeNotFound(volume_id=key)
             elif ALREADY_MAPPED_ERR in err_msg:
@@ -338,8 +338,7 @@ class XtremIOClient4(XtremIOClient):
             self.req(typ, 'PUT', data, idx=int(idx))
         except exception.VolumeBackendAPIException:
             # reverting
-            msg = _LE('Failed to rename the created snapshot, reverting.')
-            LOG.error(msg)
+            LOG.error('Failed to rename the created snapshot, reverting.')
             self.req(typ, 'DELETE', idx=int(idx))
             raise
 
@@ -404,7 +403,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            LOG.info(_LI('XtremIO SW version %s'), version_text)
+            LOG.info('XtremIO SW version %s', version_text)
         if ver[0] >= 4:
             self.client = XtremIOClient4(self.configuration, self.cluster_id)
 
@@ -466,8 +465,8 @@ class XtremIOVolumeDriver(san.SanDriver):
             try:
                 self.extend_volume(volume, volume['size'])
             except Exception:
-                LOG.error(_LE('failes to extend volume %s, '
-                              'reverting clone operation'), volume['id'])
+                LOG.error('failes to extend volume %s, '
+                          'reverting clone operation', volume['id'])
                 # remove the volume in case resize failed
                 self.delete_volume(volume)
                 raise
@@ -481,7 +480,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         try:
             self.client.req('volumes', 'DELETE', name=volume.name_id)
         except exception.NotFound:
-            LOG.info(_LI("volume %s doesn't exist"), volume.name_id)
+            LOG.info("volume %s doesn't exist", volume.name_id)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -492,7 +491,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         try:
             self.client.req('volumes', 'DELETE', name=snapshot.id)
         except exception.NotFound:
-            LOG.info(_LI("snapshot %s doesn't exist"), snapshot.id)
+            LOG.info("snapshot %s doesn't exist", snapshot.id)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
@@ -505,8 +504,8 @@ class XtremIOVolumeDriver(san.SanDriver):
             data = {'name': original_name}
             self.client.req('volumes', 'PUT', data, name=current_name)
         except exception.VolumeBackendAPIException:
-            LOG.error(_LE('Unable to rename the logical volume '
-                          'for volume: %s'), original_name)
+            LOG.error('Unable to rename the logical volume '
+                      'for volume: %s', original_name)
             # If the rename fails, _name_id should be set to the new
             # volume id and provider_location should be set to the
             # one from the new volume as well.
@@ -603,8 +602,8 @@ class XtremIOVolumeDriver(san.SanDriver):
             self.client.req('volumes', 'PUT', name=volume['id'],
                             data={'vol-name': volume['name'] + '-unmanged'})
         except exception.NotFound:
-            LOG.info(_LI("%(typ)s with the name %(name)s wasn't found, "
-                         "can't unmanage") %
+            LOG.info("%(typ)s with the name %(name)s wasn't found, "
+                     "can't unmanage",
                      {'typ': 'Snapshot' if is_snapshot else 'Volume',
                       'name': volume['id']})
             raise exception.VolumeNotFound(volume_id=volume['id'])
@@ -644,7 +643,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             try:
                 self.client.req('lun-maps', 'DELETE', name=lm_name)
             except exception.NotFound:
-                LOG.warning(_LW("terminate_connection: lun map not found"))
+                LOG.warning("terminate_connection: lun map not found")
 
     def _get_password(self):
         return ''.join(RANDOM.choice
@@ -659,9 +658,9 @@ class XtremIOVolumeDriver(san.SanDriver):
             res = self.client.req('lun-maps', 'POST', data)
 
             lunmap = self._obj_from_result(res)
-            LOG.info(_LI('Created lun-map:\n%s'), lunmap)
+            LOG.info('Created lun-map:\n%s', lunmap)
         except exception.XtremIOAlreadyMappedError:
-            LOG.info(_LI('Volume already mapped, retrieving %(ig)s, %(vol)s'),
+            LOG.info('Volume already mapped, retrieving %(ig)s, %(vol)s',
                      {'ig': ig, 'vol': volume['id']})
             lunmap = self.client.find_lunmap(ig, volume['id'])
         return lunmap
@@ -993,8 +992,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
                                                         discovery_chap)
         # if CHAP was enabled after the initiator was created
         if login_chap and not login_passwd:
-            LOG.info(_LI('initiator has no password while using chap,'
-                         'adding it'))
+            LOG.info('Initiator has no password while using chap, adding it.')
             data = {}
             (login_passwd,
              d_passwd) = self._add_auth(data, login_chap, discovery_chap and

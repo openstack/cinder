@@ -22,7 +22,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -182,8 +182,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     pool, '%2F'.join([self._escape_path(fs), volume['name']]))
                 self.nef.delete(url)
             except exception.NexentaException:
-                LOG.warning(_LW("Cannot destroy created folder: "
-                                "%(vol)s/%(folder)s"),
+                LOG.warning("Cannot destroy created folder: "
+                            "%(vol)s/%(folder)s",
                             {'vol': pool, 'folder': '/'.join(
                                 [fs, volume['name']])})
             raise
@@ -235,7 +235,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: volume reference
         :param new_size: volume new size in GB
         """
-        LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
+        LOG.info('Extending volume: %(id)s New size: %(size)s GB',
                  {'id': volume['id'], 'size': new_size})
         if self.sparsed_volumes:
             self._execute('truncate', '-s', '%sG' % new_size,
@@ -284,8 +284,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
             self.nef.delete(url)
         except exception.NexentaException as exc:
             if 'EBUSY' is exc:
-                LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies'),
+                LOG.warning(
+                    'Could not delete snapshot %s - it has dependencies',
                     snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -320,10 +320,10 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 }
                 self.nef.delete(url)
             except exception.NexentaException:
-                LOG.warning(_LW("Cannot destroy cloned filesystem: "
-                                "%(vol)s/%(filesystem)s"),
+                LOG.warning("Cannot destroy cloned filesystem: "
+                            "%(vol)s/%(filesystem)s",
                             {'vol': dataset_path,
-                            'filesystem': volume['name']})
+                             'filesystem': volume['name']})
             raise
         if volume['size'] > snapshot['volume_size']:
             new_size = volume['size']
@@ -338,7 +338,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: new volume reference
         :param src_vref: source volume reference
         """
-        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
+        LOG.info('Creating clone of volume: %s', src_vref['id'])
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
                     'volume_size': src_vref['size'],
@@ -347,13 +347,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
         try:
             return self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
-            LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%(volume_name)s@%(name)s'), snapshot)
+            LOG.error('Volume creation failed, deleting created snapshot '
+                      '%(volume_name)s@%(name)s', snapshot)
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
-                LOG.warning(_LW('Failed to delete zfs snapshot '
-                                '%(volume_name)s@%(name)s'), snapshot)
+                LOG.warning('Failed to delete zfs snapshot '
+                            '%(volume_name)s@%(name)s', snapshot)
             raise
 
     def local_path(self, volume):

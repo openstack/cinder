@@ -14,7 +14,6 @@ from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -38,7 +37,7 @@ class LioAdm(iscsi.ISCSITarget):
             # This call doesn't need locking
             utils.execute('cinder-rtstool', 'verify')
         except (OSError, putils.ProcessExecutionError):
-            LOG.error(_LE('cinder-rtstool is not installed correctly'))
+            LOG.error('cinder-rtstool is not installed correctly')
             raise
 
     @staticmethod
@@ -83,8 +82,8 @@ class LioAdm(iscsi.ISCSITarget):
         # On persistence failure we don't raise an exception, as target has
         # been successfully created.
         except putils.ProcessExecutionError:
-            LOG.warning(_LW("Failed to save iscsi LIO configuration when "
-                            "modifying volume id: %(vol_id)s."),
+            LOG.warning("Failed to save iscsi LIO configuration when "
+                        "modifying volume id: %(vol_id)s.",
                         {'vol_id': vol_id})
 
     def _restore_configuration(self):
@@ -94,7 +93,7 @@ class LioAdm(iscsi.ISCSITarget):
         # On persistence failure we don't raise an exception, as target has
         # been successfully created.
         except putils.ProcessExecutionError:
-            LOG.warning(_LW("Failed to restore iscsi LIO configuration."))
+            LOG.warning("Failed to restore iscsi LIO configuration.")
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
@@ -102,7 +101,7 @@ class LioAdm(iscsi.ISCSITarget):
 
         vol_id = name.split(':')[1]
 
-        LOG.info(_LI('Creating iscsi_target for volume: %s'), vol_id)
+        LOG.info('Creating iscsi_target for volume: %s', vol_id)
 
         chap_auth_userid = ""
         chap_auth_password = ""
@@ -126,16 +125,16 @@ class LioAdm(iscsi.ISCSITarget):
                             self.iscsi_protocol == 'iser'] + optional_args
             self._execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError:
-            LOG.exception(_LE("Failed to create iscsi target for volume "
-                              "id:%s."), vol_id)
+            LOG.exception("Failed to create iscsi target for volume "
+                          "id:%s.", vol_id)
 
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
-            LOG.error(_LE("Failed to create iscsi target for volume "
-                          "id:%s."), vol_id)
+            LOG.error("Failed to create iscsi target for volume id:%s.",
+                      vol_id)
             raise exception.NotFound()
 
         # We make changes persistent
@@ -144,7 +143,7 @@ class LioAdm(iscsi.ISCSITarget):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        LOG.info(_LI('Removing iscsi_target: %s'), vol_id)
+        LOG.info('Removing iscsi_target: %s', vol_id)
         vol_uuid_name = vol_name
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_uuid_name)
 
@@ -154,8 +153,8 @@ class LioAdm(iscsi.ISCSITarget):
                           iqn,
                           run_as_root=True)
         except putils.ProcessExecutionError:
-            LOG.exception(_LE("Failed to remove iscsi target for volume "
-                              "id:%s."), vol_id)
+            LOG.exception("Failed to remove iscsi target for volume id:%s.",
+                          vol_id)
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
         # We make changes persistent
@@ -176,7 +175,7 @@ class LioAdm(iscsi.ISCSITarget):
                           connector['initiator'],
                           run_as_root=True)
         except putils.ProcessExecutionError:
-            LOG.exception(_LE("Failed to add initiator iqn %s to target"),
+            LOG.exception("Failed to add initiator iqn %s to target",
                           connector['initiator'])
             raise exception.ISCSITargetAttachFailed(
                 volume_id=volume['id'])
@@ -197,7 +196,7 @@ class LioAdm(iscsi.ISCSITarget):
                           run_as_root=True)
         except putils.ProcessExecutionError:
             LOG.exception(
-                _LE("Failed to delete initiator iqn %s from target."),
+                "Failed to delete initiator iqn %s from target.",
                 connector['initiator'])
             raise exception.ISCSITargetDetachFailed(volume_id=volume['id'])
 
@@ -209,8 +208,8 @@ class LioAdm(iscsi.ISCSITarget):
 
         # Restore saved configuration file if no target exists.
         if not self._get_targets():
-            LOG.info(_LI('Restoring iSCSI target from configuration file'))
+            LOG.info('Restoring iSCSI target from configuration file')
             self._restore_configuration()
             return
 
-        LOG.info(_LI("Skipping ensure_export. Found existing iSCSI target."))
+        LOG.info("Skipping ensure_export. Found existing iSCSI target.")

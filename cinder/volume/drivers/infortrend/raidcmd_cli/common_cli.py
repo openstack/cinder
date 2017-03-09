@@ -26,7 +26,7 @@ from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -87,11 +87,11 @@ CLI_RC_FILTER = {
     'DeletePartition': {'error': _('Failed to delete partition.')},
     'SetPartition': {'error': _('Failed to set partition.')},
     'CreateMap': {
-        'warning': {20: _LW('The MCS Channel is grouped.')},
+        'warning': {20: 'The MCS Channel is grouped.'},
         'error': _('Failed to create map.'),
     },
     'DeleteMap': {
-        'warning': {11: _LW('No mapping.')},
+        'warning': {11: 'No mapping.'},
         'error': _('Failed to delete map.'),
     },
     'CreateSnapshot': {'error': _('Failed to create snapshot.')},
@@ -99,13 +99,13 @@ CLI_RC_FILTER = {
     'CreateReplica': {'error': _('Failed to create replica.')},
     'DeleteReplica': {'error': _('Failed to delete replica.')},
     'CreateIQN': {
-        'warning': {20: _LW('IQN already existed.')},
+        'warning': {20: 'IQN already existed.'},
         'error': _('Failed to create iqn.'),
     },
     'DeleteIQN': {
         'warning': {
-            20: _LW('IQN has been used to create map.'),
-            11: _LW('No such host alias name.'),
+            20: 'IQN has been used to create map.',
+            11: 'No such host alias name.',
         },
         'error': _('Failed to delete iqn.'),
     },
@@ -483,7 +483,7 @@ class InfortrendCommon(object):
         model_update = {
             "provider_location": self._concat_provider_location(model_dict),
         }
-        LOG.info(_LI('Create Volume %(volume_id)s completed.'), {
+        LOG.info('Create Volume %(volume_id)s completed.', {
             'volume_id': volume_id})
         return model_update
 
@@ -845,7 +845,7 @@ class InfortrendCommon(object):
         )
 
         if not check_exist:
-            LOG.warning(_LW('Volume %(volume_id)s already deleted.'), {
+            LOG.warning('Volume %(volume_id)s already deleted.', {
                 'volume_id': volume_id})
             return
 
@@ -856,9 +856,9 @@ class InfortrendCommon(object):
                     part_id == entry['Source']):
                 if not self._check_replica_completed(entry):
                     has_pair = True
-                    LOG.warning(_LW('Volume still %(status)s '
-                                    'Cannot delete volume.'), {
-                                        'status': entry['Status']})
+                    LOG.warning('Volume still %(status)s '
+                                'Cannot delete volume.',
+                                {'status': entry['Status']})
                 else:
                     have_map = entry['Source-Mapped'] == 'Yes'
                     self._execute('DeleteReplica', entry['Pair-ID'], '-y')
@@ -894,7 +894,7 @@ class InfortrendCommon(object):
 
             self._execute('DeletePartition', part_id, '-y')
 
-            LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
+            LOG.info('Delete Volume %(volume_id)s completed.', {
                 'volume_id': volume_id})
         else:
             msg = _('Failed to delete volume '
@@ -946,7 +946,7 @@ class InfortrendCommon(object):
 
         model_update = self._create_volume_from_volume(volume, src_part_id)
 
-        LOG.info(_LI('Create Cloned Volume %(volume_id)s completed.'), {
+        LOG.info('Create Cloned Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
         return model_update
 
@@ -998,7 +998,7 @@ class InfortrendCommon(object):
     def create_export(self, context, volume):
         model_update = volume['provider_location']
 
-        LOG.info(_LI('Create export done from Volume %(volume_id)s.'), {
+        LOG.info('Create export done from Volume %(volume_id)s.', {
             'volume_id': volume['id']})
 
         return {'provider_location': model_update}
@@ -1011,12 +1011,12 @@ class InfortrendCommon(object):
         if self._volume_stats is None or refresh:
             self._update_volume_stats()
 
-        LOG.info(_LI(
+        LOG.info(
             'Successfully update volume stats. '
             'backend: %(volume_backend_name)s, '
             'vendor: %(vendor_name)s, '
             'driver version: %(driver_version)s, '
-            'storage protocol: %(storage_protocol)s.'), self._volume_stats)
+            'storage protocol: %(storage_protocol)s.', self._volume_stats)
 
         return self._volume_stats
 
@@ -1111,11 +1111,11 @@ class InfortrendCommon(object):
 
         snapshot_list = do_create_snapshot()
 
-        LOG.info(_LI(
+        LOG.info(
             'Create success. '
             'Snapshot: %(snapshot)s, '
             'Snapshot ID in raid: %(raid_snapshot_id)s, '
-            'volume: %(volume)s.'), {
+            'volume: %(volume)s.', {
                 'snapshot': snapshot_id,
                 'raid_snapshot_id': snapshot_list[-1]['SI-ID'],
                 'volume': volume_id})
@@ -1143,7 +1143,7 @@ class InfortrendCommon(object):
             if not has_pair:
                 self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
-                LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
+                LOG.info('Delete Snapshot %(snapshot_id)s completed.', {
                     'snapshot_id': snapshot_id})
             else:
                 msg = _('Failed to delete snapshot '
@@ -1161,9 +1161,9 @@ class InfortrendCommon(object):
 
     def _get_raid_snapshot_id(self, snapshot):
         if 'provider_location' not in snapshot:
-            LOG.warning(_LW(
+            LOG.warning(
                 'Failed to get Raid Snapshot ID and '
-                'did not store in snapshot.'))
+                'did not store in snapshot.')
             return
         return snapshot['provider_location']
 
@@ -1174,9 +1174,9 @@ class InfortrendCommon(object):
 
                 if not self._check_replica_completed(entry):
                     has_pair = True
-                    LOG.warning(_LW(
-                        'Snapshot still %(status)s Cannot delete snapshot.'), {
-                            'status': entry['Status']})
+                    LOG.warning(
+                        'Snapshot still %(status)s Cannot delete snapshot.',
+                        {'status': entry['Status']})
                 else:
                     self._execute('DeleteReplica', entry['Pair-ID'], '-y')
         return has_pair
@@ -1208,9 +1208,9 @@ class InfortrendCommon(object):
         model_update = self._create_volume_from_snapshot_id(
             volume, raid_snapshot_id, src_part_id)
 
-        LOG.info(_LI(
+        LOG.info(
             'Create Volume %(volume_id)s from '
-            'snapshot %(snapshot_id)s completed.'), {
+            'snapshot %(snapshot_id)s completed.', {
                 'volume_id': volume['id'],
                 'snapshot_id': snapshot['id']})
 
@@ -1285,10 +1285,10 @@ class InfortrendCommon(object):
         properties = self._generate_fc_connection_properties(
             map_lun, target_wwpns, initiator_target_map)
 
-        LOG.info(_LI('Successfully initialized connection. '
-                     'target_wwn: %(target_wwn)s, '
-                     'initiator_target_map: %(initiator_target_map)s, '
-                     'lun: %(target_lun)s.'), properties['data'])
+        LOG.info('Successfully initialized connection. '
+                 'target_wwn: %(target_wwn)s, '
+                 'initiator_target_map: %(initiator_target_map)s, '
+                 'lun: %(target_lun)s.', properties['data'])
         return properties
 
     def _do_fc_connection(self, volume, connector):
@@ -1411,8 +1411,8 @@ class InfortrendCommon(object):
 
         properties = self._generate_iscsi_connection_properties(
             property_value, volume)
-        LOG.info(_LI('Successfully initialized connection '
-                     'with volume: %(volume_id)s.'), properties['data'])
+        LOG.info('Successfully initialized connection '
+                 'with volume: %(volume_id)s.', properties['data'])
         return properties
 
     @log_func
@@ -1542,9 +1542,9 @@ class InfortrendCommon(object):
             run_as_root=True)
 
         if rc != 0:
-            LOG.error(_LE(
-                'Can not discovery in %(target_ip)s with %(target_iqn)s.'), {
-                    'target_ip': target_ip, 'target_iqn': target_iqn})
+            LOG.error(
+                'Can not discovery in %(target_ip)s with %(target_iqn)s.',
+                {'target_ip': target_ip, 'target_iqn': target_iqn})
             return False
         else:
             for target in out.splitlines():
@@ -1571,8 +1571,8 @@ class InfortrendCommon(object):
 
         self._execute('SetPartition', 'expand', part_id, expand_command)
 
-        LOG.info(_LI(
-            'Successfully extended volume %(volume_id)s to size %(size)s.'), {
+        LOG.info(
+            'Successfully extended volume %(volume_id)s to size %(size)s.', {
                 'volume_id': volume['id'], 'size': new_size})
 
     @lockutils.synchronized('connection', 'infortrend-', True)
@@ -1612,9 +1612,9 @@ class InfortrendCommon(object):
                 )
                 conn_info['data']['initiator_target_map'] = init_target_map
 
-        LOG.info(_LI(
-            'Successfully terminated connection for volume: %(volume_id)s.'), {
-                'volume_id': volume['id']})
+        LOG.info(
+            'Successfully terminated connection for volume: %(volume_id)s.',
+            {'volume_id': volume['id']})
 
         return conn_info
 
@@ -1632,14 +1632,14 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict),
         }
 
-        LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
+        LOG.info('Migrate Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
 
         return (True, model_update)
 
     def _is_valid_for_storage_assisted_migration(self, host):
         if 'pool_id' not in host['capabilities']:
-            LOG.warning(_LW('Failed to get target pool id.'))
+            LOG.warning('Failed to get target pool id.')
             return (False, None)
 
         dst_pool_id = host['capabilities']['pool_id']
@@ -1706,7 +1706,7 @@ class InfortrendCommon(object):
                         self._execute('DeleteReplica', entry['Pair-ID'], '-y')
             except Exception:
                 check_done = False
-                LOG.exception(_LE('Cannot detect replica status.'))
+                LOG.exception('Cannot detect replica status.')
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
@@ -1781,7 +1781,7 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict),
         }
 
-        LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
+        LOG.info('Rename Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
 
         return model_update
@@ -1812,7 +1812,7 @@ class InfortrendCommon(object):
         new_vol_name = self._get_unmanaged_volume_name(volume_id)
         self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
-        LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
+        LOG.info('Unmanage volume %(volume_id)s completed.', {
             'volume_id': volume_id})
 
     def _get_unmanaged_volume_name(self, volume_id):
@@ -1876,16 +1876,16 @@ class InfortrendCommon(object):
 
         if volume['host'] != host['host']:
             if self._check_volume_attachment(volume):
-                LOG.warning(_LW(
+                LOG.warning(
                     'Volume %(volume_id)s cannot be retyped '
-                    'during attachment.'), {
+                    'during attachment.', {
                         'volume_id': volume['id']})
                 return False
 
             if self._check_volume_has_snapshot(volume):
-                LOG.warning(_LW(
+                LOG.warning(
                     'Volume %(volume_id)s cannot be retyped '
-                    'because it has snapshot.'), {
+                    'because it has snapshot.', {
                         'volume_id': volume['id']})
                 return False
 
@@ -1894,9 +1894,9 @@ class InfortrendCommon(object):
                 volume, host, new_extraspecs)
 
             if rc:
-                LOG.info(_LI(
+                LOG.info(
                     'Retype Volume %(volume_id)s is done '
-                    'and migrated to pool %(pool_id)s.'), {
+                    'and migrated to pool %(pool_id)s.', {
                         'volume_id': volume['id'],
                         'pool_id': host['capabilities']['pool_id']})
 
@@ -1906,14 +1906,13 @@ class InfortrendCommon(object):
                     (diff['extra_specs']['infortrend_provisioning'][0] !=
                         diff['extra_specs']['infortrend_provisioning'][1])):
 
-                LOG.warning(_LW(
-                    'The provisioning: %(provisioning)s '
-                    'is not valid.'), {
-                        'provisioning':
-                            diff['extra_specs']['infortrend_provisioning'][1]})
+                LOG.warning(
+                    'The provisioning: %(provisioning)s is not valid.',
+                    {'provisioning':
+                     diff['extra_specs']['infortrend_provisioning'][1]})
                 return False
 
-            LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
+            LOG.info('Retype Volume %(volume_id)s is completed.', {
                 'volume_id': volume['id']})
             return True
 
@@ -1936,12 +1935,12 @@ class InfortrendCommon(object):
         try:
             self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
         except exception.InfortrendCliException:
-            LOG.exception(_LE('Failed to rename %(new_volume)s into '
-                              '%(volume)s.'), {'new_volume': new_volume['id'],
-                                               'volume': volume['id']})
+            LOG.exception('Failed to rename %(new_volume)s into '
+                          '%(volume)s.', {'new_volume': new_volume['id'],
+                                          'volume': volume['id']})
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
-        LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
+        LOG.info('Update migrated volume %(new_volume)s completed.', {
             'new_volume': new_volume['id']})
 
         model_update = {

@@ -36,7 +36,7 @@ from six.moves import http_client
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume.drivers.san import san
 
@@ -99,9 +99,9 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         try:
             self.api_executor = self.creat_api_executor()
         except Exception:
-            LOG.error(_LE('Failed to create HTTP client. '
-                          'Check ip, port, username, password'
-                          ' and make sure the array version is compatible'))
+            LOG.error('Failed to create HTTP client. '
+                      'Check ip, port, username, password'
+                      ' and make sure the array version is compatible')
             msg = _('Failed to create HTTP client.')
             raise exception.VolumeDriverException(message=msg)
 
@@ -774,7 +774,7 @@ def _connection_checker(func):
                         self._login()
                         continue
 
-                LOG.error(_LE('Re-throwing Exception %s'), e)
+                LOG.error('Re-throwing Exception %s', e)
                 raise
     return inner_connection_checker
 

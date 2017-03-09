@@ -19,7 +19,7 @@ Performance metrics functions and cache for NetApp systems.
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 
 
 LOG = logging.getLogger(__name__)
@@ -83,8 +83,8 @@ class PerformanceLibrary(object):
             return max(min(100.0, node_utilization), 0)
 
         except Exception:
-            LOG.exception(_LE('Could not calculate node utilization for '
-                              'node %s.'), node_name)
+            LOG.exception('Could not calculate node utilization for '
+                          'node %s.', node_name)
             return DEFAULT_UTILIZATION
 
     def _get_kahuna_utilization(self, counters_t1, counters_t2):

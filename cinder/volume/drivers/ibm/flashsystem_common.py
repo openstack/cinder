@@ -36,7 +36,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -248,7 +248,7 @@ class FlashSystemDriver(san.SanDriver,
                 self.configuration.volume_dd_blocksize)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to copy %(src)s to %(dest)s.'),
+                LOG.error('Failed to copy %(src)s to %(dest)s.',
                           {'src': src_vdisk_name, 'dest': dest_vdisk_name})
         finally:
             if not dest_map:
@@ -337,8 +337,8 @@ class FlashSystemDriver(san.SanDriver,
         # Try to delete volume only if found on the storage
         vdisk_defined = self._is_vdisk_defined(name)
         if not vdisk_defined:
-            LOG.warning(_LW('warning: Tried to delete vdisk %s but '
-                            'it does not exist.'), name)
+            LOG.warning('warning: Tried to delete vdisk %s but '
+                        'it does not exist.', name)
             return
 
         ssh_cmd = ['svctask', 'rmvdisk', '-force', name]
@@ -374,8 +374,7 @@ class FlashSystemDriver(san.SanDriver,
         try:
             out, err = self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError:
-            LOG.warning(_LW('Failed to run command: '
-                            '%s.'), ssh_cmd)
+            LOG.warning('Failed to run command: %s.', ssh_cmd)
             # Does not raise exception when command encounters error.
             # Only return and the upper logic decides what to do.
             return None
@@ -695,8 +694,8 @@ class FlashSystemDriver(san.SanDriver,
         return (map_flag, int(result_lun))
 
     def _log_cli_output_error(self, function, cmd, out, err):
-        LOG.error(_LE('%(fun)s: Failed with unexpected CLI output.\n '
-                      'Command: %(cmd)s\nstdout: %(out)s\nstderr: %(err)s\n'),
+        LOG.error('%(fun)s: Failed with unexpected CLI output.\n '
+                  'Command: %(cmd)s\nstdout: %(out)s\nstderr: %(err)s\n',
                   {'fun': function,
                    'cmd': cmd,
                    'out': six.text_type(out),
@@ -765,7 +764,7 @@ class FlashSystemDriver(san.SanDriver,
 
                 # try to map one volume to multiple hosts
                 out, err = self._ssh(ssh_cmd)
-                LOG.info(_LI('Volume %s is mapping to multiple hosts.'),
+                LOG.info('Volume %s is mapping to multiple hosts.',
                          vdisk_name)
                 self._assert_ssh_return(
                     'successfully created' in out,
@@ -808,7 +807,7 @@ class FlashSystemDriver(san.SanDriver,
         LOG.debug('enter: _remove_device')
 
         if not properties or not device:
-            LOG.warning(_LW('_remove_device: invalid properties or device.'))
+            LOG.warning('_remove_device: invalid properties or device.')
             return
 
         use_multipath = self.configuration.use_multipath_for_image_xfer
@@ -829,8 +828,8 @@ class FlashSystemDriver(san.SanDriver,
         # Try to rename volume only if found on the storage
         vdisk_defined = self._is_vdisk_defined(vdisk_name)
         if not vdisk_defined:
-            LOG.warning(_LW('warning: Tried to rename vdisk %s but '
-                            'it does not exist.'), vdisk_name)
+            LOG.warning('warning: Tried to rename vdisk %s but '
+                        'it does not exist.', vdisk_name)
             return
         ssh_cmd = [
             'svctask', 'chvdisk', '-name', new_name, vdisk_name]
@@ -841,7 +840,7 @@ class FlashSystemDriver(san.SanDriver,
             '_rename_vdisk %(name)s' % {'name': vdisk_name},
             ssh_cmd, out, err)
 
-        LOG.info(_LI('Renamed %(vdisk)s to %(newname)s .'),
+        LOG.info('Renamed %(vdisk)s to %(newname)s .',
                  {'vdisk': vdisk_name, 'newname': new_name})
 
     def _scan_device(self, properties):
@@ -881,23 +880,23 @@ class FlashSystemDriver(san.SanDriver,
         # name was given, but only one mapping exists, we can use that.
         mapping_data = self._get_vdiskhost_mappings(vdisk_name)
         if not mapping_data:
-            LOG.warning(_LW('_unmap_vdisk_from_host: No mapping of volume '
-                            '%(vol_name)s to any host found.'),
+            LOG.warning('_unmap_vdisk_from_host: No mapping of volume '
+                        '%(vol_name)s to any host found.',
                         {'vol_name': vdisk_name})
             return host_name
         if host_name is None:
             if len(mapping_data) > 1:
-                LOG.warning(_LW('_unmap_vdisk_from_host: Multiple mappings of '
-                                'volume %(vdisk_name)s found, no host '
-                                'specified.'),
+                LOG.warning('_unmap_vdisk_from_host: Multiple mappings of '
+                            'volume %(vdisk_name)s found, no host '
+                            'specified.',
                             {'vdisk_name': vdisk_name})
                 return
             else:
                 host_name = list(mapping_data.keys())[0]
         else:
             if host_name not in mapping_data:
-                LOG.error(_LE('_unmap_vdisk_from_host: No mapping of volume '
-                              '%(vol_name)s to host %(host_name)s found.'),
+                LOG.error('_unmap_vdisk_from_host: No mapping of volume '
+                          '%(vol_name)s to host %(host_name)s found.',
                           {'vol_name': vdisk_name, 'host_name': host_name})
                 return host_name
 

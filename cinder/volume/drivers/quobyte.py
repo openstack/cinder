@@ -25,7 +25,7 @@ from oslo_utils import fileutils
 
 from cinder import compute
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
@@ -153,20 +153,20 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             self.configuration.nas_secure_file_permissions = 'true'
 
         if self.configuration.nas_secure_file_operations == 'false':
-            LOG.warning(_LW("The NAS file operations will be run as "
-                            "root, allowing root level access at the storage "
-                            "backend."))
+            LOG.warning("The NAS file operations will be run as "
+                        "root, allowing root level access at the storage "
+                        "backend.")
             self._execute_as_root = True
         else:
-            LOG.info(_LI("The NAS file operations will be run as"
-                         " non privileged user in secure mode. Please"
-                         " ensure your libvirtd settings have been configured"
-                         " accordingly (see section 'OpenStack' in the Quobyte"
-                         " Manual."))
+            LOG.info("The NAS file operations will be run as"
+                     " non privileged user in secure mode. Please"
+                     " ensure your libvirtd settings have been configured"
+                     " accordingly (see section 'OpenStack' in the Quobyte"
+                     " Manual.")
 
         if self.configuration.nas_secure_file_permissions == 'false':
-            LOG.warning(_LW("The NAS file permissions mode will be 666 "
-                            "(allowing other/world read & write access)."))
+            LOG.warning("The NAS file permissions mode will be 666 "
+                        "(allowing other/world read & write access).")
 
     def _qemu_img_info(self, path, volume_name):
         return super(QuobyteDriver, self)._qemu_img_info_base(
@@ -230,8 +230,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         """Deletes a logical volume."""
 
         if not volume.provider_location:
-            LOG.warning(_LW('Volume %s does not have provider_location '
-                            'specified, skipping'), volume.name)
+            LOG.warning('Volume %s does not have provider_location '
+                        'specified, skipping', volume.name)
             return
 
         self._ensure_share_mounted(volume.provider_location)
@@ -377,7 +377,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.warning(_LW('Exception during mounting %s'), exc)
+                LOG.warning('Exception during mounting %s', exc)
 
         LOG.debug('Available shares %s', self._mounted_shares)
 
@@ -432,17 +432,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                 if exc.errno == errno.ENOTCONN:
                     mounted = False
                     try:
-                        LOG.info(_LI('Fixing previous mount %s which was not'
-                                     ' unmounted correctly.'), mount_path)
+                        LOG.info('Fixing previous mount %s which was not'
+                                 ' unmounted correctly.', mount_path)
                         self._execute('umount.quobyte', mount_path,
                                       run_as_root=self._execute_as_root)
                     except processutils.ProcessExecutionError as exc:
-                        LOG.warning(_LW("Failed to unmount previous mount: "
-                                        "%s"), exc)
+                        LOG.warning("Failed to unmount previous mount: "
+                                    "%s", exc)
                 else:
                     # TODO(quobyte): Extend exc analysis in here?
-                    LOG.warning(_LW("Unknown error occurred while checking "
-                                    "mount point: %s Trying to continue."),
+                    LOG.warning("Unknown error occurred while checking "
+                                "mount point: %s Trying to continue.",
                                 exc)
 
         if not mounted:
@@ -454,13 +454,13 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                 command.extend(['-c', self.configuration.quobyte_client_cfg])
 
             try:
-                LOG.info(_LI('Mounting volume: %s ...'), quobyte_volume)
+                LOG.info('Mounting volume: %s ...', quobyte_volume)
                 self._execute(*command, run_as_root=self._execute_as_root)
-                LOG.info(_LI('Mounting volume: %s succeeded'), quobyte_volume)
+                LOG.info('Mounting volume: %s succeeded', quobyte_volume)
                 mounted = True
             except processutils.ProcessExecutionError as exc:
                 if ensure and 'already mounted' in exc.stderr:
-                    LOG.warning(_LW("%s is already mounted"), quobyte_volume)
+                    LOG.warning("%s is already mounted", quobyte_volume)
                 else:
                     raise
 
@@ -479,10 +479,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                             # client looks healthy
                             if not os.access(mount_path,
                                              os.W_OK | os.X_OK):
-                                LOG.warning(_LW("Volume is not writable. "
-                                                "Please broaden the file"
-                                                " permissions."
-                                                " Mount: %s"),
+                                LOG.warning("Volume is not writable. "
+                                            "Please broaden the file"
+                                            " permissions."
+                                            " Mount: %s",
                                             mount_path)
                             return  # we're happy here
                         else:

@@ -26,7 +26,7 @@ import six
 import time
 
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 
@@ -310,7 +310,7 @@ class BrcdHTTPFCZoneClient(object):
                 session_LF_Id = self.get_nvp_value(parsed_info,
                                                    zone_constant.SESSION_LF_ID)
                 if session_LF_Id == vfid:
-                    LOG.info(_LI("VF context is changed in the session."))
+                    LOG.info("VF context is changed in the session.")
                 else:
                     msg = _("Cannot change VF context in the session.")
                     LOG.error(msg)

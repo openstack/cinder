@@ -42,7 +42,7 @@ from oslo_utils import units
 from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume import volume_types
 
@@ -54,7 +54,7 @@ try:
 except ImportError:
     vmemclient = None
 else:
-    LOG.info(_LI("Running with vmemclient version: %s"),
+    LOG.info("Running with vmemclient version: %s",
              vmemclient.__version__)
 
 
@@ -126,7 +126,7 @@ class V7000Common(object):
             if (self.config.violin_dedup_only_pools == [] and
                     self.config.violin_dedup_capable_pools == []):
 
-                LOG.warning(_LW("Storage pools not configured."))
+                LOG.warning("Storage pools not configured.")
                 raise exception.InvalidInput(
                     reason=_('Storage pool configuration is '
                              'mandatory for external head'))
@@ -137,7 +137,7 @@ class V7000Common(object):
             msg = _('vmemclient python library not found')
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.info(_LI("CONCERTO version: %s"), self.vmem_mg.version)
+        LOG.info("CONCERTO version: %s", self.vmem_mg.version)
 
         if not self._is_supported_vmos_version(self.vmem_mg.version):
             msg = _('CONCERTO version is not supported')
@@ -196,7 +196,7 @@ class V7000Common(object):
             LOG.debug("Lun %s already exists, continuing.", volume['id'])
 
         except Exception:
-            LOG.exception(_LE("Lun create for %s failed!"), volume['id'])
+            LOG.exception("Lun create for %s failed!", volume['id'])
             raise
 
     @utils.synchronized('vmem-lun')
@@ -221,12 +221,12 @@ class V7000Common(object):
             LOG.debug("Lun %s already deleted, continuing.", volume['id'])
 
         except exception.ViolinBackendErrExists:
-            LOG.exception(_LE("Lun %s has dependent snapshots, "
-                              "skipping lun deletion."), volume['id'])
+            LOG.exception("Lun %s has dependent snapshots, "
+                          "skipping lun deletion.", volume['id'])
             raise exception.VolumeIsBusy(volume_name=volume['id'])
 
         except Exception:
-            LOG.exception(_LE("Lun delete for %s failed!"), volume['id'])
+            LOG.exception("Lun delete for %s failed!", volume['id'])
             raise
 
     def _extend_lun(self, volume, new_size):
@@ -264,7 +264,7 @@ class V7000Common(object):
                            volume['id'], delta_mb)
 
         except Exception:
-            LOG.exception(_LE("LUN extend failed!"))
+            LOG.exception("LUN extend failed!")
             raise
 
     def _create_lun_snapshot(self, snapshot):
@@ -307,8 +307,8 @@ class V7000Common(object):
                 priority=CONCERTO_DEFAULT_PRIORITY,
                 enable_notification=False)
         except Exception:
-            LOG.exception(_LE("Lun create snapshot for "
-                              "volume %(vol)s snapshot %(snap)s failed!"),
+            LOG.exception("Lun create snapshot for "
+                          "volume %(vol)s snapshot %(snap)s failed!",
                           {'vol': cinder_volume_id,
                            'snap': cinder_snapshot_id})
             raise
@@ -382,8 +382,8 @@ class V7000Common(object):
                 self._check_error_code(result)
 
         except Exception:
-            LOG.exception(_LE("Copy snapshot to volume for "
-                              "snapshot %(snap)s volume %(vol)s failed!"),
+            LOG.exception("Copy snapshot to volume for "
+                          "snapshot %(snap)s volume %(vol)s failed!",
                           {'snap': cinder_snapshot_id,
                            'vol': cinder_volume_id})
             raise
@@ -431,8 +431,8 @@ class V7000Common(object):
                 self._check_error_code(result)
 
         except Exception:
-            LOG.exception(_LE("Create new lun from lun for source "
-                              "%(src)s => destination %(dest)s failed!"),
+            LOG.exception("Create new lun from lun for source "
+                          "%(src)s => destination %(dest)s failed!",
                           {'src': src_vol['id'], 'dest': dest_vol['id']})
             raise
 
@@ -1064,8 +1064,8 @@ class V7000Common(object):
                                       'snap_id': cinder_snapshot_id})
                 raise loopingcall.LoopingCallDone(retvalue=True)
             else:
-                LOG.warning(_LW("Delete snapshot %(snap)s of %(vol)s "
-                                "encountered temporary error: %(msg)s"),
+                LOG.warning("Delete snapshot %(snap)s of %(vol)s "
+                            "encountered temporary error: %(msg)s",
                             {'snap': cinder_snapshot_id,
                              'vol': cinder_volume_id,
                              'msg': ans['msg']})

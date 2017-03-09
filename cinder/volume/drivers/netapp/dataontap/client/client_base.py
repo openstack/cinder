@@ -23,7 +23,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW, _LI
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -106,8 +106,8 @@ class Client(object):
             self.connection.invoke_successfully(lun_create, True)
         except netapp_api.NaApiError as ex:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error provisioning volume %(lun_name)s on "
-                              "%(volume_name)s. Details: %(ex)s"),
+                LOG.error("Error provisioning volume %(lun_name)s on "
+                          "%(volume_name)s. Details: %(ex)s",
                           {'lun_name': lun_name,
                            'volume_name': volume_name,
                            'ex': ex})
@@ -136,8 +136,8 @@ class Client(object):
         except netapp_api.NaApiError as e:
             code = e.code
             message = e.message
-            LOG.warning(_LW('Error mapping LUN. Code :%(code)s, Message: '
-                            '%(message)s'), {'code': code, 'message': message})
+            LOG.warning('Error mapping LUN. Code :%(code)s, Message: '
+                        '%(message)s', {'code': code, 'message': message})
             raise
 
     def unmap_lun(self, path, igroup_name):
@@ -149,9 +149,9 @@ class Client(object):
             self.connection.invoke_successfully(lun_unmap, True)
         except netapp_api.NaApiError as e:
             exc_info = sys.exc_info()
-            LOG.warning(_LW("Error unmapping LUN. Code :%(code)s, Message: "
-                            "%(message)s"), {'code': e.code,
-                                             'message': e.message})
+            LOG.warning("Error unmapping LUN. Code :%(code)s, Message: "
+                        "%(message)s", {'code': e.code,
+                                        'message': e.message})
             # if the LUN is already unmapped
             if e.code == '13115' or e.code == '9016':
                 pass
@@ -178,7 +178,7 @@ class Client(object):
     def do_direct_resize(self, path, new_size_bytes, force=True):
         """Resize the LUN."""
         seg = path.split("/")
-        LOG.info(_LI("Resizing LUN %s directly to new size."), seg[-1])
+        LOG.info("Resizing LUN %s directly to new size.", seg[-1])
         lun_resize = netapp_api.NaElement.create_node_with_children(
             'lun-resize',
             **{'path': path,
@@ -206,7 +206,7 @@ class Client(object):
             geometry['max_resize'] =\
                 result.get_child_content("max-resize-size")
         except Exception as e:
-            LOG.error(_LE("LUN %(path)s geometry failed. Message - %(msg)s"),
+            LOG.error("LUN %(path)s geometry failed. Message - %(msg)s",
                       {'path': path, 'msg': e.message})
         return geometry
 

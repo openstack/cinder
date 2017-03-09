@@ -22,7 +22,7 @@ from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import policy
@@ -260,9 +260,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                     context,
                     img_vol_type)
             except exception.VolumeTypeNotFoundByName:
-                LOG.warning(_LW("Failed to retrieve volume_type from image "
-                                "metadata. '%(img_vol_type)s' doesn't match "
-                                "any volume types."),
+                LOG.warning("Failed to retrieve volume_type from image "
+                            "metadata. '%(img_vol_type)s' doesn't match "
+                            "any volume types.",
                             {'img_vol_type': img_vol_type})
                 return None
 
@@ -321,9 +321,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 availability_zone = (
                     CONF.default_availability_zone or
                     CONF.storage_availability_zone)
-                LOG.warning(_LW("Availability zone '%(s_az)s' "
-                                "not found, falling back to "
-                                "'%(s_fallback_az)s'."),
+                LOG.warning("Availability zone '%(s_az)s' "
+                            "not found, falling back to "
+                            "'%(s_fallback_az)s'.",
                             {'s_az': original_az,
                              's_fallback_az': availability_zone})
             else:
@@ -395,9 +395,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             if volume_type:
                 current_volume_type_id = volume_type.get('id')
                 if current_volume_type_id != snapshot['volume_type_id']:
-                    msg = _LW("Volume type will be changed to "
-                              "be the same as the source volume.")
-                    LOG.warning(msg)
+                    LOG.warning("Volume type will be changed to "
+                                "be the same as the source volume.")
             return snapshot['volume_type_id']
         else:
             return volume_type.get('id')
@@ -589,7 +588,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             #
             # NOTE(harlowja): Being unable to destroy a volume is pretty
             # bad though!!
-            LOG.exception(_LE("Failed destroying volume entry %s"), volume.id)
+            LOG.exception("Failed destroying volume entry %s", volume.id)
 
 
 class QuotaReserveTask(flow_utils.CinderTask):
@@ -650,8 +649,8 @@ class QuotaReserveTask(flow_utils.CinderTask):
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
-            LOG.exception(_LE("Failed rolling back quota for"
-                              " %s reservations"), reservations)
+            LOG.exception("Failed rolling back quota for"
+                          " %s reservations", reservations)
 
 
 class QuotaCommitTask(flow_utils.CinderTask):
@@ -697,8 +696,8 @@ class QuotaCommitTask(flow_utils.CinderTask):
                 QUOTAS.commit(context, reservations,
                               project_id=context.project_id)
         except Exception:
-            LOG.exception(_LE("Failed to update quota for deleting "
-                              "volume: %s"), volume['id'])
+            LOG.exception("Failed to update quota for deleting "
+                          "volume: %s", volume['id'])
 
 
 class VolumeCastTask(flow_utils.CinderTask):
@@ -804,11 +803,11 @@ class VolumeCastTask(flow_utils.CinderTask):
         # Restore the source volume status and set the volume to error status.
         common.restore_source_status(context, self.db, kwargs)
         common.error_out(volume)
-        LOG.error(_LE("Volume %s: create failed"), volume.id)
+        LOG.error("Volume %s: create failed", volume.id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
-        LOG.error(_LE('Unexpected build error:'), exc_info=exc_info)
+        LOG.error('Unexpected build error:', exc_info=exc_info)
 
 
 def get_flow(db_api, image_service_api, availability_zones, create_what,

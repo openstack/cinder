@@ -31,10 +31,10 @@ import requests
 from six.moves import urllib
 
 from cinder import exception
-from cinder import utils
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import nfs
 
@@ -156,13 +156,13 @@ class TintriDriver(driver.ManageableVD,
             with self._get_client() as c:
                 c.delete_snapshot(snapshot.provider_id)
         else:
-            LOG.info(_LI('Snapshot %s not found'), snapshot.name)
+            LOG.info('Snapshot %s not found', snapshot.name)
 
     def _check_ops(self, required_ops, configuration):
         """Ensures that the options we care about are set."""
         for op in required_ops:
             if not getattr(configuration, op):
-                LOG.error(_LE('Configuration value %s is not set.'), op)
+                LOG.error('Configuration value %s is not set.', op)
                 raise exception.InvalidConfigurationValue(option=op,
                                                           value=None)
 
@@ -182,7 +182,7 @@ class TintriDriver(driver.ManageableVD,
             try:
                 self.extend_volume(volume, vol_size)
             except Exception:
-                LOG.error(_LE('Resizing %s failed. Cleaning volume.'),
+                LOG.error('Resizing %s failed. Cleaning volume.',
                           volume.name)
                 self._delete_file(path)
                 raise
@@ -270,8 +270,8 @@ class TintriDriver(driver.ManageableVD,
                         try:
                             c.delete_snapshot(uuid)
                         except Exception:
-                            LOG.exception(_LE('Unexpected exception during '
-                                              'cache cleanup of snapshot %s'),
+                            LOG.exception('Unexpected exception during '
+                                          'cache cleanup of snapshot %s',
                                           uuid)
                 else:
                     LOG.debug('Cache cleanup: nothing to clean')
@@ -356,7 +356,7 @@ class TintriDriver(driver.ManageableVD,
             try:
                 self.extend_volume(volume, vol_size)
             except Exception:
-                LOG.error(_LE('Resizing %s failed. Cleaning volume.'),
+                LOG.error('Resizing %s failed. Cleaning volume.',
                           volume.name)
                 self._delete_file(path)
                 raise
@@ -367,7 +367,7 @@ class TintriDriver(driver.ManageableVD,
         """Fetches the image from image_service and write it to the volume."""
         super(TintriDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
-        LOG.info(_LI('Copied image to volume %s using regular download.'),
+        LOG.info('Copied image to volume %s using regular download.',
                  volume['name'])
         self._create_image_snapshot(volume['name'],
                                     volume['provider_location'], image_id,
@@ -376,7 +376,7 @@ class TintriDriver(driver.ManageableVD,
     def _create_image_snapshot(self, volume_name, share, image_id, image_name):
         """Creates an image snapshot."""
         snapshot_name = img_prefix + image_id
-        LOG.info(_LI('Creating image snapshot %s'), snapshot_name)
+        LOG.info('Creating image snapshot %s', snapshot_name)
         (host, path) = self._get_export_ip_path(None, share)
         volume_path = '%s/%s' % (path, volume_name)
 
@@ -392,8 +392,8 @@ class TintriDriver(driver.ManageableVD,
         try:
             return _do_snapshot()
         except Exception as e:
-            LOG.warning(_LW('Exception while creating image %(image_id)s '
-                            'snapshot. Exception: %(exc)s'),
+            LOG.warning('Exception while creating image %(image_id)s '
+                        'snapshot. Exception: %(exc)s',
                         {'image_id': image_id, 'exc': e})
 
     def _find_image_snapshot(self, image_id):
@@ -405,7 +405,7 @@ class TintriDriver(driver.ManageableVD,
         """Clones volume from image snapshot."""
         file_path = self._get_volume_path(share, dst)
         if not os.path.exists(file_path):
-            LOG.info(_LI('Cloning from snapshot to destination %s'), dst)
+            LOG.info('Cloning from snapshot to destination %s', dst)
             self._clone_snapshot(snapshot_id, dst, volume_id=None,
                                  share=share)
 
@@ -417,7 +417,7 @@ class TintriDriver(driver.ManageableVD,
             self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as e:
-            LOG.warning(_LW('Exception during deleting %s'), e)
+            LOG.warning('Exception during deleting %s', e)
             return False
 
     def _move_file(self, source_path, dest_path):
@@ -426,7 +426,7 @@ class TintriDriver(driver.ManageableVD,
         @utils.synchronized(dest_path, external=True)
         def _do_move(src, dst):
             if os.path.exists(dst):
-                LOG.warning(_LW('Destination %s already exists.'), dst)
+                LOG.warning('Destination %s already exists.', dst)
                 return False
             self._execute('mv', src, dst, run_as_root=self._execute_as_root)
             return True
@@ -434,7 +434,7 @@ class TintriDriver(driver.ManageableVD,
         try:
             return _do_move(source_path, dest_path)
         except Exception as e:
-            LOG.warning(_LW('Exception moving file %(src)s. Message: %(e)s'),
+            LOG.warning('Exception moving file %(src)s. Message: %(e)s',
                         {'src': source_path, 'e': e})
         return False
 
@@ -470,8 +470,8 @@ class TintriDriver(driver.ManageableVD,
             if cloned:
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
-            LOG.info(_LI('Image cloning unsuccessful for image '
-                         '%(image_id)s. Message: %(msg)s'),
+            LOG.info('Image cloning unsuccessful for image '
+                     '%(image_id)s. Message: %(msg)s',
                      {'image_id': image_id, 'msg': e})
             vol_path = self.local_path(volume)
             volume['provider_location'] = None
@@ -486,7 +486,7 @@ class TintriDriver(driver.ManageableVD,
     def _clone_from_snapshot(self, volume, image_id, snapshot_id):
         """Clones a copy from image snapshot."""
         cloned = False
-        LOG.info(_LI('Cloning image %s from snapshot.'), image_id)
+        LOG.info('Cloning image %s from snapshot.', image_id)
         for share in self._mounted_shares:
             # Repeat tries in other shares if failed in some
             LOG.debug('Image share: %s', share)
@@ -499,13 +499,13 @@ class TintriDriver(driver.ManageableVD,
                     volume['provider_location'] = share
                     break
                 except Exception:
-                    LOG.warning(_LW('Unexpected exception during '
-                                    'image cloning in share %s'), share)
+                    LOG.warning('Unexpected exception during '
+                                'image cloning in share %s', share)
         return cloned
 
     def _direct_clone(self, volume, image_location, image_id, image_name):
         """Clones directly in nfs share."""
-        LOG.info(_LI('Checking image clone %s from glance share.'), image_id)
+        LOG.info('Checking image clone %s from glance share.', image_id)
         cloned = False
         image_location = self._get_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
@@ -535,7 +535,7 @@ class TintriDriver(driver.ManageableVD,
                 volume_id=None, share=share, dst=dst_share, image_id=image_id)
             cloned = True
         else:
-            LOG.info(_LI('Image will locally be converted to raw %s'),
+            LOG.info('Image will locally be converted to raw %s',
                      image_id)
             dst = '%s/%s' % (dst_path, volume['name'])
             image_utils.convert_image(img_path, dst, 'raw',
@@ -554,7 +554,7 @@ class TintriDriver(driver.ManageableVD,
 
     def _post_clone_image(self, volume):
         """Performs operations post image cloning."""
-        LOG.info(_LI('Performing post clone for %s'), volume['name'])
+        LOG.info('Performing post clone for %s', volume['name'])
         vol_path = self.local_path(volume)
         self._set_rw_permissions(vol_path)
         self._resize_image_file(vol_path, volume['size'])
@@ -566,7 +566,7 @@ class TintriDriver(driver.ManageableVD,
         if self._is_file_size_equal(path, new_size):
             return
         else:
-            LOG.info(_LI('Resizing file to %sG'), new_size)
+            LOG.info('Resizing file to %sG', new_size)
             image_utils.resize_image(path, new_size,
                                      run_as_root=self._execute_as_root)
             if self._is_file_size_equal(path, new_size):
@@ -614,7 +614,7 @@ class TintriDriver(driver.ManageableVD,
                         LOG.debug('Found share match %s', sh)
                         return sh
         except Exception:
-            LOG.warning(_LW('Unexpected exception while listing used share.'))
+            LOG.warning('Unexpected exception while listing used share.')
 
     def _get_image_nfs_url(self, image_location):
         """Gets direct url for nfs backend.
@@ -721,7 +721,7 @@ class TintriDriver(driver.ManageableVD,
                 raise exception.VolumeDriverException(msg)
             self._set_rw_permissions(dst)
 
-        LOG.info(_LI('Manage volume %s'), volume['name'])
+        LOG.info('Manage volume %s', volume['name'])
         return {'provider_location': nfs_share}
 
     def manage_existing_get_size(self, volume, existing_ref):
@@ -754,7 +754,7 @@ class TintriDriver(driver.ManageableVD,
         :param volume: Cinder volume to unmanage
         """
         volume_path = self.local_path(volume)
-        LOG.info(_LI('Unmanage volume %s'), volume_path)
+        LOG.info('Unmanage volume %s', volume_path)
 
     def _convert_volume_share(self, volume_share):
         """Converts the share name to IP address."""
@@ -810,8 +810,7 @@ class TintriDriver(driver.ManageableVD,
                     self._ensure_share_mounted(share)
                     mounted_image_shares.append(share)
                 except Exception:
-                    LOG.exception(_LE(
-                        'Exception during mounting.'))
+                    LOG.exception('Exception during mounting.')
         self._mounted_image_shares = mounted_image_shares
 
         # Mount Cinder shares

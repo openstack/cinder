@@ -35,7 +35,7 @@ from oslo_log import log as logging
 
 from cinder.backup import driver
 from cinder import exception
-from cinder.i18n import _LE, _
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 
@@ -250,9 +250,9 @@ def _cleanup_device_hardlink(hardlink_path, volume_path, volume_id):
                       hardlink_path,
                       run_as_root=True)
     except processutils.ProcessExecutionError as exc:
-        LOG.error(_LE('backup: %(vol_id)s failed to remove backup hardlink '
-                      'from %(vpath)s to %(bpath)s.\n'
-                      'stdout: %(out)s\n stderr: %(err)s.'),
+        LOG.error('backup: %(vol_id)s failed to remove backup hardlink '
+                  'from %(vpath)s to %(bpath)s.\n'
+                  'stdout: %(out)s\n stderr: %(err)s.',
                   {'vol_id': volume_id,
                    'vpath': volume_path,
                    'bpath': hardlink_path,
@@ -523,8 +523,8 @@ class TSMBackupDriver(driver.BackupDriver):
             # log error if tsm cannot delete the backup object
             # but do not raise exception so that cinder backup
             # object can be removed.
-            LOG.error(_LE('delete: %(vol_id)s failed with '
-                          'stdout: %(out)s\n stderr: %(err)s'),
+            LOG.error('delete: %(vol_id)s failed with '
+                      'stdout: %(out)s\n stderr: %(err)s',
                       {'vol_id': backup.volume_id,
                        'out': out,
                        'err': err})

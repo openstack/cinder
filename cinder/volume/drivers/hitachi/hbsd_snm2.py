@@ -24,7 +24,6 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _LE, _LW
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 
@@ -73,7 +72,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if time.time() - start >= timeout:
-            LOG.error(_LE("snm2 command timeout."))
+            LOG.error("snm2 command timeout.")
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if (re.search('DMEC002047', stderr)
@@ -87,7 +86,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 or re.search('DMER0800CF', stderr)
                 or re.search('DMER0800D[0-6D]', stderr)
                 or re.search('DMES052602', stderr)):
-            LOG.error(_LE("Unexpected error occurs in snm2."))
+            LOG.error("Unexpected error occurs in snm2.")
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
     def exec_hsnm(self, command, args, printflag=True, noretry=False,
@@ -142,8 +141,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                     used_list.append(int(line[2]))
                 if int(line[3]) == ldev:
                     hlu = int(line[2])
-                    LOG.warning(_LW('ldev(%(ldev)d) is already mapped '
-                                    '(hlun: %(hlu)d)'),
+                    LOG.warning('ldev(%(ldev)d) is already mapped '
+                                '(hlun: %(hlu)d)',
                                 {'ldev': ldev, 'hlu': hlu})
                     return hlu
         return None

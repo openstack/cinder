@@ -18,7 +18,6 @@ from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _LE
 from cinder import objects
 from cinder.objects import fields
 from cinder.volume.flows import common
@@ -87,7 +86,7 @@ class EntryCreateTask(flow_utils.CinderTask):
         try:
             self.db.volume_destroy(context.elevated(), vol_id)
         except exception.CinderException:
-            LOG.exception(_LE("Failed destroying volume entry: %s."), vol_id)
+            LOG.exception("Failed destroying volume entry: %s.", vol_id)
 
 
 class ManageCastTask(flow_utils.CinderTask):
@@ -116,11 +115,11 @@ class ManageCastTask(flow_utils.CinderTask):
     def revert(self, context, result, flow_failures, volume, **kwargs):
         # Restore the source volume status and set the volume to error status.
         common.error_out(volume, status='error_managing')
-        LOG.error(_LE("Volume %s: manage failed."), volume.id)
+        LOG.error("Volume %s: manage failed.", volume.id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
-        LOG.error(_LE('Unexpected build error:'), exc_info=exc_info)
+        LOG.error('Unexpected build error:', exc_info=exc_info)
 
 
 def get_flow(scheduler_rpcapi, db_api, create_what):

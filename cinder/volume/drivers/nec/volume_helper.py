@@ -24,8 +24,8 @@ from oslo_utils import units
 
 from cinder import coordination
 from cinder import exception
+from cinder.i18n import _
 from cinder import volume
-from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 
@@ -246,11 +246,11 @@ class MStorageDriver(object):
                    % {'id': volume['id'], 'size': volume['size']})
         try:
             self._create_volume(volume)
-            LOG.info(_LI('Created Volume (%s)'), msgparm)
+            LOG.info('Created Volume (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Volume (%(msgparm)s) '
-                                '(%(exception)s)'),
+                LOG.warning('Failed to Create Volume (%(msgparm)s) '
+                            '(%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _create_volume(self, volume):
@@ -331,11 +331,11 @@ class MStorageDriver(object):
                       'oldsize': volume['size']})
         try:
             self._extend_volume(volume, new_size)
-            LOG.info(_LI('Extended Volume (%s)'), msgparm)
+            LOG.info('Extended Volume (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Extend Volume (%(msgparm)s) '
-                                '(%(exception)s)'),
+                LOG.warning('Failed to Extend Volume (%(msgparm)s) '
+                            '(%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _extend_volume(self, volume, new_size):
@@ -388,11 +388,11 @@ class MStorageDriver(object):
                       'src_id': src_vref['id']})
         try:
             self._create_cloned_volume(volume, src_vref)
-            LOG.info(_LI('Created Cloned Volume (%s)'), msgparm)
+            LOG.info('Created Cloned Volume (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Cloned Volume '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create Cloned Volume '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _create_cloned_volume(self, volume, src_vref):
@@ -511,12 +511,12 @@ class MStorageDriver(object):
                       'dsthost': host})
         try:
             ret = self._migrate_volume(context, volume, host)
-            LOG.info(_LI('Migrated Volume (%s)'), msgparm)
+            LOG.info('Migrated Volume (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Migrate Volume '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Migrate Volume '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _migrate_volume(self, context, volume, host):
@@ -608,12 +608,12 @@ class MStorageDriver(object):
                       'initiator': connector['initiator']})
         try:
             ret = self._iscsi_do_export(_ctx, volume, connector, ensure)
-            LOG.info(_LI('Created iSCSI Export (%s)'), msgparm)
+            LOG.info('Created iSCSI Export (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create iSCSI Export '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create iSCSI Export '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _iscsi_do_export(self, _ctx, volume, connector, ensure):
@@ -743,12 +743,12 @@ class MStorageDriver(object):
                       'wwpns': connector['wwpns']})
         try:
             ret = self._fc_do_export(_ctx, volume, connector, ensure)
-            LOG.info(_LI('Created FC Export (%s)'), msgparm)
+            LOG.info('Created FC Export (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create FC Export '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create FC Export '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _fc_do_export(self, _ctx, volume, connector, ensure):
@@ -859,11 +859,11 @@ class MStorageDriver(object):
         msgparm = 'Volume ID = %s' % volume['id']
         try:
             self._remove_export(context, volume)
-            LOG.info(_LI('Removed Export (%s)'), msgparm)
+            LOG.info('Removed Export (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Remove Export '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Remove Export '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _remove_export(self, context, volume):
@@ -961,12 +961,12 @@ class MStorageDriver(object):
 
         try:
             ret = self._iscsi_initialize_connection(volume, connector)
-            LOG.info(_LI('Initialized iSCSI Connection (%s)'), msgparm)
+            LOG.info('Initialized iSCSI Connection (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Initialize iSCSI Connection '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Initialize iSCSI Connection '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _iscsi_initialize_connection(self, volume, connector):
@@ -1024,12 +1024,12 @@ class MStorageDriver(object):
 
         try:
             ret = self._iscsi_terminate_connection(volume, connector)
-            LOG.info(_LI('Terminated iSCSI Connection (%s)'), msgparm)
+            LOG.info('Terminated iSCSI Connection (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Terminate iSCSI Connection '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Terminate iSCSI Connection '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _iscsi_terminate_connection(self, volume, connector):
@@ -1043,12 +1043,12 @@ class MStorageDriver(object):
 
         try:
             ret = self._fc_initialize_connection(volume, connector)
-            LOG.info(_LI('Initialized FC Connection (%s)'), msgparm)
+            LOG.info('Initialized FC Connection (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Initialize FC Connection '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Initialize FC Connection '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _fc_initialize_connection(self, volume, connector):
@@ -1149,12 +1149,12 @@ class MStorageDriver(object):
 
         try:
             ret = self._fc_terminate_connection(volume, connector)
-            LOG.info(_LI('Terminated FC Connection (%s)'), msgparm)
+            LOG.info('Terminated FC Connection (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Terminate FC Connection '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Terminate FC Connection '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _fc_terminate_connection(self, volume, connector):
@@ -1267,11 +1267,11 @@ class MStorageDriver(object):
         msgparm = 'Volume ID = %s' % volume['id']
         try:
             self._delete_volume(volume)
-            LOG.info(_LI('Deleted Volume (%s)'), msgparm)
+            LOG.info('Deleted Volume (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Delete Volume '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Delete Volume '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _delete_volume(self, volume):
@@ -1341,11 +1341,11 @@ class MStorageDriver(object):
                    % {'id': snapshot['id'], 'vol_id': snapshot['volume_id']})
         try:
             self._create_snapshot(snapshot)
-            LOG.info(_LI('Created Snapshot (%s)'), msgparm)
+            LOG.info('Created Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _create_snapshot(self, snapshot):
@@ -1354,7 +1354,7 @@ class MStorageDriver(object):
                   {'id': snapshot['volume_id'], 'snap_id': snapshot['id']})
 
         if len(self._properties['pool_backup_pools']) == 0:
-            LOG.error(_LE('backup_pools is not set.'))
+            LOG.error('backup_pools is not set.')
             raise exception.ParameterNotFound(param='backup_pools')
 
         xml = self._cli.view_all(self._properties['ismview_path'])
@@ -1405,11 +1405,11 @@ class MStorageDriver(object):
                       'snapvol_id': snapshot['volume_id']})
         try:
             self._create_volume_from_snapshot(volume, snapshot)
-            LOG.info(_LI('Created Volume from Snapshot (%s)'), msgparm)
+            LOG.info('Created Volume from Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Volume from Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create Volume from Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _create_volume_from_snapshot(self, volume, snapshot):
@@ -1479,11 +1479,11 @@ class MStorageDriver(object):
                       'vol_id': snapshot['volume_id']})
         try:
             self._delete_snapshot(snapshot)
-            LOG.info(_LI('Deleted Snapshot (%s)'), msgparm)
+            LOG.info('Deleted Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Delete Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Delete Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _delete_snapshot(self, snapshot):
@@ -1518,11 +1518,11 @@ class MStorageDSVDriver(MStorageDriver):
         try:
             self._create_snapshot(snapshot,
                                   self._properties['diskarray_name'])
-            LOG.info(_LI('Created Snapshot (%s)'), msgparm)
+            LOG.info('Created Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
@@ -1537,7 +1537,7 @@ class MStorageDSVDriver(MStorageDriver):
             self._common.configs(xml))
 
         if len(self._properties['pool_backup_pools']) == 0:
-            LOG.error(_LE('backup_pools is not set.'))
+            LOG.error('backup_pools is not set.')
             raise exception.ParameterNotFound(param='backup_pools')
 
         # get BV name.
@@ -1564,11 +1564,11 @@ class MStorageDSVDriver(MStorageDriver):
                       'snapvol_id': snapshot['volume_id']})
         try:
             self._delete_snapshot(snapshot)
-            LOG.info(_LI('Deleted Snapshot (%s)'), msgparm)
+            LOG.info('Deleted Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Delete Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Delete Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _delete_snapshot(self, snapshot):
@@ -1606,11 +1606,11 @@ class MStorageDSVDriver(MStorageDriver):
                       'snapvol_id': snapshot['volume_id']})
         try:
             self._create_volume_from_snapshot(volume, snapshot)
-            LOG.info(_LI('Created Volume from Snapshot (%s)'), msgparm)
+            LOG.info('Created Volume from Snapshot (%s)', msgparm)
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning(_LW('Failed to Create Volume from Snapshot '
-                                '(%(msgparm)s) (%(exception)s)'),
+                LOG.warning('Failed to Create Volume from Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
     def _create_volume_from_snapshot(self, volume, snapshot):

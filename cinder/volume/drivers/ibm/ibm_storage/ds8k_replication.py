@@ -21,7 +21,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder.utils import synchronized
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import ds8k_helper as helper
@@ -90,9 +90,8 @@ class MetroMirrorManager(object):
         try:
             self._target.get_systems()
         except restclient.TimeoutException as e:
-            msg = _LI("REST request time out, backend may be not available "
-                      "any more. Exception: %s")
-            LOG.info(msg, e)
+            LOG.info("REST request time out, backend may be not available "
+                     "any more. Exception: %s", e)
             return False
 
         return True
@@ -157,8 +156,7 @@ class MetroMirrorManager(object):
             paths = [p for p in paths if p['target_system_wwnn'] in
                      self._target.backend['storage_wwnn']]
         else:
-            msg = _LI("No PPRC paths found in primary DS8K.")
-            LOG.info(msg)
+            LOG.info("No PPRC paths found in primary DS8K.")
             return PPRC_PATH_NOT_EXIST, None
 
         # get the paths whose port pairs have been set in configuration file.
@@ -170,9 +168,8 @@ class MetroMirrorManager(object):
             if not (set(port_pairs) & set(expected_port_pairs)):
                 paths.remove(path)
         if not paths:
-            msg = _LI("Existing PPRC paths do not use port pairs that "
-                      "are set.")
-            LOG.info(msg)
+            LOG.info("Existing PPRC paths do not use port pairs that "
+                     "are set.")
             return PPRC_PATH_NOT_EXIST, None
 
         # abandon PPRC paths according to volume type(fb/ckd)
@@ -187,8 +184,7 @@ class MetroMirrorManager(object):
             source_lss_set = source_lss_set & fb_lss
         paths = [p for p in paths if p['source_lss_id'] in source_lss_set]
         if not paths:
-            msg = _LI("No source LSS in PPRC paths has correct volume type.")
-            LOG.info(msg)
+            LOG.info("No source LSS in PPRC paths has correct volume type.")
             return PPRC_PATH_NOT_EXIST, None
 
         # if the group property of lss doesn't match pool node,
@@ -213,8 +209,7 @@ class MetroMirrorManager(object):
             paths = [p for p in paths if p['target_lss_id'] not in
                      discarded_tgt_lss]
         if not paths:
-            msg = _LI("No PPRC paths can be re-used.")
-            LOG.info(msg)
+            LOG.info("No PPRC paths can be re-used.")
             return PPRC_PATH_NOT_EXIST, None
 
         # abandon unhealthy PPRC paths.
@@ -224,9 +219,8 @@ class MetroMirrorManager(object):
             if len(failed_port_pairs) == len(path['port_pairs']):
                 paths.remove(path)
         if not paths:
-            msg = _LI("PPRC paths between primary and target DS8K "
-                      "are unhealthy.")
-            LOG.info(msg)
+            LOG.info("PPRC paths between primary and target DS8K "
+                     "are unhealthy.")
             return PPRC_PATH_UNHEALTHY, None
 
         return PPRC_PATH_HEALTHY, paths
@@ -238,8 +232,8 @@ class MetroMirrorManager(object):
         pid = (self._source.backend['storage_wwnn'] + '_' + src_lss + ':' +
                self._target.backend['storage_wwnn'] + '_' + tgt_lss)
         state = self._is_pprc_paths_healthy(pid)
-        msg = _LI("The state of PPRC path %(path)s is %(state)s.")
-        LOG.info(msg, {'path': pid, 'state': state})
+        LOG.info("The state of PPRC path %(path)s is %(state)s.",
+                 {'path': pid, 'state': state})
         if state == PPRC_PATH_HEALTHY:
             return
 
@@ -250,8 +244,8 @@ class MetroMirrorManager(object):
             'target_lss_id': tgt_lss,
             'port_pairs': self._target.backend['port_pairs']
         }
-        msg = _LI("PPRC path %(src)s:%(tgt)s will be created.")
-        LOG.info(msg, {'src': src_lss, 'tgt': tgt_lss})
+        LOG.info("PPRC path %(src)s:%(tgt)s will be created.",
+                 {'src': src_lss, 'tgt': tgt_lss})
         self._source.create_pprc_path(pathData)
 
         # check the state of the pprc path
@@ -300,7 +294,7 @@ class MetroMirrorManager(object):
         LOG.debug("Creating pprc pair, pairData is %s.", pairData)
         self._source.create_pprc_pair(pairData)
         self._source.wait_pprc_copy_finished([lun.ds_id], 'full_duplex')
-        LOG.info(_LI("The state of PPRC pair has become full_duplex."))
+        LOG.info("The state of PPRC pair has become full_duplex.")
 
     def delete_pprc_pairs(self, lun):
         self._source.delete_pprc_pair(lun.ds_id)
@@ -316,12 +310,10 @@ class MetroMirrorManager(object):
             target_vol_id = (
                 lun.replication_driver_data[backend_id]['vol_hex_id'])
             if not self._target.lun_exists(target_vol_id):
-                msg = _LI("Target volume %(volid)s doesn't exist in "
-                          "DS8K %(storage)s.")
-                LOG.info(msg, {
-                    'volid': target_vol_id,
-                    'storage': self._target.backend['storage_unit']
-                })
+                LOG.info("Target volume %(volid)s doesn't exist in "
+                         "DS8K %(storage)s.",
+                         {'volid': target_vol_id,
+                          'storage': self._target.backend['storage_unit']})
                 continue
 
             vol_pairs.append({
@@ -340,12 +332,12 @@ class MetroMirrorManager(object):
             "options": ["failover"]
         }
 
-        LOG.info(_LI("Begin to fail over to %s"),
+        LOG.info("Begin to fail over to %s",
                  self._target.backend['storage_unit'])
         self._target.create_pprc_pair(pairData)
         self._target.wait_pprc_copy_finished(target_vol_ids,
                                              'suspended', False)
-        LOG.info(_LI("Failover from %(src)s to %(tgt)s is finished."), {
+        LOG.info("Failover from %(src)s to %(tgt)s is finished.", {
             'src': self._source.backend['storage_unit'],
             'tgt': self._target.backend['storage_unit']
         })
@@ -357,12 +349,10 @@ class MetroMirrorManager(object):
             target_vol_id = (
                 lun.replication_driver_data[backend_id]['vol_hex_id'])
             if not self._target.lun_exists(target_vol_id):
-                msg = _LE("Target volume %(volume)s doesn't exist in "
-                          "DS8K %(storage)s.")
-                LOG.info(msg, {
-                    'volume': lun.ds_id,
-                    'storage': self._target.backend['storage_unit']
-                })
+                LOG.info("Target volume %(volume)s doesn't exist in "
+                         "DS8K %(storage)s.",
+                         {'volume': lun.ds_id,
+                          'storage': self._target.backend['storage_unit']})
                 continue
 
             pprc_id = (self._source.backend['storage_unit'] + '_' +
@@ -376,11 +366,11 @@ class MetroMirrorManager(object):
                     "type": "metro_mirror",
                     "options": ["failback"]}
 
-        LOG.info(_LI("Begin to run failback in %s."),
+        LOG.info("Begin to run failback in %s.",
                  self._source.backend['storage_unit'])
         self._source.do_failback(pairData)
         self._source.wait_pprc_copy_finished(vol_ids, 'full_duplex', False)
-        LOG.info(_LI("Run failback in %s is finished."),
+        LOG.info("Run failback in %s is finished.",
                  self._source.backend['storage_unit'])
 
 
@@ -510,9 +500,8 @@ class Replication(object):
     @proxy.logger
     def _delete_replica(self, lun):
         if not lun.replication_driver_data:
-            msg = _LE("No replica ID for lun %s, maybe there is something "
-                      "wrong when creating the replica for lun.")
-            LOG.error(msg, lun.ds_id)
+            LOG.error("No replica ID for lun %s, maybe there is something "
+                      "wrong when creating the replica for lun.", lun.ds_id)
             return None
 
         for backend_id, backend in lun.replication_driver_data.items():

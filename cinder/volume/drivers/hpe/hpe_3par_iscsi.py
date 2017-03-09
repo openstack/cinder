@@ -39,7 +39,7 @@ from oslo_log import log as logging
 from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
@@ -148,10 +148,10 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
             common.client_login()
         except Exception:
             if common._replication_enabled:
-                LOG.warning(_LW("The primary array is not reachable at this "
-                                "time. Since replication is enabled, "
-                                "listing replication targets and failing over "
-                                "a volume can still be performed."))
+                LOG.warning("The primary array is not reachable at this "
+                            "time. Since replication is enabled, "
+                            "listing replication targets and failing over "
+                            "a volume can still be performed.")
                 pass
             else:
                 raise
@@ -218,7 +218,7 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                 elif len(ip) == 2:
                     temp_iscsi_ip[ip[0]] = {'ip_port': ip[1]}
                 else:
-                    LOG.warning(_LW("Invalid IP address format '%s'"), ip_addr)
+                    LOG.warning("Invalid IP address format '%s'", ip_addr)
 
         # add the single value iscsi_ip_address option to the IP dictionary.
         # This way we can see if it's a valid iSCSI IP. If it's not valid,
@@ -250,9 +250,9 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
 
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
-            LOG.warning(_LW("Found invalid iSCSI IP address(s) in "
-                            "configuration option(s) hpe3par_iscsi_ips or "
-                            "iscsi_ip_address '%s.'"),
+            LOG.warning("Found invalid iSCSI IP address(s) in "
+                        "configuration option(s) hpe3par_iscsi_ips or "
+                        "iscsi_ip_address '%s.'",
                         (", ".join(temp_iscsi_ip)))
 
         if not len(iscsi_ip_list) > 0:
@@ -408,9 +408,9 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                         target_iqns.append(port['iSCSIName'])
                         target_luns.append(vlun['lun'])
                     else:
-                        LOG.warning(_LW("iSCSI IP: '%s' was not found in "
-                                        "hpe3par_iscsi_ips list defined in "
-                                        "cinder.conf."), iscsi_ip)
+                        LOG.warning("iSCSI IP: '%s' was not found in "
+                                    "hpe3par_iscsi_ips list defined in "
+                                    "cinder.conf.", iscsi_ip)
 
                 info = {'driver_volume_type': 'iscsi',
                         'data': {'target_portals': target_portals,
@@ -446,8 +446,8 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                     vlun = existing_vlun
 
                 if least_used_nsp is None:
-                    LOG.warning(_LW("Least busy iSCSI port not found, "
-                                    "using first iSCSI port in list."))
+                    LOG.warning("Least busy iSCSI port not found, "
+                                "using first iSCSI port in list.")
                     iscsi_ip = list(iscsi_ips)[0]
                 else:
                     iscsi_ip = self._get_ip_using_nsp(least_used_nsp, common)
@@ -535,7 +535,7 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                                          optional={'domain': domain,
                                                    'persona': persona_id})
             except hpeexceptions.HTTPConflict as path_conflict:
-                msg = _LE("Create iSCSI host caught HTTP conflict code: %s")
+                msg = "Create iSCSI host caught HTTP conflict code: %s"
                 with save_and_reraise_exception(reraise=False) as ctxt:
                     if path_conflict.get_code() is EXISTENT_PATH:
                         # Handle exception : EXISTENT_PATH - host WWN/iSCSI
@@ -617,9 +617,9 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                 host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
                     common._client_conf['hpe3par_iscsi_chap_enabled']):
-                LOG.warning(_LW("Host exists without CHAP credentials set and "
-                                "has iSCSI attachments but CHAP is enabled. "
-                                "Updating host with new CHAP credentials."))
+                LOG.warning("Host exists without CHAP credentials set and "
+                            "has iSCSI attachments but CHAP is enabled. "
+                            "Updating host with new CHAP credentials.")
                 self._set_3par_chaps(
                     common,
                     hostname,
@@ -649,12 +649,12 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
             host_info = common.client.getHost(chap_username)
 
             if not host_info['initiatorChapEnabled']:
-                LOG.warning(_LW("Host has no CHAP key, but CHAP is enabled."))
+                LOG.warning("Host has no CHAP key, but CHAP is enabled.")
 
         except hpeexceptions.HTTPNotFound:
             chap_password = volume_utils.generate_password(16)
-            LOG.warning(_LW("No host or VLUNs exist. Generating new "
-                            "CHAP key."))
+            LOG.warning("No host or VLUNs exist. Generating new "
+                        "CHAP key.")
         else:
             # Get a list of all iSCSI VLUNs and see if there is already a CHAP
             # key assigned to one of them.  Use that CHAP key if present,
@@ -682,12 +682,12 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
                                   "but CHAP is enabled. Skipping.",
                                   vlun['remoteName'])
                 else:
-                    LOG.warning(_LW("Non-iSCSI VLUN detected."))
+                    LOG.warning("Non-iSCSI VLUN detected.")
 
             if not chap_exists:
                 chap_password = volume_utils.generate_password(16)
-                LOG.warning(_LW("No VLUN contained CHAP credentials. "
-                                "Generating new CHAP key."))
+                LOG.warning("No VLUN contained CHAP credentials. "
+                            "Generating new CHAP key.")
 
         # Add CHAP credentials to the volume metadata
         vol_name = common._get_3par_vol_name(volume['id'])
@@ -720,7 +720,7 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
             vol_name = common._get_3par_vol_name(volume['id'])
             common.client.getVolume(vol_name)
         except hpeexceptions.HTTPNotFound:
-            LOG.error(_LE("Volume %s doesn't exist on array."), vol_name)
+            LOG.error("Volume %s doesn't exist on array.", vol_name)
         else:
             metadata = common.client.getAllVolumeMetaData(vol_name)
 

@@ -37,7 +37,7 @@ import six
 import string
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
@@ -124,8 +124,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.info(_LI("BrcdFCZoneDriver - Add connection for fabric "
-                     "%(fabric)s for I-T map: %(i_t_map)s"),
+        LOG.info("BrcdFCZoneDriver - Add connection for fabric "
+                 "%(fabric)s for I-T map: %(i_t_map)s",
                  {'fabric': fabric,
                   'i_t_map': initiator_target_map})
         zoning_policy = self.configuration.zoning_policy
@@ -137,12 +137,12 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
             'zone_activate')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
-        LOG.info(_LI("Zoning policy for Fabric %(policy)s"),
+        LOG.info("Zoning policy for Fabric %(policy)s",
                  {'policy': zoning_policy})
         if (zoning_policy != 'initiator'
                 and zoning_policy != 'initiator-target'):
-            LOG.info(_LI("Zoning policy is not valid, "
-                         "no zoning will be performed."))
+            LOG.info("Zoning policy is not valid, "
+                     "no zoning will be performed.")
             return
 
         client = self._get_southbound_client(fabric)
@@ -175,8 +175,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         zone_map[zone_name] = zone_members
                     else:
                         # This is I-T zoning, skip if zone already exists.
-                        LOG.info(_LI("Zone exists in I-T mode. Skipping "
-                                     "zone creation for %(zonename)s"),
+                        LOG.info("Zone exists in I-T mode. Skipping "
+                                 "zone creation for %(zonename)s",
                                  {'zonename': zone_name})
             elif zoning_policy == 'initiator':
                 zone_members = [utils.get_formatted_wwn(initiator)]
@@ -208,9 +208,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 else:
                     zone_map[zone_name] = zone_members
 
-            LOG.info(_LI("Zone map to create: %(zonemap)s"),
+            LOG.info("Zone map to create: %(zonemap)s",
                      {'zonemap': zone_map})
-            LOG.info(_LI("Zone map to update: %(zone_update_map)s"),
+            LOG.info("Zone map to update: %(zone_update_map)s",
                      {'zone_update_map': zone_update_map})
 
             try:
@@ -247,8 +247,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.info(_LI("BrcdFCZoneDriver - Delete connection for fabric "
-                 "%(fabric)s for I-T map: %(i_t_map)s"),
+        LOG.info("BrcdFCZoneDriver - Delete connection for fabric "
+                 "%(fabric)s for I-T map: %(i_t_map)s",
                  {'fabric': fabric,
                   'i_t_map': initiator_target_map})
         zoning_policy = self.configuration.zoning_policy
@@ -260,7 +260,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
             'zone_activate')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
-        LOG.info(_LI("Zoning policy for fabric %(policy)s"),
+        LOG.info("Zoning policy for fabric %(policy)s",
                  {'policy': zoning_policy})
         conn = self._get_southbound_client(fabric)
         cfgmap_from_fabric = self._get_active_zone_set(conn)
@@ -344,7 +344,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     else:
                         zones_to_delete.append(zone_name)
             else:
-                LOG.warning(_LW("Zoning policy not recognized: %(policy)s"),
+                LOG.warning("Zoning policy not recognized: %(policy)s",
                             {'policy': zoning_policy})
             LOG.debug("Zone map to update: %(zonemap)s",
                       {'zonemap': zone_map})
@@ -420,7 +420,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         LOG.exception(msg)
                         raise exception.FCZoneDriverException(msg)
                     with excutils.save_and_reraise_exception():
-                        LOG.exception(_LE("Error getting name server info."))
+                        LOG.exception("Error getting name server info.")
                 except Exception:
                     msg = _("Failed to get name server info.")
                     LOG.exception(msg)
@@ -432,7 +432,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     nsinfo)
 
                 if visible_targets:
-                    LOG.info(_LI("Filtered targets for SAN is: %(targets)s"),
+                    LOG.info("Filtered targets for SAN is: %(targets)s",
                              {'targets': visible_targets})
                     # getting rid of the ':' before returning
                     for idx, elem in enumerate(visible_targets):
@@ -460,7 +460,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Error getting name server info."))
+                LOG.exception("Error getting name server info.")
         except Exception as e:
             msg = (_("Failed to retrieve active zoning configuration %s")
                    % six.text_type(e))

@@ -34,7 +34,6 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.i18n import _LE
 import cinder.utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import exception as es_exception
 from cinder.volume.drivers.netapp.eseries import utils
@@ -86,8 +85,8 @@ class WebserviceClient(object):
         # Catching error conditions other than the perceived ones.
         # Helps propagating only known exceptions back to the caller.
         except Exception as e:
-            LOG.exception(_LE("Unexpected error while invoking web service."
-                              " Error - %s."), e)
+            LOG.exception("Unexpected error while invoking web service."
+                          " Error - %s.", e)
             raise exception.NetAppDriverException(
                 _("Invoking web service failed."))
         return response

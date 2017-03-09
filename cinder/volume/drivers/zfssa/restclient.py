@@ -24,8 +24,6 @@ import six
 from six.moves import http_client
 from six.moves import urllib
 
-from cinder.i18n import _LE, _LI
-
 LOG = log.getLogger(__name__)
 
 
@@ -179,7 +177,7 @@ class RestClientURL(object):
                 self.headers['x-auth-session'] = \
                     result.get_header('x-auth-session')
                 self.do_logout = True
-                LOG.info(_LI('ZFSSA version: %s'),
+                LOG.info('ZFSSA version: %s',
                          result.get_header('x-zfssa-version'))
 
             elif result.status == http_client.NOT_FOUND:
@@ -299,20 +297,20 @@ class RestClientURL(object):
                 if err.code == http_client.NOT_FOUND:
                     LOG.debug('REST Not Found: %s', err.code)
                 else:
-                    LOG.error(_LE('REST Not Available: %s'), err.code)
+                    LOG.error('REST Not Available: %s', err.code)
 
                 if err.code == http_client.SERVICE_UNAVAILABLE and \
                    retry < maxreqretries:
                     retry += 1
                     time.sleep(1)
-                    LOG.error(_LE('Server Busy retry request: %s'), retry)
+                    LOG.error('Server Busy retry request: %s', retry)
                     continue
                 if (err.code == http_client.UNAUTHORIZED or
                     err.code == http_client.INTERNAL_SERVER_ERROR) and \
                    '/access/v1' not in zfssaurl:
                     try:
-                        LOG.error(_LE('Authorizing request: %(zfssaurl)s '
-                                      'retry: %(retry)d .'),
+                        LOG.error('Authorizing request: %(zfssaurl)s '
+                                  'retry: %(retry)d.',
                                   {'zfssaurl': zfssaurl, 'retry': retry})
                         self._authorize()
                         req.add_header('x-auth-session',
@@ -326,7 +324,7 @@ class RestClientURL(object):
                 return RestResult(err=err)
 
             except urllib.error.URLError as err:
-                LOG.error(_LE('URLError: %s'), err.reason)
+                LOG.error('URLError: %s', err.reason)
                 raise RestClientError(-1, name="ERR_URLError",
                                       message=err.reason)
 

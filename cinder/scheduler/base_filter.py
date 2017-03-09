@@ -17,9 +17,7 @@
 Filter support
 """
 from oslo_log import log as logging
-import six
 
-from cinder.i18n import _LI
 from cinder.scheduler import base_handler
 
 LOG = logging.getLogger(__name__)
@@ -69,22 +67,17 @@ class BaseFilterHandler(base_handler.BaseHandler):
         # Log the filtration history
         rspec = filter_properties.get("request_spec", {})
         msg_dict = {"vol_id": rspec.get("volume_id", ""),
-                    "str_results": six.text_type(full_filter_results),
-                    }
-        full_msg = ("Filtering removed all hosts for the request with "
-                    "volume ID "
-                    "'%(vol_id)s'. Filter results: %(str_results)s"
-                    ) % msg_dict
+                    "str_results": full_filter_results}
+        LOG.debug("Filtering removed all hosts for the request with "
+                  "volume ID '%(vol_id)s'. Filter results: %(str_results)s",
+                  msg_dict)
         msg_dict["str_results"] = ', '.join(
-            _LI("%(cls_name)s: (start: %(start)s, end: %(end)s)") % {
+            "%(cls_name)s: (start: %(start)s, end: %(end)s)" % {
                 "cls_name": value[0], "start": value[1], "end": value[2]}
             for value in part_filter_results)
-        part_msg = _LI("Filtering removed all hosts for the request with "
-                       "volume ID "
-                       "'%(vol_id)s'. Filter results: %(str_results)s"
-                       ) % msg_dict
-        LOG.debug(full_msg)
-        LOG.info(part_msg)
+        LOG.info("Filtering removed all hosts for the request with "
+                 "volume ID '%(vol_id)s'. Filter results: %(str_results)s",
+                 msg_dict)
 
     def get_filtered_objects(self, filter_classes, objs,
                              filter_properties, index=0):
@@ -115,7 +108,7 @@ class BaseFilterHandler(base_handler.BaseHandler):
             if filter_class.run_filter_for_index(index):
                 objs = filter_class.filter_all(list_objs, filter_properties)
                 if objs is None:
-                    LOG.info(_LI("Filter %s returned 0 hosts"), cls_name)
+                    LOG.info("Filter %s returned 0 hosts", cls_name)
                     full_filter_results.append((cls_name, None))
                     list_objs = None
                     break

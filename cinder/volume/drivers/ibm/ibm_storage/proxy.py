@@ -21,7 +21,7 @@ import platform
 from oslo_log import log as logging
 from oslo_utils import timeutils
 
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import version
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import strings
@@ -192,7 +192,7 @@ class IBMStorageProxy(object):
 
         Handled by ISCSiDriver
         """
-        LOG.info(_LI("The copy_volume_to_image feature is not implemented."))
+        LOG.info("The copy_volume_to_image feature is not implemented.")
         raise NotImplementedError()
 
     @_trace_time
@@ -396,10 +396,10 @@ class IBMStorageProxy(object):
             LOG.debug('Replication device found: %(dev)s', {'dev': dev})
             backend_id = dev.get('backend_id', None)
             if backend_id is None:
-                LOG.error(_LE("Replication is missing backend_id: %(dev)s"),
+                LOG.error("Replication is missing backend_id: %(dev)s",
                           {'dev': dev})
             elif self.targets.get(backend_id, None):
-                LOG.error(_LE("Multiple entries for replication %(dev)s"),
+                LOG.error("Multiple entries for replication %(dev)s",
                           {'dev': dev})
             else:
                 self.targets[backend_id] = {}

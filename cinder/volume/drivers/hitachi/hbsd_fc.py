@@ -26,7 +26,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 import cinder.volume.driver
@@ -89,7 +89,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             for opt in volume_opts:
                 if not opt.secret:
                     value = getattr(self.configuration, opt.name)
-                    LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                    LOG.info('\t%(name)-35s : %(value)s',
                              {'name': opt.name, 'value': value})
             self.common.command.output_param_to_log(self.configuration)
 
@@ -184,7 +184,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
                     try:
                         self._fill_group(hgs, port, host_grp_name, wwns_copy)
                     except Exception as ex:
-                        LOG.warning(_LW('Failed to add host group: %s'), ex)
+                        LOG.warning('Failed to add host group: %s', ex)
                         LOG.warning(basic_lib.set_msg(
                             308, port=port, name=host_grp_name))
 

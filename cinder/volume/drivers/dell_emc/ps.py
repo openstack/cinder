@@ -29,7 +29,7 @@ from oslo_utils import excutils
 from six.moves import range
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder import ssh_utils
 from cinder import utils
@@ -199,7 +199,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             if any(ln.startswith(('% Error', 'Error:')) for ln in out):
                 desc = _("Error executing PS command")
                 cmdout = '\n'.join(out)
-                LOG.error(_LE("%s"), cmdout)
+                LOG.error(cmdout)
                 raise processutils.ProcessExecutionError(
                     stdout=cmdout, cmd=command, description=desc)
             return out
@@ -232,12 +232,12 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        LOG.info(_LI('PS-driver: executing "%s".'), command)
+                        LOG.info('PS-driver: executing "%s".', command)
                         return self._ssh_execute(
                             ssh, command,
                             timeout=self.configuration.ssh_conn_timeout)
                     except Exception:
-                        LOG.exception(_LE('Error running command.'))
+                        LOG.exception('Error running command.')
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 msg = (_("SSH Command failed after '%(total_attempts)r' "
                          "attempts : '%(command)s'") %
@@ -247,7 +247,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Error running SSH command: "%s".'), command)
+                LOG.error('Error running SSH command: "%s".', command)
 
     def check_for_setup_error(self):
         super(PSSeriesISCSIDriver, self).check_for_setup_error()
@@ -398,11 +398,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                     out_tup = line.rstrip().partition(' ')
                     self._group_ip = out_tup[-1]
 
-            LOG.info(_LI('PS-driver: Setup is complete, group IP is "%s".'),
+            LOG.info('PS-driver: Setup is complete, group IP is "%s".',
                      self._group_ip)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to setup the Dell EMC PS driver.'))
+                LOG.error('Failed to setup the Dell EMC PS driver.')
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -419,7 +419,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to create volume "%s".'), volume['name'])
+                LOG.error('Failed to create volume "%s".', volume['name'])
 
     def add_multihost_access(self, volume):
         """Add multihost-access to a volume. Needed for live migration."""
@@ -429,8 +429,8 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             self._eql_execute(*cmd)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to add multihost-access '
-                              'for volume "%s".'),
+                LOG.error('Failed to add multihost-access '
+                          'for volume "%s".',
                           volume['name'])
 
     def _set_volume_description(self, volume, description):
@@ -441,8 +441,8 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             self._eql_execute(*cmd)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to set description '
-                              'for volume "%s".'),
+                LOG.error('Failed to set description '
+                          'for volume "%s".',
                           volume['name'])
 
     def delete_volume(self, volume):
@@ -452,12 +452,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             self._eql_execute('volume', 'select', volume['name'], 'offline')
             self._eql_execute('volume', 'delete', volume['name'])
         except exception.VolumeNotFound:
-            LOG.warning(_LW('Volume %s was not found while trying to delete '
-                            'it.'), volume['name'])
+            LOG.warning('Volume %s was not found while trying to delete it.',
+                        volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to delete '
-                              'volume "%s".'), volume['name'])
+                LOG.error('Failed to delete volume "%s".', volume['name'])
 
     def create_snapshot(self, snapshot):
         """Create snapshot of existing volume on appliance."""
@@ -472,7 +471,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                               snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to create snapshot of volume "%s".'),
+                LOG.error('Failed to create snapshot of volume "%s".',
                           snapshot['volume_name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -495,7 +494,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to create volume from snapshot "%s".'),
+                LOG.error('Failed to create volume from snapshot "%s".',
                           snapshot['name'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -513,7 +512,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to create clone of volume "%s".'),
+                LOG.error('Failed to create clone of volume "%s".',
                           volume['name'])
 
     def delete_snapshot(self, snapshot):
@@ -526,8 +525,8 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                 LOG.debug('Snapshot %s could not be found.', snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to delete snapshot %(snap)s of '
-                              'volume %(vol)s.'),
+                LOG.error('Failed to delete snapshot %(snap)s of '
+                          'volume %(vol)s.',
                           {'snap': snapshot['name'],
                            'vol': snapshot['volume_name']})
 
@@ -548,8 +547,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             }
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to initialize connection '
-                              'to volume "%s".'),
+                LOG.error('Failed to initialize connection to volume "%s".',
                           volume['name'])
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
@@ -563,8 +561,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
                                   'access', 'delete', connection_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to terminate connection '
-                              'to volume "%s".'),
+                LOG.error('Failed to terminate connection to volume "%s".',
                           volume['name'])
 
     def create_export(self, context, volume, connector):
@@ -585,11 +582,11 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         try:
             self._check_volume(volume)
         except exception.VolumeNotFound:
-            LOG.warning(_LW('Volume %s is not found!, it may have been '
-                            'deleted.'), volume['name'])
+            LOG.warning('Volume %s is not found!, it may have been deleted.',
+                        volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to ensure export of volume "%s".'),
+                LOG.error('Failed to ensure export of volume "%s".',
                           volume['name'])
 
     def remove_export(self, context, volume):
@@ -606,15 +603,15 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         try:
             self._eql_execute('volume', 'select', volume['name'],
                               'size', "%sG" % new_size)
-            LOG.info(_LI('Volume %(name)s resized from '
-                         '%(current_size)sGB to %(new_size)sGB.'),
+            LOG.info('Volume %(name)s resized from '
+                     '%(current_size)sGB to %(new_size)sGB.',
                      {'name': volume['name'],
                       'current_size': volume['size'],
                       'new_size': new_size})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to extend_volume %(name)s from '
-                              '%(current_size)sGB to %(new_size)sGB.'),
+                LOG.error('Failed to extend_volume %(name)s from '
+                          '%(current_size)sGB to %(new_size)sGB.',
                           {'name': volume['name'],
                            'current_size': volume['size'],
                            'new_size': new_size})
@@ -643,14 +640,14 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
             self.add_multihost_access(volume)
             data = self._get_volume_info(volume['name'])
             updates = self._get_model_update(data['iSCSI_Name'])
-            LOG.info(_LI("Backend volume %(back_vol)s renamed to "
-                     "%(vol)s and is now managed by cinder."),
+            LOG.info("Backend volume %(back_vol)s renamed to "
+                     "%(vol)s and is now managed by cinder.",
                      {'back_vol': existing_volume_name,
                       'vol': volume['name']})
             return updates
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to manage volume "%s".'), volume['name'])
+                LOG.error('Failed to manage volume "%s".', volume['name'])
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
@@ -674,13 +671,13 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
         """
         try:
             self._set_volume_description(volume, '"OpenStack UnManaged"')
-            LOG.info(_LI("Virtual volume %(disp)s '%(vol)s' is no "
-                     "longer managed."),
+            LOG.info("Virtual volume %(disp)s '%(vol)s' is no "
+                     "longer managed.",
                      {'disp': volume['display_name'],
                       'vol': volume['name']})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to unmanage volume "%s".'),
+                LOG.error('Failed to unmanage volume "%s".',
                           volume['name'])
 
     def local_path(self, volume):

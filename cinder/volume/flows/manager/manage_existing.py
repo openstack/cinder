@@ -19,7 +19,7 @@ from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common as flow_common
 from cinder.volume.flows.manager import create_volume as create_mgr
@@ -43,8 +43,8 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
     def execute(self, context, volume, manage_existing_ref):
         driver_name = self.driver.__class__.__name__
         if not self.driver.initialized:
-            LOG.error(_LE("Unable to manage existing volume. "
-                          "Volume driver %s not initialized.") % driver_name)
+            LOG.error("Unable to manage existing volume. "
+                      "Volume driver %s not initialized.", driver_name)
             flow_common.error_out(volume, _("Volume driver %s not "
                                             "initialized.") % driver_name,
                                   status='error_managing')
@@ -71,7 +71,7 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         reason = _('Volume manage failed.')
         flow_common.error_out(volume, reason=reason,
                               status='error_managing')
-        LOG.error(_LE("Volume %s: manage failed."), volume.id)
+        LOG.error("Volume %s: manage failed.", volume.id)
 
 
 class ManageExistingTask(flow_utils.CinderTask):
@@ -95,8 +95,8 @@ class ManageExistingTask(flow_utils.CinderTask):
             volume.update(model_update)
             volume.save()
         except exception.CinderException:
-            LOG.exception(_LE("Failed updating model of volume %(volume_id)s"
-                              " with creation provided model %(model)s") %
+            LOG.exception("Failed updating model of volume %(volume_id)s"
+                          " with creation provided model %(model)s",
                           {'volume_id': volume.id,
                            'model': model_update})
             raise

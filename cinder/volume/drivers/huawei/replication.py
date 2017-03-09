@@ -20,7 +20,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 
@@ -195,7 +195,7 @@ class ReplicaCommonDriver(object):
         try:
             self.op.split(replica_id)
         except Exception as err:
-            LOG.warning(_LW('Split replication exception: %s.'), err)
+            LOG.warning('Split replication exception: %s.', err)
 
         try:
             self.wait_expect_state(replica_id, running_status)
@@ -344,7 +344,7 @@ class ReplicaPairManager(object):
             info = self.rmt_client.get_array_info()
             return info.get('wwn')
         except Exception as err:
-            LOG.warning(_LW('Get remote array wwn failed. Error: %s.'), err)
+            LOG.warning('Get remote array wwn failed. Error: %s.', err)
             return None
 
     def get_remote_device_by_wwn(self, wwn):
@@ -352,7 +352,7 @@ class ReplicaPairManager(object):
         try:
             devices = self.local_client.get_remote_devices()
         except Exception as err:
-            LOG.warning(_LW('Get remote devices failed. Error: %s.'), err)
+            LOG.warning('Get remote devices failed. Error: %s.', err)
 
         for device in devices:
             if device.get('WWN') == wwn:
@@ -381,7 +381,7 @@ class ReplicaPairManager(object):
     def update_replica_capability(self, stats):
         is_rmt_dev_available = self.check_remote_available()
         if not is_rmt_dev_available:
-            LOG.warning(_LW('Remote device is unavailable.'))
+            LOG.warning('Remote device is unavailable.')
             return stats
 
         for pool in stats['pools']:
@@ -490,7 +490,7 @@ class ReplicaPairManager(object):
             pair_id = pair_info['ID']
         except Exception as err:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Create pair failed. Error: %s.'), err)
+                LOG.error('Create pair failed. Error: %s.', err)
                 self._delete_rmt_lun(rmt_lun_id)
 
         # step4, start sync manually. If replication type is sync,
@@ -500,7 +500,7 @@ class ReplicaPairManager(object):
             self.local_driver.sync(pair_id, wait_complete)
         except Exception as err:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Start synchronization failed. Error: %s.'), err)
+                LOG.error('Start synchronization failed. Error: %s.', err)
                 self._delete_pair(pair_id)
                 self._delete_rmt_lun(rmt_lun_id)
 
@@ -559,14 +559,14 @@ class ReplicaPairManager(object):
             drv_data = get_replication_driver_data(v)
             pair_id = drv_data.get('pair_id')
             if not pair_id:
-                LOG.warning(_LW("No pair id in volume %s."), v.id)
+                LOG.warning("No pair id in volume %s.", v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
 
             rmt_lun_id = drv_data.get('rmt_lun_id')
             if not rmt_lun_id:
-                LOG.warning(_LW("No remote lun id in volume %s."), v.id)
+                LOG.warning("No remote lun id in volume %s.", v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
@@ -609,14 +609,14 @@ class ReplicaPairManager(object):
             drv_data = get_replication_driver_data(v)
             pair_id = drv_data.get('pair_id')
             if not pair_id:
-                LOG.warning(_LW("No pair id in volume %s."), v.id)
+                LOG.warning("No pair id in volume %s.", v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue
 
             rmt_lun_id = drv_data.get('rmt_lun_id')
             if not rmt_lun_id:
-                LOG.warning(_LW("No remote lun id in volume %s."), v.id)
+                LOG.warning("No remote lun id in volume %s.", v.id)
                 v_update['updates'] = {'replication_status': 'error'}
                 volumes_update.append(v_update)
                 continue

@@ -23,7 +23,7 @@ from oslo_utils import importutils
 storops = importutils.try_import('storops')
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume import volume_types
 
@@ -201,9 +201,9 @@ class ExtraSpecs(object):
         :param enabler_status: Instance of VNXEnablerStatus
         """
         if "storagetype:pool" in self.specs:
-            LOG.warning(_LW("Extra spec key 'storagetype:pool' is obsoleted "
-                            "since driver version 5.1.0. This key will be "
-                            "ignored."))
+            LOG.warning("Extra spec key 'storagetype:pool' is obsoleted "
+                        "since driver version 5.1.0. This key will be "
+                        "ignored.")
 
         if (self._provision == storops.VNXProvisionEnum.DEDUPED and
                 self._tier is not None):
@@ -417,7 +417,7 @@ class ReplicationDeviceList(list):
             device = self._device_map[backend_id]
         except KeyError:
             device = None
-            LOG.warning(_LW('Unable to find secondary device named: %s'),
+            LOG.warning('Unable to find secondary device named: %s',
                         backend_id)
         return device
 
@@ -483,7 +483,7 @@ class VNXMirrorView(object):
         mv = self.primary_client.get_mirror(mirror_name)
         if not mv.existed:
             # We will skip the mirror operations if not existed
-            LOG.warning(_LW('Mirror view %s was deleted already.'),
+            LOG.warning('Mirror view %s was deleted already.',
                         mirror_name)
             return
         self.fracture_image(mirror_name)

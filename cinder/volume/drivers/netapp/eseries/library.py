@@ -34,7 +34,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.eseries import exception as eseries_exc
@@ -222,10 +222,10 @@ class NetAppESeriesLibrary(object):
 
     def _check_multipath(self):
         if not self.configuration.use_multipath_for_image_xfer:
-            LOG.warning(_LW('Production use of "%(backend)s" backend requires '
-                            'the Cinder controller to have multipathing '
-                            'properly set up and the configuration option '
-                            '"%(mpflag)s" to be set to "True".'),
+            LOG.warning('Production use of "%(backend)s" backend requires '
+                        'the Cinder controller to have multipathing '
+                        'properly set up and the configuration option '
+                        '"%(mpflag)s" to be set to "True".',
                         {'backend': self._backend_name,
                          'mpflag': 'use_multipath_for_image_xfer'})
 
@@ -241,14 +241,14 @@ class NetAppESeriesLibrary(object):
         try:
             host_group = self._client.get_host_group_by_name(
                 utils.MULTI_ATTACH_HOST_GROUP_NAME)
-            LOG.info(_LI("The multi-attach E-Series host group '%(label)s' "
-                         "already exists with clusterRef %(clusterRef)s"),
+            LOG.info("The multi-attach E-Series host group '%(label)s' "
+                     "already exists with clusterRef %(clusterRef)s",
                      host_group)
         except exception.NotFound:
             host_group = self._client.create_host_group(
                 utils.MULTI_ATTACH_HOST_GROUP_NAME)
-            LOG.info(_LI("Created multi-attach E-Series host group %(label)s "
-                         "with clusterRef %(clusterRef)s"), host_group)
+            LOG.info("Created multi-attach E-Series host group %(label)s "
+                     "with clusterRef %(clusterRef)s", host_group)
 
     def _check_mode_get_or_register_storage_system(self):
         """Does validity checks for storage system registry and health."""
@@ -257,7 +257,7 @@ class NetAppESeriesLibrary(object):
                 ip = na_utils.resolve_hostname(host)
                 return ip
             except socket.gaierror as e:
-                LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.'),
+                LOG.error('Error resolving host %(host)s. Error - %(e)s.',
                           {'host': host, 'e': e})
                 raise exception.NoValidBackend(
                     _("Controller IP '%(host)s' could not be resolved: %(e)s.")
@@ -269,10 +269,10 @@ class NetAppESeriesLibrary(object):
         host = na_utils.resolve_hostname(
             self.configuration.netapp_server_hostname)
         if host in ips:
-            LOG.info(_LI('Embedded mode detected.'))
+            LOG.info('Embedded mode detected.')
             system = self._client.list_storage_systems()[0]
         else:
-            LOG.info(_LI('Proxy mode detected.'))
+            LOG.info('Proxy mode detected.')
             system = self._client.register_storage_system(
                 ips, password=self.configuration.netapp_sa_password)
         self._client.set_system_id(system.get('id'))
@@ -330,8 +330,8 @@ class NetAppESeriesLibrary(object):
             self._client.list_storage_system()
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
-                LOG.info(_LI("System with controller addresses [%s] is not "
-                             "registered with web service."),
+                LOG.info("System with controller addresses [%s] is not "
+                         "registered with web service.",
                          self.configuration.netapp_controller_ips)
 
         # Update the stored password
@@ -352,11 +352,10 @@ class NetAppESeriesLibrary(object):
             # password was not in sync previously.
             if not (pass_status_valid and status_valid):
                 if not pass_status_valid:
-                    LOG.info(_LI('Waiting for web service to validate the '
-                                 'configured password.'))
+                    LOG.info('Waiting for web service to validate the '
+                             'configured password.')
                 else:
-                    LOG.info(_LI('Waiting for web service array '
-                                 'communication.'))
+                    LOG.info('Waiting for web service array communication.')
                 if int(time.time() - start_time) >= self.SA_COMM_TIMEOUT:
                     if not status_valid:
                         raise exception.NetAppDriverException(
@@ -369,7 +368,7 @@ class NetAppESeriesLibrary(object):
 
             # The system was found to have a good status
             else:
-                LOG.info(_LI("System %(id)s has %(status)s status."), msg_dict)
+                LOG.info("System %(id)s has %(status)s status.", msg_dict)
                 raise loopingcall.LoopingCallDone()
 
         checker = loopingcall.FixedIntervalLoopingCall(f=check_system_status)
@@ -591,11 +590,10 @@ class NetAppESeriesLibrary(object):
                                              flash_cache=flash_cache,
                                              data_assurance=data_assurance,
                                              thin_provision=thin_provision)
-            LOG.info(_LI("Created volume with "
-                         "label %s."), eseries_volume_label)
+            LOG.info("Created volume with label %s.", eseries_volume_label)
         except exception.NetAppDriverException as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error creating volume. Msg - %s."), e)
+                LOG.error("Error creating volume. Msg - %s.", e)
                 # There was some kind failure creating the volume, make sure no
                 # partial flawed work exists
                 try:
@@ -613,9 +611,9 @@ class NetAppESeriesLibrary(object):
                     try:
                         self._client.delete_volume(bad_vol["id"])
                     except exception.NetAppDriverException as e2:
-                        LOG.error(_LE(
+                        LOG.error(
                             "Error cleaning up failed volume creation.  "
-                            "Msg - %s."), e2)
+                            "Msg - %s.", e2)
 
         return vol
 
@@ -630,10 +628,10 @@ class NetAppESeriesLibrary(object):
             try:
                 vol = self._client.create_volume(pool['volumeGroupRef'],
                                                  label, size_gb)
-                LOG.info(_LI("Created volume with label %s."), label)
+                LOG.info("Created volume with label %s.", label)
                 return vol
             except exception.NetAppDriverException as e:
-                LOG.error(_LE("Error creating volume. Msg - %s."), e)
+                LOG.error("Error creating volume. Msg - %s.", e)
         msg = _("Failure creating volume %s.")
         raise exception.NetAppDriverException(msg % label)
 
@@ -654,7 +652,7 @@ class NetAppESeriesLibrary(object):
         try:
             src_vol = self._create_snapshot_volume(image)
             self._copy_volume_high_priority_readonly(src_vol, dst_vol)
-            LOG.info(_LI("Created volume with label %s."), label)
+            LOG.info("Created volume with label %s.", label)
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
                 self._client.delete_volume(dst_vol['volumeRef'])
@@ -663,11 +661,10 @@ class NetAppESeriesLibrary(object):
                 try:
                     self._client.delete_snapshot_volume(src_vol['id'])
                 except exception.NetAppDriverException as e:
-                    LOG.error(_LE("Failure restarting snap vol. Error: %s."),
-                              e)
+                    LOG.error("Failure restarting snap vol. Error: %s.", e)
             else:
-                LOG.warning(_LW("Snapshot volume creation failed for "
-                                "snapshot %s."), image['id'])
+                LOG.warning("Snapshot volume creation failed for "
+                            "snapshot %s.", image['id'])
 
         return dst_vol
 
@@ -681,7 +678,7 @@ class NetAppESeriesLibrary(object):
 
     def _copy_volume_high_priority_readonly(self, src_vol, dst_vol):
         """Copies src volume to dest volume."""
-        LOG.info(_LI("Copying src vol %(src)s to dest vol %(dst)s."),
+        LOG.info("Copying src vol %(src)s to dest vol %(dst)s.",
                  {'src': src_vol['label'], 'dst': dst_vol['label']})
         job = None
         try:
@@ -693,11 +690,11 @@ class NetAppESeriesLibrary(object):
                 if (j_st['status'] in ['inProgress', 'pending', 'unknown']):
                     return
                 if j_st['status'] == 'failed' or j_st['status'] == 'halted':
-                    LOG.error(_LE("Vol copy job status %s."), j_st['status'])
+                    LOG.error("Vol copy job status %s.", j_st['status'])
                     raise exception.NetAppDriverException(
                         _("Vol copy job for dest %s failed.") %
                         dst_vol['label'])
-                LOG.info(_LI("Vol copy job completed for dest %s."),
+                LOG.info("Vol copy job completed for dest %s.",
                          dst_vol['label'])
                 raise loopingcall.LoopingCallDone()
 
@@ -710,12 +707,11 @@ class NetAppESeriesLibrary(object):
                 try:
                     self._client.delete_vol_copy_job(job['volcopyRef'])
                 except exception.NetAppDriverException:
-                    LOG.warning(_LW("Failure deleting "
-                                    "job %s."), job['volcopyRef'])
+                    LOG.warning("Failure deleting job %s.", job['volcopyRef'])
             else:
-                LOG.warning(_LW('Volume copy job for src vol %s not found.'),
+                LOG.warning('Volume copy job for src vol %s not found.',
                             src_vol['id'])
-        LOG.info(_LI('Copy job to dest vol %s completed.'), dst_vol['label'])
+        LOG.info('Copy job to dest vol %s completed.', dst_vol['label'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
@@ -730,7 +726,7 @@ class NetAppESeriesLibrary(object):
             try:
                 self._client.delete_snapshot_group(es_snapshot['pitGroupRef'])
             except exception.NetAppDriverException:
-                LOG.warning(_LW("Failure deleting temp snapshot %s."),
+                LOG.warning("Failure deleting temp snapshot %s.",
                             es_snapshot['id'])
 
     def delete_volume(self, volume):
@@ -739,7 +735,7 @@ class NetAppESeriesLibrary(object):
             vol = self._get_volume(volume['name_id'])
             self._client.delete_volume(vol['volumeRef'])
         except (exception.NetAppDriverException, exception.VolumeNotFound):
-            LOG.warning(_LW("Volume %s already deleted."), volume['id'])
+            LOG.warning("Volume %s already deleted.", volume['id'])
             return
 
     def _is_cgsnapshot(self, snapshot_image):
@@ -902,7 +898,7 @@ class NetAppESeriesLibrary(object):
                         utils.convert_uuid_to_es_fmt(uuid.uuid4()))
 
                     snap_grp = self._create_snapshot_group(label, vol)
-                    LOG.info(_LI("Created snap grp with label %s."), label)
+                    LOG.info("Created snap grp with label %s.", label)
 
                 # We couldn't retrieve or create a snapshot group
                 if snap_grp is None:
@@ -973,7 +969,7 @@ class NetAppESeriesLibrary(object):
         try:
             es_snapshot = self._get_snapshot(snapshot)
         except exception.NotFound:
-            LOG.warning(_LW("Snapshot %s already deleted."), snapshot['id'])
+            LOG.warning("Snapshot %s already deleted.", snapshot['id'])
         else:
             os_vol = snapshot['volume']
             vol = self._get_volume(os_vol['name_id'])
@@ -1034,8 +1030,7 @@ class NetAppESeriesLibrary(object):
             try:
                 self._delete_snapshot_group(snap_grp_ref)
             except exception.NetAppDriverException as e:
-                LOG.warning(_LW("Unable to remove snapshot group - "
-                                "%s."), e.msg)
+                LOG.warning("Unable to remove snapshot group - %s.", e.msg)
             return None, [snap_grp_ref]
         else:
             # Order by their sequence number, from oldest to newest
@@ -1063,8 +1058,8 @@ class NetAppESeriesLibrary(object):
                     try:
                         self._delete_snapshot_group(snap_grp_ref)
                     except exception.NetAppDriverException as e:
-                        LOG.warning(_LW("Unable to remove snapshot group - "
-                                        "%s."), e.msg)
+                        LOG.warning("Unable to remove snapshot group - %s.",
+                                    e.msg)
                     return None, [snap_grp_ref]
 
             return {snap_grp_ref: repr(bitset)}, None
@@ -1229,8 +1224,7 @@ class NetAppESeriesLibrary(object):
         if len(self._client.get_volume_mappings_for_host(
                 host['hostRef'])) == 0:
             # No more exports for this host, so tear down zone.
-            LOG.info(_LI("Need to remove FC Zone, building initiator "
-                         "target map."))
+            LOG.info("Need to remove FC Zone, building initiator target map.")
 
             initiator_info = self._build_initiator_target_map_fc(connector)
             target_wwpns, initiator_target_map, num_paths = initiator_info
@@ -1380,12 +1374,12 @@ class NetAppESeriesLibrary(object):
                     host = self._client.update_host_type(
                         host['hostRef'], ht_def)
                 except exception.NetAppDriverException as e:
-                    LOG.warning(_LW("Unable to update host type for host with "
-                                    "label %(l)s. %(e)s"),
+                    LOG.warning("Unable to update host type for host with "
+                                "label %(l)s. %(e)s",
                                 {'l': host['label'], 'e': e.msg})
             return host
         except exception.NotFound as e:
-            LOG.warning(_LW("Message - %s."), e.msg)
+            LOG.warning("Message - %s.", e.msg)
             return self._create_host(port_ids, host_type)
 
     def _get_host_with_matching_port(self, port_ids):
@@ -1407,7 +1401,7 @@ class NetAppESeriesLibrary(object):
 
     def _create_host(self, port_ids, host_type, host_group=None):
         """Creates host on system with given initiator as port_id."""
-        LOG.info(_LI("Creating host with ports %s."), port_ids)
+        LOG.info("Creating host with ports %s.", port_ids)
         host_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         host_type = self._get_host_type_definition(host_type)
         port_type = self.driver_protocol.lower()
@@ -1493,9 +1487,8 @@ class NetAppESeriesLibrary(object):
 
     def _create_asup(self, cinder_host):
         if not self._client.features.AUTOSUPPORT:
-            msg = _LI("E-series proxy API version %s does not support "
-                      "autosupport logging.")
-            LOG.info(msg % self._client.api_version)
+            LOG.info("E-series proxy API version %s does not support "
+                     "autosupport logging.", self._client.api_version)
             return
 
         event_source = ("Cinder driver %s" % self.DRIVER_NAME)
@@ -1537,8 +1530,8 @@ class NetAppESeriesLibrary(object):
         The self._ssc_stats attribute is updated with the following format.
         {<volume_group_ref> : {<ssc_key>: <ssc_value>}}
         """
-        LOG.info(_LI("Updating storage service catalog information for "
-                     "backend '%s'"), self._backend_name)
+        LOG.info("Updating storage service catalog information for "
+                 "backend '%s'", self._backend_name)
 
         relevant_pools = self._get_storage_pools()
 
@@ -1552,12 +1545,12 @@ class NetAppESeriesLibrary(object):
 
         :param relevant_pools: The pools that this driver cares about
         """
-        msg = _LI("E-series proxy API version %(version)s does not "
-                  "support full set of SSC extra specs. The proxy version"
-                  " must be at at least %(min_version)s.")
-        LOG.info(msg, {'version': self._client.api_version,
-                       'min_version':
-                       self._client.features.SSC_API_V2.minimum_version})
+        LOG.info("E-series proxy API version %(version)s does not "
+                 "support full set of SSC extra specs. The proxy version"
+                 " must be at at least %(min_version)s.",
+                 {'version': self._client.api_version,
+                  'min_version':
+                      self._client.features.SSC_API_V2.minimum_version})
 
         self._ssc_stats = (
             self._update_ssc_disk_encryption(relevant_pools))
@@ -1683,9 +1676,9 @@ class NetAppESeriesLibrary(object):
 
         # Inform deprecation of legacy option.
         if self.configuration.safe_get('netapp_storage_pools'):
-            msg = _LW("The option 'netapp_storage_pools' is deprecated and "
-                      "will be removed in the future releases. Please use "
-                      "the option 'netapp_pool_name_search_pattern' instead.")
+            msg = ("The option 'netapp_storage_pools' is deprecated and "
+                   "will be removed in the future releases. Please use "
+                   "the option 'netapp_pool_name_search_pattern' instead.")
             versionutils.report_deprecated_feature(LOG, msg)
 
         pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
@@ -1721,8 +1714,8 @@ class NetAppESeriesLibrary(object):
                            sorted_pools)
 
         if not avl_pools:
-            LOG.warning(_LW("No storage pool found with available capacity "
-                            "%s."), size_gb)
+            LOG.warning("No storage pool found with available capacity %s.",
+                        size_gb)
         return avl_pools
 
     def _is_thin_provisioned(self, volume):
@@ -1779,11 +1772,11 @@ class NetAppESeriesLibrary(object):
                 if complete:
                     raise loopingcall.LoopingCallDone()
                 else:
-                    msg = _LI("Waiting for volume expansion of %(vol)s to "
-                              "complete, current remaining actions are "
-                              "%(action)s. ETA: %(eta)s mins.")
-                    LOG.info(msg, {'vol': volume['name_id'],
-                                   'action': ', '.join(actions), 'eta': eta})
+                    LOG.info("Waiting for volume expansion of %(vol)s to "
+                             "complete, current remaining actions are "
+                             "%(action)s. ETA: %(eta)s mins.",
+                             {'vol': volume['name_id'],
+                              'action': ', '.join(actions), 'eta': eta})
 
             checker = loopingcall.FixedIntervalLoopingCall(
                 check_progress)
@@ -1973,7 +1966,7 @@ class NetAppESeriesLibrary(object):
         volume_update = list()
 
         for volume in volumes:
-            LOG.info(_LI('Deleting volume %s.'), volume['id'])
+            LOG.info('Deleting volume %s.', volume['id'])
             volume_update.append({
                 'status': 'deleted', 'id': volume['id'],
             })
@@ -1982,14 +1975,14 @@ class NetAppESeriesLibrary(object):
         try:
             cg = self._get_consistencygroup(group)
         except exception.ConsistencyGroupNotFound:
-            LOG.warning(_LW('Consistency group already deleted.'))
+            LOG.warning('Consistency group already deleted.')
         else:
             self._client.delete_consistency_group(cg['id'])
             try:
                 self._merge_soft_delete_changes(None, [cg['id']])
             except (exception.NetAppDriverException,
                     eseries_exc.WebServiceException):
-                LOG.warning(_LW('Unable to remove CG from the deletion map.'))
+                LOG.warning('Unable to remove CG from the deletion map.')
 
         model_update = {'status': 'deleted'}
 
@@ -2009,14 +2002,14 @@ class NetAppESeriesLibrary(object):
         for volume in remove_volumes:
             es_vol = self._get_volume(volume['id'])
             LOG.info(
-                _LI('Removing volume %(v)s from consistency group %(''cg)s.'),
+                'Removing volume %(v)s from consistency group %(''cg)s.',
                 {'v': es_vol['label'], 'cg': es_cg['label']})
             self._client.remove_consistency_group_member(es_vol['id'],
                                                          es_cg['id'])
 
         for volume in add_volumes:
             es_vol = self._get_volume(volume['id'])
-            LOG.info(_LI('Adding volume %(v)s to consistency group %(cg)s.'),
+            LOG.info('Adding volume %(v)s to consistency group %(cg)s.',
                      {'v': es_vol['label'], 'cg': es_cg['label']})
             self._client.add_consistency_group_member(
                 es_vol['id'], es_cg['id'])
@@ -2070,8 +2063,7 @@ class NetAppESeriesLibrary(object):
         """Removes tmp vols with no snapshots."""
         try:
             if not na_utils.set_safe_attr(self, 'clean_job_running', True):
-                LOG.warning(_LW('Returning as clean tmp '
-                                'vol job already running.'))
+                LOG.warning('Returning as clean tmp vol job already running.')
                 return
 
             for vol in self._client.list_volumes():
@@ -2092,13 +2084,13 @@ class NetAppESeriesLibrary(object):
         vol = self._get_existing_vol_with_manage_ref(existing_ref)
         label = utils.convert_uuid_to_es_fmt(volume['id'])
         if label == vol['label']:
-            LOG.info(_LI("Volume with given ref %s need not be renamed during"
-                         " manage operation."), existing_ref)
+            LOG.info("Volume with given ref %s need not be renamed during"
+                     " manage operation.", existing_ref)
             managed_vol = vol
         else:
             managed_vol = self._client.update_volume(vol['id'], label)
-        LOG.info(_LI("Manage operation completed for volume with new label"
-                     " %(label)s and wwn %(wwn)s."),
+        LOG.info("Manage operation completed for volume with new label"
+                 " %(label)s and wwn %(wwn)s.",
                  {'label': label, 'wwn': managed_vol[self.WORLDWIDENAME]})
 
     def manage_existing_get_size(self, volume, existing_ref):
@@ -2135,6 +2127,6 @@ class NetAppESeriesLibrary(object):
            message to indicate the volume is no longer under Cinder's control.
         """
         managed_vol = self._get_volume(volume['id'])
-        LOG.info(_LI("Unmanaged volume with current label %(label)s and wwn "
-                     "%(wwn)s."), {'label': managed_vol['label'],
-                                   'wwn': managed_vol[self.WORLDWIDENAME]})
+        LOG.info("Unmanaged volume with current label %(label)s and wwn "
+                 "%(wwn)s.", {'label': managed_vol['label'],
+                              'wwn': managed_vol[self.WORLDWIDENAME]})

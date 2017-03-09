@@ -19,7 +19,6 @@ Utility functions related to the Zone Manager.
 """
 from oslo_log import log
 
-from cinder.i18n import _LI, _LW
 from cinder.volume import configuration
 from cinder.volume import manager
 from cinder.zonemanager import fc_san_lookup_service
@@ -36,8 +35,8 @@ def create_zone_manager():
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager()
         if zm.initialized:
-            LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
-                         " Driver %(drv_name)s %(drv_version)s."),
+            LOG.info("Using FC Zone Manager %(zm_version)s,"
+                     " Driver %(drv_name)s %(drv_version)s.",
                      {'zm_version': zm.get_version(),
                       'drv_name': zm.driver.__class__.__name__,
                       'drv_version': zm.driver.get_version()})
@@ -58,7 +57,7 @@ def create_lookup_service():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Lookup Service enabled.")
         lookup = fc_san_lookup_service.FCSanLookupService()
-        LOG.info(_LI("Using FC lookup service %s."), lookup.lookup_service)
+        LOG.info("Using FC lookup service %s.", lookup.lookup_service)
         return lookup
     else:
         LOG.debug("FC Lookup Service not enabled in cinder.conf.")
@@ -80,8 +79,8 @@ def add_fc_zone(initialize_connection):
     def decorator(self, *args, **kwargs):
         conn_info = initialize_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warning(_LW("Driver didn't return connection info, "
-                            "can't add zone."))
+            LOG.warning("Driver didn't return connection info, "
+                        "can't add zone.")
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
@@ -104,8 +103,8 @@ def remove_fc_zone(terminate_connection):
     def decorator(self, *args, **kwargs):
         conn_info = terminate_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warning(_LW("Driver didn't return connection info from "
-                            "terminate_connection call."))
+            LOG.warning("Driver didn't return connection info from "
+                        "terminate_connection call.")
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)

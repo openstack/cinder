@@ -22,7 +22,7 @@ from oslo_log import log as logging
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def create(context,
                                              description=description),
                                         projects=projects)
     except db_exc.DBError:
-        LOG.exception(_LE('DB error:'))
+        LOG.exception('DB error:')
         raise exception.GroupTypeCreateFailed(name=name,
                                               group_specs=group_specs)
     return type_ref
@@ -64,7 +64,7 @@ def update(context, id, name, description, is_public=None):
                              dict(name=name, description=description,
                                   is_public=is_public))
     except db_exc.DBError:
-        LOG.exception(_LE('DB error:'))
+        LOG.exception('DB error:')
         raise exception.GroupTypeUpdateFailed(id=id)
 
 
@@ -127,8 +127,8 @@ def get_default_group_type():
         except exception.GroupTypeNotFoundByName:
             # Couldn't find group type with the name in default_group_type
             # flag, record this issue and move on
-            LOG.exception(_LE('Default group type is not found. '
-                          'Please check default_group_type config.'))
+            LOG.exception('Default group type is not found. '
+                          'Please check default_group_type config.')
 
     return grp_type
 
@@ -148,8 +148,8 @@ def get_default_cgsnapshot_type():
     except exception.GroupTypeNotFoundByName:
         # Couldn't find DEFAULT_CGSNAPSHOT_TYPE group type.
         # Record this issue and move on.
-        LOG.exception(_LE('Default cgsnapshot type %s is not found.')
-                      % DEFAULT_CGSNAPSHOT_TYPE)
+        LOG.exception('Default cgsnapshot type %s is not found.',
+                      DEFAULT_CGSNAPSHOT_TYPE)
 
     return grp_type
 

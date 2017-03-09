@@ -21,7 +21,6 @@ iSCSI Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 """
 import six
 
-from cinder.i18n import _LI
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu import eternus_dx_common
@@ -51,8 +50,7 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def create_volume(self, volume):
         """Create volume."""
-        LOG.info(_LI('create_volume, '
-                     'volume id: %s, Enter method.'), volume['id'])
+        LOG.info('create_volume, volume id: %s, Enter method.', volume['id'])
 
         element_path, metadata = self.common.create_volume(volume)
 
@@ -64,14 +62,14 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
             v_metadata = volume.get('metadata', {})
             metadata.update(v_metadata)
 
-        LOG.info(_LI('create_volume, info: %s, Exit method.'), metadata)
+        LOG.info('create_volume, info: %s, Exit method.', metadata)
         return {'provider_location': six.text_type(element_path),
                 'metadata': metadata}
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        LOG.info(_LI('create_volume_from_snapshot, '
-                     'volume id: %(vid)s, snap id: %(sid)s, Enter method.'),
+        LOG.info('create_volume_from_snapshot, '
+                 'volume id: %(vid)s, snap id: %(sid)s, Enter method.',
                  {'vid': volume['id'], 'sid': snapshot['id']})
 
         element_path, metadata = (
@@ -85,16 +83,16 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
             v_metadata = volume.get('metadata', {})
             metadata.update(v_metadata)
 
-        LOG.info(_LI('create_volume_from_snapshot, '
-                     'info: %s, Exit method.'), metadata)
+        LOG.info('create_volume_from_snapshot, '
+                 'info: %s, Exit method.', metadata)
         return {'provider_location': six.text_type(element_path),
                 'metadata': metadata}
 
     def create_cloned_volume(self, volume, src_vref):
         """Create cloned volume."""
-        LOG.info(_LI('create_cloned_volume, '
-                     'target volume id: %(tid)s, '
-                     'source volume id: %(sid)s, Enter method.'),
+        LOG.info('create_cloned_volume, '
+                 'target volume id: %(tid)s, '
+                 'source volume id: %(sid)s, Enter method.',
                  {'tid': volume['id'], 'sid': src_vref['id']})
 
         element_path, metadata = (
@@ -108,43 +106,39 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
             v_metadata = volume.get('metadata', {})
             metadata.update(v_metadata)
 
-        LOG.info(_LI('create_cloned_volume, '
-                     'info: %s, Exit method.'), metadata)
+        LOG.info('create_cloned_volume, info: %s, Exit method.', metadata)
         return {'provider_location': six.text_type(element_path),
                 'metadata': metadata}
 
     def delete_volume(self, volume):
         """Delete volume on ETERNUS."""
-        LOG.info(_LI('delete_volume, '
-                     'volume id: %s, Enter method.'), volume['id'])
+        LOG.info('delete_volume, volume id: %s, Enter method.', volume['id'])
 
         vol_exist = self.common.delete_volume(volume)
 
-        LOG.info(_LI('delete_volume, '
-                     'delete: %s, Exit method.'), vol_exist)
+        LOG.info('delete_volume, delete: %s, Exit method.', vol_exist)
         return
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        LOG.info(_LI('create_snapshot, '
-                     'snap id: %(sid)s, volume id: %(vid)s, Enter method.'),
+        LOG.info('create_snapshot, snap id: %(sid)s, volume id: %(vid)s, '
+                 'Enter method.',
                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
         element_path, metadata = self.common.create_snapshot(snapshot)
 
-        LOG.info(_LI('create_snapshot, info: %s, Exit method.'), metadata)
+        LOG.info('create_snapshot, info: %s, Exit method.', metadata)
         return {'provider_location': six.text_type(element_path)}
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        LOG.info(_LI('delete_snapshot, '
-                     'snap id: %(sid)s, volume id: %(vid)s, Enter method.'),
+        LOG.info('delete_snapshot, snap id: %(sid)s, volume id: %(vid)s, '
+                 'Enter method.',
                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
         vol_exist = self.common.delete_snapshot(snapshot)
 
-        LOG.info(_LI('delete_snapshot, '
-                     'delete: %s, Exit method.'), vol_exist)
+        LOG.info('delete_snapshot, delete: %s, Exit method.', vol_exist)
         return
 
     def ensure_export(self, context, volume):
@@ -161,26 +155,24 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
-        LOG.info(_LI('initialize_connection, volume id: %(vid)s, '
-                     'initiator: %(initiator)s, Enter method.'),
+        LOG.info('initialize_connection, volume id: %(vid)s, '
+                 'initiator: %(initiator)s, Enter method.',
                  {'vid': volume['id'], 'initiator': connector['initiator']})
 
         info = self.common.initialize_connection(volume, connector)
 
-        LOG.info(_LI('initialize_connection, '
-                     'info: %s, Exit method.'), info)
+        LOG.info('initialize_connection, info: %s, Exit method.', info)
         return info
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        LOG.info(_LI('terminate_connection, volume id: %(vid)s, '
-                     'initiator: %(initiator)s, Enter method.'),
+        LOG.info('terminate_connection, volume id: %(vid)s, '
+                 'initiator: %(initiator)s, Enter method.',
                  {'vid': volume['id'], 'initiator': connector['initiator']})
 
         map_exist = self.common.terminate_connection(volume, connector)
 
-        LOG.info(_LI('terminate_connection, '
-                     'unmap: %s, Exit method.'), map_exist)
+        LOG.info('terminate_connection, unmap: %s, Exit method.', map_exist)
         return
 
     def get_volume_stats(self, refresh=False):
@@ -201,10 +193,9 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend volume."""
-        LOG.info(_LI('extend_volume, '
-                     'volume id: %s, Enter method.'), volume['id'])
+        LOG.info('extend_volume, volume id: %s, Enter method.', volume['id'])
 
         used_pool_name = self.common.extend_volume(volume, new_size)
 
-        LOG.info(_LI('extend_volume, '
-                     'used pool name: %s, Exit method.'), used_pool_name)
+        LOG.info('extend_volume, used pool name: %s, Exit method.',
+                 used_pool_name)

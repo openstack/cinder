@@ -36,7 +36,7 @@ import six
 
 from cinder.backup import driver
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder.volume import utils as volume_utils
@@ -572,10 +572,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
             try:
                 self._backup_metadata(backup, object_meta)
             # Whatever goes wrong, we want to log, cleanup, and re-raise.
-            except Exception as err:
+            except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.exception(_LE("Backup volume metadata failed: %s."),
-                                  err)
+                    LOG.exception("Backup volume metadata failed.")
                     self.delete(backup)
 
         self._finalize_backup(backup, container, object_meta, object_sha256)
@@ -635,9 +634,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
             try:
                 fileno = volume_file.fileno()
             except IOError:
-                LOG.info(_LI("volume_file does not support "
-                             "fileno() so skipping "
-                             "fsync()"))
+                LOG.info("volume_file does not support fileno() so skipping "
+                         "fsync()")
             else:
                 os.fsync(fileno)
 
@@ -722,8 +720,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
             try:
                 object_names = self._generate_object_names(backup)
             except Exception:
-                LOG.warning(_LW('Error while listing objects, continuing'
-                                ' with delete.'))
+                LOG.warning('Error while listing objects, continuing'
+                            ' with delete.')
 
             for object_name in object_names:
                 self.delete_object(container, object_name)

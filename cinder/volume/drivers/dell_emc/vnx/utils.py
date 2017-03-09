@@ -24,7 +24,7 @@ from oslo_utils import importutils
 storops = importutils.try_import('storops')
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as vol_utils
@@ -139,17 +139,17 @@ def wait_until(condition, timeout=None, interval=common.INTERVAL_5_SEC,
 
 def validate_storage_migration(volume, target_host, src_serial, src_protocol):
     if 'location_info' not in target_host['capabilities']:
-        LOG.warning(_LW("Failed to get pool name and "
-                        "serial number. 'location_info' "
-                        "from %s."), target_host['host'])
+        LOG.warning("Failed to get pool name and "
+                    "serial number. 'location_info' "
+                    "from %s.", target_host['host'])
         return False
     info = target_host['capabilities']['location_info']
     LOG.debug("Host for migration is %s.", info)
     try:
         serial_number = info.split('|')[1]
     except AttributeError:
-        LOG.warning(_LW('Error on getting serial number '
-                        'from %s.'), target_host['host'])
+        LOG.warning('Error on getting serial number '
+                    'from %s.', target_host['host'])
         return False
     if serial_number != src_serial:
         LOG.debug('Skip storage-assisted migration because '
@@ -253,8 +253,8 @@ def get_migration_rate(volume):
         if rate.lower() in storops.VNXMigrationRate.values():
             return storops.VNXMigrationRate.parse(rate.lower())
         else:
-            LOG.warning(_LW('Unknown migration rate specified, '
-                            'using [high] as migration rate.'))
+            LOG.warning('Unknown migration rate specified, '
+                        'using [high] as migration rate.')
 
             return storops.VNXMigrationRate.HIGH
 

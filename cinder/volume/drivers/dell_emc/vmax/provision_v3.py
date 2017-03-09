@@ -20,7 +20,7 @@ import six
 
 from cinder import coordination
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
@@ -515,9 +515,9 @@ class VMAXProvisionV3(object):
                 rc, errordesc = self.utils.wait_for_job_complete(
                     conn, job, extraSpecs)
                 if rc != 0:
-                    LOG.error(_LE(
+                    LOG.error(
                         "Error Create Group: %(groupName)s. "
-                        "Return code: %(rc)lu.  Error: %(error)s."),
+                        "Return code: %(rc)lu.  Error: %(error)s.",
                         {'groupName': groupName,
                          'rc': rc,
                          'error': errordesc})
@@ -863,11 +863,11 @@ class VMAXProvisionV3(object):
                     remainingCapacityGb = remainingSLOCapacityGb
                     wlpEnabled = True
                 else:
-                    LOG.warning(_LW(
+                    LOG.warning(
                         "Remaining capacity %(remainingCapacityGb)s "
                         "GBs is determined from SRP pool capacity "
                         "and not the SLO capacity. Performance may "
-                        "not be what you expect."),
+                        "not be what you expect.",
                         {'remainingCapacityGb': remainingCapacityGb})
 
         return (totalCapacityGb, remainingCapacityGb, subscribedCapacityGb,

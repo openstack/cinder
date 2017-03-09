@@ -28,7 +28,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import backups as backup_views
 from cinder import backup as backupAPI
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('Delete called for member %s.', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_LI('Delete backup with id: %s'), id)
+        LOG.info('Delete backup with id: %s', id)
 
         try:
             backup = self.backup_api.get(context, id)
@@ -141,8 +141,8 @@ class BackupsController(wsgi.Controller):
         incremental = backup.get('incremental', False)
         force = backup.get('force', False)
         snapshot_id = backup.get('snapshot_id', None)
-        LOG.info(_LI("Creating backup of volume %(volume_id)s in container"
-                     " %(container)s"),
+        LOG.info("Creating backup of volume %(volume_id)s in container"
+                 " %(container)s",
                  {'volume_id': volume_id, 'container': container},
                  context=context)
 
@@ -173,7 +173,7 @@ class BackupsController(wsgi.Controller):
         volume_id = restore.get('volume_id', None)
         name = restore.get('name', None)
 
-        LOG.info(_LI("Restoring backup %(backup_id)s to volume %(volume_id)s"),
+        LOG.info("Restoring backup %(backup_id)s to volume %(volume_id)s",
                  {'backup_id': id, 'volume_id': volume_id},
                  context=context)
 

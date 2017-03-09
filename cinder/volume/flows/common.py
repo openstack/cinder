@@ -20,8 +20,6 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _LE
-
 
 LOG = logging.getLogger(__name__)
 
@@ -58,9 +56,9 @@ def restore_source_status(context, db, volume_spec):
     except exception.CinderException:
         # NOTE(harlowja): Don't let this cause further exceptions since this is
         # a non-critical failure.
-        LOG.exception(_LE("Failed setting source "
-                          "volume %(source_volid)s back to"
-                          " its initial %(source_status)s status") %
+        LOG.exception("Failed setting source "
+                      "volume %(source_volid)s back to"
+                      " its initial %(source_status)s status",
                       {'source_status': source_status,
                        'source_volid': source_volid})
 
@@ -87,8 +85,8 @@ def error_out(resource, reason=None, status='error'):
         resource.save()
     except Exception:
         # Don't let this cause further exceptions.
-        LOG.exception(_LE("Failed setting %(object_type)s %(object_id)s to "
-                          " %(status)s status."),
+        LOG.exception("Failed setting %(object_type)s %(object_id)s to "
+                      " %(status)s status.",
                       {'object_type': resource.obj_name(),
                        'object_id': resource.id,
                        'status': status})

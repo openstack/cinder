@@ -28,7 +28,7 @@ from cinder.api.v2.views import volumes as volume_views
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder import group as group_api
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.image import glance
 from cinder import objects
 from cinder import utils
@@ -70,7 +70,7 @@ class VolumeController(wsgi.Controller):
 
         cascade = utils.get_bool_param('cascade', req.params)
 
-        LOG.info(_LI("Delete volume with id: %s"), id)
+        LOG.info("Delete volume with id: %s", id)
 
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
@@ -257,7 +257,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_replica'] is not None:
             size = kwargs['source_replica']['size']
 
-        LOG.info(_LI("Create volume of %s GB"), size)
+        LOG.info("Create volume of %s GB", size)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_ref = volume.get('imageRef')

@@ -27,7 +27,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.falconstor import rest_proxy
 from cinder.volume.drivers.san import san
 
@@ -67,7 +67,7 @@ class FalconstorBaseDriver(san.SanDriver):
 
     def do_setup(self, context):
         self.proxy.do_setup()
-        LOG.info(_LI('Activate FalconStor cinder volume driver.'))
+        LOG.info('Activate FalconStor cinder volume driver.')
 
     def check_for_setup_error(self):
         if self.proxy.session_id is None:
@@ -196,7 +196,7 @@ class FalconstorBaseDriver(san.SanDriver):
         except rest_proxy.FSSHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = False
-                LOG.warning(_LW("Volume deletion failed with message: %s"),
+                LOG.warning("Volume deletion failed with message: %s",
                             err.reason)
 
     def create_snapshot(self, snapshot):
@@ -214,7 +214,7 @@ class FalconstorBaseDriver(san.SanDriver):
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = False
                 LOG.error(
-                    _LE("Snapshot deletion failed with message: %s"),
+                    "Snapshot deletion failed with message: %s",
                     err.reason)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -231,10 +231,10 @@ class FalconstorBaseDriver(san.SanDriver):
             except rest_proxy.FSSHTTPError as err:
                 with excutils.save_and_reraise_exception() as ctxt:
                     ctxt.reraise = False
-                    LOG.error(_LE(
+                    LOG.error(
                         "Resizing %(id)s failed with message: %(msg)s. "
-                        "Cleaning volume."), {'id': volume["id"],
-                                              'msg': err.reason})
+                        "Cleaning volume.", {'id': volume["id"],
+                                             'msg': err.reason})
 
         if type(volume['metadata']) is dict:
             fss_metadata.update(volume['metadata'])
@@ -286,7 +286,7 @@ class FalconstorBaseDriver(san.SanDriver):
                 self._stats = data
 
             except Exception as exc:
-                LOG.error(_LE('Cannot get volume status %(exc)s.'),
+                LOG.error('Cannot get volume status %(exc)s.',
                           {'exc': exc})
         return self._stats
 

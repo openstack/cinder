@@ -35,10 +35,10 @@ from six.moves import urllib
 from six import string_types
 
 from cinder import exception
-from cinder import utils
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.objects import snapshot
 from cinder.objects import volume
+from cinder import utils
 from cinder.volume import utils as volutils
 
 
@@ -278,7 +278,7 @@ def _connection_checker(func):
                     self.new_session()
                     continue
                 else:
-                    LOG.error(_LE('Try to renew session: [%s]'), e)
+                    LOG.error('Try to renew session: [%s]', e)
                     raise
     return inner_connection_checker
 
@@ -420,7 +420,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_node_uuid.'))
+                LOG.exception('Failed to _get_node_uuid.')
 
         if (not self.check_value_valid(out, ['data', 'nodes'], list)
                 or 0 >= len(out['data']['nodes'])
@@ -447,7 +447,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_pool_status.'))
+                LOG.exception('Failed to _get_pool_status.')
 
         if not self.check_value_valid(out, ['data', 'volume'], object):
             raise exception.MalformedResponse(cmd='_get_pool_info',
@@ -485,7 +485,7 @@ class SynoCommon(object):
             self.check_response(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_pool_lun_provisioned_size.'))
+                LOG.exception('Failed to _get_pool_lun_provisioned_size.')
 
         if not self.check_value_valid(out, ['data', 'luns'], list):
             raise exception.MalformedResponse(
@@ -516,7 +516,7 @@ class SynoCommon(object):
             self.check_response(out, uuid=lun_name)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_lun_info. [%s]'), lun_name)
+                LOG.exception('Failed to _get_lun_info. [%s]', lun_name)
 
         if not self.check_value_valid(out, ['data', 'lun'], object):
             raise exception.MalformedResponse(cmd='_get_lun_info',
@@ -533,7 +533,7 @@ class SynoCommon(object):
             lun_info = self._get_lun_info(lun_name)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_lun_uuid. [%s]'), lun_name)
+                LOG.exception('Failed to _get_lun_uuid. [%s]', lun_name)
 
         if not self.check_value_valid(lun_info, ['uuid'], string_types):
             raise exception.MalformedResponse(cmd='_get_lun_uuid',
@@ -551,8 +551,7 @@ class SynoCommon(object):
                                           ['status', 'is_action_locked'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_lun_status. [%s]'),
-                              lun_name)
+                LOG.exception('Failed to _get_lun_status. [%s]', lun_name)
 
         if not self.check_value_valid(lun_info, ['status'], string_types):
             raise exception.MalformedResponse(cmd='_get_lun_status',
@@ -582,7 +581,7 @@ class SynoCommon(object):
             self.check_response(out, snapshot_id=snapshot_uuid)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_snapshot_info. [%s]'),
+                LOG.exception('Failed to _get_snapshot_info. [%s]',
                               snapshot_uuid)
 
         if not self.check_value_valid(out, ['data', 'snapshot'], object):
@@ -603,7 +602,7 @@ class SynoCommon(object):
                                                      'is_action_locked'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _get_snapshot_info. [%s]'),
+                LOG.exception('Failed to _get_snapshot_info. [%s]',
                               snapshot_uuid)
 
         if not self.check_value_valid(snapshot_info, ['status'], string_types):
@@ -673,7 +672,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _target_create. [%s]'),
+                LOG.exception('Failed to _target_create. [%s]',
                               identifier)
 
         if not self.check_value_valid(out, ['data', 'target_id']):
@@ -699,7 +698,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _target_delete. [%d]'), trg_id)
+                LOG.exception('Failed to _target_delete. [%d]', trg_id)
 
     # is_map True for map, False for ummap
     def _lun_map_unmap_target(self, volume_name, is_map, trg_id):
@@ -719,8 +718,8 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _lun_map_unmap_target.'
-                                  '[%(action)s][%(vol)s].'),
+                LOG.exception('Failed to _lun_map_unmap_target. '
+                              '[%(action)s][%(vol)s].',
                               {'action': ('map_target' if is_map
                                           else 'unmap_target'),
                                'vol': volume_name})
@@ -743,7 +742,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _modify_lun_name [%s].'), name)
+                LOG.exception('Failed to _modify_lun_name [%s].', name)
 
     def _check_lun_status_normal(self, volume_name):
         status = ''
@@ -755,7 +754,7 @@ class SynoCommon(object):
                 eventlet.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to get lun status. [%s]'),
+                LOG.exception('Failed to get lun status. [%s]',
                               volume_name)
 
         LOG.debug('Lun [%(vol)s], status [%(status)s].',
@@ -773,7 +772,7 @@ class SynoCommon(object):
                 eventlet.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to get snapshot status. [%s]'),
+                LOG.exception('Failed to get snapshot status. [%s]',
                               snapshot_uuid)
 
         LOG.debug('Lun [%(snapshot)s], status [%(status)s].',
@@ -836,7 +835,7 @@ class SynoCommon(object):
             self.check_response(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _check_ds_version'))
+                LOG.exception('Failed to _check_ds_version')
 
         if not self.check_value_valid(out,
                                       ['data', 'firmware_ver'],
@@ -869,7 +868,7 @@ class SynoCommon(object):
             self.check_response(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _check_ds_ability'))
+                LOG.exception('Failed to _check_ds_ability')
 
         if not self.check_value_valid(out, ['data'], dict):
             raise exception.MalformedResponse(cmd='_check_ds_ability',
@@ -915,7 +914,7 @@ class SynoCommon(object):
         elif (api.startswith('SYNO.Core.Storage.')):
             message, exc = self._check_storage_response(out, **kwargs)
 
-        LOG.exception(_LE('%(message)s'), {'message': message})
+        LOG.exception('%(message)s', {'message': message})
 
         raise exc
 
@@ -934,14 +933,14 @@ class SynoCommon(object):
         curr_obj = obj
         for key in key_array:
             if key not in curr_obj:
-                LOG.error(_LE('key [%(key)s] is not in %(obj)s'),
+                LOG.error('key [%(key)s] is not in %(obj)s',
                           {'key': key,
                            'obj': curr_obj})
                 return False
             curr_obj = curr_obj[key]
 
         if value_type and not isinstance(curr_obj, value_type):
-            LOG.error(_LE('[%(obj)s] is %(type)s, not %(value_type)s'),
+            LOG.error('[%(obj)s] is %(type)s, not %(value_type)s',
                       {'obj': curr_obj,
                        'type': type(curr_obj),
                        'value_type': value_type})
@@ -975,7 +974,7 @@ class SynoCommon(object):
             lun_info = self._get_lun_info(lun_name, ['is_mapped'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to _is_lun_mapped. [%s]'), lun_name)
+                LOG.exception('Failed to _is_lun_mapped. [%s]', lun_name)
 
         if not self.check_value_valid(lun_info, ['is_mapped'], bool):
             raise exception.MalformedResponse(cmd='_is_lun_mapped',
@@ -1047,7 +1046,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to create_volume. [%s]'),
+                LOG.exception('Failed to create_volume. [%s]',
                               volume['name'])
 
         if not self._check_lun_status_normal(volume['name']):
@@ -1065,10 +1064,10 @@ class SynoCommon(object):
             self.check_response(out)
 
         except exception.SynoLUNNotExist:
-            LOG.warning(_LW('LUN does not exist'))
+            LOG.warning('LUN does not exist')
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to delete_volume. [%s]'),
+                LOG.exception('Failed to delete_volume. [%s]',
                               volume['name'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -1085,7 +1084,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to create_cloned_volume. [%s]'),
+                LOG.exception('Failed to create_cloned_volume. [%s]',
                               volume['name'])
 
         if not self._check_lun_status_normal(volume['name']):
@@ -1107,7 +1106,7 @@ class SynoCommon(object):
             self.check_response(out)
 
         except Exception as e:
-            LOG.exception(_LE('Failed to extend_volume. [%s]'),
+            LOG.exception('Failed to extend_volume. [%s]',
                           volume['name'])
             raise exception.ExtendVolumeError(reason=e.msg)
 
@@ -1137,7 +1136,7 @@ class SynoCommon(object):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to create_snapshot. [%s]'),
+                LOG.exception('Failed to create_snapshot. [%s]',
                               snapshot['volume']['name'])
 
         if not self.check_value_valid(resp,
@@ -1177,7 +1176,7 @@ class SynoCommon(object):
             return
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to delete_snapshot. [%s]'),
+                LOG.exception('Failed to delete_snapshot. [%s]',
                               snapshot['id'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -1197,12 +1196,11 @@ class SynoCommon(object):
 
         except exception.SnapshotMetadataNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to get snapshot UUID. [%s]'),
+                LOG.exception('Failed to get snapshot UUID. [%s]',
                               snapshot['id'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to create_volume_from_snapshot. '
-                                  '[%s]'),
+                LOG.exception('Failed to create_volume_from_snapshot. [%s]',
                               snapshot['id'])
 
         if not self._check_lun_status_normal(volume['name']):
@@ -1273,7 +1271,7 @@ class SynoCommon(object):
                     iscsi_properties['auth_username'] = auth_username
                     iscsi_properties['auth_password'] = auth_password
                 except Exception:
-                    LOG.error(_LE('Invalid provider_auth: %s'), auth)
+                    LOG.error('Invalid provider_auth: %s', auth)
 
         return iscsi_properties
 

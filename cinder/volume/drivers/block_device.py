@@ -23,7 +23,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import objects
@@ -87,7 +87,7 @@ class BlockDeviceDriver(driver.BaseVD,
     @utils.synchronized('block_device', external=True)
     def create_volume(self, volume):
         device = self.find_appropriate_size_device(volume.size)
-        LOG.info(_LI("Creating %(volume)s on %(device)s"),
+        LOG.info("Creating %(volume)s on %(device)s",
                  {"volume": volume.name, "device": device})
         self._update_provider_location(volume, device)
 
@@ -109,7 +109,7 @@ class BlockDeviceDriver(driver.BaseVD,
                 volume_clear=self.configuration.volume_clear,
                 volume_clear_size=self.configuration.volume_clear_size)
         else:
-            LOG.warning(_LW("The device %s won't be cleared."), device)
+            LOG.warning("The device %s won't be cleared.", device)
 
         if device.status == "error_deleting":
             msg = _("Failed to delete device.")
@@ -141,7 +141,7 @@ class BlockDeviceDriver(driver.BaseVD,
 
     @utils.synchronized('block_device', external=True)
     def create_cloned_volume(self, volume, src_vref):
-        LOG.info(_LI('Creating clone of volume: %s.'), src_vref.id)
+        LOG.info('Creating clone of volume: %s.', src_vref.id)
         device = self.find_appropriate_size_device(src_vref.size)
         dev_size = self._get_devices_sizes([device])
         volutils.copy_volume(
@@ -260,7 +260,7 @@ class BlockDeviceDriver(driver.BaseVD,
             LOG.error(msg, resource=volume)
             raise exception.CinderException(msg)
 
-        LOG.info(_LI('Creating volume snapshot: %s.'), snapshot.id)
+        LOG.info('Creating volume snapshot: %s.', snapshot.id)
         device = self.find_appropriate_size_device(snapshot.volume_size)
         dev_size = self._get_devices_sizes([device])
         volutils.copy_volume(
@@ -275,7 +275,7 @@ class BlockDeviceDriver(driver.BaseVD,
 
     @utils.synchronized('block_device', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
-        LOG.info(_LI('Creating volume %s from snapshot.'), volume.id)
+        LOG.info('Creating volume %s from snapshot.', volume.id)
         device = self.find_appropriate_size_device(snapshot.volume_size)
         dev_size = self._get_devices_sizes([device])
         volutils.copy_volume(

@@ -14,8 +14,8 @@ from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 
 from cinder import exception
+from cinder.i18n import _
 from cinder import utils
-from cinder.i18n import _, _LE
 from cinder.volume.targets import iscsi
 from cinder.volume import utils as vutils
 
@@ -118,8 +118,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                                             'enabled=1')
             LOG.debug('StdOut from set driver attribute: %s', out)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to set attribute for enable target driver "
-                          "%s"), e)
+            LOG.error("Failed to set attribute for enable target driver %s", e)
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Failed to enable SCST Target driver.")
 
@@ -129,16 +128,16 @@ class SCSTAdm(iscsi.ISCSITarget):
                                                 '-driver', self.target_driver)
                 LOG.debug("StdOut from scstadmin create target: %s", out)
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to create iscsi target for volume "
-                          "id:%(vol_id)s: %(e)s"), {'vol_id': name, 'e': e})
+                LOG.error("Failed to create iscsi target for volume "
+                          "id:%(vol_id)s: %(e)s", {'vol_id': name, 'e': e})
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_name)
             try:
                 (out, _err) = self.scst_execute('-enable_target', name,
                                                 '-driver', self.target_driver)
                 LOG.debug("StdOut from scstadmin enable target: %s", out)
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to set 'enable' attribute for "
-                              "SCST target %s"), e)
+                LOG.error("Failed to set 'enable' attribute for "
+                          "SCST target %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_mesage="Failed to enable SCST Target.")
             if chap_auth and self.target_name:
@@ -169,8 +168,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                                                     '-target', name)
                     LOG.debug("StdOut from scstadmin create group: %s", out)
                 except putils.ProcessExecutionError as e:
-                    LOG.error(_LE("Failed to create group to SCST target "
-                                  "%s"), e)
+                    LOG.error("Failed to create group to SCST target %s", e)
                     raise exception.ISCSITargetHelperCommandFailed(
                         error_message="Failed to create group to SCST target.")
             try:
@@ -181,8 +179,8 @@ class SCSTAdm(iscsi.ISCSITarget):
                                                 '-group', scst_group)
                 LOG.debug("StdOut from scstadmin add initiator: %s", out)
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to add initiator to group "
-                          " for SCST target %s"), e)
+                LOG.error("Failed to add initiator to group "
+                          " for SCST target %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_message="Failed to add Initiator to group for "
                                   "SCST target.")
@@ -198,7 +196,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                               '-handler', 'vdisk_fileio',
                               '-attributes', 'filename=%s' % path)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to add device to handler %s"), e)
+            LOG.error("Failed to add device to handler %s", e)
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Failed to add device to SCST handler.")
 
@@ -215,8 +213,8 @@ class SCSTAdm(iscsi.ISCSITarget):
                                   '-target', name,
                                   '-device', disk_id)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to add lun to SCST target "
-                      "id:%(vol_id)s: %(e)s"), {'vol_id': name, 'e': e})
+            LOG.error("Failed to add lun to SCST target "
+                      "id:%(vol_id)s: %(e)s", {'vol_id': name, 'e': e})
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Failed to add LUN to SCST Target for "
                               "volume " + vol_name)
@@ -226,7 +224,7 @@ class SCSTAdm(iscsi.ISCSITarget):
         try:
             self.scst_execute('-write_config', '/etc/scst.conf')
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to write in /etc/scst.conf."))
+            LOG.error("Failed to write in /etc/scst.conf.")
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Failed to write in /etc/scst.conf.")
 
@@ -312,8 +310,8 @@ class SCSTAdm(iscsi.ISCSITarget):
             self.show_target(iscsi_target, iqn)
 
         except Exception:
-            LOG.error(_LE("Skipping remove_export. No iscsi_target is"
-                          "presently exported for volume: %s"), volume['id'])
+            LOG.error("Skipping remove_export. No iscsi_target is"
+                      "presently exported for volume: %s", volume['id'])
             return
         vol = self.db.volume_get(context, volume['id'])
         lun = "".join(vol['provider_location'].split(" ")[-1:])
@@ -335,15 +333,15 @@ class SCSTAdm(iscsi.ISCSITarget):
                                   '-rem_target', iqn,
                                   '-driver', 'iscsi')
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to remove iscsi target for volume "
-                          "id:%(vol_id)s: %(e)s"), {'vol_id': vol_id, 'e': e})
+                LOG.error("Failed to remove iscsi target for volume "
+                          "id:%(vol_id)s: %(e)s", {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
             try:
                 self.scst_execute('-noprompt',
                                   '-close_dev', "disk%s" % tid,
                                   '-handler', 'vdisk_fileio')
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to close disk device %s"), e)
+                LOG.error("Failed to close disk device %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_message="Failed to close disk device for "
                                   "SCST handler.")
@@ -354,8 +352,8 @@ class SCSTAdm(iscsi.ISCSITarget):
                                       '-rem_target', iqn,
                                       '-driver', self.target_driver)
                 except putils.ProcessExecutionError as e:
-                    LOG.error(_LE("Failed to remove iscsi target for "
-                                  "volume id:%(vol_id)s: %(e)s"),
+                    LOG.error("Failed to remove iscsi target for "
+                              "volume id:%(vol_id)s: %(e)s",
                               {'vol_id': vol_id, 'e': e})
                     raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         else:
@@ -369,7 +367,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                                   '-target', iqn, '-group',
                                   scst_group)
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to remove LUN %s"), e)
+                LOG.error("Failed to remove LUN %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_message="Failed to remove LUN for SCST Target.")
 
@@ -378,7 +376,7 @@ class SCSTAdm(iscsi.ISCSITarget):
                                   '-close_dev', disk_id,
                                   '-handler', 'vdisk_fileio')
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to close disk device %s"), e)
+                LOG.error("Failed to close disk device %s", e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_message="Failed to close disk device for "
                                   "SCST handler.")

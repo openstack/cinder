@@ -25,7 +25,6 @@ import webob.exc
 import cinder.api.openstack
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.i18n import _LE, _LI, _LW
 import cinder.policy
 
 
@@ -123,7 +122,7 @@ class ExtensionManager(object):
     """
 
     def __init__(self):
-        LOG.info(_LI('Initializing extension manager.'))
+        LOG.info('Initializing extension manager.')
 
         self.cls_list = CONF.osapi_volume_extension
         self.extensions = {}
@@ -138,7 +137,7 @@ class ExtensionManager(object):
             return
 
         alias = ext.alias
-        LOG.info(_LI('Loaded extension: %s'), alias)
+        LOG.info('Loaded extension: %s', alias)
 
         if alias in self.extensions:
             raise exception.Error("Found duplicate extension: %s" % alias)
@@ -182,7 +181,7 @@ class ExtensionManager(object):
                       ' '.join(extension.__doc__.strip().split()))
             LOG.debug('Ext updated: %s', extension.updated)
         except AttributeError:
-            LOG.exception(_LE("Exception loading extension."))
+            LOG.exception("Exception loading extension.")
             return False
 
         return True
@@ -214,8 +213,8 @@ class ExtensionManager(object):
             try:
                 self.load_extension(ext_factory)
             except Exception as exc:
-                LOG.warning(_LW('Failed to load extension %(ext_factory)s: '
-                                '%(exc)s'),
+                LOG.warning('Failed to load extension %(ext_factory)s: '
+                            '%(exc)s',
                             {'ext_factory': ext_factory, 'exc': exc})
 
 
@@ -288,8 +287,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
             try:
                 ext_mgr.load_extension(classpath)
             except Exception as exc:
-                logger.warning(_LW('Failed to load extension %(classpath)s: '
-                                   '%(exc)s'),
+                logger.warning('Failed to load extension %(classpath)s: '
+                               '%(exc)s',
                                {'classpath': classpath, 'exc': exc})
 
         # Now, let's consider any subdirectories we may have...
@@ -313,8 +312,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 try:
                     ext(ext_mgr)
                 except Exception as exc:
-                    logger.warning(_LW('Failed to load extension '
-                                       '%(ext_name)s: %(exc)s'),
+                    logger.warning('Failed to load extension '
+                                   '%(ext_name)s: %(exc)s',
                                    {'ext_name': ext_name, 'exc': exc})
 
         # Update the list of directories we'll explore...

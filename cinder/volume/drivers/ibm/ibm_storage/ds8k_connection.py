@@ -23,7 +23,7 @@ from requests.packages.urllib3 import connection
 from requests.packages.urllib3 import connectionpool
 from requests.packages.urllib3 import poolmanager
 
-from cinder.i18n import _LW, _
+from cinder.i18n import _
 
 LOG = logging.getLogger(__name__)
 
@@ -108,9 +108,9 @@ class DS8KHTTPSConnection(connection.VerifiedHTTPSConnection):
         RECENT_DATE = datetime.date(2014, 1, 1)
         is_time_off = datetime.date.today() < RECENT_DATE
         if is_time_off:
-            msg = _LW('System time is way off (before %s). This will probably '
-                      'lead to SSL verification errors.')
-            LOG.warning(msg, RECENT_DATE)
+            LOG.warning('System time is way off (before %s). This will '
+                        'probably lead to SSL verification errors.',
+                        RECENT_DATE)
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs

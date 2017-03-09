@@ -33,7 +33,7 @@ from cinder.common import constants
 from cinder import context
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 import cinder.policy
@@ -354,8 +354,8 @@ class API(base.Base):
 
             description = 'auto-created_from_restore_from_backup'
 
-            LOG.info(_LI("Creating volume of %(size)s GB for restore of "
-                         "backup %(backup_id)s."),
+            LOG.info("Creating volume of %(size)s GB for restore of "
+                     "backup %(backup_id)s.",
                      {'size': size, 'backup_id': backup_id})
             volume = self.volume_api.create(context, size, name, description)
             volume_id = volume['id']
@@ -380,8 +380,8 @@ class API(base.Base):
                    {'volume_size': volume['size'], 'size': size})
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info(_LI("Overwriting volume %(volume_id)s with restore of "
-                     "backup %(backup_id)s"),
+        LOG.info("Overwriting volume %(volume_id)s with restore of "
+                 "backup %(backup_id)s",
                  {'volume_id': volume_id, 'backup_id': backup_id})
 
         # Setting the status here rather than setting at start and unrolling

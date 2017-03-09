@@ -32,7 +32,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
@@ -117,10 +117,9 @@ class SheepdogClient(object):
         except OSError as e:
             with excutils.save_and_reraise_exception():
                 if e.errno == errno.ENOENT:
-                    msg = _LE('Sheepdog is not installed. '
-                              'OSError: command is %s.')
+                    msg = 'Sheepdog is not installed. OSError: command is %s.'
                 else:
-                    msg = _LE('OSError: command is %s.')
+                    msg = 'OSError: command is %s.'
                 LOG.error(msg, cmd)
         except processutils.ProcessExecutionError as e:
             _stderr = e.stderr
@@ -154,10 +153,10 @@ class SheepdogClient(object):
         except OSError as e:
             with excutils.save_and_reraise_exception():
                 if e.errno == errno.ENOENT:
-                    msg = _LE('Qemu-img is not installed. '
-                              'OSError: command is %(cmd)s.')
+                    msg = ('Qemu-img is not installed. OSError: command is '
+                           '%(cmd)s.')
                 else:
-                    msg = _LE('OSError: command is %(cmd)s.')
+                    msg = 'OSError: command is %(cmd)s.'
                 LOG.error(msg, {'cmd': tuple(cmd)})
         except processutils.ProcessExecutionError as e:
             _stderr = e.stderr
@@ -178,8 +177,8 @@ class SheepdogClient(object):
         except exception.SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to check cluster status.'
-                              '(command: %s)'), cmd)
+                LOG.error('Failed to check cluster status.'
+                          '(command: %s)', cmd)
 
         if _stdout.startswith(self.DOG_RESP_CLUSTER_RUNNING):
             LOG.debug('Sheepdog cluster is running.')
@@ -202,19 +201,19 @@ class SheepdogClient(object):
             with excutils.save_and_reraise_exception():
                 if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_VDI_ALREADY_EXISTS):
-                    LOG.error(_LE('Volume already exists. %s'), vdiname)
+                    LOG.error('Volume already exists. %s', vdiname)
                 else:
-                    LOG.error(_LE('Failed to create volume. %s'), vdiname)
+                    LOG.error('Failed to create volume. %s', vdiname)
 
     def delete(self, vdiname):
         try:
             (_stdout, _stderr) = self._run_dog('vdi', 'delete', vdiname)
             if _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
-                LOG.warning(_LW('Volume not found. %s'), vdiname)
+                LOG.warning('Volume not found. %s', vdiname)
         except exception.SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to delete volume. %s'), vdiname)
+                LOG.error('Failed to delete volume. %s', vdiname)
 
     def create_snapshot(self, vdiname, snapname):
         try:
@@ -225,15 +224,15 @@ class SheepdogClient(object):
             with excutils.save_and_reraise_exception():
                 if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_SNAPSHOT_VDI_NOT_FOUND):
-                    LOG.error(_LE('Volume "%s" not found. Please check the '
-                                  'results of "dog vdi list".'),
+                    LOG.error('Volume "%s" not found. Please check the '
+                              'results of "dog vdi list".',
                               vdiname)
                 elif _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_SNAPSHOT_EXISTED %
                         {'snapname': snapname}):
-                    LOG.error(_LE('Snapshot "%s" already exists.'), snapname)
+                    LOG.error('Snapshot "%s" already exists.', snapname)
                 else:
-                    LOG.error(_LE('Failed to create snapshot. (command: %s)'),
+                    LOG.error('Failed to create snapshot. (command: %s)',
                               cmd)
 
     def delete_snapshot(self, vdiname, snapname):
@@ -241,14 +240,14 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('vdi', 'delete', '-s',
                                                snapname, vdiname)
             if _stderr.rstrip().endswith(self.DOG_RESP_SNAPSHOT_NOT_FOUND):
-                LOG.warning(_LW('Snapshot "%s" not found.'), snapname)
+                LOG.warning('Snapshot "%s" not found.', snapname)
             elif _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
-                LOG.warning(_LW('Volume "%s" not found.'), vdiname)
+                LOG.warning('Volume "%s" not found.', vdiname)
         except exception.SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to delete snapshot. (command: %s)'),
+                LOG.error('Failed to delete snapshot. (command: %s)',
                           cmd)
 
     def clone(self, src_vdiname, src_snapname, dst_vdiname, size):
@@ -263,21 +262,21 @@ class SheepdogClient(object):
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if self.QEMU_IMG_RESP_ALREADY_EXISTS in _stderr:
-                    LOG.error(_LE('Clone volume "%s" already exists. '
-                              'Please check the results of "dog vdi list".'),
+                    LOG.error('Clone volume "%s" already exists. '
+                              'Please check the results of "dog vdi list".',
                               dst_vdiname)
                 elif self.QEMU_IMG_RESP_VDI_NOT_FOUND in _stderr:
-                    LOG.error(_LE('Src Volume "%s" not found. '
-                              'Please check the results of "dog vdi list".'),
+                    LOG.error('Src Volume "%s" not found. '
+                              'Please check the results of "dog vdi list".',
                               src_vdiname)
                 elif self.QEMU_IMG_RESP_SNAPSHOT_NOT_FOUND in _stderr:
-                    LOG.error(_LE('Snapshot "%s" not found. '
-                              'Please check the results of "dog vdi list".'),
+                    LOG.error('Snapshot "%s" not found. '
+                              'Please check the results of "dog vdi list".',
                               src_snapname)
                 elif self.QEMU_IMG_RESP_SIZE_TOO_LARGE in _stderr:
-                    LOG.error(_LE('Volume size "%sG" is too large.'), size)
+                    LOG.error('Volume size "%sG" is too large.', size)
                 else:
-                    LOG.error(_LE('Failed to clone volume.(command: %s)'), cmd)
+                    LOG.error('Failed to clone volume.(command: %s)', cmd)
 
     def resize(self, vdiname, size):
         size = int(size) * units.Gi
@@ -288,21 +287,21 @@ class SheepdogClient(object):
             with excutils.save_and_reraise_exception():
                 if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_VDI_NOT_FOUND):
-                    LOG.error(_LE('Failed to resize vdi. vdi not found. %s'),
+                    LOG.error('Failed to resize vdi. vdi not found. %s',
                               vdiname)
                 elif _stderr.startswith(self.DOG_RESP_VDI_SHRINK_NOT_SUPPORT):
-                    LOG.error(_LE('Failed to resize vdi. '
-                                  'Shrinking vdi not supported. '
-                                  'vdi: %(vdiname)s new size: %(size)s'),
+                    LOG.error('Failed to resize vdi. '
+                              'Shrinking vdi not supported. '
+                              'vdi: %(vdiname)s new size: %(size)s',
                               {'vdiname': vdiname, 'size': size})
                 elif _stderr.startswith(self.DOG_RESP_VDI_SIZE_TOO_LARGE):
-                    LOG.error(_LE('Failed to resize vdi. '
-                                  'Too large volume size. '
-                                  'vdi: %(vdiname)s new size: %(size)s'),
+                    LOG.error('Failed to resize vdi. '
+                              'Too large volume size. '
+                              'vdi: %(vdiname)s new size: %(size)s',
                               {'vdiname': vdiname, 'size': size})
                 else:
-                    LOG.error(_LE('Failed to resize vdi. '
-                                  'vdi: %(vdiname)s new size: %(size)s'),
+                    LOG.error('Failed to resize vdi. '
+                              'vdi: %(vdiname)s new size: %(size)s',
                               {'vdiname': vdiname, 'size': size})
 
     def get_volume_stats(self):
@@ -310,7 +309,7 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('node', 'info', '-r')
         except exception.SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to get volume status. %s'), e)
+                LOG.error('Failed to get volume status. %s', e)
         return _stdout
 
     def get_vdi_info(self, vdiname):
@@ -319,7 +318,7 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('vdi', 'list', vdiname, '-r')
         except exception.SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to get vdi info. %s'), e)
+                LOG.error('Failed to get vdi info. %s', e)
         return _stdout
 
     def update_node_list(self):
@@ -327,7 +326,7 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('node', 'list', '-r')
         except exception.SheepdogCmdError as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to get node list. %s'), e)
+                LOG.error('Failed to get node list. %s', e)
         node_list = []
         stdout = _stdout.strip('\n')
         for line in stdout.split('\n'):
@@ -520,7 +519,7 @@ class SheepdogDriver(driver.VolumeDriver):
                               volume.name, volume.size)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to create cloned volume %s.'),
+                LOG.error('Failed to create cloned volume %s.',
                           volume.name)
         finally:
             # Delete temp Snapshot

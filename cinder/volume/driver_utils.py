@@ -17,7 +17,6 @@ from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -41,9 +40,9 @@ class VolumeDriverUtils(object):
                 self._data_namespace
             )
         except exception.CinderException:
-            LOG.exception(_LE("Failed to get driver initiator data for"
-                              " initiator %(initiator)s and namespace"
-                              " %(namespace)s"),
+            LOG.exception("Failed to get driver initiator data for"
+                          " initiator %(initiator)s and namespace"
+                          " %(namespace)s",
                           {'initiator': initiator,
                            'namespace': self._data_namespace})
             raise
@@ -63,9 +62,9 @@ class VolumeDriverUtils(object):
                 value
             )
         except exception.CinderException:
-            LOG.exception(_LE("Failed to insert initiator data for"
-                              " initiator %(initiator)s and backend"
-                              " %(backend)s for key %(key)s."),
+            LOG.exception("Failed to insert initiator data for"
+                          " initiator %(initiator)s and backend"
+                          " %(backend)s for key %(key)s.",
                           {'initiator': initiator,
                            'backend': self._data_namespace,
                            'key': key})

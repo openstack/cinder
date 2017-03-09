@@ -26,7 +26,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
@@ -205,7 +205,7 @@ class Client(client_base.Client):
             node_client.send_request('ems-autosupport-log', message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
-            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
+            LOG.warning('Failed to invoke EMS. %s', e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
@@ -617,9 +617,9 @@ class Client(client_base.Client):
             try:
                 self.qos_policy_group_rename(current_name, new_name)
             except netapp_api.NaApiError as ex:
-                msg = _LW('Rename failure in cleanup of cDOT QOS policy group '
-                          '%(name)s: %(ex)s')
-                LOG.warning(msg, {'name': current_name, 'ex': ex})
+                LOG.warning('Rename failure in cleanup of cDOT QOS policy '
+                            'group %(name)s: %(ex)s',
+                            {'name': current_name, 'ex': ex})
 
         # Attempt to delete any QoS policies named "delete-openstack-*".
         self.remove_unused_qos_policy_groups()
@@ -848,8 +848,7 @@ class Client(client_base.Client):
                 LOG.debug('Not connected to cluster management LIF.')
             else:
                 with excutils.save_and_reraise_exception():
-                    msg = _LE('Failed to get the list of nodes.')
-                    LOG.exception(msg)
+                    LOG.exception('Failed to get the list of nodes.')
             return False
 
     def get_operational_lif_addresses(self):
@@ -1105,8 +1104,8 @@ class Client(client_base.Client):
                           'collected. This API requires cluster-scoped '
                           'credentials.', {'name': flexvol_name})
             else:
-                msg = _LE('Failed to get dedupe info for volume %s.')
-                LOG.exception(msg, flexvol_name)
+                LOG.exception('Failed to get dedupe info for volume %s.',
+                              flexvol_name)
             return no_dedupe_response
 
         if self._get_record_count(result) != 1:
@@ -1159,8 +1158,8 @@ class Client(client_base.Client):
             result = self.send_request('clone-split-status',
                                        {'volume-name': flexvol_name})
         except netapp_api.NaApiError:
-            msg = _LE('Failed to get clone split info for volume %s.')
-            LOG.exception(msg, flexvol_name)
+            LOG.exception('Failed to get clone split info for volume %s.',
+                          flexvol_name)
             return {'unsplit-size': 0, 'unsplit-clone-count': 0}
 
         clone_split_info = result.get_child_by_name(
@@ -1195,8 +1194,8 @@ class Client(client_base.Client):
         try:
             result = self.send_iter_request('snapmirror-get-iter', api_args)
         except netapp_api.NaApiError:
-            msg = _LE('Failed to get SnapMirror info for volume %s.')
-            LOG.exception(msg, flexvol_name)
+            LOG.exception('Failed to get SnapMirror info for volume %s.',
+                          flexvol_name)
             return False
 
         if not self._has_records(result):
@@ -1230,8 +1229,8 @@ class Client(client_base.Client):
         try:
             result = self.send_iter_request('volume-get-iter', api_args)
         except netapp_api.NaApiError:
-            msg = _LE('Failed to get Encryption info for volume %s.')
-            LOG.exception(msg, flexvol_name)
+            LOG.exception('Failed to get Encryption info for volume %s.',
+                          flexvol_name)
             return False
 
         if not self._has_records(result):
@@ -1432,8 +1431,8 @@ class Client(client_base.Client):
                 LOG.debug('Aggregate info can only be collected with '
                           'cluster-scoped credentials.')
             else:
-                msg = _LE('Failed to get info for aggregate %s.')
-                LOG.exception(msg, aggregate_name)
+                LOG.exception('Failed to get info for aggregate %s.',
+                              aggregate_name)
             return {}
 
         if len(aggrs) < 1:
@@ -1508,8 +1507,8 @@ class Client(client_base.Client):
                 LOG.debug('Disk types can only be collected with '
                           'cluster scoped credentials.')
             else:
-                msg = _LE('Failed to get disk info for aggregate %s.')
-                LOG.exception(msg, aggregate_name)
+                LOG.exception('Failed to get disk info for aggregate %s.',
+                              aggregate_name)
             return disk_types
 
         attributes_list = result.get_child_by_name(
@@ -1560,8 +1559,8 @@ class Client(client_base.Client):
                 LOG.debug('Aggregate capacity can only be collected with '
                           'cluster scoped credentials.')
             else:
-                msg = _LE('Failed to get info for aggregate %s.')
-                LOG.exception(msg, aggregate_name)
+                LOG.exception('Failed to get info for aggregate %s.',
+                              aggregate_name)
             return {}
 
         if len(aggrs) < 1:

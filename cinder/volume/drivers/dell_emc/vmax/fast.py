@@ -16,7 +16,7 @@
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import utils
 
@@ -50,12 +50,11 @@ class VMAXFast(object):
         isTieringPolicySupported = self.is_tiering_policy_enabled(
             conn, tierPolicyServiceInstanceName)
         if isTieringPolicySupported is None:
-            LOG.error(_LE("Cannot determine whether "
-                          "Tiering Policy is supported on this array."))
+            LOG.error("Cannot determine whether "
+                      "Tiering Policy is supported on this array.")
 
         if isTieringPolicySupported is False:
-            LOG.error(_LE("Tiering Policy is not "
-                          "supported on this array."))
+            LOG.error("Tiering Policy is not supported on this array.")
         return isTieringPolicySupported
 
     def is_tiering_policy_enabled(self, conn, tierPolicyServiceInstanceName):
@@ -87,8 +86,8 @@ class VMAXFast(object):
                 break
 
         if foundIsSupportsTieringPolicies is None:
-            LOG.error(_LE("Cannot determine if Tiering Policies "
-                          "are supported."))
+            LOG.error("Cannot determine if Tiering Policies "
+                      "are supported.")
 
         return foundIsSupportsTieringPolicies
 
@@ -113,8 +112,7 @@ class VMAXFast(object):
             conn, controllerConfigService)
 
         if not self._check_if_fast_supported(conn, storageSystemInstanceName):
-            LOG.error(_LE(
-                "FAST is not supported on this array."))
+            LOG.error("FAST is not supported on this array.")
             raise
 
         defaultSgName = self.format_default_sg_string(fastPolicyName)
@@ -127,9 +125,9 @@ class VMAXFast(object):
                                                   controllerConfigService,
                                                   defaultSgName))
         if defaultStorageGroupInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Unable to find default storage group "
-                "for FAST policy : %(fastPolicyName)s."),
+                "for FAST policy : %(fastPolicyName)s.",
                 {'fastPolicyName': fastPolicyName})
             raise
 
@@ -137,9 +135,9 @@ class VMAXFast(object):
             foundDefaultStorageGroupInstanceName = (
                 assocStorageGroupInstanceName)
         else:
-            LOG.warning(_LW(
+            LOG.warning(
                 "Volume: %(volumeName)s Does not belong "
-                "to storage group %(defaultSgName)s."),
+                "to storage group %(defaultSgName)s.",
                 {'volumeName': volumeName,
                  'defaultSgName': defaultSgName})
         return foundDefaultStorageGroupInstanceName, defaultSgName
@@ -177,8 +175,8 @@ class VMAXFast(object):
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, controllerConfigService, defaultSgName)
         if storageGroupInstanceName is None:
-            LOG.error(_LE(
-                "Unable to get default storage group %(defaultSgName)s."),
+            LOG.error(
+                "Unable to get default storage group %(defaultSgName)s.",
                 {'defaultSgName': defaultSgName})
             return failedRet
 
@@ -214,9 +212,9 @@ class VMAXFast(object):
         firstVolumeInstance = self._create_volume_for_default_volume_group(
             conn, controllerConfigService, volumeInstance.path, extraSpecs)
         if firstVolumeInstance is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Failed to create a first volume for storage "
-                "group : %(storageGroupName)s."),
+                "group : %(storageGroupName)s.",
                 {'storageGroupName': storageGroupName})
             return failedRet
 
@@ -225,9 +223,9 @@ class VMAXFast(object):
                 conn, controllerConfigService, storageGroupName,
                 firstVolumeInstance.path, extraSpecs))
         if defaultStorageGroupInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Failed to create default storage group for "
-                "FAST policy : %(fastPolicyName)s."),
+                "FAST policy : %(fastPolicyName)s.",
                 {'fastPolicyName': fastPolicyName})
             return failedRet
 
@@ -240,9 +238,9 @@ class VMAXFast(object):
         tierPolicyRuleInstanceName = self._get_service_level_tier_policy(
             conn, tierPolicyServiceInstanceName, fastPolicyName)
         if tierPolicyRuleInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Unable to get policy rule for fast policy: "
-                "%(fastPolicyName)s."),
+                "%(fastPolicyName)s.",
                 {'fastPolicyName': fastPolicyName})
             return failedRet
 
@@ -280,7 +278,7 @@ class VMAXFast(object):
         poolInstanceName = self.utils.get_assoc_pool_from_volume(
             conn, volumeInstanceName)
         if poolInstanceName is None:
-            LOG.error(_LE("Unable to get associated pool of volume."))
+            LOG.error("Unable to get associated pool of volume.")
             return failedRet
 
         volumeName = 'vol1'
@@ -408,8 +406,8 @@ class VMAXFast(object):
 
         if len(storageTierInstanceNames) == 0:
             storageTierInstanceNames = None
-            LOG.warning(_LW(
-                "Unable to get storage tiers from tier policy rule."))
+            LOG.warning(
+                "Unable to get storage tiers from tier policy rule.")
 
         return storageTierInstanceNames
 
@@ -503,8 +501,8 @@ class VMAXFast(object):
         tierPolicyRuleInstanceName = self._get_service_level_tier_policy(
             conn, tierPolicyServiceInstanceName, fastPolicyName)
         if tierPolicyRuleInstanceName is None:
-            LOG.error(_LE(
-                "Cannot find the fast policy %(fastPolicyName)s."),
+            LOG.error(
+                "Cannot find the fast policy %(fastPolicyName)s.",
                 {'fastPolicyName': fastPolicyName})
             return failedRet
         else:
@@ -521,9 +519,9 @@ class VMAXFast(object):
                     storageGroupInstanceName, tierPolicyRuleInstanceName,
                     storageGroupName, fastPolicyName, extraSpecs)
             except Exception:
-                LOG.exception(_LE(
+                LOG.exception(
                     "Failed to add storage group %(storageGroupInstanceName)s "
-                    "to tier policy rule %(tierPolicyRuleInstanceName)s."),
+                    "to tier policy rule %(tierPolicyRuleInstanceName)s.",
                     {'storageGroupInstanceName': storageGroupInstanceName,
                      'tierPolicyRuleInstanceName': tierPolicyRuleInstanceName})
                 return failedRet
@@ -588,15 +586,15 @@ class VMAXFast(object):
                 rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                                  extraSpecs)
                 if rc != 0:
-                    LOG.error(_LE("Error disassociating storage group from "
-                              "policy: %s."), errordesc)
+                    LOG.error("Error disassociating storage group from "
+                              "policy: %s.", errordesc)
                 else:
                     LOG.debug("Disassociated storage group from policy.")
             else:
                 LOG.debug("ModifyStorageTierPolicyRule completed.")
         except Exception as e:
-            LOG.info(_LI("Storage group not associated with the "
-                         "policy. Exception is %s."), e)
+            LOG.info("Storage group not associated with the "
+                     "policy. Exception is %s.", e)
 
     def get_pool_associated_to_policy(
             self, conn, fastPolicyName, arraySN,
@@ -664,7 +662,7 @@ class VMAXFast(object):
             isTieringPolicySupported = self.is_tiering_policy_enabled(
                 conn, tierPolicyServiceInstanceName)
         except Exception as e:
-            LOG.error(_LE("Exception: %s."), e)
+            LOG.error("Exception: %s.", e)
             return False
 
         return isTieringPolicySupported

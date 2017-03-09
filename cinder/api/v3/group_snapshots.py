@@ -26,7 +26,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v3.views import group_snapshots as group_snapshot_views
 from cinder import exception
 from cinder import group as group_api
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import rpc
 from cinder.volume import group_types
 
@@ -72,7 +72,7 @@ class GroupSnapshotsController(wsgi.Controller):
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_LI('Delete group_snapshot with id: %s'), id, context=context)
+        LOG.info('Delete group_snapshot with id: %s', id, context=context)
 
         try:
             group_snapshot = self.group_snapshot_api.get_group_snapshot(
@@ -160,7 +160,7 @@ class GroupSnapshotsController(wsgi.Controller):
         name = group_snapshot.get('name', None)
         description = group_snapshot.get('description', None)
 
-        LOG.info(_LI("Creating group_snapshot %(name)s."),
+        LOG.info("Creating group_snapshot %(name)s.",
                  {'name': name},
                  context=context)
 

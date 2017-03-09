@@ -57,7 +57,7 @@ from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.i18n import _, _LW, _LE, _LI
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder import utils
 
@@ -120,7 +120,7 @@ def get_backend():
 def is_admin_context(context):
     """Indicates if the request context is an administrator."""
     if not context:
-        LOG.warning(_LW('Use of empty request context is deprecated'),
+        LOG.warning('Use of empty request context is deprecated',
                     DeprecationWarning)
         raise Exception('die')
     return context.is_admin
@@ -234,8 +234,8 @@ def _retry_on_deadlock(f):
             try:
                 return f(*args, **kwargs)
             except db_exc.DBDeadlock:
-                LOG.warning(_LW("Deadlock detected when running "
-                                "'%(func_name)s': Retrying..."),
+                LOG.warning("Deadlock detected when running "
+                            "'%(func_name)s': Retrying...",
                             dict(func_name=f.__name__))
                 # Retry!
                 time.sleep(0.5)
@@ -1277,8 +1277,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     usages[resource].reserved += delta
 
     if unders:
-        LOG.warning(_LW("Change will make usage less than 0 for the following "
-                        "resources: %s"), unders)
+        LOG.warning("Change will make usage less than 0 for the following "
+                    "resources: %s", unders)
     if overs:
         usages = {k: dict(in_use=v.in_use, reserved=v.reserved,
                           allocated=allocated.get(k, 0))
@@ -3898,8 +3898,7 @@ def volume_type_destroy(context, id):
                                session=session).filter(
             models.ConsistencyGroup.volume_type_id.contains(id)).count()
         if results or group_count or cg_count:
-            LOG.error(_LE('VolumeType %s deletion failed, '
-                          'VolumeType in use.'), id)
+            LOG.error('VolumeType %s deletion failed, VolumeType in use.', id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
         updated_values = {'deleted': True,
                           'deleted_at': utcnow,
@@ -3929,8 +3928,8 @@ def group_type_destroy(context, id):
         # results = model_query(context, models.Group, session=session). \
         #     filter_by(group_type_id=id).all()
         # if results:
-        #     LOG.error(_LE('GroupType %s deletion failed, '
-        #                   'GroupType in use.'), id)
+        #     LOG.error('GroupType %s deletion failed, '
+        #               'GroupType in use.', id)
         #     raise exception.GroupTypeInUse(group_type_id=id)
         model_query(context, models.GroupTypes, session=session).\
             filter_by(id=id).\
@@ -6086,9 +6085,9 @@ def purge_deleted_rows(context, age_in_days):
     for table in reversed(metadata.sorted_tables):
         if 'deleted' not in table.columns.keys():
             continue
-        LOG.info(_LI('Purging deleted rows older than age=%(age)d days '
-                     'from table=%(table)s'), {'age': age_in_days,
-                                               'table': table})
+        LOG.info('Purging deleted rows older than age=%(age)d days '
+                 'from table=%(table)s', {'age': age_in_days,
+                                          'table': table})
         deleted_age = timeutils.utcnow() - dt.timedelta(days=age_in_days)
         try:
             with session.begin():
@@ -6104,14 +6103,14 @@ def purge_deleted_rows(context, age_in_days):
                     table.delete()
                     .where(table.c.deleted_at < deleted_age))
         except db_exc.DBReferenceError as ex:
-            LOG.error(_LE('DBError detected when purging from '
-                          '%(tablename)s: %(error)s.'),
-                      {'tablename': table, 'error': six.text_type(ex)})
+            LOG.error('DBError detected when purging from '
+                      '%(tablename)s: %(error)s.',
+                      {'tablename': table, 'error': ex})
             raise
 
         rows_purged = result.rowcount
         if rows_purged != 0:
-            LOG.info(_LI("Deleted %(row)d rows from table=%(table)s"),
+            LOG.info("Deleted %(row)d rows from table=%(table)s",
                      {'row': rows_purged, 'table': table})
 
 

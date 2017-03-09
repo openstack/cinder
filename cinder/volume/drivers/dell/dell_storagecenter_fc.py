@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
@@ -147,11 +147,11 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                                                  'discard': True}}
                                 LOG.debug('Return FC data: %s', data)
                                 return data
-                            LOG.error(_LE('Lun mapping returned null!'))
+                            LOG.error('Lun mapping returned null!')
 
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to initialize connection.'))
+                    LOG.error('Failed to initialize connection.')
 
         # We get here because our mapping is none so blow up.
         raise exception.VolumeBackendAPIException(_('Unable to map volume.'))
@@ -187,8 +187,8 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                     sclivevolume['secondaryVolume']['instanceId'])
                 if secondaryvol:
                     return api.find_wwns(secondaryvol, secondary)
-        LOG.warning(_LW('Unable to map live volume secondary volume'
-                        ' %(vol)s to secondary server wwns: %(wwns)r'),
+        LOG.warning('Unable to map live volume secondary volume'
+                    ' %(vol)s to secondary server wwns: %(wwns)r',
                     {'vol': sclivevolume['secondaryVolume']['instanceName'],
                      'wwns': wwns})
         return None, [], {}
@@ -253,7 +253,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to terminate connection'))
+                    LOG.error('Failed to terminate connection')
         raise exception.VolumeBackendAPIException(
             _('Terminate connection unable to connect to backend.'))
 

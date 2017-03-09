@@ -17,7 +17,6 @@ from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _LE
 from cinder.message import api as message_api
 from cinder.message import defined_messages
 from cinder.message import resource_types
@@ -96,7 +95,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
         try:
             self._notify_failure(context, request_spec, cause)
         finally:
-            LOG.error(_LE("Failed to run task %(name)s: %(cause)s"),
+            LOG.error("Failed to run task %(name)s: %(cause)s",
                       {'cause': cause, 'name': self.name})
 
     @utils.if_notifications_enabled
@@ -114,8 +113,8 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
             rpc.get_notifier('scheduler').error(context, self.FAILURE_TOPIC,
                                                 payload)
         except exception.CinderException:
-            LOG.exception(_LE("Failed notifying on %(topic)s "
-                              "payload %(payload)s"),
+            LOG.exception("Failed notifying on %(topic)s "
+                          "payload %(payload)s",
                           {'topic': self.FAILURE_TOPIC, 'payload': payload})
 
     def execute(self, context, request_spec, filter_properties, volume):

@@ -20,7 +20,6 @@ from webob import exc
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.i18n import _LI
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ class SnapshotUnmanageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.info(_LI("Unmanage snapshot with id: %s"), id)
+        LOG.info("Unmanage snapshot with id: %s", id)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)

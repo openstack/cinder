@@ -20,7 +20,7 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.vmax import common
@@ -209,7 +209,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         iscsi_properties = self.smis_get_iscsi_properties(
             volume, connector, ip_and_iqn, is_multipath)
 
-        LOG.info(_LI("iSCSI properties are: %s"), iscsi_properties)
+        LOG.info("iSCSI properties are: %s", iscsi_properties)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -246,7 +246,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
             isError = True
 
         if isError:
-            LOG.error(_LE("Unable to get the lun id"))
+            LOG.error("Unable to get the lun id")
             exception_message = (_("Cannot find device number for volume "
                                  "%(volumeName)s.")
                                  % {'volumeName': volume['name']})
@@ -265,15 +265,14 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         properties['target_lun'] = lun_id
         properties['volume_id'] = volume['id']
 
-        LOG.info(_LI(
-            "ISCSI properties: %(properties)s."), {'properties': properties})
-        LOG.info(_LI(
-            "ISCSI volume is: %(volume)s."), {'volume': volume})
+        LOG.info(
+            "ISCSI properties: %(properties)s.", {'properties': properties})
+        LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
 
         if 'provider_auth' in volume:
             auth = volume['provider_auth']
-            LOG.info(_LI(
-                "AUTH properties: %(authProps)s."), {'authProps': auth})
+            LOG.info(
+                "AUTH properties: %(authProps)s.", {'authProps': auth})
 
             if auth is not None:
                 (auth_method, auth_username, auth_secret) = auth.split()
@@ -282,7 +281,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info(_LI("AUTH properties: %s."), properties)
+                LOG.info("AUTH properties: %s.", properties)
 
         return properties
 

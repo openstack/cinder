@@ -28,7 +28,7 @@ from cinder.api.views import consistencygroups as consistencygroup_views
 from cinder import consistencygroup as consistencygroup_api
 from cinder import exception
 from cinder import group as group_api
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.objects import cgsnapshot as cgsnap_obj
 from cinder.objects import consistencygroup as cg_obj
 from cinder.objects import group as grp_obj
@@ -77,7 +77,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                 msg = _("Invalid value '%s' for force.") % force
                 raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI('Delete consistency group with id: %s'), id)
+        LOG.info('Delete consistency group with id: %s', id)
 
         try:
             group = self._get(context, id)
@@ -181,7 +181,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                    group_types.DEFAULT_CGSNAPSHOT_TYPE)
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI("Creating consistency group %(name)s."),
+        LOG.info("Creating consistency group %(name)s.",
                  {'name': name})
 
         try:
@@ -232,12 +232,12 @@ class ConsistencyGroupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
 
         if cgsnapshot_id:
-            LOG.info(_LI("Creating consistency group %(name)s from "
-                         "cgsnapshot %(snap)s."),
+            LOG.info("Creating consistency group %(name)s from "
+                     "cgsnapshot %(snap)s.",
                      {'name': name, 'snap': cgsnapshot_id})
         elif source_cgid:
-            LOG.info(_LI("Creating consistency group %(name)s from "
-                         "source consistency group %(source_cgid)s."),
+            LOG.info("Creating consistency group %(name)s from "
+                     "source consistency group %(source_cgid)s.",
                      {'name': name, 'source_cgid': source_cgid})
 
         try:
@@ -282,9 +282,9 @@ class ConsistencyGroupsController(wsgi.Controller):
     def _update(self, context, id, name, description, add_volumes,
                 remove_volumes,
                 allow_empty=False):
-        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
-                     "description: %(description)s add_volumes: "
-                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
+        LOG.info("Updating consistency group %(id)s with name %(name)s "
+                 "description: %(description)s add_volumes: "
+                 "%(add_volumes)s remove_volumes: %(remove_volumes)s.",
                  {'id': id,
                   'name': name,
                   'description': description,

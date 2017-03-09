@@ -30,7 +30,7 @@ import six
 from six.moves import http_client
 from six.moves import urllib
 
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 
 # Handle case where we are running in a monkey patched environment
 if OpenSSL and patcher.is_monkey_patched('socket'):
@@ -94,9 +94,9 @@ class HTTPSConnection(http_client.HTTPSConnection):
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, ca_certs=None, no_verification=False):
         if not pywbemAvailable:
-            LOG.info(_LI(
+            LOG.info(
                 'Module PyWBEM not installed.  '
-                'Install PyWBEM using the python-pywbem package.'))
+                'Install PyWBEM using the python-pywbem package.')
         if six.PY3:
             excp_lst = (TypeError, ssl.SSLError)
         else:

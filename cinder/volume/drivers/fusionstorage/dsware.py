@@ -24,7 +24,7 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.volume import driver
@@ -86,7 +86,7 @@ class DSWAREDriver(driver.VolumeDriver):
         # lrk: check config file here.
         if not os.path.exists(fspythonapi.fsc_conf_file):
             msg = _("Dsware config file not exists!")
-            LOG.error(_LE("Dsware config file: %s not exists!"),
+            LOG.error("Dsware config file: %s not exists!",
                       fspythonapi.fsc_conf_file)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -140,7 +140,7 @@ class DSWAREDriver(driver.VolumeDriver):
                 pool_id = int(pool_info)
         # Query Dsware version failed!
         else:
-            LOG.error(_LE("Query Dsware version fail!"))
+            LOG.error("Query Dsware version fail!")
             msg = (_("Query Dsware version failed! Retcode is %s.") %
                    retcode)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -149,7 +149,7 @@ class DSWAREDriver(driver.VolumeDriver):
             result = self.dsware_client.create_volume(
                 volume_id, pool_id, volume_size, int(isThin))
         except Exception as e:
-            LOG.exception(_LE("Create volume error, details is: %s."), e)
+            LOG.exception("Create volume error, details is: %s.", e)
             raise
 
         if result != 0:
@@ -254,7 +254,7 @@ class DSWAREDriver(driver.VolumeDriver):
                                 'status': current_volume['status']})
                 raise loopingcall.LoopingCallDone(retvalue=False)
         else:
-            LOG.warning(_LW('Can not find volume %s from Dsware.'),
+            LOG.warning('Can not find volume %s from Dsware.',
                         new_volume_name)
             self.count += 1
             if self.count > 10:
@@ -386,7 +386,7 @@ class DSWAREDriver(driver.VolumeDriver):
                                       image_meta,
                                       volume_attach_path)
         except Exception as e:
-            LOG.error(_LE("Upload volume error, details: %s."), e)
+            LOG.error("Upload volume error, details: %s.", e)
             raise
         finally:
             if not already_attached:
@@ -433,7 +433,7 @@ class DSWAREDriver(driver.VolumeDriver):
         snapshot_info = self.dsware_client.query_snap(snapshot_name)
         LOG.debug("Get snapshot, snapshot_info is : %s.", snapshot_info)
         if snapshot_info['result'] == SNAP_NOT_EXIST:
-            LOG.error(_LE('Snapshot: %s not found!'), snapshot_name)
+            LOG.error('Snapshot: %s not found!', snapshot_name)
             return False
         elif snapshot_info['result'] == 0:
             return True
@@ -462,8 +462,7 @@ class DSWAREDriver(driver.VolumeDriver):
         vol_id = 'volume-%s' % snapshot['volume_id']
         snapshot_id = snapshot['name']
         if not self._get_volume(vol_id):
-            msg = _LE('Create Snapshot, but volume: %s not found!')
-            LOG.error(msg, vol_id)
+            LOG.error('Create Snapshot, but volume: %s not found!', vol_id)
             raise exception.VolumeNotFound(volume_id=vol_id)
         else:
             self._create_snapshot(snapshot_id, vol_id)

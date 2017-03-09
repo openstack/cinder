@@ -21,9 +21,9 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder import utils as cinder_utils
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 import cinder.interface as cinder_interface
+from cinder import utils as cinder_utils
 from cinder.volume.drivers.reduxio import rdx_cli_api
 from cinder.volume.drivers.san import san
 
@@ -60,7 +60,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         """Initialize Reduxio ISCSI Driver."""
-        LOG.info(_LI("Initializing Reduxio ISCSI Driver"))
+        LOG.info("Initializing Reduxio ISCSI Driver")
         super(ReduxioISCSIDriver, self).__init__(*args, **kwargs)
         self.rdxApi = None  # type: rdx_cli_api.ReduxioAPI
         self._stats = {}
@@ -124,8 +124,8 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def create_volume(self, volume):
         """Create a new volume."""
-        LOG.info(_LI(
-            "Creating a new volume(%(name)s) with size(%(size)s)"),
+        LOG.info(
+            "Creating a new volume(%(name)s) with size(%(size)s)",
             {'name': volume["name"], 'size': volume["size"]})
         vol_name = self._cinder_id_to_rdx(volume["id"])
         self.rdxApi.create_volume(
@@ -137,8 +137,8 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def manage_existing(self, volume, external_ref):
         """Create a new Cinder volume out of an existing Reduxio volume."""
-        LOG.info(_LI("Manage existing volume(%(cinder_vol)s) "
-                     "from Reduxio Volume(%(rdx_vol)s)"),
+        LOG.info("Manage existing volume(%(cinder_vol)s) "
+                 "from Reduxio Volume(%(rdx_vol)s)",
                  {'cinder_vol': volume["id"],
                   'rdx_vol': external_ref["source-name"]})
         # Get the volume name from the external reference
@@ -178,7 +178,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def unmanage(self, volume):
         """Remove the specified volume from Cinder management."""
-        LOG.info(_LI("Unmanaging volume(%s)"), volume["id"])
+        LOG.info("Unmanaging volume(%s)", volume["id"])
         vol_name = self._cinder_id_to_rdx(volume['id'])
         cli_vol = self.rdxApi.find_volume_by_name(vol_name)
         managed_info = self._get_managed_info(cli_vol)
@@ -193,7 +193,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def delete_volume(self, volume):
         """Delete the specified volume."""
-        LOG.info(_LI("Deleting volume(%s)"), volume["id"])
+        LOG.info("Deleting volume(%s)", volume["id"])
         try:
             self.rdxApi.delete_volume(
                 name=self._cinder_id_to_rdx(volume["id"]))
@@ -207,9 +207,9 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
 
         Extend the volume if the size of the volume is more than the snapshot.
         """
-        LOG.info(_LI(
+        LOG.info(
             "cloning new volume(%(new_vol)s) from snapshot(%(snapshot)s),"
-            " src volume(%(src_vol)s)"),
+            " src volume(%(src_vol)s)",
             {'new_vol': volume["name"],
                 'snapshot': snapshot["name"],
                 'src_vol': snapshot["volume_name"]}
@@ -249,13 +249,13 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         :param src_vref: The source volume to clone from
         :return: None
         """
-        LOG.info(_LI("cloning new volume(%(clone)s) from src(%(src)s)"),
+        LOG.info("cloning new volume(%(clone)s) from src(%(src)s)",
                  {'clone': volume['name'], 'src': src_vref['name']})
         parent_name = self._cinder_id_to_rdx(src_vref["id"])
         clone_name = self._cinder_id_to_rdx(volume["id"])
         description = self._create_vol_managed_description(volume)
         if BACKDATE_META_FIELD in volume[METADATA_KEY]:
-            LOG.info(_LI("Cloning from backdate %s"),
+            LOG.info("Cloning from backdate %s",
                      volume[METADATA_KEY][BACKDATE_META_FIELD])
 
             self.rdxApi.clone_volume(
@@ -265,7 +265,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
                 str_date=volume[METADATA_KEY][BACKDATE_META_FIELD]
             )
         else:
-            LOG.info(_LI("Cloning from now"))
+            LOG.info("Cloning from now")
             self.rdxApi.clone_volume(
                 parent_name=parent_name,
                 clone_name=clone_name,
@@ -296,8 +296,8 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         from the volume's current state.
         :return: None
         """
-        LOG.info(_LI(
-            "Creating snapshot(%(snap)s) from volume(%(vol)s)"),
+        LOG.info(
+            "Creating snapshot(%(snap)s) from volume(%(vol)s)",
             {'snap': snapshot['name'], 'vol': snapshot['volume_name']})
         cli_vol_name = self._cinder_id_to_rdx(snapshot['volume_id'])
         cli_bookmark_name = self._cinder_id_to_rdx(snapshot['id'])
@@ -317,7 +317,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
-        LOG.info(_LI("Deleting snapshot(%(snap)s) from volume(%(vol)s)"),
+        LOG.info("Deleting snapshot(%(snap)s) from volume(%(vol)s)",
                  {'snap': snapshot['name'], 'vol': snapshot['volume_name']})
 
         volume_name = self._cinder_id_to_rdx(snapshot['volume_id'])
@@ -392,8 +392,8 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     @cinder_utils.trace
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
-        LOG.info(_LI(
-            "Assigning volume(%(vol)s) with initiator(%(initiator)s)"),
+        LOG.info(
+            "Assigning volume(%(vol)s) with initiator(%(initiator)s)",
             {'vol': volume['name'], 'initiator': connector['initiator']})
 
         initiator_iqn = connector['initiator']
@@ -405,12 +405,12 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         # if it doesnt exist
         for host in self.rdxApi.list_hosts():
             if host["iscsi_name"] == initiator_iqn:
-                LOG.info(_LI("initiator exists in Reduxio"))
+                LOG.info("initiator exists in Reduxio")
                 found = True
                 initiator_name = host["name"]
                 break
         if not found:
-            LOG.info(_LI("Initiator doesn't exist in Reduxio, Creating it"))
+            LOG.info("Initiator doesn't exist in Reduxio, Creating it")
             initiator_name = self._generate_initiator_name()
             self.rdxApi.create_host(name=initiator_name,
                                     iscsi_name=initiator_iqn)
@@ -420,7 +420,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
 
         if existing_assignment is None:
             # Create assignment between the host and the volume
-            LOG.info(_LI("Creating assignment"))
+            LOG.info("Creating assignment")
             self.rdxApi.assign(vol_rdx_name, host_name=initiator_name)
         else:
             LOG.debug("Assignment already exists")
@@ -470,7 +470,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
             # Lun num is the same for each path
             properties['data']['target_luns'] = [target_lun] * 4
 
-        LOG.info(_LI("Assignment complete. Assignment details: %s"),
+        LOG.info("Assignment complete. Assignment details: %s",
                  properties)
 
         return properties
@@ -479,8 +479,8 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         iqn = connector['initiator']
-        LOG.info(_LI("Deleting assignment volume(%(vol)s) with "
-                     "initiator(%(initiator)s)"),
+        LOG.info("Deleting assignment volume(%(vol)s) with "
+                 "initiator(%(initiator)s)",
                  {'vol': volume['name'], 'initiator': iqn})
 
         for cli_host in self.rdxApi.list_hosts():
@@ -498,5 +498,5 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
                         LOG.debug("Assignment doesn't exist")
                 return
 
-        LOG.warning(_LW("Did not find matching reduxio host for initiator %s"),
+        LOG.warning("Did not find matching reduxio host for initiator %s",
                     iqn)

@@ -29,7 +29,7 @@ import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder import quota
 from cinder import quota_utils
@@ -72,7 +72,7 @@ class API(base.Base):
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.start")
         if volume_ref['status'] != 'awaiting-transfer':
-            LOG.error(_LE("Volume in unexpected state"))
+            LOG.error("Volume in unexpected state")
         self.db.transfer_destroy(context, transfer_id)
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.end")
@@ -115,7 +115,7 @@ class API(base.Base):
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
         volume_api.check_policy(context, 'create_transfer')
-        LOG.info(_LI("Generating transfer record for volume %s"), volume_id)
+        LOG.info("Generating transfer record for volume %s", volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
@@ -137,8 +137,7 @@ class API(base.Base):
         try:
             transfer = self.db.transfer_create(context, transfer_rec)
         except Exception:
-            LOG.error(_LE("Failed to create transfer record "
-                          "for %s"), volume_id)
+            LOG.error("Failed to create transfer record for %s", volume_id)
             raise
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.create.end")
@@ -200,8 +199,8 @@ class API(base.Base):
                                                 **reserve_opts)
         except Exception:
             donor_reservations = None
-            LOG.exception(_LE("Failed to update quota donating volume"
-                              " transfer id %s"), transfer_id)
+            LOG.exception("Failed to update quota donating volume"
+                          " transfer id %s", transfer_id)
 
         volume_utils.notify_about_volume_usage(context, vol_ref,
                                                "transfer.accept.start")
@@ -219,7 +218,7 @@ class API(base.Base):
             QUOTAS.commit(context, reservations)
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
-            LOG.info(_LI("Volume %s has been transferred."), volume_id)
+            LOG.info("Volume %s has been transferred.", volume_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)

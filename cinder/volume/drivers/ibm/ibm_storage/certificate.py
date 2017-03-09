@@ -18,8 +18,6 @@ import tempfile
 
 from oslo_log import log as logging
 
-from cinder.i18n import _LE
-
 LOG = logging.getLogger(__name__)
 
 
@@ -49,7 +47,7 @@ class CertificateCollector(object):
                             os.write(self.tmp_fd, cert_file.read())
                             cert_file.close()
                         except Exception:
-                            LOG.exception(_LE("Failed to process certificate"))
+                            LOG.exception("Failed to process certificate")
         os.close(self.tmp_fd)
         fsize = os.path.getsize(self.tmp_path)
         if fsize > 0:

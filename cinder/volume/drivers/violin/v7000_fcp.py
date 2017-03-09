@@ -38,7 +38,7 @@ driver documentation for more information.
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
@@ -73,7 +73,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         self.common = v7000_common.V7000Common(self.configuration)
         self.lookup_service = fczm_utils.create_lookup_service()
 
-        LOG.info(_LI("Initialized driver %(name)s version: %(vers)s"),
+        LOG.info("Initialized driver %(name)s version: %(vers)s",
                  {'name': self.__class__.__name__, 'vers': self.VERSION})
 
     def do_setup(self, context):
@@ -222,7 +222,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
                 [volume['id'], connector['host']])
 
         except exception.ViolinBackendErr:
-            LOG.exception(_LE("Backend returned err for lun export."))
+            LOG.exception("Backend returned err for lun export.")
             raise
 
         except Exception:
@@ -230,7 +230,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
                 reason=_('LUN export failed!'))
 
         lun_id = self._get_lun_id(volume['id'], connector['host'])
-        LOG.info(_LI("Exported lun %(vol_id)s on lun_id %(lun_id)s."),
+        LOG.info("Exported lun %(vol_id)s on lun_id %(lun_id)s.",
                  {'vol_id': volume['id'], 'lun_id': lun_id})
 
         return lun_id
@@ -243,7 +243,7 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         """
         v = self.common.vmem_mg
 
-        LOG.info(_LI("Unexporting lun %s."), volume['id'])
+        LOG.info("Unexporting lun %s.", volume['id'])
 
         try:
             self.common._send_cmd(v.lun.unassign_client_lun,
@@ -251,11 +251,11 @@ class V7000FCPDriver(driver.FibreChannelDriver):
                                   volume['id'], connector['host'], True)
 
         except exception.ViolinBackendErr:
-            LOG.exception(_LE("Backend returned err for lun export."))
+            LOG.exception("Backend returned err for lun export.")
             raise
 
         except Exception:
-            LOG.exception(_LE("LUN unexport failed!"))
+            LOG.exception("LUN unexport failed!")
             raise
 
     def _update_volume_stats(self):

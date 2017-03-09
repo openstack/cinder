@@ -37,7 +37,7 @@ from oslo_utils import importutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
 import cinder.zonemanager.fczm_constants as zone_constant
@@ -122,10 +122,10 @@ class ZoneManager(fc_common.FCCommon):
             self._log_unsupported_driver_warning()
 
             if not self.configuration.enable_unsupported_driver:
-                LOG.error(_LE("Unsupported drivers are disabled."
-                              " You can re-enable by adding "
-                              "enable_unsupported_driver=True to the "
-                              "fc-zone-manager section in cinder.conf"),
+                LOG.error("Unsupported drivers are disabled."
+                          " You can re-enable by adding "
+                          "enable_unsupported_driver=True to the "
+                          "fc-zone-manager section in cinder.conf",
                           resource={'type': 'zone_manager',
                                     'id': self.__class__.__name__})
                 return
@@ -142,7 +142,7 @@ class ZoneManager(fc_common.FCCommon):
     def _require_initialized(self):
         """Verifies that the zone manager has been properly initialized."""
         if not self.initialized:
-            LOG.error(_LE("Fibre Channel Zone Manager is not initialized."""))
+            LOG.error("Fibre Channel Zone Manager is not initialized.")
             raise exception.ZoneManagerNotInitialized()
         else:
             self._log_unsupported_driver_warning()
@@ -150,10 +150,10 @@ class ZoneManager(fc_common.FCCommon):
     def _log_unsupported_driver_warning(self):
         """Annoy the log about unsupported fczm drivers."""
         if not self.driver.supported:
-            LOG.warning(_LW("Zone Manager driver (%(driver_name)s %(version)s)"
-                            " is currently unsupported and may be removed in "
-                            "the next release of OpenStack. Use at your own "
-                            "risk."),
+            LOG.warning("Zone Manager driver (%(driver_name)s %(version)s)"
+                        " is currently unsupported and may be removed in "
+                        "the next release of OpenStack. Use at your own "
+                        "risk.",
                         {'driver_name': self.driver.__class__.__name__,
                          'version': self.driver.get_version()},
                         resource={'type': 'zone_manager',
@@ -193,8 +193,8 @@ class ZoneManager(fc_common.FCCommon):
             self._log_unsupported_driver_warning()
             self._require_initialized()
         except exception.ZoneManagerNotInitialized:
-            LOG.error(_LE("Cannot add Fibre Channel Zone because the "
-                          "Zone Manager is not initialized properly."),
+            LOG.error("Cannot add Fibre Channel Zone because the "
+                      "Zone Manager is not initialized properly.",
                       resource={'type': 'zone_manager',
                                 'id': self.__class__.__name__})
             return
@@ -231,15 +231,15 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, True)
-                    LOG.info(_LI("Final filtered map for fabric: %(i_t_map)s"),
+                    LOG.info("Final filtered map for fabric: %(i_t_map)s",
                              {'i_t_map': valid_i_t_map})
 
                     # Call driver to add connection control
                     self.driver.add_connection(fabric, valid_i_t_map,
                                                host_name, storage_system)
 
-            LOG.info(_LI("Add connection: finished iterating "
-                         "over all target list"))
+            LOG.info("Add connection: finished iterating "
+                     "over all target list")
         except Exception as e:
             msg = _("Failed adding connection for fabric=%(fabric)s: "
                     "Error: %(err)s") % {'fabric': connected_fabric,
@@ -270,8 +270,8 @@ class ZoneManager(fc_common.FCCommon):
             self._log_unsupported_driver_warning()
             self._require_initialized()
         except exception.ZoneManagerNotInitialized:
-            LOG.error(_LE("Cannot delete fibre channel zone because the "
-                          "Zone Manager is not initialized properly."),
+            LOG.error("Cannot delete fibre channel zone because the "
+                      "Zone Manager is not initialized properly.",
                       resource={'type': 'zone_manager',
                                 'id': self.__class__.__name__})
             return
@@ -291,7 +291,7 @@ class ZoneManager(fc_common.FCCommon):
 
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.info(_LI("Delete connection target list: %(targets)s"),
+                LOG.info("Delete connection target list: %(targets)s",
                          {'targets': target_list})
 
                 # get SAN context for the target list
@@ -307,8 +307,8 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, False)
-                    LOG.info(_LI("Final filtered map for delete connection: "
-                                 "%(i_t_map)s"), {'i_t_map': valid_i_t_map})
+                    LOG.info("Final filtered map for delete connection: "
+                             "%(i_t_map)s", {'i_t_map': valid_i_t_map})
 
                     # Call driver to delete connection control
                     if len(valid_i_t_map) > 0:
@@ -361,7 +361,7 @@ class ZoneManager(fc_common.FCCommon):
             if t_list:
                 filtered_i_t_map[initiator] = t_list
             else:
-                LOG.info(_LI("No targets to add or remove connection for "
-                             "initiator: %(init_wwn)s"),
+                LOG.info("No targets to add or remove connection for "
+                         "initiator: %(init_wwn)s",
                          {'init_wwn': initiator})
         return filtered_i_t_map

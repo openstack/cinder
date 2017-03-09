@@ -23,7 +23,7 @@ from oslo_service import wsgi as base_wsgi
 import routes
 
 from cinder.api.openstack import wsgi
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 
 
 LOG = logging.getLogger(__name__)
@@ -111,8 +111,8 @@ class APIRouter(base_wsgi.Router):
             controller = extension.controller
 
             if collection not in self.resources:
-                LOG.warning(_LW('Extension %(ext_name)s: Cannot extend '
-                                'resource %(collection)s: No such resource'),
+                LOG.warning('Extension %(ext_name)s: Cannot extend '
+                            'resource %(collection)s: No such resource',
                             {'ext_name': extension.extension.name,
                              'collection': collection})
                 continue

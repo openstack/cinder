@@ -35,8 +35,8 @@ import uuid
 from oslo_log import log as logging
 
 from cinder import exception
+from cinder.i18n import _
 from cinder import interface
-from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.violin import v7000_common
@@ -65,7 +65,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(san.san_opts)
         self.common = v7000_common.V7000Common(self.configuration)
 
-        LOG.info(_LI("Initialized driver %(name)s version: %(vers)s"),
+        LOG.info("Initialized driver %(name)s version: %(vers)s",
                  {'name': self.__class__.__name__, 'vers': self.VERSION})
 
     def do_setup(self, context):
@@ -82,7 +82,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
         # Getting iscsi IPs from the array is incredibly expensive,
         # so only do it once.
         if not self.configuration.violin_iscsi_target_ips:
-            LOG.warning(_LW("iSCSI target ip addresses not configured. "))
+            LOG.warning("iSCSI target ip addresses not configured.")
             self.gateway_iscsi_ip_addresses = (
                 self.common.vmem_mg.utility.get_iscsi_interfaces())
         else:
@@ -239,7 +239,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
                 [volume['id'], connector['host']])
 
         except exception.ViolinBackendErr:
-            LOG.exception(_LE("Backend returned error for lun export."))
+            LOG.exception("Backend returned error for lun export.")
             raise
 
         except Exception:
@@ -247,7 +247,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
                 reason=_('LUN export failed!'))
 
         lun_id = self._get_lun_id(volume['id'], connector['host'])
-        LOG.info(_LI("Exported lun %(vol_id)s on lun_id %(lun_id)s."),
+        LOG.info("Exported lun %(vol_id)s on lun_id %(lun_id)s.",
                  {'vol_id': volume['id'], 'lun_id': lun_id})
 
         return lun_id
@@ -263,7 +263,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
         """
         v = self.common.vmem_mg
 
-        LOG.info(_LI("Unexporting lun %(vol)s host is %(host)s."),
+        LOG.info("Unexporting lun %(vol)s host is %(host)s.",
                  {'vol': volume['id'], 'host': connector['host']})
 
         try:
@@ -272,11 +272,11 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
                                   volume['id'], target, True)
 
         except exception.ViolinBackendErrNotFound:
-            LOG.info(_LI("Lun %s already unexported, continuing..."),
+            LOG.info("Lun %s already unexported, continuing...",
                      volume['id'])
 
         except Exception:
-            LOG.exception(_LE("LUN unexport failed!"))
+            LOG.exception("LUN unexport failed!")
             msg = _("LUN unexport failed")
             raise exception.ViolinBackendErr(message=msg)
 

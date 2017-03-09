@@ -15,7 +15,7 @@ from oslo_log import log as logging
 
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
@@ -149,7 +149,7 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
             LOG.exception(msg)
             raise exception.Invalid(msg)
         except db_exc.DBError:
-            LOG.exception(_LE('DB error occurred when creating QoS specs.'))
+            LOG.exception('DB error occurred when creating QoS specs.')
             raise exception.QoSSpecsCreateFailed(name=self.name,
                                                  qos_specs=self.specs)
         # Save ID with the object

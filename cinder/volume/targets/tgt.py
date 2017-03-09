@@ -19,7 +19,6 @@ from oslo_log import log as logging
 from oslo_utils import fileutils
 
 from cinder import exception
-from cinder.i18n import _LI, _LW, _LE
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -78,7 +77,7 @@ class TgtAdm(iscsi.ISCSITarget):
         return backing_lun
 
     def _recreate_backing_lun(self, iqn, tid, name, path):
-        LOG.warning(_LW('Attempting recreate of backing lun...'))
+        LOG.warning('Attempting recreate of backing lun...')
 
         # Since we think the most common case of this is a dev busy
         # (create vol from snapshot) we're going to add a sleep here
@@ -95,9 +94,9 @@ class TgtAdm(iscsi.ISCSITarget):
                                        tid, '--lun', '1', '-b',
                                        path, run_as_root=True)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed recovery attempt to create "
-                          "iscsi backing lun for Volume "
-                          "ID:%(vol_id)s: %(e)s"),
+            LOG.error("Failed recovery attempt to create "
+                      "iscsi backing lun for Volume "
+                      "ID:%(vol_id)s: %(e)s",
                       {'vol_id': name, 'e': e})
         finally:
             LOG.debug('StdOut from recreate backing lun: %s', out)
@@ -187,13 +186,13 @@ class TgtAdm(iscsi.ISCSITarget):
             if "target already exists" in e.stderr:
                 # Adding the additional Warning message below for a clear
                 # ER marker (Ref bug: #1398078).
-                LOG.warning(_LW('Could not create target because '
-                                'it already exists for volume: %s'), vol_id)
+                LOG.warning('Could not create target because '
+                            'it already exists for volume: %s', vol_id)
                 LOG.debug('Exception was: %s', e)
 
             else:
-                LOG.error(_LE("Failed to create iscsi target for Volume "
-                              "ID: %(vol_id)s: %(e)s"),
+                LOG.error("Failed to create iscsi target for Volume "
+                          "ID: %(vol_id)s: %(e)s",
                           {'vol_id': vol_id, 'e': e})
 
             # Don't forget to remove the persistent file we created
@@ -216,13 +215,13 @@ class TgtAdm(iscsi.ISCSITarget):
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
-            LOG.warning(_LW("Failed to create iscsi target for Volume "
-                            "ID: %(vol_id)s. It could be caused by problem "
-                            "with concurrency. "
-                            "Also please ensure your tgtd config "
-                            "file contains 'include %(volumes_dir)s/*'"), {
-                        'vol_id': vol_id,
-                        'volumes_dir': volumes_dir, })
+            LOG.warning("Failed to create iscsi target for Volume "
+                        "ID: %(vol_id)s. It could be caused by problem "
+                        "with concurrency. "
+                        "Also please ensure your tgtd config "
+                        "file contains 'include %(volumes_dir)s/*'",
+                        {'vol_id': vol_id,
+                         'volumes_dir': volumes_dir, })
             raise exception.NotFound()
 
         # NOTE(jdg): Sometimes we have some issues with the backing lun
@@ -248,12 +247,12 @@ class TgtAdm(iscsi.ISCSITarget):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        LOG.info(_LI('Removing iscsi_target for Volume ID: %s'), vol_id)
+        LOG.info('Removing iscsi_target for Volume ID: %s', vol_id)
         vol_uuid_file = vol_name
         volume_path = os.path.join(self.volumes_dir, vol_uuid_file)
         if not os.path.exists(volume_path):
-            LOG.warning(_LW('Volume path %s does not exist, '
-                            'nothing to remove.'), volume_path)
+            LOG.warning('Volume path %s does not exist, '
+                        'nothing to remove.', volume_path)
             return
 
         if os.path.isfile(volume_path):
@@ -274,11 +273,11 @@ class TgtAdm(iscsi.ISCSITarget):
                                 "access control rule does not exist")
 
             if any(error in e.stderr for error in non_fatal_errors):
-                LOG.warning(_LW("Failed target removal because target or "
-                                "ACL's couldn't be found for iqn: %s."), iqn)
+                LOG.warning("Failed target removal because target or "
+                            "ACL's couldn't be found for iqn: %s.", iqn)
             else:
-                LOG.error(_LE("Failed to remove iscsi target for Volume "
-                              "ID: %(vol_id)s: %(e)s"),
+                LOG.error("Failed to remove iscsi target for Volume "
+                          "ID: %(vol_id)s: %(e)s",
                           {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         # NOTE(jdg): There's a bug in some versions of tgt that
@@ -293,15 +292,15 @@ class TgtAdm(iscsi.ISCSITarget):
         #    https://bugs.launchpad.net/cinder/+bug/1304122
         if self._get_target(iqn):
             try:
-                LOG.warning(_LW('Silent failure of target removal '
-                                'detected, retry....'))
+                LOG.warning('Silent failure of target removal '
+                            'detected, retry....')
                 utils.execute('tgt-admin',
                               '--delete',
                               iqn,
                               run_as_root=True)
             except putils.ProcessExecutionError as e:
-                LOG.error(_LE("Failed to remove iscsi target for Volume "
-                              "ID: %(vol_id)s: %(e)s"),
+                LOG.error("Failed to remove iscsi target for Volume "
+                          "ID: %(vol_id)s: %(e)s",
                           {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 

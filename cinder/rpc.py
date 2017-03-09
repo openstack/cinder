@@ -35,7 +35,7 @@ import six
 
 import cinder.context
 import cinder.exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder import utils
@@ -93,7 +93,7 @@ def initialized():
 def cleanup():
     global TRANSPORT, NOTIFICATION_TRANSPORT, NOTIFIER
     if NOTIFIER is None:
-        LOG.exception(_LE("RPC cleanup: NOTIFIER is None"))
+        LOG.exception("RPC cleanup: NOTIFIER is None")
     TRANSPORT.cleanup()
     NOTIFICATION_TRANSPORT.cleanup()
     TRANSPORT = NOTIFICATION_TRANSPORT = NOTIFIER = None
@@ -256,8 +256,8 @@ class RPCAPI(object):
             # If there is no service we assume they will come up later and will
             # have the same version as we do.
             version_cap = cls.RPC_API_VERSION
-        LOG.info(_LI('Automatically selected %(binary)s RPC version '
-                     '%(version)s as minimum service version.'),
+        LOG.info('Automatically selected %(binary)s RPC version '
+                 '%(version)s as minimum service version.',
                  {'binary': cls.BINARY, 'version': version_cap})
         LAST_RPC_VERSIONS[cls.BINARY] = version_cap
         return version_cap
@@ -274,8 +274,8 @@ class RPCAPI(object):
         # have the same version as we do.
         if not version_cap:
             version_cap = base.OBJ_VERSIONS.get_current()
-        LOG.info(_LI('Automatically selected %(binary)s objects version '
-                     '%(version)s as minimum service version.'),
+        LOG.info('Automatically selected %(binary)s objects version '
+                 '%(version)s as minimum service version.',
                  {'binary': cls.BINARY, 'version': version_cap})
         LAST_OBJ_VERSIONS[cls.BINARY] = version_cap
         return version_cap

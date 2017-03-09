@@ -39,7 +39,7 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LI, _LW, _LE
+from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
 from cinder import utils
@@ -399,9 +399,9 @@ def _check_blocksize(blocksize):
             raise ValueError
         strutils.string_to_bytes('%sB' % blocksize)
     except ValueError:
-        LOG.warning(_LW("Incorrect value error: %(blocksize)s, "
-                        "it may indicate that \'volume_dd_blocksize\' "
-                        "was configured incorrectly. Fall back to default."),
+        LOG.warning("Incorrect value error: %(blocksize)s, "
+                    "it may indicate that \'volume_dd_blocksize\' "
+                    "was configured incorrectly. Fall back to default.",
                     {'blocksize': blocksize})
         # Fall back to default blocksize
         CONF.clear_override('volume_dd_blocksize')
@@ -478,7 +478,7 @@ def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
                "dest": deststr,
                "sz": size_in_m,
                "duration": duration})
-    LOG.info(_LI("Volume copy %(size_in_m).2f MB at %(mbps).2f MB/s"),
+    LOG.info("Volume copy %(size_in_m).2f MB at %(mbps).2f MB/s",
              {'size_in_m': size_in_m, 'mbps': mbps})
 
 
@@ -488,7 +488,7 @@ def _open_volume_with_path(path, mode):
             handle = open(path, mode)
             return handle
     except Exception:
-        LOG.error(_LE("Failed to open volume from %(path)s."), {'path': path})
+        LOG.error("Failed to open volume from %(path)s.", {'path': path})
 
 
 def _transfer_data(src, dest, length, chunk_size):
@@ -551,8 +551,8 @@ def _copy_volume_with_file(src, dest, size_in_m):
         dest_handle.close()
 
     mbps = (size_in_m / duration)
-    LOG.info(_LI("Volume copy completed (%(size_in_m).2f MB at "
-                 "%(mbps).2f MB/s)."),
+    LOG.info("Volume copy completed (%(size_in_m).2f MB at "
+             "%(mbps).2f MB/s).",
              {'size_in_m': size_in_m, 'mbps': mbps})
 
 
@@ -601,7 +601,7 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     if volume_clear_ionice is None:
         volume_clear_ionice = CONF.volume_clear_ionice
 
-    LOG.info(_LI("Performing secure delete on volume: %s"), volume_path)
+    LOG.info("Performing secure delete on volume: %s", volume_path)
 
     # We pass sparse=False explicitly here so that zero blocks are not
     # skipped in order to clear the volume.
@@ -861,8 +861,8 @@ def convert_config_string_to_dict(config_string):
         st = st.replace(" ", ", ")
         resultant_dict = ast.literal_eval(st)
     except Exception:
-        LOG.warning(_LW("Error encountered translating config_string: "
-                        "%(config_string)s to dict"),
+        LOG.warning("Error encountered translating config_string: "
+                    "%(config_string)s to dict",
                     {'config_string': config_string})
 
     return resultant_dict

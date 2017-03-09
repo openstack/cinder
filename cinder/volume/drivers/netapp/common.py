@@ -23,7 +23,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.volume import driver
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -75,7 +75,7 @@ class NetAppDriver(driver.ProxyVD):
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
-        LOG.info(_LI('OpenStack OS Version Info: %(info)s'),
+        LOG.info('OpenStack OS Version Info: %(info)s',
                  {'info': app_version})
         kwargs['app_version'] = app_version
 
@@ -92,8 +92,8 @@ class NetAppDriver(driver.ProxyVD):
 
         fmt = {'storage_family': storage_family,
                'storage_protocol': storage_protocol}
-        LOG.info(_LI('Requested unified config: %(storage_family)s and '
-                     '%(storage_protocol)s.'), fmt)
+        LOG.info('Requested unified config: %(storage_family)s and '
+                 '%(storage_protocol)s.', fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
@@ -110,6 +110,6 @@ class NetAppDriver(driver.ProxyVD):
         kwargs = kwargs or {}
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
-        LOG.info(_LI('NetApp driver of family %(storage_family)s and protocol '
-                     '%(storage_protocol)s loaded.'), fmt)
+        LOG.info('NetApp driver of family %(storage_family)s and protocol '
+                 '%(storage_protocol)s loaded.', fmt)
         return driver

@@ -20,8 +20,6 @@ import re
 
 from oslo_log import log
 
-from cinder.i18n import _LI
-
 LOG = log.getLogger(__name__)
 
 
@@ -61,8 +59,8 @@ def get_friendly_zone_name(zoning_policy, initiator, target,
             zone_name = (zone_name_prefix
                          + initiator.replace(':', '')
                          + target.replace(':', ''))
-            LOG.info(_LI("Zone name created using prefix because either "
-                         "host name or storage system is none."))
+            LOG.info("Zone name created using prefix because either "
+                     "host name or storage system is none.")
     else:
         host_name = host_name[:47]
         if len(host_name) > 0:
@@ -71,10 +69,10 @@ def get_friendly_zone_name(zoning_policy, initiator, target,
         else:
             zone_name = (zone_name_prefix
                          + initiator.replace(':', ''))
-            LOG.info(_LI("Zone name created using prefix because host "
-                         "name is none."))
+            LOG.info("Zone name created using prefix because host "
+                     "name is none.")
 
-    LOG.info(_LI("Friendly zone name after forming: %(zonename)s"),
+    LOG.info("Friendly zone name after forming: %(zonename)s",
              {'zonename': zone_name})
     zone_name = re.sub('[^%s]' % supported_chars, '', zone_name)
     return zone_name

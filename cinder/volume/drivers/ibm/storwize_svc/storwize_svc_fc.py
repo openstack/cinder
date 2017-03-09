@@ -39,7 +39,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import (
@@ -104,8 +104,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
     def validate_connector(self, connector):
         """Check connector for at least one enabled FC protocol."""
         if 'wwpns' not in connector:
-            LOG.error(_LE('The connector does not contain the required '
-                          'information.'))
+            LOG.error('The connector does not contain the required '
+                      'information.')
             raise exception.InvalidConnectorException(
                 missing='wwpns')
 
@@ -154,8 +154,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             preferred_node = volume_attributes['preferred_node_id']
             IO_group = volume_attributes['IO_group_id']
         except KeyError as e:
-            LOG.error(_LE('Did not find expected column name in '
-                          'lsvdisk: %s.'), e)
+            LOG.error('Did not find expected column name in '
+                      'lsvdisk: %s.', e)
             raise exception.VolumeBackendAPIException(
                 data=_('initialize_connection: Missing volume attribute for '
                        'volume %s.') % volume_name)
@@ -180,8 +180,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             if not preferred_node_entry:
                 # Get 1st node in I/O group
                 preferred_node_entry = io_group_nodes[0]
-                LOG.warning(_LW('initialize_connection: Did not find a '
-                                'preferred node for volume %s.'), volume_name)
+                LOG.warning('initialize_connection: Did not find a '
+                            'preferred node for volume %s.', volume_name)
 
             properties = {}
             properties['target_discovered'] = False
@@ -209,11 +209,11 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 self._do_terminate_connection(volume, connector)
-                LOG.error(_LE('initialize_connection: Failed '
-                              'to collect return '
-                              'properties for volume %(vol)s and connector '
-                              '%(conn)s.\n'), {'vol': volume,
-                                               'conn': connector})
+                LOG.error('initialize_connection: Failed '
+                          'to collect return '
+                          'properties for volume %(vol)s and connector '
+                          '%(conn)s.\n', {'vol': volume,
+                                          'conn': connector})
 
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
                   'connector %(conn)s\n properties: %(prop)s',
@@ -288,8 +288,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         if host_name:
             resp = self._helpers.check_host_mapped_vols(host_name)
             if not len(resp):
-                LOG.info(_LI("Need to remove FC Zone, building initiator "
-                             "target map."))
+                LOG.info("Need to remove FC Zone, building initiator "
+                         "target map.")
                 # Build info data structure for zone removing
                 if 'wwpns' in connector and host_name:
                     target_wwpns = []

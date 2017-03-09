@@ -25,7 +25,6 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 from cinder.volume.drivers.hitachi import hbsd_horcm as horcm
@@ -252,21 +251,21 @@ class HBSDCommon(object):
             prefix = 'HSNM2 version'
         else:
             prefix = 'RAID Manager version'
-        LOG.info(_LI('\t%(prefix)-35s : %(version)s'),
+        LOG.info('\t%(prefix)-35s : %(version)s',
                  {'prefix': prefix, 'version': version})
         for param in essential_inherited_param:
             value = conf.safe_get(param)
-            LOG.info(_LI('\t%(param)-35s : %(value)s'),
+            LOG.info('\t%(param)-35s : %(value)s',
                      {'param': param, 'value': value})
         for opt in volume_opts:
             if not opt.secret:
                 value = getattr(conf, opt.name)
-                LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                LOG.info('\t%(name)-35s : %(value)s',
                          {'name': opt.name, 'value': value})
 
         if storage_protocol == 'iSCSI':
             value = getattr(conf, 'hitachi_group_request')
-            LOG.info(_LI('\t%(request)-35s : %(value)s'),
+            LOG.info('\t%(request)-35s : %(value)s',
                      {'request': 'hitachi_group_request', 'value': value})
 
     def check_param(self):
@@ -407,13 +406,13 @@ class HBSDCommon(object):
                     try:
                         self.command.restart_pair_horcm()
                     except Exception as e:
-                        LOG.warning(_LW('Failed to restart horcm: %s'), e)
+                        LOG.warning('Failed to restart horcm: %s', e)
         else:
             if (all_split or is_vvol) and restart:
                 try:
                     self.command.restart_pair_horcm()
                 except Exception as e:
-                    LOG.warning(_LW('Failed to restart horcm: %s'), e)
+                    LOG.warning('Failed to restart horcm: %s', e)
 
     def copy_async_data(self, pvol, svol, is_vvol):
         path_list = []
@@ -727,7 +726,7 @@ class HBSDCommon(object):
             total_gb, free_gb = self.command.comm_get_dp_pool(
                 self.configuration.hitachi_pool_id)
         except Exception as ex:
-            LOG.error(_LE('Failed to update volume status: %s'), ex)
+            LOG.error('Failed to update volume status: %s', ex)
             return None
 
         data['total_capacity_gb'] = total_gb

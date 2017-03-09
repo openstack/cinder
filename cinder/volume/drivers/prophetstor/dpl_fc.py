@@ -18,7 +18,7 @@ import errno
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
@@ -58,8 +58,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     if fcInfo['type'] == 'fc':
                         fcInfos[fcUuid] = fcInfo
         except Exception as e:
-            LOG.error(_LE("Failed to get fiber channel info from storage "
-                          "due to %(stat)s"), {'stat': e})
+            LOG.error("Failed to get fiber channel info from storage "
+                      "due to %(stat)s", {'stat': e})
         return fcInfos
 
     def _get_targets(self):
@@ -83,8 +83,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     targetInfos[str(targetInfo[0])] = targetI
         except Exception as e:
             targetInfos = {}
-            LOG.error(_LE("Failed to get fiber channel target from "
-                          "storage server due to %(stat)s"),
+            LOG.error("Failed to get fiber channel target from "
+                      "storage server due to %(stat)s",
                       {'stat': e})
         return targetInfos
 
@@ -101,8 +101,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                             targetWwpns = fc_info.get('target_identifier', '')
                             lstargetWwpns.append(targetWwpns)
         except Exception as e:
-            LOG.error(_LE("Failed to get target wwpns from storage due "
-                          "to %(stat)s"), {'stat': e})
+            LOG.error("Failed to get target wwpns from storage due "
+                      "to %(stat)s", {'stat': e})
             lstargetWwpns = []
         return lstargetWwpns
 
@@ -119,7 +119,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                         fActive = True
                         break
         except Exception:
-            LOG.error(_LE('Failed to get sns table'))
+            LOG.error('Failed to get sns table')
         return fActive
 
     def _convertHex2String(self, wwpns):
@@ -147,8 +147,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 self._conver_uuid2hex(volumeid), targetwwpns,
                 initiatorwwpns, volumename)
         except Exception:
-            LOG.error(_LE('Volume %(volumeid)s failed to send assign command, '
-                          'ret: %(status)s output: %(output)s'),
+            LOG.error('Volume %(volumeid)s failed to send assign command, '
+                      'ret: %(status)s output: %(output)s',
                       {'volumeid': volumeid, 'status': ret, 'output': output})
             ret = errno.EFAULT
 
@@ -204,7 +204,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     '%(status)s.') % {'id': volumeid, 'status': ret}
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            LOG.info(_LI('Flexvisor succeeded to unassign volume %(id)s.'),
+            LOG.info('Flexvisor succeeded to unassign volume %(id)s.',
                      {'id': volumeid})
 
         return ret
@@ -238,8 +238,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         ret = 0
         targetIdentifier = []
         szwwpns = []
-        LOG.info(_LI('initialize_connection volume: %(volume)s, connector:'
-                     ' %(connector)s'),
+        LOG.info('initialize_connection volume: %(volume)s, connector:'
+                 ' %(connector)s',
                  {"volume": volume, "connector": connector})
         # Get Storage Fiber channel controller
         dc_fc = self._get_fc_channel()
@@ -274,7 +274,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                                                {}).get('targetAddr', '')
                 lsTargetWwpn.append(targetWwpn)
         # Use wwpns to assign volume.
-        LOG.info(_LI('Prefer use target wwpn %(wwpn)s'),
+        LOG.info('Prefer use target wwpn %(wwpn)s',
                  {'wwpn': lsTargetWwpn})
         # Start to create export in all FC target node.
         assignedTarget = []
@@ -287,8 +287,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 else:
                     assignedTarget.append(pTarget)
             except Exception as e:
-                LOG.error(_LE('Failed to export fiber channel target '
-                              'due to %s'), e)
+                LOG.error('Failed to export fiber channel target '
+                          'due to %s', e)
                 ret = errno.EFAULT
                 break
         if ret == 0:
@@ -326,16 +326,16 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             properties['target_lun'] = int(nLun)
             properties['volume_id'] = volume['id']
             properties['initiator_target_map'] = init_targ_map
-            LOG.info(_LI('%(volume)s assign type fibre_channel, properties '
-                         '%(properties)s'),
+            LOG.info('%(volume)s assign type fibre_channel, properties '
+                     '%(properties)s',
                      {'volume': volume['id'], 'properties': properties})
         else:
             msg = _('Invalid connection initialization response of '
                     'volume %(name)s') % {'name': volume['name']}
             raise exception.VolumeBackendAPIException(data=msg)
-        LOG.info(_LI('Connect initialization info: '
-                     '{driver_volume_type: fibre_channel, '
-                     'data: %(properties)s'), {'properties': properties})
+        LOG.info('Connect initialization info: '
+                 '{driver_volume_type: fibre_channel, '
+                 'data: %(properties)s', {'properties': properties})
         return {'driver_volume_type': 'fibre_channel',
                 'data': properties}
 
@@ -354,8 +354,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         szwwpns = []
         ret = 0
         info = {'driver_volume_type': 'fibre_channel', 'data': {}}
-        LOG.info(_LI('terminate_connection volume: %(volume)s, '
-                     'connector: %(con)s'),
+        LOG.info('terminate_connection volume: %(volume)s, '
+                 'connector: %(con)s',
                  {'volume': volume, 'con': connector})
         # Query targetwwpns.
         # Get all target list of volume.

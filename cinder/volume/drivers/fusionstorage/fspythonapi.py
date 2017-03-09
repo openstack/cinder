@@ -22,7 +22,6 @@ import six
 
 from oslo_log import log as logging
 
-from cinder.i18n import _LE
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -291,8 +290,7 @@ class FSPythonApi(object):
             elif re.search('^create_time=', line):
                 local_volume_info['create_time'] = line[len('create_time='):]
             else:
-                LOG.error(_LE("Analyze key not exist, key=%s."),
-                          six.text_type(line))
+                LOG.error("Analyze key not exist, key=%s.", line)
         return local_volume_info
 
     def query_volume(self, vol_name):
@@ -375,8 +373,7 @@ class FSPythonApi(object):
             elif re.search('^create_time=', line):
                 local_snap_info['create_time'] = line[len('create_time='):]
             else:
-                LOG.error(_LE("Analyze key not exist, key=%s."),
-                          line)
+                LOG.error("Analyze key not exist, key=%s.", line)
 
         return local_snap_info
 
@@ -435,8 +432,7 @@ class FSPythonApi(object):
                 local_pool_info['alloc_capacity'] = line[
                     len('alloc_capacity='):]
             else:
-                LOG.error(_LE("Analyze key not exist, key=%s."),
-                          six.text_type(line))
+                LOG.error("Analyze key not exist, key=%s.", line)
         return local_pool_info
 
     def query_pool_info(self, pool_id):

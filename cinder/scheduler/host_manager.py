@@ -29,9 +29,8 @@ from cinder.common import constants
 from cinder import context as cinder_context
 from cinder import exception
 from cinder import objects
-from cinder import utils
-from cinder.i18n import _LI, _LW
 from cinder.scheduler import filters
+from cinder import utils
 from cinder.volume import utils as vol_utils
 
 
@@ -484,8 +483,7 @@ class HostManager(object):
 
         # Ignore older updates
         if capab_old['timestamp'] and timestamp < capab_old['timestamp']:
-            LOG.info(_LI('Ignoring old capability report from %s.'),
-                     backend)
+            LOG.info('Ignoring old capability report from %s.', backend)
             return
 
         # If the capabilites are not changed and the timestamp is older,
@@ -559,7 +557,7 @@ class HostManager(object):
         for service in volume_services.objects:
             host = service.host
             if not service.is_up:
-                LOG.warning(_LW("volume service is down. (host: %s)"), host)
+                LOG.warning("volume service is down. (host: %s)", host)
                 continue
 
             backend_key = service.service_topic_queue
@@ -601,8 +599,8 @@ class HostManager(object):
             # the map when we are removing it because it has been added to a
             # cluster.
             if backend_key not in active_hosts:
-                LOG.info(_LI("Removing non-active backend: %(backend)s from "
-                             "scheduler cache."), {'backend': backend_key})
+                LOG.info("Removing non-active backend: %(backend)s from "
+                         "scheduler cache.", {'backend': backend_key})
             del self.backend_state_map[backend_key]
 
     def get_all_backend_states(self, context):

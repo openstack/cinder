@@ -15,7 +15,6 @@
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LW
 from cinder.scheduler.evaluator import evaluator
 from cinder.scheduler import weights
 
@@ -56,17 +55,17 @@ class GoodnessWeigher(weights.BaseHostWeigher):
         goodness_rating = 0
 
         if stats['goodness_function'] is None:
-            LOG.warning(_LW("Goodness function not set :: defaulting to "
-                            "minimal goodness rating of 0"))
+            LOG.warning("Goodness function not set :: defaulting to "
+                        "minimal goodness rating of 0")
         else:
             try:
                 goodness_result = self._run_evaluator(
                     stats['goodness_function'],
                     stats)
             except Exception as ex:
-                LOG.warning(_LW("Error in goodness_function function "
-                                "'%(function)s' : '%(error)s' :: Defaulting "
-                                "to a goodness of 0"),
+                LOG.warning("Error in goodness_function function "
+                            "'%(function)s' : '%(error)s' :: Defaulting "
+                            "to a goodness of 0",
                             {'function': stats['goodness_function'],
                              'error': ex, })
                 return goodness_rating
@@ -75,9 +74,9 @@ class GoodnessWeigher(weights.BaseHostWeigher):
                 if goodness_result:
                     goodness_rating = 100
             elif goodness_result < 0 or goodness_result > 100:
-                LOG.warning(_LW("Invalid goodness result.  Result must be "
-                                "between 0 and 100.  Result generated: '%s' "
-                                ":: Defaulting to a goodness of 0"),
+                LOG.warning("Invalid goodness result.  Result must be "
+                            "between 0 and 100.  Result generated: '%s' "
+                            ":: Defaulting to a goodness of 0",
                             goodness_result)
             else:
                 goodness_rating = goodness_result

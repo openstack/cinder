@@ -19,7 +19,6 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.db import base
-from cinder.i18n import _LE, _LI
 from cinder.message import defined_messages
 
 
@@ -39,7 +38,7 @@ class API(base.Base):
     def create(self, context, event_id, project_id, resource_type=None,
                resource_uuid=None, level="ERROR"):
         """Create a message with the specified information."""
-        LOG.info(_LI("Creating message record for request_id = %s"),
+        LOG.info("Creating message record for request_id = %s",
                  context.request_id)
         # Ensure valid event_id
         defined_messages.get_message_text(event_id)
@@ -57,8 +56,8 @@ class API(base.Base):
         try:
             self.db.message_create(context, message_record)
         except Exception:
-            LOG.exception(_LE("Failed to create message record "
-                              "for request_id %s"), context.request_id)
+            LOG.exception("Failed to create message record "
+                          "for request_id %s", context.request_id)
 
     def get(self, context, id):
         """Return message with the specified id."""

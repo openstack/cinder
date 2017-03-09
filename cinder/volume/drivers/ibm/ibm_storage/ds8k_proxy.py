@@ -64,7 +64,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW, _LE
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder.utils import synchronized
 import cinder.volume.drivers.ibm.ibm_storage as storage
@@ -310,7 +310,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
     @proxy._trace_time
     def setup(self, ctxt):
-        LOG.info(_LI("Initiating connection to IBM DS8K storage system."))
+        LOG.info("Initiating connection to IBM DS8K storage system.")
         connection_type = self.configuration.safe_get('connection_type')
         replication_devices = self.configuration.safe_get('replication_device')
         if connection_type == storage.XIV_CONNECTION_TYPE_FC:
@@ -426,8 +426,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
                         pool, find_new_pid, excluded_lss)
                 return self._helper.create_lun(lun)
             except restclient.LssFullException:
-                msg = _LW("LSS %s is full, find another one.")
-                LOG.warning(msg, lun.lss_pair['source'][1])
+                LOG.warning("LSS %s is full, find another one.",
+                            lun.lss_pair['source'][1])
                 excluded_lss.append(lun.lss_pair['source'][1])
 
     @proxy.logger
@@ -683,7 +683,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
     def initialize_connection(self, volume, connector, **kwargs):
         """Attach a volume to the host."""
         vol_id = Lun(volume).ds_id
-        LOG.info(_LI('Attach the volume %s.'), vol_id)
+        LOG.info('Attach the volume %s.', vol_id)
         return self._helper.initialize_connection(vol_id, connector, **kwargs)
 
     @synchronized('OpenStackCinderIBMDS8KMutexConnect-', external=True)
@@ -692,7 +692,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Detach a volume from a host."""
         vol_id = Lun(volume).ds_id
-        LOG.info(_LI('Detach the volume %s.'), vol_id)
+        LOG.info('Detach the volume %s.', vol_id)
         return self._helper.terminate_connection(vol_id, connector,
                                                  force, **kwargs)
 
@@ -725,7 +725,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._clone_group(src_luns, tgt_luns, cg_enabled)
         except restclient.APIException:
             model_update['status'] = fields.GroupStatus.ERROR
-            LOG.exception(_LE('Failed to create group snapshot.'))
+            LOG.exception('Failed to create group snapshot.')
 
         for tgt_lun in tgt_luns:
             snapshot_model_update = tgt_lun.get_volume_update()
@@ -753,8 +753,8 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._helper.delete_lun(snapshots)
             except restclient.APIException as e:
                 model_update['status'] = fields.GroupStatus.ERROR_DELETING
-                LOG.error(_LE("Failed to delete group snapshot. "
-                              "Error: %(err)s"),
+                LOG.error("Failed to delete group snapshot. "
+                          "Error: %(err)s",
                           {'err': e})
 
         for snapshot in snapshots:
@@ -816,8 +816,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._clone_group(src_luns, tgt_luns, cg_enabled)
         except restclient.APIException:
             model_update['status'] = fields.GroupStatus.ERROR
-            msg = _LE("Failed to create group from group snapshot.")
-            LOG.exception(msg)
+            LOG.exception("Failed to create group from group snapshot.")
 
         for tgt_lun in tgt_luns:
             volume_model_update = tgt_lun.get_volume_update()
@@ -923,14 +922,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
         volume_update_list = []
         if secondary_id == strings.PRIMARY_BACKEND_ID:
             if not self._active_backend_id:
-                msg = _LI("Host has been failed back. doesn't need "
-                          "to fail back again.")
-                LOG.info(msg)
+                LOG.info("Host has been failed back. doesn't need "
+                         "to fail back again.")
                 return self._active_backend_id, volume_update_list
         else:
             if self._active_backend_id:
-                msg = _LI("Host has been failed over to %s.")
-                LOG.info(msg, self._active_backend_id)
+                LOG.info("Host has been failed over to %s.",
+                         self._active_backend_id)
                 return self._active_backend_id, volume_update_list
 
             backend_id = self._replication._target_helper.backend['id']
@@ -980,13 +978,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
                                 'updates': volume_update}
                 volume_update_list.append(model_update)
         else:
-            LOG.info(_LI("No volume has replication capability."))
+            LOG.info("No volume has replication capability.")
             if secondary_id != strings.PRIMARY_BACKEND_ID:
-                LOG.info(_LI("Switch to the target %s"), secondary_id)
+                LOG.info("Switch to the target %s", secondary_id)
                 self._switch_backend_connection(secondary_id)
                 self._active_backend_id = secondary_id
             else:
-                LOG.info(_LI("Switch to the primary %s"), secondary_id)
+                LOG.info("Switch to the primary %s", secondary_id)
                 self._switch_backend_connection(self._active_backend_id)
                 self._active_backend_id = ""
 

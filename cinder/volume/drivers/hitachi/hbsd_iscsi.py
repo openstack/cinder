@@ -25,7 +25,7 @@ from oslo_log import versionutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 import cinder.volume.driver
@@ -100,7 +100,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             for opt in volume_opts:
                 if not opt.secret:
                     value = getattr(self.configuration, opt.name)
-                    LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                    LOG.info('\t%(name)-35s : %(value)s',
                              {'name': opt.name, 'value': value})
 
     def _delete_lun_iscsi(self, hostgroups, ldev):
@@ -185,7 +185,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                   {'port': port, 'gid': gid})
                         break
             if gid is None:
-                LOG.error(_LE('Failed to add target(port: %s)'), port)
+                LOG.error('Failed to add target(port: %s)', port)
                 continue
             try:
                 if added_hostgroup:

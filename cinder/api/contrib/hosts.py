@@ -25,7 +25,7 @@ from cinder.api.openstack import wsgi
 from cinder.common import constants
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder.volume import api as volume_api
 
@@ -120,7 +120,7 @@ class HostController(wsgi.Controller):
         """Sets the specified host's ability to accept new volumes."""
         context = req.environ['cinder.context']
         state = "enabled" if enabled else "disabled"
-        LOG.info(_LI("Setting host %(host)s to %(state)s."),
+        LOG.info("Setting host %(host)s to %(state)s.",
                  {'host': host, 'state': state})
         result = self.api.set_host_enabled(context,
                                            host=host,

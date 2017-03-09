@@ -53,7 +53,7 @@ import six
 import webob.exc
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import keymgr
 
 
@@ -398,7 +398,7 @@ def robust_file_write(directory, filename, data):
             os.fsync(dirfd)
     except OSError:
         with excutils.save_and_reraise_exception():
-            LOG.error(_LE("Failed to write persistence file: %(path)s."),
+            LOG.error("Failed to write persistence file: %(path)s.",
                       {'path': os.path.join(directory, filename)})
             if os.path.isfile(tempname):
                 os.unlink(tempname)
@@ -535,7 +535,7 @@ def require_driver_initialized(driver):
     # we can't do anything if the driver didn't init
     if not driver.initialized:
         driver_name = driver.__class__.__name__
-        LOG.error(_LE("Volume driver %s not initialized"), driver_name)
+        LOG.error("Volume driver %s not initialized", driver_name)
         raise exception.DriverNotInitialized()
     else:
         log_unsupported_driver_warning(driver)
@@ -545,9 +545,9 @@ def log_unsupported_driver_warning(driver):
     """Annoy the log about unsupported drivers."""
     if not driver.supported:
         # Check to see if the driver is flagged as supported.
-        LOG.warning(_LW("Volume driver (%(driver_name)s %(version)s) is "
-                        "currently unsupported and may be removed in the "
-                        "next release of OpenStack.  Use at your own risk."),
+        LOG.warning("Volume driver (%(driver_name)s %(version)s) is "
+                    "currently unsupported and may be removed in the "
+                    "next release of OpenStack.  Use at your own risk.",
                     {'driver_name': driver.__class__.__name__,
                      'version': driver.get_version()},
                     resource={'type': 'driver',
@@ -944,7 +944,7 @@ def setup_tracing(trace_flags):
     except TypeError:  # Handle when trace_flags is None or a test mock
         trace_flags = []
     for invalid_flag in (set(trace_flags) - VALID_TRACE_FLAGS):
-        LOG.warning(_LW('Invalid trace flag: %s'), invalid_flag)
+        LOG.warning('Invalid trace flag: %s', invalid_flag)
     TRACE_METHOD = 'method' in trace_flags
     TRACE_API = 'api' in trace_flags
 

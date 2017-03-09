@@ -25,7 +25,7 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 import six
 
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder import policy
 
 context_opts = [
@@ -214,6 +214,6 @@ def get_internal_tenant_context():
                               project_id=project_id,
                               is_admin=True)
     else:
-        LOG.warning(_LW('Unable to get internal tenant context: Missing '
-                        'required config parameters.'))
+        LOG.warning('Unable to get internal tenant context: Missing '
+                    'required config parameters.')
         return None

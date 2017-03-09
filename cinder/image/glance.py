@@ -36,7 +36,7 @@ from six.moves import range
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 
 
 glance_opts = [
@@ -198,9 +198,9 @@ class GlanceClientWrapper(object):
             except retry_excs as e:
                 netloc = self.netloc
                 extra = "retrying"
-                error_msg = _LE("Error contacting glance server "
-                                "'%(netloc)s' for '%(method)s', "
-                                "%(extra)s.")
+                error_msg = _("Error contacting glance server "
+                              "'%(netloc)s' for '%(method)s', "
+                              "%(extra)s.")
                 if attempt == num_attempts:
                     extra = 'done trying'
                     LOG.exception(error_msg, {'netloc': netloc,

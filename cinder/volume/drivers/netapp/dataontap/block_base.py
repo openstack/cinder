@@ -37,7 +37,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
@@ -134,10 +134,10 @@ class NetAppBlockStorageLibrary(object):
         divisor = self.configuration.netapp_size_multiplier
         reserved_ratio = round(1 - (1 / divisor), 2)
         reserved_percentage = 100 * int(reserved_ratio)
-        msg = _LW('The "netapp_size_multiplier" configuration option is '
-                  'deprecated and will be removed in the Mitaka release. '
-                  'Please set "reserved_percentage = %d" instead.') % (
-                      reserved_percentage)
+        msg = ('The "netapp_size_multiplier" configuration option is '
+               'deprecated and will be removed in the Mitaka release. '
+               'Please set "reserved_percentage = %d" instead.') % (
+                   reserved_percentage)
         versionutils.report_deprecated_feature(LOG, msg)
         return reserved_percentage
 
@@ -242,8 +242,7 @@ class NetAppBlockStorageLibrary(object):
             self._create_lun(pool_name, lun_name, size, metadata,
                              qos_policy_group_name)
         except Exception:
-            LOG.exception(_LE("Exception creating LUN %(name)s in pool "
-                              "%(pool)s."),
+            LOG.exception("Exception creating LUN %(name)s in pool %(pool)s.",
                           {'name': lun_name, 'pool': pool_name})
             self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
             msg = _("Volume %s could not be created.")
@@ -285,8 +284,8 @@ class NetAppBlockStorageLibrary(object):
             self.zapi_client.destroy_lun(metadata['Path'])
             self.lun_table.pop(lun_name)
         else:
-            LOG.warning(_LW("No entry in LUN table for volume/snapshot"
-                            " %(name)s."), {'name': lun_name})
+            LOG.warning("No entry in LUN table for volume/snapshot"
+                        " %(name)s.", {'name': lun_name})
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
@@ -362,16 +361,15 @@ class NetAppBlockStorageLibrary(object):
                                         qos_policy_group_name)
                 except Exception:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(
-                            _LE("Resizing %s failed. Cleaning volume."),
-                            destination_volume['id'])
+                        LOG.error("Resizing %s failed. Cleaning volume.",
+                                  destination_volume['id'])
                         self.delete_volume(destination_volume)
 
             return self._get_volume_model_update(destination_volume)
 
         except Exception:
-            LOG.exception(_LE("Exception cloning volume %(name)s from source "
-                          "volume %(source)s."),
+            LOG.exception("Exception cloning volume %(name)s from source "
+                          "volume %(source)s.",
                           {'name': destination_name, 'source': source_name})
 
             self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
@@ -413,11 +411,11 @@ class NetAppBlockStorageLibrary(object):
         igroup_name, ig_host_os, ig_type = self._get_or_create_igroup(
             initiator_list, initiator_type, self.host_type)
         if ig_host_os != self.host_type:
-            LOG.warning(_LW("LUN misalignment may occur for current"
-                            " initiator group %(ig_nm)s) with host OS type"
-                            " %(ig_os)s. Please configure initiator group"
-                            " manually according to the type of the"
-                            " host OS."),
+            LOG.warning("LUN misalignment may occur for current"
+                        " initiator group %(ig_nm)s) with host OS type"
+                        " %(ig_os)s. Please configure initiator group"
+                        " manually according to the type of the"
+                        " host OS.",
                         {'ig_nm': igroup_name, 'ig_os': ig_host_os})
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
@@ -508,9 +506,9 @@ class NetAppBlockStorageLibrary(object):
             attr = getattr(self._get_lun_from_table(name), attr)
             return attr
         except exception.VolumeNotFound as e:
-            LOG.error(_LE("Message: %s"), e.msg)
+            LOG.error("Message: %s", e.msg)
         except Exception as e:
-            LOG.error(_LE("Error getting LUN attribute. Exception: %s"), e)
+            LOG.error("Error getting LUN attribute. Exception: %s", e)
         return None
 
     def _create_lun_meta(self, lun):
@@ -586,8 +584,8 @@ class NetAppBlockStorageLibrary(object):
                     qos_policy_group_name=qos_policy_group_name)
             self.lun_table[name].size = new_size_bytes
         else:
-            LOG.info(_LI("No need to extend volume %s"
-                         " as it is already the requested new size."), name)
+            LOG.info("No need to extend volume %s"
+                     " as it is already the requested new size.", name)
 
     def _get_vol_option(self, volume_name, option_name):
         """Get the value for the volume option."""
@@ -606,7 +604,7 @@ class NetAppBlockStorageLibrary(object):
         Clones the block ranges, swaps the LUNs, and deletes the source LUN.
         """
         seg = lun_path.split("/")
-        LOG.info(_LI("Resizing LUN %s using clone operation."), seg[-1])
+        LOG.info("Resizing LUN %s using clone operation.", seg[-1])
         lun_name = seg[-1]
         vol_name = seg[2]
         lun = self._get_lun_from_table(lun_name)
@@ -640,7 +638,7 @@ class NetAppBlockStorageLibrary(object):
         """Try post sub clone resize in a transactional manner."""
         st_tm_mv, st_nw_mv, st_del_old = None, None, None
         seg = path.split("/")
-        LOG.info(_LI("Post clone resize LUN %s"), seg[-1])
+        LOG.info("Post clone resize LUN %s", seg[-1])
         new_lun = 'new-%s' % (seg[-1])
         tmp_lun = 'tmp-%s' % (seg[-1])
         tmp_path = "/vol/%s/%s" % (seg[2], tmp_lun)
@@ -660,12 +658,12 @@ class NetAppBlockStorageLibrary(object):
                     raise exception.VolumeBackendAPIException(
                         data=msg % (seg[-1]))
                 elif st_del_old is None:
-                    LOG.error(_LE("Failure deleting staged tmp LUN %s."),
+                    LOG.error("Failure deleting staged tmp LUN %s.",
                               tmp_lun)
                 else:
-                    LOG.error(_LE("Unknown exception in"
-                                  " post clone resize LUN %s."), seg[-1])
-                    LOG.error(_LE("Exception details: %s"), e)
+                    LOG.error("Unknown exception in"
+                              " post clone resize LUN %s.", seg[-1])
+                    LOG.error("Exception details: %s", e)
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the LUN."""
@@ -706,8 +704,8 @@ class NetAppBlockStorageLibrary(object):
         path = lun.get_metadata_property('Path')
         if lun.name == volume['name']:
             new_path = path
-            LOG.info(_LI("LUN with given ref %s need not be renamed "
-                         "during manage operation."), existing_ref)
+            LOG.info("LUN with given ref %s need not be renamed "
+                     "during manage operation.", existing_ref)
         else:
             (rest, splitter, name) = path.rpartition('/')
             new_path = '%s/%s' % (rest, volume['name'])
@@ -719,8 +717,8 @@ class NetAppBlockStorageLibrary(object):
             self.zapi_client.set_lun_qos_policy_group(new_path,
                                                       qos_policy_group_name)
         self._add_lun_to_table(lun)
-        LOG.info(_LI("Manage operation completed for LUN with new path"
-                     " %(path)s and uuid %(uuid)s."),
+        LOG.info("Manage operation completed for LUN with new path"
+                 " %(path)s and uuid %(uuid)s.",
                  {'path': lun.get_metadata_property('Path'),
                   'uuid': lun.get_metadata_property('UUID')})
 
@@ -777,8 +775,8 @@ class NetAppBlockStorageLibrary(object):
            Does not delete the underlying backend storage object.
         """
         managed_lun = self._get_lun_from_table(volume['name'])
-        LOG.info(_LI("Unmanaged LUN with current path %(path)s and uuid "
-                     "%(uuid)s."),
+        LOG.info("Unmanaged LUN with current path %(path)s and uuid "
+                 "%(uuid)s.",
                  {'path': managed_lun.get_metadata_property('Path'),
                   'uuid': managed_lun.get_metadata_property('UUID')
                   or 'unknown'})
@@ -986,8 +984,7 @@ class NetAppBlockStorageLibrary(object):
 
         if not self._has_luns_mapped_to_initiators(initiators):
             # No more exports for this host, so tear down zone.
-            LOG.info(_LI("Need to remove FC Zone, building initiator "
-                         "target map"))
+            LOG.info("Need to remove FC Zone, building initiator target map")
 
             target_wwpns, initiator_target_map, num_paths = (
                 self._build_initiator_target_map(connector))
@@ -1064,8 +1061,8 @@ class NetAppBlockStorageLibrary(object):
             except Exception:
                 volumes_model_update.append(
                     {'id': volume['id'], 'status': 'error_deleting'})
-                LOG.exception(_LE("Volume %(vol)s in the consistency group "
-                                  "could not be deleted."), {'vol': volume})
+                LOG.exception("Volume %(vol)s in the consistency group "
+                              "could not be deleted.", {'vol': volume})
         return model_update, volumes_model_update
 
     def update_consistencygroup(self, group, add_volumes=None,

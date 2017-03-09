@@ -24,7 +24,7 @@ import string
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW, _LE
+from cinder.i18n import _
 from cinder.objects import fields
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import cryptish
@@ -137,12 +137,10 @@ class DS8KCommonHelper(object):
                    {'host': self._get_value('san_ip')})
             raise restclient.APIException(data=msg)
         self.backend['rest_version'] = self._get_version()['bundle_version']
-        msg = _LI("Connection to DS8K storage system %(host)s has been "
-                  "established successfully, the version of REST is %(rest)s.")
-        LOG.info(msg, {
-            'host': self._get_value('san_ip'),
-            'rest': self.backend['rest_version']
-        })
+        LOG.info("Connection to DS8K storage system %(host)s has been "
+                 "established successfully, the version of REST is %(rest)s.",
+                 {'host': self._get_value('san_ip'),
+                  'rest': self.backend['rest_version']})
 
     def _get_storage_information(self):
         storage_info = self.get_systems()
@@ -200,8 +198,8 @@ class DS8KCommonHelper(object):
         self._storage_pools = self.get_pools()
         for pid, p in self._storage_pools.items():
             if p['stgtype'] != ptype:
-                msg = _LE('The stgtype of pool %(pool)s is %(ptype)s.')
-                LOG.error(msg, {'pool': pid, 'ptype': p['stgtype']})
+                LOG.error('The stgtype of pool %(pool)s is %(ptype)s.',
+                          {'pool': pid, 'ptype': p['stgtype']})
                 err = _('Param [san_clustername] is invalid.')
                 raise exception.InvalidParameterValue(err=err)
 
@@ -259,8 +257,8 @@ class DS8KCommonHelper(object):
     def _find_lss(self, node, excluded_lss):
         fileds = ['id', 'type', 'addrgrp', 'group', 'configvols']
         existing_lss = self.get_all_lss(fileds)
-        msg = _LI("existing LSS IDs are: %s.")
-        LOG.info(msg, ','.join([lss['id'] for lss in existing_lss]))
+        LOG.info("existing LSS IDs are: %s.",
+                 ','.join([lss['id'] for lss in existing_lss]))
 
         if excluded_lss:
             existing_lss = [lss for lss in existing_lss
@@ -283,9 +281,9 @@ class DS8KCommonHelper(object):
             lss = sorted(existing_lss, key=lambda k: int(k['configvols']))[0]
             if int(lss['configvols']) < LSS_VOL_SLOTS:
                 lss_id = lss['id']
-                msg = _LI('_find_from_existing_lss: choose %(lss)s. '
-                          'now it has %(num)s volumes.')
-                LOG.info(msg, {'lss': lss_id, 'num': lss['configvols']})
+                LOG.info('_find_from_existing_lss: choose %(lss)s. '
+                         'now it has %(num)s volumes.',
+                         {'lss': lss_id, 'num': lss['configvols']})
         return lss_id
 
     def _find_from_unexisting_lss(self, node, existing_lss):
@@ -302,8 +300,7 @@ class DS8KCommonHelper(object):
             if addrgrp not in addrgrps and lss not in fulllss:
                 lss_id = ("%02x" % lss).upper()
                 break
-        msg = _LI('_find_from_unexisting_lss: choose %s.')
-        LOG.info(msg, lss_id)
+        LOG.info('_find_from_unexisting_lss: choose %s.', lss_id)
         return lss_id
 
     def create_lun(self, lun):
@@ -327,11 +324,10 @@ class DS8KCommonHelper(object):
         for lun in luns:
             if lun.ds_id is None:
                 # create_lun must have failed and not returned the id
-                LOG.error(_LE("delete_lun: volume id is None."))
+                LOG.error("delete_lun: volume id is None.")
                 continue
             if not self.lun_exists(lun.ds_id):
-                msg = _LE("delete_lun: volume %s not found.")
-                LOG.error(msg, lun.ds_id)
+                LOG.error("delete_lun: volume %s not found.", lun.ds_id)
                 continue
             lun_ids.append(lun.ds_id)
 
@@ -343,8 +339,7 @@ class DS8KCommonHelper(object):
             else:
                 lun_ids_str = ','.join(lun_ids)
                 lun_ids = []
-            msg = _LI("Deleting volumes: %s.")
-            LOG.info(msg, lun_ids_str)
+            LOG.error("Deleting volumes: %s.", lun_ids_str)
             self._delete_lun(lun_ids_str)
 
     def get_lss_in_pprc_paths(self):
@@ -354,10 +349,9 @@ class DS8KCommonHelper(object):
             paths = self.get_pprc_paths()
         except restclient.APIException:
             paths = []
-            LOG.exception(_LE("Can not get the LSS"))
+            LOG.exception("Can not get the LSS")
         lss_ids = set(p['source_lss_id'] for p in paths)
-        msg = _LI('LSS in PPRC paths are: %s.')
-        LOG.info(msg, ','.join(lss_ids))
+        LOG.info('LSS in PPRC paths are: %s.', ','.join(lss_ids))
         return lss_ids
 
     def _find_host(self, vol_id):
@@ -367,8 +361,7 @@ class DS8KCommonHelper(object):
             vol_ids = [vol['volume_id'] for vol in host['mappings_briefs']]
             if vol_id in vol_ids:
                 host_ids.append(host['id'])
-        msg = _LI('_find_host: host IDs are: %s.')
-        LOG.info(msg, host_ids)
+        LOG.info('_find_host: host IDs are: %s.', host_ids)
         return host_ids
 
     def wait_flashcopy_finished(self, src_luns, tgt_luns):
@@ -398,8 +391,7 @@ class DS8KCommonHelper(object):
         return finished
 
     def wait_pprc_copy_finished(self, vol_ids, state, delete=True):
-        msg = _LI("Wait for PPRC pair to enter into state %s")
-        LOG.info(msg, state)
+        LOG.info("Wait for PPRC pair to enter into state %s", state)
         vol_ids = sorted(vol_ids)
         min_vol_id = min(vol_ids)
         max_vol_id = max(vol_ids)
@@ -483,7 +475,7 @@ class DS8KCommonHelper(object):
         else:
             msg = _('More than one host defined for requested ports.')
             raise restclient.APIException(message=msg)
-        LOG.info(_LI('Volume will be attached to host %s.'), host_id)
+        LOG.info('Volume will be attached to host %s.', host_id)
 
         # Create missing host ports
         if unknown_ports or unconfigured_ports:
@@ -528,7 +520,7 @@ class DS8KCommonHelper(object):
         })
 
         if not defined_hosts:
-            LOG.info(_LI('Could not find host.'))
+            LOG.info('Could not find host.')
             return None
         elif len(defined_hosts) > 1:
             raise restclient.APIException(_('More than one host found.'))
@@ -537,14 +529,14 @@ class DS8KCommonHelper(object):
             mappings = self._get_mappings(host_id)
             lun_ids = [
                 m['lunid'] for m in mappings if m['volume']['id'] == vol_id]
-            msg = _LI('Volumes attached to host %(host)s are %(vols)s.')
-            LOG.info(msg, {'host': host_id, 'vols': ','.join(lun_ids)})
+            LOG.info('Volumes attached to host %(host)s are %(vols)s.',
+                     {'host': host_id, 'vols': ','.join(lun_ids)})
             for lun_id in lun_ids:
                 self._delete_mappings(host_id, lun_id)
             if not lun_ids:
-                msg = _LW("Volume %(vol)s is already not mapped to "
-                          "host %(host)s.")
-                LOG.warning(msg, {'vol': vol_id, 'host': host.name})
+                LOG.warning("Volume %(vol)s is already not mapped to "
+                            "host %(host)s.",
+                            {'vol': vol_id, 'host': host.name})
             # if this host only has volumes that have been detached,
             # remove the host and its ports
             ret_info = {
@@ -574,8 +566,9 @@ class DS8KCommonHelper(object):
                 self.delete_lun(luns)
             except restclient.APIException:
                 model_update['status'] = fields.GroupStatus.ERROR_DELETING
-                msg = _LE("Failed to delete the volumes in group %(group)s")
-                LOG.exception(msg, {'group': group.id})
+                LOG.exception(
+                    "Failed to delete the volumes in group %(group)s",
+                    {'group': group.id})
 
             for lun in luns:
                 volumes_model_update.append({
@@ -783,7 +776,7 @@ class DS8KReplicationSourceHelper(DS8KCommonHelper):
         # prefer to choose the non-existing one firstly
         fileds = ['id', 'type', 'addrgrp', 'group', 'configvols']
         existing_lss = self.get_all_lss(fileds)
-        LOG.info(_LI("existing LSS IDs are %s"),
+        LOG.info("existing LSS IDs are %s",
                  ','.join([lss['id'] for lss in existing_lss]))
         lss_id = self._find_from_unexisting_lss(node, existing_lss)
         if not lss_id:
@@ -922,8 +915,8 @@ class DS8KECKDHelper(DS8KCommonHelper):
         ckd_lss = set(lss['id'] for lss in all_lss if lss['type'] == 'ckd')
         unexisting_lcu = set(dev_mapping.keys()) - ckd_lss
         if unexisting_lcu:
-            msg = _LI('LCUs %s do not exist in DS8K, they will be created.')
-            LOG.info(msg, ','.join(unexisting_lcu))
+            LOG.info('LCUs %s do not exist in DS8K, they will be created.',
+                     ','.join(unexisting_lcu))
             for lcu in unexisting_lcu:
                 try:
                     self._create_lcu(self.backend['ssid_prefix'], lcu)

@@ -21,7 +21,6 @@ import math
 
 from oslo_log import log as logging
 
-from cinder.i18n import _LE, _LW
 from cinder.scheduler import filters
 
 
@@ -63,8 +62,8 @@ class CapacityFilter(filters.BaseBackendFilter):
 
         if backend_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.error(_LE("Free capacity not set: "
-                          "volume node info collection broken."))
+            LOG.error("Free capacity not set: "
+                      "volume node info collection broken.")
             return False
 
         free_space = backend_state.free_capacity_gb
@@ -88,9 +87,9 @@ class CapacityFilter(filters.BaseBackendFilter):
             return False
         total = float(total_space)
         if total <= 0:
-            LOG.warning(_LW("Insufficient free space for volume creation. "
-                            "Total capacity is %(total).2f on %(grouping)s "
-                            "%(grouping_name)s."),
+            LOG.warning("Insufficient free space for volume creation. "
+                        "Total capacity is %(total).2f on %(grouping)s "
+                        "%(grouping_name)s.",
                         {"total": total,
                          "grouping": grouping,
                          "grouping_name": backend_state.backend_id})
@@ -125,12 +124,12 @@ class CapacityFilter(filters.BaseBackendFilter):
                     "grouping": grouping,
                     "grouping_name": backend_state.backend_id,
                 }
-                LOG.warning(_LW(
+                LOG.warning(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
                     "%(provisioned_ratio).2f has exceeded the maximum over "
                     "subscription ratio %(oversub_ratio).2f on %(grouping)s "
-                    "%(grouping_name)s."), msg_args)
+                    "%(grouping_name)s.", msg_args)
                 return False
             else:
                 # Thin provisioning is enabled and projected over-subscription
@@ -143,10 +142,10 @@ class CapacityFilter(filters.BaseBackendFilter):
                     free * backend_state.max_over_subscription_ratio)
                 return adjusted_free_virtual >= requested_size
         elif thin and backend_state.thin_provisioning_support:
-            LOG.warning(_LW("Filtering out %(grouping)s %(grouping_name)s "
-                            "with an invalid maximum over subscription ratio "
-                            "of %(oversub_ratio).2f. The ratio should be a "
-                            "minimum of 1.0."),
+            LOG.warning("Filtering out %(grouping)s %(grouping_name)s "
+                        "with an invalid maximum over subscription ratio "
+                        "of %(oversub_ratio).2f. The ratio should be a "
+                        "minimum of 1.0.",
                         {"oversub_ratio":
                             backend_state.max_over_subscription_ratio,
                          "grouping": grouping,
@@ -159,9 +158,9 @@ class CapacityFilter(filters.BaseBackendFilter):
                     "available": free}
 
         if free < requested_size:
-            LOG.warning(_LW("Insufficient free space for volume creation "
-                            "on %(grouping)s %(grouping_name)s (requested / "
-                            "avail): %(requested)s/%(available)s"),
+            LOG.warning("Insufficient free space for volume creation "
+                        "on %(grouping)s %(grouping_name)s (requested / "
+                        "avail): %(requested)s/%(available)s",
                         msg_args)
             return False
 

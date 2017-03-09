@@ -22,7 +22,6 @@ from oslo_utils import fileutils
 from oslo_utils import netutils
 
 from cinder import exception
-from cinder.i18n import _LI, _LW, _LE
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -128,8 +127,8 @@ class CxtAdm(iscsi.ISCSITarget):
         volume_path = os.path.join(volumes_dir, vol_id)
 
         if os.path.exists(volume_path):
-            LOG.warning(_LW('Persistence file already exists for volume, '
-                            'found file at: %s'), volume_path)
+            LOG.warning('Persistence file already exists for volume, '
+                        'found file at: %s', volume_path)
         utils.robust_file_write(volumes_dir, vol_id, volume_conf)
         LOG.debug('Created volume path %(vp)s,\n'
                   'content: %(vc)s',
@@ -153,8 +152,8 @@ class CxtAdm(iscsi.ISCSITarget):
                                        '-x', self.config,
                                        run_as_root=True)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to create iscsi target for volume "
-                          "id:%(vol_id)s: %(e)s"),
+            LOG.error("Failed to create iscsi target for volume "
+                      "id:%(vol_id)s: %(e)s",
                       {'vol_id': vol_id, 'e': e})
 
             # Don't forget to remove the persistent file we created
@@ -174,11 +173,11 @@ class CxtAdm(iscsi.ISCSITarget):
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
-            LOG.error(_LE("Failed to create iscsi target for volume "
-                          "id:%(vol_id)s. Please verify your configuration "
-                          "in %(volumes_dir)s'"), {
-                      'vol_id': vol_id,
-                      'volumes_dir': volumes_dir, })
+            LOG.error("Failed to create iscsi target for volume "
+                      "id:%(vol_id)s. Please verify your configuration "
+                      "in %(volumes_dir)s'",
+                      {'vol_id': vol_id,
+                       'volumes_dir': volumes_dir, })
             raise exception.NotFound()
 
         if old_persist_file is not None and os.path.exists(old_persist_file):
@@ -187,12 +186,12 @@ class CxtAdm(iscsi.ISCSITarget):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        LOG.info(_LI('Removing iscsi_target for: %s'), vol_id)
+        LOG.info('Removing iscsi_target for: %s', vol_id)
         vol_uuid_file = vol_name
         volume_path = os.path.join(self._get_volumes_dir(), vol_uuid_file)
         if not os.path.exists(volume_path):
-            LOG.warning(_LW('Volume path %s does not exist, '
-                            'nothing to remove.'), volume_path)
+            LOG.warning('Volume path %s does not exist, '
+                        'nothing to remove.', volume_path)
             return
 
         if os.path.isfile(volume_path):
@@ -211,8 +210,8 @@ class CxtAdm(iscsi.ISCSITarget):
             LOG.debug("StdErr from iscsictl -c: %s", err)
         except putils.ProcessExecutionError as e:
             if "NOT found" in e.stdout:
-                LOG.info(_LI("No iscsi target present for volume "
-                             "id:%(vol_id)s: %(e)s"),
+                LOG.info("No iscsi target present for volume "
+                         "id:%(vol_id)s: %(e)s",
                          {'vol_id': vol_id, 'e': e})
                 return
             else:
@@ -231,13 +230,13 @@ class CxtAdm(iscsi.ISCSITarget):
             # for a target successfully but it is gone before we can remove
             # it, fail silently
             if "is not found" in e.stderr and target_exists:
-                LOG.info(_LI("No iscsi target present for volume "
-                             "id:%(vol_id)s: %(e)s"),
+                LOG.info("No iscsi target present for volume "
+                         "id:%(vol_id)s: %(e)s",
                          {'vol_id': vol_id, 'e': e})
                 return
             else:
-                LOG.error(_LE("Failed to remove iscsi target for volume "
-                              "id:%(vol_id)s: %(e)s"),
+                LOG.error("Failed to remove iscsi target for volume "
+                          "id:%(vol_id)s: %(e)s",
                           {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 

@@ -27,11 +27,11 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder import utils
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects.volume import Volume
+from cinder import utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -121,13 +121,13 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             except OSError as exc:
                 if exc.errno != errno.ENOENT:
                     raise
-                LOG.error(_LE('%s is not installed.'), package)
+                LOG.error('%s is not installed.', package)
         else:
             msg = utils.build_or_str(packages, '%s needs to be installed.')
             raise exception.NfsException(msg)
 
         lcfg = self.configuration
-        LOG.info(_LI('Connecting to host: %s.'), lcfg.san_ip)
+        LOG.info('Connecting to host: %s.', lcfg.san_ip)
 
         host = lcfg.san_ip
         user = lcfg.san_login
@@ -199,7 +199,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         try:
             self._ensure_share_mounted(self.mount_path)
         except Exception as exc:
-            LOG.error(_LE('Exception during mounting %s.'), exc)
+            LOG.error('Exception during mounting %s.', exc)
 
         self._mounted_shares = [self.mount_path]
         LOG.debug('Available shares %s', self._mounted_shares)
@@ -226,7 +226,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot of a volume."""
-        LOG.info(_LI('Creating snapshot: %s'), snapshot['name'])
+        LOG.info('Creating snapshot: %s', snapshot['name'])
         lcfg = self.configuration
         snap_name = self._create_snapshot_name()
         self.zfssa.create_snapshot(lcfg.zfssa_nfs_pool, lcfg.zfssa_nfs_project,
@@ -249,13 +249,13 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        LOG.info(_LI('Deleting snapshot: %s'), snapshot['name'])
+        LOG.info('Deleting snapshot: %s', snapshot['name'])
         self.zfssa.delete_snapshot_of_volume_file(src_file=snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot, method='COPY'):
-        LOG.info(_LI('Creatng volume from snapshot. volume: %s'),
+        LOG.info('Creatng volume from snapshot. volume: %s',
                  volume['name'])
-        LOG.info(_LI('Source Snapshot: %s'), snapshot['name'])
+        LOG.info('Source Snapshot: %s', snapshot['name'])
 
         self._ensure_shares_mounted()
         self.zfssa.create_volume_from_snapshot_file(src_file=snapshot['name'],
@@ -270,10 +270,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             except Exception:
                 vol_path = self.local_path(volume)
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Error in extending volume size: Volume: '
-                                  '%(volume)s Vol_Size: %(vol_size)d with '
-                                  'Snapshot: %(snapshot)s Snap_Size: '
-                                  '%(snap_size)d'),
+                    LOG.error('Error in extending volume size: Volume: '
+                              '%(volume)s Vol_Size: %(vol_size)d with '
+                              'Snapshot: %(snapshot)s Snap_Size: '
+                              '%(snap_size)d',
                               {'volume': volume['name'],
                                'vol_size': volume['size'],
                                'snapshot': snapshot['name'],
@@ -288,8 +288,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a snapshot and then clones the snapshot into a volume."""
-        LOG.info(_LI('new cloned volume: %s'), volume['name'])
-        LOG.info(_LI('source volume for cloning: %s'), src_vref['name'])
+        LOG.info('new cloned volume: %s', volume['name'])
+        LOG.info('source volume for cloning: %s', src_vref['name'])
 
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
@@ -310,7 +310,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         super(ZFSSANFSDriver, self).delete_volume(volume)
 
         if vol_props['origin'].startswith(lcfg.zfssa_cache_directory):
-            LOG.info(_LI('Checking origin %(origin)s of volume %(volume)s.'),
+            LOG.info('Checking origin %(origin)s of volume %(volume)s.',
                      {'origin': vol_props['origin'],
                       'volume': volume.name})
             self._check_origin(vol_props['origin'])
@@ -352,8 +352,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
 
         if cachevol_size > volume['size']:
-            exception_msg = (_LE('Image size %(img_size)dGB is larger '
-                                 'than volume size %(vol_size)dGB.'),
+            exception_msg = ('Image size %(img_size)dGB is larger '
+                             'than volume size %(vol_size)dGB.',
                              {'img_size': cachevol_size,
                               'vol_size': volume['size']})
             LOG.error(exception_msg)
@@ -382,8 +382,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             clone_vol = self.create_cloned_volume(volume, cache_vol)
             self._update_origin(volume['name'], cachevol_name)
         except exception.VolumeBackendAPIException as exc:
-            exception_msg = (_LE('Cannot clone image %(image)s to '
-                                 'volume %(volume)s. Error: %(error)s.'),
+            exception_msg = ('Cannot clone image %(image)s to '
+                             'volume %(volume)s. Error: %(error)s.',
                              {'volume': volume['name'],
                               'image': image_meta['id'],
                               'error': exc.msg})
@@ -627,16 +627,16 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         try:
             (tgt_asn, tgt_share) = loc_info.split(':')
         except ValueError:
-            LOG.error(_LE("Location info needed for backend enabled volume "
-                          "migration not in correct format: %s. Continuing "
-                          "with generic volume migration."), loc_info)
+            LOG.error("Location info needed for backend enabled volume "
+                      "migration not in correct format: %s. Continuing "
+                      "with generic volume migration.", loc_info)
             return default_ret
 
         src_asn = self.zfssa.get_asn()
 
         if tgt_asn == src_asn and lcfg.zfssa_nfs_share == tgt_share:
-            LOG.info(_LI('Source and destination ZFSSA shares are the same. '
-                         'Do nothing. volume: %s'), volume['name'])
+            LOG.info('Source and destination ZFSSA shares are the same. '
+                     'Do nothing. volume: %s', volume['name'])
             return (True, None)
 
         return (False, None)
@@ -684,8 +684,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         try:
             self.zfssa.rename_volume(existing_vol_name, volume['name'])
         except Exception:
-            LOG.error(_LE("Failed to rename volume %(existing)s to %(new)s. "
-                          "Volume manage failed."),
+            LOG.error("Failed to rename volume %(existing)s to %(new)s. "
+                      "Volume manage failed.",
                       {'existing': existing_vol_name,
                        'new': volume['name']})
             raise
@@ -695,8 +695,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                       {'cinder_managed': 'True'})
         except Exception:
             self.zfssa.rename_volume(volume['name'], existing_vol_name)
-            LOG.error(_LE("Failed to set properties for volume %(existing)s. "
-                          "Volume manage failed."),
+            LOG.error("Failed to set properties for volume %(existing)s. "
+                      "Volume manage failed.",
                       {'existing': volume['name']})
             raise
 
@@ -757,8 +757,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         try:
             self.zfssa.rename_volume(volume['name'], new_name)
         except Exception:
-            LOG.error(_LE("Failed to rename volume %(existing)s to %(new)s. "
-                          "Volume unmanage failed."),
+            LOG.error("Failed to rename volume %(existing)s to %(new)s. "
+                      "Volume unmanage failed.",
                       {'existing': volume['name'],
                        'new': new_name})
             raise
@@ -767,8 +767,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             self.zfssa.set_file_props(new_name, {'cinder_managed': 'False'})
         except Exception:
             self.zfssa.rename_volume(new_name, volume['name'])
-            LOG.error(_LE("Failed to set properties for volume %(existing)s. "
-                          "Volume unmanage failed."),
+            LOG.error("Failed to set properties for volume %(existing)s. "
+                      "Volume unmanage failed.",
                       {'existing': volume['name']})
             raise
 

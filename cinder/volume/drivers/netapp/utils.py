@@ -34,7 +34,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LW, _LI
+from cinder.i18n import _
 from cinder import utils
 from cinder import version
 from cinder.volume import qos_specs
@@ -67,8 +67,8 @@ def validate_instantiation(**kwargs):
     """
     if kwargs and kwargs.get('netapp_mode') == 'proxy':
         return
-    LOG.warning(_LW("It is not the recommended way to use drivers by NetApp. "
-                    "Please use NetAppDriver to achieve the functionality."))
+    LOG.warning("It is not the recommended way to use drivers by NetApp. "
+                "Please use NetAppDriver to achieve the functionality.")
 
 
 def check_flags(required_flags, configuration):
@@ -142,14 +142,14 @@ def round_down(value, precision='0.00'):
 def log_extra_spec_warnings(extra_specs):
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(OBSOLETE_SSC_SPECS.keys())):
-        LOG.warning(_LW('Extra spec %(old)s is obsolete.  Use %(new)s '
-                        'instead.'), {'old': spec,
-                                      'new': OBSOLETE_SSC_SPECS[spec]})
+        LOG.warning('Extra spec %(old)s is obsolete.  Use %(new)s '
+                    'instead.', {'old': spec,
+                                 'new': OBSOLETE_SSC_SPECS[spec]})
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(DEPRECATED_SSC_SPECS.keys())):
-        LOG.warning(_LW('Extra spec %(old)s is deprecated.  Use %(new)s '
-                        'instead.'), {'old': spec,
-                                      'new': DEPRECATED_SSC_SPECS[spec]})
+        LOG.warning('Extra spec %(old)s is deprecated.  Use %(new)s '
+                    'instead.', {'old': spec,
+                                 'new': DEPRECATED_SSC_SPECS[spec]})
 
 
 def get_iscsi_connection_properties(lun_id, volume, iqn,
@@ -283,7 +283,7 @@ def get_valid_qos_policy_group_info(volume, extra_specs=None):
     try:
         volume_type = get_volume_type_from_volume(volume)
     except KeyError:
-        LOG.exception(_LE('Cannot get QoS spec for volume %s.'), volume['id'])
+        LOG.exception('Cannot get QoS spec for volume %s.', volume['id'])
         return info
     if volume_type is None:
         return info
@@ -409,7 +409,7 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI('No rpm info found for %(pkg)s package.'), {
+                LOG.info('No rpm info found for %(pkg)s package.', {
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -418,7 +418,7 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run rpm command: %(msg)s.'), {'msg': e})
+            LOG.info('Could not run rpm command: %(msg)s.', {'msg': e})
             return False
 
     # ubuntu, mirantis on ubuntu
@@ -429,7 +429,7 @@ class OpenStackInfo(object):
             out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI('No dpkg-query info found for %(pkg)s package.'),
+                LOG.info('No dpkg-query info found for %(pkg)s package.',
                          {'pkg': self.PACKAGE_NAME})
                 return False
             # debian format: [epoch:]upstream_version[-debian_revision]
@@ -447,7 +447,7 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run dpkg-query command: %(msg)s.'), {
+            LOG.info('Could not run dpkg-query command: %(msg)s.', {
                 'msg': e})
             return False
 

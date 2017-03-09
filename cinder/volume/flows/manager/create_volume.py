@@ -24,7 +24,7 @@ from taskflow.types import failure as ft
 from cinder import context as cinder_context
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import glance
 from cinder.image import image_utils
 from cinder import objects
@@ -118,7 +118,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             volume.save()
         except exception.CinderException:
             # Don't let updating the state cause the rescheduling to fail.
-            LOG.exception(_LE("Volume %s: update volume state failed."),
+            LOG.exception("Volume %s: update volume state failed.",
                           volume.id)
 
     def _reschedule(self, context, cause, request_spec, filter_properties,
@@ -174,7 +174,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         # error and return.
         if not self.do_reschedule:
             common.error_out(volume)
-            LOG.error(_LE("Volume %s: create failed"), volume.id)
+            LOG.error("Volume %s: create failed", volume.id)
             return False
 
         # Check if we have a cause which can tell us not to reschedule and
@@ -182,7 +182,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         for failure in flow_failures.values():
             if failure.check(*self.no_reschedule_types):
                 common.error_out(volume)
-                LOG.error(_LE("Volume %s: create failed"), volume.id)
+                LOG.error("Volume %s: create failed", volume.id)
                 return False
 
         # Use a different context when rescheduling.
@@ -195,8 +195,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                 self._post_reschedule(volume)
                 return True
             except exception.CinderException:
-                LOG.exception(_LE("Volume %s: rescheduling failed"),
-                              volume.id)
+                LOG.exception("Volume %s: rescheduling failed", volume.id)
 
         return False
 
@@ -227,7 +226,7 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
 
         reason = _('Volume create failed while extracting volume ref.')
         common.error_out(volume, reason)
-        LOG.error(_LE("Volume %s: create failed"), volume.id)
+        LOG.error("Volume %s: create failed", volume.id)
 
 
 class ExtractVolumeSpecTask(flow_utils.CinderTask):
@@ -355,8 +354,8 @@ class NotifyVolumeActionTask(flow_utils.CinderTask):
             # If notification sending of volume database entry reading fails
             # then we shouldn't error out the whole workflow since this is
             # not always information that must be sent for volumes to operate
-            LOG.exception(_LE("Failed notifying about the volume"
-                              " action %(event)s for volume %(volume_id)s"),
+            LOG.exception("Failed notifying about the volume"
+                          " action %(event)s for volume %(volume_id)s",
                           {'event': self.event_suffix, 'volume_id': volume.id})
 
 
@@ -458,10 +457,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                         snapshot.volume_id)
             make_bootable = originating_vref.bootable
         except exception.CinderException as ex:
-            LOG.exception(_LE("Failed fetching snapshot %(snapshot_id)s "
-                              "bootable"
-                              " flag using the provided glance snapshot "
-                              "%(snapshot_ref_id)s volume reference"),
+            LOG.exception("Failed fetching snapshot %(snapshot_id)s bootable"
+                          " flag using the provided glance snapshot "
+                          "%(snapshot_ref_id)s volume reference",
                           {'snapshot_id': snapshot_id,
                            'snapshot_ref_id': snapshot.volume_id})
             raise exception.MetadataUpdateFailure(reason=ex)
@@ -476,8 +474,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             volume.bootable = True
             volume.save()
         except exception.CinderException as ex:
-            LOG.exception(_LE("Failed updating volume %(volume_id)s bootable "
-                              "flag to true"), {'volume_id': volume.id})
+            LOG.exception("Failed updating volume %(volume_id)s bootable "
+                          "flag to true", {'volume_id': volume.id})
             raise exception.MetadataUpdateFailure(reason=ex)
 
     def _create_from_source_volume(self, context, volume, source_volid,
@@ -536,17 +534,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 self.driver.copy_image_to_volume(
                     context, volume, image_service, image_id)
         except processutils.ProcessExecutionError as ex:
-            LOG.exception(_LE("Failed to copy image %(image_id)s to volume: "
-                              "%(volume_id)s"),
+            LOG.exception("Failed to copy image %(image_id)s to volume: "
+                          "%(volume_id)s",
                           {'volume_id': volume.id, 'image_id': image_id})
             raise exception.ImageCopyFailure(reason=ex.stderr)
         except exception.ImageUnacceptable as ex:
-            LOG.exception(_LE("Failed to copy image to volume: %(volume_id)s"),
+            LOG.exception("Failed to copy image to volume: %(volume_id)s",
                           {'volume_id': volume.id})
             raise exception.ImageUnacceptable(ex)
         except Exception as ex:
-            LOG.exception(_LE("Failed to copy image %(image_id)s to "
-                              "volume: %(volume_id)s"),
+            LOG.exception("Failed to copy image %(image_id)s to "
+                          "volume: %(volume_id)s",
                           {'volume_id': volume.id, 'image_id': image_id})
             if not isinstance(ex, exception.ImageCopyFailure):
                 raise exception.ImageCopyFailure(reason=ex)
@@ -607,7 +605,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         if (image_meta.get('container_format') != 'bare' or
                 image_meta.get('disk_format') != 'raw'):
-            LOG.info(_LI("Requested image %(id)s is not in raw format."),
+            LOG.info("Requested image %(id)s is not in raw format.",
                      {'id': image_meta.get('id')})
             return None, False
 
@@ -629,13 +627,13 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     image_owner = m['value']
             if (image_meta['owner'] != volume['project_id'] and
                     image_meta['owner'] != image_owner):
-                LOG.info(_LI("Skipping image volume %(id)s because "
-                             "it is not accessible by current Tenant."),
+                LOG.info("Skipping image volume %(id)s because "
+                         "it is not accessible by current Tenant.",
                          {'id': image_volume.id})
                 continue
 
-            LOG.info(_LI("Will clone a volume from the image volume "
-                         "%(id)s."), {'id': image_volume.id})
+            LOG.info("Will clone a volume from the image volume "
+                     "%(id)s.", {'id': image_volume.id})
             break
         else:
             LOG.debug("No accessible image volume for image %(id)s found.",
@@ -647,7 +645,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             self._cleanup_cg_in_volume(volume)
             return ret, True
         except (NotImplementedError, exception.CinderException):
-            LOG.exception(_LE('Failed to clone image volume %(id)s.'),
+            LOG.exception('Failed to clone image volume %(id)s.',
                           {'id': image_volume['id']})
             return None, False
 
@@ -666,8 +664,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             volume.update(model_update)
             volume.save()
         except exception.CinderException:
-            LOG.exception(_LE("Failed updating volume %(volume_id)s with "
-                              "%(updates)s"),
+            LOG.exception("Failed updating volume %(volume_id)s with "
+                          "%(updates)s",
                           {'volume_id': volume.id,
                            'updates': model_update})
         self._copy_image_to_volume(context, volume, image_id, image_location,
@@ -705,12 +703,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 )
                 return model_update, True
         except NotImplementedError:
-            LOG.warning(_LW('Backend does not support creating image-volume '
-                            'clone. Image will be downloaded from Glance.'))
+            LOG.warning('Backend does not support creating image-volume '
+                        'clone. Image will be downloaded from Glance.')
         except exception.CinderException as e:
-            LOG.warning(_LW('Failed to create volume from image-volume cache, '
-                            'image will be downloaded from Glance. Error: '
-                            '%(exception)s'), {'exception': e})
+            LOG.warning('Failed to create volume from image-volume cache, '
+                        'image will be downloaded from Glance. Error: '
+                        '%(exception)s', {'exception': e})
         return None, False
 
     def _create_from_image(self, context, volume,
@@ -765,8 +763,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         if self.image_volume_cache and not cloned:
             internal_context = cinder_context.get_internal_tenant_context()
             if not internal_context:
-                LOG.info(_LI('Unable to get Cinder internal context, will '
-                             'not use image-volume cache.'))
+                LOG.info('Unable to get Cinder internal context, will '
+                         'not use image-volume cache.')
             else:
                 model_update, cloned = self._create_from_image_cache(
                     context,
@@ -847,8 +845,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
             driver_name = self.driver.__class__.__name__
-            LOG.error(_LE("Unable to create volume. "
-                          "Volume driver %s not initialized"), driver_name)
+            LOG.error("Unable to create volume. "
+                      "Volume driver %s not initialized", driver_name)
             raise exception.DriverNotInitialized()
 
         # NOTE(xyang): Populate consistencygroup_id and consistencygroup
@@ -861,8 +859,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             volume.consistencygroup = cg
 
         create_type = volume_spec.pop('type', None)
-        LOG.info(_LI("Volume %(volume_id)s: being created as %(create_type)s "
-                     "with specification: %(volume_spec)s"),
+        LOG.info("Volume %(volume_id)s: being created as %(create_type)s "
+                 "with specification: %(volume_spec)s",
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'create_type': create_type})
         if create_type == 'raw':
@@ -893,8 +891,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             # If somehow the update failed we want to ensure that the
             # failure is logged (but not try rescheduling since the volume at
             # this point has been created).
-            LOG.exception(_LE("Failed updating model of volume %(volume_id)s "
-                              "with creation provided model %(model)s"),
+            LOG.exception("Failed updating model of volume %(volume_id)s "
+                          "with creation provided model %(model)s",
                           {'volume_id': volume_id, 'model': model_update})
             raise
 
@@ -945,12 +943,12 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
             # Now use the parent to notify.
             super(CreateVolumeOnFinishTask, self).execute(context, volume)
         except exception.CinderException:
-            LOG.exception(_LE("Failed updating volume %(volume_id)s with "
-                              "%(update)s"), {'volume_id': volume.id,
-                                              'update': update})
+            LOG.exception("Failed updating volume %(volume_id)s with "
+                          "%(update)s", {'volume_id': volume.id,
+                                         'update': update})
         # Even if the update fails, the volume is ready.
-        LOG.info(_LI("Volume %(volume_name)s (%(volume_id)s): "
-                     "created successfully"),
+        LOG.info("Volume %(volume_name)s (%(volume_id)s): "
+                 "created successfully",
                  {'volume_name': volume_spec['volume_name'],
                   'volume_id': volume.id})
 

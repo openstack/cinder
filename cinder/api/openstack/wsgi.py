@@ -32,7 +32,7 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder.api.openstack import versioned_method
 from cinder import exception
 from cinder import i18n
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import policy
 from cinder import utils
 from cinder.wsgi import common as wsgi
@@ -602,15 +602,14 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_LE(
-                'Exception handling resource: %s'),
-                ex_value, exc_info=exc_info)
+            LOG.error('Exception handling resource: %s',
+                      ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_LI("Fault thrown: %s"), ex_value)
+            LOG.info("Fault thrown: %s", ex_value)
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_LI("HTTP exception thrown: %s"), ex_value)
+            LOG.info("HTTP exception thrown: %s", ex_value)
             raise Fault(ex_value)
 
         # We didn't handle the exception
@@ -812,7 +811,7 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info(_LI("%(method)s %(url)s"),
+        LOG.info("%(method)s %(url)s",
                  {"method": request.method,
                   "url": request.url})
 
@@ -934,10 +933,10 @@ class Resource(wsgi.Application):
 
         try:
             msg_dict = dict(url=request.url, status=response.status_int)
-            msg = _LI("%(url)s returned with HTTP %(status)d")
+            msg = "%(url)s returned with HTTP %(status)d"
         except AttributeError as e:
             msg_dict = dict(url=request.url, e=e)
-            msg = _LI("%(url)s returned a fault: %(e)s")
+            msg = "%(url)s returned a fault: %(e)s"
 
         LOG.info(msg, msg_dict)
 
@@ -972,7 +971,7 @@ class Resource(wsgi.Application):
                                                             'create',
                                                             'delete',
                                                             'update']):
-                    LOG.exception(_LE('Get method error.'))
+                    LOG.exception('Get method error.')
                 else:
                     ctxt.reraise = False
         else:

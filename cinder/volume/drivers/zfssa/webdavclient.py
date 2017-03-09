@@ -22,7 +22,7 @@ from six.moves import http_client
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 
 LOG = log.getLogger(__name__)
 
@@ -112,14 +112,14 @@ class ZFSSAWebDAVClient(object):
                 response = urllib.request.urlopen(  # nosec
                     request, timeout=None)
             except urllib.error.HTTPError as err:
-                LOG.error(_LE('WebDAV returned with %(code)s error during '
-                              '%(method)s call.'),
+                LOG.error('WebDAV returned with %(code)s error during '
+                          '%(method)s call.',
                           {'code': err.code, 'method': method})
 
                 if err.code == http_client.INTERNAL_SERVER_ERROR:
-                    LOG.error(_LE('WebDAV operation failed with error code: '
-                                  '%(code)s reason: %(reason)s Retry attempt '
-                                  '%(retry)s in progress.'),
+                    LOG.error('WebDAV operation failed with error code: '
+                              '%(code)s reason: %(reason)s Retry attempt '
+                              '%(retry)s in progress.',
                               {'code': err.code,
                                'reason': err.reason,
                                'retry': retry})

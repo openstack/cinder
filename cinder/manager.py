@@ -62,7 +62,6 @@ from cinder import context
 from cinder import db
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _LE, _LI, _LW
 from cinder import objects
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -141,7 +140,7 @@ class Manager(base.Base, PeriodicTasks):
         We're utilizing it to reset RPC API version pins to avoid restart of
         the service when rolling upgrade is completed.
         """
-        LOG.info(_LI('Resetting cached RPC version pins.'))
+        LOG.info('Resetting cached RPC version pins.')
         rpc.LAST_OBJ_VERSIONS = {}
         rpc.LAST_RPC_VERSIONS = {}
 
@@ -198,9 +197,9 @@ class SchedulerDependentManager(ThreadPoolManager):
                 # This means we have Newton's c-sch in the deployment, so
                 # rpcapi cannot send the message. We can safely ignore the
                 # error. Log it because it shouldn't happen after upgrade.
-                msg = _LW("Failed to notify about cinder-volume service "
-                          "capabilities for host %(host)s. This is normal "
-                          "during a live upgrade. Error: %(e)s")
+                msg = ("Failed to notify about cinder-volume service "
+                       "capabilities for host %(host)s. This is normal "
+                       "during a live upgrade. Error: %(e)s")
                 LOG.warning(msg, {'host': self.host, 'e': e})
 
     def reset(self):
@@ -210,7 +209,7 @@ class SchedulerDependentManager(ThreadPoolManager):
 
 class CleanableManager(object):
     def do_cleanup(self, context, cleanup_request):
-        LOG.info(_LI('Initiating service %s cleanup'),
+        LOG.info('Initiating service %s cleanup',
                  cleanup_request.service_id)
 
         # If the 'until' field in the cleanup request is not set, we default to
@@ -264,8 +263,8 @@ class CleanableManager(object):
                                'exp_sts': clean.status,
                                'found_sts': vo.status})
                 else:
-                    LOG.info(_LI('Cleaning %(type)s with id %(id)s and status '
-                                 '%(status)s'),
+                    LOG.info('Cleaning %(type)s with id %(id)s and status '
+                             '%(status)s',
                              {'type': clean.resource_type,
                               'id': clean.resource_id,
                               'status': clean.status},
@@ -276,7 +275,7 @@ class CleanableManager(object):
                         # of it
                         keep_entry = self._do_cleanup(context, vo)
                     except Exception:
-                        LOG.exception(_LE('Could not perform cleanup.'))
+                        LOG.exception('Could not perform cleanup.')
                         # Return the worker DB entry to the original service
                         db.worker_update(context, clean.id,
                                          service_id=original_service_id,
@@ -288,10 +287,9 @@ class CleanableManager(object):
             # method doesn't want to keep the entry (for example for delayed
             # deletion).
             if not keep_entry and not db.worker_destroy(context, id=clean.id):
-                LOG.warning(_LW('Could not remove worker entry %s.'), clean.id)
+                LOG.warning('Could not remove worker entry %s.', clean.id)
 
-        LOG.info(_LI('Service %s cleanup completed.'),
-                 cleanup_request.service_id)
+        LOG.info('Service %s cleanup completed.', cleanup_request.service_id)
 
     def _do_cleanup(self, ctxt, vo_resource):
         return False

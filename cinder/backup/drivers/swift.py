@@ -55,7 +55,6 @@ from swiftclient import client as swift
 from cinder.backup import chunkeddriver
 from cinder import exception
 from cinder.i18n import _
-from cinder.i18n import _LE
 from cinder import interface
 
 LOG = logging.getLogger(__name__)
@@ -215,8 +214,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         self.backup_swift_auth_insecure = CONF.backup_swift_auth_insecure
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
-                LOG.error(_LE("single_user auth mode enabled, "
-                              "but %(param)s not set"),
+                LOG.error("single_user auth mode enabled, "
+                          "but %(param)s not set",
                           {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
             os_options = {}

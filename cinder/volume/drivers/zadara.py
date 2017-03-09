@@ -25,7 +25,7 @@ import requests
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 
@@ -436,8 +436,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         name = self.configuration.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
-            LOG.warning(_LW('Volume %s could not be found. '
-                            'It might be already deleted'), name)
+            LOG.warning('Volume %s could not be found. '
+                        'It might be already deleted', name)
             return
 
         # Check attachment info and detach from all
@@ -485,16 +485,16 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         cg_name = self._get_volume_cg_name(volume_name)
         if not cg_name:
             # If the volume isn't present, then don't attempt to delete
-            LOG.warning(_LW('snapshot: original volume %s not found, '
-                            'skipping delete operation'),
+            LOG.warning('snapshot: original volume %s not found, '
+                        'skipping delete operation',
                         volume_name)
             return
 
         snap_id = self._get_snap_id(cg_name, snapshot['name'])
         if not snap_id:
             # If the snapshot isn't present, then don't attempt to delete
-            LOG.warning(_LW('snapshot: snapshot %s not found, '
-                            'skipping delete operation'), snapshot['name'])
+            LOG.warning('snapshot: snapshot %s not found, '
+                        'skipping delete operation', snapshot['name'])
             return
 
         self.vpsa.send_cmd('delete_snapshot',
@@ -510,12 +510,12 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                        % snapshot['volume_name'])
         cg_name = self._get_volume_cg_name(volume_name)
         if not cg_name:
-            LOG.error(_LE('Volume %(name)s not found'), {'name': volume_name})
+            LOG.error('Volume %(name)s not found', {'name': volume_name})
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         snap_id = self._get_snap_id(cg_name, snapshot['name'])
         if not snap_id:
-            LOG.error(_LE('Snapshot %(name)s not found'),
+            LOG.error('Snapshot %(name)s not found',
                       {'name': snapshot['name']})
             raise exception.SnapshotNotFound(snapshot_id=snapshot['id'])
 
@@ -538,7 +538,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                        % src_vref['name'])
         cg_name = self._get_volume_cg_name(volume_name)
         if not cg_name:
-            LOG.error(_LE('Volume %(name)s not found'), {'name': volume_name})
+            LOG.error('Volume %(name)s not found', {'name': volume_name})
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         self.vpsa.send_cmd('create_clone',

@@ -27,7 +27,7 @@ import time
 from xml.etree.ElementTree import parse
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -155,8 +155,8 @@ class FJDXCommon(object):
     def __init__(self, prtcl, configuration=None):
 
         if not pywbemAvailable:
-            LOG.error(_LE('import pywbem failed!! '
-                          'pywbem is necessary for this volume driver.'))
+            LOG.error('import pywbem failed!! '
+                      'pywbem is necessary for this volume driver.')
 
         self.protocol = prtcl
         self.configuration = configuration
@@ -227,9 +227,9 @@ class FJDXCommon(object):
             Size=self._pywbem_uint(volumesize, '64'))
 
         if rc == VOLUMENAME_IN_USE:  # Element Name is in use
-            LOG.warning(_LW('create_volume, '
-                            'volumename: %(volumename)s, '
-                            'Element Name is in use.'),
+            LOG.warning('create_volume, '
+                        'volumename: %(volumename)s, '
+                        'Element Name is in use.',
                         {'volumename': volumename})
             vol_instance = self._find_lun(volume)
             element = vol_instance
@@ -452,8 +452,8 @@ class FJDXCommon(object):
         vol_instance = self._find_lun(volume)
 
         if vol_instance is None:
-            LOG.info(_LI('_delete_volume_setting, volumename:%(volumename)s, '
-                         'volume not found on ETERNUS. '),
+            LOG.info('_delete_volume_setting, volumename:%(volumename)s, '
+                     'volume not found on ETERNUS.',
                      {'volumename': volumename})
             return False
 
@@ -694,11 +694,11 @@ class FJDXCommon(object):
             target_lun = mapdata.get('target_lun', None)
             target_luns = mapdata.get('target_luns', None)
 
-            LOG.info(_LI('initialize_connection, '
-                         'volume: %(volume)s, '
-                         'target_lun: %(target_lun)s, '
-                         'target_luns: %(target_luns)s, '
-                         'Volume is already mapped.'),
+            LOG.info('initialize_connection, '
+                     'volume: %(volume)s, '
+                     'target_lun: %(target_lun)s, '
+                     'target_luns: %(target_luns)s, '
+                     'Volume is already mapped.',
                      {'volume': volume['name'],
                       'target_lun': target_lun,
                       'target_luns': target_luns})
@@ -896,9 +896,9 @@ class FJDXCommon(object):
                 pool['RemainingManagedSpace'] / units.Gi)
         else:
             # if pool information is unknown, set 0 GB to capacity information
-            LOG.warning(_LW('update_volume_stats, '
-                            'eternus_pool:%(eternus_pool)s, '
-                            'specified pool is not found.'),
+            LOG.warning('update_volume_stats, '
+                        'eternus_pool:%(eternus_pool)s, '
+                        'specified pool is not found.',
                         {'eternus_pool': eternus_pool})
             self.stats['total_capacity_gb'] = 0
             self.stats['free_capacity_gb'] = 0
@@ -1527,8 +1527,8 @@ class FJDXCommon(object):
             cpsession_instance = self._get_eternus_instance(
                 cpsession, LocalOnly=False)
         except Exception:
-            LOG.info(_LI('_delete_copysession, '
-                         'The copysession was already completed.'))
+            LOG.info('_delete_copysession, '
+                     'the copysession was already completed.')
             return
 
         copytype = cpsession_instance['CopyType']
@@ -1721,12 +1721,12 @@ class FJDXCommon(object):
                            'rc': rc})
 
                 if rc != 0 and rc != LUNAME_IN_USE:
-                    LOG.warning(_LW('_map_lun, '
-                                    'lun_name: %(volume_uid)s, '
-                                    'Initiator: %(initiator)s, '
-                                    'target: %(target)s, '
-                                    'Return code: %(rc)lu, '
-                                    'Error: %(errordesc)s.'),
+                    LOG.warning('_map_lun, '
+                                'lun_name: %(volume_uid)s, '
+                                'Initiator: %(initiator)s, '
+                                'target: %(target)s, '
+                                'Return code: %(rc)lu, '
+                                'Error: %(errordesc)s.',
                                 {'volume_uid': [volume_uid],
                                  'initiator': initiatorlist,
                                  'target': target['Name'],
@@ -1754,12 +1754,12 @@ class FJDXCommon(object):
                            'rc': rc})
 
                 if rc != 0 and rc != LUNAME_IN_USE:
-                    LOG.warning(_LW('_map_lun, '
-                                    'lun_name: %(volume_uid)s, '
-                                    'Initiator: %(initiator)s, '
-                                    'ag: %(ag)s, '
-                                    'Return code: %(rc)lu, '
-                                    'Error: %(errordesc)s.'),
+                    LOG.warning('_map_lun, '
+                                'lun_name: %(volume_uid)s, '
+                                'Initiator: %(initiator)s, '
+                                'ag: %(ag)s, '
+                                'Return code: %(rc)lu, '
+                                'Error: %(errordesc)s.',
                                 {'volume_uid': [volume_uid],
                                  'initiator': initiatorlist,
                                  'ag': ag,
@@ -1881,9 +1881,9 @@ class FJDXCommon(object):
         volumename = self._create_volume_name(volume['id'])
         vol_instance = self._find_lun(volume)
         if vol_instance is None:
-            LOG.info(_LI('_unmap_lun, '
-                         'volumename:%(volumename)s, '
-                         'volume not found.'),
+            LOG.info('_unmap_lun, '
+                     'volumename:%(volumename)s, '
+                     'volume not found.',
                      {'volumename': volumename})
             return False
 
@@ -1892,9 +1892,9 @@ class FJDXCommon(object):
         if not force:
             aglist = self._find_affinity_group(connector, vol_instance)
             if not aglist:
-                LOG.info(_LI('_unmap_lun, '
-                             'volumename: %(volumename)s, '
-                             'volume is not mapped.'),
+                LOG.info('_unmap_lun, '
+                         'volumename: %(volumename)s, '
+                         'volume is not mapped.',
                          {'volumename': volumename})
                 return False
         else:
@@ -2091,8 +2091,8 @@ class FJDXCommon(object):
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_LE("_wait_for_job_complete, "
-                              "failed after %(retries)d tries."),
+                LOG.error("_wait_for_job_complete, "
+                          "failed after %(retries)d tries.",
                           {'retries': self.retries})
                 raise loopingcall.LoopingCallDone()
 
@@ -2101,10 +2101,9 @@ class FJDXCommon(object):
                 if not self.wait_for_job_called:
                     if self._is_job_finished(conn, job):
                         self.wait_for_job_called = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s"), e)
+            except Exception:
                 exceptionMessage = _("Issue encountered waiting for job.")
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         self.wait_for_job_called = False

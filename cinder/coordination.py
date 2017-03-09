@@ -32,7 +32,7 @@ from tooz import coordination
 from tooz import locking
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 
 LOG = log.getLogger(__name__)
 
@@ -94,9 +94,9 @@ class Coordinator(object):
                     self._ev = eventlet.spawn(
                         lambda: tpool.execute(self.heartbeat))
             except coordination.ToozError:
-                LOG.exception(_LE('Error starting coordination backend.'))
+                LOG.exception('Error starting coordination backend.')
                 raise
-            LOG.info(_LI('Coordination backend started successfully.'))
+            LOG.info('Coordination backend started successfully.')
 
     def stop(self):
         """Disconnect from coordination backend and stop heartbeat."""
@@ -154,17 +154,17 @@ class Coordinator(object):
             self.coordinator.heartbeat()
             return True
         except coordination.ToozConnectionError:
-            LOG.exception(_LE('Connection error while sending a heartbeat '
-                              'to coordination backend.'))
+            LOG.exception('Connection error while sending a heartbeat '
+                          'to coordination backend.')
             raise
         except coordination.ToozError:
-            LOG.exception(_LE('Error sending a heartbeat to coordination '
-                              'backend.'))
+            LOG.exception('Error sending a heartbeat to coordination '
+                          'backend.')
         return False
 
     def _reconnect(self):
         """Reconnect with jittered exponential backoff increase."""
-        LOG.info(_LI('Reconnecting to coordination backend.'))
+        LOG.info('Reconnecting to coordination backend.')
         cap = cfg.CONF.coordination.max_reconnect_backoff
         backoff = base = cfg.CONF.coordination.initial_reconnect_backoff
         for attempt in itertools.count(1):
@@ -173,11 +173,11 @@ class Coordinator(object):
                 break
             except coordination.ToozError:
                 backoff = min(cap, random.uniform(base, backoff * 3))
-                msg = _LW('Reconnect attempt %(attempt)s failed. '
-                          'Next try in %(backoff).2fs.')
+                msg = ('Reconnect attempt %(attempt)s failed. '
+                       'Next try in %(backoff).2fs.')
                 LOG.warning(msg, {'attempt': attempt, 'backoff': backoff})
                 self._dead.wait(backoff)
-        LOG.info(_LI('Reconnected to coordination backend.'))
+        LOG.info('Reconnected to coordination backend.')
 
 
 COORDINATOR = Coordinator(prefix='cinder-')

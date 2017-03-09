@@ -26,7 +26,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v3.views import groups as views_groups
 from cinder import exception
 from cinder import group as group_api
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import rpc
 from cinder.volume import group_types
 
@@ -134,7 +134,7 @@ class GroupsController(wsgi.Controller):
                        % del_vol)
                 raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI('Delete group with id: %s'), id,
+        LOG.info('Delete group with id: %s', id,
                  context=context)
 
         try:
@@ -217,7 +217,7 @@ class GroupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
         availability_zone = group.get('availability_zone')
 
-        LOG.info(_LI("Creating group %(name)s."),
+        LOG.info("Creating group %(name)s.",
                  {'name': name},
                  context=context)
 
@@ -268,16 +268,16 @@ class GroupsController(wsgi.Controller):
 
         group_type_id = None
         if group_snapshot_id:
-            LOG.info(_LI("Creating group %(name)s from group_snapshot "
-                         "%(snap)s."),
+            LOG.info("Creating group %(name)s from group_snapshot "
+                     "%(snap)s.",
                      {'name': name, 'snap': group_snapshot_id},
                      context=context)
             grp_snap = self.group_api.get_group_snapshot(context,
                                                          group_snapshot_id)
             group_type_id = grp_snap.group_type_id
         elif source_group_id:
-            LOG.info(_LI("Creating group %(name)s from "
-                         "source group %(source_group_id)s."),
+            LOG.info("Creating group %(name)s from "
+                     "source group %(source_group_id)s.",
                      {'name': name, 'source_group_id': source_group_id},
                      context=context)
             source_group = self.group_api.get(context, source_group_id)
@@ -341,9 +341,9 @@ class GroupsController(wsgi.Controller):
                     "can not be all empty in the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI("Updating group %(id)s with name %(name)s "
-                     "description: %(description)s add_volumes: "
-                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
+        LOG.info("Updating group %(id)s with name %(name)s "
+                 "description: %(description)s add_volumes: "
+                 "%(add_volumes)s remove_volumes: %(remove_volumes)s.",
                  {'id': id, 'name': name,
                   'description': description,
                   'add_volumes': add_volumes,

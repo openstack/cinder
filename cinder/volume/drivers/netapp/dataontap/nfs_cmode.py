@@ -29,7 +29,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
@@ -172,7 +172,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             self._set_qos_policy_group_on_volume(volume, qos_policy_group_info)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Setting QoS for %s failed"), volume['id'])
+                LOG.error("Setting QoS for %s failed", volume['id'])
                 if cleanup:
                     LOG.debug("Cleaning volume %s", volume['id'])
                     self._cleanup_volume_on_failure(volume)
@@ -324,8 +324,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             address = na_utils.resolve_hostname(host)
 
             if address not in vserver_addresses:
-                msg = _LW('Address not found for NFS share %s.')
-                LOG.warning(msg, share)
+                LOG.warning('Address not found for NFS share %s.', share)
                 continue
 
             try:
@@ -333,8 +332,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                     flexvol_path=junction_path)
                 pools[flexvol['name']] = {'pool_name': share}
             except exception.VolumeBackendAPIException:
-                msg = _LE('Flexvol not found for NFS share %s.')
-                LOG.exception(msg, share)
+                LOG.exception('Flexvol not found for NFS share %s.', share)
 
         return pools
 
@@ -428,14 +426,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             LOG.debug('Deleting backing file for volume %s.', volume['id'])
             self._delete_file(volume['id'], volume['name'])
         except Exception:
-            LOG.exception(_LE('Could not delete volume %s on backend, '
-                              'falling back to exec of "rm" command.'),
+            LOG.exception('Could not delete volume %s on backend, '
+                          'falling back to exec of "rm" command.',
                           volume['id'])
             try:
                 super(NetAppCmodeNfsDriver, self).delete_volume(volume)
             except Exception:
-                LOG.exception(_LE('Exec of "rm" command on backing file for '
-                                  '%s was unsuccessful.'), volume['id'])
+                LOG.exception('Exec of "rm" command on backing file for '
+                              '%s was unsuccessful.', volume['id'])
 
     def _delete_file(self, file_id, file_name):
         (_vserver, flexvol) = self._get_export_ip_path(volume_id=file_id)
@@ -455,15 +453,15 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             LOG.debug('Deleting backing file for snapshot %s.', snapshot['id'])
             self._delete_file(snapshot['volume_id'], snapshot['name'])
         except Exception:
-            LOG.exception(_LE('Could not delete snapshot %s on backend, '
-                              'falling back to exec of "rm" command.'),
+            LOG.exception('Could not delete snapshot %s on backend, '
+                          'falling back to exec of "rm" command.',
                           snapshot['id'])
             try:
                 # delete_file_from_share
                 super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
             except Exception:
-                LOG.exception(_LE('Exec of "rm" command on backing file for'
-                                  ' %s was unsuccessful.'), snapshot['id'])
+                LOG.exception('Exec of "rm" command on backing file for'
+                              ' %s was unsuccessful.', snapshot['id'])
 
     @utils.trace_method
     def copy_image_to_volume(self, context, volume, image_service, image_id):
@@ -478,8 +476,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 copy_success = self._copy_from_cache(volume, image_id,
                                                      cache_result)
                 if copy_success:
-                    LOG.info(_LI('Copied image %(img)s to volume %(vol)s '
-                                 'using local image cache.'),
+                    LOG.info('Copied image %(img)s to volume %(vol)s '
+                             'using local image cache.',
                              {'img': image_id, 'vol': volume['id']})
             # Image cache was not present, attempt copy offload workflow
             if (not copy_success and col_path and
@@ -487,12 +485,12 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 LOG.debug('No result found in image cache')
                 self._copy_from_img_service(context, volume, image_service,
                                             image_id)
-                LOG.info(_LI('Copied image %(img)s to volume %(vol)s using'
-                             ' copy offload workflow.'),
+                LOG.info('Copied image %(img)s to volume %(vol)s using'
+                         ' copy offload workflow.',
                          {'img': image_id, 'vol': volume['id']})
                 copy_success = True
-        except Exception as e:
-            LOG.exception(_LE('Copy offload workflow unsuccessful. %s'), e)
+        except Exception:
+            LOG.exception('Copy offload workflow unsuccessful.')
         finally:
             if not copy_success:
                 super(NetAppCmodeNfsDriver, self).copy_image_to_volume(
@@ -530,8 +528,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             if copied:
                 self._post_clone_image(volume)
 
-        except Exception as e:
-            LOG.exception(_LE('Error in workflow copy from cache. %s.'), e)
+        except Exception:
+            LOG.exception('Error in workflow copy from cache.')
         return copied
 
     def _find_image_location(self, cache_result, volume_id):

@@ -18,7 +18,6 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.i18n import _LI
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
@@ -50,7 +49,7 @@ class VolumeUnmanageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.info(_LI("Unmanage volume with id: %s"), id)
+        LOG.info("Unmanage volume with id: %s", id)
 
         # Not found exception will be handled at the wsgi level
         vol = self.volume_api.get(context, id)

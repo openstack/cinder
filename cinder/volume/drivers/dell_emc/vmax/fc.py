@@ -18,7 +18,6 @@ import ast
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LW
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.vmax import common
@@ -274,7 +273,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
                                'target_wwns': target_wwns,
                                'init_targ_map': init_targ_map}
         else:
-            LOG.warning(_LW("Volume %(volume)s is not in any masking view."),
+            LOG.warning("Volume %(volume)s is not in any masking view.",
                         {'volume': volume['name']})
         return zoning_mappings
 

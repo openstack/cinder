@@ -31,7 +31,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
@@ -165,8 +165,8 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             volume_name = vol.get_child_content('name')
             if self._get_vol_option(volume_name, 'root') == 'true':
                 return volume_name
-        LOG.warning(_LW('Could not determine root volume name '
-                        'on %s.'), self._get_owner())
+        LOG.warning('Could not determine root volume name on %s.',
+                    self._get_owner())
         return None
 
     def _get_owner(self):
@@ -363,9 +363,9 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
         # Inform deprecation of legacy option.
         if self.configuration.safe_get('netapp_volume_list'):
-            msg = _LW("The option 'netapp_volume_list' is deprecated and "
-                      "will be removed in the future releases. Please use "
-                      "the option 'netapp_pool_name_search_pattern' instead.")
+            msg = ("The option 'netapp_volume_list' is deprecated and "
+                   "will be removed in the future releases. Please use "
+                   "the option 'netapp_pool_name_search_pattern' instead.")
             versionutils.report_deprecated_feature(LOG, msg)
 
         pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
@@ -409,15 +409,15 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                 job_set = na_utils.set_safe_attr(self, 'vol_refresh_running',
                                                  True)
                 if not job_set:
-                    LOG.warning(_LW("Volume refresh job already running. "
-                                    "Returning..."))
+                    LOG.warning("Volume refresh job already running. "
+                                "Returning...")
                     return
                 self.vol_refresh_voluntary = False
                 self.vols = self.zapi_client.get_filer_volumes()
                 self.volume_list = self._get_filtered_pools()
                 self.vol_refresh_time = timeutils.utcnow()
             except Exception as e:
-                LOG.warning(_LW("Error refreshing volume info. Message: %s"),
+                LOG.warning("Error refreshing volume info. Message: %s",
                             e)
             finally:
                 na_utils.set_safe_attr(self, 'vol_refresh_running', False)

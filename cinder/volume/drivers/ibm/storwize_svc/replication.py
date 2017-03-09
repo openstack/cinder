@@ -23,7 +23,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import storwize_const
@@ -104,8 +104,8 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
             self.driver._helpers.rm_vdisk_copy(volume['name'],
                                                secondary['copy_id'])
         else:
-            LOG.info(_LI('Could not find replica to delete of'
-                         ' volume %(vol)s.'), {'vol': vdisk})
+            LOG.info('Could not find replica to delete of'
+                     ' volume %(vol)s.', {'vol': vdisk})
 
     def test_replica(self, tgt_volume, src_volume):
         vdisk = src_volume['name']
@@ -267,9 +267,9 @@ class StorwizeSVCReplicationGlobalMirror(
             self.target_helpers.switch_relationship(rel_info['name'])
             return {'replication_status': 'failed-over'}
         except Exception as e:
-            LOG.exception(_LE('Unable to fail-over the volume %(id)s to the '
-                              'secondary back-end by switchrcrelationship '
-                              'command, error: %(error)s'),
+            LOG.exception('Unable to fail-over the volume %(id)s to the '
+                          'secondary back-end by switchrcrelationship '
+                          'command, error: %(error)s',
                           {"id": vref['id'], "error": e})
             # If the switch command fail, try to make the aux volume
             # writeable again.
@@ -372,7 +372,7 @@ class StorwizeSVCReplicationManager(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s"), command)
+                LOG.error("Error running SSH command: %s", command)
 
     def get_target_helpers(self):
         return self.target_helpers

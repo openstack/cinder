@@ -27,7 +27,7 @@ from oslo_utils import fileutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.volume.drivers import remotefs as remotefs_drv
@@ -415,8 +415,8 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume.provider_location:
-            LOG.warning(_LW('Volume %s does not have provider_location '
-                            'specified, skipping.'), volume.name)
+            LOG.warning('Volume %s does not have provider_location '
+                        'specified, skipping.', volume.name)
             return
 
         self._ensure_share_mounted(volume.provider_location)
@@ -444,8 +444,8 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             smbfs_share)
         total_allocated = self._get_total_allocated(smbfs_share)
         return_value = [total_size, total_available, total_allocated]
-        LOG.info(_LI('Smb share %(share)s Total size %(size)s '
-                     'Total allocated %(allocated)s'),
+        LOG.info('Smb share %(share)s Total size %(size)s '
+                 'Total allocated %(allocated)s',
                  {'share': smbfs_share, 'size': total_size,
                   'allocated': total_allocated})
         return [float(x) for x in return_value]
@@ -500,7 +500,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     @remotefs_drv.locked_volume_id_operation
     @update_allocation_data()
     def extend_volume(self, volume, size_gb):
-        LOG.info(_LI('Extending volume %s.'), volume.id)
+        LOG.info('Extending volume %s.', volume.id)
 
         self._check_extend_volume_support(volume, size_gb)
         self._extend_volume(volume, size_gb)
@@ -508,7 +508,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def _extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
 
-        LOG.info(_LI('Resizing file %(volume_path)s to %(size_gb)sGB.'),
+        LOG.info('Resizing file %(volume_path)s to %(size_gb)sGB.',
                  dict(volume_path=volume_path, size_gb=size_gb))
 
         self._vhdutils.resize_vhd(volume_path, size_gb * units.Gi,

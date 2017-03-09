@@ -25,7 +25,7 @@ from oslo_utils import units
 from six.moves import http_client
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 
 FSS_BATCH = 'batch'
 FSS_PHYSICALRESOURCE = 'physicalresource'
@@ -760,7 +760,7 @@ class RESTProxy(object):
                 if (err.code == 2415984845 and "XML_ERROR_CLIENT_EXIST"
                                                in err.text):
                     ctxt.reraise = False
-                LOG.warning(_LW('Assign volume failed with message: %(msg)s.'),
+                LOG.warning('Assign volume failed with message: %(msg)s.',
                             {"msg": err.reason})
         finally:
             lun = self.FSS._get_fc_client_info(client_id, vid)
@@ -804,8 +804,8 @@ class RESTProxy(object):
                         "XML_ERROR_VIRTUAL_DEV_NOT_ASSIGNED_TO_iSCSI_TARGET"
                         in err.text):
                     ctxt.reraise = False
-                LOG.warning(_LW('Disconnection failed with message: '
-                                "%(msg)s."), {"msg": err.reason})
+                LOG.warning('Disconnection failed with message: %(msg)s.',
+                            {"msg": err.reason})
         return client_id
 
     def initialize_connection_iscsi(self, volume, connector, fss_hosts):
@@ -842,7 +842,7 @@ class RESTProxy(object):
                         "XML_ERROR_VIRTUAL_DEV_ASSIGNED_TO_iSCSI_TARGET" in
                         err.text):
                     ctxt.reraise = False
-                LOG.warning(_LW("Assign volume failed with message: %(msg)s."),
+                LOG.warning("Assign volume failed with message: %(msg)s.",
                             {"msg": err.reason})
         finally:
             (lun, target_name) = self.FSS._get_iscsi_target_info(client_id,
@@ -872,8 +872,8 @@ class RESTProxy(object):
                         "XML_ERROR_VIRTUAL_DEV_NOT_ASSIGNED_TO_iSCSI_TARGET"
                         in err.text):
                     ctxt.reraise = False
-                LOG.warning(_LW("Disconnection failed with message: "
-                                "%(msg)s."), {"msg": err.reason})
+                LOG.warning("Disconnection failed with message: %(msg)s.",
+                            {"msg": err.reason})
         finally:
             is_empty = self.FSS._check_host_mapping_status(client_id,
                                                            target_id)
@@ -914,8 +914,8 @@ class RESTProxy(object):
         except FSSHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 ctxt.reraise = False
-            LOG.warning(_LW("Volume manage_existing_volume was unable "
-                            "to rename the volume, error message: %s."),
+            LOG.warning("Volume manage_existing_volume was unable "
+                        "to rename the volume, error message: %s.",
                         err.reason)
 
     def unmanage(self, volume):
@@ -925,8 +925,8 @@ class RESTProxy(object):
             vid = self._get_fss_vid_from_name(volume_name, FSS_SINGLE_TYPE)
             self.rename_vdev(vid, unmanaged_vol_name)
         except FSSHTTPError as err:
-            LOG.warning(_LW("Volume unmanage was unable to rename the volume,"
-                            " error message: %(msg)s."), {"msg": err.reason})
+            LOG.warning("Volume unmanage was unable to rename the volume,"
+                        " error message: %(msg)s.", {"msg": err.reason})
 
 
 class FSSRestCommon(object):
@@ -956,11 +956,11 @@ class FSSRestCommon(object):
         connection = http_client.HTTPConnection(self.hostip, 80, timeout=60)
 
         if self.fss_debug:
-            LOG.info(_LI("[FSS_RESTAPI]====%(method)s@url=%(url)s ===="
-                         "@request_body=%(body)s===") % {
-                     "method": method,
-                     "url": url,
-                     "body": request_body})
+            LOG.info("[FSS_RESTAPI]====%(method)s@url=%(url)s ===="
+                     "@request_body=%(body)s===",
+                     {"method": method,
+                      "url": url,
+                      "body": request_body})
 
         attempt = 1
         while True:
@@ -976,7 +976,7 @@ class FSSRestCommon(object):
                     pass
 
             if self.fss_debug:
-                LOG.info(_LI("[FSS_RESTAPI]==@json_data: %s =="), json_data)
+                LOG.info("[FSS_RESTAPI]==@json_data: %s ==", json_data)
 
             if response.status == 200:
                 return json_data
@@ -1002,7 +1002,7 @@ class FSSRestCommon(object):
                     )
                     raise FSSHTTPError(err_target, err)
                 attempt += 1
-                LOG.warning(_LW("Retry with rc: %s."), err_code)
+                LOG.warning("Retry with rc: %s.", err_code)
                 self._random_sleep(RETRY_INTERVAL)
                 if err_code == 107:
                     self.fss_login()

@@ -18,7 +18,7 @@ import six
 
 from cinder import coordination
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vmax import fast
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import provision_v3
@@ -125,10 +125,10 @@ class VMAXMasking(object):
                 {'maskingViewInstanceName': maskingViewInstanceName,
                  'storageGroupInstanceName': storageGroupInstanceName})
         except Exception as e:
-            LOG.exception(_LE(
+            LOG.exception(
                 "Masking View creation or retrieval was not successful "
                 "for masking view %(maskingViewName)s. "
-                "Attempting rollback."),
+                "Attempting rollback.",
                 {'maskingViewName': maskingViewDict['maskingViewName']})
             errorMessage = e
 
@@ -225,9 +225,9 @@ class VMAXMasking(object):
                 volumeName, maskingviewdict,
                 defaultStorageGroupInstanceName)
         else:
-            LOG.warning(_LW(
+            LOG.warning(
                 "Volume: %(volumeName)s does not belong "
-                "to storage group %(defaultSgGroupName)s."),
+                "to storage group %(defaultSgGroupName)s.",
                 {'volumeName': volumeName,
                  'defaultSgGroupName': defaultSgGroupName})
         return defaultStorageGroupInstanceName
@@ -283,8 +283,7 @@ class VMAXMasking(object):
         storageSystemName = maskingViewDict['storageSystemName']
         maskingViewName = maskingViewDict['maskingViewName']
         pgGroupName = maskingViewDict['pgGroupName']
-        LOG.info(_LI("Returning random Port Group: "
-                     "%(portGroupName)s."),
+        LOG.info("Returning random Port Group: %(portGroupName)s.",
                  {'portGroupName': pgGroupName})
 
         storageGroupInstanceName, errorMessage = (
@@ -376,7 +375,7 @@ class VMAXMasking(object):
             self._get_storage_group_instance_name(
                 conn, maskingViewDict, storageGroupInstanceName))
         if storageGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Cannot get or create a storage group: %(sgGroupName)s"
                 " for volume %(volumeName)s ") %
@@ -404,7 +403,7 @@ class VMAXMasking(object):
                 conn, maskingViewInstanceName))
 
         if sgFromMvInstanceName is None:
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Cannot get storage group: %(sgGroupName)s "
                 "from masking view %(maskingViewInstanceName)s. ") %
@@ -427,7 +426,7 @@ class VMAXMasking(object):
         portGroupInstanceName = self._get_port_group_instance_name(
             conn, controllerConfigService, pgGroupName)
         if portGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Cannot get port group: %(pgGroupName)s. ") %
                 {'pgGroupName': pgGroupName})
@@ -455,7 +454,7 @@ class VMAXMasking(object):
                 conn, controllerConfigService, igGroupName, connector,
                 storageSystemName, extraSpecs))
         if initiatorGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Cannot get or create initiator group: "
                 "%(igGroupName)s. ") %
@@ -486,7 +485,7 @@ class VMAXMasking(object):
                 conn, controllerConfigService, maskingViewName,
                 connector, storageSystemName, igGroupName,
                 extraSpecs):
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Unable to verify initiator group: %(igGroupName)s "
                 "in masking view %(maskingViewName)s. ") %
@@ -518,7 +517,7 @@ class VMAXMasking(object):
                 storageGroupInstanceName, portGroupInstanceName,
                 initiatorGroupInstanceName, extraSpecs))
         if maskingViewInstanceName is None:
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Cannot create masking view: %(maskingViewName)s. ") %
                 {'maskingViewName': maskingViewName})
@@ -543,9 +542,9 @@ class VMAXMasking(object):
         if self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName,
                 volumeInstance, sgGroupName):
-            LOG.warning(_LW(
+            LOG.warning(
                 "Volume: %(volumeName)s is already part "
-                "of storage group %(sgGroupName)s."),
+                "of storage group %(sgGroupName)s.",
                 {'volumeName': volumeName,
                  'sgGroupName': sgGroupName})
         else:
@@ -576,7 +575,7 @@ class VMAXMasking(object):
             volumeInstance, volumeName, sgGroupName, extraSpecs)
         if not self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName, volumeInstance, sgGroupName):
-            # This may be used in exception hence _ instead of _LE.
+            # This may be used in exception hence the use of _.
             msg = (_(
                 "Volume: %(volumeName)s was not added "
                 "to storage group %(sgGroupName)s.") %
@@ -584,8 +583,7 @@ class VMAXMasking(object):
                  'sgGroupName': sgGroupName})
             LOG.error(msg)
         else:
-            LOG.info(_LI("Successfully added %(volumeName)s to "
-                         "%(sgGroupName)s."),
+            LOG.info("Successfully added %(volumeName)s to %(sgGroupName)s.",
                      {'volumeName': volumeName,
                       'sgGroupName': sgGroupName})
         return msg
@@ -742,9 +740,9 @@ class VMAXMasking(object):
                 conn, foundMaskingViewInstanceName)
             if instance is None:
                 foundMaskingViewInstanceName = None
-                LOG.error(_LE(
+                LOG.error(
                     "Looks like masking view: %(maskingViewName)s "
-                    "has recently been deleted."),
+                    "has recently been deleted.",
                     {'maskingViewName': maskingViewName})
             else:
                 LOG.debug(
@@ -800,21 +798,21 @@ class VMAXMasking(object):
                         storageGroupName, fastPolicyName,
                         maskingViewDict['extraSpecs']))
                 if assocTierPolicyInstanceName is None:
-                    LOG.error(_LE(
+                    LOG.error(
                         "Cannot add and verify tier policy association for "
                         "storage group : %(storageGroupName)s to "
-                        "FAST policy : %(fastPolicyName)s."),
+                        "FAST policy : %(fastPolicyName)s.",
                         {'storageGroupName': storageGroupName,
                          'fastPolicyName': fastPolicyName})
                     return failedRet
         if foundStorageGroupInstanceName is None:
-            LOG.error(_LE(
-                "Cannot get storage Group from job : %(storageGroupName)s."),
+            LOG.error(
+                "Cannot get storage Group from job : %(storageGroupName)s.",
                 {'storageGroupName': storageGroupName})
             return failedRet
         else:
-            LOG.info(_LI(
-                "Created new storage group: %(storageGroupName)s."),
+            LOG.info(
+                "Created new storage group: %(storageGroupName)s.",
                 {'storageGroupName': storageGroupName})
 
         return foundStorageGroupInstanceName
@@ -843,9 +841,9 @@ class VMAXMasking(object):
                 break
 
         if foundPortGroupInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Could not find port group : %(portGroupName)s. Check that "
-                "the EMC configuration file has the correct port group name."),
+                "the EMC configuration file has the correct port group name.",
                 {'portGroupName': portGroupName})
 
         return foundPortGroupInstanceName
@@ -886,9 +884,9 @@ class VMAXMasking(object):
                 self._get_storage_hardware_id_instance_names(
                     conn, initiatorNames, storageSystemName))
             if not storageHardwareIDInstanceNames:
-                LOG.info(_LI(
+                LOG.info(
                     "Initiator Name(s) %(initiatorNames)s are not on array "
-                    "%(storageSystemName)s."),
+                    "%(storageSystemName)s.",
                     {'initiatorNames': initiatorNames,
                      'storageSystemName': storageSystemName})
                 storageHardwareIDInstanceNames = (
@@ -905,15 +903,13 @@ class VMAXMasking(object):
                 conn, controllerConfigService, igGroupName,
                 storageHardwareIDInstanceNames, extraSpecs)
 
-            LOG.info(_LI(
-                "Created new initiator group name: %(igGroupName)s."),
-                {'igGroupName': igGroupName})
+            LOG.info("Created new initiator group name: %(igGroupName)s.",
+                     {'igGroupName': igGroupName})
         else:
             initiatorGroupInstance = conn.GetInstance(
                 foundInitiatorGroupInstanceName, LocalOnly=False)
-            LOG.info(_LI(
-                "Using existing initiator group name: %(igGroupName)s."),
-                {'igGroupName': initiatorGroupInstance['ElementName']})
+            LOG.info("Using existing initiator group name: %(igGroupName)s.",
+                     {'igGroupName': initiatorGroupInstance['ElementName']})
 
         return foundInitiatorGroupInstanceName
 
@@ -1100,9 +1096,8 @@ class VMAXMasking(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-        LOG.info(_LI(
-            "Created new masking view : %(maskingViewName)s."),
-            {'maskingViewName': maskingViewName})
+        LOG.info("Created new masking view : %(maskingViewName)s.",
+                 {'maskingViewName': maskingViewName})
         return rc, job
 
     def find_new_masking_view(self, conn, jobDict):
@@ -1148,7 +1143,7 @@ class VMAXMasking(object):
                 {'view': maskingViewName,
                  'masking': foundStorageGroupInstanceName})
         else:
-            LOG.warning(_LW("Unable to find Masking view: %(view)s."),
+            LOG.warning("Unable to find Masking view: %(view)s.",
                         {'view': maskingViewName})
 
         return foundStorageGroupInstanceName
@@ -1221,14 +1216,14 @@ class VMAXMasking(object):
         foundPortGroupInstanceName = self.find_port_group(
             conn, controllerConfigService, pgGroupName)
         if foundPortGroupInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Cannot find a portGroup with name %(pgGroupName)s. "
-                "The port group for a masking view must be pre-defined."),
+                "The port group for a masking view must be pre-defined.",
                 {'pgGroupName': pgGroupName})
             return foundPortGroupInstanceName
 
-        LOG.info(_LI(
-            "Port group instance name is %(foundPortGroupInstanceName)s."),
+        LOG.info(
+            "Port group instance name is %(foundPortGroupInstanceName)s.",
             {'foundPortGroupInstanceName': foundPortGroupInstanceName})
 
         return foundPortGroupInstanceName
@@ -1250,10 +1245,9 @@ class VMAXMasking(object):
             conn, controllerConfigService, igGroupName, connector,
             storageSystemName, extraSpecs))
         if foundInitiatorGroupInstanceName is None:
-            LOG.error(_LE(
-                "Cannot create or find an initiator group with "
-                "name %(igGroupName)s."),
-                {'igGroupName': igGroupName})
+            LOG.error("Cannot create or find an initiator group with "
+                      "name %(igGroupName)s.",
+                      {'igGroupName': igGroupName})
         return foundInitiatorGroupInstanceName
 
     def _get_masking_view_instance_name(
@@ -1278,9 +1272,9 @@ class VMAXMasking(object):
                 initiatorGroupInstanceName, extraSpecs))
         foundMaskingViewInstanceName = self.find_new_masking_view(conn, job)
         if foundMaskingViewInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Cannot find the new masking view just created with name "
-                "%(maskingViewName)s."),
+                "%(maskingViewName)s.",
                 {'maskingViewName': maskingViewName})
 
         return foundMaskingViewInstanceName
@@ -1324,11 +1318,11 @@ class VMAXMasking(object):
                         LOG.error(errorMessage)
                     message = (_("V3 rollback"))
                 else:
-                    LOG.warning(_LW(
+                    LOG.warning(
                         "No storage group found. "
                         "Performing rollback on Volume: %(volumeName)s "
                         "To return it to the default storage group for FAST "
-                        "policy %(fastPolicyName)s."),
+                        "policy %(fastPolicyName)s.",
                         {'volumeName': rollbackDict['volumeName'],
                          'fastPolicyName': rollbackDict['fastPolicyName']})
                     assocDefaultStorageGroupName = (
@@ -1341,22 +1335,21 @@ class VMAXMasking(object):
                             rollbackDict['fastPolicyName'],
                             rollbackDict['extraSpecs']))
                     if assocDefaultStorageGroupName is None:
-                        LOG.error(_LE(
+                        LOG.error(
                             "Failed to Roll back to re-add volume "
                             "%(volumeName)s "
                             "to default storage group for fast policy "
                             "%(fastPolicyName)s: Please contact your sys "
-                            "admin to get the volume re-added manually."),
+                            "admin to get the volume re-added manually.",
                             {'volumeName': rollbackDict['volumeName'],
                              'fastPolicyName': rollbackDict['fastPolicyName']})
                     message = (_("V2 rollback, volume is not in any storage "
                                  "group."))
             else:
-                LOG.info(_LI(
-                    "The storage group found is "
-                    "%(foundStorageGroupInstanceName)s."),
-                    {'foundStorageGroupInstanceName':
-                     foundStorageGroupInstanceName})
+                LOG.info("The storage group found is "
+                         "%(foundStorageGroupInstanceName)s.",
+                         {'foundStorageGroupInstanceName':
+                          foundStorageGroupInstanceName})
 
                 # Check the name, see if it is the default storage group
                 # or another.
@@ -1422,7 +1415,7 @@ class VMAXMasking(object):
                 {'view': maskingViewName,
                  'masking': foundInitiatorMaskingGroupInstanceName})
         else:
-            LOG.warning(_LW("Unable to find Masking view: %(view)s."),
+            LOG.warning("Unable to find Masking view: %(view)s.",
                         {'view': maskingViewName})
 
         return foundInitiatorMaskingGroupInstanceName
@@ -1471,18 +1464,18 @@ class VMAXMasking(object):
                         self._get_storage_hardware_id_instance_names(
                             conn, initiatorNames, storageSystemName))
                     if not storageHardwareIDInstanceNames:
-                        LOG.info(_LI(
+                        LOG.info(
                             "Initiator Name(s) %(initiatorNames)s are not on "
-                            "array %(storageSystemName)s. "),
+                            "array %(storageSystemName)s.",
                             {'initiatorNames': initiatorNames,
                              'storageSystemName': storageSystemName})
                         storageHardwareIDInstanceNames = (
                             self._create_hardware_ids(conn, initiatorNames,
                                                       storageSystemName))
                         if not storageHardwareIDInstanceNames:
-                            LOG.error(_LE(
+                            LOG.error(
                                 "Failed to create hardware id(s) on "
-                                "%(storageSystemName)s."),
+                                "%(storageSystemName)s.",
                                 {'storageSystemName': storageSystemName})
                             return False
 
@@ -1532,11 +1525,11 @@ class VMAXMasking(object):
                             "%(maskingViewName)s.",
                             {'maskingViewName': maskingViewName})
                 else:
-                    LOG.error(_LE(
+                    LOG.error(
                         "One of the components of the original masking view "
                         "%(maskingViewName)s cannot be retrieved so "
                         "please contact your system administrator to check "
-                        "that the correct initiator(s) are part of masking."),
+                        "that the correct initiator(s) are part of masking.",
                         {'maskingViewName': maskingViewName})
                     return False
         return True
@@ -1708,9 +1701,9 @@ class VMAXMasking(object):
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstance.path, volumeName, extraSpecs)
 
-        LOG.info(_LI(
+        LOG.info(
             "Added volume: %(volumeName)s to existing storage group "
-            "%(sgGroupName)s."),
+            "%(sgGroupName)s.",
             {'volumeName': volumeName,
              'sgGroupName': sgGroupName})
 
@@ -1737,9 +1730,9 @@ class VMAXMasking(object):
                 volumeName, fastPolicyName))
 
         if defaultStorageGroupInstanceName is None:
-            LOG.warning(_LW(
+            LOG.warning(
                 "Volume %(volumeName)s was not first part of the default "
-                "storage group for the FAST Policy."),
+                "storage group for the FAST Policy.",
                 {'volumeName': volumeName})
             return failedRet
 
@@ -1775,9 +1768,9 @@ class VMAXMasking(object):
                                                      defaultSgName))
 
         if emptyStorageGroupInstanceName is not None:
-            LOG.error(_LE(
+            LOG.error(
                 "Failed to remove %(volumeName)s from the default storage "
-                "group for the FAST Policy."),
+                "group for the FAST Policy.",
                 {'volumeName': volumeName})
             return failedRet
 
@@ -1833,7 +1826,7 @@ class VMAXMasking(object):
         if len(maskingGroupInstanceNames) > 0:
             return maskingGroupInstanceNames
         else:
-            LOG.info(_LI("Volume %(volumeName)s not in any storage group."),
+            LOG.info("Volume %(volumeName)s not in any storage group.",
                      {'volumeName': volumeInstanceName})
             return None
 
@@ -1870,7 +1863,7 @@ class VMAXMasking(object):
                         storageGroupInstanceName,
                         volumeInstance, extraSpecs)
             else:
-                LOG.warning(_LW("Cannot get storage from connector."))
+                LOG.warning("Cannot get storage from connector.")
 
         if reset:
             self._return_back_to_default_sg(
@@ -1895,8 +1888,8 @@ class VMAXMasking(object):
         if storageGroupInstanceNames:
             sgNum = len(storageGroupInstanceNames)
             if len(storageGroupInstanceNames) > 1:
-                LOG.warning(_LW("Volume %(volumeName)s is belong to "
-                                "%(sgNum)s storage groups."),
+                LOG.warning("Volume %(volumeName)s is belong to %(sgNum)s "
+                            "storage groups.",
                             {'volumeName': volumeInstance['ElementName'],
                              'sgNum': sgNum})
             for storageGroupInstanceName in storageGroupInstanceNames:
@@ -2237,8 +2230,8 @@ class VMAXMasking(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
         else:
-            LOG.info(_LI(
-                "Masking view %(maskingViewName)s successfully deleted."),
+            LOG.info(
+                "Masking view %(maskingViewName)s successfully deleted.",
                 {'maskingViewName': maskingViewName})
 
     def _get_and_remove_rule_association(
@@ -2355,8 +2348,8 @@ class VMAXMasking(object):
             ResultClass='Symm_FCSCSIProtocolEndpoint')
         numberOfPorts = len(targetPortInstanceNames)
         if numberOfPorts <= 0:
-            LOG.warning(_LW("No target ports found in "
-                            "masking view %(maskingView)s."),
+            LOG.warning("No target ports found in "
+                        "masking view %(maskingView)s.",
                         {'numPorts': len(targetPortInstanceNames),
                          'maskingView': mvInstanceName})
         for targetPortInstanceName in targetPortInstanceNames:
@@ -2425,7 +2418,7 @@ class VMAXMasking(object):
                        'mv': maskingViewInstanceName})
             return portGroupInstanceNames[0]
         else:
-            LOG.warning(_LW("No port group found in masking view %(mv)s."),
+            LOG.warning("No port group found in masking view %(mv)s.",
                         {'mv': maskingViewInstanceName})
 
     def get_initiator_group_from_masking_view(
@@ -2444,8 +2437,8 @@ class VMAXMasking(object):
                        'mv': maskingViewInstanceName})
             return initiatorGroupInstanceNames[0]
         else:
-            LOG.warning(_LW("No Initiator group found in masking view "
-                            "%(mv)s."), {'mv': maskingViewInstanceName})
+            LOG.warning("No Initiator group found in masking view "
+                        "%(mv)s.", {'mv': maskingViewInstanceName})
 
     def _get_sg_or_mv_associated_with_initiator(
             self, conn, controllerConfigService, volumeInstanceName,
@@ -2656,8 +2649,8 @@ class VMAXMasking(object):
             LOG.debug("Deletion of initiator path %(hardwareIdPath)s "
                       "is successful.", {'hardwareIdPath': hardwareIdPath})
         else:
-            LOG.warning(_LW("Deletion of initiator path %(hardwareIdPath)s "
-                            "is failed."), {'hardwareIdPath': hardwareIdPath})
+            LOG.warning("Deletion of initiator path %(hardwareIdPath)s "
+                        "is failed.", {'hardwareIdPath': hardwareIdPath})
 
     def _delete_initiators_from_initiator_group(self, conn,
                                                 controllerConfigService,
@@ -2740,16 +2733,16 @@ class VMAXMasking(object):
                                              initiatorGroupInstanceName,
                                              initiatorGroupName, extraSpecs)
             else:
-                LOG.warning(_LW("Initiator group %(initiatorGroupName)s is "
-                                "associated with masking views and can't be "
-                                "deleted. Number of associated masking view "
-                                "is: %(nmv)d."),
+                LOG.warning("Initiator group %(initiatorGroupName)s is "
+                            "associated with masking views and can't be "
+                            "deleted. Number of associated masking view "
+                            "is: %(nmv)d.",
                             {'initiatorGroupName': initiatorGroupName,
                              'nmv': len(maskingViewInstanceNames)})
         else:
-            LOG.warning(_LW("Initiator group %(initiatorGroupName)s was "
-                            "not created by the VMAX driver so will "
-                            "not be deleted by the VMAX driver."),
+            LOG.warning("Initiator group %(initiatorGroupName)s was "
+                        "not created by the VMAX driver so will "
+                        "not be deleted by the VMAX driver.",
                         {'initiatorGroupName': initiatorGroupName})
 
     def _create_hardware_ids(
@@ -2793,9 +2786,9 @@ class VMAXMasking(object):
             self._get_port_group_from_masking_view(
                 conn, maskingViewName, storageSystemName))
         if portGroupInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Cannot get port group from masking view: "
-                "%(maskingViewName)s. "),
+                "%(maskingViewName)s.",
                 {'maskingViewName': maskingViewName})
         else:
             try:
@@ -2804,8 +2797,8 @@ class VMAXMasking(object):
                 portGroupName = (
                     portGroupInstance['ElementName'])
             except Exception:
-                LOG.error(_LE(
-                    "Cannot get port group name."))
+                LOG.error(
+                    "Cannot get port group name.")
         return portGroupName, errorMessage
 
     @coordination.synchronized('emc-sg-'

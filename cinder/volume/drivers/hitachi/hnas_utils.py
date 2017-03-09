@@ -26,7 +26,7 @@ import six
 from xml.etree import ElementTree as ETree
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ def _xml_read(root, element, check=None):
 
     # mandatory parameter not found
     if val is None and check:
-        LOG.error(_LE("Mandatory parameter not found: %(p)s"), {'p': element})
+        LOG.error("Mandatory parameter not found: %(p)s", {'p': element})
         raise exception.ParameterNotFound(param=element)
 
     # tag not found
@@ -159,7 +159,7 @@ def _xml_read(root, element, check=None):
     if not val.strip():
         if svc_tag_pattern.search(element):
             return ""
-        LOG.error(_LE("Parameter not found: %(param)s"), {'param': element})
+        LOG.error("Parameter not found: %(param)s", {'param': element})
         raise exception.ParameterNotFound(param=element)
 
     LOG.debug("%(element)s: %(val)s",
@@ -185,11 +185,11 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
         LOG.error(msg)
         raise exception.ConfigNotFound(message=msg)
     else:
-        LOG.warning(_LW("This XML configuration file %(xml)s is deprecated. "
-                        "Please, move all the configurations to the "
-                        "cinder.conf file. If you keep both configuration "
-                        "files, the options set on cinder.conf will be "
-                        "used."), {'xml': xml_config_file})
+        LOG.warning("This XML configuration file %(xml)s is deprecated. "
+                    "Please, move all the configurations to the "
+                    "cinder.conf file. If you keep both configuration "
+                    "files, the options set on cinder.conf will be "
+                    "used.", {'xml': xml_config_file})
 
     try:
         root = ETree.parse(xml_config_file).getroot()
@@ -245,7 +245,7 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
 
     # at least one service required!
     if not config['services'].keys():
-        LOG.error(_LE("No service found in xml config file"))
+        LOG.error("No service found in xml config file")
         raise exception.ParameterNotFound(param="svc_0")
 
     return config

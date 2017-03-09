@@ -27,7 +27,7 @@ if storops:
     from storops import exception as storops_ex
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LE, _LW
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
@@ -96,9 +96,9 @@ class CommonAdapter(object):
         # empty string.
         naviseccli_path = self.config.naviseccli_path
         if naviseccli_path is None or len(naviseccli_path.strip()) == 0:
-            LOG.warning(_LW('[%(group)s] naviseccli_path is not set or set to '
-                            'an empty string. None will be passed into '
-                            'storops.'), {'group': self.config.config_group})
+            LOG.warning('[%(group)s] naviseccli_path is not set or set to '
+                        'an empty string. None will be passed into '
+                        'storops.', {'group': self.config.config_group})
             self.config.naviseccli_path = None
 
         # Check option `storage_vnx_pool_names`.
@@ -133,32 +133,32 @@ class CommonAdapter(object):
             self.config.io_port_list = io_port_list
 
         if self.config.ignore_pool_full_threshold:
-            LOG.warning(_LW('[%(group)s] ignore_pool_full_threshold: True. '
-                            'LUN creation will still be forced even if the '
-                            'pool full threshold is exceeded.'),
+            LOG.warning('[%(group)s] ignore_pool_full_threshold: True. '
+                        'LUN creation will still be forced even if the '
+                        'pool full threshold is exceeded.',
                         {'group': self.config.config_group})
 
         if self.config.destroy_empty_storage_group:
-            LOG.warning(_LW('[%(group)s] destroy_empty_storage_group: True. '
-                            'Empty storage group will be deleted after volume '
-                            'is detached.'),
+            LOG.warning('[%(group)s] destroy_empty_storage_group: True. '
+                        'Empty storage group will be deleted after volume '
+                        'is detached.',
                         {'group': self.config.config_group})
 
         if not self.config.initiator_auto_registration:
-            LOG.info(_LI('[%(group)s] initiator_auto_registration: False. '
-                         'Initiator auto registration is not enabled. '
-                         'Please register initiator manually.'),
+            LOG.info('[%(group)s] initiator_auto_registration: False. '
+                     'Initiator auto registration is not enabled. '
+                     'Please register initiator manually.',
                      {'group': self.config.config_group})
 
         if self.config.force_delete_lun_in_storagegroup:
-            LOG.warning(_LW(
-                '[%(group)s] force_delete_lun_in_storagegroup=True'),
+            LOG.warning(
+                '[%(group)s] force_delete_lun_in_storagegroup=True',
                 {'group': self.config.config_group})
 
         if self.config.ignore_pool_full_threshold:
-            LOG.warning(_LW('[%(group)s] ignore_pool_full_threshold: True. '
-                            'LUN creation will still be forced even if the '
-                            'pool full threshold is exceeded.'),
+            LOG.warning('[%(group)s] ignore_pool_full_threshold: True. '
+                        'LUN creation will still be forced even if the '
+                        'pool full threshold is exceeded.',
                         {'group': self.config.config_group})
 
     def _build_port_str(self, port):
@@ -217,10 +217,10 @@ class CommonAdapter(object):
         tier = specs.tier
 
         volume_metadata['snapcopy'] = 'False'
-        LOG.info(_LI('Create Volume: %(volume)s  Size: %(size)s '
-                     'pool: %(pool)s '
-                     'provision: %(provision)s '
-                     'tier: %(tier)s '),
+        LOG.info('Create Volume: %(volume)s  Size: %(size)s '
+                 'pool: %(pool)s '
+                 'provision: %(provision)s '
+                 'tier: %(tier)s ',
                  {'volume': volume_name,
                   'size': volume_size,
                   'pool': pool,
@@ -463,7 +463,7 @@ class CommonAdapter(object):
         model_update = {}
         volumes_model_update = []
         model_update['status'] = group.status
-        LOG.info(_LI('Start to delete consistency group: %(cg_name)s'),
+        LOG.info('Start to delete consistency group: %(cg_name)s',
                  {'cg_name': cg_name})
 
         self.client.delete_consistency_group(cg_name)
@@ -491,8 +491,8 @@ class CommonAdapter(object):
     def do_create_cgsnap(self, group_name, snap_name, snapshots):
         model_update = {}
         snapshots_model_update = []
-        LOG.info(_LI('Creating consistency snapshot for group'
-                     ': %(group_name)s'),
+        LOG.info('Creating consistency snapshot for group'
+                 ': %(group_name)s',
                  {'group_name': group_name})
 
         self.client.create_cg_snapshot(snap_name,
@@ -516,8 +516,8 @@ class CommonAdapter(object):
         model_update = {}
         snapshots_model_update = []
         model_update['status'] = snap_status
-        LOG.info(_LI('Deleting consistency snapshot %(snap_name)s for '
-                     'group: %(group_name)s'),
+        LOG.info('Deleting consistency snapshot %(snap_name)s for '
+                 'group: %(group_name)s',
                  {'snap_name': snap_name,
                   'group_name': group_name})
 
@@ -640,10 +640,10 @@ class CommonAdapter(object):
                         'Non-existent pools: %s') % ','.join(nonexistent_pools)
                 raise exception.VolumeBackendAPIException(data=msg)
             if nonexistent_pools:
-                LOG.warning(_LW('The following specified storage pools '
-                                'do not exist: %(nonexistent)s. '
-                                'This host will only manage the storage '
-                                'pools: %(exist)s'),
+                LOG.warning('The following specified storage pools '
+                            'do not exist: %(nonexistent)s. '
+                            'This host will only manage the storage '
+                            'pools: %(exist)s',
                             {'nonexistent': ','.join(nonexistent_pools),
                              'exist': ','.join(pool_names)})
             else:
@@ -651,8 +651,8 @@ class CommonAdapter(object):
                           ','.join(pool_names))
         else:
             pool_names = [p.name for p in array_pools]
-            LOG.info(_LI('No storage pool is configured. This host will '
-                         'manage all the pools on the VNX system.'))
+            LOG.info('No storage pool is configured. This host will '
+                     'manage all the pools on the VNX system.')
 
         return [pool for pool in array_pools if pool.name in pool_names]
 
@@ -684,7 +684,7 @@ class CommonAdapter(object):
             # or Deleting.
             if pool.state in common.PoolState.VALID_CREATE_LUN_STATE:
                 pool_stats['free_capacity_gb'] = 0
-                LOG.warning(_LW('Storage Pool [%(pool)s] is [%(state)s].'),
+                LOG.warning('Storage Pool [%(pool)s] is [%(state)s].',
                             {'pool': pool.name,
                              'state': pool.state})
             else:
@@ -692,9 +692,9 @@ class CommonAdapter(object):
 
                 if (pool_feature.max_pool_luns <=
                         pool_feature.total_pool_luns):
-                    LOG.warning(_LW('Maximum number of Pool LUNs %(max_luns)s '
-                                    'have been created for %(pool_name)s. '
-                                    'No more LUN creation can be done.'),
+                    LOG.warning('Maximum number of Pool LUNs %(max_luns)s '
+                                'have been created for %(pool_name)s. '
+                                'No more LUN creation can be done.',
                                 {'max_luns': pool_feature.max_pool_luns,
                                  'pool_name': pool.name})
                     pool_stats['free_capacity_gb'] = 0
@@ -1018,15 +1018,14 @@ class CommonAdapter(object):
         lun = self.client.get_lun(lun_id=volume.vnx_lun_id)
         hostname = host.name
         if not sg.existed:
-            LOG.warning(_LW("Storage Group %s is not found. "
-                            "Nothing can be done in terminate_connection()."),
+            LOG.warning("Storage Group %s is not found. "
+                        "Nothing can be done in terminate_connection().",
                         hostname)
         else:
             try:
                 sg.detach_alu(lun)
             except storops_ex.VNXDetachAluNotFoundError:
-                LOG.warning(_LW("Volume %(vol)s is not in Storage Group"
-                                " %(sg)s."),
+                LOG.warning("Volume %(vol)s is not in Storage Group %(sg)s.",
                             {'vol': volume.name, 'sg': hostname})
 
     def build_terminate_connection_return_data(self, host, sg):
@@ -1042,19 +1041,19 @@ class CommonAdapter(object):
 
     def _destroy_empty_sg(self, host, sg):
         try:
-            LOG.info(_LI("Storage Group %s is empty."), sg.name)
+            LOG.info("Storage Group %s is empty.", sg.name)
             sg.disconnect_host(sg.name)
             sg.delete()
             if self.itor_auto_dereg:
                 self._deregister_initiator(host)
         except storops_ex.StoropsException:
-            LOG.warning(_LW("Failed to destroy Storage Group %s."),
+            LOG.warning("Failed to destroy Storage Group %s.",
                         sg.name)
             try:
                 sg.connect_host(sg.name)
             except storops_ex.StoropsException:
-                LOG.warning(_LW("Failed to connect host %(host)s "
-                                "back to storage group %(sg)s."),
+                LOG.warning("Failed to connect host %(host)s "
+                            "back to storage group %(sg)s.",
                             {'host': sg.name, 'sg': sg.name})
 
     def _deregister_initiator(self, host):
@@ -1062,7 +1061,7 @@ class CommonAdapter(object):
         try:
             self.client.deregister_initiators(initiators)
         except storops_ex:
-            LOG.warning(_LW("Failed to deregister the initiators %s"),
+            LOG.warning("Failed to deregister the initiators %s",
                         initiators)
 
     def _is_allowed_port(self, port):
@@ -1138,7 +1137,7 @@ class CommonAdapter(object):
                 volume.name, lun_size,
                 provision, tier)
 
-            LOG.info(_LI('Successfully setup replication for %s.'), volume.id)
+            LOG.info('Successfully setup replication for %s.', volume.id)
             rep_update.update({'replication_status':
                                fields.ReplicationStatus.ENABLED})
         return rep_update
@@ -1152,7 +1151,7 @@ class CommonAdapter(object):
             mirror_view = self.build_mirror_view(self.config, True)
             mirror_view.destroy_mirror(mirror_name, volume.name)
             LOG.info(
-                _LI('Successfully destroyed replication for volume: %s'),
+                'Successfully destroyed replication for volume: %s',
                 volume.id)
 
     def build_mirror_view(self, configuration, failover=True):
@@ -1164,7 +1163,7 @@ class CommonAdapter(object):
         """
         rep_devices = configuration.replication_device
         if not rep_devices:
-            LOG.info(_LI('Replication is not configured on backend: %s.'),
+            LOG.info('Replication is not configured on backend: %s.',
                      configuration.config_group)
             return None
         elif len(rep_devices) == 1:
@@ -1225,12 +1224,12 @@ class CommonAdapter(object):
             try:
                 mirror_view.promote_image(mirror_name)
             except storops_ex.VNXMirrorException as ex:
-                msg = _LE(
+                LOG.error(
                     'Failed to failover volume %(volume_id)s '
-                    'to %(target)s: %(error)s.')
-                LOG.error(msg, {'volume_id': volume.id,
-                                'target': secondary_backend_id,
-                                'error': ex},)
+                    'to %(target)s: %(error)s.',
+                    {'volume_id': volume.id,
+                     'target': secondary_backend_id,
+                     'error': ex})
                 new_status = fields.ReplicationStatus.ERROR
             else:
                 # Transfer ownership to secondary_backend_id and
@@ -1354,8 +1353,7 @@ class ISCSIAdapter(CommonAdapter):
                 raise exception.InvalidConfigurationValue(
                     option=option,
                     value=iscsi_initiators)
-            LOG.info(_LI("[%(group)s] iscsi_initiators is configured: "
-                         "%(value)s"),
+            LOG.info("[%(group)s] iscsi_initiators is configured: %(value)s",
                      {'group': self.config.config_group,
                       'value': self.config.iscsi_initiators})
 

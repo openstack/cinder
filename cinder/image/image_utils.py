@@ -42,7 +42,7 @@ from oslo_utils import units
 import psutil
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
@@ -88,7 +88,7 @@ def get_qemu_img_version():
     pattern = r"qemu-img version ([0-9\.]*)"
     version = re.match(pattern, info)
     if not version:
-        LOG.warning(_LW("qemu-img is not installed."))
+        LOG.warning("qemu-img is not installed.")
         return None
     return _get_version_from_string(version.groups()[0])
 
@@ -149,8 +149,8 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
         image_size = qemu_img_info(source,
                                    run_as_root=run_as_root).virtual_size
     except ValueError as e:
-        msg = _LI("The image was successfully converted, but image size "
-                  "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
+        msg = ("The image was successfully converted, but image size "
+               "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
         LOG.info(msg, {"src": source,
                        "dest": dest,
                        "error": e})
@@ -165,7 +165,7 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
                     "duration": duration,
                     "dest": dest})
 
-    msg = _LI("Converted %(sz).2f MB image at %(mbps).2f MB/s")
+    msg = "Converted %(sz).2f MB image at %(mbps).2f MB/s"
     LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
@@ -198,9 +198,9 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
                 with excutils.save_and_reraise_exception():
                     if e.errno == errno.ENOSPC:
                         # TODO(eharney): Fire an async error message for this
-                        LOG.error(_LE("No space left in image_conversion_dir "
-                                      "path (%(path)s) while fetching "
-                                      "image %(image)s."),
+                        LOG.error("No space left in image_conversion_dir "
+                                  "path (%(path)s) while fetching "
+                                  "image %(image)s.",
                                   {'path': os.path.dirname(path),
                                    'image': image_id})
 
@@ -217,7 +217,7 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     LOG.debug(msg, {"dest": image_file.name,
                     "sz": fsz_mb,
                     "duration": duration})
-    msg = _LI("Image download %(sz).2f MB at %(mbps).2f MB/s")
+    msg = "Image download %(sz).2f MB at %(mbps).2f MB/s"
     LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
@@ -530,8 +530,8 @@ def cleanup_temporary_file(backend_name):
                 path = os.path.join(temp_dir, tmp_file)
                 os.remove(path)
     except OSError as e:
-        LOG.warning(_LW("Exception caught while clearing temporary image "
-                        "files: %s"), e)
+        LOG.warning("Exception caught while clearing temporary image "
+                    "files: %s", e)
 
 
 @contextlib.contextmanager

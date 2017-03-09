@@ -26,7 +26,7 @@ import six
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
@@ -127,7 +127,7 @@ class ZTEVolumeDriver(driver.VolumeDriver):
             LOG.debug('Response Data: method %(method)s res %(res)s.',
                       {'method': method, 'res': response})
         except Exception:
-            LOG.exception(_LE('Bad response from server.'))
+            LOG.exception('Bad response from server.')
             msg = (_('_call failed.'))
             raise exception.VolumeBackendAPIException(data=msg)
         res_json = json.loads(response)
@@ -205,11 +205,10 @@ class ZTEVolumeDriver(driver.VolumeDriver):
             if ret['returncode'] == zte_pub.ZTE_SUCCESS:
                 return sid
             else:
-                LOG.info(_LI('heartbeat failed. Return code:'
-                             ' %(ret)s.'),
+                LOG.info('heartbeat failed. Return code: %(ret)s.',
                          {'ret': ret['returncode']})
         except Exception:
-            LOG.exception(_LE('_get_sessionid error.'))
+            LOG.exception('_get_sessionid error.')
 
         self._change_server()
         return self._user_login()
@@ -783,7 +782,7 @@ class ZteISCSIDriver(ZTEVolumeDriver, driver.ISCSIDriver):
             iscsi_info['Initiator'] = initiator_list
 
         except Exception:
-            LOG.exception(_LE('_get_iscsi_info error.'))
+            LOG.exception('_get_iscsi_info error.')
             raise
 
         return iscsi_info
@@ -820,8 +819,8 @@ class ZteISCSIDriver(ZTEVolumeDriver, driver.ISCSIDriver):
         ip_ctrl = self._get_target_ip_ctrl(iscsiip)
 
         if ip_ctrl is None:
-            LOG.exception(_LE('_get_tgt_iqn:get iscsi ip ctrl fail, '
-                              'IP is %s.'), iscsiip)
+            LOG.exception('_get_tgt_iqn:get iscsi ip ctrl fail, '
+                          'IP is %s.', iscsiip)
             return None
 
         # get the ctrl iqn

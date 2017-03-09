@@ -20,7 +20,7 @@ from oslo_log import log
 from oslo_service import loopingcall
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.zfssa import restclient
 from cinder.volume.drivers.zfssa import webdavclient
 
@@ -772,13 +772,13 @@ class ZFSSAApi(object):
 
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
-            exception_msg = (_LE('Error Getting '
-                                 'Snapshot: %(snapshot)s of '
-                                 'Volume: %(lun)s in '
-                                 'Pool: %(pool)s, '
-                                 'Project: %(project)s  '
-                                 'Return code: %(ret.status)d, '
-                                 'Message: %(ret.data)s.'),
+            exception_msg = ('Error Getting '
+                             'Snapshot: %(snapshot)s of '
+                             'Volume: %(lun)s in '
+                             'Pool: %(pool)s, '
+                             'Project: %(project)s  '
+                             'Return code: %(ret.status)d, '
+                             'Message: %(ret.data)s.',
                              {'snapshot': snapshot,
                               'lun': lun,
                               'pool': pool,
@@ -808,10 +808,10 @@ class ZFSSAApi(object):
 
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.ACCEPTED:
-            LOG.error(_LE('Error Setting Volume: %(lun)s to InitiatorGroup: '
-                          '%(initiatorgroup)s Pool: %(pool)s Project: '
-                          '%(project)s  Return code: %(ret.status)d Message: '
-                          '%(ret.data)s.'),
+            LOG.error('Error Setting Volume: %(lun)s to InitiatorGroup: '
+                      '%(initiatorgroup)s Pool: %(pool)s Project: '
+                      '%(project)s  Return code: %(ret.status)d Message: '
+                      '%(ret.data)s.',
                       {'lun': lun,
                        'initiatorgroup': initiatorgroup,
                        'pool': pool,
@@ -995,7 +995,7 @@ class ZFSSAApi(object):
         svc = "%(base)s/%(prop)s" % {'base': base, 'prop': schema['property']}
         ret = self.rclient.get(svc)
         if ret.status == restclient.Status.OK:
-            LOG.warning(_LW('Property %s already exists.'), schema['property'])
+            LOG.warning('Property %s already exists.', schema['property'])
             return
 
         ret = self.rclient.post(base, schema)
@@ -1265,7 +1265,7 @@ class ZFSSANfsApi(ZFSSAApi):
         try:
             self.webdavclient.request(src_file=filename, method='DELETE')
         except Exception:
-            exception_msg = (_LE('Cannot delete file %s.'), filename)
+            exception_msg = ('Cannot delete file %s.', filename)
             LOG.error(exception_msg)
 
     def set_file_props(self, file, specs):

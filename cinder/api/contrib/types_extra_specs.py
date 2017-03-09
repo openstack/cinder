@@ -27,7 +27,7 @@ from cinder.api.openstack import wsgi
 from cinder import context as ctxt
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
@@ -80,10 +80,10 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                 expl = _('Volume Type is currently in use.')
                 raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
-            msg = _LW("The option 'allow_inuse_volume_type_modification' "
-                      "is deprecated and will be removed in a future "
-                      "release.  The default behavior going forward will "
-                      "be to disallow modificaton of in-use types.")
+            msg = ("The option 'allow_inuse_volume_type_modification' "
+                   "is deprecated and will be removed in a future "
+                   "release.  The default behavior going forward will "
+                   "be to disallow modificaton of in-use types.")
             versionutils.report_deprecated_feature(LOG, msg)
         return
 

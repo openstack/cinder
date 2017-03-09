@@ -36,7 +36,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _
 from cinder import manager
 from cinder import objects
 from cinder import quota
@@ -141,15 +141,15 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 request_spec_list,
                 filter_properties_list)
         except exception.NoValidBackend:
-            LOG.error(_LE("Could not find a backend for consistency group "
-                          "%(group_id)s."),
+            LOG.error("Could not find a backend for consistency group "
+                      "%(group_id)s.",
                       {'group_id': group.id})
             group.status = 'error'
             group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Failed to create consistency group "
-                                  "%(group_id)s."),
+                LOG.exception("Failed to create consistency group "
+                              "%(group_id)s.",
                               {'group_id': group.id})
                 group.status = 'error'
                 group.save()
@@ -166,15 +166,15 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 group_filter_properties,
                 filter_properties_list)
         except exception.NoValidBackend:
-            LOG.error(_LE("Could not find a backend for group "
-                          "%(group_id)s."),
+            LOG.error("Could not find a backend for group "
+                      "%(group_id)s.",
                       {'group_id': group.id})
             group.status = 'error'
             group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Failed to create generic group "
-                                  "%(group_id)s."),
+                LOG.exception("Failed to create generic group "
+                              "%(group_id)s.",
                               {'group_id': group.id})
                 group.status = 'error'
                 group.save()
@@ -370,7 +370,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                      request_spec, msg=None):
         # TODO(harlowja): move into a task that just does this later.
         if not msg:
-            msg = (_LE("Failed to schedule_%(method)s: %(ex)s") %
+            msg = ("Failed to schedule_%(method)s: %(ex)s" %
                    {'method': method, 'ex': six.text_type(ex)})
         LOG.error(msg)
 
@@ -445,7 +445,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         if self.upgrading_cloud:
             raise exception.UnavailableDuringUpgrade(action='workers cleanup')
 
-        LOG.info(_LI('Workers cleanup request started.'))
+        LOG.info('Workers cleanup request started.')
 
         filters = dict(service_id=cleanup_request.service_id,
                        cluster_name=cleanup_request.cluster_name,
@@ -475,7 +475,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
             # If it's a scheduler or the service is up, send the request.
             if not dest or dest.is_up:
-                LOG.info(_LI('Sending cleanup for %(binary)s %(dest_name)s.'),
+                LOG.info('Sending cleanup for %(binary)s %(dest_name)s.',
                          {'binary': service.binary,
                           'dest_name': dest_name})
                 cleanup_rpc(context, cleanup_request)
@@ -483,11 +483,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             # We don't send cleanup requests when there are no services alive
             # to do the cleanup.
             else:
-                LOG.info(_LI('No service available to cleanup %(binary)s '
-                             '%(dest_name)s.'),
+                LOG.info('No service available to cleanup %(binary)s '
+                         '%(dest_name)s.',
                          {'binary': service.binary,
                           'dest_name': dest_name})
                 not_requested.append(service)
 
-        LOG.info(_LI('Cleanup requests completed.'))
+        LOG.info('Cleanup requests completed.')
         return requested, not_requested

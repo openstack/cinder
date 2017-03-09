@@ -22,7 +22,6 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _LW, _LE
 from cinder import utils
 
 
@@ -69,7 +68,7 @@ class BlkioCgroup(Throttle):
             utils.execute('cgcreate', '-g', 'blkio:%s' % self.cgroup,
                           run_as_root=True)
         except processutils.ProcessExecutionError:
-            LOG.error(_LE('Failed to create blkio cgroup \'%(name)s\'.'),
+            LOG.error('Failed to create blkio cgroup \'%(name)s\'.',
                       {'name': cgroup_name})
             raise
 
@@ -77,16 +76,16 @@ class BlkioCgroup(Throttle):
         try:
             return utils.get_blkdev_major_minor(path)
         except exception.Error as e:
-            LOG.error(_LE('Failed to get device number for throttling: '
-                          '%(error)s'), {'error': e})
+            LOG.error('Failed to get device number for throttling: '
+                      '%(error)s', {'error': e})
 
     def _limit_bps(self, rw, dev, bps):
         try:
             utils.execute('cgset', '-r', 'blkio.throttle.%s_bps_device=%s %d'
                           % (rw, dev, bps), self.cgroup, run_as_root=True)
         except processutils.ProcessExecutionError:
-            LOG.warning(_LW('Failed to setup blkio cgroup to throttle the '
-                            'device \'%(device)s\'.'), {'device': dev})
+            LOG.warning('Failed to setup blkio cgroup to throttle the '
+                        'device \'%(device)s\'.', {'device': dev})
 
     def _set_limits(self, rw, devs):
         total = sum(devs.values())

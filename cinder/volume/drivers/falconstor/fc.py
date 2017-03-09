@@ -20,7 +20,7 @@ This driver requires FSS-8.00-8865 or later.
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import interface
 import cinder.volume.driver
 from cinder.volume.drivers.falconstor import fss_common
@@ -71,8 +71,8 @@ class FSSFCDriver(fss_common.FalconstorBaseDriver,
     def validate_connector(self, connector):
         """Check connector for at least one enabled FC protocol."""
         if 'FC' == self._storage_protocol and 'wwpns' not in connector:
-            LOG.error(_LE('The connector does not contain the required '
-                          'information.'))
+            LOG.error('The connector does not contain the required '
+                      'information.')
             raise exception.InvalidConnectorException(missing='wwpns')
 
     @fczm_utils.add_fc_zone

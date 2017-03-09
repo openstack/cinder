@@ -36,7 +36,7 @@ from cinder import db
 from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder import keymgr as key_manager
@@ -170,7 +170,7 @@ class API(base.Base):
                               seconds=CONF.az_cache_duration))
         else:
             azs = self.availability_zones
-        LOG.info(_LI("Availability Zones retrieved successfully."))
+        LOG.info("Availability Zones retrieved successfully.")
         return tuple(azs)
 
     def _retype_is_possible(self, context,
@@ -349,7 +349,7 @@ class API(base.Base):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
             vref = flow_engine.storage.fetch('volume')
-            LOG.info(_LI("Volume created successfully."), resource=vref)
+            LOG.info("Volume created successfully.", resource=vref)
             return vref
 
     @wrap_check_policy
@@ -380,8 +380,8 @@ class API(base.Base):
                                                   project_id=project_id,
                                                   **reserve_opts)
             except Exception:
-                LOG.exception(_LE("Failed to update quota while "
-                                  "deleting volume."))
+                LOG.exception("Failed to update quota while "
+                              "deleting volume.")
             volume.destroy()
 
             if reservations:
@@ -389,7 +389,7 @@ class API(base.Base):
 
             volume_utils.notify_about_volume_usage(context,
                                                    volume, "delete.end")
-            LOG.info(_LI("Delete volume request issued successfully."),
+            LOG.info("Delete volume request issued successfully.",
                      resource={'type': 'volume',
                                'id': volume.id})
             return
@@ -468,14 +468,14 @@ class API(base.Base):
             try:
                 self.key_manager.delete(context, encryption_key_id)
             except Exception as e:
-                LOG.warning(_LW("Unable to delete encryption key for "
-                                "volume: %s."), e.msg, resource=volume)
+                LOG.warning("Unable to delete encryption key for "
+                            "volume: %s.", e.msg, resource=volume)
 
         self.volume_rpcapi.delete_volume(context,
                                          volume,
                                          unmanage_only,
                                          cascade)
-        LOG.info(_LI("Delete volume request issued successfully."),
+        LOG.info("Delete volume request issued successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -488,8 +488,8 @@ class API(base.Base):
             volume = objects.Volume._from_db_object(context, vol_obj, volume)
 
         if volume.status == 'maintenance':
-            LOG.info(_LI("Unable to update volume, "
-                         "because it is in maintenance."), resource=volume)
+            LOG.info("Unable to update volume, "
+                     "because it is in maintenance.", resource=volume)
             msg = _("The volume cannot be updated during maintenance.")
             raise exception.InvalidVolume(reason=msg)
 
@@ -497,7 +497,7 @@ class API(base.Base):
 
         volume.update(fields)
         volume.save()
-        LOG.info(_LI("Volume updated successfully."), resource=volume)
+        LOG.info("Volume updated successfully.", resource=volume)
 
     def get(self, context, volume_id, viewable_admin_meta=False):
         volume = objects.Volume.get_by_id(context, volume_id)
@@ -516,7 +516,7 @@ class API(base.Base):
             volume.admin_metadata = admin_metadata
             volume.obj_reset_changes()
 
-        LOG.info(_LI("Volume info retrieved successfully."), resource=volume)
+        LOG.info("Volume info retrieved successfully.", resource=volume)
         return volume
 
     def get_all(self, context, marker=None, limit=None, sort_keys=None,
@@ -565,7 +565,7 @@ class API(base.Base):
                 sort_keys=sort_keys, sort_dirs=sort_dirs, filters=filters,
                 offset=offset)
 
-        LOG.info(_LI("Get all volumes completed successfully."))
+        LOG.info("Get all volumes completed successfully.")
         return volumes
 
     def get_volume_summary(self, context, filters=None):
@@ -583,7 +583,7 @@ class API(base.Base):
             volumes = objects.VolumeList.get_volume_summary_by_project(
                 context, context.project_id)
 
-        LOG.info(_LI("Get summary completed successfully."))
+        LOG.info("Get summary completed successfully.")
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
@@ -592,7 +592,7 @@ class API(base.Base):
 
         # FIXME(jdg): The objects don't have the db name entries
         # so build the resource tag manually for now.
-        LOG.info(_LI("Snapshot retrieved successfully."),
+        LOG.info("Snapshot retrieved successfully.",
                  resource={'type': 'snapshot',
                            'id': snapshot.id})
         return snapshot
@@ -600,7 +600,7 @@ class API(base.Base):
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
         volume = objects.Volume.get_by_id(context, volume_id)
-        LOG.info(_LI("Volume retrieved successfully."), resource=volume)
+        LOG.info("Volume retrieved successfully.", resource=volume)
         return volume
 
     def get_all_snapshots(self, context, search_opts=None, marker=None,
@@ -621,7 +621,7 @@ class API(base.Base):
                 context, context.project_id, search_opts, marker, limit,
                 sort_keys, sort_dirs, offset)
 
-        LOG.info(_LI("Get all snapshots completed successfully."))
+        LOG.info("Get all snapshots completed successfully.")
         return snapshots
 
     @wrap_check_policy
@@ -640,7 +640,7 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info(_LI("Reserve volume completed successfully."),
+        LOG.info("Reserve volume completed successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -658,7 +658,7 @@ class API(base.Base):
                       resource=volume)
             return
 
-        LOG.info(_LI("Unreserve volume completed successfully."),
+        LOG.info("Unreserve volume completed successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -678,22 +678,22 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info(_LI("Begin detaching volume completed successfully."),
+        LOG.info("Begin detaching volume completed successfully.",
                  resource=volume)
 
     @wrap_check_policy
     def roll_detaching(self, context, volume):
         volume.conditional_update({'status': 'in-use'},
                                   {'status': 'detaching'})
-        LOG.info(_LI("Roll detaching of volume completed successfully."),
+        LOG.info("Roll detaching of volume completed successfully.",
                  resource=volume)
 
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, host_name,
                mountpoint, mode):
         if volume.status == 'maintenance':
-            LOG.info(_LI('Unable to attach volume, '
-                         'because it is in maintenance.'), resource=volume)
+            LOG.info('Unable to attach volume, '
+                     'because it is in maintenance.', resource=volume)
             msg = _("The volume cannot be attached in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
 
@@ -712,36 +712,36 @@ class API(base.Base):
                                                           host_name,
                                                           mountpoint,
                                                           mode)
-        LOG.info(_LI("Attach volume completed successfully."),
+        LOG.info("Attach volume completed successfully.",
                  resource=volume)
         return attach_results
 
     @wrap_check_policy
     def detach(self, context, volume, attachment_id):
         if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to detach volume, '
-                         'because it is in maintenance.'), resource=volume)
+            LOG.info('Unable to detach volume, '
+                     'because it is in maintenance.', resource=volume)
             msg = _("The volume cannot be detached in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
         detach_results = self.volume_rpcapi.detach_volume(context, volume,
                                                           attachment_id)
-        LOG.info(_LI("Detach volume completed successfully."),
+        LOG.info("Detach volume completed successfully.",
                  resource=volume)
         return detach_results
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
         if volume.status == 'maintenance':
-            LOG.info(_LI('Unable to initialize the connection for '
-                         'volume, because it is in '
-                         'maintenance.'), resource=volume)
+            LOG.info('Unable to initialize the connection for '
+                     'volume, because it is in '
+                     'maintenance.', resource=volume)
             msg = _("The volume connection cannot be initialized in "
                     "maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
         init_results = self.volume_rpcapi.initialize_connection(context,
                                                                 volume,
                                                                 connector)
-        LOG.info(_LI("Initialize volume connection completed successfully."),
+        LOG.info("Initialize volume connection completed successfully.",
                  resource=volume)
         return init_results
 
@@ -751,22 +751,22 @@ class API(base.Base):
                                                 volume,
                                                 connector,
                                                 force)
-        LOG.info(_LI("Terminate volume connection completed successfully."),
+        LOG.info("Terminate volume connection completed successfully.",
                  resource=volume)
         self.unreserve_volume(context, volume)
 
     @wrap_check_policy
     def accept_transfer(self, context, volume, new_user, new_project):
         if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to accept transfer for volume, '
-                         'because it is in maintenance.'), resource=volume)
+            LOG.info('Unable to accept transfer for volume, '
+                     'because it is in maintenance.', resource=volume)
             msg = _("The volume cannot accept transfer in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
         results = self.volume_rpcapi.accept_transfer(context,
                                                      volume,
                                                      new_user,
                                                      new_project)
-        LOG.info(_LI("Transfer volume completed successfully."),
+        LOG.info("Transfer volume completed successfully.",
                  resource=volume)
         return results
 
@@ -798,8 +798,8 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to create the snapshot for volume, '
-                         'because it is in maintenance.'), resource=volume)
+            LOG.info('Unable to create the snapshot for volume, '
+                     'because it is in maintenance.', resource=volume)
             msg = _("The snapshot cannot be created when the volume is in "
                     "maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
@@ -911,8 +911,8 @@ class API(base.Base):
         check_policy(context, 'create_snapshot', volume)
 
         if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to create the snapshot for volume, '
-                         'because it is in maintenance.'), resource=volume)
+            LOG.info('Unable to create the snapshot for volume, '
+                     'because it is in maintenance.', resource=volume)
             msg = _("The snapshot cannot be created when the volume is in "
                     "maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
@@ -981,7 +981,7 @@ class API(base.Base):
         result = self._create_snapshot(context, volume, name, description,
                                        False, metadata, cgsnapshot_id,
                                        group_snapshot_id)
-        LOG.info(_LI("Snapshot create request issued successfully."),
+        LOG.info("Snapshot create request issued successfully.",
                  resource=result)
         return result
 
@@ -990,7 +990,7 @@ class API(base.Base):
                               description, metadata=None):
         result = self._create_snapshot(context, volume, name, description,
                                        True, metadata)
-        LOG.info(_LI("Snapshot force create request issued successfully."),
+        LOG.info("Snapshot force create request issued successfully.",
                  resource=result)
         return result
 
@@ -1021,7 +1021,7 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
 
         self.volume_rpcapi.delete_snapshot(context, snapshot, unmanage_only)
-        LOG.info(_LI("Snapshot delete request issued successfully."),
+        LOG.info("Snapshot delete request issued successfully.",
                  resource=snapshot)
 
     @wrap_check_policy
@@ -1033,7 +1033,7 @@ class API(base.Base):
     def get_volume_metadata(self, context, volume):
         """Get all metadata associated with a volume."""
         rv = self.db.volume_metadata_get(context, volume['id'])
-        LOG.info(_LI("Get volume metadata completed successfully."),
+        LOG.info("Get volume metadata completed successfully.",
                  resource=volume)
         return dict(rv)
 
@@ -1042,7 +1042,7 @@ class API(base.Base):
         """Creates volume metadata."""
         db_meta = self._update_volume_metadata(context, volume, metadata)
 
-        LOG.info(_LI("Create volume metadata completed successfully."),
+        LOG.info("Create volume metadata completed successfully.",
                  resource=volume)
         return db_meta
 
@@ -1056,7 +1056,7 @@ class API(base.Base):
             LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
         self.db.volume_metadata_delete(context, volume.id, key, meta_type)
-        LOG.info(_LI("Delete volume metadata completed successfully."),
+        LOG.info("Delete volume metadata completed successfully.",
                  resource=volume)
 
     def _update_volume_metadata(self, context, volume, metadata, delete=False,
@@ -1084,7 +1084,7 @@ class API(base.Base):
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        LOG.info(_LI("Update volume metadata completed successfully."),
+        LOG.info("Update volume metadata completed successfully.",
                  resource=volume)
         return db_meta
 
@@ -1092,7 +1092,7 @@ class API(base.Base):
     def get_volume_admin_metadata(self, context, volume):
         """Get all administration metadata associated with a volume."""
         rv = self.db.volume_admin_metadata_get(context, volume['id'])
-        LOG.info(_LI("Get volume admin metadata completed successfully."),
+        LOG.info("Get volume admin metadata completed successfully.",
                  resource=volume)
         return dict(rv)
 
@@ -1112,7 +1112,7 @@ class API(base.Base):
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        LOG.info(_LI("Update volume admin metadata completed successfully."),
+        LOG.info("Update volume admin metadata completed successfully.",
                  resource=volume)
         return db_meta
 
@@ -1120,7 +1120,7 @@ class API(base.Base):
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
         snapshot_obj = self.get_snapshot(context, snapshot.id)
-        LOG.info(_LI("Get snapshot metadata completed successfully."),
+        LOG.info("Get snapshot metadata completed successfully.",
                  resource=snapshot)
         return snapshot_obj.metadata
 
@@ -1129,7 +1129,7 @@ class API(base.Base):
         """Delete the given metadata item from a snapshot."""
         snapshot_obj = self.get_snapshot(context, snapshot.id)
         snapshot_obj.delete_metadata_key(context, key)
-        LOG.info(_LI("Delete snapshot metadata completed successfully."),
+        LOG.info("Delete snapshot metadata completed successfully.",
                  resource=snapshot)
 
     @wrap_check_policy
@@ -1156,12 +1156,12 @@ class API(base.Base):
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        LOG.info(_LI("Update snapshot metadata completed successfully."),
+        LOG.info("Update snapshot metadata completed successfully.",
                  resource=snapshot)
         return snapshot.metadata
 
     def get_snapshot_metadata_value(self, snapshot, key):
-        LOG.info(_LI("Get snapshot metadata value not implemented."),
+        LOG.info("Get snapshot metadata value not implemented.",
                  resource=snapshot)
         # FIXME(jdg): Huh?  Pass?
         pass
@@ -1178,7 +1178,7 @@ class API(base.Base):
     @wrap_check_policy
     def get_volume_image_metadata(self, context, volume):
         db_data = self.db.volume_glance_metadata_get(context, volume['id'])
-        LOG.info(_LI("Get volume image-metadata completed successfully."),
+        LOG.info("Get volume image-metadata completed successfully.",
                  resource=volume)
         return {meta_entry.key: meta_entry.value for meta_entry in db_data}
 
@@ -1195,8 +1195,8 @@ class API(base.Base):
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
         if not CONF.enable_force_upload and force:
-            LOG.info(_LI("Force upload to image is disabled, "
-                         "Force option will be ignored."),
+            LOG.info("Force upload to image is disabled, "
+                     "Force option will be ignored.",
                      resource={'type': 'volume', 'id': volume['id']})
             force = False
 
@@ -1262,7 +1262,7 @@ class API(base.Base):
             response['is_public'] = recv_metadata.get('is_public')
         elif 'visibility' in recv_metadata:
             response['visibility'] = recv_metadata.get('visibility')
-        LOG.info(_LI("Copy volume to image completed successfully."),
+        LOG.info("Copy volume to image completed successfully.",
                  resource=volume)
         return response
 
@@ -1272,7 +1272,7 @@ class API(base.Base):
         expected = {'status': 'available'}
 
         def _roll_back_status():
-            msg = _LE('Could not return volume %s to available.')
+            msg = _('Could not return volume %s to available.')
             try:
                 if not volume.conditional_update(expected, value):
                     LOG.error(msg, volume.id)
@@ -1323,13 +1323,13 @@ class API(base.Base):
             gb_quotas = exc.kwargs['quotas']['gigabytes']
 
             consumed = gigabytes['reserved'] + gigabytes['in_use']
-            msg = _LE("Quota exceeded for %(s_pid)s, tried to extend volume "
+            LOG.error("Quota exceeded for %(s_pid)s, tried to extend volume "
                       "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
-                      "already consumed).")
-            LOG.error(msg, {'s_pid': context.project_id,
-                            's_size': size_increase,
-                            'd_consumed': consumed,
-                            'd_quota': gb_quotas})
+                      "already consumed).",
+                      {'s_pid': context.project_id,
+                       's_size': size_increase,
+                       'd_consumed': consumed,
+                       'd_quota': gb_quotas})
             raise exception.VolumeSizeExceedsAvailableQuota(
                 requested=size_increase, consumed=consumed, quota=gb_quotas)
         finally:
@@ -1357,15 +1357,15 @@ class API(base.Base):
             # NOTE(erlon): During rolling upgrades scheduler and volume can
             # have different versions. This check makes sure that a new
             # version of the volume service won't break.
-            msg = _LW("Failed to send extend volume request to scheduler. "
-                      "Falling back to old behaviour. This is normal during a "
-                      "live-upgrade. Error: %(e)s")
+            msg = ("Failed to send extend volume request to scheduler. "
+                   "Falling back to old behaviour. This is normal during a "
+                   "live-upgrade. Error: %(e)s")
             LOG.warning(msg, {'e': e})
             # TODO(erlon): Remove in Pike
             self.volume_rpcapi.extend_volume(context, volume, new_size,
                                              reservations)
 
-        LOG.info(_LI("Extend volume request issued successfully."),
+        LOG.info("Extend volume request issued successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -1451,7 +1451,7 @@ class API(base.Base):
                                              cluster_name or host,
                                              force_copy,
                                              request_spec)
-        LOG.info(_LI("Migrate volume request issued successfully."),
+        LOG.info("Migrate volume request issued successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -1490,7 +1490,7 @@ class API(base.Base):
                                     'exp': expected_status})
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info(_LI("Migrate volume completion issued successfully."),
+        LOG.info("Migrate volume completion issued successfully.",
                  resource=volume)
         return self.volume_rpcapi.migrate_volume_completion(context, volume,
                                                             new_volume, error)
@@ -1505,8 +1505,8 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
         self.update_volume_admin_metadata(context.elevated(), volume,
                                           {'readonly': six.text_type(flag)})
-        LOG.info(_LI("Update readonly setting on volume "
-                     "completed successfully."),
+        LOG.info("Update readonly setting on volume "
+                 "completed successfully.",
                  resource=volume)
 
     @wrap_check_policy
@@ -1592,7 +1592,7 @@ class API(base.Base):
         self.scheduler_rpcapi.retype(context, volume,
                                      request_spec=request_spec,
                                      filter_properties={})
-        LOG.info(_LI("Retype volume request issued successfully."),
+        LOG.info("Retype volume request issued successfully.",
                  resource=volume)
 
     def _get_service_by_host_cluster(self, context, host, cluster_name,
@@ -1613,20 +1613,20 @@ class API(base.Base):
                                                 cluster_name=svc_cluster)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Unable to find service: %(service)s for '
-                              'given host: %(host)s and cluster %(cluster)s.'),
+                LOG.error('Unable to find service: %(service)s for '
+                          'given host: %(host)s and cluster %(cluster)s.',
                           {'service': constants.VOLUME_BINARY, 'host': host,
                            'cluster': cluster_name})
 
         if service.disabled and (not service.cluster_name or
                                  service.cluster.disabled):
-            LOG.error(_LE('Unable to manage existing %s on a disabled '
-                          'service.'), resource)
+            LOG.error('Unable to manage existing %s on a disabled '
+                      'service.', resource)
             raise exception.ServiceUnavailable()
 
         if not service.is_up:
-            LOG.error(_LE('Unable to manage existing %s on a service that is '
-                          'down.'), resource)
+            LOG.error('Unable to manage existing %s on a service that is '
+                      'down.', resource)
             raise exception.ServiceUnavailable()
 
         return service
@@ -1673,7 +1673,7 @@ class API(base.Base):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
             vol_ref = flow_engine.storage.fetch('volume')
-            LOG.info(_LI("Manage volume request issued successfully."),
+            LOG.info("Manage volume request issued successfully.",
                      resource=vol_ref)
             return vol_ref
 
@@ -1791,7 +1791,7 @@ class API(base.Base):
                     cluster.save()
                 raise exception.InvalidInput(
                     reason=_('No service could be changed: %s') % msg)
-            LOG.warning(_LW('Some services could not be changed: %s'), msg)
+            LOG.warning('Some services could not be changed: %s', msg)
 
         return cluster, services
 

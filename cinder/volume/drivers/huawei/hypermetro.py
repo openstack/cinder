@@ -17,7 +17,7 @@
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 
@@ -58,8 +58,8 @@ class HuaweiHyperMetro(object):
                                                           local_lun_id,
                                                           remote_lun_id)
 
-                LOG.info(_LI("Hypermetro id: %(metro_id)s. "
-                             "Remote lun id: %(remote_lun_id)s."),
+                LOG.info("Hypermetro id: %(metro_id)s. "
+                         "Remote lun id: %(remote_lun_id)s.",
                          {'metro_id': hypermetro['ID'],
                           'remote_lun_id': remote_lun_id})
 
@@ -105,9 +105,9 @@ class HuaweiHyperMetro(object):
         wwns = connector['wwpns']
         volume_name = huawei_utils.encode_name(volume.id)
 
-        LOG.info(_LI(
+        LOG.info(
             'initialize_connection_fc, initiator: %(wwpns)s,'
-            ' volume name: %(volume)s.'),
+            ' volume name: %(volume)s.',
             {'wwpns': wwns,
              'volume': volume_name})
 
@@ -177,7 +177,7 @@ class HuaweiHyperMetro(object):
                             'map_info': map_info},
                    }
 
-        LOG.info(_LI('Remote return FC info is: %s.'), fc_info)
+        LOG.info('Remote return FC info is: %s.', fc_info)
 
         return fc_info
 
@@ -192,9 +192,9 @@ class HuaweiHyperMetro(object):
         lungroup_id = None
         view_id = None
 
-        LOG.info(_LI('terminate_connection_fc: volume name: %(volume)s, '
-                     'wwpns: %(wwns)s, '
-                     'lun_id: %(lunid)s.'),
+        LOG.info('terminate_connection_fc: volume name: %(volume)s, '
+                 'wwpns: %(wwns)s, '
+                 'lun_id: %(lunid)s.',
                  {'volume': volume_name,
                   'wwns': wwns,
                   'lunid': lun_id},)
@@ -217,9 +217,9 @@ class HuaweiHyperMetro(object):
                     self.rmt_client.remove_lun_from_lungroup(
                         lungroup_id, lun_id)
                 else:
-                    LOG.warning(_LW("Lun is not in lungroup. "
-                                    "Lun id: %(lun_id)s, "
-                                    "lungroup id: %(lungroup_id)s"),
+                    LOG.warning("Lun is not in lungroup. "
+                                "Lun id: %(lun_id)s, "
+                                "lungroup id: %(lungroup_id)s",
                                 {"lun_id": lun_id,
                                  "lungroup_id": lungroup_id})
 
@@ -269,7 +269,7 @@ class HuaweiHyperMetro(object):
         pass
 
     def create_consistencygroup(self, group):
-        LOG.info(_LI("Create Consistency Group: %(group)s."),
+        LOG.info("Create Consistency Group: %(group)s.",
                  {'group': group.id})
         group_name = huawei_utils.encode_name(group.id)
         domain_name = self.configuration.metro_domain_name
@@ -282,7 +282,7 @@ class HuaweiHyperMetro(object):
         self.client.create_metrogroup(group_name, group.id, domain_id)
 
     def delete_consistencygroup(self, context, group, volumes):
-        LOG.info(_LI("Delete Consistency Group: %(group)s."),
+        LOG.info("Delete Consistency Group: %(group)s.",
                  {'group': group.id})
         model_update = {}
         volumes_model_update = []
@@ -301,8 +301,8 @@ class HuaweiHyperMetro(object):
 
     def update_consistencygroup(self, context, group,
                                 add_volumes, remove_volumes):
-        LOG.info(_LI("Update Consistency Group: %(group)s. "
-                     "This adds or removes volumes from a CG."),
+        LOG.info("Update Consistency Group: %(group)s. "
+                 "This adds or removes volumes from a CG.",
                  {'group': group.id})
         model_update = {}
         model_update['status'] = group.status

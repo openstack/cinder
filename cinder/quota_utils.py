@@ -22,7 +22,7 @@ from keystoneclient import exceptions
 
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 
 CONF = cfg.CONF
 CONF.import_opt('auth_uri', 'keystonemiddleware.auth_token.__init__',
@@ -265,9 +265,9 @@ def process_reserve_over_quota(context, over_quota_exception,
 
     for over in overs:
         if 'gigabytes' in over:
-            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                      "%(s_size)dG %(s_resource)s (%(d_consumed)dG of "
-                      "%(d_quota)dG already consumed).")
+            msg = ("Quota exceeded for %(s_pid)s, tried to create "
+                   "%(s_size)dG %(s_resource)s (%(d_consumed)dG of "
+                   "%(d_quota)dG already consumed).")
             LOG.warning(msg, {'s_pid': context.project_id,
                               's_size': size,
                               's_resource': resource[:-1],
@@ -284,9 +284,9 @@ def process_reserve_over_quota(context, over_quota_exception,
                 quota=quotas[over])
         if (resource in OVER_QUOTA_RESOURCE_EXCEPTIONS.keys() and
                 resource in over):
-            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                      "%(s_resource)s (%(d_consumed)d %(s_resource)ss "
-                      "already consumed).")
+            msg = ("Quota exceeded for %(s_pid)s, tried to create "
+                   "%(s_resource)s (%(d_consumed)d %(s_resource)ss "
+                   "already consumed).")
             LOG.warning(msg, {'s_pid': context.project_id,
                               'd_consumed': _consumed(over),
                               's_resource': resource[:-1]})

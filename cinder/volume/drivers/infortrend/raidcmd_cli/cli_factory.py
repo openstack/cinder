@@ -22,7 +22,6 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LE
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -45,9 +44,9 @@ def retry_cli(func):
             if rc == 0:
                 break
 
-            LOG.error(_LE(
+            LOG.error(
                 'Retry %(retry)s times: %(method)s Failed '
-                '%(rc)s: %(reason)s'), {
+                '%(rc)s: %(reason)s', {
                     'retry': retry_time,
                     'method': self.__class__.__name__,
                     'rc': rc,
@@ -144,9 +143,9 @@ class ExecuteCommand(BaseCommand):
             rc = pe.exit_code
             result = pe.stdout
             result = result.replace('\n', '\\n')
-            LOG.error(_LE(
+            LOG.error(
                 'Error on execute command. '
-                'Error code: %(exit_code)d Error msg: %(result)s'), {
+                'Error code: %(exit_code)d Error msg: %(result)s', {
                     'exit_code': pe.exit_code, 'result': result})
         return rc, result
 
@@ -219,9 +218,9 @@ class CLIBaseCommand(BaseCommand):
             rc = -2  # prevent confusing with cli real rc
             result = pe.stdout
             result = result.replace('\n', '\\n')
-            LOG.error(_LE(
+            LOG.error(
                 'Error on execute %(command)s. '
-                'Error code: %(exit_code)d Error msg: %(result)s'), {
+                'Error code: %(exit_code)d Error msg: %(result)s', {
                     'command': command_line,
                     'exit_code': pe.exit_code,
                     'result': result})

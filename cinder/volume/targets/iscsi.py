@@ -16,7 +16,7 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW, _LE
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume.targets import driver
 from cinder.volume import utils as vutils
@@ -151,7 +151,7 @@ class ISCSITarget(driver.Target):
     def _do_iscsi_discovery(self, volume):
         # TODO(justinsb): Deprecate discovery and use stored info
         # NOTE(justinsb): Discovery won't work with CHAP-secured targets (?)
-        LOG.warning(_LW("ISCSI provider_location not stored, using discovery"))
+        LOG.warning("ISCSI provider_location not stored, using discovery")
 
         volume_id = volume['id']
 
@@ -164,9 +164,9 @@ class ISCSITarget(driver.Target):
                                         volume['host'].split('@')[0],
                                         run_as_root=True)
         except processutils.ProcessExecutionError as ex:
-            LOG.error(_LE("ISCSI discovery attempt failed for:%s") %
+            LOG.error("ISCSI discovery attempt failed for: %s",
                       volume['host'].split('@')[0])
-            LOG.debug(("Error from iscsiadm -m discovery: %s") % ex.stderr)
+            LOG.debug("Error from iscsiadm -m discovery: %s", ex.stderr)
             return None
 
         for target in out.splitlines():
@@ -221,8 +221,8 @@ class ISCSITarget(driver.Target):
         try:
             iscsi_target, lun = self._get_target_and_lun(context, volume)
         except exception.NotFound:
-            LOG.info(_LI("Skipping remove_export. No iscsi_target "
-                         "provisioned for volume: %s"), volume['id'])
+            LOG.info("Skipping remove_export. No iscsi_target "
+                     "provisioned for volume: %s", volume['id'])
             return
         try:
 
@@ -236,8 +236,8 @@ class ISCSITarget(driver.Target):
             self.show_target(iscsi_target, iqn=iqn)
 
         except Exception:
-            LOG.info(_LI("Skipping remove_export. No iscsi_target "
-                         "is presently exported for volume: %s"), volume['id'])
+            LOG.info("Skipping remove_export. No iscsi_target "
+                     "is presently exported for volume: %s", volume['id'])
             return
 
         # NOTE: For TgtAdm case volume['id'] is the ONLY param we need
@@ -293,8 +293,8 @@ class ISCSITarget(driver.Target):
     def validate_connector(self, connector):
         # NOTE(jdg): api passes in connector which is initiator info
         if 'initiator' not in connector:
-            err_msg = (_LE('The volume driver requires the iSCSI initiator '
-                           'name in the connector.'))
+            err_msg = ('The volume driver requires the iSCSI initiator '
+                       'name in the connector.')
             LOG.error(err_msg)
             raise exception.InvalidConnectorException(missing='initiator')
         return True

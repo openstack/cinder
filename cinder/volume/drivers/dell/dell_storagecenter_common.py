@@ -20,7 +20,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_api
@@ -88,7 +88,7 @@ class DellCommonDriver(driver.ManageableVD,
         self.is_direct_connect = False
         self.active_backend_id = kwargs.get('active_backend_id', None)
         self.failed_over = True if self.active_backend_id else False
-        LOG.info(_LI('Loading %(name)s: Failover state is %(state)r'),
+        LOG.info('Loading %(name)s: Failover state is %(state)r',
                  {'name': self.backend_name,
                   'state': self.failed_over})
         self.storage_protocol = 'iSCSI'
@@ -279,7 +279,7 @@ class DellCommonDriver(driver.ManageableVD,
         try:
             api.delete_volume(volumename)
         except exception.VolumeBackendAPIException as ex:
-            LOG.info(_LI('Non fatal cleanup error: %s.'), ex.msg)
+            LOG.info('Non fatal cleanup error: %s.', ex.msg)
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -324,7 +324,7 @@ class DellCommonDriver(driver.ManageableVD,
                 # clean up the volume now.
                 self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to create volume %s'),
+                    LOG.error('Failed to create volume %s',
                               volume_name)
         if scvolume is None:
             raise exception.VolumeBackendAPIException(
@@ -374,16 +374,15 @@ class DellCommonDriver(driver.ManageableVD,
                 if (sclivevolume and
                    sclivevolume.get('secondaryScSerialNumber') == ssn and
                    api.delete_live_volume(sclivevolume, True)):
-                    LOG.info(_LI('%(vname)s\'s replication live volume has '
-                                 'been deleted from storage Center %(sc)s,'),
+                    LOG.info('%(vname)s\'s replication live volume has '
+                             'been deleted from storage Center %(sc)s,',
                              {'vname': volume.get('id'),
                               'sc': ssn})
                     return True
         # If we are here either we do not have a live volume, we do not have
         # one on our configured SC or we were not able to delete it.
         # Either way, warn and leave.
-        LOG.warning(_LW('Unable to delete %s live volume.'),
-                    volume.get('id'))
+        LOG.warning('Unable to delete %s live volume.', volume.get('id'))
         return False
 
     def _delete_replications(self, api, volume):
@@ -409,8 +408,8 @@ class DellCommonDriver(driver.ManageableVD,
                 ssn = int(ssnstring)
                 # Are we a replication or a live volume?
                 if not api.delete_replication(scvol, ssn):
-                    LOG.warning(_LW('Unable to delete replication of Volume '
-                                    '%(vname)s to Storage Center %(sc)s.'),
+                    LOG.warning('Unable to delete replication of Volume '
+                                '%(vname)s to Storage Center %(sc)s.',
                                 {'vname': volume_name,
                                  'sc': ssnstring})
         # If none of that worked or there was nothing to do doesn't matter.
@@ -439,7 +438,7 @@ class DellCommonDriver(driver.ManageableVD,
                 deleted = api.delete_volume(volume_name, provider_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to delete volume %s'),
+                    LOG.error('Failed to delete volume %s',
                               volume_name)
 
         # if there was an error we will have raised an
@@ -466,8 +465,7 @@ class DellCommonDriver(driver.ManageableVD,
                     return {'status': fields.SnapshotStatus.AVAILABLE,
                             'provider_id': scvolume['instanceId']}
             else:
-                LOG.warning(_LW('Unable to locate volume:%s'),
-                            volume_name)
+                LOG.warning('Unable to locate volume:%s', volume_name)
 
         snapshot['status'] = fields.SnapshotStatus.ERROR
         msg = _('Failed to create snapshot %s') % snapshot_id
@@ -540,8 +538,7 @@ class DellCommonDriver(driver.ManageableVD,
                 # Clean up after ourselves.
                 self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to create volume %s'),
-                              volume_name)
+                    LOG.error('Failed to create volume %s', volume_name)
         if scvolume is not None:
             LOG.debug('Volume %(vol)s created from %(snap)s',
                       {'vol': volume_name,
@@ -604,8 +601,7 @@ class DellCommonDriver(driver.ManageableVD,
                 # Clean up after ourselves.
                 self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to create volume %s'),
-                              volume_name)
+                    LOG.error('Failed to create volume %s', volume_name)
         if scvolume is not None:
             LOG.debug('Volume %(vol)s cloned from %(src)s',
                       {'vol': volume_name,
@@ -656,7 +652,7 @@ class DellCommonDriver(driver.ManageableVD,
                                            self._is_live_vol(volume))
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to ensure export of volume %s'),
+                    LOG.error('Failed to ensure export of volume %s',
                               volume_name)
         if scvolume is None:
             msg = _('Unable to find volume %s') % volume_name
@@ -738,7 +734,7 @@ class DellCommonDriver(driver.ManageableVD,
                 data['free_capacity_gb'] = freespacegb
             else:
                 # Soldier on. Just return 0 for this iteration.
-                LOG.error(_LE('Unable to retrieve volume stats.'))
+                LOG.error('Unable to retrieve volume stats.')
                 data['total_capacity_gb'] = 0
                 data['free_capacity_gb'] = 0
 
@@ -782,7 +778,7 @@ class DellCommonDriver(driver.ManageableVD,
 
                     return model_update
         # The world was horrible to us so we should error and leave.
-        LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
+        LOG.error('Unable to rename the logical volume for volume: %s',
                   original_volume_name)
 
         return {'_name_id': new_volume['_name_id'] or new_volume['id']}
@@ -799,7 +795,7 @@ class DellCommonDriver(driver.ManageableVD,
         with self._client.open_connection() as api:
             cgroup = api.create_replay_profile(gid)
             if cgroup:
-                LOG.info(_LI('Created Consistency Group %s'), gid)
+                LOG.info('Created Consistency Group %s', gid)
                 return
         msg = _('Unable to create consistency group %s') % gid
         raise exception.VolumeBackendAPIException(data=msg)
@@ -860,11 +856,11 @@ class DellCommonDriver(driver.ManageableVD,
         with self._client.open_connection() as api:
             profile = api.find_replay_profile(gid)
             if not profile:
-                LOG.error(_LE('Cannot find Consistency Group %s'), gid)
+                LOG.error('Cannot find Consistency Group %s', gid)
             elif api.update_cg_volumes(profile,
                                        add_volumes,
                                        remove_volumes):
-                LOG.info(_LI('Updated Consistency Group %s'), gid)
+                LOG.info('Updated Consistency Group %s', gid)
                 # we need nothing updated above us so just return None.
                 return None, None, None
         # Things did not go well so throw.
@@ -900,9 +896,9 @@ class DellCommonDriver(driver.ManageableVD,
                     return model_update, snapshot_updates
 
                 # That didn't go well.  Tell them why.  Then bomb out.
-                LOG.error(_LE('Failed to snap Consistency Group %s'), cgid)
+                LOG.error('Failed to snap Consistency Group %s', cgid)
             else:
-                LOG.error(_LE('Cannot find Consistency Group %s'), cgid)
+                LOG.error('Cannot find Consistency Group %s', cgid)
 
         msg = _('Unable to snap Consistency Group %s') % cgid
         raise exception.VolumeBackendAPIException(data=msg)
@@ -924,7 +920,7 @@ class DellCommonDriver(driver.ManageableVD,
         with self._client.open_connection() as api:
             profile = api.find_replay_profile(cgid)
             if profile:
-                LOG.info(_LI('Deleting snapshot %(ss)s from %(pro)s'),
+                LOG.info('Deleting snapshot %(ss)s from %(pro)s',
                          {'ss': snapshotid,
                           'pro': profile})
                 if not api.delete_cg_replay(profile, snapshotid):
@@ -1058,7 +1054,7 @@ class DellCommonDriver(driver.ManageableVD,
                            'spec': requested})
                 return current, requested
             else:
-                LOG.info(_LI('Retype was to same Storage Profile.'))
+                LOG.info('Retype was to same Storage Profile.')
         return None, None
 
     def _retype_replication(self, api, volume, scvolume, new_type, diff):
@@ -1104,8 +1100,8 @@ class DellCommonDriver(driver.ManageableVD,
                      dictionary of its reported capabilities (Not Used).
         :returns: Boolean or Boolean, model_update tuple.
         """
-        LOG.info(_LI('retype: volume_name: %(name)s new_type: %(newtype)s '
-                     'diff: %(diff)s host: %(host)s'),
+        LOG.info('retype: volume_name: %(name)s new_type: %(newtype)s '
+                 'diff: %(diff)s host: %(host)s',
                  {'name': volume.get('id'), 'newtype': new_type,
                   'diff': diff, 'host': host})
         model_update = None
@@ -1118,7 +1114,7 @@ class DellCommonDriver(driver.ManageableVD,
                     # Get our volume
                     scvolume = api.find_volume(volume_name, provider_id)
                     if scvolume is None:
-                        LOG.error(_LE('Retype unable to find volume %s.'),
+                        LOG.error('Retype unable to find volume %s.',
                                   volume_name)
                         return False
                     # Check our specs.
@@ -1130,7 +1126,7 @@ class DellCommonDriver(driver.ManageableVD,
                     # if there is a change and it didn't work fast fail.
                     if (current != requested and not
                        api.update_storage_profile(scvolume, requested)):
-                        LOG.error(_LE('Failed to update storage profile'))
+                        LOG.error('Failed to update storage profile')
                         return False
 
                     # Replay profiles.
@@ -1141,7 +1137,7 @@ class DellCommonDriver(driver.ManageableVD,
                     # if there is a change and it didn't work fast fail.
                     if requested and not api.update_replay_profiles(scvolume,
                                                                     requested):
-                        LOG.error(_LE('Failed to update replay profiles'))
+                        LOG.error('Failed to update replay profiles')
                         return False
 
                     # Volume QOS profiles.
@@ -1151,8 +1147,7 @@ class DellCommonDriver(driver.ManageableVD,
                                               'storagetype:volumeqos'))
                     if current != requested:
                         if not api.update_qos_profile(scvolume, requested):
-                            LOG.error(_LE('Failed to update volume '
-                                          'qos profile'))
+                            LOG.error('Failed to update volume qos profile')
 
                     # Group QOS profiles.
                     current, requested = (
@@ -1162,8 +1157,7 @@ class DellCommonDriver(driver.ManageableVD,
                     if current != requested:
                         if not api.update_qos_profile(scvolume, requested,
                                                       True):
-                            LOG.error(_LE('Failed to update group '
-                                          'qos profile'))
+                            LOG.error('Failed to update group qos profile')
                             return False
 
                     # Data reduction profiles.
@@ -1174,8 +1168,8 @@ class DellCommonDriver(driver.ManageableVD,
                     if current != requested:
                         if not api.update_datareduction_profile(scvolume,
                                                                 requested):
-                            LOG.error(_LE('Failed to update data reduction '
-                                          'profile'))
+                            LOG.error('Failed to update data reduction '
+                                      'profile')
                             return False
 
                     # Active Replay
@@ -1186,8 +1180,8 @@ class DellCommonDriver(driver.ManageableVD,
                     if current != requested and not (
                             api.update_replicate_active_replay(
                                 scvolume, requested == '<is> True')):
-                        LOG.error(_LE('Failed to apply '
-                                      'replication:activereplay setting'))
+                        LOG.error('Failed to apply '
+                                  'replication:activereplay setting')
                         return False
 
                     # Deal with replication.
@@ -1231,8 +1225,8 @@ class DellCommonDriver(driver.ManageableVD,
                         destssn = ssn
                         break
                 except exception.VolumeBackendAPIException:
-                    LOG.warning(_LW('SSN %s appears to be down.'), ssn)
-        LOG.info(_LI('replication failover secondary is %(ssn)s'),
+                    LOG.warning('SSN %s appears to be down.', ssn)
+        LOG.info('replication failover secondary is %(ssn)s',
                  {'ssn': destssn})
         return destssn
 
@@ -1309,8 +1303,8 @@ class DellCommonDriver(driver.ManageableVD,
                                     ovol, 'org:' + ovol['name']):
                                 # Not a reason to fail but will possibly
                                 # cause confusion so warn.
-                                LOG.warning(_LW('Unable to locate and rename '
-                                                'original volume: %s'),
+                                LOG.warning('Unable to locate and rename '
+                                            'original volume: %s',
                                             item['ovol'])
                             item['status'] = 'synced'
                         else:
@@ -1329,9 +1323,9 @@ class DellCommonDriver(driver.ManageableVD,
             if lastremain == currentremain:
                 # One chance down. Warn user.
                 deadcount -= 1
-                LOG.warning(_LW('Waiting for replications to complete. '
-                                'No progress for %(timeout)d seconds. '
-                                'deadcount = %(cnt)d'),
+                LOG.warning('Waiting for replications to complete. '
+                            'No progress for %(timeout)d seconds. '
+                            'deadcount = %(cnt)d',
                             {'timeout': self.failback_timeout,
                              'cnt': deadcount})
             else:
@@ -1341,13 +1335,13 @@ class DellCommonDriver(driver.ManageableVD,
 
             # If we've used up our 5 chances we error and log..
             if deadcount == 0:
-                LOG.error(_LE('Replication progress has stopped: '
-                              '%f remaining.'), currentremain)
+                LOG.error('Replication progress has stopped: %f remaining.',
+                          currentremain)
                 for item in items:
                     if item['status'] == 'inprogress':
-                        LOG.error(_LE('Failback failed for volume: %s. '
-                                      'Timeout waiting for replication to '
-                                      'sync with original volume.'),
+                        LOG.error('Failback failed for volume: %s. '
+                                  'Timeout waiting for replication to '
+                                  'sync with original volume.',
                                   item['volume']['id'])
                         item['status'] = 'error'
                 break
@@ -1426,7 +1420,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param qosnode: Dell QOS node object.
         :return: replitem dict.
         """
-        LOG.info(_LI('failback_volumes: replicated volume'))
+        LOG.info('failback_volumes: replicated volume')
         # Get our current volume.
         cvol = api.find_volume(volume['id'], volume['provider_id'])
         # Original volume on the primary.
@@ -1446,7 +1440,7 @@ class DellCommonDriver(driver.ManageableVD,
             nvolid = screpl['destinationVolume']['instanceId']
             status = 'inprogress'
         else:
-            LOG.error(_LE('Unable to restore %s'), volume['id'])
+            LOG.error('Unable to restore %s', volume['id'])
             screplid = None
             nvolid = None
             status = 'error'
@@ -1481,14 +1475,14 @@ class DellCommonDriver(driver.ManageableVD,
         sclivevolume = api.get_live_volume(provider_id)
         # TODO(tswanson): Check swapped state first.
         if sclivevolume and api.swap_roles_live_volume(sclivevolume):
-            LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
+            LOG.info('Success swapping sclivevolume roles %s', id)
             model_update = {
                 'status': 'available',
                 'replication_status': fields.ReplicationStatus.ENABLED,
                 'provider_id':
                     sclivevolume['secondaryVolume']['instanceId']}
         else:
-            LOG.info(_LI('Failure swapping roles  %s'), id)
+            LOG.info('Failure swapping roles  %s', id)
             model_update = {'status': 'error'}
 
         return model_update
@@ -1509,7 +1503,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param volumes: List of volumes that need to be failed back.
         :return: volume_updates for the list of volumes.
         """
-        LOG.info(_LI('failback_volumes'))
+        LOG.info('failback_volumes')
         with self._client.open_connection() as api:
             # Get our qosnode. This is a good way to make sure the backend
             # is still setup so that we can do this.
@@ -1524,7 +1518,7 @@ class DellCommonDriver(driver.ManageableVD,
             # Trundle through the volumes. Update non replicated to alive again
             # and reverse the replications for the remaining volumes.
             for volume in volumes:
-                LOG.info(_LI('failback_volumes: starting volume: %s'), volume)
+                LOG.info('failback_volumes: starting volume: %s', volume)
                 model_update = {}
                 if volume.get('replication_driver_data'):
                     rspecs = self._get_replication_specs(
@@ -1567,12 +1561,12 @@ class DellCommonDriver(driver.ManageableVD,
         rvol = api.break_replication(id, provider_id, destssn)
         model_update = {}
         if rvol:
-            LOG.info(_LI('Success failing over volume %s'), id)
+            LOG.info('Success failing over volume %s', id)
             model_update = {'replication_status':
                             fields.ReplicationStatus.FAILED_OVER,
                             'provider_id': rvol['instanceId']}
         else:
-            LOG.info(_LI('Failed failing over volume %s'), id)
+            LOG.info('Failed failing over volume %s', id)
             model_update = {'status': 'error'}
 
         return model_update
@@ -1585,11 +1579,11 @@ class DellCommonDriver(driver.ManageableVD,
             swapped = api.is_swapped(provider_id, sclivevolume)
             # If we aren't swapped try it. If fail error out.
             if not swapped and not api.swap_roles_live_volume(sclivevolume):
-                LOG.info(_LI('Failure swapping roles  %s'), id)
+                LOG.info('Failure swapping roles  %s', id)
                 model_update = {'status': 'error'}
                 return model_update
 
-            LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
+            LOG.info('Success swapping sclivevolume roles %s', id)
             sclivevolume = api.get_live_volume(provider_id)
             model_update = {
                 'replication_status':
@@ -1628,7 +1622,7 @@ class DellCommonDriver(driver.ManageableVD,
             raise exception.InvalidReplicationTarget(
                 reason=_('Already failed over'))
 
-        LOG.info(_LI('Failing backend to %s'), secondary_id)
+        LOG.info('Failing backend to %s', secondary_id)
         # basic check
         if self.replication_enabled:
             with self._client.open_connection() as api:
@@ -1747,9 +1741,9 @@ class DellCommonDriver(driver.ManageableVD,
                 raise exception.VolumeBackendAPIException(data=msg)
 
             # Life is good.  Let the world know what we've done.
-            LOG.info(_LI('manage_existing_snapshot: snapshot %(exist)s on '
-                         'volume %(volume)s has been renamed to %(id)s and is '
-                         'now managed by Cinder.'),
+            LOG.info('manage_existing_snapshot: snapshot %(exist)s on '
+                     'volume %(volume)s has been renamed to %(id)s and is '
+                     'now managed by Cinder.',
                      {'exist': screplay.get('description'),
                       'volume': volume_name,
                       'id': snapshot_id})

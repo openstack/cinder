@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
@@ -92,8 +92,8 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         islivevol = self._is_live_vol(volume)
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
-        LOG.info(_LI('initialize_ connection: %(vol)s:%(pid)s:'
-                     '%(intr)s. Multipath is %(mp)r'),
+        LOG.info('initialize_ connection: %(vol)s:%(pid)s:'
+                 '%(intr)s. Multipath is %(mp)r',
                  {'vol': volume_name,
                   'pid': provider_id,
                   'intr': initiator_name,
@@ -166,7 +166,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
             # Re-raise any backend exception.
             except exception.VolumeBackendAPIException:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to initialize connection'))
+                    LOG.error('Failed to initialize connection')
             # If there is a data structure issue then detail the exception
             # and bail with a Backend Exception.
             except Exception as error:
@@ -211,8 +211,8 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                 'target_lun': None,
                 'target_luns': [],
                 }
-        LOG.warning(_LW('Unable to map live volume secondary volume'
-                        ' %(vol)s to secondary server intiator: %(init)r'),
+        LOG.warning('Unable to map live volume secondary volume'
+                    ' %(vol)s to secondary server intiator: %(init)r',
                     {'vol': sclivevolume['secondaryVolume']['instanceName'],
                      'init': initiatorname})
         return data
@@ -255,8 +255,8 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                         return
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to terminate connection '
-                                  '%(initiator)s %(vol)s'),
+                    LOG.error('Failed to terminate connection '
+                              '%(initiator)s %(vol)s',
                               {'initiator': initiator_name,
                                'vol': volume_name})
         raise exception.VolumeBackendAPIException(

@@ -17,7 +17,6 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder import interface
-from cinder.i18n import _LE, _LW
 from cinder.volume import driver
 from cinder.volume.drivers.synology import synology_common as common
 
@@ -67,8 +66,8 @@ class SynoISCSIDriver(driver.ISCSIDriver):
         """Extend an existing volume's size."""
 
         if volume['size'] >= new_size:
-            LOG.error(_LE('New size is smaller than original size. '
-                      'New: [%(new)d] Old: [%(old)d]'),
+            LOG.error('New size is smaller than original size. '
+                      'New: [%(new)d] Old: [%(old)d]',
                       {'new': new_size,
                        'old': volume['size']})
             return
@@ -107,7 +106,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
                 self.stats['driver_version'] = self.VERSION
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to get_volume_stats.'))
+                LOG.exception('Failed to get_volume_stats.')
 
         return self.stats
 
@@ -123,7 +122,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
             iqn, trg_id, provider_auth = (self.common.create_iscsi_export
                                           (volume['name'], volume['id']))
         except Exception as e:
-            LOG.exception(_LE('Failed to remove_export.'))
+            LOG.exception('Failed to remove_export.')
             raise exception.ExportFailure(reason=e)
 
         model_update['provider_location'] = (self.common.get_provider_location
@@ -137,7 +136,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
             if not self.common.is_lun_mapped(volume['name']):
                 return
         except exception.SynoLUNNotExist:
-            LOG.warning(_LW("Volume not exist"))
+            LOG.warning("Volume not exist")
             return
 
         try:
@@ -145,7 +144,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
                          (volume['provider_location']))
             self.common.remove_iscsi_export(volume['name'], trg_id)
         except Exception as e:
-            LOG.exception(_LE('Failed to remove_export.'))
+            LOG.exception('Failed to remove_export.')
             raise exception.RemoveExportException(volume=volume,
                                                   reason=e.msg)
 
@@ -156,7 +155,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
             iscsi_properties = self.common.get_iscsi_properties(volume)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Failed to initialize_connection.'))
+                LOG.exception('Failed to initialize_connection.')
 
         volume_type = self.configuration.safe_get('iscsi_protocol') or 'iscsi'
 

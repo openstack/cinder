@@ -23,8 +23,8 @@ from oslo_log import log as logging
 from oslo_utils import units
 import six
 
-from cinder.i18n import _, _LE
 from cinder import exception
+from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
 
@@ -256,7 +256,7 @@ class HNASSSHBackend(object):
         fs_list = self._get_fs_list()
         fs = fs_list.get(fs_label)
         if not fs:
-            LOG.error(_LE("Can't find file %(file)s in FS %(label)s"),
+            LOG.error("Can't find file %(file)s in FS %(label)s",
                       {'file': src, 'label': fs_label})
             msg = _('FS label: %(fs_label)s') % {'fs_label': fs_label}
             raise exception.InvalidParameterValue(err=msg)

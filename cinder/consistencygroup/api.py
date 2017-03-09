@@ -28,7 +28,7 @@ from oslo_utils import timeutils
 from cinder import db
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields as c_fields
 import cinder.policy
@@ -110,8 +110,7 @@ class API(base.Base):
 
         valid = self._valid_availability_zone(availability_zone)
         if not valid:
-            msg = _LW(
-                "Availability zone '%s' is invalid") % (availability_zone)
+            msg = _("Availability zone '%s' is invalid.") % availability_zone
             LOG.warning(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -148,8 +147,8 @@ class API(base.Base):
             group.create()
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error occurred when creating consistency group"
-                              " %s."), name)
+                LOG.error("Error occurred when creating consistency group "
+                          "%s.", name)
 
         request_spec_list = []
         filter_properties_list = []
@@ -189,19 +188,19 @@ class API(base.Base):
             group.create(cg_snap_id=cgsnapshot_id, cg_id=source_cgid)
         except exception.ConsistencyGroupNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Source CG %(source_cg)s not found when "
-                              "creating consistency group %(cg)s from "
-                              "source."),
+                LOG.error("Source CG %(source_cg)s not found when "
+                          "creating consistency group %(cg)s from "
+                          "source.",
                           {'cg': name, 'source_cg': source_cgid})
         except exception.CgSnapshotNotFound:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("CG snapshot %(cgsnap)s not found when creating "
-                              "consistency group %(cg)s from source."),
+                LOG.error("CG snapshot %(cgsnap)s not found when creating "
+                          "consistency group %(cg)s from source.",
                           {'cg': name, 'cgsnap': cgsnapshot_id})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error occurred when creating consistency group"
-                              " %(cg)s from cgsnapshot %(cgsnap)s."),
+                LOG.error("Error occurred when creating consistency group"
+                          " %(cg)s from cgsnapshot %(cgsnap)s.",
                           {'cg': name, 'cgsnap': cgsnapshot_id})
 
         # Update quota for consistencygroups
@@ -257,10 +256,10 @@ class API(base.Base):
                                            **kwargs)
                 except exception.CinderException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_LE("Error occurred when creating volume "
-                                      "entry from snapshot in the process of "
-                                      "creating consistency group %(group)s "
-                                      "from cgsnapshot %(cgsnap)s."),
+                        LOG.error("Error occurred when creating volume "
+                                  "entry from snapshot in the process of "
+                                  "creating consistency group %(group)s "
+                                  "from cgsnapshot %(cgsnap)s.",
                                   {'group': group.id,
                                    'cgsnap': cgsnapshot.id})
         except Exception:
@@ -268,9 +267,9 @@ class API(base.Base):
                 try:
                     group.destroy()
                 finally:
-                    LOG.error(_LE("Error occurred when creating consistency "
-                                  "group %(group)s from cgsnapshot "
-                                  "%(cgsnap)s."),
+                    LOG.error("Error occurred when creating consistency "
+                              "group %(group)s from cgsnapshot "
+                              "%(cgsnap)s.",
                               {'group': group.id,
                                'cgsnap': cgsnapshot.id})
 
@@ -321,10 +320,10 @@ class API(base.Base):
                                            **kwargs)
                 except exception.CinderException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_LE("Error occurred when creating cloned "
-                                      "volume in the process of creating "
-                                      "consistency group %(group)s from "
-                                      "source CG %(source_cg)s."),
+                        LOG.error("Error occurred when creating cloned "
+                                  "volume in the process of creating "
+                                  "consistency group %(group)s from "
+                                  "source CG %(source_cg)s.",
                                   {'group': group.id,
                                    'source_cg': source_cg.id})
         except Exception:
@@ -332,9 +331,9 @@ class API(base.Base):
                 try:
                     group.destroy()
                 finally:
-                    LOG.error(_LE("Error occurred when creating consistency "
-                                  "group %(group)s from source CG "
-                                  "%(source_cg)s."),
+                    LOG.error("Error occurred when creating consistency "
+                              "group %(group)s from source CG "
+                              "%(source_cg)s.",
                               {'group': group.id,
                                'source_cg': source_cg.id})
 
@@ -390,9 +389,9 @@ class API(base.Base):
                 try:
                     group.destroy()
                 finally:
-                    LOG.error(_LE("Error occurred when building "
-                                  "request spec list for consistency group "
-                                  "%s."), group.id)
+                    LOG.error("Error occurred when building "
+                              "request spec list for consistency group "
+                              "%s.", group.id)
 
         # Cast to the scheduler and let it handle whatever is needed
         # to select the target host for this group.
@@ -418,8 +417,8 @@ class API(base.Base):
                         quota_utils.process_reserve_over_quota(
                             context, e, resource='groups')
                 finally:
-                    LOG.error(_LE("Failed to update quota for "
-                                  "consistency group %s."), group.id)
+                    LOG.error("Failed to update quota for "
+                              "consistency group %s.", group.id)
 
     @wrap_check_policy
     def delete(self, context, group, force=False):
@@ -749,8 +748,8 @@ class API(base.Base):
                     if cgsnapshot.obj_attr_is_set('id'):
                         cgsnapshot.destroy()
                 finally:
-                    LOG.error(_LE("Error occurred when creating cgsnapshot"
-                                  " %s."), cgsnapshot_id)
+                    LOG.error("Error occurred when creating cgsnapshot"
+                              " %s.", cgsnapshot_id)
 
         self.volume_rpcapi.create_cgsnapshot(context, cgsnapshot)
 

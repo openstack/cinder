@@ -38,7 +38,7 @@ from oslo_log import log as logging
 from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW, _LE
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
@@ -137,10 +137,10 @@ class HPE3PARFCDriver(driver.ManageableVD,
             common.client_login()
         except Exception:
             if common._replication_enabled:
-                LOG.warning(_LW("The primary array is not reachable at this "
-                                "time. Since replication is enabled, "
-                                "listing replication targets and failing over "
-                                "a volume can still be performed."))
+                LOG.warning("The primary array is not reachable at this "
+                            "time. Since replication is enabled, "
+                            "listing replication targets and failing over "
+                            "a volume can still be performed.")
                 pass
             else:
                 raise
@@ -378,8 +378,8 @@ class HPE3PARFCDriver(driver.ManageableVD,
                 common.client.getHostVLUNs(hostname)
             except hpeexceptions.HTTPNotFound:
                 # No more exports for this host.
-                LOG.info(_LI("Need to remove FC Zone, building initiator "
-                             "target map"))
+                LOG.info("Need to remove FC Zone, building initiator "
+                         "target map")
 
                 target_wwns, init_targ_map, _numPaths = \
                     self._build_initiator_target_map(common, connector)
@@ -455,7 +455,7 @@ class HPE3PARFCDriver(driver.ManageableVD,
                                          optional={'domain': domain,
                                                    'persona': persona_id})
             except hpeexceptions.HTTPConflict as path_conflict:
-                msg = _LE("Create FC host caught HTTP conflict code: %s")
+                msg = "Create FC host caught HTTP conflict code: %s"
                 LOG.exception(msg, path_conflict.get_code())
                 with save_and_reraise_exception(reraise=False) as ctxt:
                     if path_conflict.get_code() is EXISTENT_PATH:
@@ -480,8 +480,8 @@ class HPE3PARFCDriver(driver.ManageableVD,
         try:
             common.client.modifyHost(hostname, mod_request)
         except hpeexceptions.HTTPConflict as path_conflict:
-            msg = _LE("Modify FC Host %(hostname)s caught "
-                      "HTTP conflict code: %(code)s")
+            msg = ("Modify FC Host %(hostname)s caught "
+                   "HTTP conflict code: %(code)s")
             LOG.exception(msg,
                           {'hostname': hostname,
                            'code': path_conflict.get_code()})

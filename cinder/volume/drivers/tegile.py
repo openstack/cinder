@@ -26,9 +26,9 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder import utils
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -203,7 +203,7 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
         self._api_executor.send_api_request(method='createVolume',
                                             params=params)
 
-        LOG.info(_LI("Created volume %(volname)s, volume id %(volid)s."),
+        LOG.info("Created volume %(volname)s, volume id %(volid)s.",
                  {'volname': volume['name'], 'volid': volume['id']})
 
         return self.get_additional_info(volume, pool, self._default_project)
@@ -252,8 +252,8 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
         params.append(snap_name)
         params.append(False)
 
-        LOG.info(_LI('Creating snapshot for volume_name=%(vol)s'
-                     ' snap_name=%(name)s snap_description=%(desc)s'),
+        LOG.info('Creating snapshot for volume_name=%(vol)s'
+                 ' snap_name=%(name)s snap_description=%(desc)s',
                  {'vol': volume_name,
                   'name': snap_name,
                   'desc': snap_description})
@@ -377,8 +377,8 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
 
             self._stats = data
         except Exception as e:
-            LOG.warning(_LW('TegileIntelliFlashVolumeDriver(%(clsname)s) '
-                            '_update_volume_stats failed: %(error)s'),
+            LOG.warning('TegileIntelliFlashVolumeDriver(%(clsname)s) '
+                        '_update_volume_stats failed: %(error)s',
                         {'clsname': self.__class__.__name__,
                          'error': e})
 

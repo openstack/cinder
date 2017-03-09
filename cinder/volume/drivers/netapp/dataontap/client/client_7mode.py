@@ -22,7 +22,7 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
@@ -67,7 +67,7 @@ class Client(client_base.Client):
             node_client.send_request('ems-autosupport-log', message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
-            LOG.warning(_LW('Failed to invoke EMS. %s'), e)
+            LOG.warning('Failed to invoke EMS. %s', e)
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
@@ -151,8 +151,8 @@ class Client(client_base.Client):
                     if luns:
                         lun_list.extend(luns)
                 except netapp_api.NaApiError:
-                    LOG.warning(_LW("Error finding LUNs for volume %s."
-                                    " Verify volume exists."), vol)
+                    LOG.warning("Error finding LUNs for volume %s."
+                                " Verify volume exists.", vol)
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)

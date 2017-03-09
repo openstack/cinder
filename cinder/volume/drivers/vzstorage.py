@@ -27,7 +27,7 @@ from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
@@ -403,7 +403,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     @remotefs_drv.locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
-        LOG.info(_LI('Extending volume %s.'), volume.id)
+        LOG.info('Extending volume %s.', volume.id)
         volume_format = self.get_volume_format(volume)
         self._extend_volume(volume, size_gb, volume_format)
 
@@ -411,7 +411,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = self.local_path(volume)
 
         self._check_extend_volume_support(volume, size_gb)
-        LOG.info(_LI('Resizing file to %sG...'), size_gb)
+        LOG.info('Resizing file to %sG...', size_gb)
 
         self._do_extend_volume(volume_path, size_gb, volume_format)
 
@@ -540,8 +540,8 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             self._delete(mounted_path)
             self._delete(mounted_path + ".qemu_img_info")
         else:
-            LOG.info(_LI("Skipping deletion of volume %s "
-                         "as it does not exist."), mounted_path)
+            LOG.info("Skipping deletion of volume %s "
+                     "as it does not exist.", mounted_path)
 
         info_path = self._local_path_volume_info(volume)
         self._delete(info_path)
@@ -602,7 +602,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path, empty_if_missing=True)
         if snapshot.id not in snap_info:
-            LOG.warning(_LW("Snapshot %s doesn't exist in snap_info"),
+            LOG.warning("Snapshot %s doesn't exist in snap_info",
                         snapshot.id)
             return
 
@@ -679,7 +679,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                                                                image_meta)
 
     def _create_cloned_volume(self, volume, src_vref):
-        LOG.info(_LI('Cloning volume %(src)s to volume %(dst)s'),
+        LOG.info('Cloning volume %(src)s to volume %(dst)s',
                  {'src': src_vref.id,
                   'dst': volume.id})
 

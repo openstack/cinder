@@ -19,7 +19,7 @@ from oslo_log import log as logging
 
 from cinder import coordination
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder.volume.drivers.kaminario import kaminario_common as common
@@ -135,7 +135,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                 iqn.save()
             except Exception as ex:
                 self._delete_host_by_name(host_name)
-                LOG.exception(_LE("Unable to create host: %s in K2."),
+                LOG.exception("Unable to create host: %s in K2.",
                               host_name)
                 raise exception.KaminarioCinderDriverException(
                     reason=six.text_type(ex.message))

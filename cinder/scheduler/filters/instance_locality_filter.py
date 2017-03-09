@@ -18,7 +18,7 @@ from oslo_utils import uuidutils
 
 from cinder.compute import nova
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _
 from cinder.scheduler import filters
 from cinder.volume import utils as volume_utils
 
@@ -96,8 +96,8 @@ class InstanceLocalityFilter(filters.BaseBackendFilter):
             return self._cache[instance_uuid] == backend
 
         if not self._nova_has_extended_server_attributes(context):
-            LOG.warning(_LW('Hint "%s" dropped because '
-                            'ExtendedServerAttributes not active in Nova.'),
+            LOG.warning('Hint "%s" dropped because '
+                        'ExtendedServerAttributes not active in Nova.',
                         HINT_KEYWORD)
             raise exception.CinderException(_('Hint "%s" not supported.') %
                                             HINT_KEYWORD)
@@ -107,10 +107,10 @@ class InstanceLocalityFilter(filters.BaseBackendFilter):
                                        timeout=REQUESTS_TIMEOUT)
 
         if not hasattr(server, INSTANCE_HOST_PROP):
-            LOG.warning(_LW('Hint "%s" dropped because Nova did not return '
-                            'enough information. Either Nova policy needs to '
-                            'be changed or a privileged account for Nova '
-                            'should be specified in conf.'), HINT_KEYWORD)
+            LOG.warning('Hint "%s" dropped because Nova did not return '
+                        'enough information. Either Nova policy needs to '
+                        'be changed or a privileged account for Nova '
+                        'should be specified in conf.', HINT_KEYWORD)
             raise exception.CinderException(_('Hint "%s" not supported.') %
                                             HINT_KEYWORD)
 

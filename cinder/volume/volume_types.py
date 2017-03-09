@@ -28,7 +28,7 @@ from oslo_utils import uuidutils
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import quota
 from cinder import rpc
 from cinder import utils
@@ -58,7 +58,7 @@ def create(context,
                                               description=description),
                                          projects=projects)
     except db_exc.DBError:
-        LOG.exception(_LE('DB error:'))
+        LOG.exception('DB error:')
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
     return type_ref
@@ -83,7 +83,7 @@ def update(context, id, name, description, is_public=None):
                                              old_type_name,
                                              name)
     except db_exc.DBError:
-        LOG.exception(_LE('DB error:'))
+        LOG.exception('DB error:')
         raise exception.VolumeTypeUpdateFailed(id=id)
 
 
@@ -159,8 +159,8 @@ def get_default_volume_type():
             # Couldn't find volume type with the name in default_volume_type
             # flag, record this issue and move on
             # TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_LE('Default volume type is not found. '
-                          'Please check default_volume_type config:'))
+            LOG.exception('Default volume type is not found. '
+                          'Please check default_volume_type config:')
 
     return vol_type
 

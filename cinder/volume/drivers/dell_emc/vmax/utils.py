@@ -30,7 +30,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import volume_types
 
@@ -85,9 +85,9 @@ class VMAXUtils(object):
 
     def __init__(self, prtcl):
         if not pywbemAvailable:
-            LOG.info(_LI(
+            LOG.info(
                 "Module PyWBEM not installed. "
-                "Install PyWBEM using the python-pywbem package."))
+                "Install PyWBEM using the python-pywbem package.")
         self.protocol = prtcl
 
     def find_storage_configuration_service(self, conn, storageSystemName):
@@ -319,9 +319,8 @@ class VMAXUtils(object):
             if retries > maxJobRetries:
                 kwargs['rc'], kwargs['errordesc'] = (
                     self._verify_job_state(conn, job))
-                LOG.error(_LE("_wait_for_job_complete "
-                              "failed after %(retries)d "
-                              "tries."),
+                LOG.error("_wait_for_job_complete failed after %(retries)d "
+                          "tries.",
                           {'retries': retries})
 
                 raise loopingcall.LoopingCallDone()
@@ -457,8 +456,7 @@ class VMAXUtils(object):
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
             if kwargs['retries'] > maxJobRetries:
-                LOG.error(_LE("_wait_for_sync failed after %(retries)d "
-                              "tries."),
+                LOG.error("_wait_for_sync failed after %(retries)d tries.",
                           {'retries': retries})
                 raise loopingcall.LoopingCallDone(retvalue=maxJobRetries)
             if kwargs['wait_for_sync_called']:
@@ -526,7 +524,7 @@ class VMAXUtils(object):
         if len(groups) > 0:
             foundStorageSystemInstanceName = groups[0]
         else:
-            LOG.error(_LE("Cannot get storage system."))
+            LOG.error("Cannot get storage system.")
             raise
 
         return foundStorageSystemInstanceName
@@ -549,9 +547,9 @@ class VMAXUtils(object):
             ResultClass='CIM_DeviceMaskingGroup')
 
         if len(storageGroupInstanceNames) > 1:
-            LOG.info(_LI(
+            LOG.info(
                 "The volume belongs to more than one storage group. "
-                "Returning storage group %(sgName)s."),
+                "Returning storage group %(sgName)s.",
                 {'sgName': sgName})
         for storageGroupInstanceName in storageGroupInstanceNames:
             instance = self.get_existing_instance(
@@ -1001,9 +999,9 @@ class VMAXUtils(object):
         poolInstanceName = self.get_pool_by_name(
             conn, poolName, storageSystemName)
         if poolInstanceName is None:
-            LOG.error(_LE(
+            LOG.error(
                 "Unable to retrieve pool instance of %(poolName)s on "
-                "array %(array)s."),
+                "array %(array)s.",
                 {'poolName': poolName, 'array': storageSystemName})
             return (0, 0)
         storagePoolInstance = conn.GetInstance(
@@ -1241,7 +1239,7 @@ class VMAXUtils(object):
                 infoDetail = host.split('@')
             storageSystem = 'SYMMETRIX+' + infoDetail[0]
         except Exception:
-            LOG.error(_LE("Error parsing array from host capabilities."))
+            LOG.error("Error parsing array from host capabilities.")
 
         return storageSystem
 
@@ -1292,15 +1290,15 @@ class VMAXUtils(object):
         if foundSyncInstanceName:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                LOG.warning(_LW(
+                LOG.warning(
                     "Expect a performance hit as volume is not fully "
-                    "synced on %(deviceId)s."),
+                    "synced on %(deviceId)s.",
                     {'deviceId': volumeInstance['DeviceID']})
                 startTime = time.time()
                 self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
-                LOG.warning(_LW(
+                LOG.warning(
                     "Synchronization process took "
-                    "took: %(delta)s H:MM:SS."),
+                    "took: %(delta)s H:MM:SS.",
                     {'delta': self.get_time_delta(startTime,
                                                   time.time())})
 
@@ -1336,9 +1334,9 @@ class VMAXUtils(object):
                 break
 
         if foundSyncInstanceName is None:
-            LOG.warning(_LW(
+            LOG.warning(
                 "Group sync name not found for target group %(target)s "
-                "on %(storageSystem)s."),
+                "on %(storageSystem)s.",
                 {'target': targetRgInstanceName['InstanceID'],
                  'storageSystem': storageSystem})
         else:
@@ -1570,14 +1568,14 @@ class VMAXUtils(object):
                 break
 
         if not isValidSLO:
-            LOG.error(_LE(
+            LOG.error(
                 "SLO: %(slo)s is not valid. Valid values are Bronze, Silver, "
-                "Gold, Platinum, Diamond, Optimized, NONE."), {'slo': slo})
+                "Gold, Platinum, Diamond, Optimized, NONE.", {'slo': slo})
 
         if not isValidWorkload:
-            LOG.error(_LE(
+            LOG.error(
                 "Workload: %(workload)s is not valid. Valid values are "
-                "DSS_REP, DSS, OLTP, OLTP_REP, NONE."), {'workload': workload})
+                "DSS_REP, DSS, OLTP, OLTP_REP, NONE.", {'workload': workload})
 
         return isValidSLO, isValidWorkload
 
@@ -1641,8 +1639,8 @@ class VMAXUtils(object):
         if len(metaHeads) > 0:
             metaHeadInstanceName = metaHeads[0]
         if metaHeadInstanceName is None:
-            LOG.info(_LI(
-                "Volume  %(volume)s does not have meta device members."),
+            LOG.info(
+                "Volume  %(volume)s does not have meta device members.",
                 {'volume': volumeInstanceName})
 
         return metaHeadInstanceName
@@ -1714,7 +1712,7 @@ class VMAXUtils(object):
             instance = None
         else:
             # Something else that we cannot recover from has happened.
-            LOG.error(_LE("Exception: %s"), desc)
+            LOG.error("Exception: %s", desc)
             exceptionMessage = (_(
                 "Cannot verify the existence of object:"
                 "%(instanceName)s.")
@@ -1806,8 +1804,8 @@ class VMAXUtils(object):
                       {'initiator': initiator, 'rc': rc, 'ret': ret})
             hardwareIdList = ret['HardwareID']
         else:
-            LOG.warning(_LW("CreateStorageHardwareID failed. initiator: "
-                            "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
+            LOG.warning("CreateStorageHardwareID failed. initiator: "
+                        "%(initiator)s, rc=%(rc)d, ret=%(ret)s.",
                         {'initiator': initiator, 'rc': rc, 'ret': ret})
         return hardwareIdList
 
@@ -1826,7 +1824,7 @@ class VMAXUtils(object):
             if 'iqn' in initiator.lower():
                 hardwareTypeId = 5
         if hardwareTypeId == 0:
-            LOG.warning(_LW("Cannot determine the hardware type."))
+            LOG.warning("Cannot determine the hardware type.")
         return hardwareTypeId
 
     def _process_tag(self, element, tagName):
@@ -1976,15 +1974,15 @@ class VMAXUtils(object):
             portGroup = self._get_random_portgroup(dom)
             serialNumber = self._process_tag(dom, 'Array')
             if serialNumber is None:
-                LOG.error(_LE(
+                LOG.error(
                     "Array Serial Number must be in the file "
-                    "%(fileName)s."),
+                    "%(fileName)s.",
                     {'fileName': fileName})
             poolName = self._process_tag(dom, 'Pool')
             if poolName is None:
-                LOG.error(_LE(
+                LOG.error(
                     "PoolName must be in the file "
-                    "%(fileName)s."),
+                    "%(fileName)s.",
                     {'fileName': fileName})
             kwargs = self._fill_record(
                 connargs, serialNumber, poolName, portGroup, dom)
@@ -2024,9 +2022,8 @@ class VMAXUtils(object):
                                   % {'poolName': arrayInfoRec['PoolName'],
                                      'array': arrayInfoRec['SerialNumber']})
                 if compString == pool:
-                    LOG.info(_LI(
-                        "The pool_name from extraSpecs is %(pool)s."),
-                        {'pool': pool})
+                    LOG.info("The pool_name from extraSpecs is %(pool)s.",
+                             {'pool': pool})
                     foundArrayInfoRec = arrayInfoRec
                     break
         else:
@@ -2284,9 +2281,9 @@ class VMAXUtils(object):
                 break
 
         if foundSyncInstanceName is None:
-            LOG.info(_LI(
+            LOG.info(
                 "No replication synchronization session found associated "
-                "with source volume %(source)s on %(storageSystem)s."),
+                "with source volume %(source)s on %(storageSystem)s.",
                 {'source': sourceDeviceId, 'storageSystem': storageSystem})
 
         return foundSyncInstanceName
@@ -2301,16 +2298,13 @@ class VMAXUtils(object):
         :returns: volume_model_updates - updated volumes
         """
         volume_model_updates = []
-        LOG.info(_LI(
-            "Updating status for CG: %(id)s."),
-            {'id': cgId})
+        LOG.info("Updaing status for CG: %(id)s.", {'id': cgId})
         if volumes:
             for volume in volumes:
                 volume_model_updates.append({'id': volume['id'],
                                              'status': status})
         else:
-            LOG.info(_LI("No volume found for CG: %(cg)s."),
-                     {'cg': cgId})
+            LOG.info("No volume found for CG: %(cg)s.", {'cg': cgId})
         return volume_model_updates
 
     def get_smi_version(self, conn):
@@ -2612,7 +2606,7 @@ class VMAXUtils(object):
         try:
             max_subscription_percent_int = int(max_subscription_percent)
         except ValueError:
-            LOG.error(_LE("Cannot convert max subscription percent to int."))
+            LOG.error("Cannot convert max subscription percent to int.")
             return None
         return float(max_subscription_percent_int) / 100
 
@@ -2969,14 +2963,14 @@ class VMAXUtils(object):
         if foundSyncInstanceName:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                LOG.warning(_LW(
+                LOG.warning(
                     "Expect a performance hit as volume is not not fully "
-                    "synced on %(deviceId)s."),
+                    "synced on %(deviceId)s.",
                     {'deviceId': sourceInstance['DeviceID']})
                 startTime = time.time()
                 self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
-                LOG.warning(_LW(
-                    "Synchronization process took: %(delta)s H:MM:SS."),
+                LOG.warning(
+                    "Synchronization process took: %(delta)s H:MM:SS.",
                     {'delta': self.get_time_delta(startTime,
                                                   time.time())})
 
@@ -3011,8 +3005,8 @@ class VMAXUtils(object):
             extraSpecs[self.POOL] = poolDetails[2]
             extraSpecs[self.ARRAY] = poolDetails[3]
         except KeyError:
-            LOG.error(_LE("Error parsing SLO, workload from "
-                          "the provided extra_specs."))
+            LOG.error("Error parsing SLO, workload from "
+                      "the provided extra_specs.")
         return extraSpecs
 
     def get_default_intervals_retries(self):

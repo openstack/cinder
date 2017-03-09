@@ -18,7 +18,6 @@ from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _LI, _LE, _LW
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -51,7 +50,7 @@ class IetAdm(iscsi.ISCSITarget):
             with open(self.iet_sessions, 'r') as f:
                 sessions = f.read()
         except Exception:
-            LOG.exception(_LE("Failed to open iet session list for %s"), iqn)
+            LOG.exception("Failed to open iet session list for %s", iqn)
             raise
 
         session_list = re.split('^tid:(?m)', sessions)[1:]
@@ -101,8 +100,8 @@ class IetAdm(iscsi.ISCSITarget):
                 config_auth = ' '.join((self.auth_type,) + chap_auth)
                 self._new_auth(tid, self.auth_type, username, password)
         except putils.ProcessExecutionError:
-            LOG.exception(_LE("Failed to create iscsi target for volume "
-                              "id:%s"), vol_id)
+            LOG.exception("Failed to create iscsi target for volume "
+                          "id:%s", vol_id)
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         # Update config file only if new scsi target is created.
@@ -123,8 +122,8 @@ class IetAdm(iscsi.ISCSITarget):
                 utils.execute("truncate", conf_file, "--size=0",
                               run_as_root=True)
             except putils.ProcessExecutionError:
-                LOG.exception(_LE("Failed to create %(conf)s for volume "
-                                  "id:%(vol_id)s"),
+                LOG.exception("Failed to create %(conf)s for volume "
+                              "id:%(vol_id)s",
                               {'conf': conf_file, 'vol_id': vol_id})
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
@@ -139,13 +138,13 @@ class IetAdm(iscsi.ISCSITarget):
                 with open(conf_file, 'a+') as f:
                     f.write(volume_conf)
         except Exception:
-            LOG.exception(_LE("Failed to update %(conf)s for volume "
-                              "id:%(vol_id)s"),
+            LOG.exception("Failed to update %(conf)s for volume "
+                          "id:%(vol_id)s",
                           {'conf': conf_file, 'vol_id': vol_id})
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        LOG.info(_LI("Removing iscsi_target for volume: %s"), vol_id)
+        LOG.info("Removing iscsi_target for volume: %s", vol_id)
 
         try:
             self._delete_logicalunit(tid, lun)
@@ -156,8 +155,8 @@ class IetAdm(iscsi.ISCSITarget):
 
             self._delete_target(tid)
         except putils.ProcessExecutionError:
-            LOG.exception(_LE("Failed to remove iscsi target for volume "
-                              "id:%s"), vol_id)
+            LOG.exception("Failed to remove iscsi target for volume "
+                          "id:%s", vol_id)
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
         vol_uuid_file = vol_name
@@ -183,14 +182,14 @@ class IetAdm(iscsi.ISCSITarget):
                         iet_conf_text.truncate(0)
                         iet_conf_text.writelines(new_iet_conf_txt)
             except Exception:
-                LOG.exception(_LE("Failed to update %(conf)s for volume id "
-                                  "%(vol_id)s after removing iscsi target"),
+                LOG.exception("Failed to update %(conf)s for volume id "
+                              "%(vol_id)s after removing iscsi target",
                               {'conf': conf_file, 'vol_id': vol_id})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         else:
-            LOG.warning(_LW("Failed to update %(conf)s for volume id "
-                            "%(vol_id)s after removing iscsi target. "
-                            "%(conf)s does not exist."),
+            LOG.warning("Failed to update %(conf)s for volume id "
+                        "%(vol_id)s after removing iscsi target. "
+                        "%(conf)s does not exist.",
                         {'conf': conf_file, 'vol_id': vol_id})
 
     def _find_sid_cid_for_target(self, tid, name, vol_id):
@@ -200,8 +199,8 @@ class IetAdm(iscsi.ISCSITarget):
             with open(self.iet_sessions, 'r') as f:
                 sessions = f.read()
         except Exception as e:
-            LOG.info(_LI("Failed to open iet session list for "
-                         "%(vol_id)s: %(e)s"),
+            LOG.info("Failed to open iet session list for "
+                     "%(vol_id)s: %(e)s",
                      {'vol_id': vol_id, 'e': e})
             return None
 

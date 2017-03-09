@@ -30,7 +30,7 @@ import six
 
 import cinder
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
@@ -216,7 +216,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             if vg_rs.total != 0:
                 LOG.debug("Deleting vg: %s for failed volume in K2.", vg_name)
                 vg_rs.hits[0].delete()
-            LOG.exception(_LE("Creation of volume %s failed."), vol_name)
+            LOG.exception("Creation of volume %s failed.", vol_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -267,8 +267,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             src_ssn.state = "in_sync"
             src_ssn.save()
         except Exception as ex:
-            LOG.exception(_LE("Replication for the volume %s has "
-                              "failed."), vol.name)
+            LOG.exception("Replication for the volume %s has "
+                          "failed.", vol.name)
             self._delete_by_ref(self.client, "replication/sessions",
                                 session_name, 'session')
             self._delete_by_ref(self.target, "replication/sessions",
@@ -327,8 +327,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             tgt_ssn.state = "in_sync"
             tgt_ssn.save()
         except Exception as ex:
-            LOG.exception(_LE("Replication for the volume %s has "
-                              "failed."), rvol_name)
+            LOG.exception("Replication for the volume %s has "
+                          "failed.", rvol_name)
             self._delete_by_ref(self.target, "replication/sessions",
                                 rsession_name, 'session')
             self._delete_by_ref(self.client, "replication/sessions",
@@ -368,8 +368,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                               'cinder-volume')
 
         if secondary_id and secondary_id != self.replica.backend_id:
-            LOG.error(_LE("Kaminario driver received failover_host "
-                          "request, But backend is non replicated device"))
+            LOG.error("Kaminario driver received failover_host "
+                      "request, But backend is non replicated device")
             raise exception.UnableToFailOver(reason=_("Failover requested "
                                                       "on non replicated "
                                                       "backend."))
@@ -569,9 +569,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                         source=snap, retention_policy=rpolicy,
                                         is_exposable=True).save()
             except Exception as ex:
-                LOG.exception(_LE("Creating a view: %(view)s from snapshot: "
-                                  "%(snap)s failed"), {"view": view_name,
-                                                       "snap": snap_name})
+                LOG.exception("Creating a view: %(view)s from snapshot: "
+                              "%(snap)s failed", {"view": view_name,
+                                                  "snap": snap_name})
                 raise exception.KaminarioCinderDriverException(
                     reason=six.text_type(ex.message))
 
@@ -603,8 +603,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.terminate_connection(volume, properties)
             cview.delete()
             self.delete_volume(volume)
-            LOG.exception(_LE("Copy to volume: %(vol)s from view: %(view)s "
-                              "failed"), {"vol": vol_name, "view": view_name})
+            LOG.exception("Copy to volume: %(vol)s from view: %(view)s "
+                          "failed", {"vol": vol_name, "view": view_name})
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -650,7 +650,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.terminate_connection(src_vref, properties)
             self.terminate_connection(volume, properties)
             self.delete_volume(volume)
-            LOG.exception(_LE("Create a clone: %s failed."), clone_name)
+            LOG.exception("Create a clone: %s failed.", clone_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -676,7 +676,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             if vg_rs.total != 0:
                 vg_rs.hits[0].delete()
         except Exception as ex:
-            LOG.exception(_LE("Deletion of volume %s failed."), vol_name)
+            LOG.exception("Deletion of volume %s failed.", vol_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -776,7 +776,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                             source=vg, retention_policy=rpolicy,
                             is_auto_deleteable=False).save()
         except Exception as ex:
-            LOG.exception(_LE("Creation of snapshot: %s failed."), snap_name)
+            LOG.exception("Creation of snapshot: %s failed.", snap_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -790,7 +790,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             if snap_rs.total != 0:
                 snap_rs.hits[0].delete()
         except Exception as ex:
-            LOG.exception(_LE("Deletion of snapshot: %s failed."), snap_name)
+            LOG.exception("Deletion of snapshot: %s failed.", snap_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -805,7 +805,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug("Extending volume: %s in K2.", vol_name)
             vol.save()
         except Exception as ex:
-            LOG.exception(_LE("Extending volume: %s failed."), vol_name)
+            LOG.exception("Extending volume: %s failed.", vol_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -882,7 +882,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             return self.client.search("retention_policies",
                                       name="Best_Effort_Retention").hits[0]
         except Exception as ex:
-            LOG.exception(_LE("Retention policy search failed in K2."))
+            LOG.exception("Retention policy search failed in K2.")
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
@@ -941,7 +941,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 LOG.debug("Deleting initiator hostname: %s in K2.", host_name)
                 host.delete()
         else:
-            LOG.warning(_LW("Host: %s not found on K2."), host_name)
+            LOG.warning("Host: %s not found on K2.", host_name)
 
     @kaminario_logger
     def k2_initialize_connection(self, volume, connector):
@@ -960,9 +960,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         except Exception as ex:
             if host_rs.total == 0:
                 self._delete_host_by_name(host_name)
-            LOG.exception(_LE("Unable to map volume: %(vol)s to host: "
-                              "%(host)s"), {'host': host_name,
-                          'vol': vol.name})
+            LOG.exception("Unable to map volume: %(vol)s to host: "
+                          "%(host)s", {'host': host_name,
+                                       'vol': vol.name})
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
         # Get lun number.
@@ -1041,10 +1041,10 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug("Manage volume: %s in K2.", vol_name)
             vol.save()
         except exception.ManageExistingInvalidReference:
-            LOG.exception(_LE("manage volume: %s failed."), vol_name)
+            LOG.exception("manage volume: %s failed.", vol_name)
             raise
         except Exception:
-            LOG.exception(_LE("manage volume: %s failed."), vol_name)
+            LOG.exception("manage volume: %s failed.", vol_name)
             vg_rs = self.client.search("volume_groups", name=vg_new_name)
             if hasattr(vg_rs, 'hits') and vg_rs.total != 0:
                 vg = vg_rs.hits[0]
@@ -1111,8 +1111,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug(msg)
             return False
         else:
-            LOG.error(_LE('Change from type1: %(type1)s to type2: %(type2)s '
-                          'is not supported directly in K2.'),
+            LOG.error('Change from type1: %(type1)s to type2: %(type2)s '
+                      'is not supported directly in K2.',
                       {'type1': old_type, 'type2': new_type})
             return False
 

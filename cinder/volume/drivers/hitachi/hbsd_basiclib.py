@@ -23,7 +23,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder import utils
 
 SMPL = 1
@@ -168,7 +168,7 @@ def set_msg(msg_id, **kwargs):
 def output_err(msg_id, **kwargs):
     msg = HBSD_ERR_MSG.get(msg_id) % kwargs
 
-    LOG.error(_LE("MSGID%(id)04d-E: %(msg)s"), {'id': msg_id, 'msg': msg})
+    LOG.error("MSGID%(id)04d-E: %(msg)s", {'id': msg_id, 'msg': msg})
 
     return msg
 

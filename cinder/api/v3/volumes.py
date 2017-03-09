@@ -25,8 +25,8 @@ from cinder.api.v2 import volumes as volumes_v2
 from cinder.api.v3.views import volumes as volume_views_v3
 from cinder import exception
 from cinder import group as group_api
+from cinder.i18n import _
 from cinder import objects
-from cinder.i18n import _, _LI
 import cinder.policy
 from cinder import utils
 
@@ -70,8 +70,8 @@ class VolumeController(volumes_v2.VolumeController):
                 params = "(cascade: %(c)s, force: %(f)s)" % {'c': cascade,
                                                              'f': force}
 
-        msg = _LI("Delete volume with id: %(id)s %(params)s")
-        LOG.info(msg, {'id': id, 'params': params}, context=context)
+        LOG.info("Delete volume with id: %(id)s %(params)s",
+                 {'id': id, 'params': params}, context=context)
 
         if force:
             check_policy(context, 'force_delete')
@@ -264,7 +264,7 @@ class VolumeController(volumes_v2.VolumeController):
         elif size is None and kwargs['source_replica'] is not None:
             size = kwargs['source_replica']['size']
 
-        LOG.info(_LI("Create volume of %s GB"), size)
+        LOG.info("Create volume of %s GB", size)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_ref = volume.get('imageRef')

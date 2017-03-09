@@ -32,7 +32,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
@@ -173,7 +173,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
                         connector)
                     return host
         else:
-            LOG.warning(_LW('Host %(host)s was not found on backend storage.'),
+            LOG.warning('Host %(host)s was not found on backend storage.',
                         {'host': hname})
         return None
 
@@ -208,8 +208,8 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
         if not preferred_node_entry:
             # Get 1st node in I/O group
             preferred_node_entry = io_group_nodes[0]
-            LOG.warning(_LW('_get_vdisk_map_properties: Did not find a '
-                        'preferred node for vdisk %s.'), vdisk_name)
+            LOG.warning('_get_vdisk_map_properties: Did not find a '
+                        'preferred node for vdisk %s.', vdisk_name)
         properties = {
             'target_discovered': False,
             'target_lun': lun_id,
@@ -269,8 +269,8 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 self.terminate_connection(volume, connector)
-                LOG.error(_LE('Failed to collect return properties for '
-                              'volume %(vol)s and connector %(conn)s.'),
+                LOG.error('Failed to collect return properties for '
+                          'volume %(vol)s and connector %(conn)s.',
                           {'vol': volume, 'conn': connector})
 
         LOG.debug(
@@ -408,8 +408,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
         if 'iSCSI' == self._protocol and 'initiator' in connector:
             valid = True
         if not valid:
-            msg = _LE('The connector does not contain the '
+            LOG.error('The connector does not contain the '
                       'required information: initiator is missing')
-            LOG.error(msg)
             raise exception.InvalidConnectorException(missing=(
                                                       'initiator'))

@@ -18,7 +18,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 
@@ -94,7 +94,7 @@ class SnapshotActionsController(wsgi.Controller):
 
             update_dict.update({'progress': progress})
 
-        LOG.info(_LI("Updating snapshot %(id)s with info %(dict)s"),
+        LOG.info("Updating snapshot %(id)s with info %(dict)s",
                  {'id': id, 'dict': update_dict})
 
         current_snapshot.update(update_dict)

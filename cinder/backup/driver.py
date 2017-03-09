@@ -24,7 +24,7 @@ import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _
 from cinder import keymgr as key_manager
 
 service_opts = [
@@ -64,7 +64,7 @@ class BackupMetadataAPI(base.Base):
         try:
             jsonutils.dumps(value)
         except TypeError:
-            LOG.info(_LI("Value with type=%s is not serializable"),
+            LOG.info("Value with type=%s is not serializable",
                      type(value))
             return False
 
@@ -84,8 +84,8 @@ class BackupMetadataAPI(base.Base):
             for key, value in meta:
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(value):
-                    LOG.info(_LI("Unable to serialize field '%s' - excluding "
-                                 "from backup"), key)
+                    LOG.info("Unable to serialize field '%s' - excluding "
+                             "from backup", key)
                     continue
                 # Copy the encryption key uuid for backup
                 if key is 'encryption_key_id' and value is not None:
@@ -112,8 +112,8 @@ class BackupMetadataAPI(base.Base):
             for entry in meta:
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(meta[entry]):
-                    LOG.info(_LI("Unable to serialize field '%s' - excluding "
-                                 "from backup"), entry)
+                    LOG.info("Unable to serialize field '%s' - excluding "
+                             "from backup", entry)
                     continue
                 container[type_tag][entry] = meta[entry]
 
@@ -136,8 +136,8 @@ class BackupMetadataAPI(base.Base):
                 for entry in meta:
                     # Exclude fields that are "not JSON serializable"
                     if not self._is_serializable(entry.value):
-                        LOG.info(_LI("Unable to serialize field '%s' - "
-                                     "excluding from backup"), entry)
+                        LOG.info("Unable to serialize field '%s' - "
+                                 "excluding from backup", entry)
                         continue
                     container[type_tag][entry.key] = entry.value
 
@@ -234,9 +234,9 @@ class BackupMetadataAPI(base.Base):
             else:
                 # Volume type id's do not match, and destination volume
                 # has a volume type. Throw exception.
-                LOG.warning(_LW("Destination volume type is different from "
-                                "source volume type for an encrypted volume. "
-                                "Encrypted backup restore has failed."))
+                LOG.warning("Destination volume type is different from "
+                            "source volume type for an encrypted volume. "
+                            "Encrypted backup restore has failed.")
                 msg = (_("The source volume type '%(src)s' is different "
                          "than the destination volume type '%(dest)s'.") %
                        {'src': src_volume_type_id,
