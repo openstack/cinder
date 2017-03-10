@@ -107,8 +107,6 @@ from cinder.volume.drivers.hitachi import hbsd_horcm as \
     cinder_volume_drivers_hitachi_hbsdhorcm
 from cinder.volume.drivers.hitachi import hbsd_iscsi as \
     cinder_volume_drivers_hitachi_hbsdiscsi
-from cinder.volume.drivers.hitachi import hnas_iscsi as \
-    cinder_volume_drivers_hitachi_hnasiscsi
 from cinder.volume.drivers.hitachi import hnas_nfs as \
     cinder_volume_drivers_hitachi_hnasnfs
 from cinder.volume.drivers.hitachi import hnas_utils as \
@@ -286,7 +284,6 @@ def list_opts():
                 cinder_volume_drivers_hitachi_hbsdfc.volume_opts,
                 cinder_volume_drivers_hitachi_hbsdhorcm.volume_opts,
                 cinder_volume_drivers_hitachi_hbsdiscsi.volume_opts,
-                cinder_volume_drivers_hitachi_hnasiscsi.iSCSI_OPTS,
                 cinder_volume_drivers_hitachi_hnasnfs.NFS_OPTS,
                 cinder_volume_drivers_hitachi_hnasutils.drivers_common_opts,
                 cinder_volume_drivers_hitachi_vspcommon.common_opts,

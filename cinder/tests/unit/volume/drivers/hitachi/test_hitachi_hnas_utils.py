@@ -14,7 +14,6 @@
 #    under the License.
 #
 
-import copy
 import ddt
 import os
 
@@ -26,7 +25,6 @@ from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.hitachi import hnas_iscsi
 from cinder.volume.drivers.hitachi import hnas_utils
 from cinder.volume import volume_types
 
@@ -38,14 +36,13 @@ _VOLUME = {'name': 'cinder-volume',
            'provider_location': 'hnas'}
 
 service_parameters = ['volume_type', 'hdp']
-optional_parameters = ['ssc_cmd', 'cluster_admin_ip0', 'iscsi_ip']
+optional_parameters = ['ssc_cmd', 'cluster_admin_ip0']
 
 config_from_cinder_conf = {
     'username': 'supervisor',
     'fs': {'easy-stack': 'easy-stack',
            'silver': 'silver'},
     'ssh_port': 22,
-    'chap_enabled': True,
     'cluster_admin_ip0': None,
     'ssh_private_key': None,
     'mgmt_ip0': '172.24.44.15',
@@ -70,12 +67,10 @@ valid_XML_str = '''
   <ssh_private_key>/home/ubuntu/.ssh/id_rsa</ssh_private_key>
   <svc_0>
     <volume_type>default</volume_type>
-    <iscsi_ip>172.24.49.21</iscsi_ip>
     <hdp>easy-stack</hdp>
   </svc_0>
   <svc_1>
     <volume_type>silver</volume_type>
-    <iscsi_ip>172.24.49.32</iscsi_ip>
     <hdp>FS-CinderDev1</hdp>
   </svc_1>
 </config>
@@ -98,7 +93,6 @@ XML_empty_authentication_param = '''
   <ssh_private_key></ssh_private_key>
   <svc_0>
     <volume_type>default</volume_type>
-    <iscsi_ip>172.24.49.21</iscsi_ip>
     <hdp>easy-stack</hdp>
   </svc_0>
 </config>
@@ -112,7 +106,6 @@ XML_without_mandatory_params = '''
   <ssh_enabled>False</ssh_enabled>
   <svc_0>
     <volume_type>default</volume_type>
-    <iscsi_ip>172.24.49.21</iscsi_ip>
     <hdp>easy-stack</hdp>
   </svc_0>
 </config>
@@ -130,7 +123,7 @@ XML_no_services_configured = '''
 '''
 
 parsed_xml = {'username': 'supervisor', 'password': 'supervisor',
-              'ssc_cmd': 'ssc', 'iscsi_ip': None, 'ssh_port': 22,
+              'ssc_cmd': 'ssc', 'ssh_port': 22,
               'fs': {'easy-stack': 'easy-stack',
                      'FS-CinderDev1': 'FS-CinderDev1'},
               'cluster_admin_ip0': None,
@@ -159,17 +152,14 @@ class HNASUtilsTest(test.TestCase):
         super(HNASUtilsTest, self).setUp()
 
         self.fake_conf = conf.Configuration(hnas_utils.CONF)
-        self.fake_conf.append_config_values(hnas_iscsi.iSCSI_OPTS)
 
         self.override_config('hnas_username', 'supervisor')
         self.override_config('hnas_password', 'supervisor')
         self.override_config('hnas_mgmt_ip0', '172.24.44.15')
         self.override_config('hnas_svc0_pool_name', 'default')
         self.override_config('hnas_svc0_hdp', 'easy-stack')
-        self.override_config('hnas_svc0_iscsi_ip', '172.24.49.21')
         self.override_config('hnas_svc1_pool_name', 'FS-CinderDev1')
         self.override_config('hnas_svc1_hdp', 'silver')
-        self.override_config('hnas_svc1_iscsi_ip', '172.24.49.32')
 
         self.context = context.get_admin_context()
         self.volume = fake_volume.fake_volume_obj(self.context, **_VOLUME)
@@ -286,32 +276,22 @@ class HNASUtilsTest(test.TestCase):
         self.assertEqual('default', out)
 
     def test_read_cinder_conf_nfs(self):
-        out = hnas_utils.read_cinder_conf(self.fake_conf, 'nfs')
+        out = hnas_utils.read_cinder_conf(self.fake_conf)
 
         self.assertEqual(config_from_cinder_conf, out)
-
-    def test_read_cinder_conf_iscsi(self):
-        local_config = copy.deepcopy(config_from_cinder_conf)
-
-        local_config['services']['FS-CinderDev1']['iscsi_ip'] = '172.24.49.32'
-        local_config['services']['default']['iscsi_ip'] = '172.24.49.21'
-
-        out = hnas_utils.read_cinder_conf(self.fake_conf, 'iscsi')
-
-        self.assertEqual(local_config, out)
 
     def test_read_cinder_conf_break(self):
         self.override_config('hnas_username', None)
         self.override_config('hnas_password', None)
         self.override_config('hnas_mgmt_ip0', None)
-        out = hnas_utils.read_cinder_conf(self.fake_conf, 'nfs')
+        out = hnas_utils.read_cinder_conf(self.fake_conf)
         self.assertIsNone(out)
 
     @ddt.data('hnas_username', 'hnas_password',
-              'hnas_mgmt_ip0', 'hnas_svc0_iscsi_ip', 'hnas_svc0_pool_name',
+              'hnas_mgmt_ip0', 'hnas_svc0_pool_name',
               'hnas_svc0_hdp', )
     def test_init_invalid_conf_parameters(self, attr_name):
         self.override_config(attr_name, None)
 
         self.assertRaises(exception.InvalidParameterValue,
-                          hnas_utils.read_cinder_conf, self.fake_conf, 'iscsi')
+                          hnas_utils.read_cinder_conf, self.fake_conf)

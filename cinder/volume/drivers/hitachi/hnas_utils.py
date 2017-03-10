@@ -86,7 +86,7 @@ CONF = cfg.CONF
 CONF.register_opts(drivers_common_opts)
 
 
-def _check_conf_params(config, pool_name, dv_type, idx):
+def _check_conf_params(config, pool_name, idx):
     """Validates if the configuration on cinder.conf is complete.
 
     :param config: Dictionary with the driver configurations
@@ -134,15 +134,6 @@ def _check_conf_params(config, pool_name, dv_type, idx):
         LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
-    if (dv_type == 'iscsi' and
-            config['services'][pool_name]['iscsi_ip'] is None):
-        msg = (_("The config parameter "
-                 "hnas_svc%(idx)s_iscsi_ip is not set "
-                 "in the cinder.conf. Note that you need to "
-                 "have at least one pool configured.") % {'idx': idx})
-        LOG.error(msg)
-        raise exception.InvalidParameterValue(err=msg)
-
 
 def _xml_read(root, element, check=None):
     """Read an xml element.
@@ -183,7 +174,7 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
 
     :param xml_config_file: string filename containing XML configuration
     :param svc_params: parameters to configure the services
-    ['volume_type', 'hdp', 'iscsi_ip']
+    ['volume_type', 'hdp']
     :param optional_params: parameters to configure that are not mandatory
     ['ssc_cmd', 'cluster_admin_ip0', 'chap_enabled']
     """
@@ -208,13 +199,13 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
         LOG.error(msg)
         raise exception.ConfigNotFound(message=msg)
 
-    # mandatory parameters for NFS and iSCSI
+    # mandatory parameters for NFS
     config = {}
     arg_prereqs = ['mgmt_ip0', 'username']
     for req in arg_prereqs:
         config[req] = _xml_read(root, req, 'check')
 
-    # optional parameters for NFS and iSCSI
+    # optional parameters for NFS
     for req in optional_params:
         config[req] = _xml_read(root, req)
         if config[req] is None and HNAS_DEFAULT_CONFIG.get(req) is not None:
@@ -279,7 +270,7 @@ def get_pool(config, volume):
     return 'default'
 
 
-def read_cinder_conf(config_opts, dv_type):
+def read_cinder_conf(config_opts):
     """Reads cinder.conf
 
     Gets the driver specific information set on cinder.conf configuration
@@ -295,7 +286,7 @@ def read_cinder_conf(config_opts, dv_type):
     config['services'] = {}
     config['fs'] = {}
     mandatory_parameters = ['username', 'password', 'mgmt_ip0']
-    optional_parameters = ['ssc_cmd', 'chap_enabled',
+    optional_parameters = ['ssc_cmd',
                            'ssh_port', 'cluster_admin_ip0',
                            'ssh_private_key']
 
@@ -334,14 +325,9 @@ def read_cinder_conf(config_opts, dv_type):
             config['services'][svc_pool_name]['hdp'] = svc_hdp
             config['services'][svc_pool_name]['pool_name'] = svc_pool_name
 
-            if dv_type == 'iscsi':
-                svc_ip = (config_opts.safe_get(
-                    'hnas_svc%(idx)s_iscsi_ip' % {'idx': idx}))
-                config['services'][svc_pool_name]['iscsi_ip'] = svc_ip
-
             config['services'][svc_pool_name]['label'] = (
                 'svc_%(idx)s' % {'idx': idx})
             # Checking to ensure that the pools configurations are complete
-            _check_conf_params(config, svc_pool_name, dv_type, idx)
+            _check_conf_params(config, svc_pool_name, idx)
 
     return config

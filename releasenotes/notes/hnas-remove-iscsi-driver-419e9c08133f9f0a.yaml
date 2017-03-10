@@ -1,0 +1,4 @@
+---
+upgrade:
+  - The Hitachi NAS Platform iSCSI driver was marked as not supported in the
+    Ocata realease and has now been removed.
