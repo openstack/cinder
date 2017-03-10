@@ -283,8 +283,6 @@ class StorwizeSVCReplicationGlobalMirror(
                        {"id": vref['id'], "error": e})
                 LOG.exception(msg)
                 raise exception.VolumeDriverException(message=msg)
-        LOG.debug('leave: failover_volume_host: vref=%(vref)s',
-                  {'vref': vref['name']})
 
     def replication_failback(self, volume):
         tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
