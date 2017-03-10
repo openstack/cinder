@@ -34,7 +34,7 @@ def load_yaml(file_name):
     yaml_file = '{}/{}'.format(path.dirname(
         path.abspath(__file__)), file_name)
     with open(yaml_file) as f:
-        res = yaml.load(f)
+        res = yaml.safe_load(f)
     return res
 
 
