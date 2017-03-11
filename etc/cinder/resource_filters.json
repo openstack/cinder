@@ -1,0 +1,12 @@
+{
+    "volume": ["name", "status", "image_metadata",
+               "bootable", "migration_status"],
+    "backup": ["name", "status", "volume_id"],
+    "snapshot": ["name", "status", "volume_id"],
+    "group": [],
+    "group_snapshot": ["status", "group_id"],
+    "attachment": ["volume_id"],
+    "message": ["resource_uuid", "resource_type", "event_id",
+                "request_id", "message_level"],
+    "pool": ["name"]
+}

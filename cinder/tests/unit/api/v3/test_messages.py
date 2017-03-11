@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
+import mock
 from six.moves import http_client
 
 from cinder.api import extensions
@@ -26,6 +28,7 @@ from cinder.tests.unit.api.v3 import fakes as v3_fakes
 NS = '{http://docs.openstack.org/api/openstack-block-storage/3.0/content}'
 
 
+@ddt.ddt
 class MessageApiTest(test.TestCase):
     def setUp(self):
         super(MessageApiTest, self).setUp()
@@ -119,6 +122,19 @@ class MessageApiTest(test.TestCase):
 
         self.assertRaises(exception.MessageNotFound, self.controller.delete,
                           req, fakes.FAKE_UUID)
+
+    @ddt.data('3.30', '3.31')
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_message_list_with_general_filter(self, version, mock_update):
+        url = '/v3/%s/messages' % fakes.FAKE_UUID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=version,
+                                      use_admin_context=False)
+        self.controller.index(req)
+
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'message')
 
     def test_index(self):
         self.mock_object(message_api.API, 'get_all',

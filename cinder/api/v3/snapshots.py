@@ -51,35 +51,37 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
                 LOG.debug('Could not evaluate value %s, assuming string',
                           search_opts['metadata'])
 
-    def _process_filters(self, req, context, search_opts):
+    @common.process_general_filtering('snapshot')
+    def _process_snapshot_filtering(self, context=None, filters=None,
+                                    req_version=None):
         """Formats allowed filters"""
 
-        req_version = req.api_version_request
         # if the max version is less than or same as 3.21
         # metadata based filtering is not supported
         if req_version.matches(None, "3.21"):
-            search_opts.pop('metadata', None)
+            filters.pop('metadata', None)
 
         # Filter out invalid options
         allowed_search_options = self._get_snapshot_filter_options()
 
-        utils.remove_invalid_filter_options(context, search_opts,
+        utils.remove_invalid_filter_options(context, filters,
                                             allowed_search_options)
-
-        # process snapshot filters to appropriate formats if required
-        self._format_snapshot_filter_options(search_opts)
 
     def _items(self, req, is_detail=True):
         """Returns a list of snapshots, transformed through view builder."""
         context = req.environ['cinder.context']
-
+        req_version = req.api_version_request
         # Pop out non search_opts and create local variables
         search_opts = req.GET.copy()
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
         marker, limit, offset = common.get_pagination_params(search_opts)
 
         # process filters
-        self._process_filters(req, context, search_opts)
+        self._process_snapshot_filtering(context=context,
+                                         filters=search_opts,
+                                         req_version=req_version)
+        # process snapshot filters to appropriate formats if required
+        self._format_snapshot_filter_options(search_opts)
 
         req_version = req.api_version_request
         if req_version.matches("3.30", None) and 'name' in sort_keys:

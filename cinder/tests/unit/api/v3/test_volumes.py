@@ -30,6 +30,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
+from cinder import utils
 from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
 
@@ -73,7 +74,7 @@ class VolumeApiTest(test.TestCase):
             req.content_type = 'application/json'
             req.headers = {version_header_name: 'volume 3.2'}
             req.environ['cinder.context'].is_admin = True
-            req.api_version_request = api_version.max_api_version()
+            req.api_version_request = api_version.APIVersionRequest('3.29')
 
             self.override_config('query_volume_filters', 'bootable')
             self.controller.index(req)
@@ -387,6 +388,17 @@ class VolumeApiTest(test.TestCase):
         # Raise 400 for resource requested with invalid uuids.
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           req, body)
+
+    @ddt.data('3.30', '3.31')
+    @mock.patch.object(volume_api.API, 'check_volume_filters', mock.Mock())
+    @mock.patch.object(utils, 'add_visible_admin_metadata', mock.Mock())
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_list_volume_with_general_filter(self, version, mock_update):
+        req = fakes.HTTPRequest.blank('/v3/volumes', version=version)
+        self.controller.index(req)
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'volume')
 
     @ddt.data({'admin': True, 'version': '3.21'},
               {'admin': False, 'version': '3.21'},

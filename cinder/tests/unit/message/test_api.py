@@ -134,7 +134,7 @@ class MessageApiTest(test.TestCase):
         req.method = 'GET'
         req.content_type = 'application/json'
         req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.max_api_version()
+        req.api_version_request = api_version.APIVersionRequest('3.30')
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -145,7 +145,7 @@ class MessageApiTest(test.TestCase):
         req.method = 'GET'
         req.content_type = 'application/json'
         req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.max_api_version()
+        req.api_version_request = api_version.APIVersionRequest('3.30')
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)
@@ -248,7 +248,7 @@ class MessageApiTest(test.TestCase):
         req.method = 'GET'
         req.content_type = 'application/json'
         req.headers = {version_header_name: 'volume 3.5'}
-        req.api_version_request = api_version.max_api_version()
+        req.api_version_request = api_version.APIVersionRequest('3.30')
         req.environ['cinder.context'].is_admin = True
 
         res = self.controller.index(req)

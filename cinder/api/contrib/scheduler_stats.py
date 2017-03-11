@@ -14,6 +14,7 @@
 
 """The Scheduler Stats extension"""
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
@@ -37,6 +38,12 @@ class SchedulerStatsController(wsgi.Controller):
         self.scheduler_api = rpcapi.SchedulerAPI()
         super(SchedulerStatsController, self).__init__()
 
+    @common.process_general_filtering('pool')
+    def _process_pool_filtering(self, context=None, filters=None,
+                                req_version=None):
+        if not req_version.matches(GET_POOL_NAME_FILTER_MICRO_VERSION):
+            filters.clear()
+
     def get_pools(self, req):
         """List all active pools in scheduler."""
         context = req.environ['cinder.context']
@@ -45,13 +52,14 @@ class SchedulerStatsController(wsgi.Controller):
         detail = utils.get_bool_param('detail', req.params)
 
         req_version = req.api_version_request
+        filters = req.params.copy()
+        filters.pop('detail', None)
 
-        if req_version.matches(GET_POOL_NAME_FILTER_MICRO_VERSION):
-            filters = req.params.copy()
-            filters.pop('detail', None)
-            pools = self.scheduler_api.get_pools(context, filters=filters)
-        else:
-            pools = self.scheduler_api.get_pools(context, filters=None)
+        self._process_pool_filtering(context=context,
+                                     filters=filters,
+                                     req_version=req_version)
+
+        pools = self.scheduler_api.get_pools(context, filters=filters)
 
         return self._view_builder.pools(req, pools, detail)
 

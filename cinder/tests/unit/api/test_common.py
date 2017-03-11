@@ -359,6 +359,61 @@ class TestCollectionLinks(test.TestCase):
 
 
 @ddt.ddt
+class GeneralFiltersTest(test.TestCase):
+
+    @ddt.data({'filters': {'volume': ['key1', 'key2']},
+               'resource': 'volume',
+               'expected': {'volume': ['key1', 'key2']}},
+              {'filters': {'volume': ['key1', 'key2']},
+               'resource': 'snapshot',
+               'expected': {}},
+              {'filters': {'volume': ['key1', 'key2']},
+               'resource': None,
+               'expected': {'volume': ['key1', 'key2']}})
+    @ddt.unpack
+    def test_get_enabled_resource_filters(self, filters, resource, expected):
+        common._FILTERS_COLLECTION = filters
+        result = common.get_enabled_resource_filters(resource)
+        self.assertEqual(expected, result)
+
+    @ddt.data({'filters': {'key1': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': ['key1']},
+               'expected': {'key1': 'value1'}},
+              {'filters': {'key1': 'value1', 'key2': 'value2'},
+               'is_admin': False,
+               'result': {'fake_resource': ['key1']},
+               'expected': None},
+              {'filters': {'key1': 'value1',
+                           'all_tenants': 'value2',
+                           'key3': 'value3'},
+               'is_admin': True,
+               'result': {'fake_resource': []},
+               'expected': {'key1': 'value1',
+                            'all_tenants': 'value2',
+                            'key3': 'value3'}})
+    @ddt.unpack
+    @mock.patch('cinder.api.common.get_enabled_resource_filters')
+    def test_reject_invalid_filters(self, mock_get, filters,
+                                    is_admin, result, expected):
+        class FakeContext(object):
+            def __init__(self, admin):
+                self.is_admin = admin
+
+        fake_context = FakeContext(is_admin)
+        mock_get.return_value = result
+        if expected:
+            common.reject_invalid_filters(fake_context,
+                                          filters, 'fake_resource')
+            self.assertEqual(expected, filters)
+        else:
+            self.assertRaises(
+                webob.exc.HTTPBadRequest,
+                common.reject_invalid_filters, fake_context,
+                filters, 'fake_resource')
+
+
+@ddt.ddt
 class LinkPrefixTest(test.TestCase):
 
     @ddt.data((["http://192.168.0.243:24/", "http://127.0.0.1/volume"],

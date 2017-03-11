@@ -195,6 +195,19 @@ class SnapshotApiTest(test.TestCase):
         self.assertDictEqual({"key1": "val1", "key11": "val11"}, res_dict[
             'snapshots'][0]['metadata'])
 
+    @ddt.data('3.30', '3.31')
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_snapshot_list_with_general_filter(self, version, mock_update):
+        url = '/v3/%s/snapshots' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=version,
+                                      use_admin_context=False)
+        self.controller.index(req)
+
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'snapshot')
+
     def test_snapshot_list_with_metadata_unsupported_microversion(self):
         # Create snapshot with metadata key1: value1
         metadata = {"key1": "val1"}

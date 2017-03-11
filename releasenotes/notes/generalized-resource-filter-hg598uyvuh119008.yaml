@@ -1,0 +1,6 @@
+---
+features:
+  - Added generalized resource filter support in
+    ``list volume``, ``list backup``, ``list snapshot``,
+    ``list group``, ``list group-snapshot``, ``list attachment``,
+    ``list message`` and ``list pools`` APIs.

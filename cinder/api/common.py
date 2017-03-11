@@ -14,6 +14,7 @@
 #    under the License.
 
 
+import json
 import os
 import re
 
@@ -39,10 +40,16 @@ api_common_opts = [
                help='Base URL that will be presented to users in links '
                     'to the OpenStack Volume API',
                deprecated_name='osapi_compute_link_prefix'),
+    cfg.StrOpt('resource_query_filters_file',
+               default='/etc/cinder/resource_filters.json',
+               help="Json file indicating user visible filter "
+                    "parameters for list queries.",
+               deprecated_name='query_volume_filters'),
     cfg.ListOpt('query_volume_filters',
                 default=['name', 'status', 'metadata',
                          'availability_zone',
                          'bootable', 'group_id'],
+                deprecated_for_removal=True,
                 help="Volume filter options which "
                      "non-admin user could use to "
                      "query volumes. Default values "
@@ -55,6 +62,8 @@ CONF = cfg.CONF
 CONF.register_opts(api_common_opts)
 
 LOG = logging.getLogger(__name__)
+_FILTERS_COLLECTION = None
+FILTERING_VERSION = '3.31'
 
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
@@ -399,3 +408,70 @@ def get_cluster_host(req, params, cluster_version=None):
     if bool(cluster_name) == bool(host):
         raise exception.InvalidInput(reason=msg)
     return cluster_name, host
+
+
+def _initialize_filters():
+    global _FILTERS_COLLECTION
+    if not _FILTERS_COLLECTION:
+        with open(CONF.resource_query_filters_file, 'r') as filters_file:
+            _FILTERS_COLLECTION = json.load(filters_file)
+
+
+def get_enabled_resource_filters(resource=None):
+    """Get list of configured/allowed filters for the specified resource.
+
+    This method checks resource_query_filters_file and returns dictionary
+    which contains the specified resource and its allowed filters:
+
+    .. code-block:: json
+
+            {
+                "resource": ['filter1', 'filter2', 'filter3']
+            }
+
+    if resource is not specified, all of the configuration will be returned,
+    and if the resource is not found, empty dict will be returned.
+    """
+    try:
+        _initialize_filters()
+        if not resource:
+            return _FILTERS_COLLECTION
+        else:
+            return {resource: _FILTERS_COLLECTION[resource]}
+    except Exception:
+        LOG.debug("Failed to collect resource %s's filters.", resource)
+        return {}
+
+
+def reject_invalid_filters(context, filters, resource):
+    if context.is_admin:
+        # Allow all options
+        return
+    # Check the configured filters against those passed in resource
+    configured_filters = get_enabled_resource_filters(resource)
+    if configured_filters:
+        configured_filters = configured_filters[resource]
+    else:
+        configured_filters = []
+    invalid_filters = []
+    for key in filters.copy().keys():
+        if key not in configured_filters:
+            invalid_filters.append(key)
+    if invalid_filters:
+        raise webob.exc.HTTPBadRequest(
+            explanation=_('Invalid filters %s are found in query '
+                          'options.') % ','.join(invalid_filters))
+
+
+def process_general_filtering(resource):
+    def wrapper(process_non_general_filtering):
+        def _decorator(*args, **kwargs):
+            req_version = kwargs.get('req_version')
+            filters = kwargs.get('filters')
+            context = kwargs.get('context')
+            if req_version.matches(FILTERING_VERSION):
+                reject_invalid_filters(context, filters, resource)
+            else:
+                process_non_general_filtering(*args, **kwargs)
+        return _decorator
+    return wrapper
