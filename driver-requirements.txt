@@ -1,0 +1,38 @@
+# Document dependencies that are only used if using
+# certain drivers.  This file is not managed by
+# requirements tools.
+
+# DRBD
+dbus # MIT
+drbdmanage # GPLv3
+
+# HPE 3PAR
+hpe3parclient>=4.1.0 # Apache-2.0
+
+# Kaminario
+krest>=1.3.0 # Apache-2.0
+
+# Pure Storage
+purestorage>=1.6.0 # BSD
+
+# Dell EMC VMAX, IBM DS8K
+pyOpenSSL>=1.0.0 # Apache-2.0
+
+# HPE Lefthand
+python-lefthandclient>=2.0.0 # Apache-2.0
+
+# Fujitsu Eternus DX
+pywbem>=0.7.0 # LGPLv2.1+
+
+# IBM XIV
+pyxcli>=1.1.0 # Apache-2.0
+
+# RBD
+rados # LGPLv2.1
+rbd # LGPLv2.1
+
+# Dell EMC VNX
+storops>=0.4.8 # Apache-2.0
+
+# Violin
+vmemclient>=1.1.8 # Apache-2.0
