@@ -78,7 +78,7 @@ class LVM(executor.Executor):
         # before the first LVM command is executed, and use the directory
         # where the specified lvm_conf file is located as the value.
 
-        # NOTE(jdg): We use the temp var here becuase LVM_CMD_PREFIX is a
+        # NOTE(jdg): We use the temp var here because LVM_CMD_PREFIX is a
         # class global and if you use append here, you'll literally just keep
         # appending values to the global.
         _lvm_cmd_prefix = ['env', 'LC_ALL=C']
