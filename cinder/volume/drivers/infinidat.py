@@ -28,6 +28,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
@@ -88,7 +89,7 @@ def infinisdk_to_cinder_exceptions(func):
 
 @interface.volumedriver
 class InfiniboxVolumeDriver(san.SanISCSIDriver):
-    VERSION = '1.2'
+    VERSION = '1.3'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_Cinder_CI"
@@ -130,6 +131,12 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def _make_host_name(self, port):
         return 'openstack-host-%s' % str(port).replace(":", ".")
 
+    def _make_cg_name(self, cinder_group):
+        return 'openstack-cg-%s' % cinder_group.id
+
+    def _make_group_snapshot_name(self, cinder_group_snap):
+        return 'openstack-group-snap-%s' % cinder_group_snap.id
+
     def _get_infinidat_volume_by_name(self, name):
         volume = self._system.volumes.safe_get(name=name)
         if volume is None:
@@ -162,6 +169,15 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
         return pool
+
+    def _get_infinidat_cg(self, cinder_group):
+        group_name = self._make_cg_name(cinder_group)
+        infinidat_cg = self._system.cons_groups.safe_get(name=group_name)
+        if infinidat_cg is None:
+            msg = _('Consistency group "%s" not found') % group_name
+            LOG.error(msg)
+            raise exception.InvalidGroup(message=msg)
+        return infinidat_cg
 
     def _get_or_create_host(self, port):
         host_name = self._make_host_name(port)
@@ -334,9 +350,10 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                       vendor_name=VENDOR_NAME,
                                       driver_version=self.VERSION,
                                       storage_protocol=self._protocol,
-                                      consistencygroup_support='False',
+                                      consistencygroup_support=False,
                                       total_capacity_gb=total_capacity_gb,
-                                      free_capacity_gb=free_capacity_gb)
+                                      free_capacity_gb=free_capacity_gb,
+                                      consistent_group_snapshot_enabled=True)
         return self._volume_stats
 
     def _create_volume(self, volume):
@@ -538,3 +555,111 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 init_targ_map[initiator] = target_wwns
 
         return target_wwns, init_targ_map
+
+    @infinisdk_to_cinder_exceptions
+    def create_group(self, context, group):
+        """Creates a group."""
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        self._system.cons_groups.create(name=self._make_cg_name(group),
+                                        pool=self._get_infinidat_pool())
+        return {'status': fields.GroupStatus.AVAILABLE}
+
+    @infinisdk_to_cinder_exceptions
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        try:
+            infinidat_cg = self._get_infinidat_cg(group)
+        except exception.InvalidGroup:
+            pass      # group not found
+        else:
+            infinidat_cg.safe_delete()
+        for volume in volumes:
+            self.delete_volume(volume)
+        return None, None
+
+    @infinisdk_to_cinder_exceptions
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        add_volumes = add_volumes if add_volumes else []
+        remove_volumes = remove_volumes if remove_volumes else []
+        infinidat_cg = self._get_infinidat_cg(group)
+        for vol in add_volumes:
+            infinidat_volume = self._get_infinidat_volume(vol)
+            infinidat_cg.add_member(infinidat_volume)
+        for vol in remove_volumes:
+            infinidat_volume = self._get_infinidat_volume(vol)
+            infinidat_cg.remove_member(infinidat_volume)
+        return None, None, None
+
+    @infinisdk_to_cinder_exceptions
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source."""
+        # The source is either group_snapshot+snapshots or
+        # source_group+source_vols. The target is group+voluems
+        # we assume the source (source_vols / snapshots) are in the same
+        # order as the target (volumes)
+
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        self.create_group(context, group)
+        new_infinidat_group = self._get_infinidat_cg(group)
+        if group_snapshot is not None and snapshots is not None:
+            for volume, snapshot in zip(volumes, snapshots):
+                self.create_volume_from_snapshot(volume, snapshot)
+                new_infinidat_volume = self._get_infinidat_volume(volume)
+                new_infinidat_group.add_member(new_infinidat_volume)
+        elif source_group is not None and source_vols is not None:
+            for volume, src_vol in zip(volumes, source_vols):
+                self.create_cloned_volume(volume, src_vol)
+                new_infinidat_volume = self._get_infinidat_volume(volume)
+                new_infinidat_group.add_member(new_infinidat_volume)
+        return None, None
+
+    @infinisdk_to_cinder_exceptions
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot."""
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+        infinidat_cg = self._get_infinidat_cg(group_snapshot.group)
+        group_snap_name = self._make_group_snapshot_name(group_snapshot)
+        new_group = infinidat_cg.create_snapshot(name=group_snap_name)
+        # update the names of the individual snapshots in the new snapgroup
+        # to match the names we use for cinder snapshots
+        for infinidat_snapshot in new_group.get_members():
+            parent_name = infinidat_snapshot.get_parent().get_name()
+            for cinder_snapshot in snapshots:
+                if cinder_snapshot.volume_id in parent_name:
+                    snapshot_name = self._make_snapshot_name(cinder_snapshot)
+                    infinidat_snapshot.update_name(snapshot_name)
+        return None, None
+
+    @infinisdk_to_cinder_exceptions
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group_snapshot."""
+        # let generic volume group support handle non-cgsnapshots
+        if not vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+        cgsnap_name = self._make_group_snapshot_name(group_snapshot)
+        infinidat_cgsnap = self._system.cons_groups.safe_get(name=cgsnap_name)
+        if infinidat_cgsnap is not None:
+            if not infinidat_cgsnap.is_snapgroup():
+                msg = _('Group "%s" is not a snapshot group') % cgsnap_name
+                LOG.error(msg)
+                raise exception.InvalidGroupSnapshot(message=msg)
+            infinidat_cgsnap.safe_delete()
+        for snapshot in snapshots:
+            self.delete_snapshot(snapshot)
+        return None, None
