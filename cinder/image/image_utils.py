@@ -58,7 +58,7 @@ CONF = cfg.CONF
 CONF.register_opts(image_helper_opts)
 
 QEMU_IMG_LIMITS = processutils.ProcessLimits(
-    cpu_time=2,
+    cpu_time=8,
     address_space=1 * units.Gi)
 
 # NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
