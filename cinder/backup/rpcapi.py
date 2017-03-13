@@ -45,9 +45,10 @@ class BackupAPI(rpc.RPCAPI):
         set to 1.3.
 
         2.0 - Remove 1.x compatibility
+        2.1 - Adds set_log_levels and get_log_levels
     """
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = '2.1'
     RPC_DEFAULT_VERSION = '2.0'
     TOPIC = constants.BACKUP_TOPIC
     BINARY = 'cinder-backup'
@@ -100,3 +101,13 @@ class BackupAPI(rpc.RPCAPI):
                   "on host %(host)s.", {'host': host})
         cctxt = self._get_cctxt(server=host)
         return cctxt.call(ctxt, 'check_support_to_force_delete')
+
+    @rpc.assert_min_rpc_version('2.1')
+    def set_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(server=service.host, version='2.1')
+        cctxt.cast(context, 'set_log_levels', log_request=log_request)
+
+    @rpc.assert_min_rpc_version('2.1')
+    def get_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(server=service.host, version='2.1')
+        return cctxt.call(context, 'get_log_levels', log_request=log_request)

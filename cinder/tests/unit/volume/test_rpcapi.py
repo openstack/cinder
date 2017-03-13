@@ -572,3 +572,23 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            expected_kwargs_diff=expected_kwargs_diff,
                            version=version)
         can_send_version.assert_has_calls([mock.call('3.10')])
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_set_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('set_log_levels',
+                           rpc_method='cast',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='3.12')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_get_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('get_log_levels',
+                           rpc_method='call',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='3.12')

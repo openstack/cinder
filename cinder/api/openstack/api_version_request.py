@@ -82,7 +82,7 @@ REST_API_VERSION_HISTORY = """
     * 3.29 - Add filter, sorter and pagination support in group snapshot.
     * 3.30 - Support sort snapshots with "name".
     * 3.31 - Add support for configure resource query filters.
-
+    * 3.32 - Add set-log and get-log service actions.
 """
 
 # The minimum and maximum versions of the API supported
@@ -90,7 +90,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.31"
+_MAX_API_VERSION = "3.32"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

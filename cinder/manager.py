@@ -65,6 +65,7 @@ from cinder import exception
 from cinder import objects
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
+from cinder import utils
 
 from eventlet import greenpool
 
@@ -143,6 +144,15 @@ class Manager(base.Base, PeriodicTasks):
         LOG.info('Resetting cached RPC version pins.')
         rpc.LAST_OBJ_VERSIONS = {}
         rpc.LAST_RPC_VERSIONS = {}
+
+    def set_log_levels(self, context, log_request):
+        utils.set_log_levels(log_request.prefix, log_request.level)
+
+    def get_log_levels(self, context, log_request):
+        levels = utils.get_log_levels(log_request.prefix)
+        log_levels = [objects.LogLevel(context, prefix=prefix, level=level)
+                      for prefix, level in levels.items()]
+        return objects.LogLevelList(context, objects=log_levels)
 
 
 class ThreadPoolManager(Manager):

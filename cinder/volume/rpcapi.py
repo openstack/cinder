@@ -127,9 +127,10 @@ class VolumeAPI(rpc.RPCAPI):
         3.11 - Removes create_consistencygroup, delete_consistencygroup,
                create_cgsnapshot, delete_cgsnapshot, update_consistencygroup,
                and create_consistencygroup_from_src.
+        3.12 - Adds set_log_levels and get_log_levels
     """
 
-    RPC_API_VERSION = '3.11'
+    RPC_API_VERSION = '3.12'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -426,3 +427,13 @@ class VolumeAPI(rpc.RPCAPI):
         # cinder.manager.CleanableManager unless in the future we overwrite it
         # in cinder.volume.manager
         cctxt.cast(ctxt, 'do_cleanup', cleanup_request=cleanup_request)
+
+    @rpc.assert_min_rpc_version('3.12')
+    def set_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(host=service.host, version='3.12')
+        cctxt.cast(context, 'set_log_levels', log_request=log_request)
+
+    @rpc.assert_min_rpc_version('3.12')
+    def get_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(host=service.host, version='3.12')
+        return cctxt.call(context, 'get_log_levels', log_request=log_request)

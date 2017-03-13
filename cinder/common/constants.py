@@ -18,6 +18,7 @@
 DB_MAX_INT = 0x7FFFFFFF
 
 # The cinder services binaries and topics' names
+API_BINARY = "cinder-api"
 SCHEDULER_BINARY = "cinder-scheduler"
 VOLUME_BINARY = "cinder-volume"
 BACKUP_BINARY = "cinder-backup"

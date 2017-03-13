@@ -24,11 +24,15 @@ import webob.exc
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.backup import rpcapi as backup_rpcapi
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder import volume
+from cinder.volume import rpcapi as volume_rpcapi
 
 
 CONF = cfg.CONF
@@ -38,10 +42,18 @@ authorize = extensions.extension_authorizer('volume', 'services')
 
 
 class ServiceController(wsgi.Controller):
+    LOG_BINARIES = (constants.SCHEDULER_BINARY, constants.VOLUME_BINARY,
+                    constants.BACKUP_BINARY, constants.API_BINARY)
+
     def __init__(self, ext_mgr=None):
         self.ext_mgr = ext_mgr
         super(ServiceController, self).__init__()
         self.volume_api = volume.API()
+        self.rpc_apis = {
+            constants.SCHEDULER_BINARY: scheduler_rpcapi.SchedulerAPI(),
+            constants.VOLUME_BINARY: volume_rpcapi.VolumeAPI(),
+            constants.BACKUP_BINARY: backup_rpcapi.BackupAPI(),
+        }
 
     def index(self, req):
         """Return a list of all running services.
@@ -138,6 +150,72 @@ class ServiceController(wsgi.Controller):
                                cluster_name, body.get('backend_id'))
         return webob.Response(status_int=http_client.ACCEPTED)
 
+    def _log_params_binaries_services(self, context, body):
+        """Get binaries and services referred by given log set/get request."""
+        query_filters = {'is_up': True}
+
+        binary = body.get('binary')
+        if binary in ('*', None, ''):
+            binaries = self.LOG_BINARIES
+        elif binary == constants.API_BINARY:
+            return [binary], []
+        elif binary in self.LOG_BINARIES:
+            binaries = [binary]
+            query_filters['binary'] = binary
+        else:
+            raise exception.InvalidInput(reason=_('%s is not a valid binary.')
+                                         % binary)
+
+        server = body.get('server')
+        if server:
+            query_filters['host_or_cluster'] = server
+        services = objects.ServiceList.get_all(context, filters=query_filters)
+
+        return binaries, services
+
+    def _set_log(self, context, body):
+        """Set log levels of services dynamically."""
+        prefix = body.get('prefix')
+        level = body.get('level')
+        # Validate log level
+        utils.get_log_method(level)
+
+        binaries, services = self._log_params_binaries_services(context, body)
+
+        log_req = objects.LogLevel(context, prefix=prefix, level=level)
+
+        if constants.API_BINARY in binaries:
+            utils.set_log_levels(prefix, level)
+        for service in services:
+            self.rpc_apis[service.binary].set_log_levels(context,
+                                                         service, log_req)
+
+        return webob.Response(status_int=202)
+
+    def _get_log(self, context, body):
+        """Get current log levels for services."""
+        prefix = body.get('prefix')
+        binaries, services = self._log_params_binaries_services(context, body)
+
+        result = []
+
+        log_req = objects.LogLevel(context, prefix=prefix)
+
+        if constants.API_BINARY in binaries:
+            levels = utils.get_log_levels(prefix)
+            result.append({'host': CONF.host,
+                           'binary': constants.API_BINARY,
+                           'levels': levels})
+        for service in services:
+            levels = self.rpc_apis[service.binary].get_log_levels(context,
+                                                                  service,
+                                                                  log_req)
+            result.append({'host': service.host,
+                           'binary': service.binary,
+                           'levels': {l.prefix: l.level for l in levels}})
+
+        return {'log_levels': result}
+
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.
 
@@ -148,6 +226,8 @@ class ServiceController(wsgi.Controller):
         """
         context = req.environ['cinder.context']
         authorize(context, action='update')
+
+        support_dynamic_log = req.api_version_request.matches('3.32')
 
         ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
         ret_val = {}
@@ -168,6 +248,10 @@ class ServiceController(wsgi.Controller):
             return self._failover(context, req, body, False)
         elif req.api_version_request.matches('3.26') and id == 'failover':
             return self._failover(context, req, body, True)
+        elif support_dynamic_log and id == 'set-log':
+            return self._set_log(context, body)
+        elif support_dynamic_log and id == 'get-log':
+            return self._get_log(context, body)
         else:
             raise exception.InvalidInput(reason=_("Unknown action"))
 

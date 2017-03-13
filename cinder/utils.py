@@ -1105,3 +1105,31 @@ def if_notifications_enabled(f):
             return f(*args, **kwargs)
         return DO_NOTHING
     return wrapped
+
+
+LOG_LEVELS = ('INFO', 'WARNING', 'ERROR', 'DEBUG')
+
+
+def get_log_method(level_string):
+    level_string = level_string or ''
+    upper_level_string = level_string.upper()
+    if upper_level_string not in LOG_LEVELS:
+        raise exception.InvalidInput(
+            reason=_('%s is not a valid log level.') % level_string)
+    return getattr(logging, upper_level_string)
+
+
+def set_log_levels(prefix, level_string):
+    level = get_log_method(level_string)
+    prefix = prefix or ''
+
+    for k, v in logging._loggers.items():
+        if k and k.startswith(prefix):
+            v.logger.setLevel(level)
+
+
+def get_log_levels(prefix):
+    prefix = prefix or ''
+    return {k: logging.logging.getLevelName(v.logger.getEffectiveLevel())
+            for k, v in logging._loggers.items()
+            if k and k.startswith(prefix)}

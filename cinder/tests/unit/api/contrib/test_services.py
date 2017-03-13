@@ -19,6 +19,7 @@ import datetime
 import ddt
 from iso8601 import iso8601
 import mock
+from oslo_config import cfg
 from six.moves import http_client
 import webob.exc
 
@@ -27,9 +28,13 @@ from cinder.api import extensions
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+
+
+CONF = cfg.CONF
 
 
 fake_services_list = [
@@ -858,3 +863,160 @@ class ServicesTest(test.TestCase):
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(exception.InvalidInput,
                           self.controller.update, req, method, {})
+
+    @mock.patch('cinder.api.contrib.services.ServiceController._set_log')
+    def test_set_log(self, set_log_mock):
+        set_log_mock.return_value = None
+        req = FakeRequest(version='3.32')
+        body = mock.sentinel.body
+        res = self.controller.update(req, 'set-log', body)
+        self.assertEqual(set_log_mock.return_value, res)
+        set_log_mock.assert_called_once_with(mock.ANY, body)
+
+    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
+    def test_get_log(self, get_log_mock):
+        get_log_mock.return_value = None
+        req = FakeRequest(version='3.32')
+        body = mock.sentinel.body
+        res = self.controller.update(req, 'get-log', body)
+        self.assertEqual(get_log_mock.return_value, res)
+        get_log_mock.assert_called_once_with(mock.ANY, body)
+
+    def test__log_params_binaries_services_wrong_binary(self):
+        body = {'binary': 'wrong-binary'}
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._log_params_binaries_services,
+                          'get-log', body)
+
+    @ddt.data(None, '', '*')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    def test__log_params_binaries_service_all(self, binary, service_list_mock):
+        body = {'binary': binary, 'server': 'host1'}
+        binaries, services = self.controller._log_params_binaries_services(
+            mock.sentinel.context, body)
+        self.assertEqual(self.controller.LOG_BINARIES, binaries)
+        self.assertEqual(service_list_mock.return_value, services)
+        service_list_mock.assert_called_once_with(
+            mock.sentinel.context, filters={'host_or_cluster': body['server'],
+                                            'is_up': True})
+
+    @ddt.data('cinder-api', 'cinder-volume', 'cinder-scheduler',
+              'cinder-backup')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    def test__log_params_binaries_service_one(self, binary, service_list_mock):
+        body = {'binary': binary, 'server': 'host1'}
+        binaries, services = self.controller._log_params_binaries_services(
+            mock.sentinel.context, body)
+        self.assertEqual([binary], binaries)
+
+        if binary == 'cinder-api':
+            self.assertEqual([], services)
+            service_list_mock.assert_not_called()
+        else:
+            self.assertEqual(service_list_mock.return_value, services)
+            service_list_mock.assert_called_once_with(
+                mock.sentinel.context,
+                filters={'host_or_cluster': body['server'], 'binary': binary,
+                         'is_up': True})
+
+    @ddt.data(None, '', 'wronglevel')
+    def test__set_log_invalid_level(self, level):
+        body = {'level': level}
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._set_log, self.context, body)
+
+    @mock.patch('cinder.utils.get_log_method')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    @mock.patch('cinder.utils.set_log_levels')
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.set_log_levels')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.set_log_levels')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.set_log_levels')
+    def test__set_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
+                      set_log_mock, get_all_mock, get_log_mock):
+        services = [
+            objects.Service(self.context, binary='cinder-scheduler'),
+            objects.Service(self.context, binary='cinder-volume'),
+            objects.Service(self.context, binary='cinder-backup'),
+        ]
+        get_all_mock.return_value = services
+        body = {'binary': '*', 'prefix': 'eventlet.', 'level': 'debug'}
+        log_level = objects.LogLevel(prefix=body['prefix'],
+                                     level=body['level'])
+        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
+            log_level_mock.return_value = log_level
+            res = self.controller._set_log(mock.sentinel.context, body)
+            log_level_mock.assert_called_once_with(mock.sentinel.context,
+                                                   prefix=body['prefix'],
+                                                   level=body['level'])
+
+        self.assertEqual(202, res.status_code)
+
+        set_log_mock.assert_called_once_with(body['prefix'], body['level'])
+        sch_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                             services[0], log_level)
+        vol_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                             services[1], log_level)
+        backup_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                                services[2], log_level)
+        get_log_mock.assert_called_once_with(body['level'])
+
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    @mock.patch('cinder.utils.get_log_levels')
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_log_levels')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_log_levels')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.get_log_levels')
+    def test__get_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
+                      get_log_mock, get_all_mock):
+        get_log_mock.return_value = mock.sentinel.api_levels
+        backup_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p1', level='l1'),
+            objects.LogLevel(prefix='p2', level='l2')
+        ]
+        vol_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p3', level='l3'),
+            objects.LogLevel(prefix='p4', level='l4')
+        ]
+        sch_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p5', level='l5'),
+            objects.LogLevel(prefix='p6', level='l6')
+        ]
+
+        services = [
+            objects.Service(self.context, binary='cinder-scheduler',
+                            host='host'),
+            objects.Service(self.context, binary='cinder-volume',
+                            host='host@backend#pool'),
+            objects.Service(self.context, binary='cinder-backup', host='host'),
+        ]
+        get_all_mock.return_value = services
+        body = {'binary': '*', 'prefix': 'eventlet.'}
+
+        log_level = objects.LogLevel(prefix=body['prefix'])
+        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
+            log_level_mock.return_value = log_level
+            res = self.controller._get_log(mock.sentinel.context, body)
+            log_level_mock.assert_called_once_with(mock.sentinel.context,
+                                                   prefix=body['prefix'])
+
+        expected = {'log_levels': [
+            {'binary': 'cinder-api',
+             'host': CONF.host,
+             'levels': mock.sentinel.api_levels},
+            {'binary': 'cinder-scheduler', 'host': 'host',
+             'levels': {'p5': 'l5', 'p6': 'l6'}},
+            {'binary': 'cinder-volume',
+             'host': 'host@backend#pool',
+             'levels': {'p3': 'l3', 'p4': 'l4'}},
+            {'binary': 'cinder-backup', 'host': 'host',
+             'levels': {'p1': 'l1', 'p2': 'l2'}},
+        ]}
+
+        self.assertDictEqual(expected, res)
+
+        get_log_mock.assert_called_once_with(body['prefix'])
+        sch_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                             services[0], log_level)
+        vol_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                             services[1], log_level)
+        backup_rpc_mock.assert_called_once_with(mock.sentinel.context,
+                                                services[2], log_level)
