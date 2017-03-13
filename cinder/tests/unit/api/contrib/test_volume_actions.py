@@ -126,6 +126,21 @@ class VolumeActionsTest(test.TestCase):
                 fake_auth_context=self.context))
             self.assertEqual(400, res.status_int)
 
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.initialize_connection')
+    def test_initialize_connection_without_initiator(self,
+                                                     _init_connection):
+        _init_connection.side_effect = messaging.RemoteError('InvalidInput')
+        body = {'os-initialize_connection': {'connector': 'w/o_initiator'}}
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app(
+                               fake_auth_context=self.context))
+        self.assertEqual(400, res.status_int)
+
     def test_initialize_connection_exception(self):
         with mock.patch.object(volume_api.API,
                                'initialize_connection') as init_conn:
