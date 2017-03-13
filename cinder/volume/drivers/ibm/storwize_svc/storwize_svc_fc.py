@@ -88,9 +88,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.1 - Added replication V2 support to the global/metro mirror
               mode
         2.1.1 - Update replication to version 2.1
+        2.2 - Add CG capability to generic volume groups
     """
 
-    VERSION = "2.1.1"
+    VERSION = "2.2"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"

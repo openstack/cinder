@@ -48,6 +48,7 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_const
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi
+from cinder.volume import group_types
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -3685,54 +3686,55 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
         self.db.volume_destroy(self.ctxt, volume['id'])
 
-    def _create_consistencygroup_in_db(self, **kwargs):
-        cg = testutils.create_consistencygroup(self.ctxt, **kwargs)
+    def _create_group_in_db(self, **kwargs):
+        cg = testutils.create_group(self.ctxt, **kwargs)
         return cg
 
-    def _create_consistencegroup(self, **kwargs):
-        cg = self._create_consistencygroup_in_db(**kwargs)
+    def _create_group(self, **kwargs):
+        grp = self._create_group_in_db(**kwargs)
 
-        model_update = self.driver.create_consistencygroup(self.ctxt, cg)
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+        model_update = self.driver.create_group(self.ctxt, grp)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG created failed")
-        return cg
+        return grp
 
-    def _create_cgsnapshot_in_db(self, cg_id, **kwargs):
-        cg_snapshot = testutils.create_cgsnapshot(self.ctxt,
-                                                  consistencygroup_id= cg_id,
-                                                  **kwargs)
+    def _create_group_snapshot_in_db(self, group_id, **kwargs):
+        group_snapshot = testutils.create_group_snapshot(self.ctxt,
+                                                         group_id=group_id,
+                                                         **kwargs)
         snapshots = []
-        cg_id = cg_snapshot['consistencygroup_id']
-        volumes = self.db.volume_get_all_by_group(self.ctxt.elevated(), cg_id)
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group_id)
 
         if not volumes:
-            msg = _("Consistency group is empty. No cgsnapshot "
-                    "will be created.")
-            raise exception.InvalidConsistencyGroup(reason=msg)
+            msg = _("Group is empty. No cgsnapshot will be created.")
+            raise exception.InvalidGroup(reason=msg)
 
         for volume in volumes:
             snapshots.append(testutils.create_snapshot(
                 self.ctxt, volume['id'],
-                cg_snapshot.id,
-                cg_snapshot.name,
-                cg_snapshot.id,
+                group_snapshot.id,
+                group_snapshot.name,
+                group_snapshot.id,
                 fields.SnapshotStatus.CREATING))
-        return cg_snapshot, snapshots
+        return group_snapshot, snapshots
 
-    def _create_cgsnapshot(self, cg_id, **kwargs):
-        cg_snapshot, snapshots = self._create_cgsnapshot_in_db(cg_id, **kwargs)
+    def _create_group_snapshot(self, cg_id, **kwargs):
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            cg_id, **kwargs)
 
         model_update, snapshots_model = (
-            self.driver.create_cgsnapshot(self.ctxt, cg_snapshot, snapshots))
-        self.assertEqual('available',
+            self.driver.create_group_snapshot(self.ctxt, group_snapshot,
+                                              snapshots))
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
                          model_update['status'],
                          "CGSnapshot created failed")
 
         for snapshot in snapshots_model:
             self.assertEqual(fields.SnapshotStatus.AVAILABLE,
                              snapshot['status'])
-        return cg_snapshot, snapshots
+        return group_snapshot, snapshots
 
     def _create_test_vol(self, opts):
         ctxt = testutils.get_test_admin_context()
@@ -4065,8 +4067,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           volume)
 
         # Try to delete a volume that doesn't exist (should not fail)
-        vol_no_exist = {'name': 'i_dont_exist',
-                        'id': '111111'}
+        vol_no_exist = self._generate_vol_info(None, None)
         self.driver.delete_volume(vol_no_exist)
         # Ensure export for volume that doesn't exist (should not fail)
         self.driver.ensure_export(None, vol_no_exist)
@@ -4075,15 +4076,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
 
     def test_storwize_svc_volume_name(self):
-        # Create a volume with space in name
-        pool = _get_test_pool()
-        rand_id = six.text_type(random.randint(10000, 99999))
-        volume = {'name': 'volume_ space',
-                  'size': 10,
-                  'id': '%s' % rand_id,
-                  'volume_type_id': None,
-                  'mdisk_grp_name': pool,
-                  'host': 'openstack@svc#%s' % pool}
+        volume = self._generate_vol_info(None, None)
         self.driver.create_volume(volume)
         self.driver.ensure_export(None, volume)
 
@@ -4295,6 +4288,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                              each_pool['thin_provisioning_support'])
             self.assertEqual(not is_thin_provisioning_enabled,
                              each_pool['thick_provisioning_support'])
+            self.assertTrue(each_pool['consistent_group_snapshot_enabled'])
         if self.USESIM:
             expected = 'storwize-svc-sim'
             self.assertEqual(expected, stats['volume_backend_name'])
@@ -4951,231 +4945,299 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         attrs = self.driver._helpers.get_vdisk_attributes(vol2['name'])
         self.assertIn('openstack2', attrs['mdisk_grp_name'])
 
+    # Test groups operation ####
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_group_create_with_replication(
+            self, is_grp_a_cg_snapshot_type):
+        """Test group create."""
+        is_grp_a_cg_snapshot_type.side_effect = True
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}
+        rep_type_ref = volume_types.create(self.ctxt, 'rep_type', spec)
+        rep_group = testutils.create_group(
+            self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+            volume_type_ids=[rep_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, rep_group)
+        self.assertEqual(fields.GroupStatus.ERROR,
+                         model_update['status'])
+
+        self.assertFalse(is_grp_a_cg_snapshot_type.called)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_group_create(self, is_grp_a_cg_snapshot_type):
+        """Test group create."""
+        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        group = mock.MagicMock()
+
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group, self.ctxt, group)
+
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    def test_storwize_consistency_group_snapshot(self):
-        cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.USER_ID
-        self.ctxt.project_id = fake.PROJECT_ID
-        cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_delete_group(self, is_grp_a_cg_snapshot_type):
+        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_id=type_ref['id'])
 
-        model_update = self.driver.create_consistencygroup(self.ctxt, cg)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group,
+                          self.ctxt, group, volumes)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                         model_update['status'],
-                         "CG created failed")
-
-        volumes = [
-            self._create_volume(volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id']),
-            self._create_volume(volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id']),
-            self._create_volume(volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id'])
-        ]
-
-        cg_snapshot, snapshots = self._create_cgsnapshot_in_db(cg['id'])
-
-        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            self.ctxt, cg_snapshot.id)
-        model_update = self.driver.create_cgsnapshot(self.ctxt, cg_snapshot,
-                                                     snapshots)
-        self.assertEqual('available',
-                         model_update[0]['status'],
-                         "CGSnapshot created failed")
-
-        for snapshot in model_update[1]:
-            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
-                             snapshot['status'])
-
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cg, volumes)
-
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        model_update = self.driver.delete_group(self.ctxt, group, volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_group_update(self, is_grp_a_cg_snapshot_type):
+        """Test group update."""
+        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        group = mock.MagicMock()
+        self.assertRaises(NotImplementedError, self.driver.update_group,
+                          self.ctxt, group, None, None)
+
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(self.ctxt, group)
+        self.assertIsNone(model_update)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    def test_storwize_consistency_group_from_src_invalid(self):
-        # Invalid input case for create cg from src
-        cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.USER_ID
-        self.ctxt.project_id = fake.PROJECT_ID
-        # create cg in db
-        cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_create_group_snapshot(self, is_grp_a_cg_snapshot_type):
+        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_id=type_ref['id'])
+
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            group.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_snapshot,
+                          self.ctxt, group_snapshot, snapshots)
+
+        (model_update,
+         snapshots_model_update) = self.driver.create_group_snapshot(
+            self.ctxt, group_snapshot, snapshots)
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         model_update['status'],
+                         "CGSnapshot created failed")
+
+        for snapshot in snapshots_model_update:
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                             snapshot['status'])
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_storwize_delete_group_snapshot(self, is_grp_a_cg_snapshot_type):
+        is_grp_a_cg_snapshot_type.side_effect = [True, False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_id=type_ref['id'])
+
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+
+        group_snapshot, snapshots = self._create_group_snapshot(group.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group_snapshot,
+                          self.ctxt, group_snapshot, snapshots)
+
+        model_update = self.driver.delete_group_snapshot(self.ctxt,
+                                                         group_snapshot,
+                                                         snapshots)
+        self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                         model_update[0]['status'])
+        for volume in model_update[1]:
+            self.assertEqual(fields.SnapshotStatus.DELETED, volume['status'])
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    def test_storwize_create_group_from_src_invalid(self):
+        # Invalid input case for create group from src
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        spec = {'consistent_group_snapshot_enabled': '<is> True'}
+        cg_type_ref = group_types.create(self.ctxt, 'cg_type', spec)
+        vg_type_ref = group_types.create(self.ctxt, 'vg_type', None)
+
+        # create group in db
+        group = self._create_group_in_db(volume_type_id=type_ref.id,
+                                         group_type_id=vg_type_ref.id)
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, None, None, None,
+                          None, None)
+
+        group = self._create_group_in_db(volume_type_id=type_ref.id,
+                                         group_type_id=cg_type_ref.id)
 
         # create volumes in db
-        vol1 = testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                       consistencygroup_id=cg['id'])
-        vol2 = testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                       consistencygroup_id=cg['id'])
+        vol1 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       group_id=group.id)
+        vol2 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       group_id=group.id)
         volumes = [vol1, vol2]
 
-        source_cg = self._create_consistencegroup(volume_type_id=cg_type['id'])
+        source_cg = self._create_group_in_db(volume_type_id=type_ref.id,
+                                             group_type_id=cg_type_ref.id)
 
         # Add volumes to source CG
-        src_vol1 = self._create_volume(volume_type_id=cg_type['id'],
-                                       consistencygroup_id=source_cg['id'])
-        src_vol2 = self._create_volume(volume_type_id=cg_type['id'],
-                                       consistencygroup_id=source_cg['id'])
+        src_vol1 = self._create_volume(volume_type_id=type_ref.id,
+                                       group_id=source_cg['id'])
+        src_vol2 = self._create_volume(volume_type_id=type_ref.id,
+                                       group_id=source_cg['id'])
         source_vols = [src_vol1, src_vol2]
 
-        cgsnapshot, snapshots = self._create_cgsnapshot(source_cg['id'])
+        group_snapshot, snapshots = self._create_group_snapshot(
+            source_cg['id'], group_type_id=cg_type_ref.id)
 
-        # Create cg from src with null input
+        # Create group from src with null input
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          self.ctxt, cg, volumes, None, None,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, volumes, None, None,
                           None, None)
 
         # Create cg from src with source_cg and empty source_vols
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          self.ctxt, cg, volumes, None, None,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, volumes, None, None,
                           source_cg, None)
 
         # Create cg from src with source_vols and empty source_cg
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          self.ctxt, cg, volumes, None, None,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, volumes, None, None,
                           None, source_vols)
 
         # Create cg from src with cgsnapshot and empty snapshots
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          self.ctxt, cg, volumes, cgsnapshot, None,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, volumes, group_snapshot, None,
                           None, None)
         # Create cg from src with snapshots and empty cgsnapshot
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          self.ctxt, cg, volumes, None, snapshots,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, volumes, None, snapshots,
                           None, None)
 
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cg, volumes)
+        model_update = self.driver.delete_group(self.ctxt, group, volumes)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
-        model_update = (
-            self.driver.delete_consistencygroup(self.ctxt,
-                                                source_cg, source_vols))
+        model_update = self.driver.delete_group(self.ctxt,
+                                                source_cg, source_vols)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
-        model_update = (
-            self.driver.delete_consistencygroup(self.ctxt,
-                                                cgsnapshot, snapshots))
+        model_update = self.driver.delete_group(self.ctxt,
+                                                group_snapshot, snapshots)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    def test_storwize_consistency_group_from_src(self):
+    def test_storwize_group_from_src(self):
         # Valid case for create cg from src
-        cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.USER_ID
-        self.ctxt.project_id = fake.PROJECT_ID
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        spec = {'consistent_group_snapshot_enabled': '<is> True'}
+        cg_type_ref = group_types.create(self.ctxt, 'cg_type', spec)
         pool = _get_test_pool()
         # Create cg in db
-        cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
+        group = self._create_group_in_db(volume_type_id=type_ref.id,
+                                         group_type_id=cg_type_ref.id)
         # Create volumes in db
-        testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id'],
+        testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                group_id=group.id,
                                 host='openstack@svc#%s' % pool)
-        testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id'],
+        testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                consistencygroup_id=group.id,
                                 host='openstack@svc#%s' % pool)
-        volumes = (
-            self.db.volume_get_all_by_group(self.ctxt.elevated(), cg['id']))
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group.id)
 
         # Create source CG
-        source_cg = self._create_consistencegroup(volume_type_id=cg_type['id'])
+        source_cg = self._create_group_in_db(volume_type_id=type_ref.id,
+                                             group_type_id=cg_type_ref.id)
         # Add volumes to source CG
-        self._create_volume(volume_type_id=cg_type['id'],
-                            consistencygroup_id=source_cg['id'])
-        self._create_volume(volume_type_id=cg_type['id'],
-                            consistencygroup_id=source_cg['id'])
-        source_vols = self.db.volume_get_all_by_group(
+        self._create_volume(volume_type_id=type_ref.id,
+                            group_id=source_cg['id'])
+        self._create_volume(volume_type_id=type_ref.id,
+                            group_id=source_cg['id'])
+        source_vols = self.db.volume_get_all_by_generic_group(
             self.ctxt.elevated(), source_cg['id'])
 
         # Create cgsnapshot
-        cgsnapshot, snapshots = self._create_cgsnapshot(source_cg['id'])
+        group_snapshot, snapshots = self._create_group_snapshot(
+            source_cg['id'], group_type_id=cg_type_ref.id)
 
         # Create cg from source cg
-
         model_update, volumes_model_update = (
-            self.driver.create_consistencygroup_from_src(self.ctxt,
-                                                         cg,
-                                                         volumes,
-                                                         None, None,
-                                                         source_cg,
-                                                         source_vols))
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+            self.driver.create_group_from_src(self.ctxt, group, volumes, None,
+                                              None, source_cg, source_vols))
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG create from src created failed")
-
         for each_vol in volumes_model_update:
             self.assertEqual('available', each_vol['status'])
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cg,
-                                                           volumes)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        model_update = self.driver.delete_group(self.ctxt, group, volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
         # Create cg from cg snapshot
         model_update, volumes_model_update = (
-            self.driver.create_consistencygroup_from_src(self.ctxt,
-                                                         cg,
-                                                         volumes,
-                                                         cgsnapshot,
-                                                         snapshots,
-                                                         None, None))
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+            self.driver.create_group_from_src(self.ctxt, group, volumes,
+                                              group_snapshot, snapshots,
+                                              None, None))
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG create from src created failed")
-
         for each_vol in volumes_model_update:
             self.assertEqual('available', each_vol['status'])
 
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cg, volumes)
-
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        model_update = self.driver.delete_group(self.ctxt, group, volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cgsnapshot,
-                                                           snapshots)
-
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        model_update = self.driver.delete_group_snapshot(self.ctxt,
+                                                         group_snapshot,
+                                                         snapshots)
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
-
-        model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           source_cg,
-                                                           source_vols)
-
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
-                         model_update[0]['status'])
-        for each_vol in model_update[1]:
-            self.assertEqual('deleted', each_vol['status'])
 
     def _create_volume_type_qos(self, extra_specs, fake_qos):
         # Generate a QoS volume type for volume.
@@ -5871,27 +5933,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         is_vol_defined = self.driver._helpers.is_vdisk_defined(name)
         self.assertEqual(exists, is_vol_defined)
 
-    def _generate_vol_info(self, vol_name, vol_id, vol_type=None):
+    def _generate_vol_info(self, vol_type=None, size=1):
         pool = _get_test_pool()
-        rand_id = six.text_type(random.randint(10000, 99999))
-        volume_type = self.non_replica_type
-        if vol_type:
-            volume_type = vol_type
-        if vol_name:
-            return {'name': 'snap_volume%s' % rand_id,
-                    'volume_name': vol_name,
-                    'id': rand_id,
-                    'volume_id': vol_id,
-                    'volume_size': 10,
-                    'mdisk_grp_name': pool}
-        else:
-            return {'name': 'test_volume%s' % rand_id,
-                    'size': 10,
-                    'id': '%s' % rand_id,
-                    'mdisk_grp_name': pool,
-                    'host': 'openstack@svc#%s' % pool,
-                    'volume_type_id': volume_type['id'],
-                    'volume_type': volume_type}
+        volume_type = vol_type if vol_type else self.non_replica_type
+        prop = {'size': size,
+                'volume_type_id': volume_type.id,
+                'host': 'openstack@svc#%s' % pool
+                }
+        vol = testutils.create_volume(self.ctxt, **prop)
+        return vol
+
+    def _generate_snap_info(self, vol_id):
+        prop = {'volume_id': vol_id}
+        snap = testutils.create_snapshot(self.ctxt, **prop)
+        return snap
 
     def _create_replica_volume_type(self, enable,
                                     rep_type=storwize_const.METRO):
@@ -5910,8 +5965,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             type_name = "non_rep"
 
         type_ref = volume_types.create(self.ctxt, type_name, spec)
-
-        replication_type = volume_types.get_volume_type(self.ctxt,
+        replication_type = objects.VolumeType.get_by_id(self.ctxt,
                                                         type_ref['id'])
         return replication_type
 
@@ -5923,14 +5977,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.non_replica_type = self._create_replica_volume_type(False)
 
     def _create_test_volume(self, rep_type):
-        volume = self._generate_vol_info(None, None, rep_type)
-        opts = {}
-        for p in volume.keys():
-            if p not in volume:
-                opts[p] = volume[p]
-        vol = testutils.create_volume(self.ctxt, **opts)
-        volume['id'] = vol['id']
-        volume['name'] = vol['name']
+        volume = self._generate_vol_info(rep_type)
         model_update = self.driver.create_volume(volume)
         volume['status'] = 'available'
         return volume, model_update
@@ -6054,10 +6101,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         vol1, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual('enabled', model_update['replication_status'])
 
-        snap = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap = testutils.create_snapshot(self.ctxt, vol1.id)
         self.driver.create_snapshot(snap)
 
-        vol2 = self._generate_vol_info(None, None, self.mm_type)
+        vol2 = self._generate_vol_info(self.mm_type)
         model_update = self.driver.create_volume_from_snapshot(vol2, snap)
         self.assertEqual('enabled', model_update['replication_status'])
         self._validate_replic_vol_creation(vol2)
@@ -6076,7 +6123,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         src_volume, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual('enabled', model_update['replication_status'])
 
-        volume = self._generate_vol_info(None, None, self.mm_type)
+        volume = self._generate_vol_info(self.mm_type)
 
         # Create a cloned volume from source volume.
         model_update = self.driver.create_cloned_volume(volume, src_volume)
@@ -6177,7 +6224,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         non_rep_volume, model_update = self._create_test_volume(
             self.non_replica_type)
 
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
 
         ref = {'source-name': rep_volume['name']}
         new_volume['volume_type_id'] = self.non_replica_type['id']
@@ -6213,7 +6260,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         uid_of_aux = self._get_vdisk_uid(
             storwize_const.REPLICA_AUX_VOL_PREFIX + rep_volume['name'])
 
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
         ref = {'source-name': rep_volume['name']}
         new_volume['volume_type_id'] = self.mm_type['id']
         new_volume['volume_type'] = self.mm_type
@@ -6692,7 +6739,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                        'start_relationship')
     def test_sync_replica_volumes_with_aux(self, start_relationship):
         # Create metro mirror replication.
-        mm_vol = self._generate_vol_info(None, None, self.mm_type)
+        mm_vol = self._generate_vol_info(self.mm_type)
         tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol['name']
 
         volumes = [mm_vol]
@@ -6741,7 +6788,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 new=testutils.ZeroIntervalLoopingCall)
     def test_wait_replica_vol_ready(self, get_relationship_info):
         # Create metro mirror replication.
-        mm_vol = self._generate_vol_info(None, None, self.mm_type)
+        mm_vol = self._generate_vol_info(self.mm_type)
         fake_info = {'volume': 'fake',
                      'master_vdisk_name': 'fake',
                      'aux_vdisk_name': 'fake',
