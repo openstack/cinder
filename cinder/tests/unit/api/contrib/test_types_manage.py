@@ -18,6 +18,7 @@ import six
 import webob
 
 import ddt
+from oslo_utils import strutils
 
 from cinder.api.contrib import types_manage
 from cinder import context
@@ -284,8 +285,30 @@ class VolumeTypesManageApiTest(test.TestCase):
                                 "description": "test description",
                                 "extra_specs": {"key1": "value1"}}}
         req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.InvalidParameterValue,
                           self.controller._create, req, body)
+
+    @ddt.data('0', 'f', 'false', 'off', 'n', 'no', '1', 't', 'true', 'on',
+              'y', 'yes')
+    @mock.patch.object(volume_types, "get_volume_type_by_name")
+    @mock.patch.object(volume_types, "create")
+    @mock.patch("cinder.api.openstack.wsgi.Request.cache_resource")
+    @mock.patch("cinder.api.views.types.ViewBuilder.show")
+    def test_create_type_with_valid_is_public_in_string(
+            self, is_public, mock_show, mock_cache_resource,
+            mock_create, mock_get):
+        boolean_is_public = strutils.bool_from_string(is_public)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        body = {"volume_type": {"name": "vol_type_1",
+                                "os-volume-type-access:is_public":
+                                    is_public,
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
+        req.environ['cinder.context'] = ctxt
+        self.controller._create(req, body)
+        mock_create.assert_called_once_with(
+            ctxt, 'vol_type_1', {'key1': 'value1'},
+            boolean_is_public, description=None)
 
     def _create_volume_type_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
@@ -373,6 +396,28 @@ class VolumeTypesManageApiTest(test.TestCase):
              'expected_name': 'vol_type_%s_%s' %
                               (DEFAULT_VOLUME_TYPE, DEFAULT_VOLUME_TYPE),
              'is_public': False})
+
+    @ddt.data('0', 'f', 'false', 'off', 'n', 'no', '1', 't', 'true', 'on',
+              'y', 'yes')
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    @mock.patch("cinder.api.openstack.wsgi.Request.cache_resource")
+    @mock.patch("cinder.api.views.types.ViewBuilder.show")
+    def test_update_with_valid_is_public_in_string(
+            self, is_public, mock_show, mock_cache_resource,
+            mock_get, mock_update):
+        body = {"volume_type": {"is_public": is_public}}
+        req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+        req.method = 'PUT'
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req.environ['cinder.context'] = ctxt
+        boolean_is_public = strutils.bool_from_string(is_public)
+
+        self.controller._update(req, DEFAULT_VOLUME_TYPE, body)
+        mock_update.assert_called_once_with(
+            ctxt, DEFAULT_VOLUME_TYPE, None, None,
+            is_public=boolean_is_public)
 
     @mock.patch('cinder.volume.volume_types.update')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
@@ -550,7 +595,7 @@ class VolumeTypesManageApiTest(test.TestCase):
             fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
         req.method = 'PUT'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.InvalidParameterValue,
                           self.controller._update, req,
                           DEFAULT_VOLUME_TYPE, body)
 
