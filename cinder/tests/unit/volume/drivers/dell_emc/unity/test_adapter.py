@@ -13,10 +13,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import contextlib
 import functools
 import unittest
 
 import mock
+from oslo_utils import units
 
 from cinder import exception
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
@@ -75,17 +77,21 @@ class MockClient(object):
 
     @staticmethod
     def create_lun(name, size, pool, description=None, io_limit_policy=None):
-        return test_client.MockResource(_id='lun_3')
+        return test_client.MockResource(_id=name, name=name)
 
     @staticmethod
     def get_lun(name=None, lun_id=None):
         if lun_id is None:
             lun_id = 'lun_4'
+        if lun_id in ('lun_43',):  # for thin clone cases
+            return test_client.MockResource(_id=lun_id, name=name)
         if name == 'not_exists':
             ret = test_client.MockResource(name=lun_id)
             ret.existed = False
         else:
-            ret = test_client.MockResource(_id=lun_id)
+            if name is None:
+                name = lun_id
+            ret = test_client.MockResource(_id=lun_id, name=name)
         return ret
 
     @staticmethod
@@ -99,10 +105,15 @@ class MockClient(object):
 
     @staticmethod
     def create_snap(src_lun_id, name=None):
+        if src_lun_id in ('lun_53', 'lun_55'):  # for thin clone cases
+            return test_client.MockResource(
+                _id='snap_clone_{}'.format(src_lun_id))
         return test_client.MockResource(name=name, _id=src_lun_id)
 
     @staticmethod
     def get_snap(name=None):
+        if name in ('snap_50',):  # for thin clone cases
+            return name
         snap = test_client.MockResource(name=name, _id=name)
         if name is not None:
             ret = snap
@@ -169,6 +180,14 @@ class MockClient(object):
     def get_ethernet_ports():
         return test_client.MockResourceList(ids=['spa_eth0', 'spb_eth0'])
 
+    @staticmethod
+    def thin_clone(obj, name, io_limit_policy, description, new_size_gb):
+        if (obj.name, name) in (
+                ('snap_61', 'lun_60'), ('lun_63', 'lun_60')):
+            return test_client.MockResource(_id=name)
+        else:
+            raise ex.UnityThinCloneLimitExceededError
+
     @property
     def system(self):
         return self._system
@@ -187,11 +206,19 @@ class MockLookupService(object):
         }
 
 
+class MockOSResource(mock.Mock):
+    def __init__(self, *args, **kwargs):
+        super(MockOSResource, self).__init__(*args, **kwargs)
+        if 'name' in kwargs:
+            self.name = kwargs['name']
+
+
 def mock_adapter(driver_clz):
     ret = driver_clz()
     ret._client = MockClient()
     with mock.patch('cinder.volume.drivers.dell_emc.unity.adapter.'
-                    'CommonAdapter.validate_ports'):
+                    'CommonAdapter.validate_ports'), \
+            patch_storops():
         ret.do_setup(MockDriver(), MockConfig())
     ret.lookup_service = MockLookupService()
     return ret
@@ -205,12 +232,12 @@ def get_connector_properties():
     return {'host': 'host1', 'wwpns': 'abcdefg'}
 
 
-def copy_volume(from_path, to_path, size_in_m, block_size, sparse=True):
-    pass
-
-
 def get_lun_pl(name):
     return 'id^%s|system^CLIENT_SERIAL|type^lun|version^None' % name
+
+
+def get_snap_lun_pl(name):
+    return 'id^%s|system^CLIENT_SERIAL|type^snap_lun|version^None' % name
 
 
 def get_snap_pl(name):
@@ -232,7 +259,6 @@ def patch_for_unity_adapter(func):
                 new=get_backend_qos_specs)
     @mock.patch('cinder.utils.brick_get_connector_properties',
                 new=get_connector_properties)
-    @mock.patch('cinder.volume.utils.copy_volume', new=copy_volume)
     def func_wrapper(*args, **kwargs):
         return func(*args, **kwargs)
 
@@ -261,11 +287,48 @@ patch_for_fc_adapter = patch_for_concrete_adapter(
     'cinder.volume.drivers.dell_emc.unity.adapter.FCAdapter')
 
 
+@contextlib.contextmanager
+def patch_thin_clone(cloned_lun):
+    with mock.patch.object(adapter.CommonAdapter, '_thin_clone') as tc:
+        tc.return_value = cloned_lun
+        yield tc
+
+
+@contextlib.contextmanager
+def patch_dd_copy(copied_lun):
+    with mock.patch.object(adapter.CommonAdapter, '_dd_copy') as dd:
+        dd.return_value = copied_lun
+        yield dd
+
+
+@contextlib.contextmanager
+def patch_copy_volume():
+    with mock.patch('cinder.volume.utils.copy_volume') as mocked:
+        yield mocked
+
+
+@contextlib.contextmanager
+def patch_storops():
+    with mock.patch.object(adapter, 'storops') as storops:
+        storops.ThinCloneActionEnum = mock.Mock(DD_COPY='DD_COPY')
+        yield storops
+
+
+class IdMatcher(object):
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __eq__(self, other):
+        return self._obj._id == other._id
+
+
 ########################
 #
 #   Start of Tests
 #
 ########################
+
+@mock.patch.object(adapter, 'storops_ex', new=ex)
 class CommonAdapterTest(unittest.TestCase):
     def setUp(self):
         self.adapter = mock_adapter(adapter.CommonAdapter)
@@ -278,38 +341,35 @@ class CommonAdapterTest(unittest.TestCase):
 
     @patch_for_unity_adapter
     def test_create_volume(self):
-        volume = mock.Mock(size=5, host='unity#pool1')
+        volume = MockOSResource(name='lun_3', size=5, host='unity#pool1')
         ret = self.adapter.create_volume(volume)
         expected = get_lun_pl('lun_3')
         self.assertEqual(expected, ret['provider_location'])
 
     def test_create_snapshot(self):
-        volume = mock.Mock(provider_location='id^lun_43')
-        snap = mock.Mock(volume=volume)
-        snap.name = 'abc-def_snap'
+        volume = MockOSResource(provider_location='id^lun_43')
+        snap = MockOSResource(volume=volume, name='abc-def_snap')
         result = self.adapter.create_snapshot(snap)
         self.assertEqual(get_snap_pl('lun_43'), result['provider_location'])
         self.assertEqual('lun_43', result['provider_id'])
 
     def test_delete_snap(self):
         def f():
-            snap = mock.Mock()
-            snap.name = 'abc-def_snap'
-
+            snap = MockOSResource(name='abc-def_snap')
             self.adapter.delete_snapshot(snap)
 
         self.assertRaises(ex.SnapDeleteIsCalled, f)
 
     def test_get_lun_id_has_location(self):
-        volume = mock.Mock(provider_location='id^lun_43')
+        volume = MockOSResource(provider_location='id^lun_43')
         self.assertEqual('lun_43', self.adapter.get_lun_id(volume))
 
     def test_get_lun_id_no_location(self):
-        volume = mock.Mock(provider_location=None)
+        volume = MockOSResource(provider_location=None)
         self.assertEqual('lun_4', self.adapter.get_lun_id(volume))
 
     def test_delete_volume(self):
-        volume = mock.Mock(provider_location='id^lun_4')
+        volume = MockOSResource(provider_location='id^lun_4')
         self.adapter.delete_volume(volume)
 
     def test_get_pool_stats(self):
@@ -376,7 +436,7 @@ class CommonAdapterTest(unittest.TestCase):
 
     def test_terminate_connection_volume(self):
         def f():
-            volume = mock.Mock(provider_location='id^lun_43', id='id_43')
+            volume = MockOSResource(provider_location='id^lun_43', id='id_43')
             connector = {'host': 'host1'}
             self.adapter.terminate_connection(volume, connector)
 
@@ -385,22 +445,21 @@ class CommonAdapterTest(unittest.TestCase):
     def test_terminate_connection_snapshot(self):
         def f():
             connector = {'host': 'host1'}
-            snap = mock.Mock(id='snap_0', name='snap_0')
-            snap.name = 'snap_0'
+            snap = MockOSResource(name='snap_0', id='snap_0')
             self.adapter.terminate_connection_snapshot(snap, connector)
 
         self.assertRaises(ex.DetachIsCalled, f)
 
     def test_manage_existing_by_name(self):
         ref = {'source-id': 12}
-        volume = mock.Mock(name='lun1')
+        volume = MockOSResource(name='lun1')
         ret = self.adapter.manage_existing(volume, ref)
         expected = get_lun_pl('12')
         self.assertEqual(expected, ret['provider_location'])
 
     def test_manage_existing_by_id(self):
         ref = {'source-name': 'lunx'}
-        volume = mock.Mock(name='lun1')
+        volume = MockOSResource(name='lun1')
         ret = self.adapter.manage_existing(volume, ref)
         expected = get_lun_pl('lun_4')
         self.assertEqual(expected, ret['provider_location'])
@@ -408,7 +467,7 @@ class CommonAdapterTest(unittest.TestCase):
     def test_manage_existing_invalid_ref(self):
         def f():
             ref = {}
-            volume = mock.Mock(name='lun1')
+            volume = MockOSResource(name='lun1')
             self.adapter.manage_existing(volume, ref)
 
         self.assertRaises(exception.ManageExistingInvalidReference, f)
@@ -416,7 +475,7 @@ class CommonAdapterTest(unittest.TestCase):
     def test_manage_existing_lun_not_found(self):
         def f():
             ref = {'source-name': 'not_exists'}
-            volume = mock.Mock(name='lun1')
+            volume = MockOSResource(name='lun1')
             self.adapter.manage_existing(volume, ref)
 
         self.assertRaises(exception.ManageExistingInvalidReference, f)
@@ -424,8 +483,8 @@ class CommonAdapterTest(unittest.TestCase):
     @patch_for_unity_adapter
     def test_manage_existing_get_size_invalid_backend(self):
         def f():
-            volume = mock.Mock(volume_type_id='thin',
-                               host='host@backend#pool1')
+            volume = MockOSResource(volume_type_id='thin',
+                                    host='host@backend#pool1')
             ref = {'source-id': 12}
             self.adapter.manage_existing_get_size(volume, ref)
 
@@ -433,38 +492,175 @@ class CommonAdapterTest(unittest.TestCase):
 
     @patch_for_unity_adapter
     def test_manage_existing_get_size_success(self):
-        volume = mock.Mock(volume_type_id='thin', host='host@backend#pool0')
+        volume = MockOSResource(volume_type_id='thin',
+                                host='host@backend#pool0')
         ref = {'source-id': 12}
         volume_size = self.adapter.manage_existing_get_size(volume, ref)
         self.assertEqual(5, volume_size)
 
     @patch_for_unity_adapter
     def test_create_volume_from_snapshot(self):
-        volume = mock.Mock(id='id_44', host='unity#pool1',
-                           provider_location=get_lun_pl('12'))
-        snap = mock.Mock(name='snap_44')
-        ret = self.adapter.create_volume_from_snapshot(volume, snap)
-        self.assertEqual(get_lun_pl('lun_3'), ret['provider_location'])
+        lun_id = 'lun_50'
+        volume = MockOSResource(name=lun_id, id=lun_id, host='unity#pool1')
+        snap_id = 'snap_50'
+        snap = MockOSResource(name=snap_id)
+        with patch_thin_clone(test_client.MockResource(_id=lun_id)) as tc:
+            ret = self.adapter.create_volume_from_snapshot(volume, snap)
+            self.assertEqual(get_snap_lun_pl(lun_id),
+                             ret['provider_location'])
+            tc.assert_called_with(adapter.VolumeParams(self.adapter, volume),
+                                  snap_id)
 
     @patch_for_unity_adapter
-    def test_create_cloned_volume(self):
-        volume = mock.Mock(id='id_55', host='unity#pool1', size=3,
-                           provider_location=get_lun_pl('lun55'))
-        src_vref = mock.Mock(id='id_66', name='LUN 66',
-                             provider_location=get_lun_pl('lun66'))
-        ret = self.adapter.create_cloned_volume(volume, src_vref)
-        self.assertEqual(get_lun_pl('lun_3'), ret['provider_location'])
+    def test_create_cloned_volume_attached(self):
+        lun_id = 'lun_51'
+        src_lun_id = 'lun_53'
+        volume = MockOSResource(name=lun_id, id=lun_id, host='unity#pool1')
+        src_vref = MockOSResource(id=src_lun_id, name=src_lun_id,
+                                  provider_location=get_lun_pl(src_lun_id),
+                                  volume_attachment=['not_care'])
+        with patch_dd_copy(test_client.MockResource(_id=lun_id)) as dd:
+            ret = self.adapter.create_cloned_volume(volume, src_vref)
+            dd.assert_called_with(
+                adapter.VolumeParams(self.adapter, volume),
+                IdMatcher(test_client.MockResource(
+                    _id='snap_clone_{}'.format(src_lun_id))),
+                src_lun=IdMatcher(test_client.MockResource(_id=src_lun_id)))
+            self.assertEqual(get_lun_pl(lun_id), ret['provider_location'])
+
+    @patch_for_unity_adapter
+    def test_create_cloned_volume_available(self):
+        lun_id = 'lun_54'
+        src_lun_id = 'lun_55'
+        volume = MockOSResource(id=lun_id, host='unity#pool1', size=3,
+                                provider_location=get_lun_pl(lun_id))
+        src_vref = MockOSResource(id=src_lun_id, name=src_lun_id,
+                                  provider_location=get_lun_pl(src_lun_id),
+                                  volume_attachment=None)
+        with patch_thin_clone(test_client.MockResource(_id=lun_id)) as tc:
+            ret = self.adapter.create_cloned_volume(volume, src_vref)
+            tc.assert_called_with(
+                adapter.VolumeParams(self.adapter, volume),
+                IdMatcher(test_client.MockResource(
+                    _id='snap_clone_{}'.format(src_lun_id))),
+                src_lun=IdMatcher(test_client.MockResource(_id=src_lun_id)))
+            self.assertEqual(get_snap_lun_pl(lun_id), ret['provider_location'])
+
+    @patch_for_unity_adapter
+    def test_dd_copy_with_src_lun(self):
+        lun_id = 'lun_56'
+        src_lun_id = 'lun_57'
+        src_snap_id = 'snap_57'
+        volume = MockOSResource(name=lun_id, id=lun_id, host='unity#pool1',
+                                provider_location=get_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        src_lun = test_client.MockResource(name=src_lun_id, _id=src_lun_id)
+        src_lun.size_total = 6 * units.Gi
+        with patch_copy_volume() as copy_volume:
+            ret = self.adapter._dd_copy(
+                adapter.VolumeParams(self.adapter, volume), src_snap,
+                src_lun=src_lun)
+            copy_volume.assert_called_with('dev', 'dev', 6144, '1M',
+                                           sparse=True)
+            self.assertEqual(IdMatcher(test_client.MockResource(_id=lun_id)),
+                             ret)
+
+    @patch_for_unity_adapter
+    def test_dd_copy_wo_src_lun(self):
+        lun_id = 'lun_58'
+        src_lun_id = 'lun_59'
+        src_snap_id = 'snap_59'
+        volume = MockOSResource(name=lun_id, id=lun_id, host='unity#pool1',
+                                provider_location=get_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        src_snap.storage_resource = test_client.MockResource(name=src_lun_id,
+                                                             _id=src_lun_id)
+        with patch_copy_volume() as copy_volume:
+            ret = self.adapter._dd_copy(
+                adapter.VolumeParams(self.adapter, volume), src_snap)
+            copy_volume.assert_called_with('dev', 'dev', 5120, '1M',
+                                           sparse=True)
+            self.assertEqual(IdMatcher(test_client.MockResource(_id=lun_id)),
+                             ret)
+
+    @patch_for_unity_adapter
+    def test_dd_copy_raise(self):
+        lun_id = 'lun_58'
+        src_snap_id = 'snap_59'
+        volume = MockOSResource(name=lun_id, id=lun_id, host='unity#pool1',
+                                provider_location=get_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        with patch_copy_volume() as copy_volume:
+            copy_volume.side_effect = AttributeError
+            self.assertRaises(AttributeError,
+                              self.adapter._dd_copy, volume, src_snap)
+
+    @patch_for_unity_adapter
+    def test_thin_clone(self):
+        lun_id = 'lun_60'
+        src_snap_id = 'snap_61'
+        volume = MockOSResource(name=lun_id, id=lun_id, size=1,
+                                provider_location=get_snap_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        ret = self.adapter._thin_clone(volume, src_snap)
+        self.assertEqual(IdMatcher(test_client.MockResource(_id=lun_id)), ret)
+
+    @patch_for_unity_adapter
+    def test_thin_clone_downgraded_with_src_lun(self):
+        lun_id = 'lun_60'
+        src_snap_id = 'snap_62'
+        src_lun_id = 'lun_62'
+        volume = MockOSResource(name=lun_id, id=lun_id, size=1,
+                                provider_location=get_snap_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        src_lun = test_client.MockResource(name=src_lun_id, _id=src_lun_id)
+        new_dd_lun = test_client.MockResource(name='lun_63')
+        with patch_storops() as mocked_storops, \
+                patch_dd_copy(new_dd_lun) as dd:
+            ret = self.adapter._thin_clone(
+                adapter.VolumeParams(self.adapter, volume),
+                src_snap, src_lun=src_lun)
+            vol_params = adapter.VolumeParams(self.adapter, volume)
+            vol_params.name = 'hidden-{}'.format(volume.name)
+            vol_params.description = 'hidden-{}'.format(volume.description)
+            dd.assert_called_with(vol_params, src_snap, src_lun=src_lun)
+            mocked_storops.TCHelper.notify.assert_called_with(src_lun,
+                                                              'DD_COPY',
+                                                              new_dd_lun)
+        self.assertEqual(IdMatcher(test_client.MockResource(_id=lun_id)), ret)
+
+    @patch_for_unity_adapter
+    def test_thin_clone_downgraded_wo_src_lun(self):
+        lun_id = 'lun_60'
+        src_snap_id = 'snap_62'
+        volume = MockOSResource(name=lun_id, id=lun_id, size=1,
+                                provider_location=get_snap_lun_pl(lun_id))
+        src_snap = test_client.MockResource(name=src_snap_id, _id=src_snap_id)
+        new_dd_lun = test_client.MockResource(name='lun_63')
+        with patch_storops() as mocked_storops, \
+                patch_dd_copy(new_dd_lun) as dd:
+            ret = self.adapter._thin_clone(
+                adapter.VolumeParams(self.adapter, volume), src_snap)
+            vol_params = adapter.VolumeParams(self.adapter, volume)
+            vol_params.name = 'hidden-{}'.format(volume.name)
+            vol_params.description = 'hidden-{}'.format(volume.description)
+            dd.assert_called_with(vol_params, src_snap, src_lun=None)
+            mocked_storops.TCHelper.notify.assert_called_with(src_snap,
+                                                              'DD_COPY',
+                                                              new_dd_lun)
+        self.assertEqual(IdMatcher(test_client.MockResource(_id=lun_id)), ret)
 
     def test_extend_volume_error(self):
         def f():
-            volume = mock.Mock(id='l56', provider_location=get_lun_pl('lun56'))
+            volume = MockOSResource(id='l56',
+                                    provider_location=get_lun_pl('lun56'))
             self.adapter.extend_volume(volume, -1)
 
         self.assertRaises(ex.ExtendLunError, f)
 
     def test_extend_volume_no_id(self):
         def f():
-            volume = mock.Mock(provider_location='type^lun')
+            volume = MockOSResource(provider_location='type^lun')
             self.adapter.extend_volume(volume, 5)
 
         self.assertRaises(exception.VolumeBackendAPIException, f)
@@ -546,7 +742,7 @@ class FCAdapterTest(unittest.TestCase):
 
     @patch_for_fc_adapter
     def test_initialize_connection_volume(self):
-        volume = mock.Mock(provider_location='id^lun_43', id='id_43')
+        volume = MockOSResource(provider_location='id^lun_43', id='id_43')
         connector = {'host': 'host1'}
         conn_info = self.adapter.initialize_connection(volume, connector)
         self.assertEqual('fibre_channel', conn_info['driver_volume_type'])
@@ -555,7 +751,7 @@ class FCAdapterTest(unittest.TestCase):
 
     @patch_for_fc_adapter
     def test_initialize_connection_snapshot(self):
-        snap = mock.Mock(id='snap_1', name='snap_1')
+        snap = MockOSResource(id='snap_1', name='snap_1')
         connector = {'host': 'host1'}
         conn_info = self.adapter.initialize_connection_snapshot(
             snap, connector)
@@ -565,7 +761,7 @@ class FCAdapterTest(unittest.TestCase):
 
     def test_terminate_connection_auto_zone_enabled(self):
         connector = {'host': 'host1', 'wwpns': 'abcdefg'}
-        volume = mock.Mock(provider_location='id^lun_41', id='id_41')
+        volume = MockOSResource(provider_location='id^lun_41', id='id_41')
         ret = self.adapter.terminate_connection(volume, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         data = ret['data']
@@ -631,7 +827,7 @@ class ISCSIAdapterTest(unittest.TestCase):
 
     @patch_for_iscsi_adapter
     def test_initialize_connection_volume(self):
-        volume = mock.Mock(provider_location='id^lun_43', id='id_43')
+        volume = MockOSResource(provider_location='id^lun_43', id='id_43')
         connector = {'host': 'host1'}
         conn_info = self.adapter.initialize_connection(volume, connector)
         self.assertEqual('iscsi', conn_info['driver_volume_type'])
@@ -640,7 +836,7 @@ class ISCSIAdapterTest(unittest.TestCase):
 
     @patch_for_iscsi_adapter
     def test_initialize_connection_snapshot(self):
-        snap = mock.Mock(id='snap_1', name='snap_1')
+        snap = MockOSResource(id='snap_1', name='snap_1')
         connector = {'host': 'host1'}
         conn_info = self.adapter.initialize_connection_snapshot(
             snap, connector)

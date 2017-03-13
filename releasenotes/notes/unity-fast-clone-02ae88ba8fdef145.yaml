@@ -1,0 +1,8 @@
+---
+features:
+  - Add thin clone support in the Unity driver. Unity storage supports the thin
+    clone of a LUN from OE version 4.2.0. It is more efficient than the dd
+    solution. However, there is a limit of thin clone inside
+    each LUN family. Every time the limit reaches, a new LUN family will be
+    created by a dd-copy, and then the volume clone afterward will use the
+    thin clone of the new LUN family.

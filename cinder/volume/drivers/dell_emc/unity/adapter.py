@@ -14,11 +14,22 @@
 # under the License.
 
 import contextlib
+import copy
 import functools
+import os
 import random
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import importutils
+
+storops = importutils.try_import('storops')
+if storops:
+    from storops import exception as storops_ex
+else:
+    # Set storops_ex to be None for unit test
+    storops_ex = None
 
 from cinder import exception
 from cinder.i18n import _
@@ -31,6 +42,77 @@ LOG = logging.getLogger(__name__)
 
 PROTOCOL_FC = 'FC'
 PROTOCOL_ISCSI = 'iSCSI'
+
+
+class VolumeParams(object):
+    def __init__(self, adapter, volume):
+        self._adapter = adapter
+        self._volume = volume
+
+        self._volume_id = volume.id
+        self._name = volume.name
+        self._size = volume.size
+        self._description = (volume.display_description
+                             if volume.display_description
+                             else volume.display_name)
+        self._pool = None
+        self._io_limit_policy = None
+
+    @property
+    def volume_id(self):
+        return self._volume_id
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, value):
+        self._size = value
+
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @property
+    def pool(self):
+        if self._pool is None:
+            self._pool = self._adapter._get_target_pool(self._volume)
+        return self._pool
+
+    @pool.setter
+    def pool(self, value):
+        self._pool = value
+
+    @property
+    def io_limit_policy(self):
+        if self._io_limit_policy is None:
+            qos_specs = utils.get_backend_qos_specs(self._volume)
+            self._io_limit_policy = self._adapter.client.get_io_limit_policy(
+                qos_specs)
+        return self._io_limit_policy
+
+    @io_limit_policy.setter
+    def io_limit_policy(self, value):
+        self._io_limit_policy = value
+
+    def __eq__(self, other):
+        return (self.volume_id == other.volume_id
+                and self.name == other.name
+                and self.size == other.size
+                and self.io_limit_policy == other.io_limit_policy)
 
 
 class CommonAdapter(object):
@@ -84,6 +166,13 @@ class CommonAdapter(object):
 
         self.allowed_ports = self.validate_ports(self.config.unity_io_ports)
 
+        group_name = (self.config.config_group if self.config.config_group
+                      else 'DEFAULT')
+        folder_name = '%(group)s.%(sys_name)s' % {
+            'group': group_name, 'sys_name': self.client.system.info.name}
+        persist_path = os.path.join(cfg.CONF.state_path, 'unity', folder_name)
+        storops.TCHelper.set_up(persist_path)
+
     def normalize_config(self, config):
         config.unity_storage_pool_names = utils.remove_empty(
             '%s.unity_storage_pool_names' % config.config_group,
@@ -92,6 +181,7 @@ class CommonAdapter(object):
         config.unity_io_ports = utils.remove_empty(
             '%s.unity_io_ports' % config.config_group,
             config.unity_io_ports)
+
         return config
 
     def get_all_ports(self):
@@ -159,36 +249,32 @@ class CommonAdapter(object):
         valid_names = utils.validate_pool_names(names, array_pools.name)
         return {p.name: p for p in array_pools if p.name in valid_names}
 
+    def makeup_model(self, lun, is_snap_lun=False):
+        lun_type = 'snap_lun' if is_snap_lun else 'lun'
+        location = self._build_provider_location(lun_id=lun.get_id(),
+                                                 lun_type=lun_type)
+        return {
+            'provider_location': location,
+            'provider_id': lun.get_id()
+        }
+
     def create_volume(self, volume):
         """Creates a volume.
 
         :param volume: volume information
         """
-        volume_size = volume.size
-        volume_name = volume.name
-        volume_description = (volume.display_description
-                              if volume.display_description
-                              else volume.display_name)
+        params = VolumeParams(self, volume)
 
-        pool = self._get_target_pool(volume)
-        qos_specs = utils.get_backend_qos_specs(volume)
-        limit_policy = self.client.get_io_limit_policy(qos_specs)
+        LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
+                 '%(description)s, pool: %(pool)s, io limit policy: '
+                 '%(io_limit_policy)s.', params)
 
-        LOG.info('Create Volume: %(volume)s  Size: %(size)s '
-                 'Pool: %(pool)s Qos: %(qos)s.',
-                 {'volume': volume_name,
-                  'size': volume_size,
-                  'pool': pool.name,
-                  'qos': qos_specs})
-
-        lun = self.client.create_lun(
-            volume_name, volume_size, pool, description=volume_description,
-            io_limit_policy=limit_policy)
-        location = self._build_provider_location(
-            lun_type='lun',
-            lun_id=lun.get_id())
-        return {'provider_location': location,
-                'provider_id': lun.get_id()}
+        return self.makeup_model(
+            self.client.create_lun(name=params.name,
+                                   size=params.size,
+                                   pool=params.pool,
+                                   description=params.description,
+                                   io_limit_policy=params.io_limit_policy))
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -364,10 +450,12 @@ class CommonAdapter(object):
         """
         lun = self._get_referenced_lun(existing_ref)
         lun.modify(name=volume.name)
-        return {'provider_location':
+        return {
+            'provider_location':
                 self._build_provider_location(lun_id=lun.get_id(),
                                               lun_type='lun'),
-                'provider_id': lun.get_id()}
+            'provider_id': lun.get_id()
+        }
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Returns size of volume to be managed by `manage_existing`.
@@ -424,30 +512,32 @@ class CommonAdapter(object):
                                       True) as attach_info:
                 yield attach_info
 
-    def _create_volume_from_snap(self, volume, snap, size_in_m=None):
-        """Creates a volume from a Unity snapshot.
+    def _dd_copy(self, vol_params, src_snap, src_lun=None):
+        """Creates a volume via copying a Unity snapshot.
 
         It attaches the `volume` and `snap`, then use `dd` to copy the
         data from the Unity snapshot to the `volume`.
         """
-        model_update = self.create_volume(volume)
-        # Update `provider_location` and `provider_id` of `volume` explicitly.
-        volume.update(model_update)
-        src_id = snap.get_id()
-        dest_lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
+        dest_lun = self.client.create_lun(
+            name=vol_params.name, size=vol_params.size, pool=vol_params.pool,
+            description=vol_params.description,
+            io_limit_policy=vol_params.io_limit_policy)
+        src_id = src_snap.get_id()
         try:
             conn_props = cinder_utils.brick_get_connector_properties()
 
             with self._connect_resource(dest_lun, conn_props,
-                                        volume.id) as dest_info, \
-                    self._connect_resource(snap, conn_props,
+                                        vol_params.volume_id) as dest_info, \
+                    self._connect_resource(src_snap, conn_props,
                                            src_id) as src_info:
-                if size_in_m is None:
+                if src_lun is None:
                     # If size is not specified, need to get the size from LUN
                     # of snapshot.
                     lun = self.client.get_lun(
-                        lun_id=snap.storage_resource.get_id())
+                        lun_id=src_snap.storage_resource.get_id())
                     size_in_m = utils.byte_to_mib(lun.size_total)
+                else:
+                    size_in_m = utils.byte_to_mib(src_lun.size_total)
                 vol_utils.copy_volume(
                     src_info['device']['path'],
                     dest_info['device']['path'],
@@ -456,35 +546,82 @@ class CommonAdapter(object):
                     sparse=True)
         except Exception:
             with excutils.save_and_reraise_exception():
-                utils.ignore_exception(self.delete_volume, volume)
+                utils.ignore_exception(self.client.delete_lun,
+                                       dest_lun.get_id())
                 LOG.error('Failed to create cloned volume: %(vol_id)s, '
                           'from source unity snapshot: %(snap_name)s.',
-                          {'vol_id': volume.id, 'snap_name': snap.name})
+                          {'vol_id': vol_params.volume_id,
+                           'snap_name': src_snap.name})
 
-        return model_update
+        return dest_lun
+
+    def _thin_clone(self, vol_params, src_snap, src_lun=None):
+        tc_src = src_snap if src_lun is None else src_lun
+        try:
+            LOG.debug('Try to thin clone from %s.', tc_src.name)
+            lun = self.client.thin_clone(
+                tc_src, vol_params.name,
+                description=vol_params.description,
+                io_limit_policy=vol_params.io_limit_policy,
+                new_size_gb=vol_params.size)
+        except storops_ex.UnityThinCloneLimitExceededError:
+            LOG.info('Number of thin clones of base LUN exceeds system '
+                     'limit, dd-copy a new one and thin clone from it.')
+            # Copy via dd if thin clone meets the system limit
+            hidden = copy.copy(vol_params)
+            hidden.name = 'hidden-%s' % vol_params.name
+            hidden.description = 'hidden-%s' % vol_params.description
+            copied_lun = self._dd_copy(hidden, src_snap, src_lun=src_lun)
+            LOG.debug('Notify storops the dd action of lun: %(src_name)s. And '
+                      'the newly copied lun is: %(copied)s.',
+                      {'src_name': tc_src.name, 'copied': copied_lun.name})
+            storops.TCHelper.notify(tc_src,
+                                    storops.ThinCloneActionEnum.DD_COPY,
+                                    copied_lun)
+            lun = self.client.thin_clone(
+                copied_lun, vol_params.name,
+                description=vol_params.description,
+                io_limit_policy=vol_params.io_limit_policy,
+                new_size_gb=vol_params.size)
+        except storops_ex.SystemAPINotSupported:
+            # Thin clone not support on array version before Merlin
+            lun = self._dd_copy(vol_params, src_snap, src_lun=src_lun)
+            LOG.debug(
+                'Volume copied via dd because array OE is too old to support '
+                'thin clone api. source snap: %(src_snap)s, lun: %(src_lun)s.',
+                {'src_snap': src_snap.name,
+                 'src_lun': 'Unknown' if src_lun is None else src_lun.name})
+        return lun
 
     def create_volume_from_snapshot(self, volume, snapshot):
         snap = self.client.get_snap(snapshot.name)
-        return self._create_volume_from_snap(volume, snap)
+        return self.makeup_model(
+            self._thin_clone(VolumeParams(self, volume), snap),
+            is_snap_lun=True)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates cloned volume.
 
         1. Take an internal snapshot of source volume, and attach it.
-        2. Create a new volume, and attach it.
-        3. Copy from attached snapshot of step 1 to the volume of step 2.
-        4. Delete the internal snapshot created in step 1.
+        2. Thin clone from the snapshot to a new volume.
+           Note: there are several cases the thin clone will downgrade to `dd`,
+           2.1 Source volume is attached (in-use).
+           2.2 Array OE version doesn't support thin clone.
+           2.3 The current LUN family reaches the thin clone limits.
+        3. Delete the internal snapshot created in step 1.
         """
 
         src_lun_id = self.get_lun_id(src_vref)
         if src_lun_id is None:
             raise exception.VolumeBackendAPIException(
-                data=_("LUN ID of source volume: %s not found.") %
-                src_vref.name)
+                data=_(
+                    "LUN ID of source volume: %s not found.") % src_vref.name)
+        src_lun = self.client.get_lun(lun_id=src_lun_id)
         src_snap_name = 'snap_clone_%s' % volume.id
 
         create_snap_func = functools.partial(self.client.create_snap,
                                              src_lun_id, src_snap_name)
+        vol_params = VolumeParams(self, volume)
         with utils.assure_cleanup(create_snap_func,
                                   self.client.delete_snap,
                                   True) as src_snap:
@@ -492,8 +629,16 @@ class CommonAdapter(object):
                       'name: %(name)s, id: %(id)s.',
                       {'name': src_snap_name,
                        'id': src_snap.get_id()})
-            return self._create_volume_from_snap(
-                volume, src_snap, size_in_m=utils.gib_to_mib(volume.size))
+            if src_vref.volume_attachment:
+                lun = self._dd_copy(vol_params, src_snap, src_lun=src_lun)
+                LOG.debug('Volume copied using dd because source volume: '
+                          '%(name)s is attached: %(attach)s.',
+                          {'name': src_vref.name,
+                           'attach': src_vref.volume_attachment})
+                return self.makeup_model(lun)
+            else:
+                lun = self._thin_clone(vol_params, src_snap, src_lun=src_lun)
+                return self.makeup_model(lun, is_snap_lun=True)
 
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)

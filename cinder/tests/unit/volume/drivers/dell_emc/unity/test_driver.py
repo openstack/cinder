@@ -15,10 +15,9 @@
 
 import unittest
 
-import mock
-
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
+from cinder.tests.unit.volume.drivers.dell_emc.unity import test_adapter
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.dell_emc.unity import driver
 
@@ -107,11 +106,12 @@ class MockAdapter(object):
 class UnityDriverTest(unittest.TestCase):
     @staticmethod
     def get_volume():
-        return mock.Mock(provider_location='id^lun_43', id='id_43')
+        return test_adapter.MockOSResource(provider_location='id^lun_43',
+                                           id='id_43')
 
     @classmethod
     def get_snapshot(cls):
-        return mock.Mock(volume=cls.get_volume())
+        return test_adapter.MockOSResource(volume=cls.get_volume())
 
     @staticmethod
     def get_context():

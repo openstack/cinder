@@ -76,6 +76,20 @@ class UnityClient(object):
             lun = self.system.get_lun(name=name)
         return lun
 
+    def thin_clone(self, lun_or_snap, name, io_limit_policy=None,
+                   description=None, new_size_gb=None):
+        try:
+            lun = lun_or_snap.thin_clone(
+                name=name, io_limit_policy=io_limit_policy,
+                description=description)
+        except storops_ex.UnityLunNameInUseError:
+            LOG.debug("LUN(thin clone) %s already exists. "
+                      "Return the existing one.", name)
+            lun = self.system.get_lun(name=name)
+        if new_size_gb is not None and new_size_gb > lun.total_size_gb:
+            lun = self.extend_lun(lun.get_id(), new_size_gb)
+        return lun
+
     def delete_lun(self, lun_id):
         """Deletes LUN on the Unity system.
 
