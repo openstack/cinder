@@ -590,6 +590,12 @@ host_name:
   in: body
   required: false
   type: string
+host_service:
+  description: |
+    The name of the service which is running on the host.
+  in: body
+  required: true
+  type: string
 id:
   description: |
     The UUID of the volume transfer.
@@ -1277,6 +1283,18 @@ security_groups:
   in: body
   required: true
   type: integer
+service_state:
+  description: |
+    The state of the service. One of ``available`` or ``unavailable``.
+  in: body
+  required: true
+  type: string
+service_status:
+  description: |
+    The status of the service. One of ``enabled`` or ``disabled``.
+  in: body
+  required: true
+  type: string
 size:
   description: |
     The size of the volume, in gibibytes (GiB).
@@ -1434,6 +1452,12 @@ total_capacity:
   in: body
   required: true
   type: string
+total_count:
+  description: |
+    Total number of volumes.
+  in: body
+  required: true
+  type: integer
 totalBackupGigabytesUsed:
   description: |
     The total number of backups gibibytes (GiB) used.

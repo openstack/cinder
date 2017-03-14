@@ -1,0 +1,22 @@
+{
+    "host": [{
+            "resource": {
+                "volume_count": "8",
+                "total_volume_gb": "11",
+                "total_snapshot_gb": "1",
+                "project": "(total)",
+                "host": "node1@rbd-sas",
+                "snapshot_count": "1"
+            }
+        },
+        {
+            "resource": {
+                "volume_count": "8",
+                "total_volume_gb": "11",
+                "total_snapshot_gb": "1",
+                "project": "f21a9c86d7114bf99c711f4874d80474",
+                "host": "node1@rbd-sas",
+                "snapshot_count": "1"
+            }
+        }]
+}

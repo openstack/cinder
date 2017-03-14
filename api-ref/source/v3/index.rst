@@ -15,6 +15,7 @@ Block Storage API V3 (CURRENT)
 .. include:: groups.inc
 .. include:: group-snapshots.inc
 .. include:: group-types.inc
+.. include:: hosts.inc
 .. include:: limits.inc
 .. include:: os-vol-image-meta-v3.inc
 .. include:: os-vol-pool-v3.inc
