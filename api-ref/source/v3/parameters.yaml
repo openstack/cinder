@@ -1206,6 +1206,12 @@ os-attach:
   in: body
   required: true
   type: object
+os-detach:
+  description: |
+    The ``os-detach`` action.
+  in: body
+  required: true
+  type: object
 os-extend:
   description: |
     The ``os-extend`` action.
