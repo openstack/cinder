@@ -315,6 +315,7 @@ class QnapDriverBaseTestCase(test.TestCase):
         super(QnapDriverBaseTestCase, self).setUp()
         self.driver = None
         self.mock_HTTPConnection = None
+        self.mock_object(qnap.QnapISCSIDriver, 'TIME_INTERVAL', 0)
 
     @staticmethod
     def driver_mock_decorator(configuration):
