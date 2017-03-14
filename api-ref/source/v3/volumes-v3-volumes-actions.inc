@@ -32,7 +32,7 @@ Troubleshooting
   request. If the request fails again, investigate the storage back
   end.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -64,7 +64,7 @@ Reset a volume's statuses
 
 Administrator only. Resets the status, attach status, and migration status for a volume. Specify the ``os-reset_status`` action in the request body.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -98,7 +98,7 @@ Set image metadata for a volume
 
 Sets the image metadata for a volume. Specify the ``os-set_image_metadata`` action in the request body.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -130,7 +130,7 @@ Remove image metadata from a volume
 
 Removes image metadata, by key, from a volume. Specify the ``os-unset_image_metadata`` action in the request body and the ``key`` for the metadata key and value pair that you want to remove.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -168,7 +168,7 @@ Preconditions
 
 - You should set ``instance_uuid`` or ``host_name``.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -206,7 +206,7 @@ Preconditions
 
 - Volume status must be ``available``.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -240,7 +240,7 @@ Forces a volume to detach. Specify the ``os-force_detach`` action in the request
 Rolls back an unsuccessful detach operation after you disconnect
 the volume.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request

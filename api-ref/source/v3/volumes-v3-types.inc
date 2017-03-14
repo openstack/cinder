@@ -159,7 +159,7 @@ Delete a volume type
 
 Deletes a volume type.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request

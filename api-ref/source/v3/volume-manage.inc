@@ -27,7 +27,7 @@ Prior to microversion 3.16 host field was required, with the possibility of
 defining the cluster it is no longer required, but we must have either a host
 or a cluster field but we cannot have them both with values.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
