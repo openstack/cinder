@@ -35,31 +35,44 @@ Which filter keys are supported?
 --------------------------------
 
 Not all the attributes are supported at present, so we add this table below to
-indicate which filter keys are valid and can be used in the configuration:
+indicate which filter keys are valid and can be used in the configuration.
 
-+----------------+-------------------------------------------------------------------------+
-|    API         | Valid filter keys                                                       |
-+================+=========================================================================+
-|                | id, group_id, name, status, bootable, migration_status, metadata, host, |
-| list volume    | image_metadata, availability_zone, user_id, volume_type_id, project_id, |
-|                | size, description, replication_status, multiattach                      |
-+----------------+-------------------------------------------------------------------------+
-|                | id, volume_id, user_id, project_id, status, volume_size, name,          |
-| list snapshot  | description, volume_type_id, group_snapshot_id, metadata                |
-+----------------+-------------------------------------------------------------------------+
-|                | id, name, status, container, availability_zone, description,            |
-| list backup    | volume_id, is_incremental, size, host, parent_id                        |
-+----------------+-------------------------------------------------------------------------+
-|                | id, user_id, status, availability_zone, group_type, name, description,  |
-| list group     | host                                                                    |
-+----------------+-------------------------------------------------------------------------+
-| list g-snapshot| id, name, description, group_id, group_type_id, status                  |
-+----------------+-------------------------------------------------------------------------+
-|                | id, volume_id, instance_id, attach_status, attach_mode,                 |
-| list attachment| connection_info, mountpoint, attached_host                              |
-+----------------+-------------------------------------------------------------------------+
-|                | id, event_id, resource_uuid, resource_type, request_id, message_level,  |
-| list message   | project_id                                                              |
-+----------------+-------------------------------------------------------------------------+
-| get pools      | name                                                                    |
-+----------------+-------------------------------------------------------------------------+
+Since v3.34 we could use '~' to indicate supporting querying resource by inexact match,
+for example, if we have a configuration file as below:
+
+.. code-block:: json
+
+    {
+       "volume": ["name~"]
+    }
+
+User can query volume both by ``name=volume`` and ``name~=volume``, and the volumes
+named ``volume123`` and ``a_volume123`` are both valid for second input while neither are
+valid for first. The supported APIs are marked with "*" below in the table.
+
++-----------------+-------------------------------------------------------------------------+
+|    API          | Valid filter keys                                                       |
++=================+=========================================================================+
+|                 | id, group_id, name, status, bootable, migration_status, metadata, host, |
+| list volume*    | image_metadata, availability_zone, user_id, volume_type_id, project_id, |
+|                 | size, description, replication_status, multiattach                      |
++-----------------+-------------------------------------------------------------------------+
+|                 | id, volume_id, user_id, project_id, status, volume_size, name,          |
+| list snapshot*  | description, volume_type_id, group_snapshot_id, metadata                |
++-----------------+-------------------------------------------------------------------------+
+|                 | id, name, status, container, availability_zone, description,            |
+| list backup*    | volume_id, is_incremental, size, host, parent_id                        |
++-----------------+-------------------------------------------------------------------------+
+|                 | id, user_id, status, availability_zone, group_type, name, description,  |
+| list group*     | host                                                                    |
++-----------------+-------------------------------------------------------------------------+
+| list g-snapshot*| id, name, description, group_id, group_type_id, status                  |
++-----------------+-------------------------------------------------------------------------+
+|                 | id, volume_id, instance_id, attach_status, attach_mode,                 |
+| list attachment*| connection_info, mountpoint, attached_host                              |
++-----------------+-------------------------------------------------------------------------+
+|                 | id, event_id, resource_uuid, resource_type, request_id, message_level,  |
+| list message*   | project_id                                                              |
++-----------------+-------------------------------------------------------------------------+
+| get pools       | name                                                                    |
++-----------------+-------------------------------------------------------------------------+

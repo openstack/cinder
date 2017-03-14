@@ -239,7 +239,7 @@ class GroupsAPITestCase(test.TestCase):
         self.assertRaises(exception.GroupNotFound, self.controller.show,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
-    @ddt.data('3.30', '3.31')
+    @ddt.data('3.30', '3.31', '3.34')
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_group_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/groups' % fake.PROJECT_ID
@@ -249,8 +249,10 @@ class GroupsAPITestCase(test.TestCase):
         self.controller.index(req)
 
         if version != '3.30':
+            support_like = True if version == '3.34' else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
-                                                mock.ANY, 'group')
+                                                mock.ANY, 'group',
+                                                support_like)
 
     def test_list_groups_json(self):
         self.group2.group_type_id = fake.GROUP_TYPE2_ID

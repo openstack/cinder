@@ -114,8 +114,11 @@ class GroupSnapshotsController(wsgi.Controller):
             marker, limit, offset = common.get_pagination_params(filters)
             sort_keys, sort_dirs = common.get_sort_params(filters)
 
-        if req.api_version_request.matches(common.FILTERING_VERSION):
-            common.reject_invalid_filters(context, filters, 'group_snapshot')
+        if req_version.matches(common.FILTERING_VERSION):
+            support_like = (True if req_version.matches(
+                common.LIKE_FILTER_VERSION) else False)
+            common.reject_invalid_filters(context, filters, 'group_snapshot',
+                                          support_like)
 
         group_snapshots = self.group_snapshot_api.get_all_group_snapshots(
             context, filters=filters, marker=marker, limit=limit,

@@ -86,6 +86,10 @@ REST_API_VERSION_HISTORY = """
     * 3.33 - Add ``resource_filters`` API to retrieve configured
              resource filters.
 
+    * 3.34 - Add like filter support in ``volume``, ``backup``, ``snapshot``,
+             ``message``, ``attachment``, ``group`` and ``group-snapshot``
+             list APIs.
+
 """
 
 # The minimum and maximum versions of the API supported
@@ -93,7 +97,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.33"
+_MAX_API_VERSION = "3.34"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

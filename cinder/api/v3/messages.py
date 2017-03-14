@@ -80,6 +80,7 @@ class MessagesController(wsgi.Controller):
     def index(self, req):
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['cinder.context']
+        api_version = req.api_version_request
         check_policy(context, 'get_all')
         filters = None
         marker = None
@@ -88,13 +89,16 @@ class MessagesController(wsgi.Controller):
         sort_keys = None
         sort_dirs = None
 
-        if (req.api_version_request.matches("3.5")):
+        if api_version.matches("3.5"):
             filters = req.params.copy()
             marker, limit, offset = common.get_pagination_params(filters)
             sort_keys, sort_dirs = common.get_sort_params(filters)
 
-        if req.api_version_request.matches(common.FILTERING_VERSION):
-            common.reject_invalid_filters(context, filters, 'message')
+        if api_version.matches(common.FILTERING_VERSION):
+            support_like = (True if api_version.matches(
+                common.LIKE_FILTER_VERSION) else False)
+            common.reject_invalid_filters(context, filters, 'message',
+                                          support_like)
 
         messages = self.message_api.get_all(context, filters=filters,
                                             marker=marker, limit=limit,

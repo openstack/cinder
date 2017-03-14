@@ -64,6 +64,7 @@ CONF.register_opts(api_common_opts)
 LOG = logging.getLogger(__name__)
 _FILTERS_COLLECTION = None
 FILTERING_VERSION = '3.31'
+LIKE_FILTER_VERSION = '3.34'
 
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
@@ -443,7 +444,8 @@ def get_enabled_resource_filters(resource=None):
         return {}
 
 
-def reject_invalid_filters(context, filters, resource):
+def reject_invalid_filters(context, filters, resource,
+                           enable_like_filter=False):
     if context.is_admin:
         # Allow all options
         return
@@ -455,8 +457,14 @@ def reject_invalid_filters(context, filters, resource):
         configured_filters = []
     invalid_filters = []
     for key in filters.copy().keys():
-        if key not in configured_filters:
-            invalid_filters.append(key)
+        if not enable_like_filter:
+            if key not in configured_filters:
+                invalid_filters.append(key)
+        else:
+            # If 'key~' is configured, both 'key' and 'key~' is valid.
+            if (key not in configured_filters or
+                    "%s~" % key not in configured_filters):
+                invalid_filters.append(key)
     if invalid_filters:
         raise webob.exc.HTTPBadRequest(
             explanation=_('Invalid filters %s are found in query '
@@ -470,7 +478,11 @@ def process_general_filtering(resource):
             filters = kwargs.get('filters')
             context = kwargs.get('context')
             if req_version.matches(FILTERING_VERSION):
-                reject_invalid_filters(context, filters, resource)
+                support_like = False
+                if req_version.matches(LIKE_FILTER_VERSION):
+                    support_like = True
+                reject_invalid_filters(context, filters,
+                                       resource, support_like)
             else:
                 process_non_general_filtering(*args, **kwargs)
         return _decorator

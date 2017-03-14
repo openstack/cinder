@@ -183,7 +183,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
                              res_dict['group_snapshots'][0].keys())
         group_snapshot.destroy()
 
-    @ddt.data('3.30', '3.31')
+    @ddt.data('3.30', '3.31', '3.34')
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_group_snapshot_list_with_general_filter(self,
                                                      version, mock_update):
@@ -194,8 +194,10 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         self.controller.index(req)
 
         if version != '3.30':
+            support_like = True if version == '3.34' else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
-                                                mock.ANY, 'group_snapshot')
+                                                mock.ANY, 'group_snapshot',
+                                                support_like)
 
     @ddt.data(False, True)
     def test_list_group_snapshot_with_filter(self, is_detail):
