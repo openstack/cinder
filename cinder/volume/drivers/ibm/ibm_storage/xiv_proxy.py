@@ -1645,7 +1645,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         if isinstance(group, objects.Group):
             volume_type_ids = group.volume_type_ids
         elif isinstance(group, objects.ConsistencyGroup):
-            volume_type_ids = [filter(None, group.volume_type_id.split(","))]
+            volume_type_ids = filter(None, group.volume_type_id.split(","))
         else:
             msg = (_("Consistency group %(group)s has no volume_type_ids") %
                    {'group': cgname})
