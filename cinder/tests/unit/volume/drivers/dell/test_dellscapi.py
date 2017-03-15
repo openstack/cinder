@@ -2054,6 +2054,40 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_map_volume.called)
         self.assertTrue(mock_unmap_volume.called)
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'unmap_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'map_volume',
+                       return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_init_volume_retry(self,
+                               mock_post,
+                               mock_get_json,
+                               mock_map_volume,
+                               mock_unmap_volume,
+                               mock_get_volume,
+                               mock_close_connection,
+                               mock_open_connection,
+                               mock_init):
+        mock_get_json.return_value = [{'name': 'srv1', 'status': 'up',
+                                       'type': 'physical'},
+                                      {'name': 'srv2', 'status': 'up',
+                                       'type': 'physical'}]
+        mock_get_volume.side_effect = [{'name': 'guid', 'active': False,
+                                        'instanceId': '12345.1'},
+                                       {'name': 'guid', 'active': True,
+                                        'instanceId': '12345.1'}]
+        self.scapi._init_volume(self.VOLUME)
+        # First return wasn't active. So try second.
+        self.assertEqual(2, mock_map_volume.call_count)
+        self.assertEqual(2, mock_unmap_volume.call_count)
+
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_400)
