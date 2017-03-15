@@ -28,6 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -56,7 +57,7 @@ def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
     snap.user_id = kwargs.get('user_id', fake.USER_ID)
     snap.project_id = kwargs.get('project_id', fake.PROJECT_ID)
     snap.volume_id = volume_id
-    snap.status = "creating"
+    snap.status = fields.SnapshotStatus.CREATING
     if metadata is not None:
         snap.metadata = metadata
     snap.update(kwargs)
