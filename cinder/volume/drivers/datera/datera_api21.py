@@ -528,6 +528,9 @@ class DateraApi(object):
             api_version='2.1',
             tenant=tenant)
 
+        if (volume['size'] > snapshot['volume_size']):
+            self._extend_volume_2_1(volume, volume['size'])
+
     # ==========
     # = Manage =
     # ==========
