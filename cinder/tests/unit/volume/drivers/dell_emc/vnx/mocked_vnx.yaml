@@ -370,11 +370,11 @@ test_cleanup_migration:
   session: &session_cancel
     _properties:
       existed: true
+      dest_lu_id: 2
+
   lun: &lun_cancel_migrate
     _methods:
       cancel_migrate:
-    _properties:
-      dest_lu_id: 2
   vnx:
     _methods:
       get_migration_session: *session_cancel
@@ -392,7 +392,7 @@ test_cleanup_migration_not_migrating:
       get_lun: *lun_cancel_migrate_not_migrating
 
 test_cleanup_migration_cancel_failed:
-  lun: &lun_cancel_migrate_cancle_failed
+  lun: &lun_cancel_migrate_cancel_failed
     _methods:
       cancel_migrate:
         _raise:
@@ -403,7 +403,7 @@ test_cleanup_migration_cancel_failed:
     _methods:
       get_migration_session:
         _side_effect: [*session_cancel, *session_verify]
-      get_lun: *lun_cancel_migrate_not_migrating
+      get_lun: *lun_cancel_migrate_cancel_failed
 
 test_get_lun_by_name:
   lun: &lun_test_get_lun_by_name
