@@ -5502,10 +5502,24 @@ def _groups_get_query(context, session=None, project_only=False):
                        project_only=project_only)
 
 
+def _group_snapshot_get_query(context, session=None, project_only=False):
+    return model_query(context, models.GroupSnapshot, session=session,
+                       project_only=project_only)
+
+
 def _process_groups_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model
         if not is_valid_model_filters(models.Group, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
+def _process_group_snapshot_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.GroupSnapshot, filters):
             return
         query = query.filter_by(**filters)
     return query
@@ -5524,7 +5538,7 @@ def _group_get_all(context, filters=None, marker=None, limit=None,
                                          limit, sort_keys, sort_dirs, filters,
                                          offset, models.Group)
 
-        return query.all()if query else []
+        return query.all() if query else []
 
 
 @require_admin_context
@@ -5917,39 +5931,53 @@ def group_snapshot_get(context, group_snapshot_id):
     return _group_snapshot_get(context, group_snapshot_id)
 
 
-def _group_snapshot_get_all(context, project_id=None, group_id=None,
-                            filters=None):
-    query = model_query(context, models.GroupSnapshot)
+def _group_snapshot_get_all(context, filters=None, marker=None, limit=None,
+                            offset=None, sort_keys=None, sort_dirs=None):
+    if filters and not is_valid_model_filters(models.GroupSnapshot,
+                                              filters):
+        return []
 
-    if filters:
-        if not is_valid_model_filters(models.GroupSnapshot, filters):
-            return []
-        query = query.filter_by(**filters)
+    session = get_session()
+    with session.begin():
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, models.GroupSnapshot)
 
-    if project_id:
-        query = query.filter_by(project_id=project_id)
+        return query.all() if query else []
 
+
+@require_admin_context
+def group_snapshot_get_all(context, filters=None, marker=None, limit=None,
+                           offset=None, sort_keys=None, sort_dirs=None):
+
+    return _group_snapshot_get_all(context, filters, marker, limit, offset,
+                                   sort_keys, sort_dirs)
+
+
+@require_admin_context
+def group_snapshot_get_all_by_group(context, group_id, filters=None,
+                                    marker=None, limit=None, offset=None,
+                                    sort_keys=None, sort_dirs=None):
+    if filters is None:
+        filters = {}
     if group_id:
-        query = query.filter_by(group_id=group_id)
-
-    return query.all()
-
-
-@require_admin_context
-def group_snapshot_get_all(context, filters=None):
-    return _group_snapshot_get_all(context, filters=filters)
-
-
-@require_admin_context
-def group_snapshot_get_all_by_group(context, group_id, filters=None):
-    return _group_snapshot_get_all(context, group_id=group_id, filters=filters)
+        filters['group_id'] = group_id
+    return _group_snapshot_get_all(context, filters, marker, limit, offset,
+                                   sort_keys, sort_dirs)
 
 
 @require_context
-def group_snapshot_get_all_by_project(context, project_id, filters=None):
+def group_snapshot_get_all_by_project(context, project_id, filters=None,
+                                      marker=None, limit=None, offset=None,
+                                      sort_keys=None, sort_dirs=None):
     authorize_project_context(context, project_id)
-    return _group_snapshot_get_all(context, project_id=project_id,
-                                   filters=filters)
+    if filters is None:
+        filters = {}
+    if project_id:
+        filters['project_id'] = project_id
+    return _group_snapshot_get_all(context, filters, marker, limit, offset,
+                                   sort_keys, sort_dirs)
 
 
 @handle_db_data_error
@@ -6257,6 +6285,9 @@ PAGINATION_HELPERS = {
     models.Group: (_groups_get_query,
                    _process_groups_filters,
                    _group_get),
+    models.GroupSnapshot: (_group_snapshot_get_query,
+                           _process_group_snapshot_filters,
+                           _group_snapshot_get),
     models.VolumeAttachment: (_attachment_get_query,
                               _process_attachment_filters,
                               _attachment_get),

@@ -1,0 +1,3 @@
+---
+fixes:
+  - Add filter, sorter and pagination support in group snapshot listings.

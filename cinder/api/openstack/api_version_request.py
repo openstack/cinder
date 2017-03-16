@@ -79,6 +79,7 @@ REST_API_VERSION_HISTORY = """
              return new data.
     * 3.27 - Add attachment API
     * 3.28 - Add filters support to get_pools
+    * 3.29 - Add filter, sorter and pagination support in group snapshot.
 
 """
 
@@ -87,7 +88,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.28"
+_MAX_API_VERSION = "3.29"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

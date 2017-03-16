@@ -1485,9 +1485,11 @@ def group_snapshot_get(context, group_snapshot_id):
     return IMPL.group_snapshot_get(context, group_snapshot_id)
 
 
-def group_snapshot_get_all(context, filters=None):
+def group_snapshot_get_all(context, filters=None, marker=None, limit=None,
+                           offset=None, sort_keys=None, sort_dirs=None):
     """Get all group snapshots."""
-    return IMPL.group_snapshot_get_all(context, filters)
+    return IMPL.group_snapshot_get_all(context, filters, marker, limit,
+                                       offset, sort_keys, sort_dirs)
 
 
 def group_snapshot_create(context, values):
@@ -1495,14 +1497,24 @@ def group_snapshot_create(context, values):
     return IMPL.group_snapshot_create(context, values)
 
 
-def group_snapshot_get_all_by_group(context, group_id, filters=None):
+def group_snapshot_get_all_by_group(context, group_id, filters=None,
+                                    marker=None, limit=None,
+                                    offset=None, sort_keys=None,
+                                    sort_dirs=None):
     """Get all group snapshots belonging to a group."""
-    return IMPL.group_snapshot_get_all_by_group(context, group_id, filters)
+    return IMPL.group_snapshot_get_all_by_group(context, group_id,
+                                                filters, marker, limit,
+                                                offset, sort_keys, sort_dirs)
 
 
-def group_snapshot_get_all_by_project(context, project_id, filters=None):
+def group_snapshot_get_all_by_project(context, project_id, filters=None,
+                                      marker=None, limit=None,
+                                      offset=None, sort_keys=None,
+                                      sort_dirs=None):
     """Get all group snapshots belonging to a project."""
-    return IMPL.group_snapshot_get_all_by_project(context, project_id, filters)
+    return IMPL.group_snapshot_get_all_by_project(context, project_id,
+                                                  filters, marker, limit,
+                                                  offset, sort_keys, sort_dirs)
 
 
 def group_snapshot_update(context, group_snapshot_id, values):

@@ -138,23 +138,35 @@ class GroupSnapshotList(base.ObjectListBase, base.CinderObject):
     }
 
     @classmethod
-    def get_all(cls, context, filters=None):
-        group_snapshots = db.group_snapshot_get_all(context, filters)
+    def get_all(cls, context, filters=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None):
+        group_snapshots = db.group_snapshot_get_all(context,
+                                                    filters=filters,
+                                                    marker=marker,
+                                                    limit=limit,
+                                                    offset=offset,
+                                                    sort_keys=sort_keys,
+                                                    sort_dirs=sort_dirs)
         return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
                                   group_snapshots)
 
     @classmethod
-    def get_all_by_project(cls, context, project_id, filters=None):
-        group_snapshots = db.group_snapshot_get_all_by_project(context,
-                                                               project_id,
-                                                               filters)
+    def get_all_by_project(cls, context, project_id, filters=None, marker=None,
+                           limit=None, offset=None, sort_keys=None,
+                           sort_dirs=None):
+        group_snapshots = db.group_snapshot_get_all_by_project(
+            context, project_id, filters=filters, marker=marker,
+            limit=limit, offset=offset, sort_keys=sort_keys,
+            sort_dirs=sort_dirs)
         return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
                                   group_snapshots)
 
     @classmethod
-    def get_all_by_group(cls, context, group_id, filters=None):
-        group_snapshots = db.group_snapshot_get_all_by_group(context, group_id,
-                                                             filters)
-        return base.obj_make_list(context, cls(context),
-                                  objects.GroupSnapshot,
+    def get_all_by_group(cls, context, group_id, filters=None, marker=None,
+                         limit=None, offset=None, sort_keys=None,
+                         sort_dirs=None):
+        group_snapshots = db.group_snapshot_get_all_by_group(
+            context, group_id, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
+        return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
                                   group_snapshots)
