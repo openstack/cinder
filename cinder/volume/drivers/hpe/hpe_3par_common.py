@@ -265,11 +265,12 @@ class HPE3PARCommon(object):
         3.0.38 - Fixed delete operation of replicated volume which is part
                  of QOS. bug #1717875
         3.0.39 - Add support for revert to snapshot.
+        4.0.0 - Code refactor.
 
 
     """
 
-    VERSION = "3.0.39"
+    VERSION = "4.0.0"
 
     stats = {}
 

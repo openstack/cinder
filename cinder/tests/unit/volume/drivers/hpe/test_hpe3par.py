@@ -27,6 +27,7 @@ from cinder import test
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.hpe \
     import fake_hpe_3par_client as hpe3parclient
+from cinder.volume.drivers.hpe import hpe_3par_base as hpedriverbase
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.hpe import hpe_3par_fc as hpefcdriver
 from cinder.volume.drivers.hpe import hpe_3par_iscsi as hpedriver
@@ -93,7 +94,7 @@ class Comment(object):
         return not self.__eq__(other)
 
 
-class HPE3PARBaseDriver(object):
+class HPE3PARBaseDriver(test.TestCase):
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     SRC_CG_VOLUME_ID = 'bd21d11b-c765-4c68-896c-6b07f63cfcb6'
@@ -688,6 +689,91 @@ class HPE3PARBaseDriver(object):
         self.driver = driver(configuration=conf)
         self.driver.do_setup(None)
         return _m_client
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def migrate_volume_attached(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'volume_type_id': None,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'available',
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            volume_name_3par = common._encode_name(volume['id'])
+            osv_matcher = 'osv-' + volume_name_3par
+
+            loc_info = 'HPE3PARDriver:1234567:CPG-FC1'
+
+            protocol = "FC"
+            if self.properties['driver_volume_type'] == "iscsi":
+                protocol = "iSCSI"
+
+            host = {'host': 'stack@3parfc1',
+                    'capabilities': {'location_info': loc_info,
+                                     'storage_protocol': protocol}}
+
+            result = self.driver.migrate_volume(context.get_admin_context(),
+                                                volume, host)
+
+            new_comment = Comment({
+                "qos": {},
+                "retype_test": "test comment",
+            })
+            expected = [
+                mock.call.modifyVolume(osv_matcher,
+                                       {'comment': new_comment,
+                                        'snapCPG': 'OpenStackCPGSnap'}),
+                mock.call.modifyVolume(osv_matcher,
+                                       {'action': 6,
+                                        'userCPG': 'OpenStackCPG',
+                                        'conversionOperation': 1,
+                                        'tuneOperation': 1,
+                                        'compression': False}),
+                mock.call.getTask(1),
+                mock.call.logout()
+            ]
+            mock_client.assert_has_calls(expected)
+
+            self.assertIsNotNone(result)
+            self.assertEqual((True, {'host': 'stack@3parfc1#OpenStackCPG'}),
+                             result)
+
+
+class TestHPE3PARDriverBase(HPE3PARBaseDriver):
+
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+        self.ctxt = context.get_admin_context()
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpedriverbase.HPE3PARDriverBase)
+
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_latest)
+
+        expected = [
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
+        mock_client.reset_mock()
+        return mock_client
 
     @mock.patch('hpe3parclient.version', "3.0.9")
     def test_unsupported_client_version(self):
@@ -2863,64 +2949,6 @@ class HPE3PARBaseDriver(object):
         mock_client.assert_has_calls(expected + self.standard_logout)
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_migrate_volume_attached(self, _mock_volume_types):
-        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
-        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
-
-        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
-                  'volume_type_id': None,
-                  'id': HPE3PARBaseDriver.CLONE_ID,
-                  'display_name': 'Foo Volume',
-                  'size': 2,
-                  'status': 'in-use',
-                  'host': HPE3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
-
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            common = self.driver._login()
-
-            volume_name_3par = common._encode_name(volume['id'])
-            osv_matcher = 'osv-' + volume_name_3par
-
-            loc_info = 'HPE3PARDriver:1234567:CPG-FC1'
-
-            protocol = "FC"
-            if self.properties['driver_volume_type'] == "iscsi":
-                protocol = "iSCSI"
-
-            host = {'host': 'stack@3parfc1',
-                    'capabilities': {'location_info': loc_info,
-                                     'storage_protocol': protocol}}
-
-            result = self.driver.migrate_volume(context.get_admin_context(),
-                                                volume, host)
-
-            new_comment = Comment({
-                "qos": {},
-                "retype_test": "test comment",
-            })
-            expected = [
-                mock.call.modifyVolume(osv_matcher,
-                                       {'comment': new_comment,
-                                        'snapCPG': 'OpenStackCPGSnap'}),
-                mock.call.modifyVolume(osv_matcher,
-                                       {'action': 6,
-                                        'userCPG': 'OpenStackCPG',
-                                        'conversionOperation': 1,
-                                        'tuneOperation': 1,
-                                        'compression': False}),
-                mock.call.getTask(1),
-                mock.call.logout()
-            ]
-            mock_client.assert_has_calls(expected)
-
-            self.assertIsNotNone(result)
-            self.assertEqual((True, {'host': 'stack@3parfc1#OpenStackCPG'}),
-                             result)
-
-    @mock.patch.object(volume_types, 'get_volume_type')
     def test_migrate_volume_attached_diff_protocol(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
@@ -3432,48 +3460,6 @@ class HPE3PARBaseDriver(object):
                 mock.call.getVolume(osv_matcher),
                 mock.call.deleteVolume(osv_matcher),
                 mock.call.modifyVolume(omv_matcher, {'newName': osv_matcher})]
-
-            mock_client.assert_has_calls(
-                self.standard_login +
-                expected +
-                self.standard_logout)
-
-    def test_terminate_connection(self):
-        # setup_mock_client drive with default configuration
-        # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
-        mock_client.getHostVLUNs.return_value = [
-            {'active': False,
-             'volumeName': self.VOLUME_3PAR_NAME,
-             'lun': None, 'type': 0}]
-
-        mock_client.queryHost.return_value = {
-            'members': [{
-                'name': self.FAKE_HOST
-            }]
-        }
-
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            self.driver.terminate_connection(
-                self.volume,
-                self.connector,
-                force=True)
-
-            expected = [
-                mock.call.queryHost(iqns=[self.connector['initiator']]),
-                mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteVLUN(
-                    self.VOLUME_3PAR_NAME,
-                    None,
-                    hostname=self.FAKE_HOST),
-                mock.call.getHostVLUNs(self.FAKE_HOST),
-                mock.call.deleteHost(self.FAKE_HOST),
-                mock.call.removeVolumeMetaData(
-                    self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
-                mock.call.removeVolumeMetaData(
-                    self.VOLUME_3PAR_NAME, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -5466,7 +5452,7 @@ class HPE3PARBaseDriver(object):
             self.assertTrue(common._replication_enabled)
 
 
-class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
+class TestHPE3PARFCDriver(HPE3PARBaseDriver):
 
     properties = {
         'driver_volume_type': 'fibre_channel',
@@ -6668,8 +6654,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             self.assertEqual(self.FAKE_HOST, host['name'])
             self.assertEqual(3, len(host['FCPaths']))
 
+    def test_migrate_volume_attached(self):
+        self.migrate_volume_attached()
 
-class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
+
+class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
 
     TARGET_IQN = 'iqn.2000-05.com.3pardata:21810002ac00383d'
     TARGET_LUN = 186
@@ -8546,6 +8535,51 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
             model_update = common._get_model_update('xxx@yyy#zzz', 'CPG')
             self.assertEqual({'host': 'xxx@yyy#CPG'}, model_update)
+
+    def test_migrate_volume_attached(self):
+        self.migrate_volume_attached()
+
+    def test_terminate_connection(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getHostVLUNs.return_value = [
+            {'active': False,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0}]
+
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.terminate_connection(
+                self.volume,
+                self.connector,
+                force=True)
+
+            expected = [
+                mock.call.queryHost(iqns=[self.connector['initiator']]),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.deleteVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    None,
+                    hostname=self.FAKE_HOST),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.deleteHost(self.FAKE_HOST),
+                mock.call.removeVolumeMetaData(
+                    self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
+                mock.call.removeVolumeMetaData(
+                    self.VOLUME_3PAR_NAME, CHAP_PASS_KEY)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
 
 VLUNS5_RET = ({'members':
                [{'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
