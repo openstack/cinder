@@ -107,7 +107,8 @@ class TestCinderBackupCmd(test.TestCase):
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
-        service_create.assert_called_once_with(binary='cinder-backup')
+        service_create.assert_called_once_with(binary='cinder-backup',
+                                               coordination=True)
         service_serve.assert_called_once_with(server)
         service_wait.assert_called_once_with()
 
