@@ -44,9 +44,27 @@ Serialization
 
 Actions return a dictionary, and wsgi.Controller serializes that to JSON or XML based on the request's content-type.
 
-Faults
+Errors
 ------
 
-If you need to return a non-200, you should
-return faults.Fault(webob.exc.HTTPNotFound())
-replacing the exception as appropriate.
+There will be occasions when you will want to return a REST error response to
+the caller and there are multiple valid ways to do this:
+
+- If you are at the controller level you can use a ``faults.Fault`` instance to
+  indicate the error.  You can either return the ``Fault`` instance as the
+  result of the action, or raise it, depending on what's more convenient:
+  ``raise faults.Fault(webob.exc.HTTPBadRequest(explanation=msg))``.
+
+- If you are raising an exception our WSGI middleware exception handler is
+  smart enough to recognize webob exceptions as well, so you don't really need
+  to wrap the exceptions in a ``Fault`` class and you can just let the
+  middleware add it for you:
+  ``raise webob.exc.HTTPBadRequest(explanation=msg)``.
+
+- While most errors require an explicit webob exception there are some Cinder
+  exceptions (``NotFound`` and ``Invalid``) that are so common that they are
+  directly handled by the middleware and don't need us to convert them, we can
+  just raise them at any point in the API service and they will return the
+  appropriate REST error to the caller.  So any ``NotFound`` exception, or
+  child class, will return a 404 error, and any ``Invalid`` exception, or
+  child class, will return a 400 error.
