@@ -17,13 +17,13 @@ import ast
 import datetime
 import hashlib
 import os
-import pickle
 import random
 import re
 import time
 from xml.dom import minidom
 
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 from oslo_service import loopingcall
 from oslo_utils import units
 import six
@@ -2704,8 +2704,8 @@ class VMAXUtils(object):
             live_migration_details = {volume['id']: [maskingviewdict,
                                                      connector, extraSpecs]}
         try:
-            with open(LIVE_MIGRATION_FILE, "wb") as f:
-                pickle.dump(live_migration_details, f)
+            with open(LIVE_MIGRATION_FILE, "w") as f:
+                jsonutils.dump(live_migration_details, f)
         except Exception:
             exceptionMessage = (_(
                 "Error in processing live migration file."))
@@ -2725,8 +2725,8 @@ class VMAXUtils(object):
         if live_migration_details:
             if volume['id'] in live_migration_details:
                 del live_migration_details[volume['id']]
-                with open(LIVE_MIGRATION_FILE, "wb") as f:
-                    pickle.dump(live_migration_details, f)
+                with open(LIVE_MIGRATION_FILE, "w") as f:
+                    jsonutils.dump(live_migration_details, f)
             else:
                 LOG.debug("%(Volume)s doesn't exist in live migration "
                           "record.",
@@ -2745,7 +2745,7 @@ class VMAXUtils(object):
         returned_record = None
         if os.path.isfile(LIVE_MIGRATION_FILE):
             with open(LIVE_MIGRATION_FILE, "rb") as f:
-                live_migration_details = pickle.load(f)
+                live_migration_details = jsonutils.load(f)
             if returnallrecords:
                 returned_record = live_migration_details
             else:
