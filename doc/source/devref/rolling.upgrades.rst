@@ -252,10 +252,38 @@ process of upgrades it is possible that a newer version of the service will
 send an object to an older one, it may happen that newer object is incompatible
 with older service.
 
-Version of an object should be bumped every time we make an incompatible change
-inside it. Rule of thumb is that we should always do that, but well-thought
-exceptions were also allowed in the past (for example releasing a NOT NULL
-constraint).
+Version of an object should be bumped every time we make a change that will
+result in an incompatible change of the serialized object.  Tests will inform
+you when you need to bump the version of a versioned object, but rule of thumb
+is that we should never bump the version when we modify/adding/removing a
+method to the versioned object (unlike Nova we don't use remotable methods),
+and should always bump it when we modify the fields dictionary.
+
+There are exceptions to this rule, for example when we change a
+``fields.StringField`` by a custom ``fields.BaseEnumField``.  The reason why a
+version bump is not required in this case it's because the actual data doesn't
+change, we are just removing magic string by an enumerate, but the strings used
+are exactly the same.
+
+A case where we may not notice that a version bump is required is on chained
+versioned objects.  That is to say, when you we change the version of a
+versioned object and that object is used in another versioned object with a
+``fields.ObjectField``.  In such a case all versioned objects that are
+including changed versioned object will also require a version bump.
+
+As mentioned before, you don't have to know all the rules, as we have a test
+that calculates the hash of all objects taking all these rules into
+consideration and will tell you exactly when you need to bump the version of a
+versioned object.
+
+You can run this test with
+``tox -epy35 -- --path cinder/tests/unit/objects/test_objects.py``.  But you
+may need to run it multiple times until it passes since it may not detect all
+required bumps at once.
+
+Then you'll see which versioned object requires a bump and you need to bump
+that version and update the object_data dictionary in the test file to reflect
+the new version as well as the new hash.
 
 Imagine that we (finally!) decide that :code:`request_spec` sent in
 :code:`create_volume` RPC cast is duplicating data and we want to start to
