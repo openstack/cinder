@@ -22,6 +22,7 @@ from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
 from cinder import context as cinder_context
+from cinder import coordination
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
@@ -713,56 +714,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                             '%(exception)s'), {'exception': e})
         return None, False
 
-    def _create_from_image(self, context, volume,
-                           image_location, image_id, image_meta,
-                           image_service, **kwargs):
-        LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
-                  " at location %(image_location)s.",
-                  {'volume_id': volume.id,
-                   'image_location': image_location, 'image_id': image_id})
-
-        # NOTE(e0ne): check for free space in image_conversion_dir before
-        # image downloading.
-        if (CONF.image_conversion_dir and not
-                os.path.exists(CONF.image_conversion_dir)):
-            os.makedirs(CONF.image_conversion_dir)
-        image_utils.check_available_space(CONF.image_conversion_dir,
-                                          image_meta['size'], image_id)
-
-        virtual_size = image_meta.get('virtual_size')
-        if virtual_size:
-            virtual_size = image_utils.check_virtual_size(virtual_size,
-                                                          volume.size,
-                                                          image_id)
-
-        # Create the volume from an image.
-        #
-        # First see if the driver can clone the image directly.
-        #
-        # NOTE (singn): two params need to be returned
-        # dict containing provider_location for cloned volume
-        # and clone status.
-        # NOTE (lixiaoy1): Currently all images are raw data, we can't
-        # use clone_image to copy data if new volume is encrypted.
-        volume_is_encrypted = volume.encryption_key_id is not None
-        cloned = False
-        model_update = None
-        if not volume_is_encrypted:
-            model_update, cloned = self.driver.clone_image(context,
-                                                           volume,
-                                                           image_location,
-                                                           image_meta,
-                                                           image_service)
-
-        # Try and clone the image if we have it set as a glance location.
-        if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
-            model_update, cloned = self._clone_image_volume(context,
-                                                            volume,
-                                                            image_location,
-                                                            image_meta)
+    @coordination.synchronized('{image_id}')
+    def _create_from_image_cache_or_download(self, context, volume,
+                                             image_location, image_id,
+                                             image_meta, image_service):
         # Try and use the image cache.
         should_create_cache_entry = False
-        if self.image_volume_cache and not cloned:
+        cloned = False
+        model_update = None
+        if self.image_volume_cache:
             internal_context = cinder_context.get_internal_tenant_context()
             if not internal_context:
                 LOG.info(_LI('Unable to get Cinder internal context, will '
@@ -776,7 +736,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     image_meta
                 )
                 # Don't cache encrypted volume.
-                if not cloned and not volume_is_encrypted:
+                if not cloned and not volume.encryption_key_id:
                     should_create_cache_entry = True
 
         # Fall back to default behavior of creating volume,
@@ -827,6 +787,66 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 self.driver.extend_volume(volume, original_size)
                 volume.size = original_size
                 volume.save()
+
+        return model_update
+
+    def _create_from_image(self, context, volume,
+                           image_location, image_id, image_meta,
+                           image_service, **kwargs):
+        LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
+                  " at location %(image_location)s.",
+                  {'volume_id': volume.id,
+                   'image_location': image_location, 'image_id': image_id})
+
+        # NOTE(e0ne): check for free space in image_conversion_dir before
+        # image downloading.
+        if (CONF.image_conversion_dir and not
+                os.path.exists(CONF.image_conversion_dir)):
+            os.makedirs(CONF.image_conversion_dir)
+        image_utils.check_available_space(CONF.image_conversion_dir,
+                                          image_meta['size'], image_id)
+
+        virtual_size = image_meta.get('virtual_size')
+        if virtual_size:
+            virtual_size = image_utils.check_virtual_size(virtual_size,
+                                                          volume.size,
+                                                          image_id)
+
+        # Create the volume from an image.
+        #
+        # First see if the driver can clone the image directly.
+        #
+        # NOTE (singn): two params need to be returned
+        # dict containing provider_location for cloned volume
+        # and clone status.
+        # NOTE (lixiaoy1): Currently all images are raw data, we can't
+        # use clone_image to copy data if new volume is encrypted.
+        volume_is_encrypted = volume.encryption_key_id is not None
+        cloned = False
+        model_update = None
+        if not volume_is_encrypted:
+            model_update, cloned = self.driver.clone_image(context,
+                                                           volume,
+                                                           image_location,
+                                                           image_meta,
+                                                           image_service)
+
+        # Try and clone the image if we have it set as a glance location.
+        if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
+            model_update, cloned = self._clone_image_volume(context,
+                                                            volume,
+                                                            image_location,
+                                                            image_meta)
+
+        # Try and use the image cache, and download if not cached.
+        if not cloned:
+            model_update = self._create_from_image_cache_or_download(
+                context,
+                volume,
+                image_location,
+                image_id,
+                image_meta,
+                image_service)
 
         self._handle_bootable_volume_glance_meta(context, volume,
                                                  image_id=image_id,
