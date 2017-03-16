@@ -1,0 +1,648 @@
+# variables in header
+x-openstack-request-id:
+  description: >
+    foo
+  in: header
+  required: false
+  type: string
+
+# variables in path
+admin_tenant_id:
+  description: |
+    The UUID of the administrative tenant.
+  in: path
+  required: false
+  type: string
+snapshot_id_1:
+  description: |
+    The UUID of the snapshot.
+  in: path
+  required: false
+  type: string
+tenant_id:
+  description: |
+    The UUID of the tenant in a multi-tenancy cloud.
+  in: path
+  required: false
+  type: string
+user_id:
+  description: |
+    The user ID. Specify in the URI as
+    ``user_id={user_id}``.
+  in: path
+  required: false
+  type: string
+volume_id:
+  description: |
+    The UUID of the volume.
+  in: path
+  required: false
+  type: string
+volume_type_id:
+  description: |
+    The UUID for an existing volume type.
+  in: path
+  required: false
+  type: string
+
+# variables in query
+usage:
+  description: |
+    Set to ``usage=true`` to show quota usage.
+    Default is ``false``.
+  in: query
+  required: false
+  type: boolean
+
+# variables in body
+attachments:
+  description: |
+    Instance attachment information.  If this volume
+    is attached to a server instance, the attachments list includes
+    the UUID of the attached server, an attachment UUID, the name of
+    the attached host, if any, the volume UUID, the device, and the
+    device UUID.  Otherwise, this list is empty.
+  in: body
+  required: true
+  type: array
+availability_zone:
+  description: |
+    The availability zone.
+  in: body
+  required: false
+  type: string
+availability_zone_1:
+  description: |
+    The availability zone.
+  in: body
+  required: true
+  type: string
+bootable:
+  description: |
+    Enables or disables the bootable attribute. You
+    can boot an instance from a bootable volume.
+  in: body
+  required: true
+  type: boolean
+consistencygroup_id:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: false
+  type: string
+consistencygroup_id_1:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: true
+  type: string
+cores:
+  description: |
+    The number of instance cores that are allowed for
+    each tenant.
+  in: body
+  required: true
+  type: integer
+cores_1:
+  description: |
+    A ``cores`` object.
+  in: body
+  required: true
+  type: string
+cores_2:
+  description: |
+    The number of instance cores that are allowed for
+    each tenant.
+  in: body
+  required: false
+  type: integer
+created_at:
+  description: |
+    The date and time when the resource was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC.
+  in: body
+  required: true
+  type: string
+description:
+  description: |
+    The volume description.
+  in: body
+  required: false
+  type: string
+description_1:
+  description: |
+    The volume description.
+  in: body
+  required: true
+  type: string
+encrypted:
+  description: |
+    If true, this volume is encrypted.
+  in: body
+  required: true
+  type: boolean
+extra_specs:
+  description: |
+    A set of key and value pairs that contains the
+    specifications for a volume type.
+  in: body
+  required: true
+  type: object
+fixed_ips:
+  description: |
+    The number of fixed IP addresses that are allowed
+    for each tenant. Must be equal to or greater than the number of
+    allowed instances.
+  in: body
+  required: true
+  type: integer
+fixed_ips_1:
+  description: |
+    A ``fixed_ips`` object.
+  in: body
+  required: true
+  type: string
+fixed_ips_2:
+  description: |
+    The number of fixed IP addresses that are allowed
+    for each tenant. Must be equal to or greater than the number of
+    allowed instances.
+  in: body
+  required: false
+  type: integer
+floating_ips:
+  description: |
+    The number of floating IP addresses that are
+    allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+floating_ips_1:
+  description: |
+    A ``floating_ips`` object.
+  in: body
+  required: true
+  type: string
+floating_ips_2:
+  description: |
+    The number of floating IP addresses that are
+    allowed for each tenant.
+  in: body
+  required: false
+  type: integer
+id:
+  description: |
+    The UUID of the volume.
+  in: body
+  required: true
+  type: string
+id_1:
+  description: |
+    The ID for the quota set.
+  in: body
+  required: true
+  type: integer
+id_2:
+  description: |
+    The ID for the quota set.
+  in: body
+  required: true
+  type: string
+id_3:
+  description: |
+    The ID for the quota set.
+  in: body
+  required: false
+  type: integer
+imageRef:
+  description: |
+    The UUID of the image from which you want to
+    create the volume. Required to create a bootable volume.
+  in: body
+  required: false
+  type: string
+in_use:
+  description: |
+    The in use data size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: string
+in_use_1:
+  description: |
+    The number of items in use.
+  in: body
+  required: true
+  type: integer
+injected_file_content_bytes:
+  description: |
+    The number of bytes of content that are allowed
+    for each injected file.
+  in: body
+  required: true
+  type: integer
+injected_file_content_bytes_1:
+  description: |
+    An ``injected_file_content_bytes`` object.
+  in: body
+  required: true
+  type: string
+injected_file_content_bytes_2:
+  description: |
+    The number of bytes of content that are allowed
+    for each injected file.
+  in: body
+  required: false
+  type: integer
+injected_file_path_bytes:
+  description: |
+    The number of bytes that are allowed for each
+    injected file path.
+  in: body
+  required: true
+  type: integer
+injected_file_path_bytes_1:
+  description: |
+    An ``injected_file_path_bytes`` object.
+  in: body
+  required: true
+  type: string
+injected_file_path_bytes_2:
+  description: |
+    The number of bytes that are allowed for each
+    injected file path.
+  in: body
+  required: false
+  type: integer
+injected_files:
+  description: |
+    The number of injected files that are allowed for
+    each tenant.
+  in: body
+  required: true
+  type: integer
+injected_files_1:
+  description: |
+    An ``injected_files`` object.
+  in: body
+  required: true
+  type: string
+injected_files_2:
+  description: |
+    The number of injected files that are allowed for
+    each tenant.
+  in: body
+  required: false
+  type: integer
+instances:
+  description: |
+    The number of instances that are allowed for each
+    tenant.
+  in: body
+  required: true
+  type: integer
+instances_1:
+  description: |
+    An ``instances`` object.
+  in: body
+  required: true
+  type: string
+instances_2:
+  description: |
+    The number of instances that are allowed for each
+    tenant.
+  in: body
+  required: false
+  type: integer
+key_pairs:
+  description: |
+    The number of key pairs that are allowed for each
+    user.
+  in: body
+  required: true
+  type: integer
+key_pairs_1:
+  description: |
+    A ``key_pairs`` object.
+  in: body
+  required: true
+  type: string
+key_pairs_2:
+  description: |
+    The number of key pairs that are allowed for each
+    user.
+  in: body
+  required: false
+  type: integer
+limit:
+  description: |
+    The number of items permitted for this tenant.
+  in: body
+  required: true
+  type: integer
+links:
+  description: |
+    The volume links.
+  in: body
+  required: true
+  type: array
+metadata:
+  description: |
+    One or more metadata key and value pairs that are
+    associated with the volume.
+  in: body
+  required: false
+  type: object
+metadata_1:
+  description: |
+    One or more metadata key and value pairs that are
+    associated with the volume.
+  in: body
+  required: true
+  type: object
+metadata_2:
+  description: |
+    One or more metadata key and value pairs for the
+    snapshot.
+  in: body
+  required: false
+  type: object
+metadata_items:
+  description: |
+    The number of metadata items that are allowed for
+    each instance.
+  in: body
+  required: true
+  type: integer
+metadata_items_1:
+  description: |
+    A ``metadata_items`` object.
+  in: body
+  required: true
+  type: string
+metadata_items_2:
+  description: |
+    The number of metadata items that are allowed for
+    each instance.
+  in: body
+  required: false
+  type: integer
+migration_status:
+  description: |
+    The volume migration status.
+  in: body
+  required: true
+  type: string
+multiattach:
+  description: |
+    To enable this volume to attach to more than one
+    server, set this value to ``true``. Default is ``false``.
+  in: body
+  required: false
+  type: boolean
+multiattach_1:
+  description: |
+    If true, this volume can attach to more than one
+    instance.
+  in: body
+  required: true
+  type: boolean
+name:
+  description: |
+    The name of the volume type.
+  in: body
+  required: true
+  type: string
+name_1:
+  description: |
+    The volume name.
+  in: body
+  required: false
+  type: string
+name_2:
+  description: |
+    The volume name.
+  in: body
+  required: true
+  type: string
+OS-SCH-HNT:scheduler_hints:
+  description: |
+    The dictionary of data to send to the scheduler.
+  in: body
+  required: false
+  type: object
+quota_set:
+  description: |
+    A ``quota_set`` object.
+  in: body
+  required: true
+  type: object
+quota_set_1:
+  description: |
+    A ``quota_set`` object.
+  in: body
+  required: true
+  type: string
+ram:
+  description: |
+    The amount of instance RAM in megabytes that are
+    allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+ram_1:
+  description: |
+    A ``ram`` object.
+  in: body
+  required: true
+  type: string
+ram_2:
+  description: |
+    The amount of instance RAM in megabytes that are
+    allowed for each tenant.
+  in: body
+  required: false
+  type: integer
+replication_status:
+  description: |
+    The volume replication status.
+  in: body
+  required: true
+  type: string
+reserved:
+  description: |
+    Reserved volume size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: integer
+reserved_1:
+  description: |
+    The number of reserved items.
+  in: body
+  required: true
+  type: integer
+security_group_rules:
+  description: |
+    The number of rules that are allowed for each
+    security group.
+  in: body
+  required: false
+  type: integer
+security_group_rules_1:
+  description: |
+    A ``security_group_rules`` object.
+  in: body
+  required: true
+  type: string
+security_groups:
+  description: |
+    The number of security groups that are allowed
+    for each tenant.
+  in: body
+  required: true
+  type: integer
+security_groups_1:
+  description: |
+    A ``security_groups`` object.
+  in: body
+  required: true
+  type: string
+security_groups_2:
+  description: |
+    The number of security groups that are allowed
+    for each tenant.
+  in: body
+  required: false
+  type: integer
+size:
+  description: |
+    The size of the volume, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
+snapshot:
+  description: |
+    A ``snapshot`` object.
+  in: body
+  required: true
+  type: object
+snapshot_id:
+  description: |
+    To create a volume from an existing snapshot,
+    specify the UUID of the volume snapshot. The volume is created in
+    same availability zone and with same size as the snapshot.
+  in: body
+  required: false
+  type: string
+snapshot_id_2:
+  description: |
+    The UUID of the source volume snapshot. The API
+    creates a new volume snapshot with the same size as the source
+    volume snapshot.
+  in: body
+  required: true
+  type: string
+source_replica:
+  description: |
+    The UUID of the primary volume to clone.
+  in: body
+  required: false
+  type: string
+source_volid:
+  description: |
+    The UUID of the source volume. The API creates a
+    new volume with the same size as the source volume.
+  in: body
+  required: false
+  type: string
+source_volid_1:
+  description: |
+    The UUID of the source volume.
+  in: body
+  required: true
+  type: string
+status:
+  description: |
+    The volume status.
+  in: body
+  required: true
+  type: string
+updated_at:
+  description: |
+    The date and time when the resource was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC. In the previous example, the offset value is ``-05:00``.
+
+    If the ``updated_at`` date and time stamp is not set, its value is
+    ``null``.
+  in: body
+  required: true
+  type: string
+user_id_1:
+  description: |
+    The UUID of the user.
+  in: body
+  required: true
+  type: string
+volume:
+  description: |
+    A ``volume`` object.
+  in: body
+  required: true
+  type: object
+volume_type:
+  description: |
+    The volume type. To create an environment with
+    multiple-storage back ends, you must specify a volume type. Block
+    Storage volume back ends are spawned as children to ``cinder-
+    volume``, and they are keyed from a unique queue. They are named
+    ``cinder- volume.HOST.BACKEND``. For example, ``cinder-
+    volume.ubuntu.lvmdriver``. When a volume is created, the scheduler
+    chooses an appropriate back end to handle the request based on the
+    volume type.  Default is ``None``.  For information about how to
+    use volume types to create multiple- storage back ends, see
+    `Configure multiple-storage back ends
+    <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: false
+  type: string
+volume_type_1:
+  description: |
+    The volume type. In an environment with multiple-
+    storage back ends, the scheduler determines where to send the
+    volume based on the volume type.  For information about how to use
+    volume types to create multiple- storage back ends, see `Configure
+    multiple-storage back ends <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: true
+  type: string
+volumes:
+  description: |
+    A list of ``volume`` objects.
+  in: body
+  required: true
+  type: array

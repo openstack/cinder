@@ -1,0 +1,9 @@
+{
+    "volume_type": {
+        "id": "289da7f8-6440-407c-9fb4-7db01ec49164",
+        "name": "vol-type-001",
+        "extra_specs": {
+            "capabilities": "gpu"
+        }
+    }
+}
