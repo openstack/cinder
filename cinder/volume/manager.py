@@ -2908,25 +2908,46 @@ class VolumeManager(manager.CleanableManager,
         :param source_vols: a list of volume objects in the source_group.
         :returns: model_update, volumes_model_update
         """
+        model_update = {'status': 'available'}
+        volumes_model_update = []
         for vol in volumes:
-            try:
-                if snapshots:
-                    for snapshot in snapshots:
-                        if vol.snapshot_id == snapshot.id:
-                            self.driver.create_volume_from_snapshot(
-                                vol, snapshot)
-                            break
-            except Exception:
-                raise
-            try:
-                if source_vols:
-                    for source_vol in source_vols:
-                        if vol.source_volid == source_vol.id:
-                            self.driver.create_cloned_volume(vol, source_vol)
-                            break
-            except Exception:
-                raise
-        return None, None
+            if snapshots:
+                for snapshot in snapshots:
+                    if vol.snapshot_id == snapshot.id:
+                        vol_model_update = {'id': vol.id}
+                        try:
+                            driver_update = (
+                                self.driver.create_volume_from_snapshot(
+                                    vol, snapshot))
+                            if driver_update:
+                                driver_update.pop('id', None)
+                                vol_model_update.update(driver_update)
+                            if 'status' not in vol_model_update:
+                                vol_model_update['status'] = 'available'
+                        except Exception:
+                            vol_model_update['status'] = 'error'
+                            model_update['status'] = 'error'
+                        volumes_model_update.append(vol_model_update)
+                        break
+            elif source_vols:
+                for source_vol in source_vols:
+                    if vol.source_volid == source_vol.id:
+                        vol_model_update = {'id': vol.id}
+                        try:
+                            driver_update = self.driver.create_cloned_volume(
+                                vol, source_vol)
+                            if driver_update:
+                                driver_update.pop('id', None)
+                                vol_model_update.update(driver_update)
+                            if 'status' not in vol_model_update:
+                                vol_model_update['status'] = 'available'
+                        except Exception:
+                            vol_model_update['status'] = 'error'
+                            model_update['status'] = 'error'
+                        volumes_model_update.append(vol_model_update)
+                        break
+
+        return model_update, volumes_model_update
 
     def _sort_snapshots(self, volumes, snapshots):
         # Sort source snapshots so that they are in the same order as their
@@ -3899,8 +3920,12 @@ class VolumeManager(manager.CleanableManager,
         for snapshot in snapshots:
             snapshot_model_update = {'id': snapshot.id}
             try:
-                self.driver.create_snapshot(snapshot)
-                snapshot_model_update['status'] = 'available'
+                driver_update = self.driver.create_snapshot(snapshot)
+                if driver_update:
+                    driver_update.pop('id', None)
+                    snapshot_model_update.update(driver_update)
+                if 'status' not in snapshot_model_update:
+                    snapshot_model_update['status'] = 'available'
             except Exception:
                 snapshot_model_update['status'] = 'error'
                 model_update['status'] = 'error'

@@ -27,6 +27,8 @@ from cinder import quota
 from cinder import test
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_group
+from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -780,3 +782,112 @@ class GroupManagerTestCase(test.TestCase):
                              context.get_admin_context(),
                              group_snapshot.id).id)
         self.assertTrue(mock_create_grpsnap.called)
+
+    @mock.patch(
+        'cinder.tests.fake_driver.FakeLoggingVolumeDriver.create_snapshot')
+    def test_create_group_snapshot_generic(self, mock_create_snap):
+        grp_snp = {'id': fake.GROUP_SNAPSHOT_ID, 'group_id': fake.GROUP_ID,
+                   'name': 'group snap 1'}
+        snp1 = {'id': fake.SNAPSHOT_ID, 'name': 'snap 1',
+                'group_snapshot_id': fake.GROUP_SNAPSHOT_ID,
+                'volume_id': fake.VOLUME_ID}
+        snp2 = {'id': fake.SNAPSHOT2_ID, 'name': 'snap 2',
+                'group_snapshot_id': fake.GROUP_SNAPSHOT_ID,
+                'volume_id': fake.VOLUME2_ID}
+        snp1_obj = fake_snapshot.fake_snapshot_obj(self.context, **snp1)
+        snp2_obj = fake_snapshot.fake_snapshot_obj(self.context, **snp2)
+        snapshots = []
+        snapshots.append(snp1_obj)
+        snapshots.append(snp2_obj)
+
+        driver_update = {'test_snap_key': 'test_val'}
+        mock_create_snap.return_value = driver_update
+        model_update, snapshot_model_updates = (
+            self.volume._create_group_snapshot_generic(
+                self.context, grp_snp, snapshots))
+        for update in snapshot_model_updates:
+            self.assertEqual(driver_update['test_snap_key'],
+                             update['test_snap_key'])
+
+    @mock.patch(
+        'cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+        'create_volume_from_snapshot')
+    @mock.patch(
+        'cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
+        'create_cloned_volume')
+    def test_create_group_from_src_generic(self, mock_create_clone,
+                                           mock_create_vol_from_snap):
+        grp = {'id': fake.GROUP_ID, 'name': 'group 1'}
+        grp_snp = {'id': fake.GROUP_SNAPSHOT_ID, 'group_id': fake.GROUP_ID,
+                   'name': 'group snap 1'}
+        grp2 = {'id': fake.GROUP2_ID, 'name': 'group 2',
+                'group_snapshot_id': fake.GROUP_SNAPSHOT_ID}
+        vol1 = {'id': fake.VOLUME_ID, 'name': 'volume 1',
+                'group_id': fake.GROUP_ID}
+        vol2 = {'id': fake.VOLUME2_ID, 'name': 'volume 2',
+                'group_id': fake.GROUP_ID}
+        snp1 = {'id': fake.SNAPSHOT_ID, 'name': 'snap 1',
+                'group_snapshot_id': fake.GROUP_SNAPSHOT_ID,
+                'volume_id': fake.VOLUME_ID}
+        snp2 = {'id': fake.SNAPSHOT2_ID, 'name': 'snap 2',
+                'group_snapshot_id': fake.GROUP_SNAPSHOT_ID,
+                'volume_id': fake.VOLUME2_ID}
+        snp1_obj = fake_snapshot.fake_snapshot_obj(self.context, **snp1)
+        snp2_obj = fake_snapshot.fake_snapshot_obj(self.context, **snp2)
+        snapshots = []
+        snapshots.append(snp1_obj)
+        snapshots.append(snp2_obj)
+        vol3 = {'id': fake.VOLUME3_ID, 'name': 'volume 3',
+                'snapshot_id': fake.SNAPSHOT_ID,
+                'group_id': fake.GROUP2_ID}
+        vol4 = {'id': fake.VOLUME4_ID, 'name': 'volume 4',
+                'snapshot_id': fake.SNAPSHOT2_ID,
+                'group_id': fake.GROUP2_ID}
+        vol3_obj = fake_volume.fake_volume_obj(self.context, **vol3)
+        vol4_obj = fake_volume.fake_volume_obj(self.context, **vol4)
+        vols2 = []
+        vols2.append(vol3_obj)
+        vols2.append(vol4_obj)
+        grp2_obj = fake_group.fake_group_obj(self.context, **grp2)
+        grp_snp_obj = fake_group_snapshot.fake_group_snapshot_obj(
+            self.context, **grp_snp)
+
+        driver_update = {'test_key': 'test_val'}
+        mock_create_vol_from_snap.return_value = driver_update
+        model_update, vol_model_updates = (
+            self.volume._create_group_from_src_generic(
+                self.context, grp2_obj, vols2, grp_snp_obj, snapshots))
+        for update in vol_model_updates:
+            self.assertEqual(driver_update['test_key'],
+                             update['test_key'])
+
+        vol1_obj = fake_volume.fake_volume_obj(self.context, **vol1)
+        vol2_obj = fake_volume.fake_volume_obj(self.context, **vol2)
+        vols = []
+        vols.append(vol1_obj)
+        vols.append(vol2_obj)
+        grp_obj = fake_group.fake_group_obj(self.context, **grp)
+
+        grp3 = {'id': fake.GROUP3_ID, 'name': 'group 3',
+                'source_group_id': fake.GROUP_ID}
+        grp3_obj = fake_group.fake_group_obj(self.context, **grp3)
+        vol5 = {'id': fake.VOLUME5_ID, 'name': 'volume 5',
+                'source_volid': fake.VOLUME_ID,
+                'group_id': fake.GROUP3_ID}
+        vol6 = {'id': fake.VOLUME6_ID, 'name': 'volume 6',
+                'source_volid': fake.VOLUME2_ID,
+                'group_id': fake.GROUP3_ID}
+        vol5_obj = fake_volume.fake_volume_obj(self.context, **vol5)
+        vol6_obj = fake_volume.fake_volume_obj(self.context, **vol6)
+        vols3 = []
+        vols3.append(vol5_obj)
+        vols3.append(vol6_obj)
+
+        driver_update = {'test_key2': 'test_val2'}
+        mock_create_clone.return_value = driver_update
+        model_update, vol_model_updates = (
+            self.volume._create_group_from_src_generic(
+                self.context, grp3_obj, vols3, None, None, grp_obj, vols))
+        for update in vol_model_updates:
+            self.assertEqual(driver_update['test_key2'],
+                             update['test_key2'])
