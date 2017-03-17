@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The coordination system used by Cinder has been simplified to leverage tooz
+    builtin heartbeat feature. Therefore, the configuration options
+    `coordination.heartbeat`, `coordination.initial_reconnect_backoff` and
+    `coordination.max_reconnect_backoff` have been removed.
