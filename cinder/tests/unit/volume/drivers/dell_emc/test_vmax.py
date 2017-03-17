@@ -33,6 +33,7 @@ from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder.objects import qos_specs
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import utils as unit_utils
 from cinder import utils as cinder_utils
 
@@ -492,7 +493,9 @@ class VMAXCommonData(object):
         host=fake_host_v3, provider_location=six.text_type(provider_location))
 
     test_volume_type_QOS = qos_specs.QualityOfServiceSpecs(
-        id='qosId', name='qosName', consumer=fields.QoSConsumerValues.BACK_END,
+        id=fake_constants.QOS_SPEC_ID,
+        name='qosName',
+        consumer=fields.QoSConsumerValues.BACK_END,
         specs={'maxIOPS': '6000', 'maxMBPS': '6000',
                'DistributionType': 'Always'}
     )
