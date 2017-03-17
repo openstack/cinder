@@ -3840,7 +3840,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
             add_volumes, remove_volumes)
         # Can't find CG
         self.driver.common._find_consistency_group = mock.Mock(
-            return_value=None)
+            return_value=(None, 'cg_name'))
         self.assertRaises(exception.ConsistencyGroupNotFound,
                           self.driver.update_consistencygroup,
                           self.data.test_ctxt, self.data.test_CG,
@@ -6641,7 +6641,7 @@ class EMCV3DriverTestCase(test.TestCase):
             add_volumes, remove_volumes)
         # Can't find CG
         self.driver.common._find_consistency_group = mock.Mock(
-            return_value=None)
+            return_value=(None, 'cg_name'))
         self.assertRaises(exception.ConsistencyGroupNotFound,
                           self.driver.update_consistencygroup,
                           self.data.test_ctxt, self.data.test_CG,
@@ -8455,7 +8455,7 @@ class VMAXFCTest(test.TestCase):
                 conn, controllerConfigService, storageGroupName))
         masking.remove_device_from_storage_group(
             conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance, volumeName, extraSpecs)
+            volumeInstance, volumeName, storageGroupName, extraSpecs)
         masking.provision.remove_device_from_storage_group.assert_called_with(
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstanceName, volumeName, extraSpecs)
@@ -9036,6 +9036,27 @@ class VMAXCommonTest(test.TestCase):
             exception.VolumeBackendAPIException,
             common._get_consistency_group_utils, common.conn,
             test_CG_multi_vp)
+
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, VMAXCommonData.storage_system))
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_initial_setup',
+        return_value=(VMAXCommonData.extra_specs))
+    def test_get_consistency_group_utils_single_pool_single_vp(
+            self, mock_init, mock_pool):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        test_CG_single_vp = consistencygroup.ConsistencyGroup(
+            context=None, name='myCG1', id=uuid.uuid1(),
+            volume_type_id='abc,',
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        replicationService, storageSystem, extraSpecsList, isV3 = (
+            common._get_consistency_group_utils(
+                common.conn, test_CG_single_vp))
+        self.assertEqual(1, len(extraSpecsList))
 
     def test_update_consistency_group_name(self):
         common = self.driver.common
