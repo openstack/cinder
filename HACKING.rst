@@ -12,9 +12,6 @@ Cinder Specific Commandments
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
-- [N328] LOG.info messages require translations `_LI()`.
-- [N329] LOG.exception and LOG.error messages require translations `_LE()`.
-- [N330] LOG.warning messages require translations `_LW()`.
 - [N336] Must use a dict comprehension instead of a dict constructor with a sequence of key-value pairs.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().
 - [C302] six.text_type should be used instead of unicode.

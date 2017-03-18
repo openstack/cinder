@@ -105,7 +105,7 @@ class HackingTestCase(test.TestCase):
             "msg = _('My message')",
             "cinder.tests.unit/other_files.py"))))
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
-            "from cinder.i18n import _LE, _, _LW",
+            "from cinder.i18n import _",
             "cinder.tests.unit/other_files2.py"))))
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
@@ -120,9 +120,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "LOG.info('My info message')",
             "cinder.tests.unit/other_files4.py"))))
-        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
-            "from cinder.i18n import _LW",
-            "cinder.tests.unit/other_files5.py"))))
         self.assertEqual(1, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
             "cinder.tests.unit/other_files5.py"))))
@@ -309,26 +306,6 @@ class HackingTestCase(test.TestCase):
             "timeutils.strtime"))))
         self.assertEqual(0, len(list(checks.check_timeutils_strtime(
             "strftime"))))
-
-    def test_validate_log_translations(self):
-        self.assertEqual(1, len(list(checks.validate_log_translations(
-            "LOG.info('foo')", "foo.py"))))
-        self.assertEqual(1, len(list(checks.validate_log_translations(
-            "LOG.warning('foo')", "foo.py"))))
-        self.assertEqual(1, len(list(checks.validate_log_translations(
-            "LOG.error('foo')", "foo.py"))))
-        self.assertEqual(1, len(list(checks.validate_log_translations(
-            "LOG.exception('foo')", "foo.py"))))
-        self.assertEqual(0, len(list(checks.validate_log_translations(
-            "LOG.info('foo')", "cinder/tests/foo.py"))))
-        self.assertEqual(0, len(list(checks.validate_log_translations(
-            "LOG.info(_LI('foo')", "foo.py"))))
-        self.assertEqual(0, len(list(checks.validate_log_translations(
-            "LOG.warning(_LW('foo')", "foo.py"))))
-        self.assertEqual(0, len(list(checks.validate_log_translations(
-            "LOG.error(_LE('foo')", "foo.py"))))
-        self.assertEqual(0, len(list(checks.validate_log_translations(
-            "LOG.exception(_LE('foo')", "foo.py"))))
 
     def test_check_unicode_usage(self):
         self.assertEqual(1, len(list(checks.check_unicode_usage(
