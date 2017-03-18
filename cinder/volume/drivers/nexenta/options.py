@@ -12,17 +12,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.options` -- Contains configuration options for Nexenta drivers.
-=============================================================================
-
-.. automodule:: nexenta.options
-"""
 
 from oslo_config import cfg
 
 
 NEXENTA_EDGE_OPTS = [
+    cfg.StrOpt('nexenta_nbd_symlinks_dir',
+               default='/dev/disk/by-path',
+               help='NexentaEdge logical path of directory to store symbolic '
+                    'links to NBDs'),
     cfg.StrOpt('nexenta_rest_address',
                default='',
                help='IP address of NexentaEdge management REST API endpoint'),
@@ -44,7 +42,7 @@ NEXENTA_EDGE_OPTS = [
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
     cfg.IntOpt('nexenta_chunksize',
-               default=16384,
+               default=32768,
                help='NexentaEdge iSCSI LUN object chunk size')
 ]
 
@@ -53,12 +51,17 @@ NEXENTA_CONNECTION_OPTS = [
                default='',
                help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
-               default=8080,
-               help='HTTP port to connect to Nexenta REST API server'),
+               default=0,
+               help='HTTP(S) port to connect to Nexenta REST API server. '
+                    'If it is equal zero, 8443 for HTTPS and 8080 for HTTP '
+                    'is used'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
                choices=['http', 'https', 'auto'],
                help='Use http or https for REST connection (default auto)'),
+    cfg.BoolOpt('nexenta_use_https',
+                default=True,
+                help='Use secure HTTP for REST connection (default True)'),
     cfg.StrOpt('nexenta_user',
                default='admin',
                help='User name to connect to Nexenta SA'),
