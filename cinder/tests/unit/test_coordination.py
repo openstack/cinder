@@ -123,10 +123,6 @@ class CoordinatorTestCase(test.TestCase):
 
 @mock.patch.object(coordination.COORDINATOR, 'get_lock')
 class CoordinationTestCase(test.TestCase):
-    def test_lock(self, get_lock):
-        with coordination.Lock('lock'):
-            self.assertTrue(get_lock.called)
-
     def test_synchronized(self, get_lock):
         @coordination.synchronized('lock-{f_name}-{foo.val}-{bar[val]}')
         def func(foo, bar):
