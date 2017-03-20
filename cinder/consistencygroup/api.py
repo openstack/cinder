@@ -45,6 +45,7 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 CGQUOTAS = quota.CGQUOTAS
+QUOTAS = quota.QUOTAS
 VALID_REMOVE_VOL_FROM_CG_STATUS = (
     'available',
     'in-use',
@@ -231,6 +232,16 @@ class API(base.Base):
                         "will be created.")
                 raise exception.InvalidConsistencyGroup(reason=msg)
 
+            try:
+                values = {'volumes': len(snapshots)}
+                QUOTAS.limit_check(context, project_id=context.project_id,
+                                   **values)
+            except exception.OverQuota as e:
+                group.destroy()
+                quotas = e.kwargs['quotas']
+                raise exception.VolumeLimitExceeded(
+                    allowed=e.kwargs['overs'], limit=quotas['volumes'])
+
             for snapshot in snapshots:
                 kwargs = {}
                 kwargs['availability_zone'] = group.availability_zone
@@ -265,6 +276,10 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
+                    new_vols = self.db.volume_get_all_by_group(context,
+                                                               group.id)
+                    for vol in new_vols:
+                        self.volume_api.delete(context, vol, force=True)
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating consistency "
@@ -294,6 +309,16 @@ class API(base.Base):
                 msg = _("Source CG is empty. No consistency group "
                         "will be created.")
                 raise exception.InvalidConsistencyGroup(reason=msg)
+
+            try:
+                values = {'volumes': len(source_vols)}
+                QUOTAS.limit_check(context, project_id=context.project_id,
+                                   **values)
+            except exception.OverQuota as e:
+                group.destroy()
+                quotas = e.kwargs['quotas']
+                raise exception.VolumeLimitExceeded(
+                    allowed=e.kwargs['overs'], limit=quotas['volumes'])
 
             for source_vol in source_vols:
                 kwargs = {}
@@ -329,6 +354,10 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
+                    new_vols = self.db.volume_get_all_by_group(context,
+                                                               group.id)
+                    for vol in new_vols:
+                        self.volume_api.delete(context, vol, force=True)
                     group.destroy()
                 finally:
                     LOG.error("Error occurred when creating consistency "
