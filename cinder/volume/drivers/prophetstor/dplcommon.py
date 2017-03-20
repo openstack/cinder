@@ -18,12 +18,14 @@ Implementation of the class of ProphetStor DPL storage adapter of Federator.
     # v2.0.2 Pool aware scheduler
     # v2.0.3 Consistency group modification support
     # v2.0.4 Port ProphetStor driver to use new driver model
+    # v2.0.5 Move from httplib to requests
 """
 
 import base64
 import errno
 import json
 import random
+import requests
 import time
 
 from oslo_log import log as logging
@@ -66,17 +68,18 @@ DPL_OBJ_SNS = 'sns_table'
 class DPLCommand(object):
     """DPL command interface."""
 
-    def __init__(self, ip, port, username, password):
+    def __init__(self, ip, port, username, password, cert_verify=False,
+                 cert_path=None):
         self.ip = ip
         self.port = port
         self.username = username
         self.password = password
+        self.cert_verify = cert_verify
+        self.cert_path = cert_path
 
     def send_cmd(self, method, url, params, expected_status):
         """Send command to DPL."""
-        connection = None
         retcode = 0
-        response = {}
         data = {}
         header = {'Content-Type': 'application/cdmi-container',
                   'Accept': 'application/cdmi-container',
@@ -97,92 +100,53 @@ class DPLCommand(object):
                 LOG.error('JSON encode params %(param)s error:'
                           ' %(status)s.', {'param': params, 'status': e})
                 retcode = errno.EINVAL
-        for i in range(CONNECTION_RETRY):
-            try:
-                connection = http_client.HTTPSConnection(self.ip,
-                                                         self.port,
-                                                         timeout=60)
-                if connection:
-                    retcode = 0
-                    break
-            except IOError as ioerr:
-                LOG.error('Connect to Flexvisor error: %s.',
-                          ioerr)
-                retcode = errno.ENOTCONN
-            except Exception as e:
-                LOG.error('Connect to Flexvisor failed: %s.',
-                          e)
-                retcode = errno.EFAULT
 
         retry = CONNECTION_RETRY
-        while (connection and retry):
+        func = getattr(requests, method.lower())
+
+        cert_path = False
+        if self.cert_verify:
+            cert_path = self.cert_path
+        else:
+            cert_path = False
+
+        while (retry):
             try:
-                connection.request(method, url, payload, header)
-            except http_client.CannotSendRequest as e:
-                connection.close()
-                time.sleep(1)
-                connection = http_client.HTTPSConnection(self.ip,
-                                                         self.port,
-                                                         timeout=60)
-                retry -= 1
-                if connection:
-                    if retry == 0:
-                        retcode = errno.ENOTCONN
-                    else:
-                        retcode = 0
-                else:
-                    retcode = errno.ENOTCONN
-                continue
-            except Exception as e:
-                LOG.error('Failed to send request: %s.',
-                          e)
-                retcode = errno.EFAULT
-                break
+                r = func(
+                    url="https://%s:%s%s" % (self.ip, self.port, url),
+                    data=payload, headers=header, verify=cert_path)
 
-            if retcode == 0:
-                try:
-                    response = connection.getresponse()
-                    if response.status == http_client.SERVICE_UNAVAILABLE:
-                        LOG.error('The Flexvisor service is unavailable.')
-                        time.sleep(1)
-                        retry -= 1
-                        retcode = errno.ENOPROTOOPT
-                        continue
-                    else:
-                        retcode = 0
-                        break
-                except http_client.ResponseNotReady as e:
-                    time.sleep(1)
-                    retry -= 1
-                    retcode = errno.EFAULT
+                if r.status_code == http_client.SERVICE_UNAVAILABLE:
+                    LOG.error("The flexvisor service is unavailable.")
                     continue
-                except Exception as e:
-                    LOG.error('Failed to get response: %s.',
-                              e)
-                    retcode = errno.EFAULT
+                else:
                     break
+            except Exception as e:
+                msg = (_("failed to %(method)s due to %(error)s")
+                       % {"method": method, "error": six.text_type(e)})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        if (retcode == 0 and response.status in expected_status
-                and response.status == http_client.NOT_FOUND):
+        if (r.status_code in expected_status and
+                r.status_code == http_client.NOT_FOUND):
             retcode = errno.ENODATA
-        elif retcode == 0 and response.status not in expected_status:
+        elif r.status_code not in expected_status:
             LOG.error('%(method)s %(url)s unexpected response status: '
                       '%(response)s (expects: %(expects)s).',
                       {'method': method,
                        'url': url,
-                       'response': http_client.responses[response.status],
+                       'response': http_client.responses[r.status_code],
                        'expects': expected_status})
-            if response.status == http_client.UNAUTHORIZED:
+            if r.status_code == http_client.UNAUTHORIZED:
                 raise exception.NotAuthorized
             else:
                 retcode = errno.EIO
-        elif retcode == 0 and response.status is http_client.NOT_FOUND:
+        elif r.status_code is http_client.NOT_FOUND:
             retcode = errno.ENODATA
-        elif retcode == 0 and response.status is http_client.ACCEPTED:
+        elif r.status_code is http_client.ACCEPTED:
             retcode = errno.EAGAIN
             try:
-                data = response.read()
-                data = json.loads(data)
+                data = r.json()
             except (TypeError, ValueError) as e:
                 LOG.error('Call to json.loads() raised an exception: %s.',
                           e)
@@ -191,12 +155,10 @@ class DPLCommand(object):
                 LOG.error('Read response raised an exception: %s.',
                           e)
                 retcode = errno.ENOEXEC
-        elif (retcode == 0 and
-                response.status in [http_client.OK, http_client.CREATED] and
+        elif (r.status_code in [http_client.OK, http_client.CREATED] and
                 http_client.NO_CONTENT not in expected_status):
             try:
-                data = response.read()
-                data = json.loads(data)
+                data = r.json()
             except (TypeError, ValueError) as e:
                 LOG.error('Call to json.loads() raised an exception: %s.',
                           e)
@@ -206,15 +168,16 @@ class DPLCommand(object):
                           e)
                 retcode = errno.ENOEXEC
 
-        if connection:
-            connection.close()
         return retcode, data
 
 
 class DPLVolume(object):
 
-    def __init__(self, dplServer, dplPort, dplUser, dplPassword):
-        self.objCmd = DPLCommand(dplServer, dplPort, dplUser, dplPassword)
+    def __init__(self, dplServer, dplPort, dplUser, dplPassword,
+                 cert_verify=False, cert_path=None):
+        self.objCmd = DPLCommand(
+            dplServer, dplPort, dplUser, dplPassword, cert_verify=cert_verify,
+            cert_path=cert_path)
 
     def _execute(self, method, url, params, expected_status):
         if self.objCmd:
@@ -700,21 +663,36 @@ class DPLVolume(object):
 class DPLCOMMONDriver(driver.CloneableImageVD,
                       driver.BaseVD):
     """Class of dpl storage adapter."""
-    VERSION = '2.0.4'
+    VERSION = '2.0.5'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "ProphetStor_CI"
 
     def __init__(self, *args, **kwargs):
+        cert_path = None
+        cert_verify = False
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(options.DPL_OPTS)
             self.configuration.append_config_values(san.san_opts)
+            cert_verify = self.configuration.driver_ssl_cert_verify
+            cert_path = self.configuration.driver_ssl_cert_path
+
+        if cert_verify:
+            if not cert_path:
+                LOG.warning(
+                    "Flexvisor: cert_verify is enabled but required cert_path"
+                    " option is missing.")
+                cert_path = None
+        else:
+            cert_path = None
 
         self.dpl = DPLVolume(self.configuration.san_ip,
                              self.configuration.dpl_port,
                              self.configuration.san_login,
-                             self.configuration.san_password)
+                             self.configuration.san_password,
+                             cert_verify=cert_verify,
+                             cert_path=cert_path)
         self._stats = {}
 
     def _convert_size_GB(self, size):

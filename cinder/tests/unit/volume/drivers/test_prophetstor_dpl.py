@@ -489,6 +489,8 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.configuration.iscsi_port = 3260
         self.configuration.san_is_local = False
         self.configuration.san_thin_provision = True
+        self.configuration.driver_ssl_cert_verify = False
+        self.configuration.driver_ssl_cert_path = None
         self.context = ''
         self.DPL_MOCK = mock.MagicMock()
         self.DB_MOCK = mock.MagicMock()
