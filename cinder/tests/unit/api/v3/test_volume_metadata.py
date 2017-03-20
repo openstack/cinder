@@ -18,6 +18,7 @@ import uuid
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+import webob
 
 from cinder.api import extensions
 from cinder.api.v3 import volume_metadata
@@ -232,3 +233,25 @@ class volumeMetaDataTest(test.TestCase):
             expected = {'meta': {'key1': 'value1'}}
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
+
+    def test_create_metadata_keys_value_none(self):
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
+        req = fakes.HTTPRequest.blank(self.url, version="3.15")
+        req.method = 'POST'
+        req.headers["content-type"] = "application/json"
+        body = {"meta": {"key": None}}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, self.req_id, body)
+
+    def test_update_items_value_none(self):
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
+        req = fakes.HTTPRequest.blank(self.url + '/key1', version="3.15")
+        req.method = 'PUT'
+        body = {"metadata": {"key": None}}
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, self.req_id, body)

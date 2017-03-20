@@ -174,6 +174,9 @@ def check_metadata_properties(metadata=None):
                     "characters.") % k
             LOG.debug(msg)
             raise exception.InvalidVolumeMetadataSize(reason=msg)
+        if v is None:
+            msg = _("Metadata property key '%s' value is None.") % k
+            raise exception.InvalidVolumeMetadata(reason=msg)
         if len(v) > 255:
             msg = _("Metadata property key %s value greater than "
                     "255 characters.") % k
