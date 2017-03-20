@@ -601,6 +601,12 @@ description_9:
   in: body
   required: true
   type: string
+display_name:
+  description: |
+    The name of volume backend capabilities.
+  in: body
+  required: true
+  type: string
 driver_version:
   description: |
     The driver version.
@@ -1473,6 +1479,13 @@ replication_status:
   in: body
   required: true
   type: string
+replication_targets:
+  description: |
+    A list of volume backends used to replicate volumes
+    on this backend.
+  in: body
+  required: true
+  type: list
 request_id:
   description: |
     The id of the request during which the message was created.
