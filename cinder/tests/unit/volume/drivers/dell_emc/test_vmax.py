@@ -471,7 +471,7 @@ class VMAXCommonData(object):
                       'consistencygroup_id': 'abc',
                       'size': 1,
                       'volume_name': 'volInCG',
-                      'id': 'volInCG',
+                      'id': fake_constants.CONSISTENCY_GROUP2_ID,
                       'device_id': '1',
                       'provider_auth': None,
                       'project_id': 'project',
@@ -486,7 +486,8 @@ class VMAXCommonData(object):
 
     test_volume_CG_v3 = consistencygroup.ConsistencyGroup(
         context=None, name='volInCG', consistencygroup_id='abc', size=1,
-        volume_name='volInCG', id='volInCG', device_id='1', status='available',
+        volume_name='volInCG', id=fake_constants.CONSISTENCY_GROUP2_ID,
+        device_id='1', status='available',
         provider_auth=None, volume_type_id='abc', project_id='project',
         display_name='volInCG',
         display_description='test volume in Consistency group',
@@ -619,7 +620,7 @@ class VMAXCommonData(object):
                         'provider_location': six.text_type(provider_location)}
 
     test_CG = consistencygroup.ConsistencyGroup(
-        context=None, name='myCG1', id='12345abcde',
+        context=None, name='myCG1', id=fake_constants.UUID1,
         volume_type_id='abc', status=fields.ConsistencyGroupStatus.AVAILABLE)
     source_CG = consistencygroup.ConsistencyGroup(
         context=None, name='myCG1', id='12345abcde',
@@ -630,14 +631,14 @@ class VMAXCommonData(object):
                       'provider_location': six.text_type(provider_location)}
 
     test_snapshot = {'name': 'myCG1',
-                     'id': '12345abcde',
+                     'id': fake_constants.UUID1,
                      'status': 'available',
                      'host': fake_host,
                      'volume': test_source_volume,
                      'provider_location': six.text_type(provider_location)
                      }
     test_snapshot_v3 = {'name': 'myCG1',
-                        'id': '12345abcde',
+                        'id': fake_constants.UUID1,
                         'status': 'available',
                         'host': fake_host_v3,
                         'volume': test_source_volume_v3,
@@ -651,8 +652,8 @@ class VMAXCommonData(object):
                           'provider_location': six.text_type(provider_location)
                           }
     test_CG_snapshot = {'name': 'testSnap',
-                        'id': '12345abcde',
-                        'consistencygroup_id': '123456789',
+                        'id': fake_constants.UUID1,
+                        'consistencygroup_id': fake_constants.UUID1,
                         'status': 'available',
                         'snapshots': [],
                         'consistencygroup': test_CG
@@ -1351,7 +1352,7 @@ class FakeEcomConnection(object):
         replicationgroup = {}
         replicationgroup['CreationClassName'] = (
             self.data.replicationgroup_creationclass)
-        replicationgroup['ElementName'] = '12345abcde'
+        replicationgroup['ElementName'] = fake_constants.UUID1
         return replicationgroup
 
     def _getinstance_srpstoragepool(self, objectpath):
@@ -6611,7 +6612,7 @@ class EMCV3DriverTestCase(test.TestCase):
         provisionv3.create_group_replica.assert_called_once_with(
             self.conn, repServ,
             VMAXCommonData.test_CG,
-            VMAXCommonData.test_CG, '12de',
+            VMAXCommonData.test_CG, '84ab',
             intervals_retries_dict)
 
     @mock.patch.object(
@@ -9071,15 +9072,19 @@ class VMAXCommonTest(test.TestCase):
         common = self.driver.common
         cg_name = common._update_consistency_group_name(
             VMAXCommonData.test_CG)
-        self.assertEqual('myCG1_12345abcde', cg_name)
+        self.assertEqual('myCG1_%s' % fake_constants.UUID1,
+                         cg_name)
 
     def test_update_consistency_group_name_truncate_name(self):
         common = self.driver.common
         test_cg = {'name': 'This_is_too_long_a_name_for_a_consistency_group',
-                   'id': '12345abcde', 'volume_type_id': 'abc',
+                   'id': fake_constants.UUID1,
+                   'volume_type_id': 'abc',
                    'status': fields.ConsistencyGroupStatus.AVAILABLE}
         cg_name = common._update_consistency_group_name(test_cg)
-        self.assertEqual('This_is_too_listency_group_12345abcde', cg_name)
+        self.assertEqual(
+            'This_is_too_listency_group_%s' % fake_constants.UUID1,
+            cg_name)
 
     # Bug 1401297: Cinder volumes can point at wrong backend vol
     def test_find_lun_check_element_name(self):
