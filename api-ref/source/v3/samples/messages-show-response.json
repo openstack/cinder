@@ -1,0 +1,23 @@
+{
+    "message": {
+        "request_id": "req-c1216709-afba-4703-a1a3-22eda88f2f5a",
+        "links": [
+            {
+                "href": "http://localhost:8776/v3/cd609134301246f0a3faa9c3da22082e/messages/c506cd4b-9048-43bc-97ef-0d7dec369b42",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost:8776/cd609134301246f0a3faa9c3da22082e/messages/c506cd4b-9048-43bc-97ef-0d7dec369b42",
+                "rel": "bookmark"
+            }
+        ],
+        "message_level": "ERROR",
+        "event_id": "VOLUME_000002",
+        "created_at": "2014-10-28T00:00:00-00:00",
+        "guaranteed_until": "2014-10-28T00:00:00-00:00",
+        "resource_uuid": "d5f6c517-c3e8-45fe-b994-b11118e4cacf",
+        "id": "c506cd4b-9048-43bc-97ef-0d7dec369b42",
+        "resource_type": "VOLUME",
+        "user_message": "No storage could be allocated for this volume request."
+    }
+}
