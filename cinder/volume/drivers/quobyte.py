@@ -81,6 +81,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.0   - Initial driver.
         1.1   - Adds optional insecure NAS settings
         1.1.1 - Removes getfattr calls from driver
+        1.1.2 - Fixes a bug in the creation of cloned volumes
 
     """
 
@@ -175,7 +176,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     @utils.synchronized('quobyte', external=False)
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        self._create_cloned_volume(volume, src_vref)
+        return self._create_cloned_volume(volume, src_vref)
 
     @utils.synchronized('quobyte', external=False)
     def create_volume(self, volume):
