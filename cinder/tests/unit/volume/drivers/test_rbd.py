@@ -187,6 +187,16 @@ class RBDTestCase(test.TestCase):
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             self.context, name='snapshot-0000000a')
 
+        self.snapshot_b = fake_snapshot.fake_snapshot_obj(
+            self.context,
+            **{'name': u'snapshot-0000000n',
+               'expected_attrs': ['volume'],
+               'volume': {'id': fake.VOLUME_ID,
+                          'name': 'cinder-volume',
+                          'size': 128,
+                          'host': 'host@fakebackend#fakepool'}
+               })
+
     @ddt.data({'cluster_name': None, 'pool_name': 'rbd'},
               {'cluster_name': 'volumes', 'pool_name': None})
     @ddt.unpack
@@ -1607,6 +1617,90 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(expected, res)
         mock_exec.assert_called_once_with(self.volume_a.name, remote,
                                           'mirror_image_promote', False)
+
+    @common_mocks
+    def test_manage_existing_snapshot_get_size(self):
+        with mock.patch.object(self.driver.rbd.Image(), 'size') as \
+                mock_rbd_image_size:
+            with mock.patch.object(self.driver.rbd.Image(), 'close') \
+                    as mock_rbd_image_close:
+                mock_rbd_image_size.return_value = 2 * units.Gi
+                existing_ref = {'source-name': self.snapshot_b.name}
+                return_size = self.driver.manage_existing_snapshot_get_size(
+                    self.snapshot_b,
+                    existing_ref)
+                self.assertEqual(2, return_size)
+                mock_rbd_image_size.assert_called_once_with()
+                mock_rbd_image_close.assert_called_once_with()
+
+    @common_mocks
+    def test_manage_existing_snapshot_get_non_integer_size(self):
+        rbd_snapshot = self.driver.rbd.Image.return_value
+        rbd_snapshot.size.return_value = int(1.75 * units.Gi)
+        existing_ref = {'source-name': self.snapshot_b.name}
+        return_size = self.driver.manage_existing_snapshot_get_size(
+            self.snapshot_b, existing_ref)
+        self.assertEqual(2, return_size)
+        rbd_snapshot.size.assert_called_once_with()
+        rbd_snapshot.close.assert_called_once_with()
+
+    @common_mocks
+    def test_manage_existing_snapshot_get_invalid_size(self):
+
+        with mock.patch.object(self.driver.rbd.Image(), 'size') as \
+                mock_rbd_image_size:
+            with mock.patch.object(self.driver.rbd.Image(), 'close') \
+                    as mock_rbd_image_close:
+                mock_rbd_image_size.return_value = 'abcd'
+                existing_ref = {'source-name': self.snapshot_b.name}
+                self.assertRaises(
+                    exception.VolumeBackendAPIException,
+                    self.driver.manage_existing_snapshot_get_size,
+                    self.snapshot_b, existing_ref)
+
+                mock_rbd_image_size.assert_called_once_with()
+                mock_rbd_image_close.assert_called_once_with()
+
+    @common_mocks
+    def test_manage_existing_snapshot_with_invalid_rbd_image(self):
+        self.mock_rbd.Image.side_effect = self.mock_rbd.ImageNotFound
+
+        invalid_snapshot = 'snapshot-invalid'
+        invalid_ref = {'source-name': invalid_snapshot}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot_get_size,
+                          self.snapshot_b, invalid_ref)
+        # Make sure the exception was raised
+        self.assertEqual([self.mock_rbd.ImageNotFound],
+                         RAISED_EXCEPTIONS)
+
+    @common_mocks
+    def test_manage_existing_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+        exist_snapshot = 'snapshot-exist'
+        existing_ref = {'source-name': exist_snapshot}
+        proxy.rename_snap.return_value = 0
+        self.driver.manage_existing_snapshot(self.snapshot_b, existing_ref)
+        proxy.rename_snap.assert_called_with(exist_snapshot,
+                                             self.snapshot_b.name)
+
+    @common_mocks
+    def test_manage_existing_snapshot_with_exist_rbd_image(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+        proxy.rename_snap.side_effect = MockImageExistsException
+
+        exist_snapshot = 'snapshot-exist'
+        existing_ref = {'source-name': exist_snapshot}
+        self.assertRaises(self.mock_rbd.ImageExists,
+                          self.driver.manage_existing_snapshot,
+                          self.snapshot_b, existing_ref)
+
+        # Make sure the exception was raised
+        self.assertEqual(RAISED_EXCEPTIONS,
+                         [self.mock_rbd.ImageExists])
 
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):

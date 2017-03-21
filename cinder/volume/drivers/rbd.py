@@ -1322,3 +1322,71 @@ class RBDDriver(driver.CloneableImageVD,
 
     def migrate_volume(self, context, volume, host):
         return (False, None)
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of an existing image for manage_existing.
+
+        :param snapshot:
+            snapshot ref info to be set
+        :param existing_ref:
+            existing_ref is a dictionary of the form:
+            {'source-name': <name of snapshot>}
+        """
+        # Check that the reference is valid
+        if not isinstance(existing_ref, dict):
+            existing_ref = {"source-name": existing_ref}
+        if 'source-name' not in existing_ref:
+            reason = _('Reference must contain source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+
+        volume_name = utils.convert_str(snapshot.volume_name)
+        snapshot_name = utils.convert_str(existing_ref['source-name'])
+
+        with RADOSClient(self) as client:
+            # Raise an exception if we didn't find a suitable rbd image.
+            try:
+                rbd_snapshot = self.rbd.Image(client.ioctx, volume_name,
+                                              snapshot=snapshot_name)
+            except self.rbd.ImageNotFound:
+                kwargs = {'existing_ref': snapshot_name,
+                          'reason': 'Specified snapshot does not exist.'}
+                raise exception.ManageExistingInvalidReference(**kwargs)
+
+            snapshot_size = rbd_snapshot.size()
+            rbd_snapshot.close()
+
+            # RBD image size is returned in bytes.  Attempt to parse
+            # size as a float and round up to the next integer.
+            try:
+                convert_size = int(math.ceil(float(snapshot_size) / units.Gi))
+                return convert_size
+            except ValueError:
+                exception_message = (_("Failed to manage existing snapshot "
+                                       "%(name)s, because reported size "
+                                       "%(size)s was not a floating-point"
+                                       " number.")
+                                     % {'name': snapshot_name,
+                                        'size': snapshot_size})
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manages an existing snapshot.
+
+        Renames the snapshot name to match the expected name for the snapshot.
+        Error checking done by manage_existing_get_size is not repeated.
+
+        :param snapshot:
+            snapshot ref info to be set
+        :param existing_ref:
+            existing_ref is a dictionary of the form:
+            {'source-name': <name of rbd snapshot>}
+        """
+        if not isinstance(existing_ref, dict):
+            existing_ref = {"source-name": existing_ref}
+        volume_name = utils.convert_str(snapshot.volume_name)
+        with RBDVolumeProxy(self, volume_name) as volume:
+            snapshot_name = existing_ref['source-name']
+            volume.rename_snap(utils.convert_str(snapshot_name),
+                               utils.convert_str(snapshot.name))
