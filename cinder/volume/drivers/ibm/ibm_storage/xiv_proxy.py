@@ -31,7 +31,7 @@ if pyxcli:
 
 from cinder import context
 from cinder.i18n import _
-from cinder import objects
+from cinder.objects import fields
 from cinder import volume as c_volume
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import certificate
@@ -39,7 +39,9 @@ from cinder.volume.drivers.ibm.ibm_storage import cryptish
 from cinder.volume.drivers.ibm.ibm_storage import proxy
 from cinder.volume.drivers.ibm.ibm_storage import strings
 from cinder.volume import qos_specs
+from cinder.volume import utils
 from cinder.volume import volume_types
+
 
 OPENSTACK_PRODUCT_NAME = "OpenStack"
 PERF_CLASS_NAME_PREFIX = "cinder-qos"
@@ -1291,7 +1293,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                 raise self.meta['exception'].VolumeBackendAPIException(
                     data=msg)
             pool_master = self.storage_info[storage.FLAG_KEYS['storage_pool']]
-            goal_status = objects.fields.ReplicationStatus.FAILED_OVER
+            goal_status = fields.ReplicationStatus.FAILED_OVER
 
         # connnect xcli to secondary storage according to backend_id by
         #  calling _init_xcli with secondary_id
@@ -1489,7 +1491,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             pool.get('empty_space_soft', pool.get('empty_space')))
         self.meta['stat']['reserved_percentage'] = (
             self.driver.configuration.safe_get('reserved_percentage'))
-        self.meta['stat']['consistencygroup_support'] = True
+        self.meta['stat']['consistent_group_snapshot_enabled'] = True
 
         # thin/thick provision
         self.meta['stat']['thin_provision'] = ('True' if soft_size > hard_size
@@ -1617,7 +1619,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         A utility method to translate from openstack cgsnapshot
         to CG name on the storage
         '''
-        return self._cg_name_from_id(cgsnapshot['consistencygroup_id'])
+        return self._cg_name_from_id(cgsnapshot['group_id'])
 
     def _group_name_from_cgsnapshot(self, cgsnapshot):
         '''Get storage Snaphost Group name from snapshot.
@@ -1632,33 +1634,32 @@ class XIVProxy(proxy.IBMStorageProxy):
         return ('%(cgs)s.%(vol)s' % {'cgs': cgs, 'vol': vol})[0:62]
 
     @proxy._trace_time
-    def create_consistencygroup(self, context, group):
-        """Creates a consistency group."""
+    def create_group(self, context, group):
+        """Creates a group."""
 
-        cgname = self._cg_name_from_group(group)
-        LOG.info("Creating consistency group %(name)s.",
-                 {'name': cgname})
-        if isinstance(group, objects.Group):
-            volume_type_ids = group.volume_type_ids
-        elif isinstance(group, objects.ConsistencyGroup):
-            volume_type_ids = filter(None, group.volume_type_id.split(","))
-        else:
-            msg = (_("Consistency group %(group)s has no volume_type_ids") %
-                   {'group': cgname})
-            LOG.error(msg)
-            raise self.meta['exception'].VolumeBackendAPIException(data=msg)
-        LOG.debug("volume_type_ids: %s", volume_type_ids)
-        for volume_type_id in volume_type_ids:
-            specs = self._get_extra_specs(volume_type_id)
-            replication_info = self._get_replication_info(specs)
+        for volume_type in group.volume_types:
+            replication_info = self._get_replication_info(
+                volume_type.extra_specs)
 
             if replication_info.get('enabled'):
                 # An unsupported illegal configuration
-                msg = _("Unable to create consistency group: "
-                        "Replication of consistency group is not supported")
+                msg = _("Unable to create group: create group with "
+                        "replication volume type is not supported")
                 LOG.error(msg)
                 raise self.meta['exception'].VolumeBackendAPIException(
                     data=msg)
+
+        if utils.is_group_a_cg_snapshot_type(group):
+            cgname = self._cg_name_from_group(group)
+            return self._create_consistencygroup(context, cgname)
+        # For generic group, create is executed by manager
+        raise NotImplementedError()
+
+    def _create_consistencygroup(self, context, cgname):
+        """Creates a consistency group."""
+
+        LOG.info("Creating consistency group %(name)s.",
+                 {'name': cgname})
 
         # call XCLI
         try:
@@ -1680,7 +1681,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                      {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update
 
     def _silent_cleanup_consistencygroup_from_src(self, context, group,
@@ -1694,16 +1695,30 @@ class XIVProxy(proxy.IBMStorageProxy):
         for volume in volumes:
             self._silent_delete_volume_from_cg(volume=volume, cgname=cgname)
         try:
-            self.delete_consistencygroup(context, group, [])
+            self._delete_consistencygroup(context, group, [])
         except Exception as e:
             details = self._get_code_and_status_or_message(e)
             LOG.error('Failed to cleanup CG %(details)s',
                       {'details': details})
 
     @proxy._trace_time
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot, snapshots,
-                                         source_cg, sorted_source_vols):
+    def create_group_from_src(self, context, group, volumes, group_snapshot,
+                              sorted_snapshots, source_group,
+                              sorted_source_vols):
+        """Create volume group from volume group or volume group snapshot."""
+        if utils.is_group_a_cg_snapshot_type(group):
+            return self._create_consistencygroup_from_src(context, group,
+                                                          volumes,
+                                                          group_snapshot,
+                                                          sorted_snapshots,
+                                                          source_group,
+                                                          sorted_source_vols)
+        else:
+            raise NotImplementedError()
+
+    def _create_consistencygroup_from_src(self, context, group, volumes,
+                                          cgsnapshot, snapshots, source_cg,
+                                          sorted_source_vols):
         """Creates a consistencygroup from source.
 
         Source can be a cgsnapshot with the relevant list of snapshots,
@@ -1718,7 +1733,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.debug("Creating from cgsnapshot %(cg)s",
                       {'cg': self._cg_name_from_group(cgsnapshot)})
             try:
-                self.create_consistencygroup(context, group)
+                self._create_consistencygroup(context, group)
             except Exception as e:
                 LOG.error(
                     "Creating CG from cgsnapshot failed: %(details)s",
@@ -1762,7 +1777,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                       {'cg': self._cg_name_from_group(source_cg)})
             LOG.debug("Creating from CG %(cg)s .", {'cg': source_cg['id']})
             try:
-                self.create_consistencygroup(context, group)
+                self._create_consistencygroup(context, group)
             except Exception as e:
                 LOG.error("Creating CG from CG failed: %(details)s",
                           {'details': self._get_code_and_status_or_message(e)})
@@ -1792,18 +1807,27 @@ class XIVProxy(proxy.IBMStorageProxy):
             error = 'create_consistencygroup_from_src called without a source'
             raise self._get_exception()(error)
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update, volumes_model_update
 
     @proxy._trace_time
-    def delete_consistencygroup(self, context, group, volumes):
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
+        if utils.is_group_a_cg_snapshot_type(group):
+            return self._delete_consistencygroup(context, group, volumes)
+        else:
+            # For generic group delete the volumes only - executed by manager
+            raise NotImplementedError()
+
+    def _delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
         cgname = self._cg_name_from_group(group)
         LOG.info("Deleting consistency group %(name)s.",
                  {'name': cgname})
         model_update = {}
-        model_update['status'] = group.get('status', 'deleting')
+        model_update['status'] = group.get('status',
+                                           fields.GroupStatus.DELETING)
 
         # clean up volumes
         volumes_model_update = []
@@ -1832,9 +1856,9 @@ class XIVProxy(proxy.IBMStorageProxy):
                 LOG.error(DELETE_VOLUME_BASE_ERROR,
                           {'volume': volume['name'],
                            'error': self._get_code_and_status_or_message(e)})
-                model_update['status'] = 'error_deleting'
+                model_update['status'] = fields.GroupStatus.ERROR_DELETING
                 # size and volume_type_id are required in liberty code
-                # they are maintained here for backwards compatability
+                # they are maintained here for backwards compatibility
                 volumes_model_update.append(
                     {
                         'id': volume['id'],
@@ -1842,18 +1866,18 @@ class XIVProxy(proxy.IBMStorageProxy):
                     })
 
         # delete CG from cinder.volume.drivers.ibm.ibm_storage
-        if model_update['status'] != 'error_deleting':
+        if model_update['status'] != fields.GroupStatus.ERROR_DELETING:
             try:
                 self._call_xiv_xcli(
                     "cg_delete", cg=cgname).as_list
-                model_update['status'] = 'deleted'
+                model_update['status'] = fields.GroupStatus.DELETED
             except (errors.CgDoesNotExistError, errors.CgBadNameError):
                 LOG.warning("consistency group %(cgname)s does not "
                             "exist on backend",
                             {'cgname': cgname})
                 # if the object was already deleted on the backend, we can
                 # continue and delete the openstack object
-                model_update['status'] = 'deleted'
+                model_update['status'] = fields.GroupStatus.DELETED
             except errors.CgHasMirrorError:
                 error = (_("consistency group %s is being mirrored") % cgname)
                 LOG.error(error)
@@ -1871,13 +1895,23 @@ class XIVProxy(proxy.IBMStorageProxy):
         return model_update, volumes_model_update
 
     @proxy._trace_time
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        if utils.is_group_a_cg_snapshot_type(group):
+            return self._update_consistencygroup(context, group, add_volumes,
+                                                 remove_volumes)
+        else:
+            # For generic group update executed by manager
+            raise NotImplementedError()
+
+    def _update_consistencygroup(self, context, group,
+                                 add_volumes=None, remove_volumes=None):
         """Updates a consistency group."""
 
         cgname = self._cg_name_from_group(group)
         LOG.info("Updating consistency group %(name)s.", {'name': cgname})
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
 
         add_volumes_update = []
         if add_volumes:
@@ -1939,9 +1973,18 @@ class XIVProxy(proxy.IBMStorageProxy):
                               {'name': volume['name'], 'cgname': cgname})
 
     @proxy._trace_time
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Create volume group snapshot."""
+
+        if utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._create_cgsnapshot(context, group_snapshot, snapshots)
+        else:
+            # For generic group snapshot create executed by manager
+            raise NotImplementedError()
+
+    def _create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a CG snapshot."""
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
 
         cgname = self._cg_name_from_cgsnapshot(cgsnapshot)
         groupname = self._group_name_from_cgsnapshot(cgsnapshot)
@@ -2000,12 +2043,20 @@ class XIVProxy(proxy.IBMStorageProxy):
             snapshots_model_update.append(
                 {
                     'id': snapshot['id'],
-                    'status': 'available',
+                    'status': fields.SnapshotStatus.AVAILABLE,
                 })
         return model_update, snapshots_model_update
 
     @proxy._trace_time
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Delete volume group snapshot."""
+        if utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._delete_cgsnapshot(context, group_snapshot, snapshots)
+        else:
+            # For generic group snapshot delete is executed by manager
+            raise NotImplementedError()
+
+    def _delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a CG snapshot."""
 
         cgname = self._cg_name_from_cgsnapshot(cgsnapshot)
@@ -2038,14 +2089,15 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(error)
             raise self._get_exception()(error)
 
+        model_update = {'status': fields.GroupSnapshotStatus.DELETED}
         snapshots_model_update = []
         for snapshot in snapshots:
             snapshots_model_update.append(
                 {
                     'id': snapshot['id'],
-                    'status': 'deleted',
+                    'status': fields.SnapshotStatus.DELETED,
                 })
-        model_update = {'status': 'deleted'}
+
         return model_update, snapshots_model_update
 
     def _generate_chap_secret(self, chap_name):
