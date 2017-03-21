@@ -131,6 +131,10 @@ class ConsistencyGroupsController(wsgi.Controller):
         """Returns a list of consistency groups through view builder."""
         context = req.environ['cinder.context']
         filters = req.params.copy()
+
+        # make another copy of filters, since it is being modified in
+        # consistencygroup_api while getting consistencygroups
+        group_filters = req.params.copy()
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
@@ -139,7 +143,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
 
         groups = self.group_api.get_all(
-            context, filters=filters, marker=marker, limit=limit,
+            context, filters=group_filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
 
         if is_detail:

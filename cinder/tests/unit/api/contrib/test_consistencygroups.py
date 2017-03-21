@@ -54,6 +54,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self,
             ctxt=None,
             name='test_consistencygroup',
+            user_id=fake.USER_ID,
+            project_id=fake.PROJECT_ID,
             description='this is a test consistency group',
             volume_type_id=fake.VOLUME_TYPE_ID,
             availability_zone='az1',
@@ -63,8 +65,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         """Create a consistency group object."""
         ctxt = ctxt or self.ctxt
         consistencygroup = objects.ConsistencyGroup(ctxt)
-        consistencygroup.user_id = fake.USER_ID
-        consistencygroup.project_id = fake.PROJECT_ID
+        consistencygroup.user_id = user_id
+        consistencygroup.project_id = project_id
         consistencygroup.availability_zone = availability_zone
         consistencygroup.name = name
         consistencygroup.description = description
@@ -74,6 +76,33 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.update(kwargs)
         consistencygroup.create()
         return consistencygroup
+
+    def _create_group(
+            self,
+            ctxt=None,
+            name='test_group',
+            user_id=fake.USER_ID,
+            project_id=fake.PROJECT_ID,
+            description='this is a test group',
+            group_type_id=fake.VOLUME_TYPE_ID,
+            availability_zone='az1',
+            host='fakehost',
+            status=fields.GroupStatus.CREATING,
+            **kwargs):
+        """Create a consistency group object."""
+        ctxt = ctxt or self.ctxt
+        group = objects.Group(ctxt)
+        group.user_id = user_id
+        group.project_id = project_id
+        group.availability_zone = availability_zone
+        group.name = name
+        group.description = description
+        group.group_type_id = group_type_id
+        group.host = host
+        group.status = status
+        group.update(kwargs)
+        group.create()
+        return group
 
     def test_show_consistencygroup(self):
         consistencygroup = self._create_consistencygroup()
@@ -293,6 +322,37 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1.destroy()
         consistencygroup2.destroy()
         consistencygroup3.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_project_id(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup(
+            name="group", project_id=fake.PROJECT2_ID)
+
+        group1 = self._create_group()
+        group2 = self._create_group(name="group", project_id=fake.PROJECT2_ID)
+        url = ('/v2/%s/consistencygroups?'
+               'all_tenants=True&project_id=%s') % (fake.PROJECT_ID,
+                                                    fake.PROJECT2_ID)
+        if is_detail:
+            url = ('/v2/%s/consistencygroups/detail?'
+                   'all_tenants=True&project_id=%s') % (fake.PROJECT_ID,
+                                                        fake.PROJECT2_ID)
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['consistencygroups']))
+        self.assertEqual("group",
+                         res_dict['consistencygroups'][0]['name'])
+        self.assertEqual("group",
+                         res_dict['consistencygroups'][1]['name'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        group1.destroy()
+        group2.destroy()
 
     @ddt.data(False, True)
     def test_list_consistencygroups_with_sort(self, is_detail):
