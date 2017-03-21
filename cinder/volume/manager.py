@@ -1149,10 +1149,17 @@ class VolumeManager(manager.CleanableManager,
                 snapshot.update(model_update)
                 snapshot.save()
 
-        except Exception:
+        except Exception as create_error:
             with excutils.save_and_reraise_exception():
                 snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
+                self.message_api.create(
+                    context,
+                    action=message_field.Action.SNAPSHOT_CREATE,
+                    resource_type=message_field.Resource.VOLUME_SNAPSHOT,
+                    resource_uuid=snapshot['id'],
+                    exception=create_error,
+                    detail=message_field.Detail.SNAPSHOT_CREATE_ERROR)
 
         vol_ref = self.db.volume_get(context, snapshot.volume_id)
         if vol_ref.bootable:
@@ -1172,6 +1179,14 @@ class VolumeManager(manager.CleanableManager,
                               resource=snapshot)
                 snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
+                self.message_api.create(
+                    context,
+                    action=message_field.Action.SNAPSHOT_CREATE,
+                    resource_type=message_field.Resource.VOLUME_SNAPSHOT,
+                    resource_uuid=snapshot['id'],
+                    exception=ex,
+                    detail=message_field.Detail.SNAPSHOT_UPDATE_METADATA_FAILED
+                )
                 raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
         snapshot.status = fields.SnapshotStatus.AVAILABLE
@@ -1213,16 +1228,29 @@ class VolumeManager(manager.CleanableManager,
                 self.driver.unmanage_snapshot(snapshot)
             else:
                 self.driver.delete_snapshot(snapshot)
-        except exception.SnapshotIsBusy:
+        except exception.SnapshotIsBusy as busy_error:
             LOG.error("Delete snapshot failed, due to snapshot busy.",
                       resource=snapshot)
             snapshot.status = fields.SnapshotStatus.AVAILABLE
             snapshot.save()
+            self.message_api.create(
+                context,
+                action=message_field.Action.SNAPSHOT_DELETE,
+                resource_type=message_field.Resource.VOLUME_SNAPSHOT,
+                resource_uuid=snapshot['id'],
+                exception=busy_error)
             return
-        except Exception:
+        except Exception as delete_error:
             with excutils.save_and_reraise_exception():
                 snapshot.status = fields.SnapshotStatus.ERROR_DELETING
                 snapshot.save()
+                self.message_api.create(
+                    context,
+                    action=message_field.Action.SNAPSHOT_DELETE,
+                    resource_type=message_field.Resource.VOLUME_SNAPSHOT,
+                    resource_uuid=snapshot['id'],
+                    exception=delete_error,
+                    detail=message_field.Detail.SNAPSHOT_DELETE_ERROR)
 
         # Get reservations
         reservations = None
