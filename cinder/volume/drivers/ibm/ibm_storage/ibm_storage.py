@@ -223,41 +223,39 @@ class IBMStorageDriver(san.SanDriver,
 
         return self.proxy.retype(ctxt, volume, new_type, diff, host)
 
-    def create_consistencygroup(self, context, group):
-        """Creates a consistency group."""
+    def create_group(self, context, group):
+        """Creates a group."""
 
-        return self.proxy.create_consistencygroup(context, group)
+        return self.proxy.create_group(context, group)
 
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
 
-        return self.proxy.delete_consistencygroup(
-            context, group, volumes)
+        return self.proxy.delete_group(context, group, volumes)
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a consistency group snapshot."""
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group snapshot."""
 
-        return self.proxy.create_cgsnapshot(
-            context, cgsnapshot, snapshots)
+        return self.proxy.create_group_snapshot(
+            context, group_snapshot, snapshots)
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a consistency group snapshot."""
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group snapshot."""
 
-        return self.proxy.delete_cgsnapshot(
-            context, cgsnapshot, snapshots)
+        return self.proxy.delete_group_snapshot(
+            context, group_snapshot, snapshots)
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes, remove_volumes):
-        """Adds or removes volume(s) to/from an existing consistency group."""
+    def update_group(self, context, group, add_volumes, remove_volumes):
+        """Adds or removes volume(s) to/from an existing group."""
 
-        return self.proxy.update_consistencygroup(
+        return self.proxy.update_group(
             context, group, add_volumes, remove_volumes)
 
-    def create_consistencygroup_from_src(
-            self, context, group, volumes, cgsnapshot, snapshots,
+    def create_group_from_src(
+            self, context, group, volumes, group_snapshot, snapshots,
             source_cg=None, source_vols=None):
-        """Creates a consistencygroup from source."""
+        """Creates a group from source."""
 
-        return self.proxy.create_consistencygroup_from_src(
-            context, group, volumes, cgsnapshot, snapshots,
+        return self.proxy.create_group_from_src(
+            context, group, volumes, group_snapshot, snapshots,
             source_cg, source_vols)

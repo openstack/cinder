@@ -33,7 +33,7 @@ FAKE2 = "fake2"
 CANNOT_DELETE = "Can not delete"
 TOO_BIG_VOLUME_SIZE = 12000
 POOL_SIZE = 100
-CONSISTGROUP_ID = 1
+GROUP_ID = 1
 VOLUME = {'size': 16,
           'name': FAKE,
           'id': 1,
@@ -42,11 +42,11 @@ VOLUME2 = {'size': 32,
            'name': FAKE2,
            'id': 2,
            'status': 'available'}
-CG_VOLUME = {'size': 16,
-             'name': FAKE,
-             'id': 3,
-             'consistencygroup_id': CONSISTGROUP_ID,
-             'status': 'available'}
+GROUP_VOLUME = {'size': 16,
+                'name': FAKE,
+                'id': 3,
+                'group_id': GROUP_ID,
+                'status': 'available'}
 
 MANAGED_FAKE = "managed_fake"
 MANAGED_VOLUME = {'size': 16,
@@ -70,10 +70,10 @@ FAKESNAPSHOT = 'fakesnapshot'
 SNAPSHOT = {'name': 'fakesnapshot',
             'id': 3}
 
-CONSISTGROUP = {'id': CONSISTGROUP_ID, }
-CG_SNAPSHOT_ID = 1
-CG_SNAPSHOT = {'id': CG_SNAPSHOT_ID,
-               'consistencygroup_id': CONSISTGROUP_ID}
+GROUP = {'id': GROUP_ID, }
+GROUP_SNAPSHOT_ID = 1
+GROUP_SNAPSHOT = {'id': GROUP_SNAPSHOT_ID,
+                  'group_id': GROUP_ID}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
@@ -182,21 +182,20 @@ class IBMStorageFakeProxyDriver(object):
         volume['easytier'] = new_type['extra_specs']['easytier']
         return True, volume
 
-    def create_consistencygroup(self, ctxt, group):
+    def create_group(self, ctxt, group):
 
         volumes = [volume for k, volume in self.volumes.items()
-                   if volume['consistencygroup_id'] == group['id']]
+                   if volume['group_id'] == group['id']]
 
         if volumes:
             raise exception.CinderException(
-                message='The consistency group id of volume may be wrong.')
+                message='The group id of volume may be wrong.')
 
-        return {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        return {'status': fields.GroupStatus.AVAILABLE}
 
-    def delete_consistencygroup(self, ctxt, group, volumes):
+    def delete_group(self, ctxt, group, volumes):
         for volume in self.volumes.values():
-            if (group.get('id', None)
-                    == volume.get('consistencygroup_id', None)):
+            if group.get('id') == volume.get('group_id'):
                 if volume['name'] == CANNOT_DELETE:
                     raise exception.VolumeBackendAPIException(
                         message='Volume can not be deleted')
@@ -204,53 +203,44 @@ class IBMStorageFakeProxyDriver(object):
                     volume['status'] = 'deleted'
                     volumes.append(volume)
 
-        # Delete snapshots in consistency group
+        # Delete snapshots in group
         self.snapshots = {k: snap for k, snap in self.snapshots.items()
-                          if not(snap.get('consistencygroup_id', None)
-                                 == group.get('id', None))}
+                          if not(snap.get('group_id') == group.get('id'))}
 
-        # Delete volume in consistency group
+        # Delete volume in group
         self.volumes = {k: vol for k, vol in self.volumes.items()
-                        if not(vol.get('consistencygroup_id', None)
-                               == group.get('id', None))}
+                        if not(vol.get('group_id') == group.get('id'))}
 
-        return {'status': 'deleted'}, volumes
+        return {'status': fields.GroupStatus.DELETED}, volumes
 
-    def update_consistencygroup(
-            self, context, group,
-            add_volumes, remove_volumes):
-
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+    def update_group(self, context, group, add_volumes, remove_volumes):
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update, None, None
 
-    def create_consistencygroup_from_src(
-            self, context, group, volumes, cgsnapshot, snapshots,
-            source_cg=None, source_vols=None):
+    def create_group_from_src(self, context, group, volumes, group_snapshot,
+                              snapshots, source_group=None, source_vols=None):
 
         return None, None
 
-    def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+    def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
         for volume in self.volumes.values():
-            if (cgsnapshot.get('consistencygroup_id', None)
-                    == volume.get('consistencygroup_id', None)):
-
+            if group_snapshot.get('group_id') == volume.get('group_id'):
                 if volume['size'] > POOL_SIZE / 2:
                     raise self.exception.VolumeBackendAPIException(data='blah')
 
                 snapshot = copy.deepcopy(volume)
-                snapshot['name'] = CANNOT_DELETE \
-                    if snapshot['name'] == CANNOT_DELETE \
-                    else snapshot['name'] + 'Snapshot'
+                snapshot['name'] = (
+                    CANNOT_DELETE if snapshot['name'] == CANNOT_DELETE
+                    else snapshot['name'] + 'Snapshot')
                 snapshot['status'] = 'available'
-                snapshot['cgsnapshot_id'] = cgsnapshot.get('id', None)
-                snapshot['consistencygroup_id'] = \
-                    cgsnapshot.get('consistencygroup_id', None)
+                snapshot['group_snapshot_id'] = group_snapshot.get('id')
+                snapshot['group_id'] = group_snapshot.get('group_id')
                 self.snapshots[snapshot['name']] = snapshot
                 snapshots.append(snapshot)
 
-        return {'status': 'available'}, snapshots
+        return {'status': fields.GroupSnapshotStatus.AVAILABLE}, snapshots
 
-    def delete_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+    def delete_group_snapshot(self, ctxt, group_snapshot, snapshots):
         updated_snapshots = []
         for snapshot in snapshots:
             if snapshot['name'] == CANNOT_DELETE:
@@ -260,10 +250,10 @@ class IBMStorageFakeProxyDriver(object):
                 snapshot['status'] = 'deleted'
                 updated_snapshots.append(snapshot)
 
-        # Delete snapshots in consistency group
+        # Delete snapshots in group
         self.snapshots = {k: snap for k, snap in self.snapshots.items()
-                          if not(snap.get('consistencygroup_id', None)
-                                 == cgsnapshot.get('cgsnapshot_id', None))}
+                          if not(snap.get('group_id')
+                                 == group_snapshot.get('group_snapshot_id'))}
 
         return {'status': 'deleted'}, updated_snapshots
 
@@ -587,272 +577,271 @@ class IBMStorageVolumeDriverTest(test.TestCase):
             ctxt, volume, new_type, diff, host
         )
 
-    def test_create_consistencygroup(self):
-        """Test that create_consistencygroup return successfully."""
+    def test_create_group(self):
+        """Test that create_group return successfully."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        model_update = self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        model_update = self.driver.create_group(ctxt, GROUP)
 
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
-                         "Consistency Group created failed")
+                         "Group created failed")
 
-    def test_create_consistencygroup_fail_on_cg_not_empty(self):
-        """Test create_consistencygroup with empty consistency group."""
+    def test_create_group_fail_on_group_not_empty(self):
+        """Test create_group with empty group."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
         # Create volumes
-        # And add the volumes into the consistency group before creating cg
-        self.driver.create_volume(CG_VOLUME)
+        # And add the volumes into the group before creating group
+        self.driver.create_volume(GROUP_VOLUME)
 
         self.assertRaises(exception.CinderException,
-                          self.driver.create_consistencygroup,
-                          ctxt, CONSISTGROUP)
+                          self.driver.create_group,
+                          ctxt, GROUP)
 
-    def test_delete_consistencygroup(self):
-        """Test that delete_consistencygroup return successfully."""
+    def test_delete_group(self):
+        """Test that delete_group return successfully."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
-        # Create volumes and add them to consistency group
-        self.driver.create_volume(CG_VOLUME)
+        # Create volumes and add them to group
+        self.driver.create_volume(GROUP_VOLUME)
 
-        # Delete consistency group
-        model_update, volumes = \
-            self.driver.delete_consistencygroup(
-                ctxt, CONSISTGROUP, [CG_VOLUME])
+        # Delete group
+        model_update, volumes = self.driver.delete_group(ctxt, GROUP,
+                                                         [GROUP_VOLUME])
 
         # Verify the result
-        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model_update['status'],
-                         'Consistency Group deleted failed')
+                         'Group deleted failed')
         for volume in volumes:
             self.assertEqual('deleted',
                              volume['status'],
-                             'Consistency Group deleted failed')
+                             'Group deleted failed')
 
-    def test_delete_consistencygroup_fail_on_volume_not_delete(self):
-        """Test delete_consistencygroup with volume delete failure."""
+    def test_delete_group_fail_on_volume_not_delete(self):
+        """Test delete_group with volume delete failure."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
         # Set the volume not to be deleted
-        volume = copy.deepcopy(CG_VOLUME)
+        volume = copy.deepcopy(GROUP_VOLUME)
         volume['name'] = CANNOT_DELETE
 
-        # Create volumes and add them to consistency group
+        # Create volumes and add them to group
         self.driver.create_volume(volume)
 
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.delete_consistencygroup,
-                          ctxt, CONSISTGROUP, [volume])
+                          self.driver.delete_group,
+                          ctxt, GROUP, [volume])
 
-    def test_create_cgsnapshot(self):
-        """Test that create_cgsnapshot return successfully."""
+    def test_create_group_snapshot(self):
+        """Test that create_group_snapshot return successfully."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
-        # Create volumes and add them to consistency group
+        # Create volumes and add them to group
         self.driver.create_volume(VOLUME)
 
-        # Create consistency group snapshot
-        model_update, snapshots = \
-            self.driver.create_cgsnapshot(ctxt, CG_SNAPSHOT, [VOLUME])
+        # Create group snapshot
+        model_update, snapshots = self.driver.create_group_snapshot(
+            ctxt, GROUP_SNAPSHOT, [VOLUME])
 
         # Verify the result
-        self.assertEqual('available',
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
                          model_update['status'],
-                         'Consistency Group Snapshot created failed')
+                         'Group Snapshot created failed')
         for snap in snapshots:
             self.assertEqual('available',
                              snap['status'])
 
         # Clean the environment
-        self.driver.delete_cgsnapshot(ctxt, CG_SNAPSHOT, [VOLUME])
-        self.driver.delete_consistencygroup(ctxt, CONSISTGROUP, [VOLUME])
+        self.driver.delete_group_snapshot(ctxt, GROUP_SNAPSHOT, [VOLUME])
+        self.driver.delete_group(ctxt, GROUP, [VOLUME])
 
-    def test_create_cgsnapshot_fail_on_no_pool_space_left(self):
-        """Test that create_cgsnapshot return fail when no pool space left."""
+    def test_create_group_snapshot_fail_on_no_pool_space_left(self):
+        """Test create_group_snapshot when no pool space left."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
         # Set the volume size
-        volume = copy.deepcopy(CG_VOLUME)
+        volume = copy.deepcopy(GROUP_VOLUME)
         volume['size'] = POOL_SIZE / 2 + 1
 
-        # Create volumes and add them to consistency group
+        # Create volumes and add them to group
         self.driver.create_volume(volume)
 
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cgsnapshot,
-                          ctxt, CG_SNAPSHOT, [volume])
+                          self.driver.create_group_snapshot,
+                          ctxt, GROUP_SNAPSHOT, [volume])
 
         # Clean the environment
         self.driver.volumes = None
-        self.driver.delete_consistencygroup(ctxt, CONSISTGROUP, [volume])
+        self.driver.delete_group(ctxt, GROUP, [volume])
 
-    def test_delete_cgsnapshot(self):
-        """Test that delete_cgsnapshot return successfully."""
+    def test_delete_group_snapshot(self):
+        """Test that delete_group_snapshot return successfully."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
-        # Create volumes and add them to consistency group
-        self.driver.create_volume(CG_VOLUME)
+        # Create volumes and add them to group
+        self.driver.create_volume(GROUP_VOLUME)
 
-        # Create consistency group snapshot
-        self.driver.create_cgsnapshot(ctxt, CG_SNAPSHOT, [CG_VOLUME])
+        # Create group snapshot
+        self.driver.create_group_snapshot(ctxt, GROUP_SNAPSHOT, [GROUP_VOLUME])
 
-        # Delete consistency group snapshot
-        model_update, snapshots = \
-            self.driver.delete_cgsnapshot(ctxt, CG_SNAPSHOT, [CG_VOLUME])
+        # Delete group snapshot
+        model_update, snapshots = self.driver.delete_group_snapshot(
+            ctxt, GROUP_SNAPSHOT, [GROUP_VOLUME])
 
         # Verify the result
-        self.assertEqual('deleted',
+        self.assertEqual(fields.GroupSnapshotStatus.DELETED,
                          model_update['status'],
-                         'Consistency Group Snapshot deleted failed')
+                         'Group Snapshot deleted failed')
         for snap in snapshots:
             self.assertEqual('deleted',
                              snap['status'])
 
         # Clean the environment
-        self.driver.delete_consistencygroup(ctxt, CONSISTGROUP, [CG_VOLUME])
+        self.driver.delete_group(ctxt, GROUP, [GROUP_VOLUME])
 
-    def test_delete_cgsnapshot_fail_on_snapshot_not_delete(self):
-        """Test delete_cgsnapshot when the snapshot cannot be deleted."""
+    def test_delete_group_snapshot_fail_on_snapshot_not_delete(self):
+        """Test delete_group_snapshot when the snapshot cannot be deleted."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group
-        self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+        # Create group
+        self.driver.create_group(ctxt, GROUP)
 
         # Set the snapshot not to be deleted
-        volume = copy.deepcopy(CG_VOLUME)
+        volume = copy.deepcopy(GROUP_VOLUME)
         volume['name'] = CANNOT_DELETE
 
-        # Create volumes and add them to consistency group
+        # Create volumes and add them to group
         self.driver.create_volume(volume)
 
-        # Create consistency group snapshot
-        self.driver.create_cgsnapshot(ctxt, CG_SNAPSHOT, [volume])
+        # Create group snapshot
+        self.driver.create_group_snapshot(ctxt, GROUP_SNAPSHOT, [volume])
 
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.delete_cgsnapshot,
-                          ctxt, CG_SNAPSHOT, [volume])
+                          self.driver.delete_group_snapshot,
+                          ctxt, GROUP_SNAPSHOT, [volume])
 
-    def test_update_consistencygroup_without_volumes(self):
-        """Test update_consistencygroup when there are no volumes specified."""
+    def test_update_group_without_volumes(self):
+        """Test update_group when there are no volumes specified."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Update consistency group
-        model_update, added, removed = self.driver.update_consistencygroup(
-            ctxt, CONSISTGROUP, [], [])
+        # Update group
+        model_update, added, removed = self.driver.update_group(
+            ctxt, GROUP, [], [])
 
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
-                         "Consistency Group update failed")
+                         "Group update failed")
         self.assertIsNone(added,
                           "added volumes list is not empty")
         self.assertIsNone(removed,
                           "removed volumes list is not empty")
 
-    def test_update_consistencygroup_with_volumes(self):
-        """Test update_consistencygroup when there are volumes specified."""
+    def test_update_group_with_volumes(self):
+        """Test update_group when there are volumes specified."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Update consistency group
-        model_update, added, removed = self.driver.update_consistencygroup(
-            ctxt, CONSISTGROUP, [VOLUME], [VOLUME2])
+        # Update group
+        model_update, added, removed = self.driver.update_group(
+            ctxt, GROUP, [VOLUME], [VOLUME2])
 
-        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
-                         "Consistency Group update failed")
+                         "Group update failed")
         self.assertIsNone(added,
                           "added volumes list is not empty")
         self.assertIsNone(removed,
                           "removed volumes list is not empty")
 
-    def test_create_consistencygroup_from_src_without_volumes(self):
-        """Test create_consistencygroup_from_src with no volumes specified."""
+    def test_create_group_from_src_without_volumes(self):
+        """Test create_group_from_src with no volumes specified."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group from source
+        # Create group from source
         model_update, volumes_model_update = (
-            self.driver.create_consistencygroup_from_src(
-                ctxt, CONSISTGROUP, [], CG_SNAPSHOT, []))
+            self.driver.create_group_from_src(
+                ctxt, GROUP, [], GROUP_SNAPSHOT, []))
 
         # model_update can be None or return available in status
         if model_update:
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
                              model_update['status'],
-                             "Consistency Group create from source failed")
+                             "Group create from source failed")
         # volumes_model_update can be None or return available in status
         if volumes_model_update:
             self.assertFalse(volumes_model_update,
                              "volumes list is not empty")
 
-    def test_create_consistencygroup_from_src_with_volumes(self):
-        """Test create_consistencygroup_from_src with volumes specified."""
+    def test_create_group_from_src_with_volumes(self):
+        """Test create_group_from_src with volumes specified."""
 
         self.driver.do_setup(None)
 
         ctxt = context.get_admin_context()
 
-        # Create consistency group from source
+        # Create group from source
         model_update, volumes_model_update = (
-            self.driver.create_consistencygroup_from_src(
-                ctxt, CONSISTGROUP, [VOLUME], CG_SNAPSHOT, [SNAPSHOT]))
+            self.driver.create_group_from_src(
+                ctxt, GROUP, [VOLUME], GROUP_SNAPSHOT, [SNAPSHOT]))
 
         # model_update can be None or return available in status
         if model_update:
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
                              model_update['status'],
-                             "Consistency Group create from source failed")
+                             "Group create from source failed")
         # volumes_model_update can be None or return available in status
         if volumes_model_update:
-            self.assertEqual('available',
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
                              volumes_model_update['status'],
                              "volumes list status failed")
 
