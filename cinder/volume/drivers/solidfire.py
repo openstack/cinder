@@ -249,18 +249,18 @@ class SolidFireDriver(san.SanISCSIDriver):
             return lvo_inner2()
         return lvo_inner1
 
-    def locked_source_uuid_operation(f, external=False):
+    def locked_source_id_operation(f, external=False):
         def lvo_inner1(inst, *args, **kwargs):
             lock_tag = inst.driver_prefix
             call_args = inspect.getcallargs(f, inst, *args, **kwargs)
-
-            if call_args.get('src_uuid'):
-                volume_id = call_args['src_uuid']
+            src_arg = call_args.get('source', None)
+            if src_arg and src_arg.get('id', None):
+                source_id = call_args['source']['id']
             else:
                 err_msg = _('The decorated method must accept src_uuid.')
                 raise exception.VolumeBackendAPIException(message=err_msg)
 
-            @utils.synchronized('%s-%s' % (lock_tag, volume_id),
+            @utils.synchronized('%s-%s' % (lock_tag, source_id),
                                 external=external)
             def lvo_inner2():
                 return f(inst, *args, **kwargs)
@@ -624,7 +624,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             is_clone = True
         return params, is_clone, sf_vol
 
-    @locked_source_uuid_operation
     def _do_clone_volume(self, src_uuid,
                          vref, sf_src_snap=None):
         """Create a clone of an existing volume or snapshot."""
@@ -1370,10 +1369,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         LOG.debug("Completed volume pairing.")
         return model_update
 
-    def create_cloned_volume(self, volume, src_vref):
+    @locked_source_id_operation
+    def create_cloned_volume(self, volume, source):
         """Create a clone of an existing volume."""
         (_data, _sfaccount, model) = self._do_clone_volume(
-            src_vref['id'],
+            source['id'],
             volume)
 
         return model
@@ -1466,14 +1466,15 @@ class SolidFireDriver(san.SanISCSIDriver):
                                     snapshot['id'])}
         return self._do_snapshot_create(params)
 
-    def create_volume_from_snapshot(self, volume, snapshot):
+    @locked_source_id_operation
+    def create_volume_from_snapshot(self, volume, source):
         """Create a volume from the specified snapshot."""
-        if snapshot.get('cgsnapshot_id'):
+        if source.get('cgsnapshot_id'):
             # We're creating a volume from a snapshot that resulted from a
             # consistency group snapshot. Because of the way that SolidFire
             # creates cgsnaps, we have to search for the correct snapshot.
-            cgsnapshot_id = snapshot.get('cgsnapshot_id')
-            snapshot_id = snapshot.get('volume_id')
+            cgsnapshot_id = source.get('cgsnapshot_id')
+            snapshot_id = source.get('volume_id')
             sf_name = self.configuration.sf_volume_prefix + cgsnapshot_id
             sf_group_snap = self._get_group_snapshot_by_name(sf_name)
             return self._create_clone_from_sf_snapshot(snapshot_id,
@@ -1482,7 +1483,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                                        volume)
 
         (_data, _sfaccount, model) = self._do_clone_volume(
-            snapshot['id'],
+            source['id'],
             volume)
 
         return model
