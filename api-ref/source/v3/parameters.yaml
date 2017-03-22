@@ -211,6 +211,13 @@ name_volume:
   in: query
   required: false
   type: string
+offset:
+  description: |
+    Used in conjunction with ``limit`` to return a slice of items. ``offset``
+    is where to start in the list.
+  in: query
+  required: false
+  type: integer
 sort:
   description: |
     Comma-separated list of sort keys and optional
