@@ -417,7 +417,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def _do_extend_volume(self, volume_path, size_gb, volume_format):
         if volume_format == DISK_FORMAT_PLOOP:
-            self._execute('ploop', 'grow', '-s',
+            self._execute('ploop', 'resize', '-s',
                           '%dG' % size_gb,
                           os.path.join(volume_path, 'DiskDescriptor.xml'),
                           run_as_root=True)
