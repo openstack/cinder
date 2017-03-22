@@ -154,23 +154,17 @@ def notify_about_backup_usage(context, backup, event_suffix,
                                           usage_info)
 
 
-def _usage_from_snapshot(snapshot, **extra_usage_info):
-    try:
-        az = snapshot.volume['availability_zone']
-    except exception.VolumeNotFound:
-        # (zhiteng) Snapshot's source volume could have been deleted
-        # (which means snapshot has been deleted as well),
-        # lazy-loading volume would raise VolumeNotFound exception.
-        # In that case, not going any further by abusing low level
-        # DB API to fetch deleted volume but simply return empty
-        # string for snapshot's AZ info.
-        az = ''
-        LOG.debug("Source volume %s deleted", snapshot.volume_id)
-
+def _usage_from_snapshot(snapshot, context, **extra_usage_info):
+    # (niedbalski) a snapshot might be related to a deleted
+    # volume, if that's the case, the volume information is still
+    # required for filling the usage_info, so we enforce to read
+    # the volume data even if the volume has been deleted.
+    context.read_deleted = "yes"
+    volume = db.volume_get(context, snapshot.volume_id)
     usage_info = {
         'tenant_id': snapshot.project_id,
         'user_id': snapshot.user_id,
-        'availability_zone': az,
+        'availability_zone': volume['availability_zone'],
         'volume_id': snapshot.volume_id,
         'volume_size': snapshot.volume_size,
         'snapshot_id': snapshot.id,
@@ -194,7 +188,7 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_snapshot(snapshot, **extra_usage_info)
+    usage_info = _usage_from_snapshot(snapshot, context, **extra_usage_info)
 
     rpc.get_notifier('snapshot', host).info(context,
                                             'snapshot.%s' % event_suffix,
