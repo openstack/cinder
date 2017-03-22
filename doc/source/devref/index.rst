@@ -49,6 +49,7 @@ Background Concepts for Cinder
 
    architecture
    attach_detach_conventions
+   attach_detach_conventions_v2
    threading
    i18n
    rpc

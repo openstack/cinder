@@ -41,10 +41,8 @@ Developer Docs
    :maxdepth: 1
 
    devref/index
-   database_architecture
    scheduler-filters
    scheduler-weights
-   oslo-middleware
    upgrade
 
 Drivers
