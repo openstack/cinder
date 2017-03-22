@@ -981,7 +981,7 @@ class FSSRestCommon(object):
             if response.status == 200:
                 return json_data
             elif response.status == 404:
-                msg = (_('FSS rest api return failed, method=%(method)s, '
+                msg = (_('FSS REST API return failed, method=%(method)s, '
                          'uri=%(url)s, response=%(response)s') % {
                        "method": method,
                        "url": url,

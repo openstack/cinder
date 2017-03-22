@@ -157,13 +157,13 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 ver_exist = versionutils.convert_version_to_int(ver)
                 ver_min = versionutils.convert_version_to_int(K2_MIN_VERSION)
                 if ver_exist < ver_min:
-                    msg = _("K2 rest api version should be "
+                    msg = _("K2 REST API version should be "
                             ">= %s.") % K2_MIN_VERSION
                     LOG.error(msg)
                     raise exception.KaminarioCinderDriverException(reason=msg)
 
             else:
-                msg = _("K2 rest api version search failed.")
+                msg = _("K2 REST API version search failed.")
                 LOG.error(msg)
                 raise exception.KaminarioCinderDriverException(reason=msg)
 
