@@ -46,6 +46,8 @@ class ScaleIODriver(driver.ScaleIODriver):
                                    override='test_domain:test_pool')
         configuration.set_override('max_over_subscription_ratio',
                                    override=5.0)
+        configuration.set_override('sio_server_api_version',
+                                   override='2.0.0')
         if 'san_thin_provision' in kwargs:
             configuration.set_override(
                 'san_thin_provision',
