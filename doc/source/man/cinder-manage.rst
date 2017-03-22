@@ -164,7 +164,7 @@ The cinder-manage.log file logs output from cinder-manage.
 SEE ALSO
 ========
 
-* `OpenStack Cinder <http://cinder.openstack.org>`__
+* `OpenStack Cinder <https://docs.openstack.org/developer/cinder/>`__
 
 BUGS
 ====
