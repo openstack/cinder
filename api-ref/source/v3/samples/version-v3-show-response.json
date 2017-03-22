@@ -17,10 +17,6 @@
                 {
                     "base": "application/json",
                     "type": "application/vnd.openstack.volume+json;version=1"
-                },
-                {
-                    "base": "application/xml",
-                    "type": "application/vnd.openstack.volume+xml;version=1"
                 }
             ],
             "min_version": "",
@@ -45,10 +41,6 @@
                 {
                     "base": "application/json",
                     "type": "application/vnd.openstack.volume+json;version=1"
-                },
-                {
-                    "base": "application/xml",
-                    "type": "application/vnd.openstack.volume+xml;version=1"
                 }
             ],
             "min_version": "",
@@ -73,10 +65,6 @@
                 {
                     "base": "application/json",
                     "type": "application/vnd.openstack.volume+json;version=1"
-                },
-                {
-                    "base": "application/xml",
-                    "type": "application/vnd.openstack.volume+xml;version=1"
                 }
             ],
             "min_version": "3.0",
