@@ -822,6 +822,10 @@ class Message(BASE, CinderBase):
     resource_uuid = Column(String(36), nullable=True)
     # Operation specific event ID.
     event_id = Column(String(255), nullable=False)
+    # Message detail ID.
+    detail_id = Column(String(10), nullable=True)
+    # Operation specific action.
+    action_id = Column(String(10), nullable=True)
     # After this time the message may no longer exist
     expires_at = Column(DateTime, nullable=True)
 

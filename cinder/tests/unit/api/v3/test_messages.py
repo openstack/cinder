@@ -19,7 +19,7 @@ from cinder.api.v3 import messages
 from cinder import context
 from cinder import exception
 from cinder.message import api as message_api
-from cinder.message import defined_messages
+from cinder.message import message_field
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
@@ -50,8 +50,9 @@ class MessageApiTest(test.TestCase):
         return {
             'message': {
                 'id': message.get('id'),
-                'user_message': defined_messages.get_message_text(
-                    message.get('event_id')),
+                'user_message': "%s:%s" % (
+                    message_field.translate_action(message.get('action_id')),
+                    message_field.translate_detail(message.get('detail_id'))),
                 'request_id': message.get('request_id'),
                 'event_id': message.get('event_id'),
                 'created_at': message.get('created_at'),

@@ -67,8 +67,7 @@ from cinder.image import image_utils
 from cinder import keymgr as key_manager
 from cinder import manager
 from cinder.message import api as message_api
-from cinder.message import defined_messages
-from cinder.message import resource_types
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import cgsnapshot
 from cinder.objects import consistencygroup
@@ -1051,10 +1050,6 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-                self.message_api.create(
-                    context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
-                    context.project_id, resource_type=resource_types.VOLUME,
-                    resource_uuid=volume.id)
                 raise exception.InvalidVolumeAttachMode(mode=mode,
                                                         volume_id=volume.id)
             # NOTE(flaper87): Verify the driver is enabled
@@ -1073,8 +1068,13 @@ class VolumeManager(manager.CleanableManager,
                                       instance_uuid,
                                       host_name_sanitized,
                                       mountpoint)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception():
+                self.message_api.create(
+                    context,
+                    message_field.Action.ATTACH_VOLUME,
+                    resource_uuid=volume_id,
+                    exception=excep)
                 attachment.attach_status = (
                     fields.VolumeAttachStatus.ERROR_ATTACHING)
                 attachment.save()
@@ -1368,19 +1368,17 @@ class VolumeManager(manager.CleanableManager,
                       "(image-id: %(image_id)s).",
                       {'image_id': image_meta['id']},
                       resource=volume)
+            self.message_api.create(
+                context,
+                message_field.Action.COPY_VOLUME_TO_IMAGE,
+                resource_uuid=volume_id,
+                exception=error,
+                detail=message_field.Detail.FAILED_TO_UPLOAD_VOLUME)
             if image_service is not None:
                 # Deletes the image if it is in queued or saving state
                 self._delete_image(context, image_meta['id'], image_service)
-
             with excutils.save_and_reraise_exception():
                 payload['message'] = six.text_type(error)
-                if isinstance(error, exception.ImageLimitExceeded):
-                    self.message_api.create(
-                        context,
-                        defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
-                        context.project_id,
-                        resource_type=resource_types.VOLUME,
-                        resource_uuid=volume_id)
         finally:
             self.db.volume_update_status_based_on_attachment(context,
                                                              volume_id)
@@ -4108,10 +4106,6 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-                self.message_api.create(
-                    context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
-                    context.project_id, resource_type=resource_types.VOLUME,
-                    resource_uuid=vref.id)
                 raise exception.InvalidVolumeAttachMode(mode=mode,
                                                         volume_id=vref.id)
             utils.require_driver_initialized(self.driver)
@@ -4120,7 +4114,11 @@ class VolumeManager(manager.CleanableManager,
                                       attachment_ref.instance_uuid,
                                       connector.get('host', ''),
                                       connector.get('mountpoint', 'na'))
-        except Exception:
+        except Exception as err:
+            self.message_api.create(
+                context, message_field.Action.UPDATE_ATTACHMENT,
+                resource_uuid=vref.id,
+                exception=err)
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
                     context, attachment_ref.id,

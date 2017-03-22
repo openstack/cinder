@@ -20,7 +20,7 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import messages
 from cinder import context
 from cinder.message import api as message_api
-from cinder.message import defined_messages
+from cinder.message import message_field
 from cinder import test
 from cinder.tests.unit.api import fakes
 import cinder.tests.unit.fake_constants as fake_constants
@@ -53,13 +53,16 @@ class MessageApiTest(test.TestCase):
             'request_id': 'fakerequestid',
             'resource_type': 'fake_resource_type',
             'resource_uuid': None,
-            'event_id': defined_messages.EventIds.UNABLE_TO_ALLOCATE,
+            'action_id':
+                message_field.Action.SCHEDULE_ALLOCATE_VOLUME[0],
+            'detail_id': message_field.Detail.UNKNOWN_ERROR[0],
             'message_level': 'ERROR',
             'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_001_001",
         }
         self.message_api.create(self.ctxt,
-                                defined_messages.EventIds.UNABLE_TO_ALLOCATE,
-                                "fakeproject",
+                                message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
+                                detail=message_field.Detail.UNKNOWN_ERROR,
                                 resource_type="fake_resource_type")
 
         self.message_api.db.message_create.assert_called_once_with(
@@ -70,19 +73,11 @@ class MessageApiTest(test.TestCase):
         self.mock_object(self.message_api.db, 'create',
                          side_effect=Exception())
         self.message_api.create(self.ctxt,
-                                defined_messages.EventIds.UNABLE_TO_ALLOCATE,
-                                "fakeproject",
+                                message_field.Action.ATTACH_VOLUME,
                                 "fake_resource")
 
         self.message_api.db.message_create.assert_called_once_with(
             self.ctxt, mock.ANY)
-
-    def test_create_does_not_allow_undefined_messages(self):
-        self.assertRaises(KeyError, self.message_api.create,
-                          self.ctxt,
-                          "FAKE_EVENT_ID",
-                          "fakeproject",
-                          "fake_resource")
 
     def test_get(self):
         self.message_api.get(self.ctxt, 'fake_id')
@@ -116,15 +111,15 @@ class MessageApiTest(test.TestCase):
     def create_message_for_tests(self):
         """Create messages to test pagination functionality"""
         utils.create_message(
-            self.ctxt, event_id=defined_messages.EventIds.UNKNOWN_ERROR)
+            self.ctxt, action=message_field.Action.ATTACH_VOLUME)
         utils.create_message(
-            self.ctxt, event_id=defined_messages.EventIds.UNABLE_TO_ALLOCATE)
-        utils.create_message(
-            self.ctxt,
-            event_id=defined_messages.EventIds.ATTACH_READONLY_VOLUME)
+            self.ctxt, action=message_field.Action.SCHEDULE_ALLOCATE_VOLUME)
         utils.create_message(
             self.ctxt,
-            event_id=defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA)
+            action=message_field.Action.COPY_VOLUME_TO_IMAGE)
+        utils.create_message(
+            self.ctxt,
+            action=message_field.Action.COPY_VOLUME_TO_IMAGE)
 
     def test_get_all_messages_with_limit(self):
         self.create_message_for_tests()
@@ -196,8 +191,8 @@ class MessageApiTest(test.TestCase):
     def test_get_all_messages_with_filter(self):
         self.create_message_for_tests()
 
-        url = '/v3/messages?event_id=%s' % (
-            defined_messages.EventIds.UNKNOWN_ERROR)
+        url = '/v3/messages?action_id=%s' % (
+            message_field.Action.ATTACH_VOLUME[0])
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -222,10 +217,10 @@ class MessageApiTest(test.TestCase):
         res = self.controller.index(req)
 
         expect_result = [
-            defined_messages.EventIds.UNKNOWN_ERROR,
-            defined_messages.EventIds.UNABLE_TO_ALLOCATE,
-            defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
-            defined_messages.EventIds.ATTACH_READONLY_VOLUME
+            "VOLUME_VOLUME_001_002",
+            "VOLUME_VOLUME_002_002",
+            "VOLUME_VOLUME_003_002",
+            "VOLUME_VOLUME_003_002",
         ]
         expect_result.sort()
 

@@ -6194,6 +6194,8 @@ def _translate_message(message):
         'resource_type': message['resource_type'],
         'resource_uuid': message.get('resource_uuid'),
         'event_id': message['event_id'],
+        'detail_id': message['detail_id'],
+        'action_id': message['action_id'],
         'message_level': message['message_level'],
         'created_at': message['created_at'],
         'expires_at': message.get('expires_at'),
