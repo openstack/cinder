@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed consistency groups API which was always returning groups
+    scoped to project ID from user context instead of given input
+    project ID.
