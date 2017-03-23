@@ -249,10 +249,10 @@ class UnityClient(object):
         :param host: the host to which the FC port is registered.
         :param logged_in_only: whether to retrieve only the logged-in port.
 
-        :return the WWN of FC ports. For example, the FC WWN on array is like:
-        50:06:01:60:89:20:09:25:50:06:01:6C:09:20:09:25.
-        This function removes the colons and returns the last 16 bits:
-        5006016C09200925.
+        :return: the WWN of FC ports. For example, the FC WWN on array is like:
+         50:06:01:60:89:20:09:25:50:06:01:6C:09:20:09:25.
+         This function removes the colons and returns the last 16 bits:
+         5006016C09200925.
         """
         wwns = set()
         if logged_in_only:
