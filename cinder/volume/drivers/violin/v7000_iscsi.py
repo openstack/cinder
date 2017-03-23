@@ -57,6 +57,10 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Violin_Memory_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Queens release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(V7000ISCSIDriver, self).__init__(*args, **kwargs)
         self.stats = {}

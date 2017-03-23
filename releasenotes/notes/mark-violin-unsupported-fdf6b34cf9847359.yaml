@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    The Violin drivers have been marked as unsupported and are now
+    deprecated. ``enable_unsupported_drivers`` will need to be set to
+    ``True`` in cinder.conf to continue to use them.
+deprecations:
+  - |
+    The Violin drivers have been marked as unsupported and are now
+    deprecated. ``enable_unsupported_drivers`` will need to be set to
+    ``True`` in cinder.conf to continue to use them. If its support status
+    does not change it will be removed in the next release.
