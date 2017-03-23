@@ -792,7 +792,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                                                         blocksize)
 
         self.assertIsNone(output)
-        image_service.show.assert_called_once_with(ctxt, image_id)
+        self.assertEqual(2, image_service.show.call_count)
         self.assertEqual(2, mock_temp.call_count)
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=True),
@@ -1242,6 +1242,86 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              run_as_root=run_as_root)
+
+    @mock.patch('cinder.image.image_utils.fetch')
+    @mock.patch('cinder.image.image_utils.qemu_img_info',
+                side_effect=processutils.ProcessExecutionError)
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_no_qemu_img_fetch_verify_image(self, mock_conf,
+                                            mock_temp, mock_info,
+                                            mock_fetch):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock(temp_images=None)
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        ctxt.user_id = user_id = mock.sentinel.user_id
+        project_id = mock.sentinel.project_id
+        size = 4321
+        run_as_root = mock.sentinel.run_as_root
+
+        image_service.show.return_value = {'disk_format': 'raw',
+                                           'size': 41126400}
+
+        image_utils.fetch_verify_image(
+            ctxt, image_service, image_id, dest,
+            user_id=user_id, project_id=project_id, size=size,
+            run_as_root=run_as_root)
+
+        image_service.show.assert_called_once_with(ctxt, image_id)
+        mock_info.assert_called_once_with(dest, run_as_root=run_as_root)
+        mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
+                                           dest, None, None)
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info',
+                side_effect=processutils.ProcessExecutionError)
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_get_qemu_data_returns_none(self, mock_conf, mock_temp, mock_info):
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        run_as_root = mock.sentinel.run_as_root
+        disk_format_raw = True
+        has_meta = True
+
+        output = image_utils.get_qemu_data(image_id, has_meta,
+                                           disk_format_raw, dest,
+                                           run_as_root=run_as_root)
+
+        self.assertIsNone(output)
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info',
+                side_effect=processutils.ProcessExecutionError)
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_get_qemu_data_with_image_meta_exception(self, mock_conf,
+                                                     mock_temp, mock_info):
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        run_as_root = mock.sentinel.run_as_root
+        disk_format_raw = False
+        has_meta = True
+        self.assertRaises(
+            exception.ImageUnacceptable,
+            image_utils.get_qemu_data, image_id, has_meta, disk_format_raw,
+            dest, run_as_root=run_as_root)
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info',
+                side_effect=processutils.ProcessExecutionError)
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_get_qemu_data_without_image_meta_except(self, mock_conf,
+                                                     mock_temp, mock_info):
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        run_as_root = mock.sentinel.run_as_root
+
+        disk_format_raw = False
+        has_meta = False
+        self.assertRaises(
+            exception.ImageUnacceptable,
+            image_utils.get_qemu_data, image_id, has_meta, disk_format_raw,
+            dest, run_as_root=run_as_root)
 
 
 class TestXenserverUtils(test.TestCase):
