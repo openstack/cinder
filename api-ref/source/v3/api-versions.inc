@@ -8,7 +8,7 @@ List All Api Versions
 Lists information for all Block Storage API versions.
 
 
-Normal response codes: 200,202,300
+Normal response codes: 300
 
 Error response codes: computeFault(400, 500), serviceUnavailable(503), badRequest(400),
 unauthorized(401), forbidden(403), badMethod(405), itemNotFound(404), conflict(409)
