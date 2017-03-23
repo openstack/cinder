@@ -148,7 +148,8 @@ class VolumeDriverCore(base.CinderInterface):
         It should not export a LUN or actually make this storage available for
         use, this is done in a later call.
 
-        # TODO(smcginnis) - Add example data structure of volume object.
+        .. todo:: Add example data structure of volume object (smcginnis).
+
         :param volume: Volume object containing specifics to create.
         :returns: (Optional) dict of database updates for the new volume.
         :raises: VolumeBackendAPIException if creation failed.
