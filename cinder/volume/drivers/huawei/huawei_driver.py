@@ -29,6 +29,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
@@ -191,6 +192,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             pool['thick_provisioning_support'] = True
             pool['thin_provisioning_support'] = True
             pool['smarttier'] = True
+            pool['consistent_group_snapshot_enabled'] = True
 
             if self.configuration.san_product == "Dorado":
                 pool['smarttier'] = False
@@ -198,8 +200,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
             if self.metro_flag:
                 pool['hypermetro'] = self.check_func_support("HyperMetroPair")
-                pool['consistencygroup_support'] = (
-                    self.check_func_support("HyperMetro_ConsistentGroup"))
 
             # Asign the support function to global paramenter.
             self.support_func = pool
@@ -224,16 +224,27 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         opts = self._get_volume_params_from_specs(specs)
         return opts
 
-    def _get_consistencygroup_type(self, group):
-        specs = {}
-        opts = {}
-        type_id = group.volume_type_id.split(",")
-        if type_id[0] and len(type_id) == 2:
-            ctxt = context.get_admin_context()
-            volume_type = volume_types.get_volume_type(ctxt, type_id[0])
-            specs = dict(volume_type).get('extra_specs')
-            opts = self._get_volume_params_from_specs(specs)
+    def _get_group_type(self, group):
+        opts = []
+        vol_types = group.volume_types
+
+        for vol_type in vol_types:
+            specs = vol_type.extra_specs
+            opts.append(self._get_volume_params_from_specs(specs))
+
         return opts
+
+    def _check_volume_type_support(self, opts, vol_type):
+        if not opts:
+            return False
+
+        support = True
+        for opt in opts:
+            if opt.get(vol_type) != 'true':
+                support = False
+                break
+
+        return support
 
     def _get_volume_params_from_specs(self, specs):
         """Return the volume parameters from extra specs."""
@@ -1599,24 +1610,26 @@ class HuaweiBaseDriver(driver.VolumeDriver):
            self.client.is_host_associated_to_hostgroup(host_id)):
             self.client.remove_host(host_id)
 
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        model_update = {'status': 'available'}
-        opts = self._get_consistencygroup_type(group)
-        if (opts.get('hypermetro') == 'true'):
+    @huawei_utils.check_whether_operate_consistency_group
+    def create_group(self, context, group):
+        """Creates a group."""
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        opts = self._get_group_type(group)
+        if self._check_volume_type_support(opts, 'hypermetro'):
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
             metro.create_consistencygroup(group)
             return model_update
 
-        # Array will create CG at create_cgsnapshot time. Cinder will
-        # maintain the CG and volumes relationship in the db.
+        # Array will create group at create_group_snapshot time. Cinder will
+        # maintain the group and volumes relationship in the db.
         return model_update
 
-    def delete_consistencygroup(self, context, group, volumes):
-        opts = self._get_consistencygroup_type(group)
-        if opts.get('hypermetro') == 'true':
+    @huawei_utils.check_whether_operate_consistency_group
+    def delete_group(self, context, group, volumes):
+        opts = self._get_group_type(group)
+        if self._check_volume_type_support(opts, 'hypermetro'):
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
@@ -1624,7 +1637,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         model_update = {}
         volumes_model_update = []
-        model_update.update({'status': group.status})
+        model_update.update({'status': fields.GroupStatus.DELETED})
 
         for volume_ref in volumes:
             try:
@@ -1637,12 +1650,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return model_update, volumes_model_update
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes,
-                                remove_volumes):
-        model_update = {'status': 'available'}
-        opts = self._get_consistencygroup_type(group)
-        if opts.get('hypermetro') == 'true':
+    @huawei_utils.check_whether_operate_consistency_group
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        opts = self._get_group_type(group)
+        if self._check_volume_type_support(opts, 'hypermetro'):
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
                                                 self.configuration)
@@ -1651,15 +1664,23 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                           remove_volumes)
             return model_update, None, None
 
-        # Array will create CG at create_cgsnapshot time. Cinder will
-        # maintain the CG and volumes relationship in the db.
+        # Array will create group at create_group_snapshot time. Cinder will
+        # maintain the group and volumes relationship in the db.
         return model_update, None, None
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Create cgsnapshot."""
-        LOG.info('Create cgsnapshot for consistency group'
-                 ': %(group_id)s',
-                 {'group_id': cgsnapshot.consistencygroup_id})
+    @huawei_utils.check_whether_operate_consistency_group
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        err_msg = _("Huawei Storage doesn't support create_group_from_src.")
+        LOG.error(err_msg)
+        raise exception.VolumeBackendAPIException(data=err_msg)
+
+    @huawei_utils.check_whether_operate_consistency_group
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Create group snapshot."""
+        LOG.info('Create group snapshot for group'
+                 ': %(group_id)s', {'group_id': group_snapshot.group_id})
 
         model_update = {}
         snapshots_model_update = []
@@ -1682,48 +1703,50 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 info = self.client.create_snapshot(lun_id,
                                                    snapshot_name,
                                                    snapshot_description)
-                snapshot_model_update = {'id': snapshot.id,
-                                         'status': 'available',
-                                         'provider_location': info['ID']}
-                snapshots_model_update.append(snapshot_model_update)
+                snap_model_update = {'id': snapshot.id,
+                                     'status': fields.SnapshotStatus.AVAILABLE,
+                                     'provider_location': info['ID']}
+                snapshots_model_update.append(snap_model_update)
                 added_snapshots_info.append(info)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error("Create cgsnapshots failed. "
-                          "Cgsnapshot id: %s.", cgsnapshot.id)
+                LOG.error("Create group snapshots failed. "
+                          "Group snapshot id: %s.", group_snapshot.id)
         snapshot_ids = [added_snapshot['ID']
                         for added_snapshot in added_snapshots_info]
         try:
             self.client.activate_snapshot(snapshot_ids)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error("Active cgsnapshots failed. "
-                          "Cgsnapshot id: %s.", cgsnapshot.id)
+                LOG.error("Active group snapshots failed. "
+                          "Group snapshot id: %s.", group_snapshot.id)
 
-        model_update['status'] = 'available'
+        model_update['status'] = fields.GroupSnapshotStatus.AVAILABLE
 
         return model_update, snapshots_model_update
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Delete consistency group snapshot."""
-        LOG.info('Delete cgsnapshot %(snap_id)s for consistency group: '
+    @huawei_utils.check_whether_operate_consistency_group
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Delete group snapshot."""
+        LOG.info('Delete group snapshot %(snap_id)s for group: '
                  '%(group_id)s',
-                 {'snap_id': cgsnapshot.id,
-                  'group_id': cgsnapshot.consistencygroup_id})
+                 {'snap_id': group_snapshot.id,
+                  'group_id': group_snapshot.group_id})
 
         model_update = {}
         snapshots_model_update = []
-        model_update['status'] = cgsnapshot.status
+        model_update['status'] = fields.GroupSnapshotStatus.DELETED
 
         for snapshot in snapshots:
             try:
                 self.delete_snapshot(snapshot)
-                snapshots_model_update.append({'id': snapshot.id,
-                                               'status': 'deleted'})
+                snapshot_model = {'id': snapshot.id,
+                                  'status': fields.SnapshotStatus.DELETED}
+                snapshots_model_update.append(snapshot_model)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error("Delete cg snapshots failed. "
-                              "Cgsnapshot id: %s", cgsnapshot.id)
+                    LOG.error("Delete group snapshot failed. "
+                              "Group snapshot id: %s", group_snapshot.id)
 
         return model_update, snapshots_model_update
 

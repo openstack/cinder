@@ -18,6 +18,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 
@@ -286,7 +287,7 @@ class HuaweiHyperMetro(object):
                  {'group': group.id})
         model_update = {}
         volumes_model_update = []
-        model_update['status'] = group.status
+        model_update['status'] = fields.GroupStatus.DELETED
         metrogroup_id = self.check_consistencygroup_need_to_stop(group)
         if metrogroup_id:
             self.client.delete_metrogroup(metrogroup_id)
@@ -304,8 +305,6 @@ class HuaweiHyperMetro(object):
         LOG.info("Update Consistency Group: %(group)s. "
                  "This adds or removes volumes from a CG.",
                  {'group': group.id})
-        model_update = {}
-        model_update['status'] = group.status
         metrogroup_id = self.check_consistencygroup_need_to_stop(group)
         if metrogroup_id:
             # Deal with add volumes to CG

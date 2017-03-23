@@ -24,6 +24,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.volume.drivers.huawei import constants
+from cinder.volume import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -112,3 +113,14 @@ def get_snapshot_metadata_value(snapshot):
         return {item['key']: item['value'] for item in metadata}
 
     return {}
+
+
+def check_whether_operate_consistency_group(func):
+    def wrapper(self, context, group, *args, **kwargs):
+        if not utils.is_group_a_cg_snapshot_type(group):
+            msg = _("%s, the group or group snapshot is not cg or "
+                    "cg_snapshot") % func.__name__
+            LOG.debug(msg)
+            raise NotImplementedError(msg)
+        return func(self, context, group, *args, **kwargs)
+    return wrapper
