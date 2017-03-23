@@ -59,6 +59,9 @@ class VolumeActionsController(wsgi.Controller):
         # Keep API backward compatibility
         if 'host_name' in body['os-attach']:
             host_name = body['os-attach']['host_name']
+        if 'mountpoint' not in body['os-attach']:
+            msg = _("Must specify 'mountpoint'")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         mountpoint = body['os-attach']['mountpoint']
         if 'mode' in body['os-attach']:
             mode = body['os-attach']['mode']

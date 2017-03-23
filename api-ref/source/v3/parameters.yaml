@@ -1050,7 +1050,7 @@ mountpoint:
   description: |
     The attaching mount point.
   in: body
-  required: false
+  required: true
   type: string
 multiattach:
   description: |

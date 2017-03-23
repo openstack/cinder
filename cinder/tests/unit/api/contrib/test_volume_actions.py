@@ -361,6 +361,21 @@ class VolumeActionsTest(test.TestCase):
             fake_auth_context=self.context))
         self.assertEqual(400, res.status_int)
 
+    def test_attach_to_instance_no_mountpoint(self):
+        # The mountpoint parameter is required. If not provided the
+        # API should fail with a 400 error.
+        body = {'os-attach': {'instance_uuid': fake.INSTANCE_ID,
+                              'mode': 'rw'}}
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.context))
+        self.assertEqual(400, res.status_int)
+
     def test_begin_detaching(self):
         def fake_begin_detaching(*args, **kwargs):
             return {}
