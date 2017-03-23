@@ -106,6 +106,13 @@ class MessageApiTest(test.TestCase):
         self.message_api.db.message_destroy.assert_called_once_with(
             admin_context, 'fake_id')
 
+    def test_cleanup_expired_messages(self):
+        admin_context = mock.Mock()
+        self.mock_object(self.ctxt, 'elevated', return_value=admin_context)
+        self.message_api.cleanup_expired_messages(self.ctxt)
+        self.message_api.db.cleanup_expired_messages.assert_called_once_with(
+            admin_context)
+
     def create_message_for_tests(self):
         """Create messages to test pagination functionality"""
         utils.create_message(

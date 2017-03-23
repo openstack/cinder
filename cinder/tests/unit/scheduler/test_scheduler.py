@@ -93,6 +93,13 @@ class SchedulerManagerTestCase(test.TestCase):
                          volume_rpcapi.client.serializer._base.version_cap)
         self.assertIsNone(volume_rpcapi.client.serializer._base.manifest)
 
+    @mock.patch('cinder.message.api.API.cleanup_expired_messages')
+    def test__clean_expired_messages(self, mock_clean):
+
+        self.manager._clean_expired_messages(self.context)
+
+        mock_clean.assert_called_once_with(self.context)
+
     @mock.patch('cinder.scheduler.driver.Scheduler.'
                 'update_service_capabilities')
     def test_update_service_capabilities_empty_dict(self, _mock_update_cap):

@@ -2155,6 +2155,40 @@ class DBAPIReservationTestCase(BaseTest):
                              'project1'))
 
 
+class DBAPIMessageTestCase(BaseTest):
+
+    """Tests for message operations"""
+    def setUp(self):
+        super(DBAPIMessageTestCase, self).setUp()
+        self.context = context.get_admin_context()
+
+    def _create_fake_messages(self, m_id, time):
+        db.message_create(self.context,
+                          {'id': m_id,
+                           'event_id': m_id,
+                           'message_level': 'error',
+                           'project_id': 'fake_id',
+                           'expires_at': time})
+
+    def test_cleanup_expired_messages(self):
+        now = timeutils.utcnow()
+        # message expired 1 day ago
+        self._create_fake_messages(
+            uuidutils.generate_uuid(), now - datetime.timedelta(days=1))
+        # message expired now
+        self._create_fake_messages(
+            uuidutils.generate_uuid(), now)
+        # message expired 1 day after
+        self._create_fake_messages(
+            uuidutils.generate_uuid(), now + datetime.timedelta(days=1))
+
+        with mock.patch.object(timeutils, 'utcnow') as mock_time_now:
+            mock_time_now.return_value = now
+            db.cleanup_expired_messages(self.context)
+            messages = db.message_get_all(self.context)
+            self.assertEqual(2, len(messages))
+
+
 class DBAPIQuotaClassTestCase(BaseTest):
 
     """Tests for db.api.quota_class_* methods."""
