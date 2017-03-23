@@ -20,7 +20,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
@@ -131,7 +131,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                         self.ha_vip = '/'.join(
                             (vips[0]['ip'], vips[0]['mask']))
             if not target_vip:
-                LOG.error(_LE('No VIP configured for service %s'),
+                LOG.error('No VIP configured for service %s',
                           self.iscsi_service)
                 raise exception.VolumeBackendAPIException(
                     message=_('No service VIP configured and '
@@ -139,8 +139,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.target_vip = target_vip
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error verifying iSCSI service %(serv)s on '
-                              'host %(hst)s'), {'serv': self.iscsi_service,
+                LOG.exception('Error verifying iSCSI service %(serv)s on '
+                              'host %(hst)s', {'serv': self.iscsi_service,
                               'hst': self.restapi_host})
 
     def check_for_setup_error(self):
@@ -148,7 +148,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.get(self.bucket_url + '/objects/')
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error verifying LUN container %(bkt)s'),
+                LOG.exception('Error verifying LUN container %(bkt)s',
                               {'bkt': self.bucket_path})
 
     def _get_lun_number(self, volname):
@@ -160,7 +160,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error retrieving LUN %(vol)s number'),
+                LOG.exception('Error retrieving LUN %(vol)s number',
                               {'vol': volname})
 
         return rsp['data']
@@ -189,7 +189,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', data)
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error creating volume'))
+                LOG.exception('Error creating volume')
 
     def delete_volume(self, volume):
         try:
@@ -198,7 +198,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                            '/' + volume['name']})
         except exception.VolumeBackendAPIException:
             LOG.info(
-                _LI('Volume was already deleted from appliance, skipping.'),
+                'Volume was already deleted from appliance, skipping.',
                 resource=volume)
 
     def extend_volume(self, volume, new_size):
@@ -209,7 +209,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                               'newSizeMB': new_size * units.Ki})
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error extending volume'))
+                LOG.exception('Error extending volume')
 
     def create_volume_from_snapshot(self, volume, snapshot):
         self.restapi.put(
@@ -278,14 +278,14 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         try:
             self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
-            LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%s'), '@'.join(
+            LOG.error('Volume creation failed, deleting created snapshot '
+                      '%s', '@'.join(
                 [snapshot['volume_name'], snapshot['name']]))
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
-                LOG.warning(_LW('Failed to delete zfs snapshot '
-                                '%s'), '@'.join(
+                LOG.warning('Failed to delete zfs snapshot '
+                            '%s', '@'.join(
                     [snapshot['volume_name'], snapshot['name']]))
             raise
         if volume['size'] > src_vref['size']:
