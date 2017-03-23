@@ -68,6 +68,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
     CI_WIKI_NAME = "QNAP_CI"
     VERSION = '1.0.0'
 
+    TIME_INTERVAL = 3
+
     def __init__(self, *args, **kwargs):
         """Initialize QnapISCSIDriver."""
         super(QnapISCSIDriver, self).__init__(*args, **kwargs)
@@ -234,7 +236,6 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             create_lun_name,
             reserve)
 
-        time_interval = 3
         max_wait_sec = 600
         try_times = 0
         lun_naa = ""
@@ -245,7 +246,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 lun_naa = created_lun.find('LUNNAA').text
 
             try_times = try_times + 3
-            eventlet.sleep(time_interval)
+            eventlet.sleep(self.TIME_INTERVAL)
             if(try_times > max_wait_sec or lun_naa is not None):
                 break
 
@@ -379,7 +380,6 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
         self.api_executor.clone_snapshot(snapshot_id, cloned_lun_name)
 
-        time_interval = 3
         max_wait_sec = 600
         try_times = 0
         lun_naa = ""
@@ -390,7 +390,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 lun_naa = created_lun.find('LUNNAA').text
 
             try_times = try_times + 3
-            eventlet.sleep(time_interval)
+            eventlet.sleep(self.TIME_INTERVAL)
             if(try_times > max_wait_sec or lun_naa is not None):
                 break
 
@@ -423,7 +423,6 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         LOG.debug('create_snapshot_name: %s', create_snapshot_name)
 
         self.api_executor.create_snapshot_api(lun_index, create_snapshot_name)
-        time_interval = 3
         max_wait_sec = 600
         try_times = 0
         snapshot_id = ""
@@ -434,7 +433,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 snapshot_id = created_snapshot.find('snapshot_id').text
 
             try_times = try_times + 3
-            eventlet.sleep(time_interval)
+            eventlet.sleep(self.TIME_INTERVAL)
             if(try_times > max_wait_sec or created_snapshot is not None):
                 break
 
@@ -480,7 +479,6 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         self.api_executor.clone_snapshot(
             snapshot_id, create_lun_name)
 
-        time_interval = 3
         max_wait_sec = 600
         try_times = 0
         lun_naa = ""
@@ -491,7 +489,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 lun_naa = created_lun.find('LUNNAA').text
 
             try_times = try_times + 3
-            eventlet.sleep(time_interval)
+            eventlet.sleep(self.TIME_INTERVAL)
             if(try_times > max_wait_sec or lun_naa is not None):
                 break
 
