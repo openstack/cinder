@@ -66,6 +66,11 @@ class QnapISCSIDriver(san.SanISCSIDriver):
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "QNAP_CI"
+
+    # TODO(smcginnis) Either remove this if CI requirement are met, or
+    # remove this driver in the Queens release per normal deprecation
+    SUPPORTED = False
+
     VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
