@@ -191,6 +191,12 @@ marker:
   in: query
   required: false
   type: string
+message_id:
+  description: |
+    The UUID of the message.
+  in: query
+  required: true
+  type: string
 metadata_query:
   description: |
     Filters results by a metadata key and value pair.
@@ -619,6 +625,13 @@ encryption_id_body:
   in: body
   required: true
   type: string
+event_id:
+  description: |
+    The id of the event to this message, this id could
+    eventually be translated into ``user_message``.
+  in: body
+  required: true
+  type: string
 extra_specs:
   description: |
     A set of key and value pairs that contains the
@@ -717,6 +730,13 @@ group_types:
   in: body
   required: true
   type: array
+guaranteed_until:
+  description: |
+    The expire time of the message, this message could be
+    be deleted after this time.
+  in: body
+  required: false
+  type: string
 has_dependent_backups:
   description: |
     If this value is ``true``, the backup depends on
@@ -789,6 +809,12 @@ id_6:
 id_7:
   description: |
     The ID for the quota set.
+  in: body
+  required: true
+  type: integer
+id_8:
+  description: |
+    The ID for the message.
   in: body
   required: true
   type: integer
@@ -932,6 +958,12 @@ links_4:
   in: body
   required: true
   type: array
+links_5:
+  description: |
+    Links for the message.
+  in: body
+  required: false
+  type: array
 location:
   description: |
     Full URL to a service or server.
@@ -971,6 +1003,13 @@ maxTotalVolumes:
   in: body
   required: true
   type: integer
+message_level:
+  description: |
+    The level of the message, possible value is
+    only 'ERROR' now.
+  in: body
+  required: true
+  type: string
 metadata:
   description: |
     One or more metadata key and value pairs for the
@@ -1434,6 +1473,12 @@ replication_status:
   in: body
   required: true
   type: string
+request_id:
+  description: |
+    The id of the request during which the message was created.
+  in: body
+  required: true
+  type: string
 reserved:
   description: |
     Reserved volume size. Visible only if you set the
@@ -1454,6 +1499,19 @@ reset_status:
   in: body
   required: true
   type: object
+resource_type:
+  description: |
+    The resource type corresponding to ``resource_uuid``.
+  in: body
+  required: false
+  type: string
+resource_uuid:
+  description: |
+    The UUID of the resource during whose operation the
+    message was created.
+  in: body
+  required: false
+  type: string
 restore:
   description: |
     A ``restore`` object.
@@ -1731,6 +1789,12 @@ user_id:
     The UUID of the user.
   in: body
   required: true
+  type: string
+user_message:
+  description: |
+    The translated readable message corresponding to ``event_id``.
+  in: body
+  required: false
   type: string
 vendor_name:
   description: |

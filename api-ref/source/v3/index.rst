@@ -16,6 +16,7 @@ Block Storage API V3 (CURRENT)
 .. include:: group-snapshots.inc
 .. include:: group-types.inc
 .. include:: limits.inc
+.. include:: messages.inc
 .. include:: os-vol-image-meta-v3.inc
 .. include:: os-vol-pool-v3.inc
 .. include:: os-vol-transfer-v3.inc
