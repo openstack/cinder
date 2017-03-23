@@ -595,7 +595,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id_1
+   - volume_id: volume_id_path
    - key: key_2
 
 
@@ -632,7 +632,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id_1
+   - volume_id: volume_id_path
    - key: key_1
 
 
