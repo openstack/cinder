@@ -591,7 +591,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id_1
+   - volume_id: volume_id_path
    - key: key_2
 
 
@@ -629,5 +629,5 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id_1
+   - volume_id: volume_id_path
    - key: key_1

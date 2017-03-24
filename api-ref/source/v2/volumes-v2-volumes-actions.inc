@@ -181,7 +181,7 @@ Request
    - host_name: host_name
    - os-attach: os-attach
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -217,7 +217,7 @@ Request
    - attachment_id: attachment_id
    - os-detach: os-detach
    - tenant_id: tenant_id
-   - volume_id: volume_id_1
+   - volume_id: volume_id_path
 
 Request Example
 ---------------

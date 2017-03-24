@@ -181,7 +181,7 @@ Request
    - host_name: host_name
    - os-attach: os-attach
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
