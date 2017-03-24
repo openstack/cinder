@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The create volume api will now return 400 error instead of 404/500 if user
+    passes non-uuid values to consistencygroup_id, source_volid and
+    source_replica parameters in the request body.

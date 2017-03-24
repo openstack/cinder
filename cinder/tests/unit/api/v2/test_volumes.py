@@ -337,6 +337,21 @@ class VolumeApiTest(test.TestCase):
         get_volume.assert_called_once_with(self.controller.volume_api,
                                            context, source_volid)
 
+    @ddt.data({'source_volid': 1},
+              {'source_volid': []},
+              {'source_replica': 1},
+              {'source_replica': []},
+              {'consistencygroup_id': 1},
+              {'consistencygroup_id': []})
+    def test_volume_creation_fails_with_invalid_uuids(self, updated_uuids):
+        vol = self._vol_in_request_body()
+        vol.update(updated_uuids)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 400 for resource requested with invalid uuids.
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
+                          req, body)
+
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
     def test_volume_creation_fails_with_invalid_source_replica(self,
                                                                get_volume):
