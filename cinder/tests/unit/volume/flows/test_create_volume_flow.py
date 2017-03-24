@@ -19,6 +19,7 @@ import sys
 import ddt
 import mock
 
+from castellan.common import exception as castellan_exc
 from castellan.tests.unit.key_manager import mock_key_manager
 from oslo_utils import imageutils
 
@@ -346,6 +347,59 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'group_id': None,
                            'replication_status': 'disabled'}
         self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted',
+                return_value=True)
+    @mock.patch('cinder.volume.volume_types.get_volume_type_encryption',
+                return_value=mock.Mock(cipher='my-cipher-2000'))
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs',
+                return_value={'qos_specs': None})
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask._get_volume_type_id',
+                return_value=1)
+    def test_get_encryption_key_id_castellan_error(
+            self,
+            mock_get_type_id,
+            mock_get_qos,
+            mock_get_volume_type_encryption,
+            mock_is_encrypted):
+
+        fake_image_service = fake_image.FakeImageService()
+        image_id = 99
+        image_meta = {'id': image_id,
+                      'status': 'active',
+                      'size': 1}
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_manager.MockKeyManager()
+        volume_type = 'type1'
+
+        with mock.patch.object(fake_key_manager, 'create_key',
+                               side_effect=castellan_exc.KeyManagerError):
+            with mock.patch.object(fake_key_manager, 'get',
+                                   return_value=fakes.ENCRYPTION_KEY_ID):
+
+                task = create_volume.ExtractVolumeRequestTask(
+                    fake_image_service,
+                    {'nova'})
+
+                self.assertRaises(exception.Invalid,
+                                  task.execute,
+                                  self.ctxt,
+                                  size=1,
+                                  snapshot=None,
+                                  image_id=image_id,
+                                  source_volume=None,
+                                  availability_zone='nova',
+                                  volume_type=volume_type,
+                                  metadata=None,
+                                  key_manager=fake_key_manager,
+                                  source_replica=None,
+                                  consistencygroup=None,
+                                  cgsnapshot=None,
+                                  group=None)
+
+        mock_is_encrypted.assert_called_once_with(self.ctxt, 1)
+        mock_get_volume_type_encryption.assert_called_once_with(self.ctxt, 1)
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
