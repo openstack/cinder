@@ -285,7 +285,7 @@ class RestClientURL(object):
                 if context:
                     # only schemes that can be used will be http or https if it
                     # is given in the path variable, or the path will begin
-                    # with the rest API location meaning invalid or unwanted
+                    # with the REST API location meaning invalid or unwanted
                     # schemes cannot be used
                     response = urllib.request.urlopen(req,  # nosec
                                                       timeout=self.timeout,
