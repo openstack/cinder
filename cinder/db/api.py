@@ -296,14 +296,9 @@ def volume_get_all_by_project(context, project_id, marker, limit,
                                           offset=offset)
 
 
-def get_volume_summary_all(context):
-    """Get all volume summary."""
-    return IMPL.get_volume_summary_all(context)
-
-
-def get_volume_summary_by_project(context, project_id):
-    """Get all volume summary belonging to a project."""
-    return IMPL.get_volume_summary_by_project(context, project_id)
+def get_volume_summary(context, project_only):
+    """Get volume summary."""
+    return IMPL.get_volume_summary(context, project_only)
 
 
 def volume_update(context, volume_id, values):
