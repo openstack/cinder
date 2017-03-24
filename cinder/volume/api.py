@@ -1386,7 +1386,7 @@ class API(base.Base):
                                             cluster_name=svc_cluster,
                                             backend_match_level='pool')
         except exception.ServiceNotFound:
-            msg = _('No available service named %s') % cluster_name or host
+            msg = _("No available service named '%s'") % (cluster_name or host)
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
         # Even if we were requested to do a migration to a host, if the host is
