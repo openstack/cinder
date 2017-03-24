@@ -160,9 +160,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.8 - Add defaults for creating a replication client, bug #1556331
         2.0.9 - Fix terminate connection on failover
         2.0.10 - Add entry point tracing
+        2.0.11 - Fix extend volume if larger than snapshot bug #1560654
     """
 
-    VERSION = "2.0.10"
+    VERSION = "2.0.11"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -806,6 +807,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             volume_info = client.cloneSnapshot(
                 volume['name'],
                 snap_info['id'])
+
+            # Extend volume
+            if volume['size'] > snapshot['volume_size']:
+                LOG.debug("Resize the new volume to %s.", volume['size'])
+                self.extend_volume(volume, volume['size'])
 
             model_update = self._update_provider(volume_info)
 
