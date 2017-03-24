@@ -26,6 +26,8 @@ def fake_db_group(**updates):
         'user_id': fake.USER_ID,
         'project_id': fake.PROJECT_ID,
         'group_type_id': fake.GROUP_TYPE_ID,
+        'group_snapshot_id': None,
+        'source_group_id': None,
     }
 
     for name, field in objects.Group.fields.items():
