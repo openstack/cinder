@@ -22,7 +22,7 @@ a bit vague and we have a number of race issues during the calls that
 continually cause us some problems.
 
 Additionally, the existing code path makes things like multi-attach extremely
-difficult to implement due to no real good tracking mechansim of attachment
+difficult to implement due to no real good tracking mechanism of attachment
 info.
 
 To try and improve this we've proposed a new Attachments Object and API.  Now
@@ -42,15 +42,18 @@ connector information for an Attachment so we no longer have the problem of
 lost connector info, or trying to reassemble it.
 
 New API and Flow
-=================
+================
+
+attachment-create
+-----------------
 
 ```
-attachment_create <instance_uuid> <volume_id>
+attachment-create <volume-id> <instance-uuid>...
 ```
 
 The attachment_create call simply creates an empty Attachment record for the
-specified Volume with an optional Instance UUID field set.  This is
-particularly useful for cases like Nova Boot from Volume where Nova hasn't sent
+specified Volume with an Instance UUID field set.  This is particularly
+useful for cases like Nova Boot from Volume where Nova hasn't sent
 the job to the actual Compute host yet, but needs to make initial preparations
 to reserve the volume for use, so here we can reserve the volume and indicate
 that we will be attaching it to <Instance-UUID> in the future.
@@ -75,62 +78,75 @@ The attachment_create call can be used in one of two ways:
    attachment_create call and the Cinder API will perform the reserve and
    initialize the connection in the single request.
 
+This full usage of attachment-create would be::
 
+  usage: cinder --os-volume-api-version 3.27 attachment-create
+         <volume-id>  <instance-uuid>...
 
-param instance-uuid: The ID of the Instance we'll be attaching to
-param volume-id: The ID of the volume to reserve an Attachment record for
-rtyp: string:`VolumeAttachmentID`
+  Positional arguments:
+  <volume-id>: The ID of the volume to create attachment for
+  <instance-uuid>:    The ID of the Instance we'll be attaching to
+
+  Optional arguments:
+  --connect <connect>       Make an active connection using provided connector info (True or False)
+  --initiator <initiator>   iqn of the initiator attaching to
+  --ip <ip>                 ip of the system attaching to
+  --host <host>             Name of the host attaching to
+  --platform <platform>     Platform type
+  --ostype <ostype>         OS type
+  --multipath <multipath>   Use multipath
+  --mountpoint <mountpoint> Mountpoint volume will be attached at
+
+Returns the connection information for the attachment::
+
+  +-------------------+-----------------------------------------------------------------------+
+  | Property          | Value                                                                 |
+  +-------------------+-----------------------------------------------------------------------+
+  | access_mode       | rw                                                                    |
+  | attachment_id     | 6ab061ad-5c45-48f3-ad9c-bbd3b6275bf2                                  |
+  | auth_method       | CHAP                                                                  |
+  | auth_password     | kystSioDKHSV2j9y                                                      |
+  | auth_username     | hxGUgiWvsS4GqAQcfA78                                                  |
+  | encrypted         | False                                                                 |
+  | qos_specs         | None                                                                  |
+  | target_discovered | False                                                                 |
+  | target_iqn        | iqn.2010-10.org.openstack:volume-23212c97-5ed7-42d7-b433-dbf8fc38ec35 |
+  | target_lun        | 0                                                                     |
+  | target_portal     | 192.168.0.9:3260                                                      |
+  | volume_id         | 23212c97-5ed7-42d7-b433-dbf8fc38ec35                                  |
+  +-------------------+-----------------------------------------------------------------------+
+
+attachment-update
+-----------------
 
 ```
-cinder --os-volume-api-version 3.27 attachment-create --instance <instance-uuid>  <volume-id>
+cinder --os-volume-api-version 3.27 attachment-update <attachment-id>
 ```
 
-param volume_id: The ID of the volume to create attachment for.
-parm attachment_id: The ID of a previously reserved attachment.
+Once we have a reserved a volume, this CLI can be used to update an attachment for a cinder volume.
+This call is designed to be more of an attachment completion than anything else.
+It expects the value of a connector object to notify the driver that the volume is going to be
+connected and where it's being connected to. The usage is the following::
 
-param connector: Dictionary of connection info
-param mode: `rw` or `ro` (defaults to `rw` if omitted).
-param mountpoint: Mountpoint of remote attachment.
-rtype: :class:`VolumeAttachment`
+  usage: cinder --os-volume-api-version 3.27 attachment-update
+         <attachment-id> ...
 
-Example connector:
-    {'initiator': 'iqn.1993-08.org.debian:01:cad181614cec',
-     'ip':'192.168.1.20',
-     'platform': 'x86_64',
-     'host': 'tempest-1',
-     'os_type': 'linux2',
-     'multipath': False}
+  Positional arguments:
+    <attachment-id>          ID of attachment
 
-```
-cinder --os-volume-api-version 3.27 attachment-create --initiator iqn.1993-08.org.debian:01:29353d53fa41 --ip 1.1.1.1 --host blah --instance <instance-id> <volume-id>
-```
-
-Returns a dictionary including the connector and attachment_id:
-
-```
-+-------------------+-----------------------------------------------------------------------+
-| Property          | Value                                                                 |
-+-------------------+-----------------------------------------------------------------------+
-| access_mode       | rw                                                                    |
-| attachment_id     | 6ab061ad-5c45-48f3-ad9c-bbd3b6275bf2                                  |
-| auth_method       | CHAP                                                                  |
-| auth_password     | kystSioDKHSV2j9y                                                      |
-| auth_username     | hxGUgiWvsS4GqAQcfA78                                                  |
-| encrypted         | False                                                                 |
-| qos_specs         | None                                                                  |
-| target_discovered | False                                                                 |
-| target_iqn        | iqn.2010-10.org.openstack:volume-23212c97-5ed7-42d7-b433-dbf8fc38ec35 |
-| target_lun        | 0                                                                     |
-| target_portal     | 192.168.0.9:3260                                                      |
-| volume_id         | 23212c97-5ed7-42d7-b433-dbf8fc38ec35                                  |
-+-------------------+-----------------------------------------------------------------------+
-```
-
+  Optional arguments:
+    --initiator <initiator>   iqn of the initiator attaching to
+    --ip <ip>                 ip of the system attaching to
+    --host <host>             Name of the host attaching to
+    --platform <platform>     Platform type
+    --ostype <ostype>         OS type
+    --multipath <multipath>   Use multipath
+    --mountpoint <mountpoint> Mountpoint volume will be attached at
 
 attachment-delete
-=================
+-----------------
 
 ```
-cinder --os-volume-api-version 3.27 attachment-delete 6ab061ad-5c45-48f3-ad9c-bbd3b6275bf2
+cinder --os-volume-api-version 3.27 attachment-delete <attachment-id>
 ```
 
