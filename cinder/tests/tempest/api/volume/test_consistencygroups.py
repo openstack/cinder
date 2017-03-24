@@ -79,8 +79,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         cg = create_consistencygroup(volume_type['id'],
                                      name=cg_name)['consistencygroup']
         vol_name = data_utils.rand_name("volume")
-        self.name_field = self.special_fields['name_field']
-        params = {self.name_field: vol_name,
+        params = {'name': vol_name,
                   'volume_type': volume_type['id'],
                   'consistencygroup_id': cg['id'],
                   'size': CONF.volume.volume_size}
@@ -123,8 +122,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         cg = create_consistencygroup(volume_type['id'],
                                      name=cg_name)['consistencygroup']
         vol_name = data_utils.rand_name("volume")
-        self.name_field = self.special_fields['name_field']
-        params = {self.name_field: vol_name,
+        params = {'name': vol_name,
                   'volume_type': volume_type['id'],
                   'consistencygroup_id': cg['id'],
                   'size': CONF.volume.volume_size}
@@ -183,8 +181,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         cg = create_consistencygroup(volume_type['id'],
                                      name=cg_name)['consistencygroup']
         vol_name = data_utils.rand_name("volume")
-        self.name_field = self.special_fields['name_field']
-        params = {self.name_field: vol_name,
+        params = {'name': vol_name,
                   'volume_type': volume_type['id'],
                   'consistencygroup_id': cg['id'],
                   'size': CONF.volume.volume_size}
@@ -249,8 +246,7 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         cg = create_consistencygroup(volume_type['id'],
                                      name=cg_name)['consistencygroup']
         vol_name = data_utils.rand_name("volume")
-        self.name_field = self.special_fields['name_field']
-        params = {self.name_field: vol_name,
+        params = {'name': vol_name,
                   'volume_type': volume_type['id'],
                   'consistencygroup_id': cg['id'],
                   'size': CONF.volume.volume_size}
