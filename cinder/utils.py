@@ -1035,11 +1035,10 @@ def validate_integer(value, name, min_value=None, max_value=None):
     :param max_length: the max_length of the integer
     :returns: integer
     """
-    try:
-        value = int(value)
-    except (TypeError, ValueError, UnicodeEncodeError):
+    if not strutils.is_int_like(value):
         raise webob.exc.HTTPBadRequest(explanation=(
             _('%s must be an integer.') % name))
+    value = int(value)
 
     if min_value is not None and value < min_value:
         raise webob.exc.HTTPBadRequest(
