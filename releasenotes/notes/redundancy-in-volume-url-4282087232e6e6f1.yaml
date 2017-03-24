@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes a bug that prevented the configuration of multiple redundant
+    Quobyte registries in the quobyte_volume_url config option.
