@@ -129,7 +129,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         snapshot_destroy.assert_called_once_with(self.context,
                                                  fake.SNAPSHOT_ID)
         self.assertTrue(snapshot.deleted)
-        self.assertEqual('deleted', snapshot.status)
+        self.assertEqual(fields.SnapshotStatus.DELETED, snapshot.status)
         self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
                          snapshot.deleted_at)
 
@@ -233,7 +233,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
     @ddt.data('1.1', '1.3')
     def test_obj_make_compatible(self, version):
         snapshot = objects.Snapshot(context=self.context)
-        snapshot.status = 'unmanaging'
+        snapshot.status = fields.SnapshotStatus.UNMANAGING
         primitive = snapshot.obj_to_primitive(version)
         snapshot = objects.Snapshot.obj_from_primitive(primitive)
         if version == '1.3':

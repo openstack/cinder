@@ -22,6 +22,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
 from cinder.volume.flows import common as flow_common
@@ -253,7 +254,7 @@ class ManageExistingTask(flow_utils.CinderTask):
             raise
 
         return {'snapshot': snapshot_ref,
-                'new_status': 'available'}
+                'new_status': fields.SnapshotStatus.AVAILABLE}
 
 
 class CreateSnapshotOnFinishTask(NotifySnapshotActionTask):

@@ -75,7 +75,7 @@ def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
     snap.user_id = fake.USER_ID
     snap.project_id = fake.PROJECT_ID
     snap.volume_id = volume_id
-    snap.status = "creating"
+    snap.status = fields.SnapshotStatus.CREATING
     if metadata is not None:
         snap.metadata = metadata
     snap.update(kwargs)

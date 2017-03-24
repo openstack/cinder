@@ -508,7 +508,7 @@ class ConsistencyGroupTestCase(base.BaseVolumeTestCase):
             snap.user_id = fake.USER_ID
             snap.project_id = fake.PROJECT_ID
             snap.volume_id = volume_id
-            snap.status = "available"
+            snap.status = fields.SnapshotStatus.AVAILABLE
             snap.cgsnapshot_id = cgsnap.id
             snap.create()
             snaps.append(snap)

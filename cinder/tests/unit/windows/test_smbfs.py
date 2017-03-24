@@ -23,6 +23,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -610,7 +611,7 @@ class WindowsSmbFsTestCase(test.TestCase):
                                                    mock.sentinel.src_vol)
 
     def test_create_volume_from_unavailable_snapshot(self):
-        self.snapshot.status = 'error'
+        self.snapshot.status = fields.SnapshotStatus.ERROR
         self.assertRaises(
             exception.InvalidSnapshot,
             self._smbfs_driver.create_volume_from_snapshot,
