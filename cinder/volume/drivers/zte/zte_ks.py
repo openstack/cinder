@@ -68,8 +68,8 @@ zte_opts = [
                     '1, Highest Available; '
                     '2, Lowest Available; '
                     '3, No Relocation.'),
-    cfg.IntOpt('ztePoolVolIsThin', default=False,
-               help='Whether it is a thin volume.'),
+    cfg.BoolOpt('ztePoolVolIsThin', default=False,
+                help='Whether it is a thin volume.'),
     cfg.IntOpt('ztePoolVolInitAllocatedCapacity', default=0,
                help='Pool volume init allocated Capacity.'
                     'Unit : KB. '),
