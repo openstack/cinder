@@ -43,7 +43,7 @@
             "media-types": [
                 {
                     "base": "application/json",
-                    "type": "application/vnd.openstack.volume+json;version=1"
+                    "type": "application/vnd.openstack.volume+json;version=2"
                 }
             ],
             "id": "v2.0"
@@ -67,7 +67,7 @@
             "media-types": [
                 {
                     "base": "application/json",
-                    "type": "application/vnd.openstack.volume+json;version=1"
+                    "type": "application/vnd.openstack.volume+json;version=3"
                 }
             ],
             "id": "v3.0"

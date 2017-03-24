@@ -32,13 +32,6 @@ _LINKS = [{
     "href": "http://docs.openstack.org/",
 }]
 
-_MEDIA_TYPES = [{
-    "base":
-    "application/json",
-    "type":
-    "application/vnd.openstack.volume+json;version=1",
-},
-]
 
 _KNOWN_VERSIONS = {
     "v1.0": {
@@ -48,7 +41,10 @@ _KNOWN_VERSIONS = {
         "min_version": "",
         "updated": "2016-05-02T20:25:19Z",
         "links": _LINKS,
-        "media-types": _MEDIA_TYPES,
+        "media-types": [{
+            "base": "application/json",
+            "type": "application/vnd.openstack.volume+json;version=1",
+        }]
     },
     "v2.0": {
         "id": "v2.0",
@@ -57,7 +53,10 @@ _KNOWN_VERSIONS = {
         "min_version": "",
         "updated": "2017-02-25T12:00:00Z",
         "links": _LINKS,
-        "media-types": _MEDIA_TYPES,
+        "media-types": [{
+            "base": "application/json",
+            "type": "application/vnd.openstack.volume+json;version=2",
+        }]
     },
     "v3.0": {
         "id": "v3.0",
@@ -66,7 +65,10 @@ _KNOWN_VERSIONS = {
         "min_version": api_version_request._MIN_API_VERSION,
         "updated": "2016-02-08T12:20:21Z",
         "links": _LINKS,
-        "media-types": _MEDIA_TYPES,
+        "media-types": [{
+            "base": "application/json",
+            "type": "application/vnd.openstack.volume+json;version=3",
+        }]
     },
 }
 
