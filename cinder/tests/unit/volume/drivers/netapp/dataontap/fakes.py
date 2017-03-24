@@ -529,7 +529,6 @@ VG_VOLUME_SNAPSHOT = {
     'id': VG_VOLUME_SNAPSHOT_ID,
     'status': 'fake_status',
     'volume_id': VG_VOLUME_ID,
-
 }
 
 

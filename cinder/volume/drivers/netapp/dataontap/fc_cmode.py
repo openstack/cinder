@@ -106,29 +106,29 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
     def get_pool(self, volume):
         return self.library.get_pool(volume)
 
-    def create_consistencygroup(self, context, group):
-        return self.library.create_consistencygroup(group)
+    def create_group(self, context, group):
+        return self.library.create_group(group)
 
-    def delete_consistencygroup(self, context, group, volumes):
-        return self.library.delete_consistencygroup(group, volumes)
+    def delete_group(self, context, group, volumes):
+        return self.library.delete_group(group, volumes)
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
-        return self.library.update_consistencygroup(group, add_volumes=None,
-                                                    remove_volumes=None)
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
+        return self.library.update_group(group, add_volumes=None,
+                                         remove_volumes=None)
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        return self.library.create_cgsnapshot(cgsnapshot, snapshots)
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.library.create_group_snapshot(group_snapshot, snapshots)
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        return self.library.delete_cgsnapshot(cgsnapshot, snapshots)
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.library.delete_group_snapshot(group_snapshot, snapshots)
 
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        return self.library.create_consistencygroup_from_src(
-            group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
-            source_cg=source_cg, source_vols=source_vols)
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        return self.library.create_group_from_src(
+            group, volumes, group_snapshot=group_snapshot, snapshots=snapshots,
+            source_group=source_group, source_vols=source_vols)
 
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         return self.library.failover_host(
