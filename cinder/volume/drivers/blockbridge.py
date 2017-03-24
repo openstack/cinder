@@ -178,6 +178,10 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Blockbridge_EPS_CI"
 
+    # TODO(smcginnis) Either remove this if CI requirements are met, or
+    # remove this driver in the Queens release per normal deprecation
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(BlockbridgeISCSIDriver, self).__init__(*args, **kwargs)
 
