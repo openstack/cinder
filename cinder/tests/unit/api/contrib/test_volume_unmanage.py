@@ -14,6 +14,7 @@
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder import context
@@ -65,7 +66,7 @@ class VolumeUnmanageTest(test.TestCase):
         """Return success for valid and unattached volume."""
         vol = utils.create_volume(self.ctxt)
         res = self._get_resp(vol.id)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
         mock_rpcapi.assert_called_once_with(self.ctxt, mock.ANY, True, False)
         vol = objects.volume.Volume.get_by_id(self.ctxt, vol.id)
@@ -75,7 +76,7 @@ class VolumeUnmanageTest(test.TestCase):
     def test_unmanage_volume_bad_volume_id(self):
         """Return 404 if the volume does not exist."""
         res = self._get_resp(fake.WILL_NOT_BE_FOUND_ID)
-        self.assertEqual(404, res.status_int, res)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int, res)
 
     def test_unmanage_volume_attached(self):
         """Return 400 if the volume exists but is attached."""
@@ -83,7 +84,7 @@ class VolumeUnmanageTest(test.TestCase):
             self.ctxt, status='in-use',
             attach_status=fields.VolumeAttachStatus.ATTACHED)
         res = self._get_resp(vol.id)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         db.volume_destroy(self.ctxt, vol.id)
 
     def test_unmanage_volume_with_snapshots(self):
@@ -91,6 +92,6 @@ class VolumeUnmanageTest(test.TestCase):
         vol = utils.create_volume(self.ctxt)
         snap = utils.create_snapshot(self.ctxt, vol.id)
         res = self._get_resp(vol.id)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         db.volume_destroy(self.ctxt, vol.id)
         db.snapshot_destroy(self.ctxt, snap.id)

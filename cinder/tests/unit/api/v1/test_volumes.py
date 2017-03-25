@@ -20,6 +20,7 @@ import iso8601
 import ddt
 import mock
 from oslo_config import cfg
+from six.moves import http_client
 from six.moves import range
 import webob
 
@@ -731,7 +732,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_delete(self):
         req = fakes.HTTPRequest.blank('/v1/volumes/%s' % fake.VOLUME_ID)
         resp = self.controller.delete(req, fake.VOLUME_ID)
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def test_volume_delete_no_volume(self):
         self.mock_object(volume_api.API, "get",

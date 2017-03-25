@@ -15,6 +15,7 @@
 from oslo_serialization import jsonutils
 from oslo_utils import netutils
 import requests
+from six.moves import http_client
 from six.moves import urllib
 
 from cinder.i18n import _
@@ -113,7 +114,7 @@ class TestOpenStackClient(object):
 
         http_status = response.status_code
 
-        if http_status == 401:
+        if http_status == http_client.UNAUTHORIZED:
             raise OpenStackApiException401(response=response)
 
         self.auth_result = response.headers
@@ -160,7 +161,7 @@ class TestOpenStackClient(object):
             return ""
 
     def api_get(self, relative_uri, **kwargs):
-        kwargs.setdefault('check_response_status', [200])
+        kwargs.setdefault('check_response_status', [http_client.OK])
         response = self.api_request(relative_uri, **kwargs)
         return self._decode_json(response)
 
@@ -171,7 +172,8 @@ class TestOpenStackClient(object):
             headers['Content-Type'] = 'application/json'
             kwargs['body'] = jsonutils.dumps(body)
 
-        kwargs.setdefault('check_response_status', [200, 202])
+        kwargs.setdefault('check_response_status', [http_client.OK,
+                                                    http_client.ACCEPTED])
         response = self.api_request(relative_uri, **kwargs)
         return self._decode_json(response)
 
@@ -182,13 +184,17 @@ class TestOpenStackClient(object):
             headers['Content-Type'] = 'application/json'
             kwargs['body'] = jsonutils.dumps(body)
 
-        kwargs.setdefault('check_response_status', [200, 202, 204])
+        kwargs.setdefault('check_response_status', [http_client.OK,
+                                                    http_client.ACCEPTED,
+                                                    http_client.NO_CONTENT])
         response = self.api_request(relative_uri, **kwargs)
         return self._decode_json(response)
 
     def api_delete(self, relative_uri, **kwargs):
         kwargs['method'] = 'DELETE'
-        kwargs.setdefault('check_response_status', [200, 202, 204])
+        kwargs.setdefault('check_response_status', [http_client.OK,
+                                                    http_client.ACCEPTED,
+                                                    http_client.NO_CONTENT])
         return self.api_request(relative_uri, **kwargs)
 
     def get_volume(self, volume_id):

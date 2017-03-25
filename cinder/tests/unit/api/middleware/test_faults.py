@@ -14,6 +14,7 @@
 #    under the License.
 from oslo_i18n import fixture as i18n_fixture
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob.dec
 
 from cinder.api.openstack import wsgi
@@ -41,7 +42,7 @@ class TestFaults(test.TestCase):
             expected = {
                 "badRequest": {
                     "message": "scram",
-                    "code": 400,
+                    "code": http_client.BAD_REQUEST,
                 },
             }
             actual = jsonutils.loads(response.body)
@@ -65,7 +66,7 @@ class TestFaults(test.TestCase):
             expected = {
                 "overLimit": {
                     "message": "sorry",
-                    "code": 413,
+                    "code": http_client.REQUEST_ENTITY_TOO_LARGE,
                     "retryAfter": "4",
                 },
             }
@@ -77,4 +78,4 @@ class TestFaults(test.TestCase):
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
-        self.assertEqual(400, fault.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, fault.status_int)
