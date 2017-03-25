@@ -358,7 +358,7 @@ class MStorageVolumeCommon(object):
         return ldset
 
     def get_pool_capacity(self, pools, ldsets):
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if len(self._properties['pool_pools']) == 0 or
                  pn in self._properties['pool_pools']]
 
