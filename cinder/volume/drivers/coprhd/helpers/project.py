@@ -30,7 +30,7 @@ class Project(common.CoprHDResource):
 
         :param name: name of project
         :returns: UUID of project
-        :raises: CoprHdError - when project name is not found
+        :raises CoprHdError: - when project name is not found
         """
         if common.is_uri(name):
             return name

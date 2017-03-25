@@ -72,7 +72,7 @@ class FCSanLookupService(fc_common.FCCommon):
                 }
             }
 
-        :raises: Exception when a lookup service implementation is not
+        :raises Exception: when a lookup service implementation is not
                  specified in cinder.conf:fc_san_lookup_service
         """
         # Initialize vendor specific implementation of  FCZoneDriver

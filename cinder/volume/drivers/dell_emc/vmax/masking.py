@@ -75,7 +75,7 @@ class VMAXMasking(object):
         :param maskingViewDict: the masking view dict
         :param extraSpecs: additional info
         :returns: dict -- rollbackDict
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rollbackDict = {}
 
@@ -639,7 +639,7 @@ class VMAXMasking(object):
         :param volumeName: volume name
         :param maskingViewDict: the masking view dictionary
         :param storageGroupInstanceName: storage group instance name
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
 
         assocVolumeInstanceNames = self.get_devices_from_storage_group(
@@ -919,7 +919,7 @@ class VMAXMasking(object):
         :param conn: the connection to the ecom
         :param connector: the connector object
         :returns: list -- list of found initiator names
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         foundinitiatornames = []
         name = 'initiator name'
@@ -1074,7 +1074,7 @@ class VMAXMasking(object):
         :param extraSpecs: extra specifications
         :returns: int -- return code
         :returns: dict -- job
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rc, job = conn.InvokeMethod(
             'CreateMaskingView', configService, ElementName=maskingViewName,
@@ -1181,7 +1181,7 @@ class VMAXMasking(object):
         :param defaultStorageGroupInstanceName: default storage group instance
             name (can be None for Non FAST)
         :returns: instance name storageGroupInstanceName
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, maskingViewDict['controllerConfigService'],
@@ -1292,7 +1292,7 @@ class VMAXMasking(object):
         :param conn: the connection to the ecom server
         :param rollbackDict: the rollback dictionary
         :returns: message
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         message = None
         # Check if ig has been created. If so, check for other
@@ -1548,7 +1548,7 @@ class VMAXMasking(object):
         :param hardwareIdinstanceNames: one or more hardware id instance names
         :param extraSpecs: extra specifications
         :returns: foundInitiatorGroupInstanceName
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rc, job = conn.InvokeMethod(
             'CreateGroup', controllerConfigService, GroupName=igGroupName,
@@ -1642,7 +1642,7 @@ class VMAXMasking(object):
         :param maskingViewName: maskingview name (String)
         :param maskingViewInstanceName: the masking view instance name
         :param extraSpecs: extra specifications
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rc, job = conn.InvokeMethod('DeleteMaskingView',
                                     controllerConfigService,
@@ -2274,7 +2274,7 @@ class VMAXMasking(object):
         :param volumeInstance: volumeInstance
         :param volumeName: the volume name
         :param extraSpecs: additional info
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rep_enabled = self.utils.is_replication_enabled(extraSpecs)
         isCompressionDisabled = self.utils.is_compression_disabled(extraSpecs)

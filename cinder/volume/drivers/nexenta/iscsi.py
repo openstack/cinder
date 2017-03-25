@@ -543,7 +543,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         :param target_group: target group
         :param target_member: target member
         :return: True if target member in target group, else False
-        :raises: NexentaException if target group doesn't exist
+        :raises NexentaException: if target group doesn't exist
         """
         members = self.nms.stmf.list_targetgroup_members(target_group)
         if not members:
@@ -554,7 +554,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         """Check if LU exists on appliance.
 
         :param zvol_name: Zvol name
-        :raises: NexentaException if zvol not exists
+        :raises NexentaException: if zvol not exists
         :return: True if LU exists, else False
         """
         try:
@@ -568,7 +568,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         """Check if LU exists on appliance and shared.
 
         :param zvol_name: Zvol name
-        :raises: NexentaException if Zvol not exist
+        :raises NexentaException: if Zvol not exist
         :return: True if LU exists and shared, else False
         """
         try:

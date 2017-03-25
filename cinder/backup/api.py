@@ -88,9 +88,9 @@ class API(base.Base):
         :param context: running context
         :param backup: the dict of backup that is got from DB.
         :param force: indicate force delete or not
-        :raises: InvalidBackup
-        :raises: BackupDriverException
-        :raises: ServiceNotFound
+        :raises InvalidBackup:
+        :raises BackupDriverException:
+        :raises ServiceNotFound:
         """
         check_policy(context, 'delete')
         if not force and backup.status not in [fields.BackupStatus.AVAILABLE,
@@ -410,7 +410,7 @@ class API(base.Base):
         :param context: running context
         :param backup_id: which backup's status to be reset
         :parma status: backup's status to be reset
-        :raises: InvalidBackup
+        :raises InvalidBackup:
         """
         # get backup info
         backup = self.get(context, backup_id)
@@ -430,7 +430,7 @@ class API(base.Base):
         :param backup_id: backup id to export
         :returns: dictionary -- a description of how to import the backup
         :returns: contains 'backup_url' and 'backup_service'
-        :raises: InvalidBackup
+        :raises InvalidBackup:
         """
         check_policy(context, 'backup-export')
         backup = self.get(context, backup_id)
@@ -470,8 +470,8 @@ class API(base.Base):
         :param context: running context
         :param backup_url: backup description to be used by the backup driver
         :return: BackupImport object
-        :raises: InvalidBackup
-        :raises: InvalidInput
+        :raises InvalidBackup:
+        :raises InvalidInput:
         """
         # Deserialize string backup record into a dictionary
         backup_record = objects.Backup.decode_record(backup_url)
@@ -520,9 +520,9 @@ class API(base.Base):
         :param context: running context
         :param backup_service: backup service name
         :param backup_url: backup description to be used by the backup driver
-        :raises: InvalidBackup
-        :raises: ServiceNotFound
-        :raises: InvalidInput
+        :raises InvalidBackup:
+        :raises ServiceNotFound:
+        :raises InvalidInput:
         """
         check_policy(context, 'backup-import')
 

@@ -130,7 +130,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     def decode_record(backup_url):
         """Deserialize backup metadata from string into a dictionary.
 
-        :raises: InvalidInput
+        :raises InvalidInput:
         """
         try:
             return jsonutils.loads(base64.decode_as_text(backup_url))

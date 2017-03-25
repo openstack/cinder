@@ -305,7 +305,7 @@ class VMAXFast(object):
         :param fastPolicyName: the fast policy name (String)
         :param extraSpecs: additional info
         :returns: int -- return code
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         # 5 is ("Add InElements to Policy").
         modificationType = '5'

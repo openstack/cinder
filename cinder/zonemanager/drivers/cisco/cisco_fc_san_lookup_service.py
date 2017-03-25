@@ -95,7 +95,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                 }
             }
 
-        :raises: Exception when connection to fabric is failed
+        :raises Exception: when connection to fabric is failed
         """
         device_map = {}
         formatted_target_list = []

@@ -1655,7 +1655,7 @@ class HPE3PARCommon(object):
         otherwise return the persona ID.
 
         :param persona_value:
-        :raises: exception.InvalidInput
+        :raises exception.InvalidInput:
         :returns: persona ID
         """
         if persona_value not in self.valid_persona_values:

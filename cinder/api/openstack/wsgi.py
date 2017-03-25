@@ -1141,7 +1141,7 @@ class Controller(object):
             constraints and calls it with the supplied arguments.
 
             :returns: Returns the result of the method called
-            :raises: VersionNotFoundForAPIMethod if there is no method which
+            :raises VersionNotFoundForAPIMethod: if there is no method which
                  matches the name and version constraints
             """
 

@@ -128,7 +128,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         :returns: Tuple containing the service parameters (label,
         export path and export file system) or error if no configuration is
         found.
-        :raises: ParameterNotFound
+        :raises ParameterNotFound:
         """
         LOG.debug("_get_service: volume: %(vol)s", {'vol': volume})
         label = utils.extract_host(volume.host, level='pool')
@@ -159,7 +159,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         :param volume: dictionary volume reference
         :param new_size: int size in GB to extend
-        :raises: InvalidResults
+        :raises InvalidResults:
         """
         nfs_mount = volume.provider_location
         path = self._get_file_path(nfs_mount, volume.name)
@@ -469,7 +469,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         :param vol_ref: driver-specific information used to identify a volume
         :returns: a volume reference where share is in IP format or raises
          error
-         :raises: e.strerror
+        :raises e.strerror:
         """
 
         # First strip out share and convert to IP format.
@@ -497,7 +497,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         :param vol_ref: driver-specific information used to identify a volume
         :returns: NFS Share, NFS mount, volume path or raise error
-        :raises: ManageExistingInvalidReference
+        :raises ManageExistingInvalidReference:
         """
         # Check that the reference is valid.
         if 'source-name' not in vol_ref:
@@ -556,7 +556,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         :param existing_vol_ref: driver-specific information used to identify a
         volume
         :returns: the provider location
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
 
         # Attempt to find NFS share, NFS mount, and volume path from vol_ref.
@@ -605,7 +605,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         :param volume: cinder volume reference
         :param nfs_share: NFS share passed to manage
-        :raises: ManageExistingVolumeTypeMismatch
+        :raises ManageExistingVolumeTypeMismatch:
         """
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
@@ -650,7 +650,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         :param volume: cinder volume to manage
         :param existing_vol_ref: existing volume to take under management
         :returns: the size of the volume or raise error
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         return self._manage_existing_get_size(existing_vol_ref)
 

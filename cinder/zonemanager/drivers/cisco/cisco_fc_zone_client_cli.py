@@ -159,7 +159,7 @@ class CiscoFCZoneClientCLI(object):
         :param active_zone_set: Active zone set dict retrieved from
                                 get_active_zone_set method
         :param zone_status: Status of the zone
-        :raises: CiscoZoningCliException
+        :raises CiscoZoningCliException:
         """
         LOG.debug("Add Zones - Zones passed: %s", zones)
 
@@ -224,7 +224,7 @@ class CiscoFCZoneClientCLI(object):
         :param active_zone_set: Active zone set dict retrieved from
                                 get_active_zone_set method
         :param zone_status: Status of the zone
-        :raises: CiscoZoningCliException
+        :raises CiscoZoningCliException:
         """
 
         LOG.debug("Update Zones - Operation: %(op)s - Zones "

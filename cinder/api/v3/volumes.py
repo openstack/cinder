@@ -154,7 +154,7 @@ class VolumeController(volumes_v2.VolumeController):
         :param req: the request
         :param body: the request body
         :returns: dict -- the new volume dictionary
-        :raises: HTTPNotFound, HTTPBadRequest
+        :raises HTTPNotFound, HTTPBadRequest:
         """
         self.assert_valid_body(body, 'volume')
 

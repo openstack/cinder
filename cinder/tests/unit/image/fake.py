@@ -173,7 +173,7 @@ class _FakeImageService(object):
     def create(self, context, metadata, data=None):
         """Store the image data and return the new image id.
 
-        :raises: Duplicate if the image already exist.
+        :raises Duplicate: if the image already exist.
 
         """
         image_id = str(metadata.get('id', uuid.uuid4()))
@@ -189,7 +189,7 @@ class _FakeImageService(object):
                purge_props=False):
         """Replace the contents of the given image with the new data.
 
-        :raises: ImageNotFound if the image does not exist.
+        :raises ImageNotFound: if the image does not exist.
 
         """
         if not self.images.get(image_id):
@@ -208,7 +208,7 @@ class _FakeImageService(object):
     def delete(self, context, image_id):
         """Delete the given image.
 
-        :raises: ImageNotFound if the image does not exist.
+        :raises ImageNotFound: if the image does not exist.
 
         """
         removed = self.images.pop(image_id, None)

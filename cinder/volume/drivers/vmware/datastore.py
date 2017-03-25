@@ -63,7 +63,7 @@ class DatastoreSelector(object):
 
         :param profile_name: profile name
         :return: vCenter profile ID
-        :raises: ProfileNotFoundException
+        :raises ProfileNotFoundException:
         """
         profile_id = pbm.get_profile_id_by_name(self._session, profile_name)
         if profile_id is None:
@@ -282,7 +282,7 @@ class DatastoreSelector(object):
         :param datastore: datastore to check the compliance
         :param profile_name: profile to check the compliance against
         :return: True if the datastore is compliant; False otherwise
-        :raises: ProfileNotFoundException
+        :raises ProfileNotFoundException:
         """
         LOG.debug("Checking datastore: %(datastore)s compliance against "
                   "profile: %(profile)s.",

@@ -232,7 +232,7 @@ class VMAXCommon(object):
 
         :param arrayInfoList:
         :return: finalArrayInfoList
-        :raises: Exception
+        :raises Exception:
         """
         try:
             sloWorkloadSet = set()
@@ -377,7 +377,7 @@ class VMAXCommon(object):
         :param volume: volume Object
         :param snapshot: snapshot object
         :returns: model_update, dict
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         LOG.debug("Entering create_volume_from_snapshot.")
         extraSpecs = self._initial_setup(snapshot, host=volume['host'])
@@ -508,7 +508,7 @@ class VMAXCommon(object):
 
         :param volume: the volume Object
         :param connector: the connector Object
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         extraSpecs = self._initial_setup(volume)
         if self.utils.is_volume_failed_over(volume):
@@ -576,7 +576,7 @@ class VMAXCommon(object):
         :param volume: volume Object
         :param connector: the connector Object
         :returns: dict -- deviceInfoDict - device information dict
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         portGroupName = None
         extraSpecs = self._initial_setup(volume)
@@ -642,7 +642,7 @@ class VMAXCommon(object):
         :param isLiveMigration: boolean, can be None
         :returns: dict -- deviceInfoDict
                   String -- port group name
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         volumeName = volume['name']
         maskingViewDict = self._populate_masking_dict(
@@ -769,7 +769,7 @@ class VMAXCommon(object):
         :params volume: the volume Object
         :params newSize: the new size to increase the volume to
         :returns: dict -- modifiedVolumeDict - the extended volume Object
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         originalVolumeSize = volume['size']
         volumeName = volume['name']
@@ -798,7 +798,7 @@ class VMAXCommon(object):
         :param originalVolumeSize:
         :param extraSpecs: extra specifications
         :return: dict -- modifiedVolumeDict - the extended volume Object
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         if int(originalVolumeSize) > int(newSize):
             exceptionMessage = (_(
@@ -1403,7 +1403,7 @@ class VMAXCommon(object):
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
         :param extraSpecs: extra specifications
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
@@ -1675,7 +1675,7 @@ class VMAXCommon(object):
         """Get the ecom connection.
 
         :returns: pywbem.WBEMConnection -- conn, the ecom connection
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         ecomx509 = None
         if self.ecomUseSSL:
@@ -1717,7 +1717,7 @@ class VMAXCommon(object):
         :param isv3: True/False
         :returns: foundPoolInstanceName - the CIM Instance Name of the Pool
         :returns: string -- systemNameStr
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         foundPoolInstanceName = None
         systemNameStr = None
@@ -1957,7 +1957,7 @@ class VMAXCommon(object):
         :param storageSystem: the storage system name
         :param connector: the connector dict
         :returns: list -- targetWwns, the target WWN list
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         targetWwns = set()
 
@@ -2089,7 +2089,7 @@ class VMAXCommon(object):
         """Given the array record set the ecom credentials.
 
         :param arrayInfo: record
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         ip = arrayInfo['EcomServerIp']
         port = arrayInfo['EcomServerPort']
@@ -2121,7 +2121,7 @@ class VMAXCommon(object):
         :param volume: the volume Object
         :param volumeTypeId: Optional override of volume['volume_type_id']
         :returns: dict -- extra spec dict
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         try:
             extraSpecs, configurationFile, qosSpecs = (
@@ -2175,7 +2175,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: poolInstanceName The pool instance name
         :returns: string -- the storage system name
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
 
         try:
@@ -2299,7 +2299,7 @@ class VMAXCommon(object):
         :param fastPolicyName: the fast policy name (String)
         :param extraSpecs: extra specifications
         :returns: dict -- maskingViewDict with masking view information
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         try:
             volumeInstance = self.utils.find_volume_instance(
@@ -2491,7 +2491,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specs
         :param isSnapshot: boolean -- Defaults to False
         :returns: dict -- cloneDict the cloned volume dictionary
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
@@ -2585,7 +2585,7 @@ class VMAXCommon(object):
         :param cloneDict: clone dictionary
         :param cloneName: clone name
         :param extraSpecs: extra specifications
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         # Check if the clone/snapshot volume already part of the default sg.
         cloneInstance = self.utils.find_volume_instance(
@@ -2774,7 +2774,7 @@ class VMAXCommon(object):
         :param volume: volume object to be deleted
         :param connector: volume object to be deleted
         :returns: int -- numVolumesMapped
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
 
         volumename = volume['name']
@@ -2820,7 +2820,7 @@ class VMAXCommon(object):
         """Helper function to delete the specified snapshot.
 
         :param snapshot: snapshot object to be deleted
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         LOG.debug("Entering _delete_snapshot.")
 
@@ -2839,7 +2839,7 @@ class VMAXCommon(object):
         :param context: the context
         :param group: the group object to be created
         :returns: dict -- modelUpdate = {'status': 'available'}
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         LOG.info("Create Consistency Group: %(group)s.",
                  {'group': group['id']})
@@ -2873,7 +2873,7 @@ class VMAXCommon(object):
         :param volumes: the list of volumes in the consisgroup to be deleted
         :returns: dict -- modelUpdate
         :returns: list -- list of volume objects
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         LOG.info("Delete Consistency Group: %(group)s.",
                  {'group': group['id']})
@@ -2973,7 +2973,7 @@ class VMAXCommon(object):
         :param snapshots: snapshots
         :returns: dict -- modelUpdate
         :returns: list -- list of snapshots
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         consistencyGroup = cgsnapshot.get('consistencygroup')
 
@@ -3129,7 +3129,7 @@ class VMAXCommon(object):
         :param snapshots: snapshots
         :returns: dict -- modelUpdate
         :returns: list -- list of snapshots
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         consistencyGroup = cgsnapshot.get('consistencygroup')
         model_update = {}
@@ -3211,7 +3211,7 @@ class VMAXCommon(object):
         :returns: int -- return code
         :returns: dict -- volumeDict
         :returns: string -- storageSystemName
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         if not memberCount:
             memberCount, errorDesc = self.utils.determine_member_count(
@@ -3315,7 +3315,7 @@ class VMAXCommon(object):
         :returns: int -- return code
         :returns: dict -- volumeDict
         :returns: string -- storageSystemName
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         rc = -1
         volumeDict = {}
@@ -3457,7 +3457,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: int -- return code
         :returns: dict -- modifiedVolumeDict
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         # Is the volume extendable.
         isConcatenated = self.utils.check_if_volume_is_extendable(
@@ -3754,7 +3754,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specifications
         :param poolRecord: pool record
         :returns: dict -- the extraSpecs
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         try:
             stripedMetaCount = extraSpecs[STRIPECOUNT]
@@ -3890,7 +3890,7 @@ class VMAXCommon(object):
         :param fastPolicyName: the FAST policy name(if it exists)
         :param extraSpecs: extra specifications
         :returns: int -- return code
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         storageSystemName = volumeInstance['SystemName']
         controllerConfigurationService = (
@@ -3971,7 +3971,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specifications
         :param volume: the cinder volume object
         :returns: int -- return code
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         storageSystemName = volumeInstance['SystemName']
         controllerConfigurationService = (
@@ -4027,7 +4027,7 @@ class VMAXCommon(object):
         :param isSnapshot: check to see if it is a snapshot
         :param extraSpecs: extra specifications
         :returns: int -- return code
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         # Check if the source volume contains any meta devices.
         metaHeadInstanceName = self.utils.get_volume_meta_head(
@@ -4413,7 +4413,7 @@ class VMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: dict -- modelUpdate
         :returns: list -- the updated list of member volumes
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         replicationService = self.utils.find_replication_service(
             self.conn, storageSystem)
@@ -4495,7 +4495,7 @@ class VMAXCommon(object):
         :param volume: the volume Object
         :param extraSpecs: extraSpecs provided in the volume type
         :returns: string -- pool
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         pool = None
         # Volume is None in CG ops.
@@ -4569,7 +4569,7 @@ class VMAXCommon(object):
         :param volume: the volume object including the volume_type_id
         :param external_ref: reference to the existing volume
         :returns: dict -- model_update
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
@@ -4711,7 +4711,7 @@ class VMAXCommon(object):
         Leave the volume intact on the backend array.
 
         :param volume: the volume object
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         volumeName = volume['name']
         volumeId = volume['id']
