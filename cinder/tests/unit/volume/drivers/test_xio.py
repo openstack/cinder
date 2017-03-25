@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from six.moves import http_client
 
 from cinder import context
 from cinder import exception
@@ -119,7 +120,7 @@ ISE_GET_QUERY_XML =\
        </array>""" % (ISE_IP1, ISE_IP2)
 
 ISE_GET_QUERY_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_XML.split())}
 
@@ -139,7 +140,7 @@ ISE_GET_QUERY_NO_CAP_XML =\
        </array>""" % (ISE_IP1, ISE_IP2)
 
 ISE_GET_QUERY_NO_CAP_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_NO_CAP_XML.split())}
 
@@ -158,7 +159,7 @@ ISE_GET_QUERY_NO_CTRL_XML =\
        </array>"""
 
 ISE_GET_QUERY_NO_CTRL_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_NO_CTRL_XML.split())}
 
@@ -187,7 +188,7 @@ ISE_GET_QUERY_NO_IP_XML =\
        </array>"""
 
 ISE_GET_QUERY_NO_IP_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_NO_IP_XML.split())}
 
@@ -213,7 +214,7 @@ ISE_GET_QUERY_NO_GID_XML =\
        </array>""" % (ISE_IP1, ISE_IP2)
 
 ISE_GET_QUERY_NO_GID_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_NO_GID_XML.split())}
 
@@ -239,7 +240,7 @@ ISE_GET_QUERY_NO_CLONE_XML =\
        </array>""" % (ISE_IP1, ISE_IP2)
 
 ISE_GET_QUERY_NO_CLONE_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_NO_CLONE_XML.split())}
 
@@ -287,7 +288,7 @@ ISE_GET_STORAGE_POOLS_XML =\
     """
 
 ISE_GET_STORAGE_POOLS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'Pool location',
      'content': " ".join(ISE_GET_STORAGE_POOLS_XML.split())}
 
@@ -295,7 +296,7 @@ ISE_GET_VOL_STATUS_NO_VOL_NODE_XML =\
     """<volumes></volumes>"""
 
 ISE_GET_VOL_STATUS_NO_VOL_NODE_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_GET_VOL_STATUS_NO_VOL_NODE_XML.split())}
 
@@ -306,7 +307,7 @@ ISE_GET_VOL_STATUS_NO_STATUS_XML =\
     </volumes>""" % (ISE_VOLUME1_LOCATION_URL)
 
 ISE_GET_VOL_STATUS_NO_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_GET_VOL_STATUS_NO_STATUS_XML.split())}
 
@@ -323,7 +324,7 @@ ISE_GET_VOL1_STATUS_XML =\
     </volumes>""" % (ISE_VOLUME1_LOCATION_URL)
 
 ISE_GET_VOL1_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_GET_VOL1_STATUS_XML.split())}
 
@@ -339,7 +340,7 @@ ISE_GET_VOL2_STATUS_XML =\
     </volumes>""" % (ISE_VOLUME2_LOCATION_URL)
 
 ISE_GET_VOL2_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_VOLUME2_LOCATION_URL,
      'content': " ".join(ISE_GET_VOL2_STATUS_XML.split())}
 
@@ -355,7 +356,7 @@ ISE_GET_VOL3_STATUS_XML =\
     </volumes>""" % (ISE_VOLUME3_LOCATION_URL)
 
 ISE_GET_VOL3_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_VOLUME3_LOCATION_URL,
      'content': " ".join(ISE_GET_VOL3_STATUS_XML.split())}
 
@@ -371,7 +372,7 @@ ISE_GET_SNAP1_STATUS_XML =\
     </volumes>""" % (ISE_SNAPSHOT_LOCATION_URL)
 
 ISE_GET_SNAP1_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_SNAPSHOT_LOCATION_URL,
      'content': " ".join(ISE_GET_SNAP1_STATUS_XML.split())}
 
@@ -387,14 +388,14 @@ ISE_GET_CLONE1_STATUS_XML =\
     </volumes>""" % (ISE_CLONE_LOCATION_URL)
 
 ISE_GET_CLONE1_STATUS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': 'u%s' % ISE_CLONE_LOCATION_URL,
      'content': " ".join(ISE_GET_CLONE1_STATUS_XML.split())}
 
 ISE_CREATE_VOLUME_XML = """<volume/>"""
 
 ISE_CREATE_VOLUME_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_CREATE_VOLUME_XML.split())}
 
@@ -411,7 +412,7 @@ ISE_GET_IONETWORKS_XML =\
        </chap>"""
 
 ISE_GET_IONETWORKS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_IONETWORKS_XML.split())}
 
@@ -428,14 +429,14 @@ ISE_GET_IONETWORKS_CHAP_XML =\
        </chap>"""
 
 ISE_GET_IONETWORKS_CHAP_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_IONETWORKS_CHAP_XML.split())}
 
 ISE_DELETE_VOLUME_XML = """<volumes/>"""
 
 ISE_DELETE_VOLUME_RESP =\
-    {'status': 204,
+    {'status': http_client.NO_CONTENT,
      'location': '',
      'content': " ".join(ISE_DELETE_VOLUME_XML.split())}
 
@@ -454,7 +455,7 @@ ISE_GET_ALLOC_WITH_EP_XML =\
     (ISE_ALLOCATION_LOCATION_URL, VOLUME1['name'], HOST1)
 
 ISE_GET_ALLOC_WITH_EP_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': ISE_ALLOCATION_LOCATION_URL,
      'content': " ".join(ISE_GET_ALLOC_WITH_EP_XML.split())}
 
@@ -462,14 +463,14 @@ ISE_GET_ALLOC_WITH_NO_ALLOC_XML =\
     """<allocations self="%s"/>""" % ISE_ALLOCATION_LOCATION_URL
 
 ISE_GET_ALLOC_WITH_NO_ALLOC_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': ISE_ALLOCATION_LOCATION_URL,
      'content': " ".join(ISE_GET_ALLOC_WITH_NO_ALLOC_XML.split())}
 
 ISE_DELETE_ALLOC_XML = """<allocations/>"""
 
 ISE_DELETE_ALLOC_RESP =\
-    {'status': 204,
+    {'status': http_client.NO_CONTENT,
      'location': '',
      'content': " ".join(ISE_DELETE_ALLOC_XML.split())}
 
@@ -477,7 +478,7 @@ ISE_GET_HOSTS_NOHOST_XML =\
     """<hosts self="http://ip/storage/hosts"/>"""
 
 ISE_GET_HOSTS_NOHOST_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_HOSTS_NOHOST_XML.split())}
 
@@ -502,7 +503,7 @@ ISE_GET_HOSTS_HOST1_XML =\
        </hosts>""" % HOST1
 
 ISE_GET_HOSTS_HOST1_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_HOSTS_HOST1_XML.split())}
 
@@ -527,7 +528,7 @@ ISE_GET_HOSTS_HOST1_HOST_TYPE_XML =\
        </hosts>""" % HOST1
 
 ISE_GET_HOSTS_HOST1_HOST_TYPE_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_HOSTS_HOST1_HOST_TYPE_XML.split())}
 
@@ -551,7 +552,7 @@ ISE_GET_HOSTS_HOST2_XML =\
        </hosts>""" % HOST2
 
 ISE_GET_HOSTS_HOST2_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_HOSTS_HOST2_XML.split())}
 
@@ -559,7 +560,7 @@ ISE_CREATE_HOST_XML =\
     """<hosts self="http://ip/storage/hosts"/>"""
 
 ISE_CREATE_HOST_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': 'http://ip/storage/hosts/host1',
      'content': " ".join(ISE_CREATE_HOST_XML.split())}
 
@@ -567,7 +568,7 @@ ISE_CREATE_ALLOC_XML =\
     """<allocations self="http://ip/storage/allocations"/>"""
 
 ISE_CREATE_ALLOC_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': ISE_ALLOCATION_LOCATION_URL,
      'content': " ".join(ISE_CREATE_ALLOC_XML.split())}
 
@@ -607,7 +608,7 @@ ISE_GET_ENDPOINTS_XML =\
                            ISE_ALLOCATION_LOCATION_URL)
 
 ISE_GET_ENDPOINTS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_ENDPOINTS_XML.split())}
 
@@ -659,35 +660,35 @@ ISE_GET_CONTROLLERS_XML =\
                             ISE_ISCSI_IP2, ISE_WWN3, ISE_WWN4)
 
 ISE_GET_CONTROLLERS_RESP =\
-    {'status': 200,
+    {'status': http_client.OK,
      'location': '',
      'content': " ".join(ISE_GET_CONTROLLERS_XML.split())}
 
 ISE_CREATE_SNAPSHOT_XML = """<snapshot/>"""
 
 ISE_CREATE_SNAPSHOT_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': ISE_SNAPSHOT_LOCATION_URL,
      'content': " ".join(ISE_CREATE_SNAPSHOT_XML.split())}
 
 ISE_PREP_SNAPSHOT_XML = """<snapshot/>"""
 
 ISE_PREP_SNAPSHOT_RESP =\
-    {'status': 202,
+    {'status': http_client.ACCEPTED,
      'location': ISE_SNAPSHOT_LOCATION_URL,
      'content': " ".join(ISE_PREP_SNAPSHOT_XML.split())}
 
 ISE_MODIFY_VOLUME_XML = """<volume/>"""
 
 ISE_MODIFY_VOLUME_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_MODIFY_VOLUME_XML.split())}
 
 ISE_MODIFY_HOST_XML = """<host/>"""
 
 ISE_MODIFY_HOST_RESP =\
-    {'status': 201,
+    {'status': http_client.CREATED,
      'location': ISE_HOST_LOCATION_URL,
      'content': " ".join(ISE_MODIFY_HOST_XML.split())}
 
@@ -697,7 +698,7 @@ ISE_BAD_CONNECTION_RESP =\
      'content': " "}
 
 ISE_400_RESP =\
-    {'status': 400,
+    {'status': http_client.BAD_REQUEST,
      'location': '',
      'content': ""}
 
@@ -705,7 +706,7 @@ ISE_GET_VOL_STATUS_404_XML = \
     """<response value="404" index="3">VOLUME not found.</response>"""
 
 ISE_GET_VOL_STATUS_404_RESP =\
-    {'status': 404,
+    {'status': http_client.NOT_FOUND,
      'location': '',
      'content': " ".join(ISE_GET_VOL_STATUS_404_XML.split())}
 
@@ -713,7 +714,7 @@ ISE_400_INVALID_STATE_XML = \
     """<response value="400">Not in a valid state.</response>"""
 
 ISE_400_INVALID_STATE_RESP =\
-    {'status': 400,
+    {'status': http_client.BAD_REQUEST,
      'location': '',
      'content': " ".join(ISE_400_INVALID_STATE_XML.split())}
 
@@ -721,7 +722,7 @@ ISE_409_CONFLICT_XML = \
     """<response value="409">Conflict</response>"""
 
 ISE_409_CONFLICT_RESP =\
-    {'status': 409,
+    {'status': http_client.CONFLICT,
      'location': '',
      'content': " ".join(ISE_409_CONFLICT_XML.split())}
 
