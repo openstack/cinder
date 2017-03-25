@@ -15,6 +15,8 @@
 
 """The volumes snapshots api."""
 
+
+from six.moves import http_client
 from webob import exc
 
 from cinder.api.openstack import wsgi
@@ -70,7 +72,7 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
             super(SnapshotsController, self).detail(
                 _update_search_opts(req)))
 
-    @wsgi.response(200)
+    @wsgi.response(http_client.OK)
     def create(self, req, body):
         """Creates a new snapshot."""
         if (body is None or not body.get('snapshot') or

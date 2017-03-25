@@ -18,6 +18,7 @@
 from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import strutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -64,7 +65,7 @@ class SnapshotsController(wsgi.Controller):
         snapshot = self.volume_api.get_snapshot(context, id)
         self.volume_api.delete_snapshot(context, snapshot)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of snapshots."""
@@ -108,7 +109,7 @@ class SnapshotsController(wsgi.Controller):
             snapshots = self._view_builder.summary_list(req, snapshots.objects)
         return snapshots
 
-    @wsgi.response(202)
+    @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
         """Creates a new snapshot."""
         kwargs = {}

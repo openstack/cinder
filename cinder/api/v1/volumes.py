@@ -16,6 +16,7 @@
 """The volumes api."""
 
 from oslo_log import log as logging
+from six.moves import http_client
 from webob import exc
 
 from cinder.api.openstack import wsgi
@@ -102,7 +103,7 @@ class VolumeController(volumes_v2.VolumeController):
         return _volume_v2_to_v1(
             super(VolumeController, self).detail(req))
 
-    @wsgi.response(200)
+    @wsgi.response(http_client.OK)
     def create(self, req, body):
         """Creates a new volume."""
         if (body is None or not body.get('volume') or

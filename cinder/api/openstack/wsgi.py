@@ -25,6 +25,7 @@ from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 import six
+from six.moves import http_client
 import webob
 import webob.exc
 
@@ -441,7 +442,7 @@ class ResponseObject(object):
 
         self.obj = obj
         self.serializers = serializers
-        self._default_code = 200
+        self._default_code = http_client.OK
         self._code = code
         self._headers = headers or {}
         self.serializer = None
@@ -1316,16 +1317,16 @@ class Controller(object):
 class Fault(webob.exc.HTTPException):
     """Wrap webob.exc.HTTPException to provide API friendly response."""
 
-    _fault_names = {400: "badRequest",
-                    401: "unauthorized",
-                    403: "forbidden",
-                    404: "itemNotFound",
-                    405: "badMethod",
-                    409: "conflictingRequest",
-                    413: "overLimit",
-                    415: "badMediaType",
-                    501: "notImplemented",
-                    503: "serviceUnavailable"}
+    _fault_names = {http_client.BAD_REQUEST: "badRequest",
+                    http_client.UNAUTHORIZED: "unauthorized",
+                    http_client.FORBIDDEN: "forbidden",
+                    http_client.NOT_FOUND: "itemNotFound",
+                    http_client.METHOD_NOT_ALLOWED: "badMethod",
+                    http_client.CONFLICT: "conflictingRequest",
+                    http_client.REQUEST_ENTITY_TOO_LARGE: "overLimit",
+                    http_client.UNSUPPORTED_MEDIA_TYPE: "badMediaType",
+                    http_client.NOT_IMPLEMENTED: "notImplemented",
+                    http_client.SERVICE_UNAVAILABLE: "serviceUnavailable"}
 
     def __init__(self, exception):
         """Create a Fault for the given webob.exc.exception."""
@@ -1344,7 +1345,7 @@ class Fault(webob.exc.HTTPException):
             fault_name: {
                 'code': code,
                 'message': i18n.translate(explanation, locale)}}
-        if code == 413:
+        if code == http_client.REQUEST_ENTITY_TOO_LARGE:
             retry = self.wrapped_exc.headers.get('Retry-After', None)
             if retry:
                 fault_data[fault_name]['retryAfter'] = retry
