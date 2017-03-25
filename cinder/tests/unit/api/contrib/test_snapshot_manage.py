@@ -17,6 +17,7 @@ import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
+from six.moves import http_client
 from six.moves.urllib.parse import urlencode
 import webob
 
@@ -122,7 +123,7 @@ class SnapshotManageTest(test.TestCase):
             binary='cinder-volume')
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
         # Check the db.service_get was called with correct arguments.
         mock_db.assert_called_once_with(
@@ -156,7 +157,7 @@ class SnapshotManageTest(test.TestCase):
                                                              disabled=True)
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         mock_create_snapshot.assert_not_called()
@@ -174,7 +175,7 @@ class SnapshotManageTest(test.TestCase):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         mock_create_snapshot.assert_not_called()
@@ -185,26 +186,26 @@ class SnapshotManageTest(test.TestCase):
         """Test correct failure when volume_id is not specified."""
         body = {'snapshot': {'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_manage_snapshot_missing_ref(self):
         """Test correct failure when the ref is not specified."""
         body = {'snapshot': {'volume_id': fake.VOLUME_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_manage_snapshot_error_body(self):
         """Test correct failure when body is invaild."""
         body = {'error_snapshot': {'volume_id': fake.VOLUME_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_manage_snapshot_error_volume_id(self):
         """Test correct failure when volume can't be found."""
         body = {'snapshot': {'volume_id': 'error_volume_id',
                              'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-snapshot-manage API call."""
@@ -230,10 +231,10 @@ class SnapshotManageTest(test.TestCase):
                 wraps=api_get_manageable_snapshots)
     def test_get_manageable_snapshots_non_admin(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', False, False, admin=False)
-        self.assertEqual(403, res.status_int)
+        self.assertEqual(http_client.FORBIDDEN, res.status_int)
         self.assertEqual(False, mock_api_manageable.called)
         res = self._get_resp_get('fakehost', True, False, admin=False)
-        self.assertEqual(403, res.status_int)
+        self.assertEqual(http_client.FORBIDDEN, res.status_int)
         self.assertEqual(False, mock_api_manageable.called)
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
@@ -249,7 +250,7 @@ class SnapshotManageTest(test.TestCase):
                 {'reference': {'source-name': 'mysnap'}, 'size': 5,
                  'safe_to_manage': True,
                  'source_reference': {'source-name': 'myvol'}}]}
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(jsonutils.loads(res.body), exp)
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', None, limit=CONF.osapi_max_limit,
@@ -262,7 +263,7 @@ class SnapshotManageTest(test.TestCase):
     def test_get_manageable_snapshots_non_existent_marker(
             self, mock_api_manageable):
         res = self._get_resp_get('fakehost', detailed=False, paging=True)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertTrue(mock_api_manageable.called)
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
@@ -281,7 +282,7 @@ class SnapshotManageTest(test.TestCase):
                  'cinder_id': None, 'safe_to_manage': True,
                  'reason_not_safe': None, 'extra_info': 'qos_setting:low',
                  'source_reference': {'source-name': 'myvol'}}]}
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertEqual(jsonutils.loads(res.body), exp)
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', None, limit=10, marker='1234',
@@ -293,7 +294,7 @@ class SnapshotManageTest(test.TestCase):
     def test_get_manageable_snapshots_non_existent_marker_detailed(
             self, mock_api_manageable):
         res = self._get_resp_get('fakehost', detailed=True, paging=True)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
         self.assertTrue(mock_api_manageable.called)
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True)
@@ -302,7 +303,7 @@ class SnapshotManageTest(test.TestCase):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
                                                              disabled=True)
         res = self._get_resp_get('host_ok', False, True)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
@@ -313,7 +314,7 @@ class SnapshotManageTest(test.TestCase):
     def test_get_manageable_snapshots_is_down(self, mock_db, mock_is_up):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
         res = self._get_resp_get('host_ok', False, True)
-        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         self.assertTrue(mock_is_up.called)

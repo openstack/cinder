@@ -14,6 +14,7 @@
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder import context
@@ -98,9 +99,9 @@ class SnapshotUnmanageTest(test.TestCase):
         self.assertEqual(3, len(mock_rpcapi.call_args[0]))
         self.assertEqual(0, len(mock_rpcapi.call_args[1]))
 
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
     def test_unmanage_snapshot_bad_snapshot_id(self):
         """Return 404 if the volume does not exist."""
         res = self._get_resp(bad_snp_id)
-        self.assertEqual(404, res.status_int, res)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int, res)

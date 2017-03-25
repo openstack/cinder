@@ -18,6 +18,7 @@ from oslo_config import fixture as config_fixture
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -172,7 +173,7 @@ class AdminActionsTest(BaseAdminTest):
                                         {'attach_status':
                                          fields.VolumeAttachStatus.ATTACHED})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          volume['attach_status'])
@@ -186,7 +187,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'attach_status': 'bogus-status'})
 
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual(fields.VolumeAttachStatus.DETACHED,
                          volume['attach_status'])
@@ -198,7 +199,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'migration_status': 'bogus-status'})
 
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertIsNone(volume['migration_status'])
 
@@ -209,7 +210,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'migration_status': 'migrating'})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('migrating', volume['migration_status'])
 
@@ -220,7 +221,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'status': 'error'})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('error', volume['status'])
 
@@ -234,7 +235,7 @@ class AdminActionsTest(BaseAdminTest):
                                         {'status': 'error'})
 
         # request is not authorized
-        self.assertEqual(403, resp.status_int)
+        self.assertEqual(http_client.FORBIDDEN, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         # status is still 'error'
         self.assertEqual('error', volume['status'])
@@ -255,7 +256,7 @@ class AdminActionsTest(BaseAdminTest):
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def test_backup_reset_status_as_non_admin(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
@@ -267,7 +268,7 @@ class AdminActionsTest(BaseAdminTest):
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
         # request is not authorized
-        self.assertEqual(403, resp.status_int)
+        self.assertEqual(http_client.FORBIDDEN, resp.status_int)
 
     def test_backup_reset_status(self):
         volume = db.volume_create(self.ctx,
@@ -284,7 +285,7 @@ class AdminActionsTest(BaseAdminTest):
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def test_invalid_status_for_backup(self):
         volume = db.volume_create(self.ctx,
@@ -295,7 +296,7 @@ class AdminActionsTest(BaseAdminTest):
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
                                         {'status': 'restoring'})
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
     def test_backup_reset_status_with_invalid_backup(self):
         volume = db.volume_create(self.ctx,
@@ -313,7 +314,7 @@ class AdminActionsTest(BaseAdminTest):
                                         {'status': fields.BackupStatus.ERROR})
 
         # Should raise 404 if backup doesn't exist.
-        self.assertEqual(404, resp.status_int)
+        self.assertEqual(http_client.NOT_FOUND, resp.status_int)
 
     def test_malformed_reset_status_body(self):
         volume = db.volume_create(self.ctx, {'status': 'available', 'size': 1})
@@ -322,7 +323,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'x-status': 'bad'})
 
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('available', volume['status'])
 
@@ -332,7 +333,7 @@ class AdminActionsTest(BaseAdminTest):
                                         volume,
                                         {'status': 'invalid'})
 
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('available', volume['status'])
 
@@ -345,7 +346,7 @@ class AdminActionsTest(BaseAdminTest):
         req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = self.ctx
         resp = req.get_response(app())
-        self.assertEqual(404, resp.status_int)
+        self.assertEqual(http_client.NOT_FOUND, resp.status_int)
         self.assertRaises(exception.NotFound, db.volume_get, self.ctx,
                           fake.WILL_NOT_BE_FOUND_ID)
 
@@ -381,7 +382,7 @@ class AdminActionsTest(BaseAdminTest):
             {'status': 'available',
              'attach_status': fields.VolumeAttachStatus.DETACHED})
         # request is accepted
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
         # volume is detached
         volume = db.volume_get(self.ctx, volume['id'])
@@ -406,7 +407,7 @@ class AdminActionsTest(BaseAdminTest):
             volume,
             {'status': 'available',
              'attach_status': fields.VolumeAttachStatus.ERROR_DETACHING})
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('available', volume['status'])
         self.assertEqual(fields.VolumeAttachStatus.DETACHED,
@@ -437,7 +438,7 @@ class AdminActionsTest(BaseAdminTest):
                                           {'status':
                                            fields.SnapshotStatus.ERROR})
 
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         snapshot = objects.Snapshot.get_by_id(self.ctx, snapshot['id'])
         self.assertEqual(fields.SnapshotStatus.ERROR, snapshot.status)
 
@@ -454,7 +455,7 @@ class AdminActionsTest(BaseAdminTest):
         resp = self._issue_snapshot_reset(self.ctx, snapshot,
                                           {'status': 'attaching'})
 
-        self.assertEqual(400, resp.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
         self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
 
     def test_force_delete(self):
@@ -469,7 +470,7 @@ class AdminActionsTest(BaseAdminTest):
         req.environ['cinder.context'] = self.ctx
         resp = req.get_response(app())
         # request is accepted
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         # volume is deleted
         self.assertRaises(exception.NotFound, objects.Volume.get_by_id,
                           self.ctx, volume.id)
@@ -496,7 +497,7 @@ class AdminActionsTest(BaseAdminTest):
         # attach admin context to request
         req.environ['cinder.context'] = self.ctx
         resp = req.get_response(app())
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def _migrate_volume_prep(self):
         # create volume's current host and the destination host
@@ -551,7 +552,7 @@ class AdminActionsTest(BaseAdminTest):
 
     @ddt.data('3.0', '3.15', '3.16')
     def test_migrate_volume_success_3(self, version):
-        expected_status = 202
+        expected_status = http_client.ACCEPTED
         host = 'test2'
         volume = self._migrate_volume_prep()
         volume = self._migrate_volume_3_exec(self.ctx, volume, host,
@@ -559,7 +560,7 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('starting', volume['migration_status'])
 
     def test_migrate_volume_success_cluster(self):
-        expected_status = 202
+        expected_status = http_client.ACCEPTED
         # We cannot provide host and cluster, so send host to None
         host = None
         cluster = 'cluster'
@@ -596,7 +597,7 @@ class AdminActionsTest(BaseAdminTest):
         return volume
 
     def test_migrate_volume_success(self):
-        expected_status = 202
+        expected_status = http_client.ACCEPTED
         host = 'test2'
         volume = self._migrate_volume_prep()
         volume = self._migrate_volume_exec(self.ctx, volume, host,
@@ -604,7 +605,7 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('starting', volume['migration_status'])
 
     def test_migrate_volume_fail_replication(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test2'
         volume = self._migrate_volume_prep()
         # current status is available
@@ -616,14 +617,14 @@ class AdminActionsTest(BaseAdminTest):
                                            expected_status)
 
     def test_migrate_volume_as_non_admin(self):
-        expected_status = 403
+        expected_status = http_client.FORBIDDEN
         host = 'test2'
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
     def test_migrate_volume_without_host_parameter(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test3'
         volume = self._migrate_volume_prep()
         # build request to migrate without host
@@ -640,19 +641,19 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual(expected_status, resp.status_int)
 
     def test_migrate_volume_host_no_exist(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test3'
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
     def test_migrate_volume_same_host(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test'
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
     def test_migrate_volume_migrating(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test2'
         volume = self._migrate_volume_prep()
         volume.migration_status = 'migrating'
@@ -660,7 +661,7 @@ class AdminActionsTest(BaseAdminTest):
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
     def test_migrate_volume_with_snap(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test2'
         volume = self._migrate_volume_prep()
         snap = objects.Snapshot(self.ctx, volume_id=volume['id'])
@@ -669,7 +670,7 @@ class AdminActionsTest(BaseAdminTest):
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
     def test_migrate_volume_bad_force_host_copy(self):
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         host = 'test2'
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(self.ctx, volume, host, expected_status,
@@ -700,7 +701,7 @@ class AdminActionsTest(BaseAdminTest):
     def test_migrate_volume_comp_as_non_admin(self):
         volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
         new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
-        expected_status = 403
+        expected_status = http_client.FORBIDDEN
         expected_id = None
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
@@ -710,7 +711,7 @@ class AdminActionsTest(BaseAdminTest):
         volume1 = self._create_volume(self.ctx, {'migration_status': 'foo'})
         volume2 = self._create_volume(self.ctx, {'migration_status': None})
 
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         expected_id = None
         self._migrate_volume_comp_exec(self.ctx, volume1, volume2, False,
                                        expected_status, expected_id)
@@ -722,7 +723,7 @@ class AdminActionsTest(BaseAdminTest):
                                       {'migration_status': 'migrating'})
         volume2 = self._create_volume(self.ctx,
                                       {'migration_status': 'target:foo'})
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         expected_id = None
         self._migrate_volume_comp_exec(self.ctx, volume1, volume2, False,
                                        expected_status, expected_id)
@@ -730,7 +731,7 @@ class AdminActionsTest(BaseAdminTest):
     def test_migrate_volume_comp_no_action(self):
         volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
         new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
-        expected_status = 400
+        expected_status = http_client.BAD_REQUEST
         expected_id = None
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
@@ -747,7 +748,7 @@ class AdminActionsTest(BaseAdminTest):
                                           'attach_status':
                                               fields.VolumeAttachStatus.
                                               DETACHED})
-        expected_status = 200
+        expected_status = http_client.OK
         expected_id = new_volume.id
         self._migrate_volume_comp_exec(self.ctx, volume, new_volume, False,
                                        expected_status, expected_id)
@@ -783,7 +784,7 @@ class AdminActionsTest(BaseAdminTest):
         req.environ['cinder.context'] = self.ctx
         res = req.get_response(app())
 
-        self.assertEqual(202, res.status_int)
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertEqual(
             'deleting',
             test_backups.BackupsAPITestCase._get_backup_attrib(id, 'status'))
@@ -820,7 +821,7 @@ class AdminActionsTest(BaseAdminTest):
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         req.environ['cinder.context'] = self.ctx
         res = req.get_response(app())
-        self.assertEqual(405, res.status_int)
+        self.assertEqual(http_client.METHOD_NOT_ALLOWED, res.status_int)
 
 
 class AdminActionsAttachDetachTest(BaseAdminTest):
@@ -872,7 +873,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         # make request
         resp = req.get_response(app())
         # request is accepted
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         volume.refresh()
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
@@ -924,7 +925,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         # make request
         resp = req.get_response(app())
         # request is accepted
-        self.assertEqual(202, resp.status_int)
+        self.assertEqual(http_client.ACCEPTED, resp.status_int)
         volume.refresh()
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
@@ -975,7 +976,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             req.environ['cinder.context'] = self.ctx
             # make request
             resp = req.get_response(app())
-            self.assertEqual(400, resp.status_int)
+            self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
         # test for KeyError when missing connector
         volume_remote_error = (

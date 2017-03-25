@@ -16,6 +16,7 @@
 
 import mock
 from oslo_serialization import jsonutils
+from six.moves import http_client
 import webob
 
 from cinder import context
@@ -97,7 +98,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         url = '/v2/%s/snapshots/%s' % (fake.PROJECT_ID, UUID1)
         res = self._make_request(url)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
                                       project_id=fake.PROJECT_ID,
                                       progress='0%')
@@ -106,7 +107,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         url = '/v2/%s/snapshots/detail' % fake.PROJECT_ID
         res = self._make_request(url)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id=fake.PROJECT_ID,
