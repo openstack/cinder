@@ -338,7 +338,8 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
 
-        device_info = self.find_device_number(volume, connector['host'])
+        device_info, __, __ = self.find_device_number(
+            volume, connector['host'])
         if 'hostlunid' not in device_info:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
                      volumename)
@@ -346,6 +347,9 @@ class EMCVMAXCommon(object):
 
         vol_instance = self._find_lun(volume)
         storage_system = vol_instance['SystemName']
+
+        if self._is_volume_multiple_masking_views(vol_instance):
+            return
 
         configservice = self.utils.find_controller_configuration_service(
             self.conn, storage_system)
@@ -358,16 +362,23 @@ class EMCVMAXCommon(object):
 
         self._remove_members(configservice, vol_instance, connector,
                              extraSpecs)
-        livemigrationrecord = self.utils.get_live_migration_record(volume,
-                                                                   False)
-        if livemigrationrecord:
-            live_maskingviewdict = livemigrationrecord[0]
-            live_connector = livemigrationrecord[1]
-            live_extraSpecs = livemigrationrecord[2]
-            self._attach_volume(
-                volume, live_connector, live_extraSpecs,
-                live_maskingviewdict, True)
-            self.utils.delete_live_migration_record(volume)
+
+    def _is_volume_multiple_masking_views(self, vol_instance):
+        """Check if volume is in more than one MV.
+
+        :param vol_instance: the volume instance
+        :returns: boolean
+        """
+        storageGroupInstanceNames = (
+            self.masking.get_associated_masking_groups_from_device(
+                self.conn, vol_instance.path))
+
+        for storageGroupInstanceName in storageGroupInstanceNames:
+            mvInstanceNames = self.masking.get_masking_view_from_storage_group(
+                self.conn, storageGroupInstanceName)
+            if len(mvInstanceNames) > 1:
+                return True
+        return False
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -406,35 +417,35 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Initialize connection: %(volume)s."),
                  {'volume': volumeName})
         self.conn = self._get_ecom_connection()
-        deviceInfoDict = self._wrap_find_device_number(
-            volume, connector['host'])
+        deviceInfoDict, isLiveMigration, sourceInfoDict = (
+            self._wrap_find_device_number(
+                volume, connector['host']))
         maskingViewDict = self._populate_masking_dict(
             volume, connector, extraSpecs)
 
         if ('hostlunid' in deviceInfoDict and
                 deviceInfoDict['hostlunid'] is not None):
-            isSameHost = self._is_same_host(connector, deviceInfoDict)
-            if isSameHost:
-                # Device is already mapped to same host so we will leave
-                # the state as is.
-
-                deviceNumber = deviceInfoDict['hostlunid']
-                LOG.info(_LI("Volume %(volume)s is already mapped. "
-                             "The device number is  %(deviceNumber)s."),
-                         {'volume': volumeName,
-                          'deviceNumber': deviceNumber})
-                # Special case, we still need to get the iscsi ip address.
-                portGroupName = (
-                    self._get_correct_port_group(
-                        deviceInfoDict, maskingViewDict['storageSystemName']))
-
-            else:
+            deviceNumber = deviceInfoDict['hostlunid']
+            LOG.info(_LI("Volume %(volume)s is already mapped. "
+                         "The device number is  %(deviceNumber)s."),
+                     {'volume': volumeName,
+                      'deviceNumber': deviceNumber})
+            # Special case, we still need to get the iscsi ip address.
+            portGroupName = (
+                self._get_correct_port_group(
+                    deviceInfoDict, maskingViewDict['storageSystemName']))
+        else:
+            if isLiveMigration:
+                maskingViewDict['storageGroupInstanceName'] = (
+                    self._get_storage_group_from_source(sourceInfoDict))
+                maskingViewDict['portGroupInstanceName'] = (
+                    self._get_port_group_from_source(sourceInfoDict))
                 deviceInfoDict, portGroupName = self._attach_volume(
                     volume, connector, extraSpecs, maskingViewDict, True)
-        else:
-            deviceInfoDict, portGroupName = (
-                self._attach_volume(
-                    volume, connector, extraSpecs, maskingViewDict))
+            else:
+                deviceInfoDict, portGroupName = (
+                    self._attach_volume(
+                        volume, connector, extraSpecs, maskingViewDict))
 
         if self.protocol.lower() == 'iscsi':
             deviceInfoDict['ip_and_iqn'] = (
@@ -462,12 +473,8 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         volumeName = volume['name']
-        maskingViewDict = self._populate_masking_dict(
-            volume, connector, extraSpecs)
         if isLiveMigration:
             maskingViewDict['isLiveMigration'] = True
-            self.utils.insert_live_migration_record(volume, maskingViewDict,
-                                                    connector, extraSpecs)
         else:
             maskingViewDict['isLiveMigration'] = False
 
@@ -475,7 +482,8 @@ class EMCVMAXCommon(object):
             self.conn, maskingViewDict, extraSpecs)
 
         # Find host lun id again after the volume is exported to the host.
-        deviceInfoDict = self.find_device_number(volume, connector['host'])
+        deviceInfoDict, __, __ = self.find_device_number(
+            volume, connector['host'])
         if 'hostlunid' not in deviceInfoDict:
             # Did not successfully attach to host,
             # so a rollback for FAST is required.
@@ -485,7 +493,6 @@ class EMCVMAXCommon(object):
                     (rollbackDict['isV3'] is not None)):
                 (self.masking._check_if_rollback_action_for_masking_required(
                     self.conn, rollbackDict))
-                self.utils.delete_live_migration_record(volume)
             exception_message = (_("Error Attaching volume %(vol)s.")
                                  % {'vol': volumeName})
             raise exception.VolumeBackendAPIException(
@@ -554,6 +561,52 @@ class EMCVMAXCommon(object):
                 data=exception_message)
         return portGroupName
 
+    def _get_storage_group_from_source(self, deviceInfoDict):
+        """Get the storage group from the existing masking view.
+
+        :params deviceInfoDict: the device info dictionary
+        :returns: storage group instance
+        """
+        storageGroupInstanceName = None
+        if ('controller' in deviceInfoDict and
+                deviceInfoDict['controller'] is not None):
+            maskingViewInstanceName = deviceInfoDict['controller']
+
+            # Get the storage group from masking view
+            storageGroupInstanceName = (
+                self.masking._get_storage_group_from_masking_view_instance(
+                    self.conn,
+                    maskingViewInstanceName))
+        else:
+            exception_message = (_("Cannot get the storage group from "
+                                   "the masking view."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return storageGroupInstanceName
+
+    def _get_port_group_from_source(self, deviceInfoDict):
+        """Get the port group from the existing masking view.
+
+        :params deviceInfoDict: the device info dictionary
+        :returns: port group instance
+        """
+        portGroupInstanceName = None
+        if ('controller' in deviceInfoDict and
+                deviceInfoDict['controller'] is not None):
+            maskingViewInstanceName = deviceInfoDict['controller']
+
+            # Get the port group from masking view
+            portGroupInstanceName = (
+                self.masking.get_port_group_from_masking_view_instance(
+                    self.conn,
+                    maskingViewInstanceName))
+        else:
+            exception_message = (_("Cannot get the port group from "
+                                   "the masking view."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return portGroupInstanceName
+
     def check_ig_instance_name(self, initiatorGroupInstanceName):
         """Check if an initiator group instance is on the array.
 
@@ -570,8 +623,10 @@ class EMCVMAXCommon(object):
         :params connector: the connector Object
         """
         volumename = volume['name']
-        LOG.info(_LI("Terminate connection: %(volume)s."),
-                 {'volume': volumename})
+        LOG.info(_LI("Terminate connection: %(volume)s from "
+                     "host %(host)s."),
+                 {'volume': volumename,
+                  'host': connector['host']})
 
         self._unmap_lun(volume, connector)
 
@@ -1587,6 +1642,8 @@ class EMCVMAXCommon(object):
         volumeName = volume['name']
         volumeInstance = self._find_lun(volume)
         storageSystemName = volumeInstance['SystemName']
+        isLiveMigration = False
+        source_data = {}
 
         unitnames = self.conn.ReferenceNames(
             volumeInstance.path,
@@ -1631,14 +1688,15 @@ class EMCVMAXCommon(object):
                     data = maskedvol
             if not data:
                 if len(maskedvols) > 0:
-                    data = maskedvols[0]
+                    source_data = maskedvols[0]
                     LOG.warning(_LW(
                         "Volume is masked but not to host %(host)s as is "
                         "expected. Assuming live migration."),
                         {'host': hoststr})
+                    isLiveMigration = True
 
         LOG.debug("Device info: %(data)s.", {'data': data})
-        return data
+        return data, isLiveMigration, source_data
 
     def get_target_wwns(self, storageSystem, connector):
         """Find target WWNs.
@@ -1927,6 +1985,10 @@ class EMCVMAXCommon(object):
 
         maskingViewDict['maskingViewName'] = ("%(prefix)s-MV"
                                               % {'prefix': prefix})
+
+        maskingViewDict['maskingViewNameLM'] = ("%(prefix)s-%(volid)s-MV"
+                                                % {'prefix': prefix,
+                                                   'volid': volume['id'][:8]})
         volumeName = volume['name']
         volumeInstance = self._find_lun(volume)
         storageSystemName = volumeInstance['SystemName']
@@ -4188,9 +4250,10 @@ class EMCVMAXCommon(object):
                 self.conn, volumeInstanceName))
 
         for sgInstanceName in sgInstanceNames:
-            mvInstanceName = self.masking.get_masking_view_from_storage_group(
-                self.conn, sgInstanceName)
-            if mvInstanceName:
+            mvInstanceNames = (
+                self.masking.get_masking_view_from_storage_group(
+                    self.conn, sgInstanceName))
+            for mvInstanceName in mvInstanceNames:
                 exceptionMessage = (_(
                     "Unable to import volume %(deviceId)s to cinder. "
                     "Volume is in masking view %(mv)s.")
