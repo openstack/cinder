@@ -20,6 +20,7 @@ Test suite for VMware vCenter VMDK driver.
 import ddt
 import mock
 from oslo_utils import units
+from oslo_utils import versionutils
 from oslo_vmware import api
 from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
@@ -1592,12 +1593,15 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_vc_version.assert_not_called()
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
-    @ddt.data('5.1', '5.5')
+    @ddt.data('5.5', '6.0')
     def test_validate_vcenter_version(self, version, log):
-        # vCenter versions 5.1 and above should pass validation.
+        # vCenter versions 5.5 and above should pass validation.
         self._driver._validate_vcenter_version(version)
-        # Deprecation warning should be logged for vCenter version 5.1.
-        if version == '5.1':
+        # Deprecation warning should be logged for vCenter versions which are
+        # incompatible with next minimum supported version.
+        if not versionutils.is_compatible(
+                self._driver.NEXT_MIN_SUPPORTED_VC_VERSION, version,
+                same_major=False):
             log.warning.assert_called_once()
         else:
             log.warning.assert_not_called()
@@ -1607,7 +1611,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         # Validation should fail for vCenter version less than 5.1.
         self.assertRaises(exceptions.VMwareDriverException,
                           self._driver._validate_vcenter_version,
-                          '5.0')
+                          '5.1')
 
     @mock.patch.object(VMDK_DRIVER, '_validate_params')
     @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
