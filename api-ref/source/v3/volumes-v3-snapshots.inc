@@ -209,15 +209,49 @@ Response Example
    :language: javascript
 
 
+Create a snapshot's metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/snapshots/{snapshot_id}/metadata
+
+Updates metadata for a snapshot.
+
+Creates or replaces metadata items that match keys. Does not modify items that
+are not in the request.
+
+
+Normal response codes: 200
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata
+   - project_id: project_id_path
+   - snapshot_id: snapshot_id
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/snapshot-metadata-create-request.json
+   :language: javascript
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/snapshot-metadata-create-response.json
+   :language: javascript
+
 Update a snapshot's metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v3/{project_id}/snapshots/{snapshot_id}/metadata
 
-Updates metadata for a snapshot.
-
-Replaces metadata items that match keys. Does not modify items that
-are not in the request.
+Replaces all the snapshot's metadata with the key-value pairs in the request.
 
 
 Normal response codes: 200

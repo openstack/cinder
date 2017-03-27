@@ -453,7 +453,8 @@ Create metadata for volume
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/metadata
 
-Creates metadata for a volume.
+Creates or replaces metadata for a volume. Does not modify items that are not
+in the request.
 
 Error response codes:202,
 
@@ -536,10 +537,7 @@ Update a volume's metadata
 
 .. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}/metadata
 
-Updates metadata for a volume.
-
-Replaces metadata items that match keys. Does not modify items that
-are not in the request.
+Replaces all the volume's metadata with the key-value pairs in the request.
 
 
 Normal response codes: 200
