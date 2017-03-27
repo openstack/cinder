@@ -603,8 +603,8 @@ class VolumeSizeExceedsAvailableQuota(QuotaError):
 
 
 class VolumeSizeExceedsLimit(QuotaError):
-    message = _("Requested volume size %(size)d is larger than "
-                "maximum allowed limit %(limit)d.")
+    message = _("Requested volume size %(size)dG is larger than "
+                "maximum allowed limit %(limit)dG.")
 
 
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
