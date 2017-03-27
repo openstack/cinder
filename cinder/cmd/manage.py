@@ -57,6 +57,7 @@ from __future__ import print_function
 
 import logging as python_logging
 import os
+import prettytable
 import sys
 import time
 
@@ -66,9 +67,6 @@ from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import timeutils
-
-from cinder import i18n
-i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
@@ -246,6 +244,7 @@ class DbCommands(object):
 
     def _run_migration(self, ctxt, max_count, ignore_state):
         ran = 0
+        migrations = {}
         for migration_meth in self.online_migrations:
             count = max_count - ran
             try:
@@ -255,16 +254,24 @@ class DbCommands(object):
                       {'method': migration_meth.__name__})
                 found = done = 0
 
+            name = migration_meth.__name__
+            remaining = found - done
             if found:
-                print(_('%(total)i rows matched query %(meth)s, %(done)i '
-                        'migrated') % {'total': found,
-                                       'meth': migration_meth.__name__,
-                                       'done': done})
+                print(_('%(found)i rows matched query %(meth)s, %(done)i '
+                        'migrated, %(remaining)i remaining') % {'found': found,
+                                                                'meth': name,
+                                                                'done': done,
+                                                                'remaining':
+                                                                remaining})
+            migrations.setdefault(name, (0, 0, 0))
+            migrations[name] = (migrations[name][0] + found,
+                                migrations[name][1] + done,
+                                migrations[name][2] + remaining)
             if max_count is not None:
                 ran += done
                 if ran >= max_count:
                     break
-        return ran
+        return migrations
 
     @args('--max_count', metavar='<number>', dest='max_count', type=int,
           help='Maximum number of objects to consider.')
@@ -286,10 +293,22 @@ class DbCommands(object):
             print(_('Running batches of %i until complete.') % max_count)
 
         ran = None
+        migration_info = {}
         while ran is None or ran != 0:
-            ran = self._run_migration(ctxt, max_count, ignore_state)
+            migrations = self._run_migration(ctxt, max_count, ignore_state)
+            migration_info.update(migrations)
+            ran = sum([done for found, done, remaining in migrations.values()])
             if not unlimited:
                 break
+
+        t = prettytable.PrettyTable([_('Migration'),
+                                     _('Found'),
+                                     _('Done'),
+                                     _('Remaining')])
+        for name in sorted(migration_info.keys()):
+            info = migration_info[name]
+            t.add_row([name, info[0], info[1], info[2]])
+        print(t)
 
         sys.exit(1 if ran else 0)
 

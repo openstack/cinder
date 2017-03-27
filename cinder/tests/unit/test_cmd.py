@@ -16,10 +16,12 @@ import sys
 import time
 
 import ddt
+import fixtures
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 import six
+from six.moves import StringIO
 
 try:
     import rtslib_fb
@@ -224,6 +226,45 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(0, exit.code)
         cinder_manage.DbCommands.online_migrations[0].assert_has_calls(
             (mock.call(mock.ANY, 50, False),) * 2)
+
+    def _fake_db_command(self, migrations=None):
+        if migrations is None:
+            mock_mig_1 = mock.MagicMock(__name__="mock_mig_1")
+            mock_mig_2 = mock.MagicMock(__name__="mock_mig_2")
+            mock_mig_1.return_value = (5, 4)
+            mock_mig_2.return_value = (6, 6)
+            migrations = (mock_mig_1, mock_mig_2)
+
+        class _CommandSub(cinder_manage.DbCommands):
+            online_migrations = migrations
+
+        return _CommandSub
+
+    @mock.patch('cinder.context.get_admin_context')
+    def test_online_migrations(self, mock_get_context):
+        self.useFixture(fixtures.MonkeyPatch('sys.stdout', StringIO()))
+        ctxt = mock_get_context.return_value
+        db_cmds = self._fake_db_command()
+        command = db_cmds()
+        exit = self.assertRaises(SystemExit,
+                                 command.online_data_migrations, 10)
+        self.assertEqual(1, exit.code)
+        expected = """\
+5 rows matched query mock_mig_1, 4 migrated, 1 remaining
+6 rows matched query mock_mig_2, 6 migrated, 0 remaining
++------------+-------+------+-----------+
+| Migration  | Found | Done | Remaining |
++------------+-------+------+-----------+
+| mock_mig_1 |   5   |  4   |     1     |
+| mock_mig_2 |   6   |  6   |     0     |
++------------+-------+------+-----------+
+"""
+        command.online_migrations[0].assert_has_calls([mock.call(ctxt,
+                                                                 10, False)])
+        command.online_migrations[1].assert_has_calls([mock.call(ctxt,
+                                                                 6, False)])
+
+        self.assertEqual(expected, sys.stdout.getvalue())
 
     @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
                 (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))
