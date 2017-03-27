@@ -23,7 +23,6 @@ __all__ = [
     'get_client',
     'get_server',
     'get_notifier',
-    'TRANSPORT_ALIASES',
 ]
 
 from oslo_config import cfg
@@ -52,29 +51,15 @@ ALLOWED_EXMODS = [
 ]
 EXTRA_EXMODS = []
 
-# NOTE(flaper87): The cinder.openstack.common.rpc entries are
-# for backwards compat with Havana rpc_backend configuration
-# values. The cinder.rpc entries are for compat with Folsom values.
-TRANSPORT_ALIASES = {
-    'cinder.openstack.common.rpc.impl_kombu': 'rabbit',
-    'cinder.openstack.common.rpc.impl_qpid': 'qpid',
-    'cinder.openstack.common.rpc.impl_zmq': 'zmq',
-    'cinder.rpc.impl_kombu': 'rabbit',
-    'cinder.rpc.impl_qpid': 'qpid',
-    'cinder.rpc.impl_zmq': 'zmq',
-}
-
 
 def init(conf):
     global TRANSPORT, NOTIFICATION_TRANSPORT, NOTIFIER
     exmods = get_allowed_exmods()
     TRANSPORT = messaging.get_transport(conf,
-                                        allowed_remote_exmods=exmods,
-                                        aliases=TRANSPORT_ALIASES)
+                                        allowed_remote_exmods=exmods)
     NOTIFICATION_TRANSPORT = messaging.get_notification_transport(
         conf,
-        allowed_remote_exmods=exmods,
-        aliases=TRANSPORT_ALIASES)
+        allowed_remote_exmods=exmods)
 
     # get_notification_transport has loaded oslo_messaging_notifications config
     # group, so we can now check if notifications are actually enabled.
