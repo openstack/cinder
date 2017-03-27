@@ -1839,7 +1839,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                  port=port,
                                                  cacert=ca_file,
                                                  insecure=insecure,
-                                                 pool_size=pool_size)
+                                                 pool_size=pool_size,
+                                                 op_id_prefix='c-vol')
         return self._session
 
     def _get_vc_version(self):
