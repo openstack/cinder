@@ -16,7 +16,6 @@
 import ast
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 import uuid
@@ -286,6 +285,10 @@ class VMAXCommonData(object):
     default_sg_instance_name = {
         'CreationClassName': 'CIM_DeviceMaskingGroup',
         'ElementName': 'OS_default_GOLD1_SG',
+        'SystemName': 'SYMMETRIX+000195900551'}
+    sg_instance_name = {
+        'CreationClassName': 'CIM_DeviceMaskingGroup',
+        'ElementName': 'OS-fakehost-SRP_1-Bronze-DSS-I-SG',
         'SystemName': 'SYMMETRIX+000195900551'}
     storage_system = 'SYMMETRIX+000195900551'
     storage_system_v3 = 'SYMMETRIX-+-000197200056'
@@ -2351,7 +2354,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def test_find_device_number(self):
         host = 'fakehost'
-        data = (
+        data, __, __ = (
             self.driver.common.find_device_number(self.data.test_volume,
                                                   host))
         self.assertEqual('OS-fakehost-MV', data['maskingview'])
@@ -2362,7 +2365,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=[])
     def test_find_device_number_false(self, mock_ref_name):
         host = 'bogushost'
-        data = (
+        data, __, __ = (
             self.driver.common.find_device_number(self.data.test_volume,
                                                   host))
         self.assertFalse(data)
@@ -2370,7 +2373,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_find_device_number_long_host(self):
         # Long host name
         host = 'myhost.mydomain.com'
-        data = (
+        data, __, __ = (
             self.driver.common.find_device_number(self.data.test_volume,
                                                   host))
         self.assertEqual('OS-myhost-MV', data['maskingview'])
@@ -2383,7 +2386,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         v2_host_over_38 = self.data.test_volume.copy()
         # Pool aware scheduler enabled
         v2_host_over_38['host'] = host
-        data = (
+        data, __, __ = (
             self.driver.common.find_device_number(v2_host_over_38,
                                                   host))
         self.assertEqual(amended, data['maskingview'])
@@ -3411,8 +3414,9 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'hostlunid': 1,
-                      'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system},
+                      False, {}))
     @mock.patch.object(
         masking.VMAXMasking,
         '_wrap_get_storage_group_from_volume',
@@ -3449,10 +3453,19 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, mock_wrap_group,
             mock_storage_group, mock_add_volume):
         self.driver.common._wrap_find_device_number = mock.Mock(
-            return_value={})
+            return_value=({}, False, {}))
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_get_port_group_from_source',
+        return_value={'CreationClassName': 'CIM_TargetMaskingGroup',
+                      'ElementName': 'OS-portgroup-PG'})
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_get_storage_group_from_source',
+        return_value=VMAXCommonData.default_sg_instance_name)
     @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
@@ -3460,8 +3473,17 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'hostlunid': 1,
-                      'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system},
+                      True,
+                      {'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system}))
+    @mock.patch.object(
+        common.VMAXCommon,
+        '_wrap_find_device_number',
+        return_value=({}, True,
+                      {'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system}))
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
@@ -3469,9 +3491,10 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_map_live_migration_no_fast_success(self,
                                                 _mock_volume_type,
                                                 mock_wrap_device,
-                                                mock_same_host):
-        utils.LIVE_MIGRATION_FILE = (self.tempdir +
-                                     '/livemigrationarray')
+                                                mock_device,
+                                                mock_same_host,
+                                                mock_sg_from_mv,
+                                                mock_pg_from_mv):
         extraSpecs = self.data.extra_specs
         rollback_dict = self.driver.common._populate_masking_dict(
             self.data.test_volume, self.data.connector, extraSpecs)
@@ -3510,7 +3533,8 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'storagesystem': VMAXCommonData.storage_system},
+                      False, {}))
     @mock.patch.object(
         masking.VMAXMasking,
         '_wrap_get_storage_group_from_volume',
@@ -4415,8 +4439,9 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'hostlunid': 1,
-                      'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system},
+                      False, {}))
     @mock.patch.object(
         masking.VMAXMasking,
         '_wrap_get_storage_group_from_volume',
@@ -4436,7 +4461,8 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'storagesystem': VMAXCommonData.storage_system},
+                      False, {}))
     @mock.patch.object(
         masking.VMAXMasking,
         '_wrap_get_storage_group_from_volume',
@@ -5063,7 +5089,7 @@ class VMAXFCDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'Name': "0001"})
+        return_value=({'Name': "0001"}, False, {}))
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
@@ -5282,7 +5308,7 @@ class VMAXFCDriverNoFastTestCase(test.TestCase):
             return_value=volumeInstanceName)
         masking = self.driver.common.masking
         masking.get_masking_view_from_storage_group = mock.Mock(
-            return_value=None)
+            return_value={})
         self.driver.manage_existing(volume, external_ref)
         utils.rename_volume.assert_called_once_with(
             common.conn, volumeInstanceName, volume['name'])
@@ -5650,7 +5676,7 @@ class VMAXFCDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'Name': "0001"})
+        return_value=({'Name': "0001"}, False, {}))
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
@@ -6716,7 +6742,7 @@ class EMCV3DriverTestCase(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'Name': "0001"})
+        return_value=({'Name': "0001"}, False, {}))
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
@@ -8193,7 +8219,7 @@ class VMAXMaskingTest(test.TestCase):
     @mock.patch.object(
         masking.VMAXMasking,
         "_validate_masking_view",
-        return_value=("mv_instance", "sg_instance", None))
+        return_value=("mv_instance", VMAXCommonData.sg_instance_name, None))
     @mock.patch.object(
         masking.VMAXMasking,
         "_get_and_remove_from_storage_group_v3")
@@ -8250,6 +8276,37 @@ class VMAXMaskingTest(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               masking.get_or_create_masking_view_and_map_lun,
                               common.conn, maskingViewDict, extraSpecs)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_storage_group_from_masking_view_instance',
+        return_value=VMAXCommonData.sg_instance_name)
+    def test_check_existing_storage_group(self, mock_sg_from_mv):
+        common = self.driver.common
+        conn = self.fake_ecom_connection()
+        mv_instance_name = {'CreationClassName': 'Symm_LunMaskingView',
+                            'ElementName': 'OS-fakehost-gold-I-MV'}
+        masking = common.masking
+        sgFromMvInstanceName, msg = (
+            masking._check_existing_storage_group(conn, mv_instance_name))
+        self.assertEqual(VMAXCommonData.sg_instance_name,
+                         sgFromMvInstanceName)
+        self.assertIsNone(msg)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_storage_group_from_masking_view_instance',
+        return_value=None)
+    def test_check_existing_storage_group_none(self, mock_sg_from_mv):
+        common = self.driver.common
+        conn = self.fake_ecom_connection()
+        mv_instance_name = {'CreationClassName': 'Symm_LunMaskingView',
+                            'ElementName': 'OS-fakehost-gold-I-MV'}
+        masking = common.masking
+        sgFromMvInstanceName, msg = (
+            masking._check_existing_storage_group(conn, mv_instance_name))
+        self.assertIsNone(sgFromMvInstanceName)
+        self.assertIsNotNone(msg)
 
 
 class VMAXFCTest(test.TestCase):
@@ -8652,87 +8709,6 @@ class VMAXUtilsTest(test.TestCase):
             1, modifiedInstance['EMCMaxIODynamicDistributionType'])
         self.assertEqual('CIM_DeviceMaskingGroup',
                          modifiedInstance['CreationClassName'])
-
-    @mock.patch.object(
-        common.VMAXCommon,
-        '_find_lun',
-        return_value={'SystemName': VMAXCommonData.storage_system})
-    @mock.patch('builtins.open' if sys.version_info >= (3,)
-                else '__builtin__.open')
-    def test_insert_live_migration_record(self, mock_open, mock_lun):
-        conn = FakeEcomConnection()
-        self.driver.common.conn = conn
-        extraSpecs = self.data.extra_specs
-        connector = {'initiator': self.data.iscsi_initiator,
-                     'ip': '10.0.0.2',
-                     'platform': u'x86_64',
-                     'host': 'fakehost',
-                     'os_type': 'linux2',
-                     'multipath': False}
-        maskingviewdict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        utils.LIVE_MIGRATION_FILE = ('/tempdir/livemigrationarray')
-        self.driver.utils.insert_live_migration_record(
-            self.data.test_volume, maskingviewdict, connector, extraSpecs)
-        mock_open.assert_called_once_with(
-            utils.LIVE_MIGRATION_FILE, "w")
-
-    @mock.patch.object(
-        common.VMAXCommon,
-        '_find_lun',
-        return_value={'SystemName': VMAXCommonData.storage_system})
-    def test_delete_live_migration_record(self, mock_lun):
-        conn = FakeEcomConnection()
-        self.driver.common.conn = conn
-        extraSpecs = self.data.extra_specs
-        connector = {'initiator': self.data.iscsi_initiator,
-                     'ip': '10.0.0.2',
-                     'platform': u'x86_64',
-                     'host': 'fakehost',
-                     'os_type': 'linux2',
-                     'multipath': False}
-        maskingviewdict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        tempdir = tempfile.mkdtemp()
-        utils.LIVE_MIGRATION_FILE = (tempdir +
-                                     '/livemigrationarray')
-        m = mock.mock_open()
-        with mock.patch('{}.open'.format(__name__), m, create=True):
-            with open(utils.LIVE_MIGRATION_FILE, "w") as f:
-                f.write('live migration details')
-        self.driver.utils.insert_live_migration_record(
-            self.data.test_volume, maskingviewdict, connector, extraSpecs)
-        self.driver.utils.delete_live_migration_record(self.data.test_volume)
-        m.assert_called_once_with(utils.LIVE_MIGRATION_FILE, "w")
-        shutil.rmtree(tempdir)
-
-    @mock.patch.object(
-        common.VMAXCommon,
-        '_find_lun',
-        return_value={'SystemName': VMAXCommonData.storage_system})
-    def test_get_live_migration_record(self, mock_lun):
-        conn = FakeEcomConnection()
-        self.driver.common.conn = conn
-        extraSpecs = self.data.extra_specs
-        connector = {'initiator': self.data.iscsi_initiator,
-                     'ip': '10.0.0.2',
-                     'platform': u'x86_64',
-                     'host': 'fakehost',
-                     'os_type': 'linux2',
-                     'multipath': False}
-        maskingviewdict = self.driver.common._populate_masking_dict(
-            self.data.test_volume, self.data.connector, extraSpecs)
-        tempdir = tempfile.mkdtemp()
-        utils.LIVE_MIGRATION_FILE = (tempdir +
-                                     '/livemigrationarray')
-        self.driver.utils.insert_live_migration_record(
-            self.data.test_volume, maskingviewdict, connector, extraSpecs)
-        record = self.driver.utils.get_live_migration_record(
-            self.data.test_volume, False)
-        self.assertEqual(maskingviewdict, record[0])
-        self.assertEqual(connector, record[1])
-        os.remove(utils.LIVE_MIGRATION_FILE)
-        shutil.rmtree(tempdir)
 
     def test_get_iqn(self):
         conn = FakeEcomConnection()
@@ -9503,6 +9479,102 @@ class VMAXCommonTest(test.TestCase):
             self.driver.create_snapshot(snapshot)
             self.driver.delete_snapshot(snapshot)
 
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_associated_masking_groups_from_device',
+        return_value=[VMAXCommonData.sg_instance_name])
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_masking_view_from_storage_group',
+        return_value=[{'CreationClassName': 'Symm_LunMaskingView',
+                       'ElementName': 'OS-fakehost-gold-I-MV'}])
+    def test_is_volume_multiple_masking_views_false(self, mock_mv_from_sg,
+                                                    mock_sg_from_dev):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+        self.assertFalse(
+            common._is_volume_multiple_masking_views(volumeInstance))
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_associated_masking_groups_from_device',
+        return_value=[VMAXCommonData.sg_instance_name])
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_masking_view_from_storage_group',
+        return_value=[{'CreationClassName': 'Symm_LunMaskingView',
+                       'ElementName': 'OS-fakehost-gold-I-MV'},
+                      {'CreationClassName': 'Symm_LunMaskingView',
+                       'ElementName': 'OS-fakehost-bronze-I-MV'}])
+    def test_is_volume_multiple_masking_views_true(self, mock_mv_from_sg,
+                                                   mock_sg_from_dev):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = common.conn.GetInstance(volumeInstanceName)
+        self.assertTrue(
+            common._is_volume_multiple_masking_views(volumeInstance))
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_storage_group_from_masking_view_instance',
+        return_value=VMAXCommonData.sg_instance_name)
+    def test_get_storage_group_from_source(self, mock_sg_from_mv):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        mv_instance_name = {'CreationClassName': 'Symm_LunMaskingView',
+                            'ElementName': 'OS-fakehost-gold-I-MV'}
+        deviceInfoDict = {'controller': mv_instance_name}
+        self.assertEqual(VMAXCommonData.sg_instance_name,
+                         common._get_storage_group_from_source(
+                             deviceInfoDict))
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_storage_group_from_masking_view_instance',
+        return_value=VMAXCommonData.sg_instance_name)
+    def test_get_storage_group_from_source_except(self, mock_sg_from_mv):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        deviceInfoDict = {}
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            common._get_storage_group_from_source, deviceInfoDict)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_port_group_from_masking_view_instance',
+        return_value={'CreationClassName': 'CIM_TargetMaskingGroup',
+                      'ElementName': 'OS-portgroup-PG'})
+    def test_get_port_group_from_source(self, mock_pg_from_mv):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        pg_instance_name = {'CreationClassName': 'CIM_TargetMaskingGroup',
+                            'ElementName': 'OS-portgroup-PG'}
+        mv_instance_name = {'CreationClassName': 'Symm_LunMaskingView',
+                            'ElementName': 'OS-fakehost-gold-I-MV'}
+        deviceInfoDict = {'controller': mv_instance_name}
+        self.assertEqual(pg_instance_name,
+                         common._get_port_group_from_source(
+                             deviceInfoDict))
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_port_group_from_masking_view_instance',
+        return_value={'CreationClassName': 'CIM_TargetMaskingGroup',
+                      'ElementName': 'OS-portgroup-PG'})
+    def test_get_port_group_from_source_except(self, mock_pg_from_mv):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        deviceInfoDict = {}
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            common._get_port_group_from_source, deviceInfoDict)
+
 
 class VMAXProvisionTest(test.TestCase):
     def setUp(self):
@@ -9606,10 +9678,11 @@ class VMAXISCSITest(test.TestCase):
         driver.db = FakeDB()
         self.driver = driver
 
-    def test_smis_get_iscsi_properties(self):
-        device_info = {'hostlunid': 1}
-        self.driver.common.find_device_number = (
-            mock.Mock(return_value=device_info))
+    @mock.patch.object(
+        common.VMAXCommon,
+        'find_device_number',
+        return_value=({'hostlunid': 1}, False, {}))
+    def test_smis_get_iscsi_properties(self, mock_device):
         iqns_and_ips = (
             [{'iqn': 'iqn.1992-04.com.emc:50000973f006dd80,t,0x0001',
               'ip': '10.10.0.50'},
@@ -9627,8 +9700,9 @@ class VMAXISCSITest(test.TestCase):
     @mock.patch.object(
         common.VMAXCommon,
         'find_device_number',
-        return_value={'hostlunid': 1,
-                      'storagesystem': VMAXCommonData.storage_system})
+        return_value=({'hostlunid': 1,
+                      'storagesystem': VMAXCommonData.storage_system},
+                      False, {}))
     @mock.patch.object(
         common.VMAXCommon,
         'initialize_connection',
