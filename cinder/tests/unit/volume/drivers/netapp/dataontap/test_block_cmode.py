@@ -31,6 +31,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
@@ -79,12 +80,16 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_vserver = 'openstack'
         return config
 
+    @mock.patch.object(client_cmode.Client, 'check_for_cluster_credentials',
+                       mock.MagicMock(return_value=False))
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     @mock.patch.object(na_utils, 'check_flags')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
     def test_do_setup(self, super_do_setup, mock_check_flags):
+        self.zapi_client.check_for_cluster_credentials = mock.MagicMock(
+            return_value=True)
         self.mock_object(client_base.Client, '_init_ssh_client')
         self.mock_object(
             dot_utils, 'get_backend_configuration',
@@ -368,6 +373,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(self.library, 'get_replication_backend_names',
                          return_value=replication_backends)
 
+        self.library.using_cluster_credentials = True
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
         self.library.perf_library.get_node_utilization_for_pool = (
