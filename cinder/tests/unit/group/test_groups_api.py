@@ -55,6 +55,7 @@ class GroupAPITestCase(test.TestCase):
         mock_group_get.return_value = fake_group
         grp = self.group_api.get(self.ctxt, fake.GROUP_ID)
         self.assertEqual(fake_group, grp)
+        mock_policy.assert_called_once_with(self.ctxt, 'get', mock.ANY)
 
     @ddt.data(True, False)
     @mock.patch('cinder.objects.GroupList.get_all')
@@ -72,9 +73,11 @@ class GroupAPITestCase(test.TestCase):
             grps = self.group_api.get_all(self.ctxt,
                                           filters={'all_tenants': True})
             self.assertEqual(fake_groups, grps)
+            mock_policy.assert_called_once_with(self.ctxt, 'get_all')
         else:
             grps = self.group_api.get_all(self.user_ctxt)
             self.assertEqual(fake_groups_by_project, grps)
+            mock_policy.assert_called_once_with(self.user_ctxt, 'get_all')
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
@@ -105,6 +108,7 @@ class GroupAPITestCase(test.TestCase):
                                           fake.GROUP_TYPE_ID,
                                           [fake.VOLUME_TYPE_ID],
                                           availability_zone = 'nova')
+        mock_policy.assert_called_with(self.ctxt, 'create')
         self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
 
         ret_group.host = "test_host@fakedrv#fakepool"
@@ -114,6 +118,7 @@ class GroupAPITestCase(test.TestCase):
         mock_volume_get_all.assert_called_once_with(mock.ANY, ret_group.id)
         mock_volumes_update.assert_called_once_with(self.ctxt, [])
         mock_rpc_delete_group.assert_called_once_with(self.ctxt, ret_group)
+        mock_policy.assert_called_with(self.ctxt, 'delete', mock.ANY)
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
@@ -143,6 +148,7 @@ class GroupAPITestCase(test.TestCase):
 
         mock_group_type_get.assert_called_once_with(self.ctxt,
                                                     "fake-grouptype-name")
+        mock_policy.assert_called_with(self.ctxt, 'create')
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
@@ -173,10 +179,12 @@ class GroupAPITestCase(test.TestCase):
                                                     "fake-grouptype-name")
         mock_volume_types_get.assert_called_once_with(mock.ANY,
                                                       volume_type_names)
+        mock_policy.assert_called_with(self.ctxt, 'create')
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     @mock.patch('cinder.objects.Group')
-    def test_reset_status(self, mock_group, mock_time_util):
+    @mock.patch('cinder.group.api.check_policy')
+    def test_reset_status(self, mock_policy, mock_group, mock_time_util):
         mock_time_util.return_value = "time_now"
         self.group_api.reset_status(self.ctxt, mock_group,
                                     fields.GroupStatus.AVAILABLE)
@@ -185,6 +193,8 @@ class GroupAPITestCase(test.TestCase):
                         'status': fields.GroupStatus.AVAILABLE}
         mock_group.update.assert_called_once_with(update_field)
         mock_group.save.assert_called_once_with()
+        mock_policy.assert_called_once_with(self.ctxt,
+                                            'reset_status', mock.ANY)
 
     @mock.patch.object(GROUP_QUOTAS, "reserve")
     @mock.patch('cinder.objects.Group')
@@ -219,6 +229,7 @@ class GroupAPITestCase(test.TestCase):
                           "fake-grouptype-name",
                           [fake.VOLUME_TYPE_ID],
                           availability_zone='nova')
+        mock_policy.assert_called_with(self.ctxt, 'create')
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
@@ -286,6 +297,7 @@ class GroupAPITestCase(test.TestCase):
         mock_rpc_update_group.assert_called_once_with(self.ctxt, ret_group,
                                                       add_volumes = vol1.id,
                                                       remove_volumes = vol2.id)
+        mock_policy.assert_called_with(self.ctxt, 'update', mock.ANY)
 
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
     @mock.patch('cinder.group.api.check_policy')
@@ -295,6 +307,7 @@ class GroupAPITestCase(test.TestCase):
         grp_snap = self.group_api.get_group_snapshot(
             self.ctxt, fake.GROUP_SNAPSHOT_ID)
         self.assertEqual(fake_group_snap, grp_snap)
+        mock_policy.assert_called_with(self.ctxt, 'get_group_snapshot')
 
     @ddt.data(True, False)
     @mock.patch('cinder.objects.GroupSnapshotList.get_all')
@@ -312,10 +325,14 @@ class GroupAPITestCase(test.TestCase):
             grp_snaps = self.group_api.get_all_group_snapshots(
                 self.ctxt, search_opts={'all_tenants': True})
             self.assertEqual(fake_group_snaps, grp_snaps)
+            mock_policy.assert_called_with(self.ctxt,
+                                           'get_all_group_snapshots')
         else:
             grp_snaps = self.group_api.get_all_group_snapshots(
                 self.user_ctxt)
             self.assertEqual(fake_group_snaps_by_project, grp_snaps)
+            mock_policy.assert_called_with(self.user_ctxt,
+                                           'get_all_group_snapshots')
 
     @mock.patch('cinder.objects.GroupSnapshot')
     @mock.patch('cinder.group.api.check_policy')
@@ -326,6 +343,7 @@ class GroupAPITestCase(test.TestCase):
                                              grp_snap_update)
         mock_group_snap.update.assert_called_once_with(grp_snap_update)
         mock_group_snap.save.assert_called_once_with()
+        mock_policy.assert_called_with(self.ctxt, 'update_group_snapshot')
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_group_snapshot')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_group_snapshot')
@@ -365,9 +383,12 @@ class GroupAPITestCase(test.TestCase):
                                                   ret_group_snap.id)
         mock_create_api.assert_called_once_with(self.ctxt, ret_group_snap)
 
+        mock_policy.assert_called_once_with(self.ctxt, 'create_group_snapshot',
+                                            mock.ANY)
         ret_group_snap.assert_not_frozen = mock.Mock(return_value=True)
         self.group_api.delete_group_snapshot(self.ctxt, ret_group_snap)
         mock_delete_api.assert_called_once_with(mock.ANY, ret_group_snap)
+        mock_policy.assert_called_with(self.ctxt, 'delete_group_snapshot')
 
     @mock.patch('cinder.volume.volume_types.get_volume_type')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
@@ -391,7 +412,6 @@ class GroupAPITestCase(test.TestCase):
             group_type_id = fake.GROUP_TYPE_ID,
             status = fields.GroupStatus.CREATING)
         mock_group_snap_get.return_value = grp_snap
-
         vol1 = utils.create_volume(
             self.ctxt,
             availability_zone = 'nova',
@@ -568,7 +588,9 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     @mock.patch('cinder.objects.GroupSnapshot')
-    def test_reset_group_snapshot_status(self, mock_group_snapshot,
+    @mock.patch('cinder.group.api.check_policy')
+    def test_reset_group_snapshot_status(self, mock_policy,
+                                         mock_group_snapshot,
                                          mock_time_util):
         mock_time_util.return_value = "time_now"
         self.group_api.reset_group_snapshot_status(
@@ -578,6 +600,8 @@ class GroupAPITestCase(test.TestCase):
                         'status': fields.GroupSnapshotStatus.ERROR}
         mock_group_snapshot.update.assert_called_once_with(update_field)
         mock_group_snapshot.save.assert_called_once_with()
+        mock_policy.assert_called_once_with(self.ctxt,
+                                            'reset_group_snapshot_status')
 
     def test_create_group_from_src_frozen(self):
         service = utils.create_service(self.ctxt, {'frozen': True})

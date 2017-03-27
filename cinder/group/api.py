@@ -554,6 +554,7 @@ class API(base.Base):
 
         self.volume_rpcapi.delete_group(context, group)
 
+    @wrap_check_policy
     def update(self, context, group, name, description,
                add_volumes, remove_volumes):
         """Update group."""
@@ -776,10 +777,10 @@ class API(base.Base):
                 sort_dirs=sort_dirs)
         return groups
 
+    @wrap_check_policy
     def reset_status(self, context, group, status):
         """Reset status of generic group"""
 
-        check_policy(context, 'reset_status')
         if status not in c_fields.GroupStatus.ALL:
             msg = _("Group status: %(status)s is invalid, valid status "
                     "are: %(valid)s.") % {'status': status,
@@ -790,6 +791,7 @@ class API(base.Base):
         group.update(field)
         group.save()
 
+    @wrap_check_policy
     def create_group_snapshot(self, context, group, name, description):
         group.assert_not_frozen()
         options = {'group_id': group.id,
