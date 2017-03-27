@@ -113,7 +113,8 @@ def collect_driver_info(driver):
             'version': driver.version,
             'fqn': driver.class_fqn,
             'description': driver.desc,
-            'ci_wiki_name': driver.ci_wiki_name}
+            'ci_wiki_name': driver.ci_wiki_name,
+            'supported': driver.supported}
 
     return info
 
