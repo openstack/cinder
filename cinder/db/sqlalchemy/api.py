@@ -284,7 +284,7 @@ def model_query(context, model, *args, **kwargs):
             _("Unrecognized read_deleted value '%s'") % read_deleted)
 
     if project_only and is_user_context(context):
-        if model == models.VolumeAttachment:
+        if model is models.VolumeAttachment:
             # NOTE(dulek): In case of VolumeAttachment, we need to join
             # `project_id` through `volume` relationship.
             query = query.filter(models.Volume.project_id ==
