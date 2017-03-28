@@ -33,7 +33,16 @@ from cinder.volume import qos_specs
 
 LOG = logging.getLogger(__name__)
 
-authorize = extensions.extension_authorizer('volume', 'qos_specs_manage')
+authorize_create = extensions.extension_authorizer('volume',
+                                                   'qos_specs_manage:create')
+authorize_get = extensions.extension_authorizer('volume',
+                                                'qos_specs_manage:get')
+authorize_get_all = extensions.extension_authorizer('volume',
+                                                    'qos_specs_manage:get_all')
+authorize_update = extensions.extension_authorizer('volume',
+                                                   'qos_specs_manage:update')
+authorize_delete = extensions.extension_authorizer('volume',
+                                                   'qos_specs_manage:delete')
 
 
 def _check_specs(context, specs_id):
@@ -56,7 +65,7 @@ class QoSSpecsController(wsgi.Controller):
     def index(self, req):
         """Returns the list of qos_specs."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_get_all(context)
 
         params = req.params.copy()
 
@@ -75,7 +84,7 @@ class QoSSpecsController(wsgi.Controller):
 
     def create(self, req, body=None):
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_create(context)
 
         self.assert_valid_body(body, 'qos_specs')
 
@@ -122,7 +131,7 @@ class QoSSpecsController(wsgi.Controller):
 
     def update(self, req, id, body=None):
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_update(context)
 
         self.assert_valid_body(body, 'qos_specs')
         specs = body['qos_specs']
@@ -152,7 +161,7 @@ class QoSSpecsController(wsgi.Controller):
     def show(self, req, id):
         """Return a single qos spec item."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_get(context)
 
         # Not found exception will be handled at the wsgi level
         spec = qos_specs.get_qos_specs(context, id)
@@ -162,7 +171,7 @@ class QoSSpecsController(wsgi.Controller):
     def delete(self, req, id):
         """Deletes an existing qos specs."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_delete(context)
 
         # Convert string to bool type in strict manner
         force = utils.get_bool_param('force', req.params)
@@ -198,7 +207,7 @@ class QoSSpecsController(wsgi.Controller):
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_delete(context)
 
         if not (body and 'keys' in body
                 and isinstance(body.get('keys'), list)):
@@ -226,7 +235,7 @@ class QoSSpecsController(wsgi.Controller):
     def associations(self, req, id):
         """List all associations of given qos specs."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_get_all(context)
 
         LOG.debug("Get associations for qos_spec id: %s", id)
 
@@ -256,7 +265,7 @@ class QoSSpecsController(wsgi.Controller):
     def associate(self, req, id):
         """Associate a qos specs with a volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_update(context)
 
         type_id = req.params.get('vol_type_id', None)
 
@@ -305,7 +314,7 @@ class QoSSpecsController(wsgi.Controller):
     def disassociate(self, req, id):
         """Disassociate a qos specs from a volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_update(context)
 
         type_id = req.params.get('vol_type_id', None)
 
@@ -345,7 +354,7 @@ class QoSSpecsController(wsgi.Controller):
     def disassociate_all(self, req, id):
         """Disassociate a qos specs from all volume types."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_update(context)
 
         LOG.debug("Disassociate qos_spec: %s from all.", id)
 

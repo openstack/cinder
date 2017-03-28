@@ -42,6 +42,12 @@
     "volume_extension:extended_snapshot_attributes": "rule:admin_or_owner",
     "volume_extension:volume_image_metadata": "rule:admin_or_owner",
 
+    "volume_extension:qos_specs_manage:create": "rule:admin_api",
+    "volume_extension:qos_specs_manage:get": "rule:admin_api",
+    "volume_extension:qos_specs_manage:get_all": "rule:admin_api",
+    "volume_extension:qos_specs_manage:update": "rule:admin_api",
+    "volume_extension:qos_specs_manage:delete": "rule:admin_api",
+
     "volume_extension:quotas:show": "",
     "volume_extension:quotas:update": "rule:admin_api",
     "volume_extension:quotas:delete": "rule:admin_api",
