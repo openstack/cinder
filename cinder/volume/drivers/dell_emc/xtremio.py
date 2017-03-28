@@ -460,6 +460,17 @@ class XtremIOVolumeDriver(san.SanDriver):
         except exception.XtremIOSnapshotsLimitExceeded as e:
             raise exception.CinderException(e.message)
 
+        # extend the snapped volume if requested size is larger then original
+        if volume['size'] > src_vref['size']:
+            try:
+                self.extend_volume(volume, volume['size'])
+            except Exception:
+                LOG.error(_LE('failes to extend volume %s, '
+                              'reverting clone operation'), volume['id'])
+                # remove the volume in case resize failed
+                self.delete_volume(volume)
+                raise
+
         if volume.get('consistencygroup_id') and self.client is XtremIOClient4:
             self.client.add_vol_to_cg(volume['id'],
                                       volume['consistencygroup_id'])
