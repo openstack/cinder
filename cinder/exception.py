@@ -1363,3 +1363,29 @@ class AttachmentSpecsNotFound(NotFound):
 
 class InvalidAttachment(Invalid):
     message = _("Invalid attachment: %(reason)s")
+
+
+# Veritas driver
+class UnableToExecuteHyperScaleCmd(VolumeDriverException):
+    message = _("Failed HyperScale command for '%(message)s'")
+
+
+class UnableToProcessHyperScaleCmdOutput(VolumeDriverException):
+    message = _("Failed processing command output '%(cmd_out)s'"
+                " for HyperScale command")
+
+
+class ErrorInFetchingConfiguration(VolumeDriverException):
+    message = _("Error in fetching configuration for '%(persona)s'")
+
+
+class ErrorInSendingMsg(VolumeDriverException):
+    message = _("Error in sending message '%(cmd_error)s'")
+
+
+class ErrorInHyperScaleVersion(VolumeDriverException):
+    message = _("Error in getting HyperScale version '%(cmd_error)s'")
+
+
+class ErrorInParsingArguments(VolumeDriverException):
+    message = _("Error in parsing message arguments : Invalid Payload")

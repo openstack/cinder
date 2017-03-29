@@ -1,0 +1,3 @@
+---
+features:
+  - Added volume backend driver for Veritas HyperScale storage.
