@@ -161,9 +161,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.9 - Fix terminate connection on failover
         2.0.10 - Add entry point tracing
         2.0.11 - Fix extend volume if larger than snapshot bug #1560654
+        2.0.12 - add CG capability to generic volume groups.
     """
 
-    VERSION = "2.0.11"
+    VERSION = "2.0.12"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -469,24 +470,41 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             self._logout(client)
 
     @cinder_utils.trace
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
-        return model_update
+    def create_group(self, context, group):
+        """Creates a group."""
+        LOG.debug("Creating group.")
+        if not utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        for vol_type_id in group.volume_type_ids:
+            replication_type = self._volume_of_replicated_type(
+                None, vol_type_id)
+            if replication_type:
+                # An unsupported configuration
+                LOG.error('Unable to create group: create group with '
+                          'replication volume type is not supported.')
+                model_update = {'status': fields.GroupStatus.ERROR}
+                return model_update
+
+        return {'status': fields.GroupStatus.AVAILABLE}
 
     @cinder_utils.trace
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        """Creates a consistency group from a source"""
-        msg = _("Creating a consistency group from a source is not "
-                "currently supported.")
-        LOG.error(msg)
-        raise NotImplementedError(msg)
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from a source"""
+        msg = _("Creating a group from a source is not "
+                "supported when consistent_group_snapshot_enabled to true.")
+        if not utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        else:
+            raise exception.VolumeBackendAPIException(data=msg)
 
     @cinder_utils.trace
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
+        if not utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
         volume_model_updates = []
         for volume in volumes:
             volume_update = {'id': volume.id}
@@ -506,25 +524,31 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         return model_update, volume_model_updates
 
     @cinder_utils.trace
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
-        """Updates a consistency group.
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
+        """Updates a group.
 
         Because the backend has no concept of volume grouping, cinder will
-        maintain all volume/consistency group relationships. Because of this
+        maintain all volume/group relationships. Because of this
         functionality, there is no need to make any client calls; instead
         simply returning out of this function allows cinder to properly
-        add/remove volumes from the consistency group.
+        add/remove volumes from the group.
         """
+        LOG.debug("Updating group.")
+        if not utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
         return None, None, None
 
     @cinder_utils.trace
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a consistency group snapshot."""
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group snapshot."""
+        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
         client = self._login()
         try:
             snap_set = []
-            snapshot_base_name = "snapshot-" + cgsnapshot.id
+            snapshot_base_name = "snapshot-" + group_snapshot.id
             snapshot_model_updates = []
             for i, snapshot in enumerate(snapshots):
                 volume = snapshot.volume
@@ -551,7 +575,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
             source_volume_id = snap_set[0]['volumeId']
             optional = {'inheritAccess': True}
-            description = cgsnapshot.description
+            description = group_snapshot.description
             if description:
                 optional['description'] = description
 
@@ -574,11 +598,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         return model_update, snapshot_model_updates
 
     @cinder_utils.trace
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a consistency group snapshot."""
-
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group snapshot."""
+        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
         client = self._login()
-        snap_name_base = "snapshot-" + cgsnapshot.id
+        snap_name_base = "snapshot-" + group_snapshot.id
 
         snapshot_model_updates = []
         for i, snapshot in enumerate(snapshots):
@@ -605,7 +630,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         self._logout(client)
 
-        model_update = {'status': cgsnapshot.status}
+        model_update = {'status': group_snapshot.status}
 
         return model_update, snapshot_model_updates
 
@@ -705,7 +730,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         data['total_volumes'] = total_volumes
         data['filter_function'] = self.get_filter_function()
         data['goodness_function'] = self.get_goodness_function()
-        data['consistencygroup_support'] = True
+        data['consistent_group_snapshot_enabled'] = True
         data['replication_enabled'] = self._replication_enabled
         data['replication_type'] = ['periodic']
         data['replication_count'] = len(self._replication_targets)
@@ -1747,9 +1772,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             rep_flag = False
         return rep_flag
 
-    def _volume_of_replicated_type(self, volume):
+    def _volume_of_replicated_type(self, volume, vol_type_id=None):
+        # TODO(kushal) : we will use volume.volume_types when we re-write
+        # the design for unit tests to use objects instead of dicts.
         replicated_type = False
-        volume_type_id = volume.get('volume_type_id')
+        volume_type_id = vol_type_id if vol_type_id else volume.get(
+            'volume_type_id')
         if volume_type_id:
             volume_type = self._get_volume_type(volume_type_id)
 

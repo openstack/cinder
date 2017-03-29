@@ -182,18 +182,18 @@ class HPELeftHandBaseDriver(object):
 class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
     CONSIS_GROUP_ID = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
-    CGSNAPSHOT_ID = '5351d914-6c90-43e7-9a8e-7e84610927da'
+    GROUPSNAPSHOT_ID = '5351d914-6c90-43e7-9a8e-7e84610927da'
 
-    class fake_consistencygroup_object(object):
-        volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-        name = 'cg_name'
-        cgsnapshot_id = None
+    class fake_group_object(object):
+        volume_type_ids = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+        name = 'group_name'
+        groupsnapshot_id = None
         id = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
-        description = 'consistency group'
+        description = 'group'
 
-    class fake_cgsnapshot_object(object):
-        consistencygroup_id = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
-        description = 'cgsnapshot'
+    class fake_groupsnapshot_object(object):
+        group_id = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
+        description = 'groupsnapshot'
         id = '5351d914-6c90-43e7-9a8e-7e84610927da'
         readOnly = False
 
@@ -2638,8 +2638,15 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             mock_client.assert_has_calls(expected)
 
-    def test_create_consistencygroup(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group(self, cg_ss_enabled, mock_get_volume_type):
+        cg_ss_enabled.side_effect = [False, True, True]
         ctxt = context.get_admin_context()
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
         # set up driver with default config
         mock_client = self.setup_driver()
 
@@ -2647,15 +2654,39 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
+            # create a group object
+            group = self.fake_group_object()
 
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group with consistent_group_snapshot_enabled flag to
+            # False
+            self.assertRaises(NotImplementedError,
+                              self.driver.create_group, ctxt, group)
 
-    def test_delete_consistencygroup(self):
+            # create a group with consistent_group_snapshot_enabled flag to
+            # True
+            model_update = self.driver.create_group(ctxt, group)
+
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+
+            # create a group with replication enabled on volume type
+            mock_get_volume_type.return_value = {
+                'name': 'gold',
+                'extra_specs': {
+                    'replication_enabled': '<is> True'}}
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.ERROR,
+                             model_update['status'])
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group(self, cg_ss_enabled, mock_get_volume_type):
+        cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
         # set up driver with default config
         mock_client = self.setup_driver()
 
@@ -2666,21 +2697,29 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group
+            group = self.fake_group_object()
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
 
-            # delete the consistency group
-            group.status = fields.ConsistencyGroupStatus.DELETING
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
-                                                           volumes)
-            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
-                             cg['status'])
+            # delete the group
+            group.status = fields.GroupStatus.DELETING
+            model_update, vols = self.driver.delete_group(ctxt, group,
+                                                          volumes)
+            self.assertEqual(fields.GroupStatus.DELETING,
+                             model_update['status'])
 
-    def test_update_consistencygroup_add_vol_delete_cg(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group_add_vol_delete_group(self, cg_ss_enabled,
+                                               mock_get_volume_type):
+        cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
 
         # set up driver with default config
         mock_client = self.setup_driver()
@@ -2698,26 +2737,33 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group
+            group = self.fake_group_object()
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
 
-            # add volume to consistency group
-            cg = self.driver.update_consistencygroup(
+            # add volume to group
+            model_update = self.driver.update_group(
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
-            # delete the consistency group
-            group.status = fields.ConsistencyGroupStatus.DELETING
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
-                                                           volumes)
-            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
-                             cg['status'])
+            # delete the group
+            group.status = fields.GroupStatus.DELETING
+            model_update, vols = self.driver.delete_group(ctxt, group,
+                                                          volumes)
+            self.assertEqual(fields.GroupStatus.DELETING,
+                             model_update['status'])
 
-    def test_update_consistencygroup_remove_vol_delete_cg(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group_remove_vol_delete_group(self, cg_ss_enabled,
+                                                  mock_get_volume_type):
+        cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
-
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
         # set up driver with default config
         mock_client = self.setup_driver()
 
@@ -2734,30 +2780,36 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group
+            group = self.fake_group_object()
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
 
-            # add volume to consistency group
-            cg = self.driver.update_consistencygroup(
+            # add volume to group
+            model_update = self.driver.update_group(
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
-            # remove volume from consistency group
-            cg = self.driver.update_consistencygroup(
+            # remove volume from group
+            model_update = self.driver.update_group(
                 ctxt, group, add_volumes=None, remove_volumes=[self.volume])
 
-            # delete the consistency group
-            group.status = fields.ConsistencyGroupStatus.DELETING
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
-                                                           volumes)
-            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
-                             cg['status'])
+            # delete the group
+            group.status = fields.GroupStatus.DELETING
+            model_update, vols = self.driver.delete_group(ctxt, group,
+                                                          volumes)
+            self.assertEqual(fields.GroupStatus.DELETING,
+                             model_update['status'])
 
-    def test_create_cgsnapshot(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_groupsnapshot(self, cg_ss_enabled, mock_get_volume_type):
+        cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
-
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
         # set up driver with default config
         mock_client = self.setup_driver()
 
@@ -2772,21 +2824,21 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group
+            group = self.fake_group_object()
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
 
-            # create volume and add it to the consistency group
-            self.driver.update_consistencygroup(
+            # create volume and add it to the group
+            self.driver.update_group(
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
-            # create the conistency group snapshot
-            cgsnapshot = self.fake_cgsnapshot_object()
-            cgsnap, snaps = self.driver.create_cgsnapshot(
-                ctxt, cgsnapshot, expected_snaps)
-            self.assertEqual('available', cgsnap['status'])
+            # create the group snapshot
+            groupsnapshot = self.fake_groupsnapshot_object()
+            madel_update, snaps = self.driver.create_group_snapshot(
+                ctxt, groupsnapshot, expected_snaps)
+            self.assertEqual('available', madel_update['status'])
 
             # mock HTTPServerError (array failure)
             mock_client.createSnapshotSet.side_effect = (
@@ -2794,8 +2846,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
-                self.driver.create_cgsnapshot,
-                ctxt, cgsnapshot, expected_snaps)
+                self.driver.create_group_snapshot,
+                ctxt, groupsnapshot, expected_snaps)
 
             # mock HTTPServerError (array failure)
             mock_client.getVolumeByName.side_effect = (
@@ -2803,12 +2855,18 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
-                self.driver.create_cgsnapshot,
-                ctxt, cgsnapshot, expected_snaps)
+                self.driver.create_group_snapshot,
+                ctxt, groupsnapshot, expected_snaps)
 
-    def test_delete_cgsnapshot(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_groupsnapshot(self, cg_ss_enabled, mock_get_volume_type):
+        cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
-
+        mock_get_volume_type.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'replication_enabled': ' False'}}
         # set up driver with default config
         mock_client = self.setup_driver()
 
@@ -2823,22 +2881,22 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
-                             cg['status'])
+            # create a group
+            group = self.fake_group_object()
+            model_update = self.driver.create_group(ctxt, group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
 
-            # create volume and add it to the consistency group
-            self.driver.update_consistencygroup(
+            # create volume and add it to the group
+            self.driver.update_group(
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
-            # delete the consistency group snapshot
-            cgsnapshot = self.fake_cgsnapshot_object()
-            cgsnapshot.status = 'deleting'
-            cgsnap, snaps = self.driver.delete_cgsnapshot(
-                ctxt, cgsnapshot, expected_snaps)
-            self.assertEqual('deleting', cgsnap['status'])
+            # delete the group snapshot
+            groupsnapshot = self.fake_groupsnapshot_object()
+            groupsnapshot.status = 'deleting'
+            model_update, snaps = self.driver.delete_group_snapshot(
+                ctxt, groupsnapshot, expected_snaps)
+            self.assertEqual('deleting', model_update['status'])
 
             # mock HTTPServerError
             ex = hpeexceptions.HTTPServerError({
@@ -2847,16 +2905,16 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ' duh.'})
             mock_client.getSnapshotByName.side_effect = ex
             # ensure the raised exception is a cinder exception
-            cgsnap, snaps = self.driver.delete_cgsnapshot(
-                ctxt, cgsnapshot, expected_snaps)
+            cgsnap, snaps = self.driver.delete_group_snapshot(
+                ctxt, groupsnapshot, expected_snaps)
             self.assertEqual('error', snaps[0]['status'])
 
             # mock HTTP other errors
             ex = hpeexceptions.HTTPConflict({'message': 'Some message.'})
             mock_client.getSnapshotByName.side_effect = ex
             # ensure the raised exception is a cinder exception
-            cgsnap, snaps = self.driver.delete_cgsnapshot(
-                ctxt, cgsnapshot, expected_snaps)
+            cgsnap, snaps = self.driver.delete_group_snapshot(
+                ctxt, groupsnapshot, expected_snaps)
             self.assertEqual('error', snaps[0]['status'])
 
     @mock.patch.object(volume_types, 'get_volume_type')

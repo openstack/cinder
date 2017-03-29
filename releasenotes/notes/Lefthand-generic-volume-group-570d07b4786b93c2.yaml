@@ -1,0 +1,4 @@
+---
+features:
+  - Add consistent group capability to generic volume groups in Lefthand
+    driver.
