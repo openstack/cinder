@@ -1,0 +1,14 @@
+{
+    "attachments": [
+        {
+            "status": "attaching",
+            "detached_at": "2015-09-16T09:28:52.000000",
+            "connection_info": {},
+            "attached_at": "2015-09-16T09:28:52.000000",
+            "attach_mode": "ro",
+            "instance": "31c79baf-b59e-469c-979f-1df4ecb6eea7",
+            "volume_id": "462dcc2d-130d-4654-8db1-da0df2da6a0d",
+            "id": "3b8b6631-1cf7-4fd7-9afb-c01e541a073c"
+        }
+    ]
+}

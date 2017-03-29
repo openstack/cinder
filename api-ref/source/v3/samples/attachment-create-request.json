@@ -1,0 +1,16 @@
+{
+    "attachment": {
+        "instance_uuid": "462dcc2d-130d-4654-8db1-da0df2da6a0d",
+        "connector": {
+            "initiator": "iqn.1993-08.org.debian: 01: cad181614cec",
+            "ip": "192.168.1.20",
+            "platform": "x86_64",
+            "host": "tempest-1",
+            "os_type": "linux2",
+            "multipath": false,
+            "mountpoint": "/dev/vdb",
+            "mode": "ro"
+        },
+        "volume_uuid": "462dcc2d-130d-4654-8db1-da0df2da6a0d"
+    }
+}
