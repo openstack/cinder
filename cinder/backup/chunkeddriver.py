@@ -46,6 +46,9 @@ LOG = logging.getLogger(__name__)
 chunkedbackup_service_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
+               choices=['none', 'off', 'no',
+                        'zlib', 'gzip',
+                        'bz2', 'bzip2'],
                help='Compression algorithm (None to disable)'),
 ]
 
