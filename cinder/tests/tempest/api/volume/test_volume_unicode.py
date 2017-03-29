@@ -36,10 +36,9 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
 
     @classmethod
     def create_volume_with_args(cls, **kwargs):
-        name = kwargs['name'] or data_utils.rand_name('Volume')
+        if 'name' not in kwargs:
+            kwargs['name'] = data_utils.rand_name('Volume')
 
-        name_field = cls.special_fields['name_field']
-        kwargs[name_field] = name
         kwargs['size'] = CONF.volume.volume_size
 
         volume = cls.volumes_client.create_volume(**kwargs)['volume']
@@ -56,5 +55,5 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
 
         result = self.volumes_client.show_volume(self.volumes[0]['id'])
         fetched_volume = result['volume']
-        self.assertEqual(fetched_volume[self.special_fields['name_field']],
+        self.assertEqual(fetched_volume['name'],
                          self.volume_name)
