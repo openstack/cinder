@@ -69,23 +69,21 @@ class AttachmentsController(wsgi.Controller):
         search_opts = req.GET.copy()
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
         marker, limit, offset = common.get_pagination_params(search_opts)
-        filters = search_opts
-        allowed = self.allowed_filters
-        if not allowed.issuperset(filters):
-            invalid_keys = set(filters).difference(allowed)
-            msg = _('Invalid filter keys: %s') % ', '.join(invalid_keys)
-            raise exception.InvalidInput(reason=msg)
 
-        # Filter out invalid options
-        allowed_search_options = ('status', 'volume_id',
-                                  'instance_id')
         if search_opts.get('instance_id', None):
             search_opts['instance_uuid'] = search_opts.get('instance_id')
         utils.remove_invalid_filter_options(context, search_opts,
-                                            allowed_search_options)
-        return objects.VolumeAttachmentList.get_all(
-            context, search_opts=search_opts, marker=marker, limit=limit,
-            offset=offset, sort_keys=sort_keys, sort_direction=sort_dirs)
+                                            self.allowed_filters)
+        if context.is_admin and 'all_tenants' in search_opts:
+            del search_opts['all_tenants']
+            return objects.VolumeAttachmentList.get_all(
+                context, search_opts=search_opts, marker=marker, limit=limit,
+                offset=offset, sort_keys=sort_keys, sort_direction=sort_dirs)
+        else:
+            return objects.VolumeAttachmentList.get_all_by_project(
+                context, context.project_id, search_opts=search_opts,
+                marker=marker, limit=limit, offset=offset, sort_keys=sort_keys,
+                sort_direction=sort_dirs)
 
     @wsgi.Controller.api_version(API_VERSION)
     @wsgi.response(202)
