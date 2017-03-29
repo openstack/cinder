@@ -30,6 +30,35 @@ from cinder.volume.drivers import remotefs
 
 
 @ddt.ddt
+class RemoteFsDriverTestCase(test.TestCase):
+
+    def setUp(self):
+        super(RemoteFsDriverTestCase, self).setUp()
+
+        self._driver = remotefs.RemoteFSDriver()
+        self.context = context.get_admin_context()
+        self._fake_volume = fake_volume.fake_volume_obj(
+            self.context, provider_location='fake_share')
+
+    @ddt.data(True, False)
+    def test_copy_volume_to_image(self, run_as_root):
+        self._driver._execute_as_root = run_as_root
+        image_service = mock.Mock()
+        image_meta = {'some': 'metadata'}
+        local_path = '/mnt/cinder/xyzzy/some_volume'
+        self.mock_object(self._driver, 'local_path', mock.Mock(
+            return_value=local_path))
+        self.mock_object(image_utils, 'upload_volume')
+
+        self._driver.copy_volume_to_image(
+            self.context, self._fake_volume, image_service, image_meta)
+
+        image_utils.upload_volume.assert_called_once_with(
+            self.context, image_service, image_meta, local_path,
+            run_as_root=run_as_root)
+
+
+@ddt.ddt
 class RemoteFsSnapDriverTestCase(test.TestCase):
 
     _FAKE_MNT_POINT = '/mnt/fake_hash'
