@@ -641,27 +641,11 @@ class VMAXMasking(object):
         :param storageGroupInstanceName: storage group instance name
         :raises: VolumeBackendAPIException
         """
-
-        assocVolumeInstanceNames = self.get_devices_from_storage_group(
-            conn, storageGroupInstanceName)
-        LOG.debug(
-            "There are %(length)lu associated with the default storage group "
-            "before removing volume %(volumeName)s.",
-            {'length': len(assocVolumeInstanceNames),
-             'volumeName': volumeName})
         volInstance = conn.GetInstance(volumeInstanceName, LocalOnly=False)
 
         self._remove_volume_from_sg(
             conn, controllerConfigService, storageGroupInstanceName,
             volInstance, maskingViewDict['extraSpecs'])
-
-        assocVolumeInstanceNames = self.get_devices_from_storage_group(
-            conn, storageGroupInstanceName)
-        LOG.debug(
-            "There are %(length)lu associated with the default storage group "
-            "after removing volume %(volumeName)s.",
-            {'length': len(assocVolumeInstanceNames),
-             'volumeName': volumeName})
 
         # Required for unit tests.
         emptyStorageGroupInstanceName = (
