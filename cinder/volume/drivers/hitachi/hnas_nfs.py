@@ -24,6 +24,7 @@ import socket
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import units
 import six
 
@@ -89,7 +90,12 @@ class HNASNFSDriver(nfs.NfsDriver):
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
     VERSION = HNAS_NFS_VERSION
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
+        msg = _("The Hitachi NAS driver is deprecated and will be "
+                "removed in a future release.")
+        versionutils.report_deprecated_feature(LOG, msg)
         self._execute = None
         self.context = None
         self.configuration = kwargs.get('configuration', None)
