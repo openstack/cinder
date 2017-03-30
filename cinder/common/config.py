@@ -45,9 +45,9 @@ core_opts = [
 CONF.register_cli_opts(core_opts)
 
 global_opts = [
-    cfg.StrOpt('my_ip',
-               default=netutils.get_my_ipv4(),
-               help='IP address of this host'),
+    cfg.HostAddressOpt('my_ip',
+                       default=netutils.get_my_ipv4(),
+                       help='IP address of this host'),
     cfg.ListOpt('glance_api_servers',
                 default=None,
                 help='A list of the URLs of glance API servers available to '
@@ -113,10 +113,11 @@ global_opts = [
     cfg.StrOpt('scheduler_manager',
                default='cinder.scheduler.manager.SchedulerManager',
                help='Full class name for the Manager for scheduler'),
-    cfg.StrOpt('host',
-               default=socket.gethostname(),
-               help='Name of this node.  This can be an opaque identifier. '
-                    'It is not necessarily a host name, FQDN, or IP address.'),
+    cfg.HostAddressOpt('host',
+                       default=socket.gethostname(),
+                       help='Name of this node.  This can be an opaque '
+                            'identifier. It is not necessarily a host name, '
+                            'FQDN, or IP address.'),
     # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
                default='nova',
