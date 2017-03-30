@@ -18,13 +18,14 @@ Driver for Dell EMC ScaleIO based on ScaleIO remote CLI.
 
 import base64
 import binascii
+from distutils import version
 import json
 import math
-
 from os_brick.initiator import connector
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import re
 import requests
 import six
 from six.moves import urllib
@@ -69,6 +70,8 @@ scaleio_opts = [
                help='Storage Pool name.'),
     cfg.StrOpt('sio_storage_pool_id',
                help='Storage Pool ID.'),
+    cfg.StrOpt('sio_server_api_version',
+               help='ScaleIO API version.'),
     cfg.FloatOpt('sio_max_over_subscription_ratio',
                  # This option exists to provide a default value for the
                  # ScaleIO driver which is different than the global default.
@@ -111,7 +114,9 @@ SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 class ScaleIODriver(driver.VolumeDriver):
     """Dell EMC ScaleIO Driver."""
 
-    VERSION = "2.0"
+    VERSION = "2.0.1"
+    # Major changes
+    # 2.0.1: Added support for SIO 1.3x in addition to 2.0.x
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_ScaleIO_CI"
@@ -129,6 +134,7 @@ class ScaleIODriver(driver.VolumeDriver):
         self.server_username = self.configuration.san_login
         self.server_password = self.configuration.san_password
         self.server_token = None
+        self.server_api_version = self.configuration.sio_server_api_version
         self.verify_server_certificate = (
             self.configuration.sio_verify_server_certificate)
         self.server_certificate_path = None
@@ -300,6 +306,14 @@ class ScaleIODriver(driver.VolumeDriver):
         return qos_limit if qos_limit is not None else extraspecs_limit
 
     @staticmethod
+    def _version_greater_than(ver1, ver2):
+        return version.LooseVersion(ver1) > version.LooseVersion(ver2)
+
+    @staticmethod
+    def _version_greater_than_or_equal(ver1, ver2):
+        return version.LooseVersion(ver1) >= version.LooseVersion(ver2)
+
+    @staticmethod
     def _id_to_base64(id):
         # Base64 encode the id to get a volume name less than 32 characters due
         # to ScaleIO limitation.
@@ -345,8 +359,6 @@ class ScaleIODriver(driver.VolumeDriver):
                   'domain_id': protection_domain_id,
                   'domain_name': protection_domain_name})
 
-        verify_cert = self._get_verify_cert()
-
         if storage_pool_name:
             self.storage_pool_name = storage_pool_name
             self.storage_pool_id = None
@@ -377,15 +389,9 @@ class ScaleIODriver(driver.VolumeDriver):
                        "%(encoded_domain_name)s") % req_vars
             LOG.info("ScaleIO get domain id by name request: %s.",
                      request)
-            r = requests.get(
-                request,
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert)
-            r = self._check_response(r, request)
 
-            domain_id = r.json()
+            r, domain_id = self._execute_scaleio_get_request(request)
+
             if not domain_id:
                 msg = (_("Domain with name %s wasn't found.")
                        % self.protection_domain_name)
@@ -411,13 +417,8 @@ class ScaleIODriver(driver.VolumeDriver):
                        "/api/types/Pool/instances/getByName::"
                        "%(domain_id)s,%(encoded_domain_name)s") % req_vars
             LOG.info("ScaleIO get pool id by name request: %s.", request)
-            r = requests.get(
-                request,
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert)
-            pool_id = r.json()
+            r, pool_id = self._execute_scaleio_get_request(request)
+
             if not pool_id:
                 msg = (_("Pool with name %(pool_name)s wasn't found in "
                          "domain %(domain_id)s.")
@@ -449,19 +450,12 @@ class ScaleIODriver(driver.VolumeDriver):
                   'storagePoolId': pool_id}
 
         LOG.info("Params for add volume request: %s.", params)
-        r = requests.post(
-            "https://" +
-            self.server_ip +
-            ":" +
-            self.server_port +
-            "/api/types/Volume/instances",
-            data=json.dumps(params),
-            headers=self._get_headers(),
-            auth=(
-                self.server_username,
-                self.server_token),
-            verify=verify_cert)
-        response = r.json()
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/types/Volume/instances") % req_vars
+        r, response = self._execute_scaleio_post_request(params, request)
+
         LOG.info("Add volume response: %s", response)
 
         if r.status_code != OK_STATUS_CODE and "errorCode" in response:
@@ -524,7 +518,11 @@ class ScaleIODriver(driver.VolumeDriver):
                 self.server_token),
             verify=self._get_verify_cert())
         r = self._check_response(r, request, False, params)
-        response = r.json()
+        response = None
+        try:
+            response = r.json()
+        except ValueError:
+            response = None
         return r, response
 
     def _check_response(self, response, request, is_get_request=True,
@@ -561,6 +559,31 @@ class ScaleIODriver(driver.VolumeDriver):
                                     verify=verify_cert)
             return res
         return response
+
+    def _get_server_api_version(self, fromcache=True):
+        if self.server_api_version is None or fromcache is False:
+            request = (
+                "https://" + self.server_ip +
+                ":" + self.server_port + "/api/version")
+            r, unused = self._execute_scaleio_get_request(request)
+
+            if r.status_code == OK_STATUS_CODE:
+                self.server_api_version = r.text.replace('\"', '')
+                LOG.info("REST API Version: %(api_version)s",
+                         {'api_version': self.server_api_version})
+            else:
+                msg = (_("Error calling version api "
+                         "status code: %d") % r.status_code)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            # make sure the response was valid
+            pattern = re.compile("^\d+(\.\d+)*$")
+            if not pattern.match(self.server_api_version):
+                msg = (_("Error calling version api "
+                         "response: %s") % r.text)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        return self.server_api_version
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -666,8 +689,6 @@ class ScaleIODriver(driver.VolumeDriver):
         self._delete_volume(volume_id)
 
     def _delete_volume(self, vol_id):
-        verify_cert = self._get_verify_cert()
-
         req_vars = {'server_ip': self.server_ip,
                     'server_port': self.server_port,
                     'vol_id': six.text_type(vol_id)}
@@ -684,34 +705,16 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("Trying to unmap volume from all sdcs"
                      " before deletion: %s.",
                      request)
-            r = requests.post(
-                request,
-                data=json.dumps(params),
-                headers=self._get_headers(),
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert
-            )
-            r = self._check_response(r, request, False, params)
+            r, unused = self._execute_scaleio_post_request(params, request)
             LOG.debug("Unmap volume response: %s.", r.text)
 
         params = {'removeMode': 'ONLY_ME'}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/Volume::%(vol_id)s"
                    "/action/removeVolume") % req_vars
-        r = requests.post(
-            request,
-            data=json.dumps(params),
-            headers=self._get_headers(),
-            auth=(self.server_username,
-                  self.server_token),
-            verify=verify_cert
-        )
-        r = self._check_response(r, request, False, params)
+        r, response = self._execute_scaleio_post_request(params, request)
 
         if r.status_code != OK_STATUS_CODE:
-            response = r.json()
             error_code = response['errorCode']
             if error_code == VOLUME_NOT_FOUND_ERROR:
                 LOG.warning("Ignoring error in delete volume %s:"
@@ -854,15 +857,7 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("username: %(username)s, verify_cert: %(verify)s.",
                      {'username': self.server_username,
                       'verify': verify_cert})
-            r = requests.get(
-                request,
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert)
-            r = self._check_response(r, request)
-            LOG.info("Get domain by name response: %s", r.text)
-            domain_id = r.json()
+            r, domain_id = self._execute_scaleio_get_request(request)
             if not domain_id:
                 msg = (_("Domain with name %s wasn't found.")
                        % self.protection_domain_name)
@@ -887,13 +882,7 @@ class ScaleIODriver(driver.VolumeDriver):
                        "/api/types/Pool/instances/getByName::"
                        "%(domain_id)s,%(encoded_pool_name)s") % req_vars
             LOG.info("ScaleIO get pool id by name request: %s.", request)
-            r = requests.get(
-                request,
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert)
-            pool_id = r.json()
+            r, pool_id = self._execute_scaleio_get_request(request)
             if not pool_id:
                 msg = (_("Pool with name %(pool)s wasn't found in domain "
                          "%(domain)s.")
@@ -914,20 +903,22 @@ class ScaleIODriver(driver.VolumeDriver):
             request = ("https://%(server_ip)s:%(server_port)s"
                        "/api/types/StoragePool/instances/action/"
                        "querySelectedStatistics") % req_vars
-            # The 'Km' in thinCapacityAllocatedInKm is a bug in REST API
-            params = {'ids': [pool_id], 'properties': [
-                "capacityAvailableForVolumeAllocationInKb",
-                "capacityLimitInKb", "spareCapacityInKb",
-                "thickCapacityInUseInKb", "thinCapacityAllocatedInKm"]}
-            r = requests.post(
-                request,
-                data=json.dumps(params),
-                headers=self._get_headers(),
-                auth=(
-                    self.server_username,
-                    self.server_token),
-                verify=verify_cert)
-            response = r.json()
+            # SIO version 2+ added a property...
+            if self._version_greater_than_or_equal(
+                    self._get_server_api_version(),
+                    "2.0.0"):
+                # The 'Km' in thinCapacityAllocatedInKm is a bug in REST API
+                params = {'ids': [pool_id], 'properties': [
+                    "capacityAvailableForVolumeAllocationInKb",
+                    "capacityLimitInKb", "spareCapacityInKb",
+                    "thickCapacityInUseInKb", "thinCapacityAllocatedInKm"]}
+            else:
+                params = {'ids': [pool_id], 'properties': [
+                    "capacityAvailableForVolumeAllocationInKb",
+                    "capacityLimitInKb", "spareCapacityInKb",
+                    "thickCapacityInUseInKb"]}
+
+            r, response = self._execute_scaleio_post_request(params, request)
             LOG.info("Query capacity stats response: %s.", response)
             for res in response.values():
                 # Divide by two because ScaleIO creates a copy for each volume
@@ -940,10 +931,16 @@ class ScaleIODriver(driver.VolumeDriver):
                 free_capacity_gb = (
                     res['capacityAvailableForVolumeAllocationInKb'] / units.Mi)
                 # Divide by two because ScaleIO creates a copy for each volume
-                provisioned_capacity = (
-                    ((res['thickCapacityInUseInKb'] +
-                     res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
-                LOG.info("Free capacity of pool %(pool)s is: %(free)s, "
+                if self._version_greater_than_or_equal(
+                        self._get_server_api_version(),
+                        "2.0.0"):
+                    provisioned_capacity = (
+                        ((res['thickCapacityInUseInKb'] +
+                          res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
+                else:
+                    provisioned_capacity = (
+                        (res['thickCapacityInUseInKb'] / 2) / units.Mi)
+                LOG.info("free capacity of pool %(pool)s is: %(free)s, "
                          "total capacity: %(total)s, "
                          "provisioned capacity: %(prov)s",
                          {'pool': pool_name,
@@ -1120,18 +1117,9 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info("ScaleIO rename volume request: %s.", request)
 
         params = {'newName': new_name}
-        r = requests.post(
-            request,
-            data=json.dumps(params),
-            headers=self._get_headers(),
-            auth=(self.server_username,
-                  self.server_token),
-            verify=self._get_verify_cert()
-        )
-        r = self._check_response(r, request, False, params)
+        r, response = self._execute_scaleio_post_request(params, request)
 
         if r.status_code != OK_STATUS_CODE:
-            response = r.json()
             error_code = response['errorCode']
             if ((error_code == VOLUME_NOT_FOUND_ERROR or
                  error_code == OLD_VOLUME_NOT_FOUND_ERROR or
