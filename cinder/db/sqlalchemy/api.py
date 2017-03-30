@@ -837,9 +837,9 @@ def quota_get_all_by_project(context, project_id):
 
 
 @require_context
-def quota_allocated_get_all_by_project(context, project_id):
-    rows = model_query(context, models.Quota, read_deleted='no').filter_by(
-        project_id=project_id).all()
+def quota_allocated_get_all_by_project(context, project_id, session=None):
+    rows = model_query(context, models.Quota, read_deleted='no',
+                       session=session).filter_by(project_id=project_id).all()
     result = {'project_id': project_id}
     for row in rows:
         result[row.resource] = row.allocated
@@ -1138,7 +1138,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
 
         # Get the current usages
         usages = _get_quota_usages(context, session, project_id)
-        allocated = quota_allocated_get_all_by_project(context, project_id)
+        allocated = quota_allocated_get_all_by_project(context, project_id,
+                                                       session=session)
         allocated.pop('project_id')
 
         # Handle usage refresh

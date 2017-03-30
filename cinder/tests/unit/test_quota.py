@@ -952,7 +952,7 @@ class DbQuotaDriverBaseTestCase(test.TestCase):
         self.mock_object(db, 'quota_class_get_all_by_name', fake_qcgabn)
 
     def _mock_allocated_get_all_by_project(self, allocated_quota=False):
-        def fake_qagabp(context, project_id):
+        def fake_qagabp(context, project_id, session=None):
             self.calls.append('quota_allocated_get_all_by_project')
             if allocated_quota:
                 return dict(project_id=project_id, volumes=3)
@@ -1559,7 +1559,8 @@ class NestedQuotaValidation(NestedDbQuotaDriverBaseTestCase):
     def _fake_quota_usage_get_all_by_project(self, context, project_id):
         return {'volumes': self.proj_vals[project_id]}
 
-    def _fake_quota_allocated_get_all_by_project(self, context, project_id):
+    def _fake_quota_allocated_get_all_by_project(self, context, project_id,
+                                                 session=None):
         ret = {'project_id': project_id}
         proj_val = self.proj_vals[project_id]
         if 'alloc' in proj_val:
@@ -1735,12 +1736,6 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
 
             return reservation_ref
 
-        def fake_qagabp(context, project_id):
-            self.assertEqual('test_project', project_id)
-            return {'project_id': project_id}
-
-        self.mock_object(sqa_api, 'quota_allocated_get_all_by_project',
-                         fake_qagabp)
         self.mock_object(sqa_api, 'get_session',
                          fake_get_session)
         self.mock_object(sqa_api, '_get_quota_usages',
@@ -1829,8 +1824,9 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.assertEqual(0, len(reservations))
 
     def _mock_allocated_get_all_by_project(self, allocated_quota=False):
-        def fake_qagabp(context, project_id):
+        def fake_qagabp(context, project_id, session=None):
             self.assertEqual('test_project', project_id)
+            self.assertNotEqual(session, None)
             if allocated_quota:
                 return dict(project_id=project_id, volumes=3,
                             gigabytes = 2 * 1024)
@@ -1861,6 +1857,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
              dict(resource='gigabytes',
                   usage_id=self.usages_created['gigabytes'],
                   delta=2 * 1024), ])
+
         # But if we try reserve 8 volumes(more free quota that we have)
         deltas = dict(volumes=8,
                       gigabytes=2 * 1024, )
