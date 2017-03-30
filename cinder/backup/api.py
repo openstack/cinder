@@ -215,20 +215,20 @@ class API(base.Base):
                        % {'vol1': volume_id,
                           'vol2': snapshot.volume_id})
                 raise exception.InvalidVolume(reason=msg)
-        if volume['status'] not in ["available", "in-use"]:
+            if snapshot['status'] not in ["available"]:
+                msg = (_('Snapshot to be backed up must be available, '
+                         'but the current status is "%s".')
+                       % snapshot['status'])
+                raise exception.InvalidSnapshot(reason=msg)
+        elif volume['status'] not in ["available", "in-use"]:
             msg = (_('Volume to be backed up must be available '
                      'or in-use, but the current status is "%s".')
                    % volume['status'])
             raise exception.InvalidVolume(reason=msg)
-        elif volume['status'] in ["in-use"] and not snapshot_id and not force:
+        elif volume['status'] in ["in-use"] and not force:
             msg = _('Backing up an in-use volume must use '
                     'the force flag.')
             raise exception.InvalidVolume(reason=msg)
-        elif snapshot_id and snapshot['status'] not in ["available"]:
-            msg = (_('Snapshot to be backed up must be available, '
-                     'but the current status is "%s".')
-                   % snapshot['status'])
-            raise exception.InvalidSnapshot(reason=msg)
 
         previous_status = volume['status']
         volume_host = volume_utils.extract_host(volume.host, 'host')

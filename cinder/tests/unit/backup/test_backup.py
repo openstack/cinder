@@ -620,11 +620,14 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(vol_size, backup['size'])
 
     @mock.patch('cinder.backup.manager.BackupManager._run_backup')
-    @ddt.data(fields.SnapshotStatus.BACKING_UP,
-              fields.SnapshotStatus.AVAILABLE)
-    def test_create_backup_with_snapshot(self, snapshot_status,
+    @ddt.data((fields.SnapshotStatus.BACKING_UP, 'available'),
+              (fields.SnapshotStatus.BACKING_UP, 'in-use'),
+              (fields.SnapshotStatus.AVAILABLE, 'available'),
+              (fields.SnapshotStatus.AVAILABLE, 'in-use'))
+    @ddt.unpack
+    def test_create_backup_with_snapshot(self, snapshot_status, volume_status,
                                          mock_run_backup):
-        vol_id = self._create_volume_db_entry(status='available')
+        vol_id = self._create_volume_db_entry(status=volume_status)
         snapshot = self._create_snapshot_db_entry(volume_id=vol_id,
                                                   status=snapshot_status)
         backup = self._create_backup_db_entry(volume_id=vol_id,
@@ -635,7 +638,7 @@ class BackupTestCase(BaseBackupTest):
             vol = objects.Volume.get_by_id(self.ctxt, vol_id)
             snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
 
-            self.assertEqual('available', vol.status)
+            self.assertEqual(volume_status, vol.status)
             self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
         else:
             self.assertRaises(exception.InvalidSnapshot,
@@ -1517,6 +1520,24 @@ class BackupAPITestCase(BaseBackupTest):
                                                  size=1)
         backup = self.api.create(self.ctxt, None, None, volume_id, None)
         self.assertEqual('testhost', backup.host)
+
+    @mock.patch.object(api.API, '_get_available_backup_service_host',
+                       return_value='fake_host')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    def test_create_backup_from_snapshot_with_volume_in_use(
+            self, mock_create, mock_get_service):
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        volume_id = self._create_volume_db_entry(status='in-use')
+        snapshot = self._create_snapshot_db_entry(volume_id=volume_id)
+        backup = self.api.create(self.ctxt, None, None, volume_id, None,
+                                 snapshot_id=snapshot.id)
+
+        self.assertEqual(fields.BackupStatus.CREATING, backup.status)
+        volume = objects.Volume.get_by_id(self.ctxt, volume_id)
+        snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
+        self.assertEqual(fields.SnapshotStatus.BACKING_UP, snapshot.status)
+        self.assertEqual('in-use', volume.status)
 
     @mock.patch.object(api.API, '_get_available_backup_service_host',
                        return_value='fake_host')

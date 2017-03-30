@@ -360,9 +360,18 @@ class BackupManager(manager.ThreadPoolManager):
         snapshot = objects.Snapshot.get_by_id(
             context, snapshot_id) if snapshot_id else None
         previous_status = volume.get('previous_status', None)
-        LOG.info('Create backup started, backup: %(backup_id)s '
-                 'volume: %(volume_id)s.',
-                 {'backup_id': backup.id, 'volume_id': volume_id})
+        if snapshot_id:
+            log_message = ('Create backup started, backup: %(backup_id)s '
+                           'volume: %(volume_id)s snapshot: %(snapshot_id)s.'
+                           % {'backup_id': backup.id,
+                              'volume_id': volume_id,
+                              'snapshot_id': snapshot_id})
+        else:
+            log_message = ('Create backup started, backup: %(backup_id)s '
+                           'volume: %(volume_id)s.'
+                           % {'backup_id': backup.id,
+                              'volume_id': volume_id})
+        LOG.info(log_message)
 
         self._notify_about_backup_usage(context, backup, "create.start")
 
@@ -371,19 +380,8 @@ class BackupManager(manager.ThreadPoolManager):
         backup.availability_zone = self.az
         backup.save()
 
-        expected_status = 'available' if snapshot_id else "backing-up"
-        actual_status = volume['status']
-        if actual_status != expected_status:
-            err = _('Create backup aborted, expected volume status '
-                    '%(expected_status)s but got %(actual_status)s.') % {
-                'expected_status': expected_status,
-                'actual_status': actual_status,
-            }
-            self._update_backup_error(backup, err)
-            raise exception.InvalidVolume(reason=err)
-
+        expected_status = "backing-up"
         if snapshot_id:
-            expected_status = fields.SnapshotStatus.BACKING_UP
             actual_status = snapshot['status']
             if actual_status != expected_status:
                 err = _('Create backup aborted, expected snapshot status '
@@ -393,6 +391,16 @@ class BackupManager(manager.ThreadPoolManager):
                 }
                 self._update_backup_error(backup, err)
                 raise exception.InvalidSnapshot(reason=err)
+        else:
+            actual_status = volume['status']
+            if actual_status != expected_status:
+                err = _('Create backup aborted, expected volume status '
+                        '%(expected_status)s but got %(actual_status)s.') % {
+                    'expected_status': expected_status,
+                    'actual_status': actual_status,
+                }
+                self._update_backup_error(backup, err)
+                raise exception.InvalidVolume(reason=err)
 
         expected_status = fields.BackupStatus.CREATING
         actual_status = backup.status
