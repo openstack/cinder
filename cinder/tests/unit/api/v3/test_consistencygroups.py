@@ -16,7 +16,6 @@ import webob
 
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import consistencygroups
-import cinder.consistencygroup
 from cinder import context
 from cinder import objects
 from cinder.objects import fields
@@ -31,7 +30,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def setUp(self):
         super(ConsistencyGroupsAPITestCase, self).setUp()
-        self.cg_api = cinder.consistencygroup.API()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
                                            is_admin=True)
@@ -44,20 +42,22 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             ctxt=None,
             name='test_consistencygroup',
             description='this is a test consistency group',
-            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_type_id=fake.GROUP_TYPE_ID,
+            volume_type_ids=[fake.VOLUME_TYPE_ID],
             availability_zone='az1',
             host='fakehost',
             status=fields.ConsistencyGroupStatus.CREATING,
             **kwargs):
         """Create a consistency group object."""
         ctxt = ctxt or self.ctxt
-        consistencygroup = objects.ConsistencyGroup(ctxt)
+        consistencygroup = objects.Group(ctxt)
         consistencygroup.user_id = fake.USER_ID
         consistencygroup.project_id = fake.PROJECT_ID
         consistencygroup.availability_zone = availability_zone
         consistencygroup.name = name
         consistencygroup.description = description
-        consistencygroup.volume_type_id = volume_type_id
+        consistencygroup.group_type_id = group_type_id
+        consistencygroup.volume_type_ids = volume_type_ids
         consistencygroup.host = host
         consistencygroup.status = status
         consistencygroup.update(kwargs)
@@ -81,7 +81,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res_dict = self.controller.update(req,
                                           consistencygroup.id,
                                           body)
-        consistencygroup = objects.ConsistencyGroup.get_by_id(
+        consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
         self.assertEqual(202, res_dict.status_int)
         self.assertEqual("", consistencygroup.name)

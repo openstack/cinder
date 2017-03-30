@@ -25,14 +25,9 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import cgsnapshots as cgsnapshot_views
-from cinder import consistencygroup as consistencygroup_api
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
-from cinder.objects import cgsnapshot as cgsnap_obj
-from cinder.objects import consistencygroup as cg_obj
-from cinder.objects import group as grp_obj
-from cinder.objects import group_snapshot as grpsnap_obj
 
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +38,6 @@ class CgsnapshotsController(wsgi.Controller):
     _view_builder_class = cgsnapshot_views.ViewBuilder
 
     def __init__(self):
-        self.cgsnapshot_api = consistencygroup_api.API()
         self.group_snapshot_api = group_api.API()
         super(CgsnapshotsController, self).__init__()
 
@@ -66,20 +60,11 @@ class CgsnapshotsController(wsgi.Controller):
 
         try:
             cgsnapshot = self._get_cgsnapshot(context, id)
-            if isinstance(cgsnapshot, cgsnap_obj.CGSnapshot):
-                self.cgsnapshot_api.delete_cgsnapshot(context, cgsnapshot)
-            elif isinstance(cgsnapshot, grpsnap_obj.GroupSnapshot):
-                self.group_snapshot_api.delete_group_snapshot(
-                    context, cgsnapshot)
-            else:
-                msg = _("Group snapshot '%s' not found.") % id
-                raise exc.HTTPNotFound(explanation=msg)
-        except (exception.CgSnapshotNotFound,
-                exception.GroupSnapshotNotFound):
+            self.group_snapshot_api.delete_group_snapshot(context, cgsnapshot)
+        except exception.GroupSnapshotNotFound:
             # Not found exception will be handled at the wsgi level
             raise
-        except (exception.InvalidCgSnapshot,
-                exception.InvalidGroupSnapshot) as e:
+        except exception.InvalidGroupSnapshot as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
         except Exception:
             msg = _("Failed cgsnapshot")
@@ -97,53 +82,32 @@ class CgsnapshotsController(wsgi.Controller):
 
     def _get_cg(self, context, id):
         # Not found exception will be handled at the wsgi level
-        try:
-            consistencygroup = self.cgsnapshot_api.get(
-                context,
-                group_id=id)
-        except exception.ConsistencyGroupNotFound:
-            consistencygroup = self.group_snapshot_api.get(
-                context, group_id=id)
+        consistencygroup = self.group_snapshot_api.get(context, group_id=id)
 
         return consistencygroup
 
     def _get_cgsnapshot(self, context, id):
         # Not found exception will be handled at the wsgi level
-        try:
-            cgsnapshot = self.cgsnapshot_api.get_cgsnapshot(
-                context,
-                cgsnapshot_id=id)
-        except exception.CgSnapshotNotFound:
-            cgsnapshot = self.group_snapshot_api.get_group_snapshot(
-                context,
-                group_snapshot_id=id)
+        cgsnapshot = self.group_snapshot_api.get_group_snapshot(
+            context, group_snapshot_id=id)
 
         return cgsnapshot
 
     def _get_cgsnapshots(self, req, is_detail):
         """Returns a list of cgsnapshots, transformed through view builder."""
         context = req.environ['cinder.context']
-        cgsnapshots = self.cgsnapshot_api.get_all_cgsnapshots(context)
-        cgsnap_limited_list = common.limited(cgsnapshots, req)
         grp_snapshots = self.group_snapshot_api.get_all_group_snapshots(
             context)
         grpsnap_limited_list = common.limited(grp_snapshots, req)
 
         if is_detail:
-            cgsnapshots = self._view_builder.detail_list(
-                req, cgsnap_limited_list)
             grp_snapshots = self._view_builder.detail_list(
                 req, grpsnap_limited_list)
         else:
-            cgsnapshots = self._view_builder.summary_list(
-                req, cgsnap_limited_list)
             grp_snapshots = self._view_builder.summary_list(
                 req, grpsnap_limited_list)
 
-        cgsnapshots['cgsnapshots'] = (cgsnapshots['cgsnapshots'] +
-                                      grp_snapshots['cgsnapshots'])
-
-        return cgsnapshots
+        return grp_snapshots
 
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
@@ -172,19 +136,10 @@ class CgsnapshotsController(wsgi.Controller):
                  context=context)
 
         try:
-            if isinstance(group, cg_obj.ConsistencyGroup):
-                new_cgsnapshot = self.cgsnapshot_api.create_cgsnapshot(
-                    context, group, name, description)
-            elif isinstance(group, grp_obj.Group):
-                new_cgsnapshot = self.group_snapshot_api.create_group_snapshot(
-                    context, group, name, description)
-            else:
-                msg = _("Group %s not found.") % group.id
-                raise exc.HTTPNotFound(explanation=msg)
+            new_cgsnapshot = self.group_snapshot_api.create_group_snapshot(
+                context, group, name, description)
         # Not found exception will be handled at the wsgi level
-        except (exception.InvalidCgSnapshot,
-                exception.InvalidConsistencyGroup,
-                exception.InvalidGroup,
+        except (exception.InvalidGroup,
                 exception.InvalidGroupSnapshot,
                 exception.InvalidVolume) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)

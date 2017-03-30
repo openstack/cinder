@@ -132,28 +132,6 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         while self._startup_delay and not self.driver.is_ready():
             eventlet.sleep(1)
 
-    def create_consistencygroup(self, context, group, request_spec_list=None,
-                                filter_properties_list=None):
-        self._wait_for_scheduler()
-        try:
-            self.driver.schedule_create_consistencygroup(
-                context, group,
-                request_spec_list,
-                filter_properties_list)
-        except exception.NoValidBackend:
-            LOG.error("Could not find a backend for consistency group "
-                      "%(group_id)s.",
-                      {'group_id': group.id})
-            group.status = 'error'
-            group.save()
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.exception("Failed to create consistency group "
-                              "%(group_id)s.",
-                              {'group_id': group.id})
-                group.status = 'error'
-                group.save()
-
     def create_group(self, context, group, group_spec=None,
                      group_filter_properties=None, request_spec_list=None,
                      filter_properties_list=None):

@@ -61,23 +61,6 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
         snapshot = tests_utils.create_snapshot(self.context, vol['id'],
                                                **kwargs)
 
-        source_group = tests_utils.create_consistencygroup(
-            self.context,
-            availability_zone=CONF.storage_availability_zone,
-            volume_type='type1,type2',
-            host='fakehost@fakedrv#fakepool')
-
-        cgsnapshot = tests_utils.create_cgsnapshot(
-            self.context,
-            consistencygroup_id=source_group.id)
-
-        cg = tests_utils.create_consistencygroup(
-            self.context,
-            availability_zone=CONF.storage_availability_zone,
-            volume_type='type1,type2',
-            host='fakehost@fakedrv#fakepool',
-            cgsnapshot_id=cgsnapshot.id)
-
         generic_group = tests_utils.create_group(
             self.context,
             availability_zone=CONF.storage_availability_zone,
@@ -89,15 +72,10 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
             group_id=generic_group.id,
             group_type_id=fake.GROUP_TYPE_ID)
 
-        cg = objects.ConsistencyGroup.get_by_id(self.context, cg.id)
-        cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_obj = fake_volume.fake_volume_obj(self.context, **vol)
         self.fake_snapshot = snapshot
         self.fake_reservations = ["RESERVATION"]
-        self.fake_cg = cg
-        self.fake_src_cg = source_group
-        self.fake_cgsnap = cgsnapshot
         self.fake_backup_obj = fake_backup.fake_backup_obj(self.context)
         self.fake_group = generic_group
         self.fake_group_snapshot = group_snapshot
@@ -111,47 +89,11 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
         self.fake_volume_obj.destroy()
         self.fake_group_snapshot.destroy()
         self.fake_group.destroy()
-        self.fake_cgsnap.destroy()
-        self.fake_cg.destroy()
-        self.fake_src_cg.destroy()
         self.fake_backup_obj.destroy()
 
     def _change_cluster_name(self, resource, cluster_name):
         resource.cluster_name = cluster_name
         resource.obj_reset_changes()
-
-    def test_create_consistencygroup(self):
-        self._test_rpc_api('create_consistencygroup', rpc_method='cast',
-                           server='fakehost@fakedrv', group=self.fake_cg)
-
-    @ddt.data(None, 'my_cluster')
-    def test_delete_consistencygroup(self, cluster_name):
-        self._change_cluster_name(self.fake_cg, cluster_name)
-        self._test_rpc_api('delete_consistencygroup', rpc_method='cast',
-                           server=cluster_name or self.fake_cg.host,
-                           group=self.fake_cg)
-
-    @ddt.data(None, 'my_cluster')
-    def test_update_consistencygroup(self, cluster_name):
-        self._change_cluster_name(self.fake_cg, cluster_name)
-        self._test_rpc_api('update_consistencygroup', rpc_method='cast',
-                           server=cluster_name or self.fake_cg.host,
-                           group=self.fake_cg, add_volumes=[fake.VOLUME2_ID],
-                           remove_volumes=[fake.VOLUME3_ID])
-
-    def test_create_cgsnapshot(self):
-        self._test_rpc_api('create_cgsnapshot', rpc_method='cast',
-                           server=self.fake_cgsnap.consistencygroup.host,
-                           cgsnapshot=self.fake_cgsnap)
-
-    @ddt.data(None, 'my_cluster')
-    def test_delete_cgsnapshot(self, cluster_name):
-        self._change_cluster_name(self.fake_cgsnap.consistencygroup,
-                                  cluster_name)
-        self._test_rpc_api(
-            'delete_cgsnapshot', rpc_method='cast',
-            server=cluster_name or self.fake_cgsnap.consistencygroup.host,
-            cgsnapshot=self.fake_cgsnap)
 
     def test_create_volume(self):
         self._test_rpc_api('create_volume',
@@ -450,22 +392,6 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
         self._test_rpc_api('failover_completed', rpc_method='cast',
                            fanout=True, server='fake_host', service=service,
                            updates=mock.sentinel.updates)
-
-    def test_create_consistencygroup_from_src_cgsnapshot(self):
-        self._test_rpc_api('create_consistencygroup_from_src',
-                           rpc_method='cast',
-                           server=self.fake_cg.host,
-                           group=self.fake_cg,
-                           cgsnapshot=self.fake_cgsnap,
-                           source_cg=None)
-
-    def test_create_consistencygroup_from_src_cg(self):
-        self._test_rpc_api('create_consistencygroup_from_src',
-                           rpc_method='cast',
-                           server=self.fake_cg.host,
-                           group=self.fake_cg,
-                           cgsnapshot=None,
-                           source_cg=self.fake_src_cg)
 
     def test_get_capabilities(self):
         self._test_rpc_api('get_capabilities',

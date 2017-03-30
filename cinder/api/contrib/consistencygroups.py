@@ -25,14 +25,10 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import consistencygroups as consistencygroup_views
-from cinder import consistencygroup as consistencygroup_api
+from cinder.consistencygroup import api as consistencygroup_api
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
-from cinder.objects import cgsnapshot as cgsnap_obj
-from cinder.objects import consistencygroup as cg_obj
-from cinder.objects import group as grp_obj
-from cinder.objects import group_snapshot as grpsnap_obj
 from cinder.volume import group_types
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +40,6 @@ class ConsistencyGroupsController(wsgi.Controller):
     _view_builder_class = consistencygroup_views.ViewBuilder
 
     def __init__(self):
-        self.consistencygroup_api = consistencygroup_api.API()
         self.group_api = group_api.API()
         super(ConsistencyGroupsController, self).__init__()
 
@@ -81,14 +76,8 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         try:
             group = self._get(context, id)
-            if isinstance(group, cg_obj.ConsistencyGroup):
-                self.consistencygroup_api.delete(context, group, force)
-            elif isinstance(group, grp_obj.Group):
-                consistencygroup_api.api.check_policy(context, 'delete')
-                self.group_api.delete(context, group, force)
-            else:
-                msg = _("Group '%s' not found.") % id
-                raise exc.HTTPNotFound(explanation=msg)
+            consistencygroup_api.check_policy(context, 'delete')
+            self.group_api.delete(context, group, force)
         # Not found exception will be handled at the wsgi level
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
@@ -105,25 +94,15 @@ class ConsistencyGroupsController(wsgi.Controller):
 
     def _get(self, context, id):
         # Not found exception will be handled at the wsgi level
-        try:
-            consistencygroup = self.consistencygroup_api.get(
-                context,
-                group_id=id)
-        except exception.ConsistencyGroupNotFound:
-            consistencygroup = self.group_api.get(context, group_id=id)
+        consistencygroup = self.group_api.get(context, group_id=id)
 
         return consistencygroup
 
     def _get_cgsnapshot(self, context, id):
         # Not found exception will be handled at the wsgi level
-        try:
-            cgsnapshot = self.consistencygroup_api.get_cgsnapshot(
-                context,
-                cgsnapshot_id=id)
-        except exception.CgSnapshotNotFound:
-            cgsnapshot = self.group_api.get_group_snapshot(
-                context,
-                group_snapshot_id=id)
+        cgsnapshot = self.group_api.get_group_snapshot(
+            context,
+            group_snapshot_id=id)
 
         return cgsnapshot
 
@@ -134,31 +113,19 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         # make another copy of filters, since it is being modified in
         # consistencygroup_api while getting consistencygroups
-        group_filters = req.params.copy()
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
-        consistencygroups = self.consistencygroup_api.get_all(
+        groups = self.group_api.get_all(
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
 
-        groups = self.group_api.get_all(
-            context, filters=group_filters, marker=marker, limit=limit,
-            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-
         if is_detail:
-            consistencygroups = self._view_builder.detail_list(
-                req, consistencygroups)
             groups = self._view_builder.detail_list(req, groups)
         else:
-            consistencygroups = self._view_builder.summary_list(
-                req, consistencygroups)
             groups = self._view_builder.summary_list(req, groups)
 
-        consistencygroups['consistencygroups'] = (
-            consistencygroups['consistencygroups'] +
-            groups['consistencygroups'])
-        return consistencygroups
+        return groups
 
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):
@@ -189,7 +156,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                  {'name': name})
 
         try:
-            consistencygroup_api.api.check_policy(context, 'create')
+            consistencygroup_api.check_policy(context, 'create')
             new_consistencygroup = self.group_api.create(
                 context, name, description, group_type['id'], volume_types,
                 availability_zone=availability_zone)
@@ -245,28 +212,13 @@ class ConsistencyGroupsController(wsgi.Controller):
                      {'name': name, 'source_cgid': source_cgid})
 
         try:
-            src_grp = None
-            src_snap = None
             if source_cgid:
-                src_grp = self._get(context, source_cgid)
+                self._get(context, source_cgid)
             if cgsnapshot_id:
-                src_snap = self._get_cgsnapshot(context, cgsnapshot_id)
-            if (isinstance(src_grp, cg_obj.ConsistencyGroup) or
-                    isinstance(src_snap, cgsnap_obj.CGSnapshot)):
-                new_group = self.consistencygroup_api.create_from_src(
-                    context, name, description, cgsnapshot_id, source_cgid)
-            elif (isinstance(src_grp, grp_obj.Group) or
-                    isinstance(src_snap, grpsnap_obj.GroupSnapshot)):
-                consistencygroup_api.api.check_policy(context, 'create')
-                new_group = self.group_api.create_from_src(
-                    context, name, description, cgsnapshot_id, source_cgid)
-            else:
-                msg = (_("Source CGSnapshot %(cgsnap)s or source CG %(cg)s "
-                         "not found.") % {'cgsnap': cgsnapshot_id,
-                                          'cg': source_cgid})
-                raise exc.HTTPNotFound(explanation=msg)
-        except exception.InvalidConsistencyGroup as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
+                self._get_cgsnapshot(context, cgsnapshot_id)
+            consistencygroup_api.check_policy(context, 'create')
+            new_group = self.group_api.create_from_src(
+                context, name, description, cgsnapshot_id, source_cgid)
         except exception.NotFound:
             # Not found exception will be handled at the wsgi level
             raise
@@ -296,16 +248,8 @@ class ConsistencyGroupsController(wsgi.Controller):
                   'remove_volumes': remove_volumes})
 
         group = self._get(context, id)
-        if isinstance(group, cg_obj.ConsistencyGroup):
-            self.consistencygroup_api.update(context, group, name, description,
-                                             add_volumes, remove_volumes,
-                                             allow_empty)
-        elif isinstance(group, grp_obj.Group):
-            self.group_api.update(context, group, name, description,
-                                  add_volumes, remove_volumes)
-        else:
-            msg = _("Group '%s' not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        self.group_api.update(context, group, name, description,
+                              add_volumes, remove_volumes)
 
     def update(self, req, id, body):
         """Update the consistency group.

@@ -24,16 +24,12 @@ import mock
 from oslo_config import cfg
 
 from cinder import context
-from cinder import db
 from cinder import exception
 from cinder.message import defined_messages
 from cinder import objects
-from cinder.objects import fields
 from cinder.scheduler import driver
-from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
-from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -340,43 +336,6 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_vol_update.assert_called_once_with(self.context, volume.id,
                                                  {'status': 'in-use'})
         self.manager.driver.find_retype_host = orig_retype
-
-    def test_create_consistencygroup_exceptions(self):
-        with mock.patch.object(filter_scheduler.FilterScheduler,
-                               'schedule_create_consistencygroup') as mock_cg:
-            original_driver = self.manager.driver
-            consistencygroup_obj = \
-                fake_consistencygroup.fake_consistencyobject_obj(self.context)
-            self.manager.driver = filter_scheduler.FilterScheduler
-            LOG = self.mock_object(manager, 'LOG')
-            self.mock_object(db, 'consistencygroup_update')
-
-            ex = exception.CinderException('test')
-            mock_cg.side_effect = ex
-            group_id = fake.CONSISTENCY_GROUP_ID
-            self.assertRaises(exception.CinderException,
-                              self.manager.create_consistencygroup,
-                              self.context,
-                              consistencygroup_obj)
-            self.assertGreater(LOG.exception.call_count, 0)
-            db.consistencygroup_update.assert_called_once_with(
-                self.context, group_id, {'status': (
-                    fields.ConsistencyGroupStatus.ERROR)})
-
-            mock_cg.reset_mock()
-            LOG.exception.reset_mock()
-            db.consistencygroup_update.reset_mock()
-
-            mock_cg.side_effect = exception.NoValidBackend(
-                reason="No weighed hosts available")
-            self.manager.create_consistencygroup(
-                self.context, consistencygroup_obj)
-            self.assertGreater(LOG.error.call_count, 0)
-            db.consistencygroup_update.assert_called_once_with(
-                self.context, group_id, {'status': (
-                    fields.ConsistencyGroupStatus.ERROR)})
-
-            self.manager.driver = original_driver
 
     def test_do_cleanup(self):
         vol = tests_utils.create_volume(self.context, status='creating')

@@ -28,10 +28,10 @@ import webob
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.v2 import volumes
-from cinder import consistencygroup as consistencygroupAPI
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import group as groupAPI
 from cinder import objects
 from cinder.objects import fields
 from cinder import test
@@ -222,6 +222,7 @@ class VolumeApiTest(test.TestCase):
                 'snapshot': snapshot,
                 'source_volume': source_volume,
                 'source_replica': None,
+                'group': None,
                 'consistencygroup': None,
                 'availability_zone': availability_zone,
                 'scheduler_hints': None,
@@ -372,7 +373,7 @@ class VolumeApiTest(test.TestCase):
         get_volume.assert_called_once_with(self.controller.volume_api,
                                            context, source_replica)
 
-    @mock.patch.object(consistencygroupAPI.API, 'get', autospec=True)
+    @mock.patch.object(groupAPI.API, 'get', autospec=True)
     def test_volume_creation_fails_with_invalid_consistency_group(self,
                                                                   get_cg):
 
@@ -388,7 +389,7 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create, req, body)
 
         context = req.environ['cinder.context']
-        get_cg.assert_called_once_with(self.controller.consistencygroup_api,
+        get_cg.assert_called_once_with(self.controller.group_api,
                                        context, consistencygroup_id)
 
     def test_volume_creation_fails_with_bad_size(self):

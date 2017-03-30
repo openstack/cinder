@@ -26,7 +26,6 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
-from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder import group as group_api
 from cinder.i18n import _
@@ -48,7 +47,6 @@ class VolumeController(wsgi.Controller):
 
     def __init__(self, ext_mgr):
         self.volume_api = cinder_volume.API()
-        self.consistencygroup_api = consistencygroupAPI.API()
         self.group_api = group_api.API()
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
@@ -237,18 +235,12 @@ class VolumeController(wsgi.Controller):
         else:
             kwargs['source_replica'] = None
 
+        kwargs['group'] = None
+        kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
-            try:
-                kwargs['consistencygroup'] = (
-                    self.consistencygroup_api.get(context,
-                                                  consistencygroup_id))
-            except exception.ConsistencyGroupNotFound:
-                # Not found exception will be handled at the wsgi level
-                kwargs['group'] = self.group_api.get(
-                    context, consistencygroup_id)
-        else:
-            kwargs['consistencygroup'] = None
+            # Not found exception will be handled at the wsgi level
+            kwargs['group'] = self.group_api.get(context, consistencygroup_id)
 
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:

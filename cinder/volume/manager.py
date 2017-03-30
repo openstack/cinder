@@ -2116,24 +2116,6 @@ class VolumeManager(manager.CleanableManager,
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
-    def _notify_about_consistencygroup_usage(self,
-                                             context,
-                                             group,
-                                             event_suffix,
-                                             volumes=None,
-                                             extra_usage_info=None):
-        vol_utils.notify_about_consistencygroup_usage(
-            context, group, event_suffix,
-            extra_usage_info=extra_usage_info, host=self.host)
-
-        if not volumes:
-            volumes = self.db.volume_get_all_by_group(context, group.id)
-        if volumes:
-            for volume in volumes:
-                vol_utils.notify_about_volume_usage(
-                    context, volume, event_suffix,
-                    extra_usage_info=extra_usage_info, host=self.host)
-
     def _notify_about_group_usage(self,
                                   context,
                                   group,
@@ -2151,25 +2133,6 @@ class VolumeManager(manager.CleanableManager,
             for volume in volumes:
                 vol_utils.notify_about_volume_usage(
                     context, volume, event_suffix,
-                    extra_usage_info=extra_usage_info, host=self.host)
-
-    def _notify_about_cgsnapshot_usage(self,
-                                       context,
-                                       cgsnapshot,
-                                       event_suffix,
-                                       snapshots=None,
-                                       extra_usage_info=None):
-        vol_utils.notify_about_cgsnapshot_usage(
-            context, cgsnapshot, event_suffix,
-            extra_usage_info=extra_usage_info, host=self.host)
-
-        if not snapshots:
-            snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-                context, cgsnapshot.id)
-        if snapshots:
-            for snapshot in snapshots:
-                vol_utils.notify_about_snapshot_usage(
-                    context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
     def _notify_about_group_snapshot_usage(self,
@@ -2518,15 +2481,8 @@ class VolumeManager(manager.CleanableManager,
                               "to driver error.")
         return driver_entries
 
-    def create_consistencygroup(self, context, group):
-        """Creates the consistency group."""
-        return self._create_group(context, group, False)
-
     def create_group(self, context, group):
         """Creates the group."""
-        return self._create_group(context, group)
-
-    def _create_group(self, context, group, is_generic_group=True):
         context = context.elevated()
 
         # Make sure the host in the DB matches our own when clustered
@@ -2535,33 +2491,23 @@ class VolumeManager(manager.CleanableManager,
         status = fields.GroupStatus.AVAILABLE
         model_update = None
 
-        if is_generic_group:
-            self._notify_about_group_usage(
-                context, group, "create.start")
-        else:
-            self._notify_about_consistencygroup_usage(
-                context, group, "create.start")
+        self._notify_about_group_usage(context, group, "create.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
             LOG.info("Group %s: creating", group.name)
-            if is_generic_group:
-                try:
-                    model_update = self.driver.create_group(context,
-                                                            group)
-                except NotImplementedError:
-                    cgsnap_type = group_types.get_default_cgsnapshot_type()
-                    if group.group_type_id != cgsnap_type['id']:
-                        model_update = self._create_group_generic(context,
-                                                                  group)
-                    else:
-                        cg, __ = self._convert_group_to_cg(group, [])
-                        model_update = self.driver.create_consistencygroup(
-                            context, cg)
-            else:
-                model_update = self.driver.create_consistencygroup(context,
-                                                                   group)
+
+            try:
+                model_update = self.driver.create_group(context, group)
+            except NotImplementedError:
+                cgsnap_type = group_types.get_default_cgsnapshot_type()
+                if group.group_type_id != cgsnap_type['id']:
+                    model_update = self._create_group_generic(context, group)
+                else:
+                    cg, __ = self._convert_group_to_cg(group, [])
+                    model_update = self.driver.create_consistencygroup(
+                        context, cg)
 
             if model_update:
                 if (model_update['status'] ==
@@ -2586,150 +2532,10 @@ class VolumeManager(manager.CleanableManager,
         group.save()
         LOG.info("Group %s: created successfully", group.name)
 
-        if is_generic_group:
-            self._notify_about_group_usage(
-                context, group, "create.end")
-        else:
-            self._notify_about_consistencygroup_usage(
-                context, group, "create.end")
+        self._notify_about_group_usage(context, group, "create.end")
 
         LOG.info("Create group completed successfully.",
                  resource={'type': 'group',
-                           'id': group.id})
-        return group
-
-    def create_consistencygroup_from_src(self, context, group,
-                                         cgsnapshot=None, source_cg=None):
-        """Creates the consistency group from source.
-
-        The source can be a CG snapshot or a source CG.
-        """
-        source_name = None
-        snapshots = None
-        source_vols = None
-        try:
-            volumes = self.db.volume_get_all_by_group(context, group.id)
-
-            if cgsnapshot:
-                try:
-                    # Check if cgsnapshot still exists
-                    cgsnapshot = objects.CGSnapshot.get_by_id(
-                        context, cgsnapshot.id)
-                except exception.CgSnapshotNotFound:
-                    LOG.error("Create consistency group "
-                              "from snapshot-%(snap)s failed: "
-                              "SnapshotNotFound.",
-                              {'snap': cgsnapshot.id},
-                              resource={'type': 'consistency_group',
-                                        'id': group.id})
-                    raise
-
-                source_name = _("snapshot-%s") % cgsnapshot.id
-                snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-                    context, cgsnapshot.id)
-                for snap in snapshots:
-                    if (snap.status not in
-                            VALID_CREATE_CG_SRC_SNAP_STATUS):
-                        msg = (_("Cannot create consistency group "
-                                 "%(group)s because snapshot %(snap)s is "
-                                 "not in a valid state. Valid states are: "
-                                 "%(valid)s.") %
-                               {'group': group.id,
-                                'snap': snap['id'],
-                                'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
-                        raise exception.InvalidConsistencyGroup(reason=msg)
-
-            if source_cg:
-                try:
-                    source_cg = objects.ConsistencyGroup.get_by_id(
-                        context, source_cg.id)
-                except exception.ConsistencyGroupNotFound:
-                    LOG.error("Create consistency group "
-                              "from source cg-%(cg)s failed: "
-                              "ConsistencyGroupNotFound.",
-                              {'cg': source_cg.id},
-                              resource={'type': 'consistency_group',
-                                        'id': group.id})
-                    raise
-
-                source_name = _("cg-%s") % source_cg.id
-                source_vols = self.db.volume_get_all_by_group(
-                    context, source_cg.id)
-                for source_vol in source_vols:
-                    if (source_vol['status'] not in
-                            VALID_CREATE_CG_SRC_CG_STATUS):
-                        msg = (_("Cannot create consistency group "
-                                 "%(group)s because source volume "
-                                 "%(source_vol)s is not in a valid "
-                                 "state. Valid states are: "
-                                 "%(valid)s.") %
-                               {'group': group.id,
-                                'source_vol': source_vol['id'],
-                                'valid': VALID_CREATE_CG_SRC_CG_STATUS})
-                        raise exception.InvalidConsistencyGroup(reason=msg)
-
-            # Sort source snapshots so that they are in the same order as their
-            # corresponding target volumes.
-            sorted_snapshots = None
-            if cgsnapshot and snapshots:
-                sorted_snapshots = self._sort_snapshots(volumes, snapshots)
-
-            # Sort source volumes so that they are in the same order as their
-            # corresponding target volumes.
-            sorted_source_vols = None
-            if source_cg and source_vols:
-                sorted_source_vols = self._sort_source_vols(volumes,
-                                                            source_vols)
-
-            self._notify_about_consistencygroup_usage(
-                context, group, "create.start")
-
-            utils.require_driver_initialized(self.driver)
-
-            model_update, volumes_model_update = (
-                self.driver.create_consistencygroup_from_src(
-                    context, group, volumes, cgsnapshot,
-                    sorted_snapshots, source_cg, sorted_source_vols))
-
-            if volumes_model_update:
-                for update in volumes_model_update:
-                    self.db.volume_update(context, update['id'], update)
-
-            if model_update:
-                group.update(model_update)
-                group.save()
-
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                group.status = 'error'
-                group.save()
-                LOG.error("Create consistency group "
-                          "from source %(source)s failed.",
-                          {'source': source_name},
-                          resource={'type': 'consistency_group',
-                                    'id': group.id})
-                # Update volume status to 'error' as well.
-                for vol in volumes:
-                    self.db.volume_update(
-                        context, vol['id'], {'status': 'error'})
-
-        now = timeutils.utcnow()
-        status = 'available'
-        for vol in volumes:
-            update = {'status': status, 'created_at': now}
-            self._update_volume_from_src(context, vol, update, group=group)
-            self._update_allocated_capacity(vol)
-
-        group.status = status
-        group.created_at = now
-        group.save()
-
-        self._notify_about_consistencygroup_usage(
-            context, group, "create.end")
-        LOG.info("Create consistency group "
-                 "from source-%(source)s completed successfully.",
-                 {'source': source_name},
-                 resource={'type': 'consistency_group',
                            'id': group.id})
         return group
 
@@ -3066,125 +2872,6 @@ class VolumeManager(manager.CleanableManager,
             self.stats['pools'][pool] = dict(
                 allocated_capacity_gb=vol['size'])
 
-    def delete_consistencygroup(self, context, group):
-        """Deletes consistency group and the volumes in the group."""
-        context = context.elevated()
-        project_id = group.project_id
-
-        if context.project_id != group.project_id:
-            project_id = group.project_id
-        else:
-            project_id = context.project_id
-
-        volumes = objects.VolumeList.get_all_by_group(context, group.id)
-
-        for volume in volumes:
-            if (volume.attach_status ==
-                    fields.VolumeAttachStatus.ATTACHED):
-                # Volume is still attached, need to detach first
-                raise exception.VolumeAttached(volume_id=volume.id)
-            self._check_is_our_resource(volume)
-
-        self._notify_about_consistencygroup_usage(
-            context, group, "delete.start")
-
-        volumes_model_update = None
-        model_update = None
-        try:
-            utils.require_driver_initialized(self.driver)
-
-            model_update, volumes_model_update = (
-                self.driver.delete_consistencygroup(context, group, volumes))
-
-            if volumes_model_update:
-                for volume in volumes_model_update:
-                    update = {'status': volume['status']}
-                    self.db.volume_update(context, volume['id'],
-                                          update)
-                    # If we failed to delete a volume, make sure the status
-                    # for the cg is set to error as well
-                    if (volume['status'] in ['error_deleting', 'error'] and
-                            model_update['status'] not in
-                            ['error_deleting', 'error']):
-                        model_update['status'] = volume['status']
-
-            if model_update:
-                if model_update['status'] in ['error_deleting', 'error']:
-                    msg = (_('Delete consistency group failed.'))
-                    LOG.error(msg,
-                              resource={'type': 'consistency_group',
-                                        'id': group.id})
-                    raise exception.VolumeDriverException(message=msg)
-                else:
-                    group.update(model_update)
-                    group.save()
-
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                group.status = 'error'
-                group.save()
-                # Update volume status to 'error' if driver returns
-                # None for volumes_model_update.
-                if not volumes_model_update:
-                    for vol in volumes:
-                        vol.status = 'error'
-                        vol.save()
-
-        # Get reservations for group
-        try:
-            reserve_opts = {'consistencygroups': -1}
-            cgreservations = CGQUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-        except Exception:
-            cgreservations = None
-            LOG.exception("Delete consistency group "
-                          "failed to update usages.",
-                          resource={'type': 'consistency_group',
-                                    'id': group.id})
-
-        for volume in volumes:
-            # Get reservations for volume
-            try:
-                reserve_opts = {'volumes': -1,
-                                'gigabytes': -volume.size}
-                QUOTAS.add_volume_type_opts(context,
-                                            reserve_opts,
-                                            volume.volume_type_id)
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-            except Exception:
-                reservations = None
-                LOG.exception("Delete consistency group "
-                              "failed to update usages.",
-                              resource={'type': 'consistency_group',
-                                        'id': group.id})
-
-            # Delete glance metadata if it exists
-            self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
-
-            self.db.volume_destroy(context, volume.id)
-
-            # Commit the reservations
-            if reservations:
-                QUOTAS.commit(context, reservations, project_id=project_id)
-
-            self.stats['allocated_capacity_gb'] -= volume.size
-
-        if cgreservations:
-            CGQUOTAS.commit(context, cgreservations,
-                            project_id=project_id)
-
-        group.destroy()
-        self._notify_about_consistencygroup_usage(
-            context, group, "delete.end", volumes)
-        self.publish_service_capabilities(context)
-        LOG.info("Delete consistency group "
-                 "completed successfully.",
-                 resource={'type': 'consistency_group',
-                           'id': group.id})
-
     def delete_group(self, context, group):
         """Deletes group and the volumes in the group."""
         context = context.elevated()
@@ -3393,143 +3080,6 @@ class VolumeManager(manager.CleanableManager,
         # anything in the backend storage.
         return None, None, None
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
-        """Updates consistency group.
-
-        Update consistency group by adding volumes to the group,
-        or removing volumes from the group.
-        """
-
-        add_volumes_ref = []
-        remove_volumes_ref = []
-        add_volumes_list = []
-        remove_volumes_list = []
-        if add_volumes:
-            add_volumes_list = add_volumes.split(',')
-        if remove_volumes:
-            remove_volumes_list = remove_volumes.split(',')
-        for add_vol in add_volumes_list:
-            try:
-                add_vol_ovo = objects.Volume.get_by_id(context, add_vol)
-            except exception.VolumeNotFound:
-                LOG.error("Update consistency group "
-                          "failed to add volume-%(volume_id)s: "
-                          "VolumeNotFound.",
-                          {'volume_id': add_vol},
-                          resource={'type': 'consistency_group',
-                                    'id': group.id})
-                raise
-            if add_vol_ovo.status not in VALID_ADD_VOL_TO_CG_STATUS:
-                msg = (_("Cannot add volume %(volume_id)s to consistency "
-                         "group %(group_id)s because volume is in an invalid "
-                         "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': add_vol_ovo.id,
-                        'group_id': group.id,
-                        'status': add_vol_ovo.status,
-                        'valid': VALID_ADD_VOL_TO_CG_STATUS})
-                raise exception.InvalidVolume(reason=msg)
-            self._check_is_our_resource(add_vol_ovo)
-            add_volumes_ref.append(add_vol_ovo)
-
-        for remove_vol in remove_volumes_list:
-            try:
-                remove_vol_ref = self.db.volume_get(context, remove_vol)
-            except exception.VolumeNotFound:
-                LOG.error("Update consistency group "
-                          "failed to remove volume-%(volume_id)s: "
-                          "VolumeNotFound.",
-                          {'volume_id': remove_vol},
-                          resource={'type': 'consistency_group',
-                                    'id': group.id})
-                raise
-            if remove_vol_ref['status'] not in VALID_REMOVE_VOL_FROM_CG_STATUS:
-                msg = (_("Cannot remove volume %(volume_id)s from consistency "
-                         "group %(group_id)s because volume is in an invalid "
-                         "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': remove_vol_ref['id'],
-                        'group_id': group.id,
-                        'status': remove_vol_ref['status'],
-                        'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
-                raise exception.InvalidVolume(reason=msg)
-            remove_volumes_ref.append(remove_vol_ref)
-
-        self._notify_about_consistencygroup_usage(
-            context, group, "update.start")
-
-        try:
-            utils.require_driver_initialized(self.driver)
-
-            model_update, add_volumes_update, remove_volumes_update = (
-                self.driver.update_consistencygroup(
-                    context, group,
-                    add_volumes=add_volumes_ref,
-                    remove_volumes=remove_volumes_ref))
-
-            if add_volumes_update:
-                for update in add_volumes_update:
-                    self.db.volume_update(context, update['id'], update)
-
-            if remove_volumes_update:
-                for update in remove_volumes_update:
-                    self.db.volume_update(context, update['id'], update)
-
-            if model_update:
-                if model_update['status'] in (
-                        [fields.ConsistencyGroupStatus.ERROR]):
-                    msg = (_('Error occurred when updating consistency group '
-                             '%s.') % group.id)
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-                group.update(model_update)
-                group.save()
-
-        except exception.VolumeDriverException:
-            with excutils.save_and_reraise_exception():
-                LOG.error("Error occurred in the volume driver when "
-                          "updating consistency group %(group_id)s.",
-                          {'group_id': group.id})
-                group.status = 'error'
-                group.save()
-                for add_vol in add_volumes_ref:
-                    self.db.volume_update(context, add_vol['id'],
-                                          {'status': 'error'})
-                for rem_vol in remove_volumes_ref:
-                    self.db.volume_update(context, rem_vol['id'],
-                                          {'status': 'error'})
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error("Error occurred when updating consistency "
-                          "group %(group_id)s.",
-                          {'group_id': group.id})
-                group.status = 'error'
-                group.save()
-                for add_vol in add_volumes_ref:
-                    self.db.volume_update(context, add_vol['id'],
-                                          {'status': 'error'})
-                for rem_vol in remove_volumes_ref:
-                    self.db.volume_update(context, rem_vol['id'],
-                                          {'status': 'error'})
-
-        now = timeutils.utcnow()
-        group.status = 'available'
-        group.update_at = now
-        group.save()
-        for add_vol in add_volumes_ref:
-            self.db.volume_update(context, add_vol['id'],
-                                  {'consistencygroup_id': group.id,
-                                   'updated_at': now})
-        for rem_vol in remove_volumes_ref:
-            self.db.volume_update(context, rem_vol['id'],
-                                  {'consistencygroup_id': None,
-                                   'updated_at': now})
-
-        self._notify_about_consistencygroup_usage(
-            context, group, "update.end")
-        LOG.info("Update consistency group completed successfully.",
-                 resource={'type': 'consistency_group',
-                           'id': group.id})
-
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
         """Updates group.
@@ -3681,116 +3231,6 @@ class VolumeManager(manager.CleanableManager,
         LOG.info("Update group completed successfully.",
                  resource={'type': 'group',
                            'id': group.id})
-
-    def create_cgsnapshot(self, context, cgsnapshot):
-        """Creates the cgsnapshot."""
-        caller_context = context
-        context = context.elevated()
-
-        LOG.info("Cgsnapshot %s: creating.", cgsnapshot.id)
-
-        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            context, cgsnapshot.id)
-
-        self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot, "create.start")
-
-        snapshots_model_update = None
-        model_update = None
-        try:
-            utils.require_driver_initialized(self.driver)
-
-            LOG.debug("Cgsnapshot %(cgsnap_id)s: creating.",
-                      {'cgsnap_id': cgsnapshot.id})
-
-            # Pass context so that drivers that want to use it, can,
-            # but it is not a requirement for all drivers.
-            cgsnapshot.context = caller_context
-            for snapshot in snapshots:
-                snapshot.context = caller_context
-
-            model_update, snapshots_model_update = (
-                self.driver.create_cgsnapshot(context, cgsnapshot,
-                                              snapshots))
-
-            if snapshots_model_update:
-                for snap_model in snapshots_model_update:
-                    # Update db for snapshot.
-                    # NOTE(xyang): snapshots is a list of snapshot objects.
-                    # snapshots_model_update should be a list of dicts.
-                    self.db.snapshot_update(context,
-                                            snap_model['id'],
-                                            snap_model)
-
-                    if (snap_model['status'] in [
-                        fields.SnapshotStatus.ERROR_DELETING,
-                        fields.SnapshotStatus.ERROR] and
-                            model_update['status'] not in
-                            ['error_deleting', 'error']):
-                        model_update['status'] = snap_model['status']
-
-            if model_update:
-                if model_update['status'] == 'error':
-                    msg = (_('Error occurred when creating cgsnapshot '
-                             '%s.') % cgsnapshot.id)
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-
-                cgsnapshot.update(model_update)
-                cgsnapshot.save()
-
-        except exception.CinderException:
-            with excutils.save_and_reraise_exception():
-                cgsnapshot.status = 'error'
-                cgsnapshot.save()
-                # Update snapshot status to 'error' if driver returns
-                # None for snapshots_model_update.
-                if not snapshots_model_update:
-                    for snapshot in snapshots:
-                        snapshot.status = fields.SnapshotStatus.ERROR
-                        snapshot.save()
-
-        for snapshot in snapshots:
-            volume_id = snapshot['volume_id']
-            snapshot_id = snapshot['id']
-            vol_ref = self.db.volume_get(context, volume_id)
-            if vol_ref.bootable:
-                try:
-                    self.db.volume_glance_metadata_copy_to_snapshot(
-                        context, snapshot_id, volume_id)
-                except exception.GlanceMetadataNotFound:
-                    # If volume is not created from image, No glance metadata
-                    # would be available for that volume in
-                    # volume glance metadata table
-                    pass
-                except exception.CinderException as ex:
-                    LOG.error("Failed updating %(snapshot_id)s"
-                              " metadata using the provided volumes"
-                              " %(volume_id)s metadata",
-                              {'volume_id': volume_id,
-                               'snapshot_id': snapshot_id})
-
-                    # TODO(thangp): Switch over to use snapshot.update()
-                    # after cgsnapshot-objects bugs are fixed
-                    self.db.snapshot_update(
-                        context, snapshot_id, {
-                            'status': fields.SnapshotStatus.ERROR})
-                    raise exception.MetadataCopyFailure(
-                        reason=six.text_type(ex))
-
-            self.db.snapshot_update(context,
-                                    snapshot['id'],
-                                    {'status': fields.SnapshotStatus.AVAILABLE,
-                                     'progress': '100%'})
-
-        cgsnapshot.status = 'available'
-        cgsnapshot.save()
-
-        LOG.info("cgsnapshot %s: created successfully",
-                 cgsnapshot.id)
-        self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot, "create.end")
-        return cgsnapshot
 
     def create_group_snapshot(self, context, group_snapshot):
         """Creates the group_snapshot."""
@@ -3951,114 +3391,6 @@ class VolumeManager(manager.CleanableManager,
             snapshot_model_updates.append(snapshot_model_update)
 
         return model_update, snapshot_model_updates
-
-    def delete_cgsnapshot(self, context, cgsnapshot):
-        """Deletes cgsnapshot."""
-        caller_context = context
-        context = context.elevated()
-        project_id = cgsnapshot.project_id
-
-        LOG.info("cgsnapshot %s: deleting", cgsnapshot.id)
-
-        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            context, cgsnapshot.id)
-
-        self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot, "delete.start")
-
-        snapshots_model_update = None
-        model_update = None
-        try:
-            utils.require_driver_initialized(self.driver)
-
-            LOG.debug("cgsnapshot %(cgsnap_id)s: deleting",
-                      {'cgsnap_id': cgsnapshot.id})
-
-            # Pass context so that drivers that want to use it, can,
-            # but it is not a requirement for all drivers.
-            cgsnapshot.context = caller_context
-            for snapshot in snapshots:
-                snapshot.context = caller_context
-
-            model_update, snapshots_model_update = (
-                self.driver.delete_cgsnapshot(context, cgsnapshot,
-                                              snapshots))
-
-            if snapshots_model_update:
-                for snap_model in snapshots_model_update:
-                    # NOTE(xyang): snapshots is a list of snapshot objects.
-                    # snapshots_model_update should be a list of dicts.
-                    snap = next((item for item in snapshots if
-                                 item.id == snap_model['id']), None)
-                    if snap:
-                        snap.status = snap_model['status']
-                        snap.save()
-
-                    if (snap_model['status'] in
-                            [fields.SnapshotStatus.ERROR_DELETING,
-                             fields.SnapshotStatus.ERROR] and
-                            model_update['status'] not in
-                            ['error_deleting', 'error']):
-                        model_update['status'] = snap_model['status']
-
-            if model_update:
-                if model_update['status'] in ['error_deleting', 'error']:
-                    msg = (_('Error occurred when deleting cgsnapshot '
-                             '%s.') % cgsnapshot.id)
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-                else:
-                    cgsnapshot.update(model_update)
-                    cgsnapshot.save()
-
-        except exception.CinderException:
-            with excutils.save_and_reraise_exception():
-                cgsnapshot.status = 'error'
-                cgsnapshot.save()
-                # Update snapshot status to 'error' if driver returns
-                # None for snapshots_model_update.
-                if not snapshots_model_update:
-                    for snapshot in snapshots:
-                        snapshot.status = fields.SnapshotStatus.ERROR
-                        snapshot.save()
-
-        for snapshot in snapshots:
-            # Get reservations
-            try:
-                if CONF.no_snapshot_gb_quota:
-                    reserve_opts = {'snapshots': -1}
-                else:
-                    reserve_opts = {
-                        'snapshots': -1,
-                        'gigabytes': -snapshot['volume_size'],
-                    }
-                volume_ref = self.db.volume_get(context, snapshot['volume_id'])
-                QUOTAS.add_volume_type_opts(context,
-                                            reserve_opts,
-                                            volume_ref.get('volume_type_id'))
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-
-            except Exception:
-                reservations = None
-                LOG.exception("Failed to update usages deleting snapshot")
-
-            self.db.volume_glance_metadata_delete_by_snapshot(context,
-                                                              snapshot['id'])
-
-            # TODO(thangp): Switch over to use snapshot.destroy()
-            # after cgsnapshot-objects bugs are fixed
-            self.db.snapshot_destroy(context, snapshot['id'])
-
-            # Commit the reservations
-            if reservations:
-                QUOTAS.commit(context, reservations, project_id=project_id)
-
-        cgsnapshot.destroy()
-        LOG.info("cgsnapshot %s: deleted successfully", cgsnapshot.id)
-        self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
-                                            snapshots)
 
     def delete_group_snapshot(self, context, group_snapshot):
         """Deletes group_snapshot."""

@@ -66,24 +66,13 @@ class SchedulerAPI(rpc.RPCAPI):
               capabilities.
         3.4 - Adds work_cleanup and do_cleanup methods.
         3.5 - Make notify_service_capabilities support A/A
+        3.6 - Removed create_consistencygroup method
     """
 
-    RPC_API_VERSION = '3.5'
+    RPC_API_VERSION = '3.6'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
-
-    def create_consistencygroup(self, ctxt, group, request_spec_list=None,
-                                filter_properties_list=None):
-        cctxt = self._get_cctxt()
-        request_spec_p_list = [jsonutils.to_primitive(rs)
-                               for rs in request_spec_list]
-        msg_args = {
-            'group': group, 'request_spec_list': request_spec_p_list,
-            'filter_properties_list': filter_properties_list,
-        }
-
-        cctxt.cast(ctxt, 'create_consistencygroup', **msg_args)
 
     def create_group(self, ctxt, group, group_spec=None,
                      request_spec_list=None, group_filter_properties=None,
