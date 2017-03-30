@@ -360,3 +360,15 @@ def require_consistent_group_snapshot_enabled(func):
             raise NotImplementedError
         return func(self, *args, **kwargs)
     return inner
+
+
+def get_remote_pool(config, volume):
+    """Select remote pool name for replication.
+
+    Prefer configured remote pool name, or same pool name
+    as the source volume.
+    """
+    pool_name = get_pool_from_host(volume.host)
+    rep_list = common.ReplicationDeviceList(config)
+    remote_pool_name = rep_list[0].pool_name
+    return remote_pool_name if remote_pool_name else pool_name
