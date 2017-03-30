@@ -61,6 +61,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = ["Hitachi_HBSD_CI", "Hitachi_HBSD2_CI"]
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         os.environ['LANG'] = 'C'
         super(HBSDISCSIDriver, self).__init__(*args, **kwargs)
