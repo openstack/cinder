@@ -360,7 +360,7 @@ class StorageCenterApiHelper(object):
         """Creates the StorageCenterApi object.
 
         :return: StorageCenterApi object.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         connection = None
         LOG.info('open_connection to %(ssn)s at %(ip)s',
@@ -622,7 +622,7 @@ class StorageCenterApi(object):
     def open_connection(self):
         """Authenticate with Dell REST interface.
 
-        :raises: VolumeBackendAPIException.
+        :raises VolumeBackendAPIException.:
         """
         # Set our fo state.
         self.failed_over = (self.primaryssn != self.ssn)
@@ -697,7 +697,7 @@ class StorageCenterApi(object):
         """Check that the SC is there and being managed by EM.
 
         :returns: The SC SSN.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         # We might be looking for another ssn.  If not then
         # look for our default.
@@ -1739,7 +1739,7 @@ class StorageCenterApi(object):
 
         :param scvolume: The dell sc volume object.
         :returns: iSCSI property dictionary.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         LOG.debug('find_iscsi_properties: scvolume: %s', scvolume)
         # Our mutable process object.
@@ -2224,7 +2224,7 @@ class StorageCenterApi(object):
         :param group_qos: Group QOS Profile to use.
         :param dr_profile: Data reduction profile to use.
         :returns: The new volume's Dell volume object.
-        :raises: VolumeBackendAPIException if error doing copy.
+        :raises VolumeBackendAPIException: if error doing copy.
         """
         LOG.info('create_cloned_volume: Creating %(dst)s from %(src)s',
                  {'dst': volumename,
@@ -2451,7 +2451,7 @@ class StorageCenterApi(object):
         :param name: Name of the replay profile object. This is the
                      consistency group id.
         :return: Dell SC replay profile or None.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         self.cg_except_on_no_support()
         pf = self._get_payload_filter()
@@ -2497,7 +2497,7 @@ class StorageCenterApi(object):
 
         :param profile: SC replay profile.
         :return: Nothing.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         self.cg_except_on_no_support()
         r = self.client.delete('StorageCenter/ScReplayProfile/%s' %
@@ -2804,7 +2804,7 @@ class StorageCenterApi(object):
         :param newname: Name to rename the volume to.
         :param existing: The existing volume dict..
         :return: scvolume.
-        :raises: VolumeBackendAPIException, ManageExistingInvalidReference
+        :raises VolumeBackendAPIException, ManageExistingInvalidReference:
         """
         vollist = self._get_volume_list(existing.get('source-name'),
                                         existing.get('source-id'),
@@ -2843,7 +2843,7 @@ class StorageCenterApi(object):
 
         :param existing: Existing volume dict.
         :return: The SC configuredSize string.
-        :raises: ManageExistingInvalidReference
+        :raises ManageExistingInvalidReference:
         """
         vollist = self._get_volume_list(existing.get('source-name'),
                                         existing.get('source-id'),
@@ -2870,7 +2870,7 @@ class StorageCenterApi(object):
 
         :param scvolume: The Dell SC volume object.
         :return: Nothing.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         newname = 'Unmanaged_' + scvolume['name']
         payload = {}

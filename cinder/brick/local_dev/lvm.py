@@ -655,7 +655,7 @@ class LVM(executor.Executor):
         :param name: Name of LV to activate
         :param is_snapshot: whether LV is a snapshot
         :param permanent: whether we should drop skipactivation flag
-        :raises: putils.ProcessExecutionError
+        :raises putils.ProcessExecutionError:
         """
 
         # This is a no-op if requested for a snapshot on a version

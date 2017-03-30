@@ -789,7 +789,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
         :returns: Nothing on success.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         gid = group['id']
         with self._client.open_connection() as api:
@@ -874,7 +874,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param cgsnapshot: Information about the snapshot to take.
         :param snapshots: List of snapshots for this cgsnapshot.
         :returns: Updated model_update, snapshots.
-        :raises: VolumeBackendAPIException.
+        :raises VolumeBackendAPIException:
         """
         cgid = cgsnapshot['consistencygroup_id']
         snapshotid = cgsnapshot['id']
@@ -912,7 +912,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param context: the context of the caller.
         :param cgsnapshot: Information about the snapshot to delete.
         :returns: Updated model_update, snapshots.
-        :raises: VolumeBackendAPIException.
+        :raises VolumeBackendAPIException.:
         """
         cgid = cgsnapshot['consistencygroup_id']
         snapshotid = cgsnapshot['id']
@@ -1030,7 +1030,7 @@ class DellCommonDriver(driver.ManageableVD,
         :param specname: The pretty name of the parameter.
         :param spectype: The actual spec string.
         :return: current, requested spec.
-        :raises: VolumeBackendAPIException
+        :raises VolumeBackendAPIException:
         """
         spec = (diff['extra_specs'].get(spectype))
         if spec:

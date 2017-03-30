@@ -82,7 +82,7 @@ class BrcdHTTPFCZoneClient(object):
         :param header: Request Headers
 
         :returns: HTTP response data
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             if header is None:
@@ -144,7 +144,7 @@ class BrcdHTTPFCZoneClient(object):
         return authentication header (Base64(username:password:random no)).
 
         :returns: Authentication Header
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             # Send GET request to secinfo.html to get random number
@@ -177,7 +177,7 @@ class BrcdHTTPFCZoneClient(object):
         header (Base64(username:xxx:random no)).
 
         :returns: Authentication status
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         headers = {zone_constant.AUTH_HEADER: self.auth_header}
         try:
@@ -268,7 +268,7 @@ class BrcdHTTPFCZoneClient(object):
 
         :param session_info: Session information from the switch
         :returns: manageable VF list
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             # Check the value of manageableLFList NVP,
@@ -289,7 +289,7 @@ class BrcdHTTPFCZoneClient(object):
 
         :param vfid: VFID to which context should be changed.
         :param session_data: Session information from the switch
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             managable_vf_list = self.get_managable_vf_list(session_data)
@@ -410,7 +410,7 @@ class BrcdHTTPFCZoneClient(object):
         This only checks major and minor version.
 
         :returns: True if firmware is supported else False.
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
 
         isfwsupported = False
@@ -460,7 +460,7 @@ class BrcdHTTPFCZoneClient(object):
                 'active_zone_config': 'OpenStack_Cfg'
             }
 
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         active_zone_set = {}
         zones_map = {}
@@ -506,7 +506,7 @@ class BrcdHTTPFCZoneClient(object):
         :param activate: True will activate the zone config.
         :param active_zone_set: Active zone set dict retrieved from
                                 get_active_zone_set method
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         LOG.debug("Add zones - zones passed: %(zones)s.",
                   {'zones': add_zones_info})
@@ -568,7 +568,7 @@ class BrcdHTTPFCZoneClient(object):
         :param operation: ZONE_ADD or ZONE_REMOVE
         :param active_zone_set: Active zone set dict retrieved from
                                 get_active_zone_set method
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         LOG.debug("Update zones - zones passed: %(zones)s.",
                   {'zones': zone_info})
@@ -612,7 +612,7 @@ class BrcdHTTPFCZoneClient(object):
         :param ifas: ifas map
         :param activate: True will activate config.
         :returns: zonestring in the required format
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             zoneString = zone_constant.ZONE_STRING_PREFIX
@@ -788,7 +788,7 @@ class BrcdHTTPFCZoneClient(object):
         :param delete_zones_info: Zones map to add
         :param active_cfg: Existing active cfg
         :returns: updated zones, zone config sets, and active zone config
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             delete_zones_info = delete_zones_info.split(";")
@@ -934,7 +934,7 @@ class BrcdHTTPFCZoneClient(object):
     def _disconnect(self):
         """Disconnect from the switch using HTTP/HTTPS protocol.
 
-        :raises: BrocadeZoningHttpException
+        :raises BrocadeZoningHttpException:
         """
         try:
             headers = {zone_constant.AUTH_HEADER: self.auth_header}

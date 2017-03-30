@@ -98,7 +98,7 @@ def service_json_request(ip_addr, port, http_method, uri, body,
     :param uri: the request URI
     :param body: the request payload
     :returns: a tuple of two elements: (response body, response headers)
-    :raises: CoprHdError in case of HTTP errors with err_code 3
+    :raises CoprHdError: in case of HTTP errors with err_code 3
     """
 
     SEC_AUTHTOKEN_HEADER = 'X-SDS-AUTH-TOKEN'

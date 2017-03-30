@@ -1032,7 +1032,7 @@ def quota_allocated_update(context, project_id,
                            resource, allocated):
     """Update allocated quota to subprojects or raise if it does not exist.
 
-    :raises: cinder.exception.ProjectQuotaNotFound
+    :raises cinder.exception.ProjectQuotaNotFound:
     """
     return IMPL.quota_allocated_update(context, project_id,
                                        resource, allocated)

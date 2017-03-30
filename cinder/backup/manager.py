@@ -669,7 +669,7 @@ class BackupManager(manager.ThreadPoolManager):
         :returns: backup_record - a description of how to import the backup
         :returns: contains 'backup_url' - how to import the backup, and
         :returns: 'backup_service' describing the needed driver.
-        :raises: InvalidBackup
+        :raises InvalidBackup:
         """
         LOG.info('Export record started, backup: %s.', backup.id)
 
@@ -721,8 +721,8 @@ class BackupManager(manager.ThreadPoolManager):
         :param backup_service: The needed backup driver for import
         :param backup_url: An identifier string to locate the backup
         :param backup_hosts: Potential hosts to execute the import
-        :raises: InvalidBackup
-        :raises: ServiceNotFound
+        :raises InvalidBackup:
+        :raises ServiceNotFound:
         """
         LOG.info('Import record started, backup_url: %s.', backup_url)
 
@@ -830,9 +830,9 @@ class BackupManager(manager.ThreadPoolManager):
         :param context: running context
         :param backup: The backup object for reset status operation
         :param status: The status to be set
-        :raises: InvalidBackup
-        :raises: BackupVerifyUnsupportedDriver
-        :raises: AttributeError
+        :raises InvalidBackup:
+        :raises BackupVerifyUnsupportedDriver:
+        :raises AttributeError:
         """
         LOG.info('Reset backup status started, backup_id: '
                  '%(backup_id)s, status: %(status)s.',

@@ -56,10 +56,10 @@ class VolumeManagementDriver(base.CinderInterface):
         :param existing_ref: Dictionary with keys 'source-id', 'source-name'
                              with driver-specific values to identify a backend
                              storage object.
-        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+        :raises ManageExistingInvalidReference: If the existing_ref doesn't
                  make sense, or doesn't refer to an existing backend storage
                  object.
-        :raises: ManageExistingVolumeTypeMismatch If there is a mismatch
+        :raises ManageExistingVolumeTypeMismatch: If there is a mismatch
                  between the volume type and the properties of the existing
                  backend storage object.
         """
@@ -73,7 +73,7 @@ class VolumeManagementDriver(base.CinderInterface):
         :param existing_ref: Dictionary with keys 'source-id', 'source-name'
                              with driver-specific values to identify a backend
                              storage object.
-        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+        :raises ManageExistingInvalidReference: If the existing_ref doesn't
                  make sense, or doesn't refer to an existing backend storage
                  object.
         """

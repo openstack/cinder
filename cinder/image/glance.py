@@ -72,7 +72,7 @@ def _parse_image_ref(image_href):
 
     :param image_href: href of an image
     :returns: a tuple of the form (image_id, netloc, use_ssl)
-    :raises ValueError
+    :raises ValueError:
 
     """
     url = urllib.parse.urlparse(image_href)
@@ -400,8 +400,8 @@ class GlanceImageService(object):
     def delete(self, context, image_id):
         """Delete the given image.
 
-        :raises: ImageNotFound if the image does not exist.
-        :raises: NotAuthorized if the user is not an owner.
+        :raises ImageNotFound: if the image does not exist.
+        :raises NotAuthorized: if the user is not an owner.
 
         """
         try:

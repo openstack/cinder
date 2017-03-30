@@ -47,7 +47,7 @@ class VolumeSnapshotManagementDriver(base.CinderInterface):
         :param existing_ref: Dictionary with keys 'source-id', 'source-name'
                              with driver-specific values to identify a backend
                              storage object.
-        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+        :raises ManageExistingInvalidReference: If the existing_ref doesn't
                  make sense, or doesn't refer to an existing backend storage
                  object.
         """
@@ -61,7 +61,7 @@ class VolumeSnapshotManagementDriver(base.CinderInterface):
         :param existing_ref: Dictionary with keys 'source-id', 'source-name'
                              with driver-specific values to identify a backend
                              storage object.
-        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+        :raises ManageExistingInvalidReference: If the existing_ref doesn't
                  make sense, or doesn't refer to an existing backend storage
                  object.
         """

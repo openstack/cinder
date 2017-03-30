@@ -34,5 +34,5 @@ class BackupDriverWithVerify(backup_driver.BackupDriver):
         operation.
 
         :param backup: Backup id of the backup to verify.
-        :raises: InvalidBackup, NotImplementedError
+        :raises InvalidBackup, NotImplementedError:
         """
