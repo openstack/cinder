@@ -4,10 +4,6 @@
         "updated": "2012-01-04T11:33:21Z",
         "media-types": [
             {
-                "base": "application/xml",
-                "type": "application/vnd.openstack.volume+xml;version=1"
-            },
-            {
                 "base": "application/json",
                 "type": "application/vnd.openstack.volume+json;version=1"
             }
