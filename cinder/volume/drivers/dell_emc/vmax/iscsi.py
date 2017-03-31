@@ -233,7 +233,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
             meaning use CHAP with the specified credentials.
         """
 
-        device_info = self.common.find_device_number(
+        device_info, __, __ = self.common.find_device_number(
             volume, connector['host'])
 
         isError = False
