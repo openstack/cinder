@@ -1334,6 +1334,12 @@ name_9:
   in: body
   required: true
   type: string
+name_optional:
+  description: |
+    The name of the Volume Backup.
+  in: body
+  required: false
+  type: string
 namespace:
   description: |
     Link associated to the extension.
