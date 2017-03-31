@@ -69,7 +69,6 @@ class _FunctionalTestBase(test.TestCase):
 
         f = self._get_flags()
         self.flags(**f)
-        self.flags(verbose=True)
 
         for var in ('http_proxy', 'HTTP_PROXY'):
             self.useFixture(fixtures.EnvironmentVariable(var))
