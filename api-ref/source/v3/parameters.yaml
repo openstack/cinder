@@ -25,6 +25,12 @@ backup_id:
   in: path
   required: false
   type: string
+cascade:
+  description: |
+    Remove any snapshots along with the volume. Default=False.
+  in: path
+  required: false
+  type: boolean
 cgsnapshot_id_1:
   description: |
     The ID of the consistency group snapshot.
