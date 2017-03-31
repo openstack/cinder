@@ -1,0 +1,5 @@
+---
+deprecations:
+  - The Hitachi Block Storage Driver (HBSD) and VSP driver have been marked
+    as unsupported and are now deprecated. enable_unsupported_driver will need
+    to be set to True in cinder.conf to continue to use them.
