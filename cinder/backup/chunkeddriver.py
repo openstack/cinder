@@ -269,7 +269,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         if six.PY3:
             sha256file_json = sha256file_json.decode('utf-8')
         sha256file = json.loads(sha256file_json)
-        LOG.debug('_read_sha256file finished (%s).', sha256file)
+        LOG.debug('_read_sha256file finished.')
         return sha256file
 
     def _prepare_backup(self, backup):
