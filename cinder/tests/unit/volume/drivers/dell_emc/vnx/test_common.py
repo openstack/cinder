@@ -237,6 +237,12 @@ class TestReplicationDeviceList(test.TestCase):
         self.assertEqual(1, len(devices_list))
         self.assertIsNotNone(devices_list[0])
 
+    def test_get_backend_ids(self):
+        backend_ids = common.ReplicationDeviceList.get_backend_ids(
+            self.configuration)
+        self.assertEqual(1, len(backend_ids))
+        self.assertIn('array_id_1', backend_ids)
+
 
 class TestVNXMirrorView(test.TestCase):
     def setUp(self):
