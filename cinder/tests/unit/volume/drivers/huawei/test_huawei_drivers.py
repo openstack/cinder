@@ -23,6 +23,7 @@ import requests
 import tempfile
 import unittest
 from xml.dom import minidom
+from xml.etree import ElementTree
 
 from cinder import context
 from cinder import exception
@@ -5213,6 +5214,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.assertTrue(ret)
 
 
+@ddt.ddt
 class HuaweiConfTestCase(test.TestCase):
     def setUp(self):
         super(HuaweiConfTestCase, self).setUp()
@@ -5224,7 +5226,7 @@ class HuaweiConfTestCase(test.TestCase):
         self.conf.cinder_huawei_conf_file = self.fake_xml_file
         self.huawei_conf = huawei_conf.HuaweiConf(self.conf)
 
-    def _create_fake_conf_file(self):
+    def _create_fake_conf_file(self, configs):
         """Create a fake Config file.
 
           Huawei storage customize a XML configuration file, the configuration
@@ -5252,7 +5254,7 @@ class HuaweiConfTestCase(test.TestCase):
         password.appendChild(password_text)
         storage.appendChild(password)
         product = doc.createElement('Product')
-        product_text = doc.createTextNode('V3')
+        product_text = doc.createTextNode(configs.get('Product', 'V3'))
         product.appendChild(product_text)
         storage.appendChild(product)
         protocol = doc.createElement('Protocol')
@@ -5262,10 +5264,13 @@ class HuaweiConfTestCase(test.TestCase):
 
         lun = doc.createElement('LUN')
         config.appendChild(lun)
-        luntype = doc.createElement('LUNType')
-        luntype_text = doc.createTextNode('Thick')
-        luntype.appendChild(luntype_text)
-        lun.appendChild(luntype)
+
+        if 'LUNType' in configs:
+            luntype = doc.createElement('LUNType')
+            luntype_text = doc.createTextNode(configs['LUNType'])
+            luntype.appendChild(luntype_text)
+            lun.appendChild(luntype)
+
         lun_ready_wait_interval = doc.createElement('LUNReadyWaitInterval')
         lun_ready_wait_interval_text = doc.createTextNode('2')
         lun_ready_wait_interval.appendChild(lun_ready_wait_interval_text)
@@ -5312,6 +5317,56 @@ class HuaweiConfTestCase(test.TestCase):
         fakefile = open(self.conf.cinder_huawei_conf_file, 'w')
         fakefile.write(doc.toprettyxml(indent=''))
         fakefile.close()
+
+    @ddt.data(
+        (
+            {
+                'Product': 'Dorado',
+                'LUNType': 'Thin',
+            },
+            1,
+        ),
+        (
+            {
+                'Product': 'Dorado',
+            },
+            1,
+        ),
+        (
+            {
+                'Product': 'Dorado',
+                'LUNType': 'Thick',
+            },
+            exception.InvalidInput,
+        ),
+        (
+            {
+                'Product': 'V3',
+                'LUNType': 'Thick',
+            },
+            0,
+        ),
+        (
+            {
+                'Product': 'V3',
+                'LUNType': 'invalid',
+            },
+            exception.InvalidInput,
+        ),
+    )
+    @ddt.unpack
+    def test_luntype_config(self, custom_configs, expect_result):
+        self._create_fake_conf_file(custom_configs)
+        tree = ElementTree.parse(self.conf.cinder_huawei_conf_file)
+        xml_root = tree.getroot()
+        self.huawei_conf._san_product(xml_root)
+
+        if isinstance(expect_result, int):
+            self.huawei_conf._lun_type(xml_root)
+            self.assertEqual(expect_result, self.conf.lun_type)
+        else:
+            self.assertRaises(expect_result,
+                              self.huawei_conf._lun_type, xml_root)
 
 
 @ddt.ddt
