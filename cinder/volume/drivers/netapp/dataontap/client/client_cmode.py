@@ -20,6 +20,7 @@ import math
 import re
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import units
 import six
 
@@ -752,6 +753,38 @@ class Client(client_base.Client):
 
         return True
 
+    def list_cluster_nodes(self):
+        """Get all available cluster nodes."""
+
+        api_args = {
+            'desired-attributes': {
+                'node-details-info': {
+                    'node': None,
+                },
+            },
+        }
+        result = self.send_iter_request('system-node-get-iter', api_args)
+        nodes_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        return [node_info.get_child_content('node') for node_info
+                in nodes_info_list.get_children()]
+
+    def check_for_cluster_credentials(self):
+        """Checks whether cluster-scoped credentials are being used or not."""
+
+        try:
+            self.list_cluster_nodes()
+            # API succeeded, so definitely a cluster management LIF
+            return True
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Not connected to cluster management LIF.')
+            else:
+                with excutils.save_and_reraise_exception():
+                    msg = _LE('Failed to get the list of nodes.')
+                    LOG.exception(msg)
+            return False
+
     def get_operational_lif_addresses(self):
         """Gets the IP addresses of operational LIFs on the vserver."""
 
@@ -990,9 +1023,14 @@ class Client(client_base.Client):
 
         try:
             result = self.send_iter_request('sis-get-iter', api_args)
-        except netapp_api.NaApiError:
-            msg = _LE('Failed to get dedupe info for volume %s.')
-            LOG.exception(msg, flexvol_name)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPIPRIVILEGE:
+                LOG.debug('Dedupe info for volume %(name)s will not be '
+                          'collected. This API requires cluster-scoped '
+                          'credentials.', {'name': flexvol_name})
+            else:
+                msg = _LE('Failed to get dedupe info for volume %s.')
+                LOG.exception(msg, flexvol_name)
             return {'compression': False, 'dedupe': False}
 
         if self._get_record_count(result) != 1:
@@ -1230,9 +1268,13 @@ class Client(client_base.Client):
         try:
             aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
                                          desired_attributes=desired_attributes)
-        except netapp_api.NaApiError:
-            msg = _LE('Failed to get info for aggregate %s.')
-            LOG.exception(msg, aggregate_name)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Aggregate info can only be collected with '
+                          'cluster-scoped credentials.')
+            else:
+                msg = _LE('Failed to get info for aggregate %s.')
+                LOG.exception(msg, aggregate_name)
             return {}
 
         if len(aggrs) < 1:
@@ -1302,9 +1344,13 @@ class Client(client_base.Client):
         try:
             result = self.send_iter_request(
                 'storage-disk-get-iter', api_args, enable_tunneling=False)
-        except netapp_api.NaApiError:
-            msg = _LE('Failed to get disk info for aggregate %s.')
-            LOG.exception(msg, aggregate_name)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Disk types can only be collected with '
+                          'cluster scoped credentials.')
+            else:
+                msg = _LE('Failed to get disk info for aggregate %s.')
+                LOG.exception(msg, aggregate_name)
             return disk_types
 
         attributes_list = result.get_child_by_name(
@@ -1350,9 +1396,13 @@ class Client(client_base.Client):
         try:
             aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
                                          desired_attributes=desired_attributes)
-        except netapp_api.NaApiError:
-            msg = _LE('Failed to get info for aggregate %s.')
-            LOG.exception(msg, aggregate_name)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Aggregate capacity can only be collected with '
+                          'cluster scoped credentials.')
+            else:
+                msg = _LE('Failed to get info for aggregate %s.')
+                LOG.exception(msg, aggregate_name)
             return {}
 
         if len(aggrs) < 1:
