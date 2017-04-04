@@ -334,7 +334,7 @@ class TestVerifyImage(test.TestCase):
     def test_kwargs(self, mock_fetch, mock_fileutils, mock_info,
                     mock_check_space):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         user_id = mock.sentinel.user_id
@@ -656,6 +656,17 @@ class TestFetchToRaw(test.TestCase):
                                               run_as_root=run_as_root)
 
 
+class FakeImageService(object):
+    def __init__(self, db_driver=None, image_service=None):
+        self.temp_images = None
+
+    def show(self, context, image_id):
+        return {'size': 2 * units.Gi,
+                'disk_format': 'raw',
+                'container_format': 'bare',
+                'status': 'active'}
+
+
 class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
@@ -673,7 +684,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                       mock_check_space):
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
-        image_service = mock.Mock(temp_images=None)
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -690,7 +701,6 @@ class TestFetchToVolumeFormat(test.TestCase):
                                                     volume_format, blocksize)
 
         self.assertIsNone(output)
-        image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=True),
@@ -701,7 +711,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             src_format='raw')
 
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
@@ -718,7 +729,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                     mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
                     mock_check_space):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock(temp_images=None)
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -740,7 +751,6 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=run_as_root),
@@ -751,25 +761,27 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
-                                             run_as_root=run_as_root)
+                                             run_as_root=run_as_root,
+                                             src_format='raw')
 
-    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.check_available_space',
+                new=mock.Mock())
+    @mock.patch('cinder.image.image_utils.is_xenserver_format',
+                new=mock.Mock(return_value=False))
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
     @mock.patch(
         'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_format',
-                return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.CONF')
     def test_temporary_images(self, mock_conf, mock_temp, mock_info,
-                              mock_fetch, mock_is_xen, mock_repl_xen,
-                              mock_copy, mock_convert, mock_check_space):
+                              mock_fetch, mock_repl_xen,
+                              mock_copy, mock_convert):
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
-        image_service = mock.Mock(temp_images=None)
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -792,7 +804,6 @@ class TestFetchToVolumeFormat(test.TestCase):
                                                         blocksize)
 
         self.assertIsNone(output)
-        self.assertEqual(2, image_service.show.call_count)
         self.assertEqual(2, mock_temp.call_count)
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=True),
@@ -804,7 +815,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             src_format='raw')
 
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
@@ -1143,7 +1155,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                                    mock_check_space,
                                    legacy_format_name=False):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock(temp_images=None)
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = 'vhd'
@@ -1172,7 +1184,6 @@ class TestFetchToVolumeFormat(test.TestCase):
                 user_id=user_id, project_id=project_id, size=size,
                 run_as_root=run_as_root)
 
-        image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=run_as_root),
@@ -1183,7 +1194,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_repl_xen.called)
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
-                                             run_as_root=run_as_root)
+                                             run_as_root=run_as_root,
+                                             src_format='raw')
 
     def test_format_mismatch(self):
         self._test_format_name_mismatch()
@@ -1208,7 +1220,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                               mock_fetch, mock_is_xen, mock_repl_xen,
                               mock_copy, mock_convert, mock_check_space):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock(temp_images=None)
+        image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -1230,7 +1242,6 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
         mock_info.assert_has_calls([
             mock.call(tmp, run_as_root=run_as_root),
@@ -1241,7 +1252,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_repl_xen.assert_called_once_with(tmp)
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
-                                             run_as_root=run_as_root)
+                                             run_as_root=run_as_root,
+                                             src_format='raw')
 
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
