@@ -75,12 +75,20 @@ def validate_disk_format(disk_format):
 
 def qemu_img_info(path, run_as_root=True):
     """Return an object containing the parsed output from qemu-img info."""
-    cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
+    cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info', path]
+
     if os.name == 'nt':
         cmd = cmd[2:]
     out, _err = utils.execute(*cmd, run_as_root=run_as_root,
                               prlimit=QEMU_IMG_LIMITS)
-    return imageutils.QemuImgInfo(out)
+    info = imageutils.QemuImgInfo(out)
+
+    # From Cinder's point of view, any 'luks' formatted images
+    # should be treated as 'raw'.
+    if info.file_format == 'luks':
+        info.file_format = 'raw'
+
+    return info
 
 
 def get_qemu_img_version():
