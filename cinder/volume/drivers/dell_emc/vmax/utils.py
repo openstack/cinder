@@ -88,177 +88,71 @@ class VMAXUtils(object):
                 "Install PyWBEM using the python-pywbem package.")
         self.protocol = prtcl
 
-    def find_storage_configuration_service(self, conn, storageSystemName):
-        """Get storage configuration service with given storage system name.
+    def _find_service(self, conn, instance_name,
+                      service_type, storageSystemName):
+        """Get service with given storage system name.
 
         :param conn: connection to the ecom server
+        :param instance_name: instance name
+        :param service_type: message into the log
         :param storageSystemName: the storage system name
         :returns: foundConfigService
         :raises: VolumeBackendAPIException
         """
-        foundConfigService = None
-        configservices = conn.EnumerateInstanceNames(
-            'EMC_StorageConfigurationService')
-        for configservice in configservices:
-            if storageSystemName == configservice['SystemName']:
-                foundConfigService = configservice
-                LOG.debug("Found Storage Configuration Service: "
-                          "%(configservice)s.",
-                          {'configservice': configservice})
+        foundService = None
+        services = conn.EnumerateInstanceNames(instance_name)
+        for service in services:
+            if storageSystemName == service['SystemName']:
+                foundService = service
+                LOG.debug("Found %(service_type)s Service: %(service)s.",
+                          {'service_type': service_type,
+                           'service': service})
                 break
 
-        if foundConfigService is None:
-            exceptionMessage = (_("Storage Configuration Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
+        if foundService is None:
+            exceptionMessage = (_("%(service_type)s not found on %(storage)s.")
+                                % {'service_type': service_type,
+                                   'storage': storageSystemName})
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        return foundConfigService
+        return foundService
+
+    def find_storage_configuration_service(self, conn, storageSystemName):
+        # Get storage configuration service with given storage system name.
+        return self._find_service(conn, 'EMC_StorageConfigurationService',
+                                  'Storage Configuration Service',
+                                  storageSystemName)
 
     def find_controller_configuration_service(self, conn, storageSystemName):
-        """Get the controller config by using the storage service name.
-
-        Given the storage system name, get the controller configuration
-        service.
-
-        :param conn: connection to the ecom server
-        :param storageSystemName: the storage system name
-        :returns: foundconfigService
-        :raises: VolumeBackendAPIException
-        """
-        foundConfigService = None
-        configservices = conn.EnumerateInstanceNames(
-            'EMC_ControllerConfigurationService')
-        for configservice in configservices:
-            if storageSystemName == configservice['SystemName']:
-                foundConfigService = configservice
-                LOG.debug("Found Controller Configuration Service: "
-                          "%(configservice)s.",
-                          {'configservice': configservice})
-                break
-
-        if foundConfigService is None:
-            exceptionMessage = (_("Controller Configuration Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        return foundConfigService
+        # Get the controller config by using the storage service name.
+        return self._find_service(conn, 'EMC_ControllerConfigurationService',
+                                  'Controller Configuration Service',
+                                  storageSystemName)
 
     def find_element_composition_service(self, conn, storageSystemName):
-        """Given the storage system name, get the element composition service.
-
-        :param conn: the connection to the ecom server
-        :param storageSystemName: the storage system name
-        :returns: foundElementCompositionService
-        :raises: VolumeBackendAPIException
-        """
-        foundElementCompositionService = None
-        elementCompositionServices = conn.EnumerateInstanceNames(
-            'Symm_ElementCompositionService')
-        for elementCompositionService in elementCompositionServices:
-            if storageSystemName == elementCompositionService['SystemName']:
-                foundElementCompositionService = elementCompositionService
-                LOG.debug(
-                    "Found Element Composition Service: "
-                    "%(elementCompositionService)s.", {
-                        'elementCompositionService':
-                            elementCompositionService})
-                break
-        if foundElementCompositionService is None:
-            exceptionMessage = (_("Element Composition Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        return foundElementCompositionService
+        # Given the storage system name, get the element composition service.
+        return self._find_service(conn, 'Symm_ElementCompositionService',
+                                  'Element Composition Service',
+                                  storageSystemName)
 
     def find_storage_relocation_service(self, conn, storageSystemName):
-        """Given the storage system name, get the storage relocation service.
-
-        :param conn: the connection to the ecom server
-        :param storageSystemName: the storage system name
-        :returns: foundStorageRelocationService
-        :raises: VolumeBackendAPIException
-        """
-        foundStorageRelocationService = None
-        storageRelocationServices = conn.EnumerateInstanceNames(
-            'Symm_StorageRelocationService')
-        for storageRelocationService in storageRelocationServices:
-            if storageSystemName == storageRelocationService['SystemName']:
-                foundStorageRelocationService = storageRelocationService
-                LOG.debug(
-                    "Found Element Composition Service: "
-                    "%(storageRelocationService)s.",
-                    {'storageRelocationService': storageRelocationService})
-                break
-
-        if foundStorageRelocationService is None:
-            exceptionMessage = (_("Storage Relocation Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        return foundStorageRelocationService
+        # Given the storage system name, get the storage relocation service.
+        return self._find_service(conn, 'Symm_StorageRelocationService',
+                                  'Element Composition Service',
+                                  storageSystemName)
 
     def find_storage_hardwareid_service(self, conn, storageSystemName):
-        """Given the storage system name, get the storage hardware service.
-
-        :param conn: the connection to the ecom server
-        :param storageSystemName: the storage system name
-        :returns: foundStorageRelocationService
-        :raises: VolumeBackendAPIException
-        """
-        foundHardwareService = None
-        storageHardwareservices = conn.EnumerateInstanceNames(
-            'EMC_StorageHardwareIDManagementService')
-        for storageHardwareservice in storageHardwareservices:
-            if storageSystemName == storageHardwareservice['SystemName']:
-                foundHardwareService = storageHardwareservice
-                LOG.debug("Found Storage Hardware ID Management Service:"
-                          "%(storageHardwareservice)s.",
-                          {'storageHardwareservice': storageHardwareservice})
-                break
-
-        if foundHardwareService is None:
-            exceptionMessage = (_("Storage HardwareId mgmt Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        return foundHardwareService
+        # Given the storage system name, get the storage hardware service.
+        return self._find_service(conn,
+                                  'EMC_StorageHardwareIDManagementService',
+                                  'Storage Hardware ID Management Service',
+                                  storageSystemName)
 
     def find_replication_service(self, conn, storageSystemName):
-        """Given the storage system name, get the replication service.
-
-        :param conn: the connection to the ecom server
-        :param storageSystemName: the storage system name
-        :returns: foundRepService
-        :raises: VolumeBackendAPIException
-        """
-        foundRepService = None
-        repservices = conn.EnumerateInstanceNames(
-            'EMC_ReplicationService')
-        for repservice in repservices:
-            if storageSystemName == repservice['SystemName']:
-                foundRepService = repservice
-                LOG.debug("Found Replication Service:"
-                          "%(repservice)s",
-                          {'repservice': repservice})
-                break
-        if foundRepService is None:
-            exceptionMessage = (_("Replication Service not found "
-                                  "on %(storageSystemName)s.")
-                                % {'storageSystemName': storageSystemName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        return foundRepService
+        # Given the storage system name, get the replication service.
+        return self._find_service(conn, 'EMC_ReplicationService',
+                                  'Replication Service', storageSystemName)
 
     def get_tier_policy_service(self, conn, storageSystemInstanceName):
         """Gets the tier policy service for a given storage system instance.
