@@ -368,6 +368,12 @@ class API(base.Base):
                 if volume['status'] != 'creating':
                     break
                 greenthread.sleep(1)
+
+            if volume['status'] == "error":
+                msg = (_('Error while creating volume %(volume_id)s '
+                         'for restoring backup %(backup_id)s.') %
+                       {'volume_id': volume_id, 'backup_id': backup_id})
+                raise exception.InvalidVolume(reason=msg)
         else:
             volume = self.volume_api.get(context, volume_id)
 
