@@ -150,13 +150,22 @@ def convert_to_id(value62):
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
 
-    def __init__(self, configuration, host, driver_name):
-        super(MStorageVolumeCommon, self).__init__()
+    VERSION = '1.8.2'
+    WIKI_NAME = 'NEC_Cinder_CI'
 
+    def do_setup(self, context):
+        self._context = context
+
+    def check_for_setup_error(self):
+        if len(getattr(self._local_conf, 'nec_pools', [])) == 0:
+            raise exception.ParameterNotFound(param='nec_pools')
+
+    def _set_config(self, configuration, host, driver_name):
+        self._configuration = configuration
         self._host = host
         self._driver_name = driver_name
+        self._numofld_per_pool = 1024
 
-        self._configuration = configuration
         self._configuration.append_config_values(mstorage_opts)
         self._configuration.append_config_values(san.san_opts)
         self._config_group = self._configuration.config_group
@@ -171,9 +180,6 @@ class MStorageVolumeCommon(object):
         self._check_flags()
         self._properties = self._set_properties()
         self._cli = self._properties['cli']
-
-    def set_context(self, context):
-        self._context = context
 
     def _check_flags(self):
         for flag in ['nec_ismcli_fip', 'nec_ismcli_user']:
@@ -844,7 +850,7 @@ class MStorageVolumeCommon(object):
         specs = {}
 
         ctxt = context.get_admin_context()
-        type_id = volume['volume_type_id']
+        type_id = volume.volume_type_id
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
 
