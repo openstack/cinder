@@ -40,6 +40,7 @@ from cinder.volume import manager as vol_manager
 
 
 QUOTAS = quota.QUOTAS
+NON_EXISTENT_IMAGE_ID = '003f540f-ec6b-4293-a3f9-7c68646b0f5c'
 
 
 class FakeImageService(object):
@@ -157,7 +158,7 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         self.assertEqual('available', volume['status'])
 
     def test_copy_volume_to_image_exception(self):
-        self.image_meta['id'] = self.FAKE_UUID
+        self.image_meta['id'] = NON_EXISTENT_IMAGE_ID
         # creating volume testdata
         self.volume_attrs['status'] = 'in-use'
         db.volume_create(self.context, self.volume_attrs)
@@ -499,7 +500,7 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                           self.volume.create_volume,
                           self.context,
                           volume,
-                          {'image_id': self.FAKE_UUID})
+                          {'image_id': NON_EXISTENT_IMAGE_ID})
         volume = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual("error", volume['status'])
         self.assertFalse(volume['bootable'])

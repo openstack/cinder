@@ -521,14 +521,28 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         return model_update
 
     def _copy_image_to_volume(self, context, volume,
-                              image_id, image_location, image_service):
+                              image_meta, image_location, image_service):
+
+        image_id = image_meta['id']
         """Downloads Glance image to the specified volume."""
         LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
                   " to volume %(volume_id)s.",
                   {'image_id': image_id, 'volume_id': volume.id,
                    'image_location': image_location})
         try:
-            if volume.encryption_key_id:
+            image_properties = image_meta.get('properties', {})
+            image_encryption_key = image_properties.get(
+                'cinder_encryption_key_id')
+
+            if volume.encryption_key_id and image_encryption_key:
+                # If the image provided an encryption key, we have
+                # already cloned it to the volume's key in
+                # _get_encryption_key_id, so we can do a direct copy.
+                self.driver.copy_image_to_volume(
+                    context, volume, image_service, image_id)
+            elif volume.encryption_key_id:
+                # Creating an encrypted volume from a normal, unencrypted,
+                # image.
                 self.driver.copy_image_to_encrypted_volume(
                     context, volume, image_service, image_id)
             else:
@@ -651,7 +665,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             return None, False
 
     def _create_from_image_download(self, context, volume, image_location,
-                                    image_id, image_service):
+                                    image_meta, image_service):
         # TODO(harlowja): what needs to be rolled back in the clone if this
         # volume create fails?? Likely this should be a subflow or broken
         # out task in the future. That will bring up the question of how
@@ -669,7 +683,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           "%(updates)s",
                           {'volume_id': volume.id,
                            'updates': model_update})
-        self._copy_image_to_volume(context, volume, image_id, image_location,
+        self._copy_image_to_volume(context, volume, image_meta, image_location,
                                    image_service)
         return model_update
 
@@ -762,7 +776,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                         context,
                         volume,
                         image_location,
-                        image_id,
+                        image_meta,
                         image_service
                     )
 
