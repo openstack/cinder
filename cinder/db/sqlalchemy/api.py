@@ -2620,7 +2620,9 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
             # We don't want to delete keys we are going to update
             if metadata:
                 expected_values['key'] = db.Not(metadata.keys())
-            conditional_update(context, model, {'deleted': True},
+            conditional_update(context, model,
+                               {'deleted': True,
+                                'deleted_at': timeutils.utcnow()},
                                expected_values)
 
         # Get existing metadata
@@ -3193,7 +3195,8 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
                     meta_ref = _snapshot_metadata_get_item(context,
                                                            snapshot_id,
                                                            meta_key, session)
-                    meta_ref.update({'deleted': True})
+                    meta_ref.update({'deleted': True,
+                                     'deleted_at': timeutils.utcnow()})
                     meta_ref.save(session=session)
 
         meta_ref = None

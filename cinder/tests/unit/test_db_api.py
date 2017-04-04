@@ -1219,6 +1219,27 @@ class DBAPIVolumeTestCase(BaseTest):
                           False,
                           FAKE_METADATA_TYPE.fake_type)
 
+    @ddt.data(common.METADATA_TYPES.user, common.METADATA_TYPES.image)
+    @mock.patch.object(timeutils, 'utcnow')
+    @mock.patch.object(sqlalchemy_api, 'resource_exists')
+    @mock.patch.object(sqlalchemy_api, 'conditional_update')
+    @mock.patch.object(sqlalchemy_api, '_volume_x_metadata_get_query')
+    def test_volume_metadata_delete_deleted_at_updated(self,
+                                                       meta_type,
+                                                       mock_query,
+                                                       mock_update,
+                                                       mock_resource,
+                                                       mock_utc):
+        mock_query.all.return_value = {}
+        mock_utc.return_value = 'fake_time'
+
+        db.volume_metadata_update(self.ctxt, 1, {}, True, meta_type=meta_type)
+
+        mock_update.assert_called_once_with(mock.ANY, mock.ANY,
+                                            {'deleted': True,
+                                             'deleted_at': 'fake_time'},
+                                            mock.ANY)
+
     def test_volume_metadata_update_delete(self):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '4'}
@@ -1668,6 +1689,26 @@ class DBAPISnapshotTestCase(BaseTest):
         db_meta = db.snapshot_metadata_update(self.ctxt, 1, metadata2, True)
 
         self.assertEqual(should_be, db_meta)
+
+    @mock.patch.object(timeutils, 'utcnow')
+    @mock.patch.object(sqlalchemy_api, 'resource_exists')
+    @mock.patch.object(sqlalchemy_api, '_snapshot_metadata_get')
+    @mock.patch.object(sqlalchemy_api, '_snapshot_metadata_get_item')
+    def test_snapshot_metadata_delete_deleted_at_updated(self,
+                                                         mock_metadata_item,
+                                                         mock_metadata,
+                                                         mock_resource,
+                                                         mock_utc):
+        fake_metadata = {'fake_key1': 'fake_value1'}
+        mock_item = mock.Mock()
+        mock_metadata.return_value = fake_metadata
+        mock_utc.return_value = 'fake_time'
+        mock_metadata_item.side_effect = [mock_item]
+
+        db.snapshot_metadata_update(self.ctxt, 1, {}, True)
+
+        mock_item.update.assert_called_once_with({'deleted': True,
+                                                  'deleted_at': 'fake_time'})
 
     def test_snapshot_metadata_delete(self):
         metadata = {'a': '1', 'c': '2'}
