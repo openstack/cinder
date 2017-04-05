@@ -327,7 +327,9 @@ class BaseXtremIODriverTestCase(test.TestCase):
                                 xtremio_volumes_per_glance_cache = 100,
                                 driver_ssl_cert_verify = True,
                                 driver_ssl_cert_path =
-                                '/test/path/root_ca.crt')
+                                '/test/path/root_ca.crt',
+                                xtremio_array_busy_retry_count=5,
+                                xtremio_array_busy_retry_interval=5)
 
         def safe_get(key):
             return getattr(self.config, key)

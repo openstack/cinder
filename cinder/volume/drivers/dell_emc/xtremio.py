@@ -105,51 +105,52 @@ class XtremIOClient(object):
         elif ver == 'v2':
             return 'https://%s/api/json/v2/types' % self.configuration.san_ip
 
-    @utils.retry(exception.XtremIOArrayBusy,
-                 CONF.xtremio_array_busy_retry_count,
-                 CONF.xtremio_array_busy_retry_interval, 1)
     def req(self, object_type='volumes', method='GET', data=None,
             name=None, idx=None, ver='v1'):
-        if not data:
-            data = {}
-        if name and idx:
-            msg = _("can't handle both name and index in req")
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        @utils.retry(exception.XtremIOArrayBusy,
+                     self.configuration.xtremio_array_busy_retry_count,
+                     self.configuration.xtremio_array_busy_retry_interval, 1)
+        def _do_req(object_type, method, data, name, idx, ver):
+            if not data:
+                data = {}
+            if name and idx:
+                msg = _("can't handle both name and index in req")
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
-        url = '%s/%s' % (self.get_base_url(ver), object_type)
-        params = {}
-        key = None
-        if name:
-            params['name'] = name
-            key = name
-        elif idx:
-            url = '%s/%d' % (url, idx)
-            key = str(idx)
-        if method in ('GET', 'DELETE'):
-            params.update(data)
-            self.update_url(params, self.cluster_id)
-        if method != 'GET':
-            self.update_data(data, self.cluster_id)
-            LOG.debug('data: %s', data)
-        LOG.debug('%(type)s %(url)s', {'type': method, 'url': url})
-        try:
-            response = requests.request(method, url, params=params,
-                                        data=json.dumps(data),
-                                        verify=self.verify,
-                                        auth=(self.configuration.san_login,
+            url = '%s/%s' % (self.get_base_url(ver), object_type)
+            params = {}
+            key = None
+            if name:
+                params['name'] = name
+                key = name
+            elif idx:
+                url = '%s/%d' % (url, idx)
+                key = str(idx)
+            if method in ('GET', 'DELETE'):
+                params.update(data)
+                self.update_url(params, self.cluster_id)
+            if method != 'GET':
+                self.update_data(data, self.cluster_id)
+                LOG.debug('data: %s', data)
+            LOG.debug('%(type)s %(url)s', {'type': method, 'url': url})
+            try:
+                response = requests.request(
+                    method, url, params=params, data=json.dumps(data),
+                    verify=self.verify, auth=(self.configuration.san_login,
                                               self.configuration.san_password))
-        except requests.exceptions.RequestException as exc:
-            msg = (_('Exception: %s') % six.text_type(exc))
-            raise exception.VolumeDriverException(message=msg)
+            except requests.exceptions.RequestException as exc:
+                msg = (_('Exception: %s') % six.text_type(exc))
+                raise exception.VolumeDriverException(message=msg)
 
-        if 200 <= response.status_code < 300:
-            if method in ('GET', 'POST'):
-                return response.json()
-            else:
-                return ''
+            if 200 <= response.status_code < 300:
+                if method in ('GET', 'POST'):
+                    return response.json()
+                else:
+                    return ''
 
-        self.handle_errors(response, key, object_type)
+            self.handle_errors(response, key, object_type)
+        return _do_req(object_type, method, data, name, idx, ver)
 
     def handle_errors(self, response, key, object_type):
         if response.status_code == 400:
