@@ -25,9 +25,10 @@ from xml.dom import minidom
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit.consistencygroup import fake_cgsnapshot
-from cinder.tests.unit.consistencygroup import fake_consistencygroup
+from cinder.tests.unit import fake_group
+from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils
@@ -42,6 +43,7 @@ from cinder.volume.drivers.huawei import replication
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 from cinder.volume import qos_specs
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 admin_contex = context.get_admin_context()
@@ -382,7 +384,7 @@ FAKE_POOLS_SUPPORT_REPORT = {
     'max_over_subscription_ratio': 20.0,
     'luncopy': True,
     'hypermetro': True,
-    'consistencygroup_support': True
+    'consistent_group_snapshot_enabled': True
 }
 
 FAKE_LUN_GET_SUCCESS_RESPONSE = """
@@ -2020,6 +2022,15 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate/portgroup?TYPE=245&ASSOC'
 REPLICA_BACKEND_ID = 'huawei-replica-1'
 
 
+def cg_or_cg_snapshot(func):
+    def wrapper(self, *args, **kwargs):
+        self.mock_object(volume_utils,
+                         'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        return func(self, *args, **kwargs)
+    return wrapper
+
+
 class FakeHuaweiConf(huawei_conf.HuaweiConf):
     def __init__(self, conf, protocol):
         self.conf = conf
@@ -2241,10 +2252,10 @@ class HuaweiTestBase(test.TestCase):
             admin_contex, id=ID, provider_location=PROVIDER_LOCATION,
             name_id=ID)
 
-        self.cgsnapshot = fake_cgsnapshot.fake_cgsnapshot_obj(
-            admin_contex, id=ID, consistencygroup_id=ID, status='available')
+        self.group_snapshot = fake_group_snapshot.fake_group_snapshot_obj(
+            admin_contex, id=ID, group_id=ID, status='available')
 
-        self.cg = fake_consistencygroup.fake_consistencyobject_obj(
+        self.group = fake_group.fake_group_obj(
             admin_contex, id=ID, status='available')
 
     def test_encode_name(self):
@@ -4286,49 +4297,52 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
         self.assertIsNone(iqn)
 
-    def test_create_cgsnapshot(self):
+    @cg_or_cg_snapshot
+    def test_create_group_snapshot(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        model, snapshots = self.driver.create_cgsnapshot(ctxt,
-                                                         self.cgsnapshot,
-                                                         test_snapshots)
+        model, snapshots = (
+            self.driver.create_group_snapshot(ctxt, self.group_snapshot,
+                                              test_snapshots))
         snapshots_model_update = [{'id': '21ec7341-9256-497b-97d9'
                                    '-ef48edcf0635',
                                    'status': 'available',
                                    'provider_location': 11}]
         self.assertEqual(snapshots_model_update, snapshots)
-        self.assertEqual('available', model['status'])
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE, model['status'])
 
-    def test_create_cgsnapshot_create_snapshot_fail(self):
+    @cg_or_cg_snapshot
+    def test_create_group_snapshot_with_create_snapshot_fail(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
         self.mock_object(rest_client.RestClient, 'create_snapshot',
                          side_effect=(
                              exception.VolumeBackendAPIException(data='err')))
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cgsnapshot,
+                          self.driver.create_group_snapshot,
                           ctxt,
-                          self.cgsnapshot,
+                          self.group_snapshot,
                           test_snapshots)
 
-    def test_create_cgsnapshot_active_snapshot_fail(self):
+    @cg_or_cg_snapshot
+    def test_create_group_snapshot_with_active_snapshot_fail(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
         self.mock_object(rest_client.RestClient, 'activate_snapshot',
                          side_effect=(
                              exception.VolumeBackendAPIException(data='err')))
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cgsnapshot,
+                          self.driver.create_group_snapshot,
                           ctxt,
-                          self.cgsnapshot,
+                          self.group_snapshot,
                           test_snapshots)
 
-    def test_delete_cgsnapshot(self):
+    @cg_or_cg_snapshot
+    def test_delete_group_snapshot(self):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
-        self.driver.delete_cgsnapshot(ctxt,
-                                      self.cgsnapshot,
-                                      test_snapshots)
+        self.driver.delete_group_snapshot(ctxt, self.group_snapshot,
+                                          test_snapshots)
 
 
 class FCSanLookupService(object):
@@ -5109,95 +5123,81 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.assertFalse(res)
 
     @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_consistencygroup_type',
-                       return_value={"hypermetro": "true"})
-    def test_create_hypermetro_consistencygroup_success(self, mock_grouptype):
-        """Test that create_consistencygroup return successfully."""
+                       '_get_group_type',
+                       return_value=[{"hypermetro": "true"}])
+    @cg_or_cg_snapshot
+    def test_create_hypermetro_group_success(self, mock_grouptype):
+        """Test that create_group return successfully."""
         ctxt = context.get_admin_context()
-        # Create consistency group
-        model_update = self.driver.create_consistencygroup(ctxt, self.cg)
+        # Create group
+        model_update = self.driver.create_group(ctxt, self.group)
 
-        self.assertEqual('available',
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
-                         "Consistency Group created failed")
+                         "Group created failed")
 
     @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_consistencygroup_type',
-                       return_value={"hypermetro": "false"})
-    def test_create_normal_consistencygroup_success(self,
-                                                    mock_grouptype):
-        """Test that create_consistencygroup return successfully."""
+                       '_get_group_type',
+                       return_value=[{"hypermetro": "false"}])
+    @cg_or_cg_snapshot
+    def test_create_normal_group_success(self, mock_grouptype):
+        """Test that create_group return successfully."""
         ctxt = context.get_admin_context()
-        # Create consistency group
-        model_update = self.driver.create_consistencygroup(ctxt, self.cg)
+        # Create group
+        model_update = self.driver.create_group(ctxt, self.group)
 
-        self.assertEqual('available',
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'],
-                         "Consistency Group created failed")
+                         "Group created failed")
 
     @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_consistencygroup_type',
-                       return_value={"hypermetro": "true"})
-    def test_delete_hypermetro_consistencygroup_success(self, mock_grouptype):
-        """Test that create_consistencygroup return successfully."""
+                       '_get_group_type',
+                       return_value=[{"hypermetro": "true"}])
+    @cg_or_cg_snapshot
+    def test_delete_hypermetro_group_success(self, mock_grouptype):
+        """Test that delete_group return successfully."""
         test_volumes = [self.volume]
         ctxt = context.get_admin_context()
-        # Create consistency group
-        model, volumes = self.driver.delete_consistencygroup(ctxt,
-                                                             self.cg,
-                                                             test_volumes)
-        self.assertEqual('available',
+        # Delete group
+        model, volumes = self.driver.delete_group(ctxt, self.group,
+                                                  test_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
                          model['status'],
-                         "Consistency Group created failed")
-
-    def test_delete_normal_consistencygroup_success(self):
-        ctxt = context.get_admin_context()
-        test_volumes = [self.volume]
-        self.mock_object(huawei_driver.HuaweiBaseDriver,
-                         '_get_consistencygroup_type',
-                         return_value={"hypermetro": "false"})
-
-        model, volumes = self.driver.delete_consistencygroup(ctxt,
-                                                             self.cg,
-                                                             test_volumes)
-        self.assertEqual('available',
-                         model['status'],
-                         "Consistency Group created failed")
+                         "Group deleted failed")
 
     @mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                       '_get_consistencygroup_type',
-                       return_value={"hypermetro": "true"})
+                       '_get_group_type',
+                       return_value=[{"hypermetro": "false"}])
+    @cg_or_cg_snapshot
+    def test_delete_normal_group_success(self, mock_grouptype):
+        """Test that delete_group return successfully."""
+        ctxt = context.get_admin_context()
+        test_volumes = [self.volume]
+        # Delete group
+        model, volumes = self.driver.delete_group(ctxt, self.group,
+                                                  test_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED,
+                         model['status'],
+                         "Group deleted failed")
+
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_group_type',
+                       return_value=[{"hypermetro": "true"}])
     @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
                        return_value={'hypermetro_id': '3400a30d844d0007',
                                      'remote_lun_id': '59'})
-    def test_update_consistencygroup_success(self,
-                                             mock_grouptype,
-                                             mock_metadata):
-        """Test that create_consistencygroup return successfully."""
+    @cg_or_cg_snapshot
+    def test_update_group_success(self, mock_grouptype, mock_metadata):
+        """Test that update_group return successfully."""
         ctxt = context.get_admin_context()
         add_volumes = [self.volume]
         remove_volumes = [self.volume]
-        # Create consistency group
-        model_update = self.driver.update_consistencygroup(ctxt,
-                                                           self.cg,
-                                                           add_volumes,
-                                                           remove_volumes)
-        self.assertEqual('available',
+        # Update group
+        model_update = self.driver.update_group(ctxt, self.group,
+                                                add_volumes, remove_volumes)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update[0]['status'],
-                         "Consistency Group update failed")
-
-    def test_create_hypermetro_consistencygroup_success_2(self):
-        ctxt = context.get_admin_context()
-        # Create consistency group
-        temp_cg = copy.deepcopy(self.cg)
-        temp_cg['volume_type_id'] = '550c089b-bfdd-4f7f-86e1-3ba88125555c,'
-        self.mock_object(volume_types, 'get_volume_type',
-                         return_value=test_hypermetro_type)
-        model_update = self.driver.create_consistencygroup(ctxt, temp_cg)
-
-        self.assertEqual('available',
-                         model_update['status'],
-                         "Consistency Group created failed")
+                         "Group update failed")
 
     def test_is_initiator_associated_to_host_raise(self):
         self.assertRaises(exception.VolumeBackendAPIException,
