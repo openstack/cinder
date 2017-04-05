@@ -73,6 +73,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nexenta_dataset_dedup = 'off'
         self.cfg.nfs_mount_point_base = '/mnt/test'
         self.cfg.nfs_mount_attempts = 3
+        self.cfg.nfs_mount_options = None
         self.cfg.nas_mount_options = 'vers=4'
         self.cfg.reserved_percentage = 20
         self.cfg.nexenta_use_https = False

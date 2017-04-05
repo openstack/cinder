@@ -35,6 +35,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
@@ -116,8 +117,8 @@ gpfs_remote_ssh_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(gpfs_opts)
-CONF.register_opts(gpfs_remote_ssh_opts)
+CONF.register_opts(gpfs_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(gpfs_remote_ssh_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def _different(difference_tuple):

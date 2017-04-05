@@ -29,6 +29,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 VERSION = '1.1.5'
@@ -56,7 +57,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

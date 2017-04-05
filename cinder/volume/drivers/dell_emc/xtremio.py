@@ -49,6 +49,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
@@ -72,7 +73,7 @@ XTREMIO_OPTS = [
                default=100,
                help='Number of volumes created from each cached glance image')]
 
-CONF.register_opts(XTREMIO_OPTS)
+CONF.register_opts(XTREMIO_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 RANDOM = random.Random()
 OBJ_NOT_FOUND_ERR = 'obj_not_found'

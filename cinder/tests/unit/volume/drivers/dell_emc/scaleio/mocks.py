@@ -16,9 +16,11 @@ import json
 import requests
 import six
 
-from cinder.volume import configuration as conf
-from cinder.volume.drivers.dell_emc.scaleio import driver
 from oslo_config import cfg
+
+from cinder.volume.drivers.dell_emc.scaleio import driver
+
+CONF = cfg.CONF
 
 
 class ScaleIODriver(driver.ScaleIODriver):
@@ -26,37 +28,6 @@ class ScaleIODriver(driver.ScaleIODriver):
 
     Provides some fake configuration options
     """
-    def __init__(self, *args, **kwargs):
-        configuration = conf.Configuration(
-            [
-                cfg.StrOpt('fake'),
-            ],
-            None
-        )
-
-        # Override the defaults to fake values
-        configuration.set_override('san_ip', override='127.0.0.1')
-        configuration.set_override('sio_rest_server_port', override='8888')
-        configuration.set_override('san_login', override='test')
-        configuration.set_override('san_password', override='pass')
-        configuration.set_override('sio_storage_pool_id', override='test_pool')
-        configuration.set_override('sio_protection_domain_id',
-                                   override='test_domain')
-        configuration.set_override('sio_storage_pools',
-                                   override='test_domain:test_pool')
-        configuration.set_override('max_over_subscription_ratio',
-                                   override=5.0)
-        configuration.set_override('sio_server_api_version',
-                                   override='2.0.0')
-        if 'san_thin_provision' in kwargs:
-            configuration.set_override(
-                'san_thin_provision',
-                override=kwargs['san_thin_provision'])
-
-        super(ScaleIODriver, self).__init__(configuration=configuration,
-                                            *args,
-                                            **kwargs)
-
     def local_path(self, volume):
         pass
 

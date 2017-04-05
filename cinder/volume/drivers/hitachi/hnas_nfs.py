@@ -33,6 +33,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils as cutils
+from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume.drivers.hitachi import hnas_utils
 from cinder.volume.drivers import nfs
@@ -53,7 +54,7 @@ NFS_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(NFS_OPTS)
+CONF.register_opts(NFS_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 HNAS_DEFAULT_CONFIG = {'ssc_cmd': 'ssc', 'ssh_port': '22'}
 

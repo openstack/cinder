@@ -43,6 +43,7 @@ from oslo_config import cfg
 
 
 CONF = cfg.CONF
+SHARED_CONF_GROUP = 'backend_defaults'
 
 
 class Configuration(object):

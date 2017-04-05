@@ -41,6 +41,7 @@ from cinder import objects
 from cinder import utils
 
 from cinder.objects import fields
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -89,7 +90,7 @@ scaleio_opts = [
                       'Maximum value allowed for ScaleIO is 10.0.')
 ]
 
-CONF.register_opts(scaleio_opts)
+CONF.register_opts(scaleio_opts, group=configuration.SHARED_CONF_GROUP)
 
 STORAGE_POOL_NAME = 'sio:sp_name'
 STORAGE_POOL_ID = 'sio:sp_id'

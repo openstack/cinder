@@ -28,6 +28,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration
 from cinder.volume.drivers.falconstor import rest_proxy
 from cinder.volume.drivers.san import san
 
@@ -63,7 +64,7 @@ FSS_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(FSS_OPTS)
+CONF.register_opts(FSS_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 class FalconstorBaseDriver(san.SanDriver):

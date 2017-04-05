@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.fusionstorage import fspythonapi
 
@@ -54,7 +55,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 OLD_VERSION = 1
 NEW_VERSION = 0

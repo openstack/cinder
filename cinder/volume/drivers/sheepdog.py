@@ -36,6 +36,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 
 
@@ -52,7 +53,7 @@ sheepdog_opts = [
 
 CONF = cfg.CONF
 CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
-CONF.register_opts(sheepdog_opts)
+CONF.register_opts(sheepdog_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class SheepdogClient(object):

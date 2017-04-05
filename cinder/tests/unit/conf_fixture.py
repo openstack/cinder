@@ -18,11 +18,13 @@ import os
 
 from oslo_config import cfg
 
+from cinder.volume import configuration
 
 CONF = cfg.CONF
 
 CONF.import_opt('policy_file', 'cinder.policy', group='oslo_policy')
-CONF.import_opt('volume_driver', 'cinder.volume.manager')
+CONF.import_opt('volume_driver', 'cinder.volume.manager',
+                group=configuration.SHARED_CONF_GROUP)
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
 CONF.import_opt('api_class', 'cinder.keymgr', group='key_manager')
 CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='key_manager')
@@ -34,7 +36,8 @@ def_vol_type = 'fake_vol_type'
 def set_defaults(conf):
     conf.set_default('default_volume_type', def_vol_type)
     conf.set_default('volume_driver',
-                     'cinder.tests.fake_driver.FakeLoggingVolumeDriver')
+                     'cinder.tests.fake_driver.FakeLoggingVolumeDriver',
+                     group=configuration.SHARED_CONF_GROUP)
     conf.set_default('iscsi_helper', 'fake')
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('connection', 'sqlite://', group='database')

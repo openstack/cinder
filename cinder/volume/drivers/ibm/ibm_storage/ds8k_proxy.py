@@ -70,6 +70,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder.volume import configuration
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import (
     ds8k_replication as replication)
@@ -120,7 +121,7 @@ ds8k_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(ds8k_opts)
+CONF.register_opts(ds8k_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class Lun(object):

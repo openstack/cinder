@@ -37,6 +37,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import utils as volume_utils
 
@@ -99,8 +100,8 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(nas_opts)
-CONF.register_opts(volume_opts)
+CONF.register_opts(nas_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 # TODO(bluex): remove when drivers stop using it

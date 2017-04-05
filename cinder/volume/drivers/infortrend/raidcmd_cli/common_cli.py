@@ -27,6 +27,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -79,8 +80,8 @@ infortrend_esds_extra_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(infortrend_esds_opts)
-CONF.register_opts(infortrend_esds_extra_opts)
+CONF.register_opts(infortrend_esds_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(infortrend_esds_extra_opts, group=conf.SHARED_CONF_GROUP)
 
 CLI_RC_FILTER = {
     'CreatePartition': {'error': _('Failed to create partition.')},

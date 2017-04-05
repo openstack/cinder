@@ -30,6 +30,7 @@ from oslo_utils import units
 from oslo_utils import uuidutils
 
 from cinder.image import image_utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import utils
 
@@ -42,7 +43,7 @@ windows_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(windows_opts)
+CONF.register_opts(windows_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class WindowsDriver(driver.ISCSIDriver):

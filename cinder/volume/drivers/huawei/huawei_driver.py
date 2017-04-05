@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import fc_zone_helper
@@ -72,7 +73,7 @@ huawei_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(huawei_opts)
+CONF.register_opts(huawei_opts, group=configuration.SHARED_CONF_GROUP)
 
 snap_attrs = ('id', 'volume_id', 'volume', 'provider_location')
 Snapshot = collections.namedtuple('Snapshot', snap_attrs)

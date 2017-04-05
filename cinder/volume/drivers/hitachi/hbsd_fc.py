@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 from cinder.volume.drivers.hitachi import hbsd_common as common
@@ -43,7 +44,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

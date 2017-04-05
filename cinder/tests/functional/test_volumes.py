@@ -16,6 +16,7 @@
 from oslo_utils import uuidutils
 
 from cinder.tests.functional import functional_helpers
+from cinder.volume import configuration
 
 
 class VolumesTest(functional_helpers._FunctionalTestBase):
@@ -27,9 +28,10 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
-        f['volume_driver'] = \
-            'cinder.tests.fake_driver.FakeLoggingVolumeDriver'
-        f['default_volume_type'] = self._vol_type_name
+        f['volume_driver'] = (
+            {'v': 'cinder.tests.fake_driver.FakeLoggingVolumeDriver',
+             'g': configuration.SHARED_CONF_GROUP})
+        f['default_volume_type'] = {'v': self._vol_type_name}
         return f
 
     def test_get_volumes_summary(self):

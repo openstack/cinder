@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Cinder stopped supporting single-backend configurations in Ocata. However,
+    sample ``cinder.conf`` was still generated with driver-related options in
+    ``[DEFAULT]`` section, where those options had no effect at all. Now all of
+    driver options are listed in ``[backend_defaults]`` section, that indicates
+    that those options are effective only in this section and
+    ``[<backend_name>]`` sections listed in ``enabled_backends``.

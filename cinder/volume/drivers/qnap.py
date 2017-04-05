@@ -38,6 +38,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ qnap_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(qnap_opts)
+CONF.register_opts(qnap_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

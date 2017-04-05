@@ -17,6 +17,7 @@
 from oslo_config import cfg
 
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import vsp_common as common
 from cinder.volume.drivers.hitachi import vsp_utils as utils
@@ -45,7 +46,7 @@ _DRIVER_INFO = {
 }
 
 CONF = cfg.CONF
-CONF.register_opts(fc_opts)
+CONF.register_opts(fc_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

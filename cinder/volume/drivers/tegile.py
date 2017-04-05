@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -48,7 +49,7 @@ tegile_opts = [
                help='Create volumes in this project')]
 
 CONF = cfg.CONF
-CONF.register_opts(tegile_opts)
+CONF.register_opts(tegile_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def debugger(func):

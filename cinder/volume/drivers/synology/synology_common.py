@@ -43,6 +43,7 @@ from cinder.i18n import _
 from cinder.objects import snapshot
 from cinder.objects import volume
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import utils as volutils
 
 
@@ -79,7 +80,7 @@ cinder_opts = [
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.register_opts(cinder_opts)
+CONF.register_opts(cinder_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class AESCipher(object):

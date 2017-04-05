@@ -23,6 +23,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.vmax import masking
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
@@ -57,7 +58,7 @@ vmax_opts = [
                 help='Use this value to enable '
                      'the initiator_check.')]
 
-CONF.register_opts(vmax_opts)
+CONF.register_opts(vmax_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class VMAXCommon(object):

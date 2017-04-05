@@ -23,6 +23,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import scaleio
 from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.volume import configuration
 
 
 @ddt.ddt
@@ -133,8 +134,8 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver._check_volume_size(1)
 
     def test_volume_size_round_false(self):
-        self.driver.configuration.set_override('sio_round_volume_capacity',
-                                               override=False)
+        self.override_config('sio_round_volume_capacity', False,
+                             configuration.SHARED_CONF_GROUP)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._check_volume_size, 1)
 
@@ -268,8 +269,9 @@ class TestMisc(scaleio.TestScaleIODriver):
     @ddt.unpack
     def test_default_provisioning_type_thin(self, config_provisioning_type,
                                             expected_provisioning_type):
-        self.driver = mocks.ScaleIODriver(
-            san_thin_provision=config_provisioning_type)
+        self.override_config('san_thin_provision', config_provisioning_type,
+                             configuration.SHARED_CONF_GROUP)
+        self.driver = mocks.ScaleIODriver(configuration=self.configuration)
         empty_storage_type = {}
         self.assertEqual(
             expected_provisioning_type,

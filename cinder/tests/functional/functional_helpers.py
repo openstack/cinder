@@ -68,7 +68,8 @@ class _FunctionalTestBase(test.TestCase):
         super(_FunctionalTestBase, self).setUp()
 
         f = self._get_flags()
-        self.flags(**f)
+        for k, value_dict in f.items():
+            self.override_config(k, value_dict['v'], value_dict.get('g'))
 
         for var in ('http_proxy', 'HTTP_PROXY'):
             self.useFixture(fixtures.EnvironmentVariable(var))
@@ -107,15 +108,15 @@ class _FunctionalTestBase(test.TestCase):
         f = {}
 
         # Ensure tests only listen on localhost
-        f['osapi_volume_listen'] = '127.0.0.1'
+        f['osapi_volume_listen'] = {'v': '127.0.0.1'}
 
         # Auto-assign ports to allow concurrent tests
-        f['osapi_volume_listen_port'] = 0
+        f['osapi_volume_listen_port'] = {'v': 0}
 
         # Use simple scheduler to avoid complications - we test schedulers
         # separately
-        f['scheduler_driver'] = ('cinder.scheduler.filter_scheduler.FilterSche'
-                                 'duler')
+        f['scheduler_driver'] = {'v': ('cinder.scheduler.filter_scheduler.'
+                                       'FilterScheduler')}
 
         return f
 

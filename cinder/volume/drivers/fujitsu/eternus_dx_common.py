@@ -28,6 +28,7 @@ from xml.etree.ElementTree import parse
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration as conf
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -134,7 +135,7 @@ RETCODE_dic = {
     '35347': 'Copy table size is not enough',
 }
 
-CONF.register_opts(FJ_ETERNUS_DX_OPT_opts)
+CONF.register_opts(FJ_ETERNUS_DX_OPT_opts, group=conf.SHARED_CONF_GROUP)
 
 
 class FJDXCommon(object):

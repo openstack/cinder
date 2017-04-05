@@ -28,6 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import nfs
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -307,7 +308,7 @@ coho_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(coho_opts)
+CONF.register_opts(coho_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

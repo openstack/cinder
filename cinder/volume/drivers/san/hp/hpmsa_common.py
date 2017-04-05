@@ -16,6 +16,7 @@
 
 from oslo_config import cfg
 
+from cinder.volume import configuration
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.san.hp import hpmsa_client
 
@@ -46,8 +47,8 @@ iscsi_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(common_opts)
-CONF.register_opts(iscsi_opts)
+CONF.register_opts(common_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(iscsi_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class HPMSACommon(dothill_common.DotHillCommon):

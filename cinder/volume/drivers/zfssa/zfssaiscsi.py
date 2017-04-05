@@ -28,6 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -91,7 +92,7 @@ ZFSSA_OPTS = [
                help='Driver policy for volume manage.')
 ]
 
-CONF.register_opts(ZFSSA_OPTS)
+CONF.register_opts(ZFSSA_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 ZFSSA_LUN_SPECS = {
     'zfssa:volblocksize',

@@ -689,6 +689,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
     def test_revert_snapshot(self):
         self._setup_stubs_for_manage_existing()
+        self.configuration.lvm_type = 'auto'
         fake_volume = tests_utils.create_volume(self.context,
                                                 display_name='fake_volume')
         fake_snapshot = tests_utils.create_snapshot(

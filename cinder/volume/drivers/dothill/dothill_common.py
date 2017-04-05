@@ -28,6 +28,7 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import configuration
 from cinder.volume.drivers.dothill import dothill_client as dothill
 
 LOG = logging.getLogger(__name__)
@@ -58,8 +59,8 @@ iscsi_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(common_opts)
-CONF.register_opts(iscsi_opts)
+CONF.register_opts(common_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(iscsi_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class DotHillCommon(object):

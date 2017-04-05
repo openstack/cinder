@@ -30,6 +30,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 VERSION = '1.1.0'
@@ -79,7 +80,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver
@@ -114,8 +115,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self.configuration.append_config_values(volume_opts)
 
         self.base = getattr(self.configuration,
-                            'smbfs_mount_point_base',
-                            CONF.smbfs_mount_point_base)
+                            'smbfs_mount_point_base')
         self._remotefsclient = remotefs_brick.WindowsRemoteFsClient(
             'cifs', root_helper=None, smbfs_mount_point_base=self.base,
             local_path_for_loopback=True)

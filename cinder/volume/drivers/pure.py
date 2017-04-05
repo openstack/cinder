@@ -36,6 +36,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -82,7 +83,7 @@ PURE_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(PURE_OPTS)
+CONF.register_opts(PURE_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 INVALID_CHARACTERS = re.compile(r"[^-a-zA-Z0-9]")
 GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")

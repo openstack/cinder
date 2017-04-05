@@ -42,6 +42,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.ibm.storwize_svc import (
     storwize_svc_common as storwize_common)
 from cinder.zonemanager import utils as fczm_utils
@@ -56,7 +57,7 @@ storwize_svc_fc_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(storwize_svc_fc_opts)
+CONF.register_opts(storwize_svc_fc_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

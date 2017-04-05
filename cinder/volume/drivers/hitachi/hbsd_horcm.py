@@ -29,6 +29,7 @@ import six
 
 from cinder import exception
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 
 GETSTORAGEARRAY_ONCE = 100
@@ -116,7 +117,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def horcm_synchronized(function):

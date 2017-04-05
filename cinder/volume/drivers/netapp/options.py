@@ -27,6 +27,8 @@ place to ensure re usability and better management of configuration options.
 from oslo_config import cfg
 from oslo_config import types
 
+from cinder.volume import configuration as conf
+
 NETAPP_SIZE_MULTIPLIER_DEFAULT = 1.2
 
 netapp_proxy_opts = [
@@ -213,15 +215,15 @@ netapp_replication_opts = [
                     'during a failover.'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(netapp_proxy_opts)
-CONF.register_opts(netapp_connection_opts)
-CONF.register_opts(netapp_transport_opts)
-CONF.register_opts(netapp_basicauth_opts)
-CONF.register_opts(netapp_cluster_opts)
-CONF.register_opts(netapp_7mode_opts)
-CONF.register_opts(netapp_provisioning_opts)
-CONF.register_opts(netapp_img_cache_opts)
-CONF.register_opts(netapp_eseries_opts)
-CONF.register_opts(netapp_nfs_extra_opts)
-CONF.register_opts(netapp_san_opts)
-CONF.register_opts(netapp_replication_opts)
+CONF.register_opts(netapp_proxy_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_connection_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_transport_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_basicauth_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_cluster_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_7mode_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_provisioning_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_img_cache_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_eseries_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_nfs_extra_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_san_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_replication_opts, group=conf.SHARED_CONF_GROUP)

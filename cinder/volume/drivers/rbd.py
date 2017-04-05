@@ -33,6 +33,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 
 try:
@@ -94,7 +95,7 @@ RBD_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(RBD_OPTS)
+CONF.register_opts(RBD_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 

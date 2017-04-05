@@ -32,6 +32,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.objects.volume import Volume
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -71,7 +72,7 @@ ZFSSA_OPTS = [
 LOG = log.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.register_opts(ZFSSA_OPTS)
+CONF.register_opts(ZFSSA_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 def factory_zfssa():

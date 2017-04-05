@@ -16,6 +16,7 @@
 
 from oslo_config import cfg
 
+from cinder.volume import configuration
 
 DPL_OPTS = [
     cfg.StrOpt('dpl_pool',
@@ -27,4 +28,4 @@ DPL_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(DPL_OPTS)
+CONF.register_opts(DPL_OPTS, group=configuration.SHARED_CONF_GROUP)

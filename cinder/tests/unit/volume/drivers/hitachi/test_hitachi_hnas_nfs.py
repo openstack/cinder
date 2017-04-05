@@ -129,6 +129,8 @@ class HNASNFSDriverTest(test.TestCase):
         self.configuration.hds_hnas_nfs_config_file = 'fake_config.xml'
         self.configuration.nfs_shares_config = 'fake_nfs_share.xml'
         self.configuration.num_shell_tries = 2
+        self.configuration.nfs_mount_point_base = '%state_path/mnt'
+        self.configuration.nfs_mount_options = None
 
         self.driver = nfs.HNASNFSDriver(configuration=self.configuration)
 

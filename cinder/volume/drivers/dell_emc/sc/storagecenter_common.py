@@ -22,6 +22,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 from cinder.volume.drivers.san.san import san_opts
@@ -70,7 +71,7 @@ common_opts = [
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.register_opts(common_opts)
+CONF.register_opts(common_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class SCCommonDriver(driver.ManageableVD,

@@ -24,6 +24,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 
 import cinder.volume.drivers.datera.datera_api2 as api2
@@ -70,7 +71,7 @@ d_opts = [
 
 CONF = cfg.CONF
 CONF.import_opt('driver_use_ssl', 'cinder.volume.driver')
-CONF.register_opts(d_opts)
+CONF.register_opts(d_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
