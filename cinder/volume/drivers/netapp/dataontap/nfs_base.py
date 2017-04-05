@@ -591,12 +591,24 @@ class NetAppNfsDriver(driver.ManageableVD,
         else:
             return False
 
+    @utils.trace_method
+    def _touch_path_to_refresh(self, path):
+        try:
+            # Touching parent directory forces NFS client to flush its cache.
+            self._execute('touch', path, run_as_root=self._execute_as_root)
+        except processutils.ProcessExecutionError:
+            LOG.exception(_LE("Failed to touch path %s."), path)
+
+    @utils.trace_method
     def _discover_file_till_timeout(self, path, timeout=45):
         """Checks if file size at path is equal to size."""
         # Sometimes nfs takes time to discover file
         # Retrying in case any unexpected situation occurs
         retry_seconds = timeout
         sleep_interval = 2
+        base_path = os.path.dirname(path)
+        self._touch_path_to_refresh(base_path)
+
         while True:
             if os.path.exists(path):
                 return True
@@ -607,6 +619,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                 else:
                     time.sleep(sleep_interval)
                     retry_seconds -= sleep_interval
+                    self._touch_path_to_refresh(base_path)
 
     def _is_cloneable_share(self, image_location):
         """Finds if the image at location is cloneable."""

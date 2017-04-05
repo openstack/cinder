@@ -16,6 +16,9 @@
 Mock unit tests for the NetApp cmode nfs storage driver
 """
 
+import hashlib
+import uuid
+
 import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
@@ -23,6 +26,7 @@ from oslo_service import loopingcall
 from oslo_utils import units
 
 from cinder import exception
+from cinder.image import image_utils
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
@@ -438,6 +442,80 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(0, mock_extract_host.call_count)
         self.assertEqual(0, mock_get_flex_vol_name.call_count)
         self.assertEqual(0, mock_file_assign_qos.call_count)
+
+    @mock.patch.object(image_utils, 'convert_image')
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    @mock.patch('os.path.exists')
+    def test__copy_from_img_service_qcow2_copyoffload_workflow_success(
+            self, mock_exists, mock_qemu_img_info, mock_cvrt_image):
+        drv = self.driver
+        cinder_mount_point_base = '/opt/stack/data/cinder/mnt/'
+        # To get the cinder mount point directory, we use:
+        mount_dir = hashlib.md5(
+            '203.0.113.122:/cinder-flexvol1'.encode('utf-8')).hexdigest()
+        cinder_mount_point = cinder_mount_point_base + mount_dir
+        destination_copied_file = (
+            '/cinder-flexvol1/a155308c-0290-497b-b278-4cdd01de0253'
+        )
+        volume = {'id': 'vol_id', 'name': 'name', 'size': 1}
+        image_id = 'image_id'
+        context = object()
+        image_service = mock.Mock()
+        image_service.get_location.return_value = (
+            'nfs://203.0.113.122/glance-flexvol1', None)
+        image_service.show.return_value = {'size': 1,
+                                           'disk_format': 'qcow2'}
+        drv._check_get_nfs_path_segs = (
+            mock.Mock(return_value=('203.0.113.122', '/openstack'))
+        )
+
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value='203.0.113.122')
+        drv._get_host_ip = mock.Mock(return_value='203.0.113.122')
+        drv._get_export_path = mock.Mock(
+            return_value='/cinder-flexvol1')
+        drv._get_provider_location = mock.Mock(return_value='share')
+        drv._execute = mock.Mock()
+        drv._execute_as_root = False
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=cinder_mount_point)
+        img_inf = mock.Mock()
+        img_inf.file_format = 'raw'
+        mock_qemu_img_info.return_value = img_inf
+        drv._check_share_can_hold_size = mock.Mock()
+
+        drv._move_nfs_file = mock.Mock(return_value=True)
+        drv._delete_file_at_path = mock.Mock()
+        drv._clone_file_dst_exists = mock.Mock()
+        drv._post_clone_image = mock.Mock()
+        self.mock_object(uuid, 'uuid4', mock.Mock(
+            return_value='a155308c-0290-497b-b278-4cdd01de0253'))
+
+        retval = drv._copy_from_img_service(
+            context, volume, image_service, image_id)
+
+        self.assertIsNone(retval)
+        drv._get_ip_verify_on_cluster.assert_any_call('203.0.113.122')
+        drv._get_export_path.assert_called_with('vol_id')
+        drv._check_share_can_hold_size.assert_called_with('share', 1)
+        drv._post_clone_image.assert_called_with(volume)
+        self.assertEqual(1, mock_cvrt_image.call_count)
+
+        # _execute must be called once for copy-offload and again to touch
+        # the top directory to refresh cache
+        drv._execute.assert_has_calls(
+            [
+                mock.call(
+                    'copyoffload_tool_path', '203.0.113.122',
+                    '203.0.113.122', '/openstack/glance-flexvol1',
+                    destination_copied_file, run_as_root=False,
+                    check_exit_code=0
+                ),
+                mock.call('touch', cinder_mount_point, run_as_root=False)
+            ]
+        )
+        self.assertEqual(2, drv._execute.call_count)
+        self.assertEqual(2, drv._delete_file_at_path.call_count)
+        self.assertEqual(1, drv._clone_file_dst_exists.call_count)
 
     def test_unmanage(self):
         mock_get_info = self.mock_object(na_utils,
