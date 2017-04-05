@@ -342,3 +342,18 @@ user documentation.
 3.41
 ----
   Add ``user_id`` field to snapshot list/detail and snapshot show.
+
+3.42
+----
+  Add ability to extend 'in-use' volume. User should be aware of the
+  whole environment before using this feature because it's dependent
+  on several external factors below:
+
+  1. nova-compute version - needs to be the latest for Pike.
+  2. only the libvirt compute driver supports this currently.
+  3. only iscsi and fibre channel volume types are supported on the
+     nova side currently.
+
+  Administrator can disable this ability by updating the
+  ``volume:extend_attached_volume`` policy rule.  Extend of a resered
+  Volume is NOT allowed.

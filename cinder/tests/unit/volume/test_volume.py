@@ -2096,6 +2096,42 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
     @mock.patch.object(QUOTAS, 'limit_check')
     @mock.patch.object(QUOTAS, 'reserve')
+    def test_extend_attached_volume(self, reserve, limit_check):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='available', host=CONF.host)
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api._extend,
+                          self.context,
+                          volume, 3, attached=True)
+
+        db.volume_update(self.context, volume.id, {'status': 'in-use'})
+        reserve.return_value = ["RESERVATION"]
+        volume_api._extend(self.context, volume, 3, attached=True)
+        volume.refresh()
+        self.assertEqual('extending', volume.status)
+        reserve.assert_called_once_with(self.context, gigabytes=1,
+                                        project_id=volume.project_id)
+        limit_check.side_effect = None
+        reserve.side_effect = None
+        db.volume_update(self.context, volume.id, {'status': 'in-use'})
+        volume_api.scheduler_rpcapi = mock.MagicMock()
+        volume_api.scheduler_rpcapi.extend_volume = mock.MagicMock()
+        volume_api._extend(self.context, volume, 3, attached=True)
+
+        request_spec = {
+            'volume_properties': volume,
+            'volume_type': {},
+            'volume_id': volume.id
+        }
+        volume_api.scheduler_rpcapi.extend_volume.assert_called_once_with(
+            self.context, volume, 3, ["RESERVATION"], request_spec)
+        # clean up
+        self.volume.delete_volume(self.context, volume)
+
+    @mock.patch.object(QUOTAS, 'limit_check')
+    @mock.patch.object(QUOTAS, 'reserve')
     def test_extend_volume(self, reserve, limit_check):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
@@ -2105,7 +2141,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # Extend fails when status != available
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.extend,
+                          volume_api._extend,
                           self.context,
                           volume,
                           3)
@@ -2113,21 +2149,21 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         db.volume_update(self.context, volume.id, {'status': 'available'})
         # Extend fails when new_size < orig_size
         self.assertRaises(exception.InvalidInput,
-                          volume_api.extend,
+                          volume_api._extend,
                           self.context,
                           volume,
                           1)
 
         # Extend fails when new_size == orig_size
         self.assertRaises(exception.InvalidInput,
-                          volume_api.extend,
+                          volume_api._extend,
                           self.context,
                           volume,
                           2)
 
         # works when new_size > orig_size
         reserve.return_value = ["RESERVATION"]
-        volume_api.extend(self.context, volume, 3)
+        volume_api._extend(self.context, volume, 3)
         volume.refresh()
         self.assertEqual('extending', volume.status)
         reserve.assert_called_once_with(self.context, gigabytes=1,
@@ -2141,13 +2177,14 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                           {'reserved': 5,
                                                            'in_use': 15}})
         self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
-                          volume_api.extend, self.context,
+                          volume_api._extend, self.context,
                           volume, 3)
+        db.volume_update(self.context, volume.id, {'status': 'available'})
 
         limit_check.side_effect = exception.OverQuota(
             overs=['per_volume_gigabytes'], quotas={'per_volume_gigabytes': 2})
         self.assertRaises(exception.VolumeSizeExceedsLimit,
-                          volume_api.extend, self.context,
+                          volume_api._extend, self.context,
                           volume, 3)
 
         # Test scheduler path
@@ -2157,7 +2194,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume_api.scheduler_rpcapi = mock.MagicMock()
         volume_api.scheduler_rpcapi.extend_volume = mock.MagicMock()
 
-        volume_api.extend(self.context, volume, 3)
+        volume_api._extend(self.context, volume, 3)
 
         request_spec = {
             'volume_properties': volume,
@@ -2193,15 +2230,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.volume.driver._initialized = True
         self.volume.delete_volume(self.context, volume)
 
-    def test_extend_volume_manager(self):
-        """Test volume can be extended at the manager level."""
-        def fake_extend(volume, new_size):
-            volume['size'] = new_size
-
+    def _test_extend_volume_manager_fails_with_exception(self, volume):
         fake_reservations = ['RESERVATION']
-        volume = tests_utils.create_volume(self.context, size=2,
-                                           status='creating', host=CONF.host)
-        self.volume.create_volume(self.context, volume)
 
         # Test driver exception
         with mock.patch.object(self.volume.driver,
@@ -2215,6 +2245,16 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.assertEqual(2, volume.size)
             self.assertEqual('error_extending', volume.status)
 
+    @mock.patch('cinder.compute.API')
+    def _test_extend_volume_manager_successful(self, volume, nova_api):
+        """Test volume can be extended at the manager level."""
+        def fake_extend(volume, new_size):
+            volume['size'] = new_size
+
+        nova_extend_volume = nova_api.return_value.extend_volume
+        fake_reservations = ['RESERVATION']
+        orig_status = volume.status
+
         # Test driver success
         with mock.patch.object(self.volume.driver,
                                'extend_volume') as extend_volume:
@@ -2225,13 +2265,60 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                           fake_reservations)
                 volume.refresh()
                 self.assertEqual(4, volume.size)
-                self.assertEqual('available', volume.status)
+                self.assertEqual(orig_status, volume.status)
                 quotas_commit.assert_called_with(
                     self.context,
                     ['RESERVATION'],
                     project_id=volume.project_id)
+                if orig_status == 'in-use':
+                    instance_uuids = [
+                        attachment.instance_uuid
+                        for attachment in volume.volume_attachment]
+                    nova_extend_volume.assert_called_with(
+                        self.context, instance_uuids, volume.id)
 
-        # clean up
+    def test_extend_volume_manager_available_fails_with_exception(self):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='creating', host=CONF.host)
+        self.volume.create_volume(self.context, volume)
+        self._test_extend_volume_manager_fails_with_exception(volume)
+        self.volume.delete_volume(self.context, volume)
+
+    def test_extend_volume_manager_available_successful(self):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='creating', host=CONF.host)
+        self.volume.create_volume(self.context, volume)
+        self._test_extend_volume_manager_successful(volume)
+        self.volume.delete_volume(self.context, volume)
+
+    def test_extend_volume_manager_in_use_fails_with_exception(self):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='creating', host=CONF.host)
+        self.volume.create_volume(self.context, volume)
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        attachment = db.volume_attach(self.context,
+                                      {'volume_id': volume.id,
+                                       'attached_host': 'fake-host'})
+        db.volume_attached(self.context, attachment.id, instance_uuid,
+                           'fake-host', 'vdb')
+        volume.refresh()
+        self._test_extend_volume_manager_fails_with_exception(volume)
+        self.volume.detach_volume(self.context, volume.id, attachment.id)
+        self.volume.delete_volume(self.context, volume)
+
+    def test_extend_volume_manager_in_use_successful(self):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='creating', host=CONF.host)
+        self.volume.create_volume(self.context, volume)
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        attachment = db.volume_attach(self.context,
+                                      {'volume_id': volume.id,
+                                       'attached_host': 'fake-host'})
+        db.volume_attached(self.context, attachment.id, instance_uuid,
+                           'fake-host', 'vdb')
+        volume.refresh()
+        self._test_extend_volume_manager_successful(volume)
+        self.volume.detach_volume(self.context, volume.id, attachment.id)
         self.volume.delete_volume(self.context, volume)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.extend_volume')
@@ -2252,7 +2339,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(100, volumes_in_use)
         db.volume_update(self.context, volume.id, {'status': 'available'})
 
-        volume_api.extend(self.context, volume, 200)
+        volume_api._extend(self.context, volume, 200)
         mock_rpc_extend.called_once_with(self.context, volume, 200, mock.ANY)
 
         try:

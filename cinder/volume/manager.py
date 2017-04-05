@@ -2549,8 +2549,22 @@ class VolumeManager(manager.CleanableManager,
                 return
 
         QUOTAS.commit(context, reservations, project_id=project_id)
-        volume.update({'size': int(new_size), 'status': 'available'})
+
+        attachments = volume.volume_attachment
+        if not attachments:
+            orig_volume_status = 'available'
+        else:
+            orig_volume_status = 'in-use'
+
+        volume.update({'size': int(new_size), 'status': orig_volume_status})
         volume.save()
+
+        if orig_volume_status == 'in-use':
+            nova_api = compute.API()
+            instance_uuids = [attachment.instance_uuid
+                              for attachment in attachments]
+            nova_api.extend_volume(context, instance_uuids, volume.id)
+
         pool = vol_utils.extract_host(volume.host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool

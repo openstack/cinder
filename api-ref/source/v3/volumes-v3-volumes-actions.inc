@@ -15,15 +15,35 @@ Extend a volume size
 
 .. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
 
-Extends the size of a volume to a requested size, in gibibytes (GiB). Specify the ``os-extend`` action in the request body.
+Extends the size of a volume to a requested size, in gibibytes (GiB).
+Specify the ``os-extend`` action in the request body.
 
 Preconditions
 
-- Volume status must be ``available``.
+- Prior to microversion ``3.42`` the volume status must be ``available``.
+  Starting with microversion ``3.42``, attached volumes with status ``in-use``
+  may be able to be extended depending on policy and backend volume and
+  compute driver constraints in the cloud. Note that ``reserved`` is not a
+  valid state for extend.
 
 - Sufficient amount of storage must exist to extend the volume.
 
 - The user quota must have sufficient volume storage.
+
+Postconditions
+
+- If the request is processed successfully, the volume status will change to
+  ``extending`` while the volume size is being extended.
+
+- Upon successful completion of the extend operation, the volume status will
+  go back to its original value.
+
+- Starting with microversion ``3.42``, when extending the size of an attached
+  volume, the Block Storage service will notify the Compute service that an
+  attached volume has been extended. The Compute service will asynchronously
+  process the volume size change for the related server instance. This can be
+  monitored using the ``GET /servers/{server_id}/os-instance-actions`` API in
+  the Compute service.
 
 Troubleshooting
 
