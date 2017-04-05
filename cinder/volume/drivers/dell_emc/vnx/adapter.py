@@ -72,7 +72,13 @@ class CommonAdapter(object):
             self.config.storage_vnx_security_file_dir,
             self.queue_path)
         # Replication related
-        self.mirror_view = self.build_mirror_view(self.config, True)
+        if (self.active_backend_id in
+                common.ReplicationDeviceList.get_backend_ids(self.config)):
+            # The backend is in failed-over state
+            self.mirror_view = self.build_mirror_view(self.config, False)
+            self.client = self.mirror_view.primary_client
+        else:
+            self.mirror_view = self.build_mirror_view(self.config, True)
         self.serial_number = self.client.get_serial()
         self.storage_pools = self.parse_pools()
         self.force_delete_lun_in_sg = (
@@ -1230,7 +1236,7 @@ class CommonAdapter(object):
                     {'volume_id': volume.id,
                      'target': secondary_backend_id,
                      'error': ex})
-                new_status = fields.ReplicationStatus.ERROR
+                new_status = fields.ReplicationStatus.FAILOVER_ERROR
             else:
                 # Transfer ownership to secondary_backend_id and
                 # update provider_location field
@@ -1256,6 +1262,10 @@ class CommonAdapter(object):
                 volume_update_list.append({
                     'volume_id': volume.id,
                     'updates': {'status': 'error'}})
+        # After failover, the secondary is now the primary,
+        # any sequential request will be redirected to it.
+        self.client = mirror_view.secondary_client
+
         return secondary_backend_id, volume_update_list
 
     def get_pool_name(self, volume):

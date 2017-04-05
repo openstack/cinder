@@ -1162,6 +1162,8 @@ class TestCommonAdapter(test.TestCase):
             fake_mirror.secondary_client.get_serial.assert_called_with()
             fake_mirror.secondary_client.get_lun.assert_called_with(
                 name=vol1.name)
+            self.assertEqual(fake_mirror.secondary_client,
+                             common_adapter.client)
         self.assertEqual(device['backend_id'], backend_id)
         for update in updates:
             self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
@@ -1200,6 +1202,8 @@ class TestCommonAdapter(test.TestCase):
             fake_mirror.secondary_client.get_serial.assert_called_with()
             fake_mirror.secondary_client.get_lun.assert_called_with(
                 name=vol1.name)
+            self.assertEqual(fake_mirror.secondary_client,
+                             common_adapter.client)
         self.assertEqual('default', backend_id)
         for update in updates:
             self.assertEqual(fields.ReplicationStatus.ENABLED,
