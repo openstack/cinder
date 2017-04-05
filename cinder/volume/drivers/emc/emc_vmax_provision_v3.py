@@ -231,6 +231,26 @@ class EMCVMAXProvisionV3(object):
 
         return volumeDict
 
+    def get_or_create_default_sg(self, conn, extraSpecs, storageSystemName):
+        """Get or create default storage group for a replica.
+
+        :param conn: the connection to the ecom server
+        :param extraSpecs: the extra specifications
+        :param storageSystemName: the storage system name
+        :returns: sgInstanceName, instance of storage group
+        """
+        pool = extraSpecs[self.utils.POOL]
+        slo = extraSpecs[self.utils.SLO]
+        workload = extraSpecs[self.utils.WORKLOAD]
+        storageGroupName, controllerConfigService, sgInstanceName = (
+            self.utils.get_v3_default_sg_instance_name(
+                conn, pool, slo, workload, storageSystemName))
+        if sgInstanceName is None:
+            sgInstanceName = self.create_storage_group_v3(
+                conn, controllerConfigService, storageGroupName,
+                pool, slo, workload, extraSpecs)
+        return sgInstanceName
+
     def create_element_replica(
             self, conn, repServiceInstanceName,
             cloneName, syncType, sourceInstance, extraSpecs,
@@ -256,11 +276,9 @@ class EMCVMAXProvisionV3(object):
                    'syncType': syncType,
                    'source': sourceInstance.path})
         storageSystemName = sourceInstance['SystemName']
-        __, __, sgInstanceName = (
-            self.utils.get_v3_default_sg_instance_name(
-                conn, extraSpecs[self.utils.POOL],
-                extraSpecs[self.utils.SLO],
-                extraSpecs[self.utils.WORKLOAD], storageSystemName))
+        sgInstanceName = (
+            self.get_or_create_default_sg(
+                conn, extraSpecs, storageSystemName))
         try:
             storageGroupInstance = conn.GetInstance(sgInstanceName)
         except Exception:
