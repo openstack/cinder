@@ -18,6 +18,8 @@ possible:
 +----------------+-------------------------------------+
 | available      | The snapshot is ready to use.       |
 +----------------+-------------------------------------+
+| backing-up     | The snapshot is being backed up.    |
++----------------+-------------------------------------+
 | deleting       | The snapshot is being deleted.      |
 +----------------+-------------------------------------+
 | error          | A snapshot creation error occurred. |
