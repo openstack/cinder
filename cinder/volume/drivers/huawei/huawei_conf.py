@@ -73,7 +73,6 @@ class HuaweiConf(object):
                           self._lun_copy_wait_interval,
                           self._lun_timeout,
                           self._lun_write_type,
-                          self._lun_mirror_switch,
                           self._lun_prefetch,
                           self._lun_policy,
                           self._lun_read_cache_policy,
@@ -174,11 +173,6 @@ class HuaweiConf(object):
         text = xml_root.findtext('LUN/WriteType')
         write_type = text.strip() if text else '1'
         setattr(self.conf, 'lun_write_type', write_type)
-
-    def _lun_mirror_switch(self, xml_root):
-        text = xml_root.findtext('LUN/MirrorSwitch')
-        mirror_switch = text.strip() if text else '1'
-        setattr(self.conf, 'lun_mirror_switch', mirror_switch)
 
     def _lun_prefetch(self, xml_root):
         prefetch_type = '3'

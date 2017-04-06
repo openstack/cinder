@@ -332,7 +332,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'ALLOCTYPE': opts.get('LUNType', self.configuration.lun_type),
             'CAPACITY': huawei_utils.get_volume_size(volume),
             'WRITEPOLICY': self.configuration.lun_write_type,
-            'MIRRORPOLICY': self.configuration.lun_mirror_switch,
             'PREFETCHPOLICY': self.configuration.lun_prefetch_type,
             'PREFETCHVALUE': self.configuration.lun_prefetch_value,
             'DATATRANSFERPOLICY':
@@ -688,7 +687,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'ALLOCTYPE': opts.get('LUNType', lun_info['ALLOCTYPE']),
             'CAPACITY': lun_info['CAPACITY'],
             'WRITEPOLICY': lun_info['WRITEPOLICY'],
-            'MIRRORPOLICY': lun_info['MIRRORPOLICY'],
             'PREFETCHPOLICY': lun_info['PREFETCHPOLICY'],
             'PREFETCHVALUE': lun_info['PREFETCHVALUE'],
             'DATATRANSFERPOLICY': policy,

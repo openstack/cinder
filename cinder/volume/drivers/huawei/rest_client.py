@@ -213,6 +213,8 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def create_lun(self, lun_params):
+        # Set the mirror switch always on
+        lun_params['MIRRORPOLICY'] = '1'
         url = "/lun"
         result = self.call(url, lun_params)
         if result['error']['code'] == constants.ERROR_VOLUME_ALREADY_EXIST:

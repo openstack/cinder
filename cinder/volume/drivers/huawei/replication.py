@@ -411,7 +411,6 @@ class ReplicaPairManager(object):
             'ALLOCTYPE': local_lun_info['ALLOCTYPE'],
             'CAPACITY': local_lun_info['CAPACITY'],
             'WRITEPOLICY': self.conf.lun_write_type,
-            'MIRRORPOLICY': self.conf.lun_mirror_switch,
             'PREFETCHPOLICY': self.conf.lun_prefetch_type,
             'PREFETCHVALUE': self.conf.lun_prefetch_value,
             'DATATRANSFERPOLICY': self.conf.lun_policy,
