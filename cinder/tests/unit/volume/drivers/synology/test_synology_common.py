@@ -64,9 +64,9 @@ NEW_VOLUME = {
 SNAPSHOT_ID = fake.SNAPSHOT_ID
 DS_SNAPSHOT_UUID = 'ca86a56a-40d8-4210-974c-ef15dbf01cba'
 SNAPSHOT_METADATA = {
-    'metadata': {
-        'ds_snapshot_UUID': DS_SNAPSHOT_UUID
-    }
+    'snap-meta1': 'value1',
+    'snap-meta2': 'value2',
+    'snap-meta3': 'value3',
 }
 SNAPSHOT = {
     'name': fake.SNAPSHOT_NAME,
@@ -1403,11 +1403,13 @@ class SynoCommonTestCase(test.TestCase):
                           NEW_VOLUME)
 
     def test_create_snapshot(self):
-        metadata = {
+        expected_result = {
             'metadata': {
                 self.common.METADATA_DS_SNAPSHOT_UUID: DS_SNAPSHOT_UUID
             }
         }
+        expected_result['metadata'].update(SNAPSHOT['metadata'])
+
         out = {
             'data': {
                 'snapshot_uuid': DS_SNAPSHOT_UUID,
@@ -1431,7 +1433,7 @@ class SynoCommonTestCase(test.TestCase):
                                taken_by='Cinder',
                                description='(Cinder) ' +
                                SNAPSHOT['id']))
-        self.assertDictEqual(metadata, result)
+        self.assertDictEqual(expected_result, result)
 
         self.assertRaises(exception.VolumeDriverException,
                           self.common.create_snapshot,
