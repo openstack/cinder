@@ -50,10 +50,11 @@ class MetroMirrorManager(object):
         ports = self._source.get_physical_links(
             self._target.backend['storage_wwnn'])
         if not ports:
-            msg = (_("DS8K %(tgt)s is not connected to the DS8K %(src)s!") %
-                   {'tgt': self._target.backend['storage_wwnn'],
-                    'src': self._source.backend['storage_wwnn']})
-            raise exception.CinderException(msg)
+            raise exception.VolumeDriverException(
+                message=((_("%(tgt)s is not connected to %(src)s!") % {
+                    'tgt': self._target.backend['storage_wwnn'],
+                    'src': self._source.backend['storage_wwnn']
+                })))
 
         pairs = [{
             'source_port_id': p['source_port_id'],
@@ -72,15 +73,13 @@ class MetroMirrorManager(object):
                         ["%s-%s" % (p['source_port_id'],
                                     p['target_port_id'])
                          for p in pairs])
-
                     invalid_pair = "%s-%s" % (pair['source_port_id'],
                                               pair['target_port_id'])
-
-                    msg = (_("Invalid port pair: %(invalid)s, valid port "
-                             "pair(s) are: %(valid)s") %
-                           {'invalid': invalid_pair,
-                            'valid': valid_pairs})
-                    raise exception.CinderException(msg)
+                    raise exception.VolumeDriverException(
+                        message=((_("Invalid port pair: %(invalid)s, valid "
+                                    "port pair(s) are: %(valid)s")
+                                  % {'invalid': invalid_pair,
+                                     'valid': valid_pairs})))
         self._source.backend['port_pairs'] = [{
             'source_port_id': p['target_port_id'],
             'target_port_id': p['source_port_id']
@@ -96,13 +95,13 @@ class MetroMirrorManager(object):
 
         return True
 
-    def find_available_pprc_path(self, lss=None, excluded_lss=None):
-        """find lss from existed pprc path.
+    def find_from_pprc_paths(self, specified_lss=None, excluded_lss=None):
+        """find lss from existing pprc paths and pool id for it.
 
-        the format of lss_pair returned is as below:
+        the format of pool_lss_pair returned is as below:
         {'source': (pid, lss), 'target': (pid, lss)}
         """
-        state, paths = self._filter_pprc_paths(lss)
+        state, paths = self._filter_pprc_paths(specified_lss)
         if state != PPRC_PATH_HEALTHY:
             # check whether the physical links are available or not,
             # or have been changed.
@@ -111,43 +110,47 @@ class MetroMirrorManager(object):
         if excluded_lss:
             paths = [p for p in paths
                      if p['source_lss_id'] not in excluded_lss]
+        # only enable_replication will specify the source LSS
+        # and it need to reuse LSS reserved for CG if this LSS
+        # is in PPRC path.
+        if not specified_lss:
+            paths = [p for p in paths if p['source_lss_id'] not in
+                     self._source.backend['lss_ids_for_cg']]
 
-        lss_pair = {}
-        if len(paths) == 1:
-            path = paths[0]
-            pid = self._source.get_pool(path['source_lss_id'])
-            lss_pair['source'] = (pid, path['source_lss_id'])
-        else:
-            # sort the lss pairs according to the number of luns,
-            # get the lss pair which has least luns.
-            candidates = []
-            source_lss_set = set(p['source_lss_id'] for p in paths)
-            for lss in source_lss_set:
-                # get the number of lun in source.
-                src_luns = self._source.get_lun_number_in_lss(lss)
-                if src_luns == helper.LSS_VOL_SLOTS:
-                    continue
+        # sort pairs according to the number of luns in their LSSes,
+        # and get the pair which LSS has least luns.
+        candidates = []
+        source_lss_set = set(p['source_lss_id'] for p in paths)
+        for lss in source_lss_set:
+            # get the number of luns in source.
+            src_luns = self._source.get_lun_number_in_lss(lss)
+            if src_luns == helper.LSS_VOL_SLOTS and not specified_lss:
+                continue
 
-                spec_paths = [p for p in paths if p['source_lss_id'] == lss]
-                for path in spec_paths:
-                    # get the number of lun in target.
+            spec_paths = [p for p in paths if p['source_lss_id'] == lss]
+            for path in spec_paths:
+                # get the number of luns in target.
+                try:
                     tgt_luns = self._target.get_lun_number_in_lss(
                         path['target_lss_id'])
-                    candidates.append((lss, path, src_luns + tgt_luns))
-
-            if candidates:
-                candidate = sorted(candidates, key=lambda c: c[2])[0]
-                pid = self._source.get_pool(candidate[0])
-                lss_pair['source'] = (pid, candidate[0])
-                path = candidate[1]
-            else:
-                return PPRC_PATH_FULL, None
-
-        # format the target in lss_pair.
-        pid = self._target.get_pool(path['target_lss_id'])
-        lss_pair['target'] = (pid, path['target_lss_id'])
-
-        return PPRC_PATH_HEALTHY, lss_pair
+                except restclient.APIException:
+                    # if DS8K can fix this problem, then remove the
+                    # exception here.
+                    LOG.error("Target LSS %s in PPRC path may doesn't "
+                              "exist although PPRC path is available.",
+                              path['target_lss_id'])
+                    tgt_luns = 0
+                candidates.append((path['source_lss_id'],
+                                   path['target_lss_id'],
+                                   src_luns + tgt_luns))
+        if not candidates:
+            return PPRC_PATH_FULL, None
+        else:
+            src_lss, tgt_lss, num = sorted(candidates, key=lambda c: c[2])[0]
+            return PPRC_PATH_HEALTHY, {
+                'source': (self._source.get_pool(src_lss), src_lss),
+                'target': (self._target.get_pool(tgt_lss), tgt_lss)
+            }
 
     def _filter_pprc_paths(self, lss):
         paths = self._source.get_pprc_paths(lss)
@@ -225,9 +228,9 @@ class MetroMirrorManager(object):
 
         return PPRC_PATH_HEALTHY, paths
 
-    def create_pprc_path(self, lss_pair):
-        src_lss = lss_pair['source'][1]
-        tgt_lss = lss_pair['target'][1]
+    def create_pprc_path(self, pool_lss_pair):
+        src_lss = pool_lss_pair['source'][1]
+        tgt_lss = pool_lss_pair['target'][1]
         # check whether the pprc path exists and is healthy or not firstly.
         pid = (self._source.backend['storage_wwnn'] + '_' + src_lss + ':' +
                self._target.backend['storage_wwnn'] + '_' + tgt_lss)
@@ -256,9 +259,9 @@ class MetroMirrorManager(object):
                 break
             if retry == 3:
                 self._source.delete_pprc_path(pid)
-                msg = (_("Fail to create PPRC path %(src)s:%(tgt)s.") %
-                       {'src': src_lss, 'tgt': tgt_lss})
-                raise restclient.APIException(data=msg)
+                raise restclient.APIException(
+                    data=(_("Failed to create PPRC path %(src)s:%(tgt)s.")
+                          % {'src': src_lss, 'tgt': tgt_lss}))
         LOG.debug("Create the new PPRC path successfully.")
 
     def _is_pprc_paths_healthy(self, path_id):
@@ -280,8 +283,7 @@ class MetroMirrorManager(object):
 
         vol_pairs = [{
             'source_volume': lun.ds_id,
-            'source_system_id':
-                self._source.backend['storage_unit'],
+            'source_system_id': self._source.backend['storage_unit'],
             'target_volume': tgt_vol_id,
             'target_system_id': tgt_stg_id
         }]
@@ -298,10 +300,9 @@ class MetroMirrorManager(object):
 
     def delete_pprc_pairs(self, lun):
         self._source.delete_pprc_pair(lun.ds_id)
-        if self.is_target_alive():
+        if self.is_target_alive() and lun.replication_driver_data:
             replica = sorted(lun.replication_driver_data.values())[0]
-            self._target.delete_pprc_pair(
-                six.text_type(replica['vol_hex_id']))
+            self._target.delete_pprc_pair(replica['vol_hex_id'])
 
     def do_pprc_failover(self, luns, backend_id):
         vol_pairs = []
@@ -317,12 +318,10 @@ class MetroMirrorManager(object):
                 continue
 
             vol_pairs.append({
-                'source_volume': six.text_type(target_vol_id),
-                'source_system_id': six.text_type(
-                    self._target.backend['storage_unit']),
-                'target_volume': six.text_type(lun.ds_id),
-                'target_system_id': six.text_type(
-                    self._source.backend['storage_unit'])
+                'source_volume': target_vol_id,
+                'source_system_id': self._target.backend['storage_unit'],
+                'target_volume': lun.ds_id,
+                'target_system_id': self._source.backend['storage_unit']
             })
             target_vol_ids.append(target_vol_id)
 
@@ -383,9 +382,16 @@ class Replication(object):
         if connection_type == storage.XIV_CONNECTION_TYPE_FC:
             self._target_helper = (
                 helper.DS8KReplicationTargetHelper(target_device))
-        else:
+        elif connection_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
             self._target_helper = (
                 helper.DS8KReplicationTargetECKDHelper(target_device))
+        else:
+            raise exception.InvalidParameterValue(
+                err=(_("Param [connection_type] %s in replication_device "
+                       "is invalid.") % connection_type))
+
+        self._target_helper.backend['lss_ids_for_cg'] = (
+            self._source_helper.backend['lss_ids_for_cg'])
         self._mm_manager = MetroMirrorManager(self._source_helper,
                                               self._target_helper)
 
@@ -393,11 +399,12 @@ class Replication(object):
         src_conn_type = self._source_helper.get_connection_type()
         tgt_conn_type = self._target_helper.get_connection_type()
         if src_conn_type != tgt_conn_type:
-            msg = (_("The connection type in primary backend is "
-                     "%(primary)s, but in secondary backend it is "
-                     "%(secondary)s") %
-                   {'primary': src_conn_type, 'secondary': tgt_conn_type})
-            raise exception.CinderException(msg)
+            raise exception.VolumeDriverException(
+                message=(_("The connection type in primary backend is "
+                           "%(primary)s, but in secondary backend it is "
+                           "%(secondary)s")
+                         % {'primary': src_conn_type,
+                            'secondary': tgt_conn_type}))
         # PPRC can not copy from ESE volume to standard volume or vice versus.
         if src_conn_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
             src_thin = self._source_helper.get_thin_provision()
@@ -425,13 +432,13 @@ class Replication(object):
         return luns
 
     @proxy.logger
-    def find_available_lss_pair(self, excluded_lss):
-        state, lss_pair = (
-            self._mm_manager.find_available_pprc_path(None, excluded_lss))
-        if lss_pair is None:
-            lss_pair = self.find_new_lss_for_source(excluded_lss)
-            lss_pair.update(self.find_new_lss_for_target())
-        return lss_pair
+    def find_pool_lss_pair(self, excluded_lss):
+        state, pool_lss_pair = (
+            self._mm_manager.find_from_pprc_paths(None, excluded_lss))
+        if pool_lss_pair is None:
+            pool_lss_pair = self.find_new_lss_for_source(excluded_lss)
+            pool_lss_pair.update(self.find_new_lss_for_target())
+        return pool_lss_pair
 
     @proxy.logger
     def find_new_lss_for_source(self, excluded_lss):
@@ -444,23 +451,22 @@ class Replication(object):
         return {'target': (tgt_pid, tgt_lss)}
 
     @proxy.logger
-    def enable_replication(self, lun):
-        state, lun.lss_pair = (
-            self._mm_manager.find_available_pprc_path(lun.ds_id[0:2]))
+    def enable_replication(self, lun, delete_source=False):
+        state, lun.pool_lss_pair = (
+            self._mm_manager.find_from_pprc_paths(lun.ds_id[0:2]))
+        LOG.debug("enable_replication: pool_lss_pair is %s.",
+                  lun.pool_lss_pair)
         if state == PPRC_PATH_UNHEALTHY:
-            msg = (_("The path(s) for volume %(name)s isn't available "
-                     "any more, please make sure the state of the path(s) "
-                     "which source LSS is %(lss)s is success.") %
-                   {'name': lun.cinder_name, 'lss': lun.ds_id[0:2]})
-            raise restclient.APIException(data=msg)
+            raise restclient.APIException(
+                data=(_("The path(s) for volume %(name)s isn't available "
+                        "any more, please make sure the state of the path(s) "
+                        "which source LSS is %(lss)s is success.")
+                      % {'name': lun.cinder_name, 'lss': lun.ds_id[0:2]}))
         elif state == PPRC_PATH_NOT_EXIST:
             pid = self._source_helper.get_pool(lun.ds_id[0:2])
-            lss_pair = {'source': (pid, lun.ds_id[0:2])}
-            lss_pair.update(self.find_new_lss_for_target())
-            lun.lss_pair = lss_pair
-        LOG.debug("Begin to create replication volume, lss_pair is %s." %
-                  lun.lss_pair)
-        lun = self.create_replica(lun, False)
+            lun.pool_lss_pair = {'source': (pid, lun.ds_id[0:2])}
+            lun.pool_lss_pair.update(self.find_new_lss_for_target())
+        lun = self.create_replica(lun, delete_source)
         return lun
 
     @proxy.logger
@@ -469,7 +475,7 @@ class Replication(object):
         try:
             self._target_helper.create_lun(lun)
             # create PPRC paths if need.
-            self._mm_manager.create_pprc_path(lun.lss_pair)
+            self._mm_manager.create_pprc_path(lun.pool_lss_pair)
             # create pprc pair
             self._mm_manager.create_pprc_pairs(lun)
         except restclient.APIException:
@@ -477,7 +483,6 @@ class Replication(object):
                 self.delete_replica(lun)
                 if delete_source:
                     self._source_helper.delete_lun(lun)
-
         lun.replication_status = 'enabled'
         return lun
 
@@ -488,11 +493,10 @@ class Replication(object):
                 self._mm_manager.delete_pprc_pairs(lun)
                 self._delete_replica(lun)
             except restclient.APIException as e:
-                msg = (_('Failed to delete the target volume for volume '
-                         '%(volume)s, Exception: %(ex)s.') %
-                       {'volume': lun.ds_id, 'ex': six.text_type(e)})
-                raise exception.CinderException(msg)
-
+                raise exception.VolumeDriverException(
+                    message=(_('Failed to delete the target volume for '
+                               'volume %(volume)s, Exception: %(ex)s.')
+                             % {'volume': lun.ds_id, 'ex': six.text_type(e)}))
         lun.replication_status = 'disabled'
         lun.replication_driver_data = {}
         return lun
@@ -542,7 +546,7 @@ class Replication(object):
 
         LOG.debug("Failback starts, backend id is %s.", backend_id)
         for lun in luns:
-            self._mm_manager.create_pprc_path(lun.lss_pair)
+            self._mm_manager.create_pprc_path(lun.pool_lss_pair)
         self._mm_manager.do_pprc_failback(luns, backend_id)
         # revert the relationship of source volume and target volume
         self.do_pprc_failover(luns, backend_id)
