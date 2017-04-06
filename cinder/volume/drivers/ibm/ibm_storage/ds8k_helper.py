@@ -36,10 +36,6 @@ LOG = logging.getLogger(__name__)
 
 LSS_VOL_SLOTS = 0x100
 LSS_SLOTS = 0xFF
-# if use new REST API, please update the verison below
-VALID_REST_VERSION_5_7_MIN = '5.7.51.1047'
-VALID_REST_VERSION_5_8_MIN = '5.8.20.1018'
-VALID_STORAGE_VERSION = '8.1'
 
 VALID_HOST_TYPES = (
     'auto', 'AMDLinuxRHEL', 'AMDLinuxSuse',
@@ -60,6 +56,11 @@ def filter_alnum(s):
 
 class DS8KCommonHelper(object):
     """Manage the primary backend, it is common class too."""
+
+    # if use new REST API, please update the version below
+    VALID_REST_VERSION_5_7_MIN = '5.7.51.1047'
+    VALID_REST_VERSION_5_8_MIN = ''
+    INVALID_STORAGE_VERSION = '8.0.1'
 
     def __init__(self, conf, HTTPConnectorObject=None):
         self.conf = conf
@@ -162,32 +163,20 @@ class DS8KCommonHelper(object):
             None if ds8k_host_type == 'auto' else ds8k_host_type)
 
     def _verify_version(self):
-        if self.backend['storage_version'] == '8.0.1':
-            msg = (_("8.0.1 does not support bulk deletion of volumes, "
-                     "if you want to use this version of driver, "
-                     "please upgrade the CCL, and make sure the REST "
-                     "version is not lower than %s.")
-                   % VALID_REST_VERSION_5_8_MIN)
-            raise exception.VolumeDriverException(data=msg)
-        else:
-            if (('5.7' in self.backend['rest_version'] and
-               dist_version.LooseVersion(self.backend['rest_version']) <
-               dist_version.LooseVersion(VALID_REST_VERSION_5_7_MIN)) or
-               ('5.8' in self.backend['rest_version'] and
-               dist_version.LooseVersion(self.backend['rest_version']) <
-               dist_version.LooseVersion(VALID_REST_VERSION_5_8_MIN))):
-                msg = (_("REST version %(invalid)s is lower than "
-                         "%(valid)s, please upgrade it in DS8K.")
-                       % {'invalid': self.backend['rest_version'],
-                          'valid': (VALID_REST_VERSION_5_7_MIN if '5.7' in
-                                    self.backend['rest_version'] else
-                                    VALID_REST_VERSION_5_8_MIN)})
-                raise exception.VolumeDriverException(data=msg)
-
-        if self._connection_type == storage.XIV_CONNECTION_TYPE_FC_ECKD:
-            if (dist_version.LooseVersion(self.backend['storage_version']) <
-               dist_version.LooseVersion(VALID_STORAGE_VERSION)):
-                self._disable_thin_provision = True
+        if self.backend['storage_version'] == self.INVALID_STORAGE_VERSION:
+            raise exception.VolumeDriverException(
+                message=(_("%s does not support bulk deletion of volumes, "
+                           "if you want to use this version of driver, "
+                           "please upgrade the CCL.")
+                         % self.INVALID_STORAGE_VERSION))
+        if ('5.7' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.backend['rest_version']) <
+           dist_version.LooseVersion(self.VALID_REST_VERSION_5_7_MIN)):
+            raise exception.VolumeDriverException(
+                message=(_("REST version %(invalid)s is lower than "
+                           "%(valid)s, please upgrade it in DS8K.")
+                         % {'invalid': self.backend['rest_version'],
+                            'valid': self.VALID_REST_VERSION_5_7_MIN}))
 
     def _verify_pools(self):
         if self._connection_type == storage.XIV_CONNECTION_TYPE_FC:
@@ -855,6 +844,12 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
 class DS8KECKDHelper(DS8KCommonHelper):
     """Manage ECKD volume."""
 
+    # if use new REST API, please update the version below
+    VALID_REST_VERSION_5_7_MIN = '5.7.51.1068'
+    VALID_REST_VERSION_5_8_MIN = '5.8.20.1059'
+    MIN_VALID_STORAGE_VERSION = '8.1'
+    INVALID_STORAGE_VERSION = '8.0.1'
+
     @staticmethod
     def _gb2cyl(gb):
         # now only support 3390, no 3380 or 3390-A
@@ -887,6 +882,32 @@ class DS8KECKDHelper(DS8KCommonHelper):
         self.backend['device_mapping'] = self._check_and_verify_lcus()
         self._verify_version()
         self._verify_pools()
+
+    def _verify_version(self):
+        if self.backend['storage_version'] == self.INVALID_STORAGE_VERSION:
+            raise exception.VolumeDriverException(
+                message=(_("%s does not support bulk deletion of volumes, "
+                           "if you want to use this version of driver, "
+                           "please upgrade the CCL.")
+                         % self.INVALID_STORAGE_VERSION))
+        # DS8K supports ECKD ESE volume from 8.1
+        if (dist_version.LooseVersion(self.backend['storage_version']) <
+           dist_version.LooseVersion(self.MIN_VALID_STORAGE_VERSION)):
+            self._disable_thin_provision = True
+
+        if (('5.7' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.backend['rest_version']) <
+           dist_version.LooseVersion(self.VALID_REST_VERSION_5_7_MIN)) or
+           ('5.8' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.backend['rest_version']) <
+           dist_version.LooseVersion(self.VALID_REST_VERSION_5_8_MIN))):
+            raise exception.VolumeDriverException(
+                message=(_("REST version %(invalid)s is lower than "
+                           "%(valid)s, please upgrade it in DS8K.")
+                         % {'invalid': self.backend['rest_version'],
+                            'valid': (self.VALID_REST_VERSION_5_7_MIN if '5.7'
+                                      in self.backend['rest_version'] else
+                                      self.VALID_REST_VERSION_5_8_MIN)}))
 
     @proxy.logger
     def _check_and_verify_lcus(self):
