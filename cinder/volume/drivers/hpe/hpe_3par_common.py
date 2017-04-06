@@ -256,10 +256,11 @@ class HPE3PARCommon(object):
         3.0.31 - Enable HPE-3PAR Compression Feature.
         3.0.32 - Add consistency group capability to generic volume group
                  in HPE-3APR
+        3.0.33 - Added replication feature in retype flow. bug #1680313
 
     """
 
-    VERSION = "3.0.32"
+    VERSION = "3.0.33"
 
     stats = {}
 
@@ -2878,7 +2879,8 @@ class HPE3PARCommon(object):
         retype_flow.add(
             ModifyVolumeTask(action),
             ModifySpecsTask(action),
-            TuneVolumeTask(action))
+            TuneVolumeTask(action),
+            ReplicateVolumeTask(action))
 
         taskflow.engines.run(
             retype_flow,
@@ -3435,7 +3437,8 @@ class HPE3PARCommon(object):
 
         return replication_targets
 
-    def _do_volume_replication_setup(self, volume):
+    def _do_volume_replication_setup(self, volume, retype=False,
+                                     dist_type_id=None):
         """This function will do or ensure the following:
 
         -Create volume on main array (already done in create_volume)
@@ -3462,7 +3465,11 @@ class HPE3PARCommon(object):
             # Grab the extra_spec entries for replication and make sure they
             # are set correctly.
             volume_type = self._get_volume_type(volume["volume_type_id"])
-            extra_specs = volume_type.get("extra_specs")
+            if retype and dist_type_id is not None:
+                dist_type = self._get_volume_type(dist_type_id)
+                extra_specs = dist_type.get("extra_specs")
+            else:
+                extra_specs = volume_type.get("extra_specs")
             replication_mode = extra_specs.get(
                 self.EXTRA_SPEC_REP_MODE, self.DEFAULT_REP_MODE)
             replication_mode_num = self._get_remote_copy_mode_num(
@@ -3570,7 +3577,8 @@ class HPE3PARCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def _do_volume_replication_destroy(self, volume, rcg_name=None):
+    def _do_volume_replication_destroy(self, volume, rcg_name=None,
+                                       retype=False):
         """This will completely remove all traces of a remote copy group.
 
         It should be used when deleting a replication enabled volume
@@ -3606,7 +3614,8 @@ class HPE3PARCommon(object):
 
         # Delete volume on the main array.
         try:
-            self.client.deleteVolume(vol_name)
+            if not retype:
+                self.client.deleteVolume(vol_name)
         except Exception:
             pass
 
@@ -3657,6 +3666,49 @@ class HPE3PARCommon(object):
             timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_task)
             return timer.start(interval=self.interval,
                                initial_delay=self.initial_delay).wait()
+
+
+class ReplicateVolumeTask(flow_utils.CinderTask):
+
+    """Task to replicate a volume.
+
+    This is a task for adding/removing the replication feature to volume.
+    It is intended for use during retype(). This task has no revert.
+    # TODO(sumit): revert back to original volume extra-spec
+    """
+
+    def __init__(self, action, **kwargs):
+        super(ReplicateVolumeTask, self).__init__(addons=[action])
+
+    def execute(self, common, volume, new_type_id):
+
+        new_replicated_type = False
+
+        if new_type_id:
+            new_volume_type = common._get_volume_type(new_type_id)
+
+            extra_specs = new_volume_type.get('extra_specs', None)
+            if extra_specs and 'replication_enabled' in extra_specs:
+                rep_val = extra_specs['replication_enabled']
+                new_replicated_type = (rep_val == "<is> True")
+
+        if common._volume_of_replicated_type(volume) and new_replicated_type:
+            # Retype from replication enabled to replication enable.
+            common._do_volume_replication_destroy(volume, retype=True)
+            common._do_volume_replication_setup(
+                volume,
+                retype=True,
+                dist_type_id=new_type_id)
+        elif (not common._volume_of_replicated_type(volume)
+              and new_replicated_type):
+            # Retype from replication disabled to replication enable.
+            common._do_volume_replication_setup(
+                volume,
+                retype=True,
+                dist_type_id=new_type_id)
+        elif common._volume_of_replicated_type(volume):
+            # Retype from replication enabled to replication disable.
+            common._do_volume_replication_destroy(volume, retype=True)
 
 
 class ModifyVolumeTask(flow_utils.CinderTask):
