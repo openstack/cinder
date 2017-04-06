@@ -621,6 +621,10 @@ class VMAXCommonData(object):
     test_CG = consistencygroup.ConsistencyGroup(
         context=None, name='myCG1', id='12345abcde',
         volume_type_id='abc', status=fields.ConsistencyGroupStatus.AVAILABLE)
+    source_CG = consistencygroup.ConsistencyGroup(
+        context=None, name='myCG1', id='12345abcde',
+        volume_type_id='sourceid',
+        status=fields.ConsistencyGroupStatus.AVAILABLE)
 
     deleted_volume = {'id': 'deleted_vol',
                       'provider_location': six.text_type(provider_location)}
@@ -4096,9 +4100,9 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         common.VMAXCommon,
         '_find_consistency_group',
         return_value=(
-            VMAXCommonData.test_CG,
-            VMAXCommonData.test_CG['name'] + "_" + (
-                VMAXCommonData.test_CG['id'])))
+            VMAXCommonData.source_CG,
+            VMAXCommonData.source_CG['name'] + "_" + (
+                VMAXCommonData.source_CG['id'])))
     @mock.patch.object(
         common.VMAXCommon,
         '_get_pool_and_storage_system',
@@ -4116,12 +4120,17 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         snapshots.append(self.data.test_snapshot)
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
-                self.data.test_ctxt, self.data.test_CG, volumes,
+                self.data.test_ctxt, self.data.source_CG, volumes,
                 self.data.test_CG_snapshot, snapshots))
         self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
                          model_update)
-        self.assertEqual([{'status': 'available', 'id': '2'}],
-                         volumes_model_update)
+        for volume_model_update in volumes_model_update:
+            if 'status' in volume_model_update:
+                self.assertEqual(volume_model_update['status'], 'available')
+            if 'id' in volume_model_update:
+                self.assertEqual(volume_model_update['id'], '2')
+            self.assertTrue('provider_location' in volume_model_update)
+            self.assertTrue('admin_metadata' in volume_model_update)
 
     @mock.patch.object(
         common.VMAXCommon,
