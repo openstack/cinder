@@ -1343,7 +1343,7 @@ class StorwizeHelpers(object):
 
     def run_consistgrp_snapshots(self, fc_consistgrp, snapshots, state,
                                  config, timeout):
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
         snapshots_model_update = []
         try:
             for snapshot in snapshots:
@@ -1362,7 +1362,7 @@ class StorwizeHelpers(object):
             # Cinder general will maintain the CG and snapshots relationship.
             self.delete_fc_consistgrp(fc_consistgrp)
         except exception.VolumeBackendAPIException as err:
-            model_update['status'] = fields.ConsistencyGroupStatus.ERROR
+            model_update['status'] = fields.GroupSnapshotStatus.ERROR
             # Release cg
             self.delete_fc_consistgrp(fc_consistgrp)
             LOG.error("Failed to create CGSnapshot. "
@@ -1377,7 +1377,7 @@ class StorwizeHelpers(object):
 
     def delete_consistgrp_snapshots(self, fc_consistgrp, snapshots):
         """Delete flashcopy maps and consistent group."""
-        model_update = {'status': fields.ConsistencyGroupStatus.DELETED}
+        model_update = {'status': fields.GroupSnapshotStatus.DELETED}
         snapshots_model_update = []
 
         try:
@@ -1385,7 +1385,7 @@ class StorwizeHelpers(object):
                 self.ssh.rmvdisk(snapshot['name'], True)
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
-                fields.ConsistencyGroupStatus.ERROR_DELETING)
+                fields.GroupSnapshotStatus.ERROR_DELETING)
             LOG.error("Failed to delete the snapshot %(snap)s of "
                       "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot['name'], 'exception': err})
@@ -1429,7 +1429,7 @@ class StorwizeHelpers(object):
         LOG.debug('Enter: create_cg_from_source: cg %(cg)s'
                   ' source %(source)s, target %(target)s',
                   {'cg': fc_consistgrp, 'source': sources, 'target': targets})
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         ctxt = context.get_admin_context()
         try:
             for source, target in zip(sources, targets):
@@ -1447,7 +1447,7 @@ class StorwizeHelpers(object):
             volumes_model_update = self._get_volume_model_updates(
                 ctxt, targets, group['id'], model_update['status'])
         except exception.VolumeBackendAPIException as err:
-            model_update['status'] = fields.ConsistencyGroupStatus.ERROR
+            model_update['status'] = fields.GroupStatus.ERROR
             volumes_model_update = self._get_volume_model_updates(
                 ctxt, targets, group['id'], model_update['status'])
             with excutils.save_and_reraise_exception():
@@ -3065,13 +3065,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 raise exception.InvalidInput(reason=msg)
         return replication_type
 
-    def _get_volume_replicated_type(self, ctxt, volume):
+    def _get_volume_replicated_type(self, ctxt, volume, vol_type_id=None):
         replication_type = None
-        if volume.get("volume_type_id"):
-            volume_type = volume_types.get_volume_type(
-                ctxt, volume["volume_type_id"])
+        volume_type = (volume.volume_type if volume else
+                       objects.VolumeType.get_by_name_or_id(ctxt,
+                                                            vol_type_id))
+        if volume_type:
             replication_type = self._get_specs_replicated_type(volume_type)
-
         return replication_type
 
     def _get_storwize_config(self):
@@ -3479,23 +3479,49 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         return self._stats
 
-    def create_consistencygroup(self, context, group):
-        """Create a consistency group.
+    # Add CG capability to generic volume groups
+    def create_group(self, context, group):
+        """Creates a group.
 
-        IBM Storwize will create CG until cg-snapshot creation,
-        db will maintain the volumes and CG relationship.
+        :param context: the context of the caller.
+        :param group: the group object.
+        :returns: model_update
         """
-        LOG.debug("Creating consistency group.")
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
-        return model_update
 
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group.
+        LOG.debug("Creating group.")
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
 
-        IBM Storwize will delete the volumes of the CG.
+        for vol_type_id in group.volume_type_ids:
+            replication_type = self._get_volume_replicated_type(
+                context, None, vol_type_id)
+            if replication_type:
+                # An unsupported configuration
+                LOG.error('Unable to create group: create group with '
+                          'replication volume type is not supported.')
+                model_update = {'status': fields.GroupStatus.ERROR}
+                return model_update
+
+        if utils.is_group_a_cg_snapshot_type(group):
+            return {'status': fields.GroupStatus.AVAILABLE}
+        # we'll rely on the generic group implementation if it is not a
+        # consistency group request.
+        raise NotImplementedError()
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a group.
+
+        :param context: the context of the caller.
+        :param group: the group object.
+        :param volumes: a list of volume objects in the group.
+        :returns: model_update, volumes_model_update
         """
-        LOG.debug("Deleting consistency group.")
-        model_update = {'status': fields.ConsistencyGroupStatus.DELETED}
+        LOG.debug("Deleting group.")
+        if not utils.is_group_a_cg_snapshot_type(group):
+            # we'll rely on the generic group implementation if it is
+            # not a consistency group request.
+            raise NotImplementedError()
+
+        model_update = {'status': fields.GroupStatus.DELETED}
         volumes_model_update = []
 
         for volume in volumes:
@@ -3505,51 +3531,69 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     {'id': volume['id'], 'status': 'deleted'})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = (
-                    fields.ConsistencyGroupStatus.ERROR_DELETING)
+                    fields.GroupStatus.ERROR_DELETING)
                 LOG.error("Failed to delete the volume %(vol)s of CG. "
                           "Exception: %(exception)s.",
                           {'vol': volume['name'], 'exception': err})
                 volumes_model_update.append(
-                    {'id': volume['id'], 'status': 'error_deleting'})
+                    {'id': volume['id'],
+                     'status': fields.GroupStatus.ERROR_DELETING})
 
         return model_update, volumes_model_update
 
-    def update_consistencygroup(self, ctxt, group, add_volumes,
-                                remove_volumes):
-        """Adds or removes volume(s) to/from an existing consistency group."""
-
-        LOG.debug("Updating consistency group.")
-        return None, None, None
-
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        """Creates a consistencygroup from source.
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
+        """Updates a group.
 
         :param context: the context of the caller.
-        :param group: the dictionary of the consistency group to be created.
-        :param volumes: a list of volume dictionaries in the group.
-        :param cgsnapshot: the dictionary of the cgsnapshot as source.
-        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
-        :param source_cg: the dictionary of a consistency group as source.
-        :param source_vols: a list of volume dictionaries in the source_cg.
+        :param group: the group object.
+        :param add_volumes: a list of volume objects to be added.
+        :param remove_volumes: a list of volume objects to be removed.
+        :returns: model_update, add_volumes_update, remove_volumes_update
+        """
+
+        LOG.debug("Updating group.")
+        if utils.is_group_a_cg_snapshot_type(group):
+            return None, None, None
+
+        # we'll rely on the generic group implementation if it is not a
+        # consistency group request.
+        raise NotImplementedError()
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param context: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of Volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
         :returns: model_update, volumes_model_update
         """
-        LOG.debug('Enter: create_consistencygroup_from_src.')
-        if cgsnapshot and snapshots:
-            cg_name = 'cg-' + cgsnapshot.id
+        LOG.debug('Enter: create_group_from_src.')
+        if not utils.is_group_a_cg_snapshot_type(group):
+            # we'll rely on the generic volume groups implementation if it is
+            # not a consistency group request.
+            raise NotImplementedError()
+
+        if group_snapshot and snapshots:
+            cg_name = 'cg-' + group_snapshot.id
             sources = snapshots
 
-        elif source_cg and source_vols:
-            cg_name = 'cg-' + source_cg.id
+        elif source_group and source_vols:
+            cg_name = 'cg-' + source_group.id
             sources = source_vols
 
         else:
-            error_msg = _("create_consistencygroup_from_src must be "
-                          "creating from a CG snapshot, or a source CG.")
+            error_msg = _("create_group_from_src must be creating from a "
+                          "group snapshot, or a source group.")
             raise exception.InvalidInput(reason=error_msg)
 
-        LOG.debug('create_consistencygroup_from_src: cg_name %(cg_name)s'
+        LOG.debug('create_group_from_src: cg_name %(cg_name)s'
                   ' %(sources)s', {'cg_name': cg_name, 'sources': sources})
         self._helpers.create_fc_consistgrp(cg_name)
         timeout = self.configuration.storwize_svc_flashcopy_timeout
@@ -3561,13 +3605,24 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                 self._state,
                                                 self.configuration,
                                                 timeout))
-        LOG.debug("Leave: create_consistencygroup_from_src.")
+        LOG.debug("Leave: create_group_from_src.")
         return model_update, snapshots_model
 
-    def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
-        """Creates a cgsnapshot."""
-        # Use cgsnapshot id as cg name
-        cg_name = 'cg_snap-' + cgsnapshot.id
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group_snapshot.
+
+        :param context: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be created.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+            # we'll rely on the generic group implementation if it is not a
+            # consistency group request.
+            raise NotImplementedError()
+
+        # Use group_snapshot id as cg name
+        cg_name = 'cg_snap-' + group_snapshot.id
         # Create new cg as cg_snapshot
         self._helpers.create_fc_consistgrp(cg_name)
 
@@ -3582,9 +3637,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         return model_update, snapshots_model
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot."""
-        cgsnapshot_id = cgsnapshot['id']
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group_snapshot.
+
+        :param context: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be deleted.
+        :param snapshots: a list of snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+
+        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+            # we'll rely on the generic group implementation if it is not a
+            # consistency group request.
+            raise NotImplementedError()
+
+        cgsnapshot_id = group_snapshot.id
         cg_name = 'cg_snap-' + cgsnapshot_id
 
         model_update, snapshots_model = (
@@ -3671,6 +3738,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'thin_provisioning_support': not use_thick_provisioning,
                     'thick_provisioning_support': use_thick_provisioning,
                     'max_over_subscription_ratio': over_sub_ratio,
+                    'consistent_group_snapshot_enabled': True,
                 }
             if self._replica_enabled:
                 pool_stats.update({

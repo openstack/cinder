@@ -1,0 +1,4 @@
+---
+features:
+  - Add consistency group capability to generic volume groups in Storwize
+    drivers.
