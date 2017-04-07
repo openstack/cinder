@@ -93,6 +93,10 @@
     "backup:update": "rule:admin_or_owner",
     "backup:backup_project_attribute": "rule:admin_api",
 
+    "volume:attachment_create": "",
+    "volume:attachment_update": "rule:admin_or_owner",
+    "volume:attachment_delete": "rule:admin_or_owner",
+
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
     "snapshot_extension:snapshot_manage": "rule:admin_api",
     "snapshot_extension:snapshot_unmanage": "rule:admin_api",

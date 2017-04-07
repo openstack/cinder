@@ -18,15 +18,18 @@ Tests for attachments Api.
 """
 
 import ddt
+import mock
 import webob
 
 from cinder.api.v3 import attachments as v3_attachments
 from cinder import context
+from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
+from cinder.volume import rpcapi as volume_rpcapi
 
 ATTACHMENTS_MICRO_VERSION = '3.27'
 
@@ -70,8 +73,97 @@ class AttachmentsAPITestCase(test.TestCase):
         volume = objects.Volume(ctxt)
         volume.display_name = display_name
         volume.project_id = project_id
+        volume.status = 'available'
+        volume.attach_status = 'attached'
         volume.create()
         return volume
+
+    def test_create_attachment(self):
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments' %
+                                      fake.PROJECT_ID,
+                                      version=ATTACHMENTS_MICRO_VERSION)
+        body = {
+            "attachment":
+                {
+                    "connector": None,
+                    "instance_uuid": fake.UUID1,
+                    "volume_uuid": self.volume1.id
+                },
+        }
+
+        attachment = self.controller.create(req, body)
+
+        self.assertEqual(self.volume1.id,
+                         attachment['attachment']['volume_id'])
+        self.assertEqual(fake.UUID1,
+                         attachment['attachment']['instance'])
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'attachment_update')
+    def test_update_attachment(self, mock_update):
+        fake_connector = {'fake_key': 'fake_value'}
+        mock_update.return_value = fake_connector
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value'},
+                },
+        }
+
+        attachment = self.controller.update(req, self.attachment1.id, body)
+
+        self.assertEqual(fake_connector,
+                         attachment['attachment']['connection_info'])
+        self.assertEqual(fake.UUID1, attachment['attachment']['instance'])
+
+    @mock.patch.object(objects.VolumeAttachment, 'get_by_id')
+    def test_attachment_operations_not_authorized(self, mock_get):
+        mock_get.return_value = {'project_id': fake.PROJECT2_ID}
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      use_admin_context=False)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value'},
+                },
+        }
+        self.assertRaises(exception.NotAuthorized,
+                          self.controller.update, req,
+                          self.attachment1.id, body)
+        self.assertRaises(exception.NotAuthorized,
+                          self.controller.delete, req,
+                          self.attachment1.id)
+
+    @ddt.data('reserved', 'attached')
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'attachment_delete')
+    def test_delete_attachment(self, status, mock_delete):
+        volume1 = self._create_volume(display_name='fake_volume_1',
+                                      project_id=fake.PROJECT_ID)
+        attachment = self._create_attachement(
+            volume_uuid=volume1.id, instance_uuid=fake.UUID1,
+            attach_status=status)
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, attachment.id),
+                                      version=ATTACHMENTS_MICRO_VERSION,
+                                      use_admin_context=True)
+
+        self.controller.delete(req, attachment.id)
+
+        volume2 = objects.Volume.get_by_id(self.ctxt, volume1.id)
+        if status == 'reserved':
+            self.assertEqual('detached', volume2.attach_status)
+            self.assertRaises(
+                exception.VolumeAttachmentNotFound,
+                objects.VolumeAttachment.get_by_id, self.ctxt, attachment.id)
+        else:
+            self.assertEqual('attached', volume2.attach_status)
+            mock_delete.assert_called_once_with(req.environ['cinder.context'],
+                                                attachment.id, mock.ANY)
 
     def _create_attachement(self, ctxt=None, volume_uuid=None,
                             instance_uuid=None, mountpoint=None,
