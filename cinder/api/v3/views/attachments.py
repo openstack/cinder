@@ -32,7 +32,7 @@ class ViewBuilder(object):
             attached_at=cls._normalize(attachment.attach_time),
             detached_at=cls._normalize(attachment.detach_time),
             attach_mode=attachment.attach_mode,
-            connection_info=getattr(attachment, 'connection_info', None),)
+            connection_info=attachment.connection_info)
         if flat:
             return result
         return {'attachment': result}
