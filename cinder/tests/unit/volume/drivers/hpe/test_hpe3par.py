@@ -110,7 +110,7 @@ class HPE3PARBaseDriver(object):
     VOLUME_3PAR_NAME = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_3PAR_NAME = 'oss-L4I73ONuTci9Fd4ceij-MQ'
     RCG_3PAR_NAME = 'rcg-0DM4qZEVSKON-DXN-N'
-    CONSIS_GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
+    GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
     CONSIS_GROUP_NAME = 'vvs-YET.38iJR1KQDyA50kel3w'
     SRC_CONSIS_GROUP_ID = '7d7dfa02-ac6e-48cb-96af-8a0cd3008d47'
     SRC_CONSIS_GROUP_NAME = 'vvs-fX36AqxuSMuWr4oM0wCNRw'
@@ -613,20 +613,31 @@ class HPE3PARBaseDriver(object):
     standard_logout = [
         mock.call.logout()]
 
-    class fake_consistencygroup_object(object):
-        def __init__(self, cg_id='6044fedf-c889-4752-900f-2039d247a5df'):
-            self.id = cg_id
-            self.volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+    class fake_volume_object(object):
+        def __init__(self, vol_id='d03338a9-9115-48a3-8dfc-35cdfcdc15a7'):
+            self.id = vol_id
+            self.name = 'volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7'
+            self.display_name = 'Foo Volume'
+            self.size = 2
+            self.host = 'fakehost@foo#OpenStackCPG'
+            self.volume_type = None
+            self.volume_type_id = None
+
+    class fake_group_object(object):
+        def __init__(self, grp_id='6044fedf-c889-4752-900f-2039d247a5df'):
+            self.id = grp_id
+            self.volume_type_ids = ['d03338a9-9115-48a3-8dfc-33333333333']
+            self.volume_types = ['d03338a9-9115-48a3-8dfc-33333333333']
             self.name = 'cg_name'
-            self.cgsnapshot_id = None
+            self.group_snapshot_id = None
             self.host = 'fakehost@foo#OpenStackCPG'
             self.description = 'consistency group'
 
-    class fake_cgsnapshot_object(object):
+    class fake_group_snapshot_object(object):
         def __init__(self, cgsnap_id='e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'):
             self.id = cgsnap_id
-            self.consistencygroup_id = '6044fedf-c889-4752-900f-2039d247a5df'
-            self.description = 'cgsnapshot'
+            self.group_id = '6044fedf-c889-4752-900f-2039d247a5df'
+            self.description = 'group_snapshot'
             self.readOnly = False
 
     def setup_configuration(self):
@@ -4112,22 +4123,26 @@ class HPE3PARBaseDriver(object):
         safe_host = common._safe_hostname(long_hostname)
         self.assertEqual(fixed_hostname, safe_host)
 
-    def test_create_consistency_group(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
-            # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            # create a group
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4143,23 +4158,38 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_create_consistency_group_from_src(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'get_volume_settings_from_type')
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_src(self, cg_ss_enable, vol_ss_enable,
+                                   typ_info):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
+        volume = self.fake_volume_object()
+        type_info = {'cpg': 'OpenStackCPG',
+                     'tpvv': True,
+                     'tdvv': False,
+                     'snap_cpg': 'OpenStackCPG',
+                     'hpe3par_keys': {}}
 
-        cgsnap_comment = Comment({
-            "consistency_group_id": "6044fedf-c889-4752-900f-2039d247a5df",
-            "description": "cgsnapshot",
-            "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2",
+        typ_info.return_value = type_info
+
+        group_snap_comment = Comment({
+            "group_id": "6044fedf-c889-4752-900f-2039d247a5df",
+            "description": "group_snapshot",
+            "group_snapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2",
         })
 
-        cgsnap_optional = (
-            {'comment': cgsnap_comment,
+        group_snap_optional = (
+            {'comment': group_snap_comment,
              'readOnly': False})
 
-        cg_comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+        group_comment = Comment({
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4168,16 +4198,15 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
-                    comment=cg_comment)]
+                    comment=group_comment)]
 
             mock_client.assert_has_calls(
                 self.get_id_login +
@@ -4188,10 +4217,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # add a volume to the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[volume],
-                                                remove_volumes=[])
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[volume], remove_volumes=[])
 
             expected = [
                 mock.call.addVolumeToVolumeSet(
@@ -4207,20 +4234,20 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # create a snapshot of the consistency group
-            cgsnapshot = self.fake_cgsnapshot_object()
-            self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot, [])
+            grp_snapshot = self.fake_group_snapshot_object()
+            self.driver.create_group_snapshot(context.get_admin_context(),
+                                              grp_snapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
                     self.CGSNAPSHOT_BASE_NAME + "-@count@",
                     self.CONSIS_GROUP_NAME,
-                    optional=cgsnap_optional)]
+                    optional=group_snap_optional)]
 
             # create a consistency group from the cgsnapshot
-            self.driver.create_consistencygroup_from_src(
+            self.driver.create_group_from_src(
                 context.get_admin_context(), group,
-                [volume], cgsnapshot=cgsnapshot,
+                [volume], group_snapshot=grp_snapshot,
                 snapshots=[self.snapshot])
 
             mock_client.assert_has_calls(
@@ -4230,37 +4257,52 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_create_consistency_group_from_src_cg(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'get_volume_settings_from_type')
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_src_group(self, cg_ss_enable, vol_ss_enable,
+                                         typ_info):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
+        volume = self.fake_volume_object()
+        type_info = {'cpg': 'OpenStackCPG',
+                     'tpvv': True,
+                     'tdvv': False,
+                     'snap_cpg': 'OpenStackCPG',
+                     'hpe3par_keys': {}}
+
+        typ_info.return_value = type_info
         source_volume = self.volume_src_cg
 
-        cgsnap_optional = (
+        group_snap_optional = (
             {'expirationHours': 1})
 
-        cg_comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+        group_comment = Comment({
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
-            group = self.fake_consistencygroup_object()
-            source_group = self.fake_consistencygroup_object(
-                cg_id=self.SRC_CONSIS_GROUP_ID)
+            group = self.fake_group_object()
+            source_grp = self.fake_group_object(
+                grp_id=self.SRC_CONSIS_GROUP_ID)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
-                    comment=cg_comment),
+                    comment=group_comment),
                 mock.call.createSnapshotOfVolumeSet(
                     mock.ANY,
                     self.SRC_CONSIS_GROUP_NAME,
-                    optional=cgsnap_optional),
+                    optional=group_snap_optional),
                 mock.call.copyVolume(
                     mock.ANY,
                     self.VOLUME_NAME_3PAR,
@@ -4272,9 +4314,9 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             # Create a consistency group from a source consistency group.
-            self.driver.create_consistencygroup_from_src(
+            self.driver.create_group_from_src(
                 context.get_admin_context(), group,
-                [volume], source_cg=source_group,
+                [volume], source_group=source_grp,
                 source_vols=[source_volume])
 
             mock_client.assert_has_calls(
@@ -4284,12 +4326,17 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_delete_consistency_group(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4298,9 +4345,8 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4318,9 +4364,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # remove the consistency group
-            group.status = fields.ConsistencyGroupStatus.DELETING
-            self.driver.delete_consistencygroup(context.get_admin_context(),
-                                                group, [])
+            group.status = fields.GroupStatus.DELETING
+            self.driver.delete_group(context.get_admin_context(), group, [])
 
             expected = [
                 mock.call.deleteVolumeSet(
@@ -4333,7 +4378,12 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_delete_consistency_group_exceptions(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group_exceptions(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
@@ -4343,42 +4393,44 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
+            group = self.fake_group_object()
             volume = fake_volume.fake_volume_obj(context.get_admin_context())
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            self.driver.create_group(context.get_admin_context(), group)
 
             # remove the consistency group
-            group.status = fields.ConsistencyGroupStatus.DELETING
+            group.status = fields.GroupStatus.DELETING
 
             # mock HTTPConflict in delete volume set
             mock_client.deleteVolumeSet.side_effect = (
                 hpeexceptions.HTTPConflict())
             # no exception should escape method
-            self.driver.delete_consistencygroup(context.get_admin_context(),
-                                                group, [])
+            self.driver.delete_group(context.get_admin_context(), group, [])
 
             # mock HTTPNotFound in delete volume set
             mock_client.deleteVolumeSet.side_effect = (
                 hpeexceptions.HTTPNotFound())
             # no exception should escape method
-            self.driver.delete_consistencygroup(context.get_admin_context(),
-                                                group, [])
+            self.driver.delete_group(context.get_admin_context(), group, [])
 
             # mock HTTPConflict in delete volume
             mock_client.deleteVolume.side_effect = (
                 hpeexceptions.HTTPConflict())
             # no exception should escape method
-            self.driver.delete_consistencygroup(context.get_admin_context(),
-                                                group, [volume])
+            self.driver.delete_group(context.get_admin_context(), group,
+                                     [volume])
 
-    def test_update_consistency_group_add_vol(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group_add_vol(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
+        volume = self.fake_volume_object()
 
         comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4387,9 +4439,8 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4407,10 +4458,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # add a volume to the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[volume],
-                                                remove_volumes=[])
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[volume], remove_volumes=[])
 
             expected = [
                 mock.call.addVolumeToVolumeSet(
@@ -4424,13 +4473,18 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_update_consistency_group_remove_vol(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group_remove_vol(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
+        volume = self.fake_volume_object()
 
         comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4439,9 +4493,8 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4459,10 +4512,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # add a volume to the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[volume],
-                                                remove_volumes=[])
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[volume], remove_volumes=[])
 
             expected = [
                 mock.call.addVolumeToVolumeSet(
@@ -4478,10 +4529,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # remove the volume from the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[],
-                                                remove_volumes=[volume])
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[], remove_volumes=[volume])
 
             expected = [
                 mock.call.removeVolumeFromVolumeSet(
@@ -4495,22 +4544,27 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_create_cgsnapshot(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
+        volume = self.fake_volume_object()
 
         cg_comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
-        cgsnap_comment = Comment({
-            "consistency_group_id": "6044fedf-c889-4752-900f-2039d247a5df",
-            "description": "cgsnapshot",
-            "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"})
+        group_snap_comment = Comment({
+            "group_id": "6044fedf-c889-4752-900f-2039d247a5df",
+            "description": "group_snapshot",
+            "group_snapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"})
 
         cgsnap_optional = (
-            {'comment': cgsnap_comment,
+            {'comment': group_snap_comment,
              'readOnly': False})
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4519,9 +4573,8 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4539,10 +4592,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # add a volume to the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[volume],
-                                                remove_volumes=[])
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[volume], remove_volumes=[])
 
             expected = [
                 mock.call.addVolumeToVolumeSet(
@@ -4558,9 +4609,9 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # create a snapshot of the consistency group
-            cgsnapshot = self.fake_cgsnapshot_object()
-            self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot, [])
+            group_snapshot = self.fake_group_snapshot_object()
+            self.driver.create_group_snapshot(context.get_admin_context(),
+                                              group_snapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
@@ -4575,23 +4626,28 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    def test_delete_cgsnapshot(self):
+    @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
+                'is_volume_group_snap_type')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group_snapshot(self, cg_ss_enable, vol_ss_enable):
+        cg_ss_enable.return_value = True
+        vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.volume
-        cgsnapshot = self.fake_cgsnapshot_object()
+        volume = self.fake_volume_object()
+        group_snapshot = self.fake_group_snapshot_object()
 
         cg_comment = Comment({
-            'consistency_group_id': self.CONSIS_GROUP_ID
+            'group_id': self.GROUP_ID
         })
 
-        cgsnap_comment = Comment({
-            "consistency_group_id": "6044fedf-c889-4752-900f-2039d247a5df",
-            "description": "cgsnapshot",
-            "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"})
+        group_snap_comment = Comment({
+            "group_id": "6044fedf-c889-4752-900f-2039d247a5df",
+            "description": "group_snapshot",
+            "group_snapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"})
 
-        cgsnap_optional = {'comment': cgsnap_comment,
-                           'readOnly': False}
+        group_snap_optional = {'comment': group_snap_comment,
+                               'readOnly': False}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -4599,9 +4655,8 @@ class HPE3PARBaseDriver(object):
             mock_client.getCPG.return_value = {'domain': None}
 
             # create a consistency group
-            group = self.fake_consistencygroup_object()
-            self.driver.create_consistencygroup(context.get_admin_context(),
-                                                group)
+            group = self.fake_group_object()
+            self.driver.create_group(context.get_admin_context(), group)
 
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
@@ -4619,11 +4674,8 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # add a volume to the consistency group
-            self.driver.update_consistencygroup(context.get_admin_context(),
-                                                group,
-                                                add_volumes=[volume],
-                                                remove_volumes=[])
-
+            self.driver.update_group(context.get_admin_context(), group,
+                                     add_volumes=[volume], remove_volumes=[])
             expected = [
                 mock.call.addVolumeToVolumeSet(
                     self.CONSIS_GROUP_NAME,
@@ -4638,19 +4690,19 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # create a snapshot of the consistency group
-            self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot, [])
+            self.driver.create_group_snapshot(context.get_admin_context(),
+                                              group_snapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
                     self.CGSNAPSHOT_BASE_NAME + "-@count@",
                     self.CONSIS_GROUP_NAME,
-                    optional=cgsnap_optional)]
+                    optional=group_snap_optional)]
 
             # delete the snapshot of the consistency group
-            cgsnapshot.status = 'deleting'
-            self.driver.delete_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot, [])
+            group_snapshot.status = 'deleting'
+            self.driver.delete_group_snapshot(context.get_admin_context(),
+                                              group_snapshot, [])
 
             mock_client.assert_has_calls(
                 self.get_id_login +

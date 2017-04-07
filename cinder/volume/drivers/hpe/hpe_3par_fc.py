@@ -110,10 +110,11 @@ class HPE3PARFCDriver(driver.ManageableVD,
                 by another host, while creating 3PAR FC Host. bug #1597454
         3.0.10 - Added Entry point tracing
         3.0.11 - Handle manage and unmanage hosts present. bug #1648067
+        3.0.12 - Adds consistency group capability in generic volume groups.
 
     """
 
-    VERSION = "3.0.11"
+    VERSION = "3.0.12"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -561,56 +562,58 @@ class HPE3PARFCDriver(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
-    def create_consistencygroup(self, context, group):
+    def create_group(self, context, group):
         common = self._login()
         try:
-            return common.create_consistencygroup(context, group)
+            return common.create_group(context, group)
         finally:
             self._logout(common)
 
     @utils.trace
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
         common = self._login()
         try:
-            return common.create_consistencygroup_from_src(
-                context, group, volumes, cgsnapshot, snapshots, source_cg,
-                source_vols)
+            return common.create_group_from_src(
+                context, group, volumes, group_snapshot, snapshots,
+                source_group, source_vols)
         finally:
             self._logout(common)
 
     @utils.trace
-    def delete_consistencygroup(self, context, group, volumes):
+    def delete_group(self, context, group, volumes):
         common = self._login()
         try:
-            return common.delete_consistencygroup(context, group, volumes)
+            return common.delete_group(context, group, volumes)
         finally:
             self._logout(common)
 
     @utils.trace
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
         common = self._login()
         try:
-            return common.update_consistencygroup(context, group, add_volumes,
-                                                  remove_volumes)
+            return common.update_group(context, group, add_volumes,
+                                       remove_volumes)
         finally:
             self._logout(common)
 
     @utils.trace
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
         common = self._login()
         try:
-            return common.create_cgsnapshot(context, cgsnapshot, snapshots)
+            return common.create_group_snapshot(context, group_snapshot,
+                                                snapshots)
         finally:
             self._logout(common)
 
     @utils.trace
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
         common = self._login()
         try:
-            return common.delete_cgsnapshot(context, cgsnapshot, snapshots)
+            return common.delete_group_snapshot(context, group_snapshot,
+                                                snapshots)
         finally:
             self._logout(common)
 
