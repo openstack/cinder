@@ -57,9 +57,6 @@ class TestCinderApiCmd(test.TestCase):
         super(TestCinderApiCmd, self).setUp()
         sys.argv = ['cinder-api']
 
-    def tearDown(self):
-        super(TestCinderApiCmd, self).tearDown()
-
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.rpc.init')
@@ -91,9 +88,6 @@ class TestCinderBackupCmd(test.TestCase):
         super(TestCinderBackupCmd, self).setUp()
         sys.argv = ['cinder-backup']
 
-    def tearDown(self):
-        super(TestCinderBackupCmd, self).tearDown()
-
     @mock.patch('cinder.service.wait')
     @mock.patch('cinder.service.serve')
     @mock.patch('cinder.service.Service.create')
@@ -121,9 +115,6 @@ class TestCinderSchedulerCmd(test.TestCase):
         super(TestCinderSchedulerCmd, self).setUp()
         sys.argv = ['cinder-scheduler']
 
-    def tearDown(self):
-        super(TestCinderSchedulerCmd, self).tearDown()
-
     @mock.patch('cinder.service.wait')
     @mock.patch('cinder.service.serve')
     @mock.patch('cinder.service.Service.create')
@@ -149,9 +140,6 @@ class TestCinderVolumeCmd(test.TestCase):
     def setUp(self):
         super(TestCinderVolumeCmd, self).setUp()
         sys.argv = ['cinder-volume']
-
-    def tearDown(self):
-        super(TestCinderVolumeCmd, self).tearDown()
 
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
@@ -977,9 +965,6 @@ class TestCinderRtstoolCmd(test.TestCase):
         self.INITIATOR_IQN = 'iqn.2015.12.com.example.openstack.i:UNIT1'
         self.TARGET_IQN = 'iqn.2015.12.com.example.openstack.i:TARGET1'
 
-    def tearDown(self):
-        super(TestCinderRtstoolCmd, self).tearDown()
-
     @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_create_rtslib_error(self, rtsroot):
         rtsroot.side_effect = rtslib_fb.utils.RTSLibError()
@@ -1570,9 +1555,6 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     def setUp(self):
         super(TestCinderVolumeUsageAuditCmd, self).setUp()
         sys.argv = ['cinder-volume-usage-audit']
-
-    def tearDown(self):
-        super(TestCinderVolumeUsageAuditCmd, self).tearDown()
 
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
