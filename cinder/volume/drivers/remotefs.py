@@ -1012,9 +1012,10 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                             else 'offline')})
 
         volume_status = snapshot.volume.status
-        if volume_status not in ['available', 'in-use', 'backing-up']:
-            msg = _("Volume status must be 'available', 'in-use' or "
-                    "'backing-up' but is: "
+        if volume_status not in ['available', 'in-use',
+                                 'backing-up', 'deleting']:
+            msg = _("Volume status must be 'available', 'in-use', "
+                    "'backing-up' or 'deleting' but is: "
                     "%(status)s.") % {'status': volume_status}
 
             raise exception.InvalidVolume(msg)
