@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2015 EMC Corporation.
+# Copyright (c) 2017 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,7 +16,6 @@
 import ast
 
 from oslo_log import log as logging
-import six
 
 from cinder import interface
 from cinder.volume import driver
@@ -28,7 +27,7 @@ LOG = logging.getLogger(__name__)
 
 @interface.volumedriver
 class VMAXFCDriver(driver.FibreChannelDriver):
-    """EMC FC Drivers for VMAX using SMI-S.
+    """FC Drivers for VMAX using REST.
 
     Version history:
 
@@ -76,9 +75,10 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Support for compression on All Flash
               - Volume replication 2.1 (bp add-vmax-replication)
               - rename and restructure driver (bp vmax-rename-dell-emc)
+        3.0.0 - REST based driver
     """
 
-    VERSION = "2.5.0"
+    VERSION = "3.0.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
@@ -86,64 +86,98 @@ class VMAXFCDriver(driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
 
         super(VMAXFCDriver, self).__init__(*args, **kwargs)
-        self.active_backend_id = kwargs.get('active_backend_id', None)
         self.common = common.VMAXCommon(
             'FC',
             self.VERSION,
-            configuration=self.configuration,
-            active_backend_id=self.active_backend_id)
+            configuration=self.configuration)
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a VMAX volume."""
+        """Creates a VMAX volume.
+
+        :param volume: the cinder volume object
+        :return: provider location dict
+        """
         return self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
+        """Creates a volume from a snapshot.
+
+        :param volume: the cinder volume object
+        :param snapshot: the cinder snapshot object
+        :return: provider location dict
+        """
         return self.common.create_volume_from_snapshot(
             volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a cloned volume."""
+        """Creates a cloned volume.
+
+        :param volume: the cinder volume object
+        :param src_vref: the source volume reference
+        :return: provider location dict
+        """
         return self.common.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
-        """Deletes an VMAX volume."""
+        """Deletes a VMAX volume.
+
+        :param volume: the cinder volume object
+        """
         self.common.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        src_volume = snapshot['volume']
-        volpath = self.common.create_snapshot(snapshot, src_volume)
+        """Creates a snapshot.
 
-        model_update = {}
-        snapshot['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = snapshot['provider_location']
-        return model_update
+        :param snapshot: the cinder snapshot object
+        :return: provider location dict
+        """
+        src_volume = snapshot.volume
+        return self.common.create_snapshot(snapshot, src_volume)
 
     def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        src_volume = snapshot['volume']
+        """Deletes a snapshot.
 
+        :param snapshot: the cinder snapshot object
+        """
+        src_volume = snapshot.volume
         self.common.delete_snapshot(snapshot, src_volume)
 
     def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for an existing volume."""
+        """Driver entry point to get the export info for an existing volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        """
         pass
 
     def create_export(self, context, volume, connector):
-        """Driver entry point to get the export info for a new volume."""
+        """Driver entry point to get the export info for a new volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        """
         pass
 
     def remove_export(self, context, volume):
-        """Driver entry point to remove an export for a volume."""
+        """Driver entry point to remove an export for a volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        """
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
+    @staticmethod
+    def check_for_export(context, volume_id):
+        """Make sure volume is exported.
+
+        :param context: the context
+        :param volume_id: the volume id
+        """
         pass
 
     @fczm_utils.add_fc_zone
@@ -176,6 +210,9 @@ class VMAXFCDriver(driver.FibreChannelDriver):
                     'target_wwn': ['1234567890123', '0987654321321'],
                 }
             }
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        :return: dict -- the target_wwns and initiator_target_map
         """
         device_info = self.common.initialize_connection(
             volume, connector)
@@ -186,16 +223,14 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
         Add relevant data to data dict, target_lun, target_wwn and
         initiator_target_map.
-
         :param device_info: device_info
         :param volume: the volume object
         :param connector: the connector object
         :returns: dict -- the target_wwns and initiator_target_map
         """
         device_number = device_info['hostlunid']
-        storage_system = device_info['storagesystem']
         target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, volume, connector)
+            volume, connector)
 
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': device_number,
@@ -222,10 +257,8 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         :returns: dict -- the target_wwns and initiator_target_map if the
             zone is to be removed, otherwise empty
         """
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {}}
-        zoning_mappings = (
-            self._get_zoning_mappings(volume, connector))
+        data = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        zoning_mappings = self._get_zoning_mappings(volume, connector)
 
         if zoning_mappings:
             self.common.terminate_connection(volume, connector)
@@ -243,37 +276,41 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         zoning_mappings = {'port_group': None,
                            'initiator_group': None,
                            'target_wwns': None,
-                           'init_targ_map': None}
-        loc = volume['provider_location']
+                           'init_targ_map': None,
+                           'array': None}
+        loc = volume.provider_location
         name = ast.literal_eval(loc)
-        storage_system = name['keybindings']['SystemName']
+        host = connector['host']
+        array = name['array']
+        device_id = name['device_id']
         LOG.debug("Start FC detach process for volume: %(volume)s.",
-                  {'volume': volume['name']})
+                  {'volume': volume.name})
 
-        mvInstanceName = self.common.get_masking_view_by_volume(
-            volume, connector)
-        if mvInstanceName:
-            portGroupInstanceName = (
+        masking_views = self.common.get_masking_views_from_volume(
+            array, device_id, host)
+        if masking_views:
+            portgroup = (
                 self.common.get_port_group_from_masking_view(
-                    mvInstanceName))
-            initiatorGroupInstanceName = (
+                    array, masking_views[0]))
+            initiator_group = (
                 self.common.get_initiator_group_from_masking_view(
-                    mvInstanceName))
+                    array, masking_views[0]))
 
             LOG.debug("Found port group: %(portGroup)s "
                       "in masking view %(maskingView)s.",
-                      {'portGroup': portGroupInstanceName,
-                       'maskingView': mvInstanceName})
+                      {'portGroup': portgroup,
+                       'maskingView': masking_views[0]})
             # Map must be populated before the terminate_connection
             target_wwns, init_targ_map = self._build_initiator_target_map(
-                storage_system, volume, connector)
-            zoning_mappings = {'port_group': portGroupInstanceName,
-                               'initiator_group': initiatorGroupInstanceName,
+                volume, connector)
+            zoning_mappings = {'port_group': portgroup,
+                               'initiator_group': initiator_group,
                                'target_wwns': target_wwns,
-                               'init_targ_map': init_targ_map}
+                               'init_targ_map': init_targ_map,
+                               'array': array}
         else:
             LOG.warning("Volume %(volume)s is not in any masking view.",
-                        {'volume': volume['name']})
+                        {'volume': volume.name})
         return zoning_mappings
 
     def _cleanup_zones(self, zoning_mappings):
@@ -284,36 +321,16 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         """
         LOG.debug("Looking for masking views still associated with "
                   "Port Group %s.", zoning_mappings['port_group'])
-        if zoning_mappings['initiator_group']:
-            checkIgInstanceName = (
-                self.common.check_ig_instance_name(
-                    zoning_mappings['initiator_group']))
-        else:
-            checkIgInstanceName = None
+        masking_views = self.common.get_common_masking_views(
+            zoning_mappings['array'], zoning_mappings['port_group'],
+            zoning_mappings['initiator_group'])
 
-        # if it has not been deleted, check for remaining masking views
-        if checkIgInstanceName:
-            mvInstances = self._get_common_masking_views(
-                zoning_mappings['port_group'],
-                zoning_mappings['initiator_group'])
-
-            if len(mvInstances) > 0:
-                LOG.debug("Found %(numViews)lu MaskingViews.",
-                          {'numViews': len(mvInstances)})
-                data = {'driver_volume_type': 'fibre_channel',
-                        'data': {}}
-            else:  # no masking views found
-                LOG.debug("No MaskingViews were found. Deleting zone.")
-                data = {'driver_volume_type': 'fibre_channel',
-                        'data': {'target_wwn': zoning_mappings['target_wwns'],
-                                 'initiator_target_map':
-                                     zoning_mappings['init_targ_map']}}
-
-                LOG.debug("Return FC data for zone removal: %(data)s.",
-                          {'data': data})
-
-        else:  # The initiator group has been deleted
-            LOG.debug("Initiator Group has been deleted. Deleting zone.")
+        if masking_views:
+            LOG.debug("Found %(numViews)d MaskingViews.",
+                      {'numViews': len(masking_views)})
+            data = {'driver_volume_type': 'fibre_channel', 'data': {}}
+        else:  # no masking views found
+            LOG.debug("No MaskingViews were found. Deleting zone.")
             data = {'driver_volume_type': 'fibre_channel',
                     'data': {'target_wwn': zoning_mappings['target_wwns'],
                              'initiator_target_map':
@@ -321,32 +338,22 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
             LOG.debug("Return FC data for zone removal: %(data)s.",
                       {'data': data})
+
         return data
 
-    def _get_common_masking_views(
-            self, portGroupInstanceName, initiatorGroupInstanceName):
-        """Check to see the existence of mv in list"""
-        mvInstances = []
-        mvInstancesByPG = self.common.get_masking_views_by_port_group(
-            portGroupInstanceName)
+    def _build_initiator_target_map(self, volume, connector):
+        """Build the target_wwns and the initiator target map.
 
-        mvInstancesByIG = self.common.get_masking_views_by_initiator_group(
-            initiatorGroupInstanceName)
-
-        for mvInstanceByPG in mvInstancesByPG:
-            if mvInstanceByPG in mvInstancesByIG:
-                mvInstances.append(mvInstanceByPG)
-        return mvInstances
-
-    def _build_initiator_target_map(self, storage_system, volume, connector):
-        """Build the target_wwns and the initiator target map."""
-        target_wwns = []
-        init_targ_map = {}
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        :return: target_wwns -- list, init_targ_map -- dict
+        """
+        target_wwns, init_targ_map = [], {}
         initiator_wwns = connector['wwpns']
+        fc_targets = self.common.get_target_wwns_from_masking_view(
+            volume, connector)
 
         if self.zonemanager_lookup_service:
-            fc_targets = self.common.get_target_wwns_from_masking_view(
-                storage_system, volume, connector)
             mapping = (
                 self.zonemanager_lookup_service.
                 get_device_mapping_from_network(initiator_wwns, fc_targets))
@@ -356,15 +363,18 @@ class VMAXFCDriver(driver.FibreChannelDriver):
                 for initiator in map_d['initiator_port_wwn_list']:
                     init_targ_map[initiator] = map_d['target_port_wwn_list']
         else:  # No lookup service, pre-zoned case.
-            target_wwns = self.common.get_target_wwns_list(
-                storage_system, volume, connector)
+            target_wwns = fc_targets
             for initiator in initiator_wwns:
                 init_targ_map[initiator] = target_wwns
 
         return list(set(target_wwns)), init_targ_map
 
     def extend_volume(self, volume, new_size):
-        """Extend an existing volume."""
+        """Extend an existing volume.
+
+        :param volume: the cinder volume object
+        :param new_size: the required new size
+        """
         self.common.extend_volume(volume, new_size)
 
     def get_volume_stats(self, refresh=False):
@@ -386,53 +396,14 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         data['driver_version'] = self.VERSION
         self._stats = data
 
-    def migrate_volume(self, ctxt, volume, host):
-        """Migrate a volume from one Volume Backend to another.
-
-        :param ctxt: context
-        :param volume: the volume object including the volume_type_id
-        :param host: the host dict holding the relevant target(destination)
-            information
-        :returns: boolean -- Always returns True
-        :returns: dict -- Empty dict {}
-        """
-        return self.common.migrate_volume(ctxt, volume, host)
-
-    def retype(self, ctxt, volume, new_type, diff, host):
-        """Migrate volume to another host using retype.
-
-        :param ctxt: context
-        :param volume: the volume object including the volume_type_id
-        :param new_type: the new volume type.
-        :param diff: Unused parameter.
-        :param host: the host dict holding the relevant
-            target(destination) information
-        :returns: boolean -- True if retype succeeded, False if error
-        """
-        return self.common.retype(ctxt, volume, new_type, diff, host)
-
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        self.common.create_consistencygroup(context, group)
-
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
-        return self.common.delete_consistencygroup(
-            context, group, volumes)
-
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a cgsnapshot."""
-        return self.common.create_cgsnapshot(context, cgsnapshot, snapshots)
-
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot."""
-        return self.common.delete_cgsnapshot(context, cgsnapshot, snapshots)
-
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
 
         Renames the Volume to match the expected name for the volume.
         Also need to consider things like QoS, Emulation, account/tenant.
+        :param volume: the volume object
+        :param external_ref: the reference for the VMAX volume
+        :return: model_update
         """
         return self.common.manage_existing(volume, external_ref)
 
@@ -452,74 +423,3 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         Leave the volume intact on the backend array.
         """
         return self.common.unmanage(volume)
-
-    def update_consistencygroup(self, context, group,
-                                add_volumes, remove_volumes):
-        """Updates LUNs in consistency group."""
-        return self.common.update_consistencygroup(group, add_volumes,
-                                                   remove_volumes)
-
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        """Creates the consistency group from source.
-
-        Currently the source can only be a cgsnapshot.
-
-        :param context: the context
-        :param group: the consistency group object to be created
-        :param volumes: volumes in the consistency group
-        :param cgsnapshot: the source consistency group snapshot
-        :param snapshots: snapshots of the source volumes
-        :param source_cg: the dictionary of a consistency group as source.
-        :param source_vols: a list of volume dictionaries in the source_cg.
-        """
-        return self.common.create_consistencygroup_from_src(
-            context, group, volumes, cgsnapshot, snapshots, source_cg,
-            source_vols)
-
-    def create_export_snapshot(self, context, snapshot, connector):
-        """Driver entry point to get the export info for a new snapshot."""
-        pass
-
-    def remove_export_snapshot(self, context, snapshot):
-        """Driver entry point to remove an export for a snapshot."""
-        pass
-
-    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
-        """Allows connection to snapshot.
-
-        :param snapshot: the snapshot object
-        :param connector: the connector object
-        :param kwargs: additional parameters
-        :returns: data dict
-        """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-
-        return self.initialize_connection(snapshot, connector)
-
-    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
-        """Disallows connection to snapshot.
-
-        :param snapshot: the snapshot object
-        :param connector: the connector object
-        :param kwargs: additional parameters
-        """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        return self.terminate_connection(snapshot, connector, **kwargs)
-
-    def backup_use_temp_snapshot(self):
-        return True
-
-    def failover_host(self, context, volumes, secondary_id=None):
-        """Failover volumes to a secondary host/ backend.
-
-        :param context: the context
-        :param volumes: the list of volumes to be failed over
-        :param secondary_id: the backend to be failed over to, is 'default'
-                             if fail back
-        :return: secondary_id, volume_update_list
-        """
-        return self.common.failover_host(context, volumes, secondary_id)

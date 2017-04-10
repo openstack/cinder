@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2015 EMC Corporation.
+# Copyright (c) 2017 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-ISCSI Drivers for EMC VMAX arrays based on SMI-S.
+ISCSI Drivers for Dell EMC VMAX arrays based on REST.
 
 """
 from oslo_log import log as logging
@@ -25,15 +25,12 @@ from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.vmax import common
 
-
 LOG = logging.getLogger(__name__)
-
-CINDER_CONF = '/etc/cinder/cinder.conf'
 
 
 @interface.volumedriver
 class VMAXISCSIDriver(driver.ISCSIDriver):
-    """EMC ISCSI Drivers for VMAX using SMI-S.
+    """ISCSI Drivers for VMAX using Rest.
 
     Version history:
 
@@ -83,10 +80,10 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Support for compression on All Flash
               - Volume replication 2.1 (bp add-vmax-replication)
               - rename and restructure driver (bp vmax-rename-dell-emc)
-
+        3.0.0 - REST based driver
     """
 
-    VERSION = "2.5.0"
+    VERSION = "3.0.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
@@ -94,64 +91,99 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
 
         super(VMAXISCSIDriver, self).__init__(*args, **kwargs)
-        self.active_backend_id = kwargs.get('active_backend_id', None)
         self.common = (
             common.VMAXCommon(
                 'iSCSI',
                 self.VERSION,
-                configuration=self.configuration,
-                active_backend_id=self.active_backend_id))
+                configuration=self.configuration))
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a VMAX volume."""
+        """Creates a VMAX volume.
+
+        :param volume: the cinder volume object
+        :return: provider location dict
+        """
         return self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
+        """Creates a volume from a snapshot.
+
+        :param volume: the cinder volume object
+        :param snapshot: the cinder snapshot object
+        :return: provider location dict
+        """
         return self.common.create_volume_from_snapshot(
             volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a cloned volume."""
+        """Creates a cloned volume.
+
+        :param volume: the cinder volume object
+        :param src_vref: the source volume reference
+        :return: provider location dict
+        """
         return self.common.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
-        """Deletes an VMAX volume."""
+        """Deletes a VMAX volume.
+
+        :param volume: the cinder volume object
+        """
         self.common.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        src_volume = snapshot['volume']
-        volpath = self.common.create_snapshot(snapshot, src_volume)
+        """Creates a snapshot.
 
-        model_update = {}
-        snapshot['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = snapshot['provider_location']
-        return model_update
+        :param snapshot: the cinder snapshot object
+        :return: provider location dict
+        """
+        src_volume = snapshot.volume
+        return self.common.create_snapshot(snapshot, src_volume)
 
     def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        src_volume = snapshot['volume']
+        """Deletes a snapshot.
+
+        :param snapshot: the cinder snapshot object
+        """
+        src_volume = snapshot.volume
 
         self.common.delete_snapshot(snapshot, src_volume)
 
     def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for an existing volume."""
+        """Driver entry point to get the export info for an existing volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        """
         pass
 
     def create_export(self, context, volume, connector):
-        """Driver entry point to get the export info for a new volume."""
+        """Driver entry point to get the export info for a new volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        """
         pass
 
     def remove_export(self, context, volume):
-        """Driver entry point to remove an export for a volume."""
+        """Driver entry point to remove an export for a volume.
+
+        :param context: the context
+        :param volume: the cinder volume object
+        """
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
+    @staticmethod
+    def check_for_export(context, volume_id):
+        """Make sure volume is exported.
+
+        :param context: the context
+        :param volume_id: the volume id
+        """
         pass
 
     def initialize_connection(self, volume, connector):
@@ -183,40 +215,42 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
                     'target_luns': [1, 1],
                 }
             }
+        :param volume: the cinder volume object
+        :param connector: the connector object
+        :return: dict -- the iscsi dict
         """
         device_info = self.common.initialize_connection(
             volume, connector)
-        return self.get_iscsi_dict(
-            device_info, volume, connector)
+        return self.get_iscsi_dict(device_info, volume)
 
-    def get_iscsi_dict(self, device_info, volume, connector):
+    def get_iscsi_dict(self, device_info, volume):
         """Populate iscsi dict to pass to nova.
 
         :param device_info: device info dict
         :param volume: volume object
-        :param connector: connector object
         :return: iscsi dict
         """
         try:
             ip_and_iqn = device_info['ip_and_iqn']
             is_multipath = device_info['is_multipath']
-        except KeyError as ex:
-            exception_message = (_("Cannot get iSCSI ipaddresses or "
-                                   "multipath flag. Exception is %(ex)s. ")
-                                 % {'ex': ex})
+            host_lun_id = device_info['hostlunid']
+        except KeyError as e:
+            exception_message = (_("Cannot get iSCSI ipaddresses, multipath "
+                                   "flag, or hostlunid. Exception is %(e)s.")
+                                 % {'e': six.text_type(e)})
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        iscsi_properties = self.smis_get_iscsi_properties(
-            volume, connector, ip_and_iqn, is_multipath)
+        iscsi_properties = self.vmax_get_iscsi_properties(
+            volume, ip_and_iqn, is_multipath, host_lun_id)
 
-        LOG.info("iSCSI properties are: %s", iscsi_properties)
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': iscsi_properties
-        }
+        LOG.info("iSCSI properties are: %(props)s",
+                 {'props': iscsi_properties})
+        return {'driver_volume_type': 'iscsi',
+                'data': iscsi_properties}
 
-    def smis_get_iscsi_properties(self, volume, connector, ip_and_iqn,
-                                  is_multipath):
+    @staticmethod
+    def vmax_get_iscsi_properties(volume, ip_and_iqn,
+                                  is_multipath, host_lun_id):
         """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
@@ -231,48 +265,32 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
             the authentication details. Right now, either auth_method is not
             present meaning no authentication, or auth_method == `CHAP`
             meaning use CHAP with the specified credentials.
+
+        :param volume: the cinder volume object
+        :param ip_and_iqn: list of ip and iqn dicts
+        :param is_multipath: flag for multipath
+        :param host_lun_id: the host lun id of the device
+        :return: properties
         """
-
-        device_info, __, __ = self.common.find_device_number(
-            volume, connector['host'])
-
-        isError = False
-        if device_info:
-            try:
-                lun_id = device_info['hostlunid']
-            except KeyError:
-                isError = True
-        else:
-            isError = True
-
-        if isError:
-            LOG.error("Unable to get the lun id")
-            exception_message = (_("Cannot find device number for volume "
-                                 "%(volumeName)s.")
-                                 % {'volumeName': volume['name']})
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
         properties = {}
         if len(ip_and_iqn) > 1 and is_multipath:
             properties['target_portals'] = ([t['ip'] + ":3260" for t in
                                              ip_and_iqn])
             properties['target_iqns'] = ([t['iqn'].split(",")[0] for t in
                                           ip_and_iqn])
-            properties['target_luns'] = [lun_id] * len(ip_and_iqn)
+            properties['target_luns'] = [host_lun_id] * len(ip_and_iqn)
         properties['target_discovered'] = True
         properties['target_iqn'] = ip_and_iqn[0]['iqn'].split(",")[0]
         properties['target_portal'] = ip_and_iqn[0]['ip'] + ":3260"
-        properties['target_lun'] = lun_id
-        properties['volume_id'] = volume['id']
+        properties['target_lun'] = host_lun_id
+        properties['volume_id'] = volume.id
 
-        LOG.info(
-            "ISCSI properties: %(properties)s.", {'properties': properties})
+        LOG.info("ISCSI properties: %(properties)s.",
+                 {'properties': properties})
         LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
 
-        if 'provider_auth' in volume:
-            auth = volume['provider_auth']
-            LOG.info(
-                "AUTH properties: %(authProps)s.", {'authProps': auth})
+        if hasattr(volume, 'provider_auth'):
+            auth = volume.provider_auth
 
             if auth is not None:
                 (auth_method, auth_username, auth_secret) = auth.split()
@@ -281,22 +299,36 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info("AUTH properties: %s.", properties)
-
         return properties
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
+        """Disallow connection from connector.
+
+        Return empty data if other volumes are in the same zone.
+        The FibreChannel ZoneManager doesn't remove zones
+        if there isn't an initiator_target_map in the
+        return of terminate_connection.
+
+        :param volume: the volume object
+        :param connector: the connector object
+        :returns: dict -- the target_wwns and initiator_target_map if the
+            zone is to be removed, otherwise empty
+        """
         self.common.terminate_connection(volume, connector)
 
     def extend_volume(self, volume, new_size):
-        """Extend an existing volume."""
+        """Extend an existing volume.
+
+        :param volume: the cinder volume object
+        :param new_size: the required new size
+        """
         self.common.extend_volume(volume, new_size)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 
-        If 'refresh' is True, run update the stats first.
+        :param refresh: boolean -- If True, run update the stats first.
+        :returns: dict -- the stats dict
         """
         if refresh:
             self.update_volume_stats()
@@ -310,46 +342,6 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         data['storage_protocol'] = 'iSCSI'
         data['driver_version'] = self.VERSION
         self._stats = data
-
-    def migrate_volume(self, ctxt, volume, host):
-        """Migrate a volume from one Volume Backend to another.
-
-        :param ctxt: context
-        :param volume: the volume object including the volume_type_id
-        :param host: the host dict holding the relevant target information
-        :returns: boolean -- Always returns True
-        :returns: dict -- Empty dict {}
-        """
-        return self.common.migrate_volume(ctxt, volume, host)
-
-    def retype(self, ctxt, volume, new_type, diff, host):
-        """Migrate volume to another host using retype.
-
-        :param ctxt: context
-        :param volume: the volume object including the volume_type_id
-        :param new_type: the new volume type.
-        :param diff: Unused parameter in common.retype
-        :param host: the host dict holding the relevant target information
-        :returns: boolean -- True if retype succeeded, False if error
-        """
-        return self.common.retype(ctxt, volume, new_type, diff, host)
-
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        self.common.create_consistencygroup(context, group)
-
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
-        return self.common.delete_consistencygroup(
-            context, group, volumes)
-
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a cgsnapshot."""
-        return self.common.create_cgsnapshot(context, cgsnapshot, snapshots)
-
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot."""
-        return self.common.delete_cgsnapshot(context, cgsnapshot, snapshots)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
@@ -375,77 +367,3 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         Leave the volume intact on the backend array.
         """
         return self.common.unmanage(volume)
-
-    def update_consistencygroup(self, context, group,
-                                add_volumes, remove_volumes):
-        """Updates LUNs in consistency group."""
-        return self.common.update_consistencygroup(group, add_volumes,
-                                                   remove_volumes)
-
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        """Creates the consistency group from source.
-
-        Currently the source can only be a cgsnapshot.
-
-        :param context: the context
-        :param group: the consistency group object to be created
-        :param volumes: volumes in the consistency group
-        :param cgsnapshot: the source consistency group snapshot
-        :param snapshots: snapshots of the source volumes
-        :param source_cg: the dictionary of a consistency group as source.
-        :param source_vols: a list of volume dictionaries in the source_cg.
-        """
-        return self.common.create_consistencygroup_from_src(
-            context, group, volumes, cgsnapshot, snapshots, source_cg,
-            source_vols)
-
-    def create_export_snapshot(self, context, snapshot, connector):
-        """Driver entry point to get the export info for a new snapshot."""
-        pass
-
-    def remove_export_snapshot(self, context, snapshot):
-        """Driver entry point to remove an export for a snapshot."""
-        pass
-
-    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
-        """Allows connection to snapshot.
-
-        :param snapshot: the snapshot object
-        :param connector: the connector object
-        :param kwargs: additional parameters
-        :returns: iscsi dict
-        """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        device_info = self.common.initialize_connection(
-            snapshot, connector)
-        return self.get_iscsi_dict(
-            device_info, snapshot, connector)
-
-    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
-        """Disallows connection to snapshot.
-
-        :param snapshot: the snapshot object
-        :param connector: the connector object
-        :param kwargs: additional parameters
-        """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        return self.common.terminate_connection(snapshot,
-                                                connector)
-
-    def backup_use_temp_snapshot(self):
-        return True
-
-    def failover_host(self, context, volumes, secondary_id=None):
-        """Failover volumes to a secondary host/ backend.
-
-        :param context: the context
-        :param volumes: the list of volumes to be failed over
-        :param secondary_id: the backend to be failed over to, is 'default'
-                             if fail back
-        :return: secondary_id, volume_update_list
-        """
-        return self.common.failover_host(context, volumes, secondary_id)

@@ -290,7 +290,7 @@ def list_opts():
                 common_opts,
                 cinder_volume_drivers_dell_emc_scaleio_driver.scaleio_opts,
                 cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,
-                cinder_volume_drivers_dell_emc_vmax_common.emc_opts,
+                cinder_volume_drivers_dell_emc_vmax_common.vmax_opts,
                 cinder_volume_drivers_dell_emc_vnx_common.VNX_OPTS,
                 cinder_volume_drivers_dell_emc_xtremio.XTREMIO_OPTS,
                 cinder_volume_drivers_disco_disco.disco_opts,
