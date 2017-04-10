@@ -397,11 +397,11 @@ class TestWindowsDriver(test.TestCase):
             mock.sentinel.size_gb,
             mock.sentinel.free_space_gb)
 
-        self.flags(volume_backend_name=mock.sentinel.backend_name)
+        self.flags(volume_backend_name='volume_backend_name')
         self.flags(reserved_percentage=10)
 
         expected_volume_stats = dict(
-            volume_backend_name=mock.sentinel.backend_name,
+            volume_backend_name='volume_backend_name',
             vendor_name='Microsoft',
             driver_version=self._driver.VERSION,
             storage_protocol='iSCSI',
