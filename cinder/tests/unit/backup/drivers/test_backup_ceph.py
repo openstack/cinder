@@ -19,6 +19,7 @@ import os
 import tempfile
 import uuid
 
+import ddt
 import mock
 from os_brick.initiator import linuxrbd
 from oslo_concurrency import processutils
@@ -98,6 +99,7 @@ def common_mocks(f):
     return _common_inner_inner1
 
 
+@ddt.ddt
 class BackupCephTestCase(test.TestCase):
     """Test case for ceph backup driver."""
 
@@ -1104,6 +1106,19 @@ class BackupCephTestCase(test.TestCase):
             self.assertTrue(mock_exists.called)
 
         self.assertTrue(self.mock_rados.Object.return_value.read.called)
+
+    @ddt.data((None, False),
+              ([{'name': 'test'}], False),
+              ([{'name': 'test'}, {'name': 'fake'}], True))
+    @ddt.unpack
+    @common_mocks
+    def test__snap_exists(self, snapshots, snap_exist):
+        client = mock.Mock()
+        with mock.patch.object(self.service.rbd.Image(),
+                               'list_snaps') as snaps:
+            snaps.return_value = snapshots
+            exist = self.service._snap_exists(None, 'fake', client)
+            self.assertEqual(snap_exist, exist)
 
 
 def common_meta_backup_mocks(f):
