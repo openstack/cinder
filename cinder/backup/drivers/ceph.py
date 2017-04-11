@@ -616,7 +616,7 @@ class CephBackupDriver(driver.BackupDriver):
             return False
 
         for snap in snaps:
-            if snap.name == snap_name:
+            if snap['name'] == snap_name:
                 return True
 
         return False
