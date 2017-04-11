@@ -25,9 +25,15 @@ status values are:
 +------------------+--------------------------------------------------------+
 | attaching        | The volume is attaching to an instance.                |
 +------------------+--------------------------------------------------------+
+| detaching        | The volume is detaching from an instance.              |
++------------------+--------------------------------------------------------+
 | in-use           | The volume is attached to an instance.                 |
 +------------------+--------------------------------------------------------+
+| maintenance      | The volume is locked and being migrated.               |
++------------------+--------------------------------------------------------+
 | deleting         | The volume is being deleted.                           |
++------------------+--------------------------------------------------------+
+| awaiting-transfer| The volume is awaiting for transfer.                   |
 +------------------+--------------------------------------------------------+
 | error            | A volume creation error occurred.                      |
 +------------------+--------------------------------------------------------+
@@ -37,9 +43,19 @@ status values are:
 +------------------+--------------------------------------------------------+
 | restoring-backup | A backup is being restored to the volume.              |
 +------------------+--------------------------------------------------------+
+| error_backing-up | A backup error occurred.                               |
++------------------+--------------------------------------------------------+
 | error_restoring  | A backup restoration error occurred.                   |
 +------------------+--------------------------------------------------------+
 | error_extending  | An error occurred while attempting to extend a volume. |
++------------------+--------------------------------------------------------+
+| downloading      | The volume is downloading an image.                    |
++------------------+--------------------------------------------------------+
+| uploading        | The volume is being uploaded to an image.              |
++------------------+--------------------------------------------------------+
+| retyping         | The volume is changing type to another volume type.    |
++------------------+--------------------------------------------------------+
+| extending        | The volume is being extended.                          |
 +------------------+--------------------------------------------------------+
 
 
