@@ -1136,7 +1136,7 @@ class CommonAdapter(object):
                       'for volume: %s.', volume.id)
             lun_size = volume.size
             mirror_name = utils.construct_mirror_name(volume)
-            pool_name = utils.get_pool_from_host(volume.host)
+            pool_name = utils.get_remote_pool(self.config, volume)
             emc_taskflow.create_mirror_view(
                 self.mirror_view, mirror_name,
                 primary_lun_id, pool_name,

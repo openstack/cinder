@@ -386,6 +386,10 @@ class ReplicationDevice(object):
     def storage_vnx_security_file_dir(self):
         return self.replication_device.get('storage_vnx_security_file_dir')
 
+    @property
+    def pool_name(self):
+        return self.replication_device.get('pool_name', None)
+
 
 class ReplicationDeviceList(list):
     """Replication devices configured in cinder.conf
