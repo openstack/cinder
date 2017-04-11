@@ -23,6 +23,7 @@ import string
 
 from oslo_log import log as logging
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -479,6 +480,7 @@ class DS8KCommonHelper(object):
             htype = 'LinuxRHEL'
         return collections.namedtuple('Host', ('name', 'type'))(hname, htype)
 
+    @coordination.synchronized('ibm-ds8k-{connector[host]}')
     def initialize_connection(self, vol_id, connector, **kwargs):
         host = self._get_host(connector)
         # Find defined host and undefined host ports
@@ -525,6 +527,7 @@ class DS8KCommonHelper(object):
             }
         }
 
+    @coordination.synchronized('ibm-ds8k-{connector[host]}')
     def terminate_connection(self, vol_id, connector, force, **kwargs):
         host = self._get_host(connector)
         host_wwpn_set = set(wwpn.upper() for wwpn in connector['wwpns'])

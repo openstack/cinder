@@ -20,9 +20,9 @@ import six
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder.utils import synchronized
 import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import ds8k_helper as helper
 from cinder.volume.drivers.ibm.ibm_storage import ds8k_restclient as restclient
@@ -470,7 +470,7 @@ class Replication(object):
         return lun
 
     @proxy.logger
-    @synchronized('OpenStackCinderIBMDS8KMutexCreateReplica-', external=True)
+    @coordination.synchronized('ibm-ds8k-replication')
     def create_replica(self, lun, delete_source=True):
         try:
             self._target_helper.create_lun(lun)

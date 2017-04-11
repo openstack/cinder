@@ -2260,8 +2260,6 @@ class DS8KProxyTest(test.TestCase):
                 self.ctxt, volume, backend)
             self.assertTrue(moved)
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     def test_initialize_connection_of_fb_volume(self):
         """attach a FB volume to host."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2275,8 +2273,6 @@ class DS8KProxyTest(test.TestCase):
         map_data = self.driver.initialize_connection(volume, TEST_CONNECTOR)
         self.assertEqual(int(TEST_LUN_ID), map_data['data']['target_lun'])
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     def test_initialize_connection_of_eckd_volume(self):
         """attach a ECKD volume to host."""
         self.configuration.connection_type = (
@@ -2297,8 +2293,6 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(int(TEST_ECKD_VOLUME_ID[2:4], 16),
                          map_data['data']['unit_address'])
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     def test_initialize_connection_when_no_existing_host(self,
                                                          mock_get_host_ports):
@@ -2324,8 +2318,6 @@ class DS8KProxyTest(test.TestCase):
         map_data = self.driver.initialize_connection(volume, TEST_CONNECTOR)
         self.assertEqual(int(TEST_LUN_ID), map_data['data']['target_lun'])
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     def test_initialize_connection_with_multiple_hosts(self,
                                                        mock_get_host_ports):
@@ -2359,8 +2351,6 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.initialize_connection,
                           volume, TEST_CONNECTOR)
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     def test_terminate_connection_of_fb_volume(self):
         """detach a FB volume from host."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2373,8 +2363,6 @@ class DS8KProxyTest(test.TestCase):
 
         self.driver.terminate_connection(volume, TEST_CONNECTOR)
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     def test_terminate_connection_with_multiple_hosts(self,
                                                       mock_get_host_ports):
@@ -2408,8 +2396,6 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.terminate_connection,
                           volume, TEST_CONNECTOR)
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     def test_terminate_connection_but_can_not_find_host(self,
                                                         mock_get_host_ports):
@@ -2435,8 +2421,6 @@ class DS8KProxyTest(test.TestCase):
         unmap_data = self.driver.terminate_connection(volume, TEST_CONNECTOR)
         self.assertIsNone(unmap_data)
 
-    @mock.patch('oslo_concurrency.lockutils.external_lock',
-                new=mock.MagicMock())
     @mock.patch.object(helper.DS8KCommonHelper, '_get_host_ports')
     @mock.patch.object(helper.DS8KCommonHelper, '_get_mappings')
     def test_terminate_connection_and_remove_host(self, mock_get_mappings,
