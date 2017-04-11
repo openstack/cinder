@@ -19,6 +19,7 @@ Tests for group_snapshot code.
 
 import ddt
 import mock
+from six.moves import http_client
 import webob
 
 from cinder.api.v3 import group_snapshots as v3_group_snapshots
@@ -413,7 +414,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
 
         group_snapshot = objects.GroupSnapshot.get_by_id(self.context,
                                                          group_snapshot.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual('deleting', group_snapshot.status)
 
         group_snapshot.destroy()
@@ -515,7 +516,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
 
         g_snapshot = objects.GroupSnapshot.get_by_id(self.context,
                                                      group_snapshot.id)
-        self.assertEqual(202, response.status_int)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
         self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
                          g_snapshot.status)
         group_snapshot.destroy()

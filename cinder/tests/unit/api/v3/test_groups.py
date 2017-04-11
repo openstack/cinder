@@ -19,6 +19,7 @@ Tests for group code.
 
 import ddt
 import mock
+from six.moves import http_client
 import webob
 
 from cinder.api.v3 import groups as v3_groups
@@ -485,7 +486,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual('deleting', group.status)
 
     def test_delete_group_available_no_delete_volumes(self):
@@ -500,7 +501,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING,
                          group.status)
 
@@ -535,7 +536,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual('deleting', group.status)
 
     def test_delete_group_no_host(self):
@@ -550,7 +551,7 @@ class GroupsAPITestCase(test.TestCase):
         res_dict = self.controller.delete_group(
             req, self.group1.id, body)
 
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         group = objects.Group.get_by_id(
             context.get_admin_context(read_deleted='yes'),
             self.group1.id)
@@ -599,7 +600,7 @@ class GroupsAPITestCase(test.TestCase):
         ex = self.assertRaises(exception.GroupLimitExceeded,
                                self.controller.create,
                                req, body)
-        self.assertEqual(413, ex.code)
+        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE, ex.code)
 
     def test_delete_group_with_invalid_body(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
@@ -647,7 +648,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual('deleting', group.status)
 
         vol.destroy()
@@ -697,7 +698,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual('deleting', group.status)
 
         vol.destroy()
@@ -786,7 +787,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertTrue(mock_validate.called)
         self.assertEqual(fields.GroupStatus.UPDATING,
                          group.status)
@@ -958,7 +959,7 @@ class GroupsAPITestCase(test.TestCase):
                                                 self.group2.id, body)
 
         group = objects.Group.get_by_id(self.ctxt, self.group2.id)
-        self.assertEqual(202, response.status_int)
+        self.assertEqual(http_client.ACCEPTED, response.status_int)
         self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
 
     @mock.patch(

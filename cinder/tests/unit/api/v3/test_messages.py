@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from six.moves import http_client
+
 from cinder.api import extensions
 from cinder.api.v3 import messages
 from cinder import context
@@ -103,7 +105,7 @@ class MessageApiTest(test.TestCase):
 
         resp = self.controller.delete(req, fakes.FAKE_UUID)
 
-        self.assertEqual(204, resp.status_int)
+        self.assertEqual(http_client.NO_CONTENT, resp.status_int)
         self.assertTrue(message_api.API.delete.called)
 
     def test_delete_not_found(self):

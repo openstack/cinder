@@ -16,6 +16,7 @@ import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from six.moves import http_client
 from six.moves.urllib.parse import urlencode
 import webob
 
@@ -79,12 +80,12 @@ class SnapshotManageTest(test.TestCase):
 
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
 
     def test_manage_snapshot_previous_version(self):
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(body, version="3.7")
-        self.assertEqual(404, res.status_int, res)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int, res)
 
     def _get_resp_get(self, host, detailed, paging, version="3.8", **kwargs):
         """Helper to execute a GET os-snapshot-manage API call."""
@@ -116,11 +117,11 @@ class SnapshotManageTest(test.TestCase):
         than copying all the tests.
         """
         res = self._get_resp_get('fakehost', False, False)
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
 
     def test_get_manageable_snapshots_previous_version(self):
         res = self._get_resp_get('fakehost', False, False, version="3.7")
-        self.assertEqual(404, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
                 wraps=test_contrib.api_get_manageable_snapshots)
@@ -132,11 +133,11 @@ class SnapshotManageTest(test.TestCase):
         than copying all the tests.
         """
         res = self._get_resp_get('fakehost', True, True)
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
 
     def test_get_manageable_snapshots_detail_previous_version(self):
         res = self._get_resp_get('fakehost', True, True, version="3.7")
-        self.assertEqual(404, res.status_int)
+        self.assertEqual(http_client.NOT_FOUND, res.status_int)
 
     @ddt.data((True, True, 'detail_list'), (True, False, 'summary_list'),
               (False, True, 'detail_list'), (False, False, 'summary_list'))
@@ -170,7 +171,7 @@ class SnapshotManageTest(test.TestCase):
             res = self._get_resp_get(host, is_detail, False, version=version,
                                      **kwargs)
 
-        self.assertEqual(200, res.status_int)
+        self.assertEqual(http_client.OK, res.status_int)
         get_cctxt_mock.assert_called_once_with(service.service_topic_queue,
                                                version=('3.10', '3.0'))
         get_cctxt_mock.return_value.call.assert_called_once_with(
@@ -185,9 +186,9 @@ class SnapshotManageTest(test.TestCase):
     @ddt.data('3.8', '3.17')
     def test_get_manageable_missing_host(self, version):
         res = self._get_resp_get(None, True, False, version=version)
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
     def test_get_manageable_both_host_cluster(self):
         res = self._get_resp_get('host', True, False, version='3.17',
                                  cluster='cluster')
-        self.assertEqual(400, res.status_int)
+        self.assertEqual(http_client.BAD_REQUEST, res.status_int)

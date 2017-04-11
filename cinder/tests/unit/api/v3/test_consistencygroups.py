@@ -12,6 +12,7 @@
 #    under the License.
 
 import ddt
+from six.moves import http_client
 import webob
 
 from cinder.api.openstack import api_version_request as api_version
@@ -83,7 +84,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                           body)
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(202, res_dict.status_int)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
         self.assertEqual("", consistencygroup.name)
         self.assertEqual("", consistencygroup.description)
         consistencygroup.destroy()
