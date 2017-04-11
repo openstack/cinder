@@ -792,18 +792,6 @@ class MStorageVolumeCommon(object):
                 if ip == '0.0.0.0':
                     continue
 
-                # Port Link Status check Start.
-                unit = section.find('./UNIT[@name="Link Status"]')
-                if unit is None:
-                    msg = (_('UNIT[@name="Link Status"] not found. '
-                             'line=%(line)d out="%(out)s"') %
-                           {'line': section.sourceline, 'out': xml})
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-                linkstatus = unit.text
-                if linkstatus == 'Link Down':
-                    continue
-
                 hostport = {
                     'director': director,
                     'port': port,
