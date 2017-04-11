@@ -1918,6 +1918,31 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(restclient.APIException,
                           self.driver.create_cloned_volume, tgt_vol, src_vol)
 
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
+    @mock.patch.object(helper.DS8KCommonHelper, 'create_lun')
+    def test_create_cloned_volume5(self, mock_create_lun, mock_lun_exists,
+                                   mock_get_flashcopy):
+        """clone a volume when target has volume ID but it is nonexistent."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
+        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        src_vol = self._create_volume(volume_type_id=vol_type.id,
+                                      provider_location=location)
+        location = six.text_type({'vol_hex_id': '0003'})
+        metadata = [{'key': 'data_type', 'value': 'FB 512'}]
+        tgt_vol = self._create_volume(volume_type_id=vol_type.id,
+                                      provider_location=location,
+                                      volume_metadata=metadata)
+
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        mock_lun_exists.return_value = False
+        self.driver.create_cloned_volume(tgt_vol, src_vol)
+        self.assertTrue(mock_create_lun.called)
+
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_create_volume_from_snapshot(self, mock_get_flashcopy, mock_sleep):
@@ -2601,7 +2626,9 @@ class DS8KProxyTest(test.TestCase):
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
-    def test_update_generic_group_when_enable_cg(self, mock_create_lun,
+    @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
+    def test_update_generic_group_when_enable_cg(self, mock_lun_exists,
+                                                 mock_create_lun,
                                                  mock_get_flashcopy,
                                                  mock_sleep):
         """update group, but volume is not in LSS which belongs to group."""
@@ -2624,6 +2651,7 @@ class DS8KProxyTest(test.TestCase):
 
         mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
         mock_create_lun.return_value = '2200'
+        mock_lun_exists.return_value = True
         model_update, add_volumes_update, remove_volumes_update = (
             self.driver.update_group(self.ctxt, group, [volume], []))
         location = ast.literal_eval(add_volumes_update[0]['provider_location'])
@@ -2632,7 +2660,9 @@ class DS8KProxyTest(test.TestCase):
     @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
-    def test_update_generic_group_when_enable_cg2(self, mock_create_lun,
+    @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
+    def test_update_generic_group_when_enable_cg2(self, mock_lun_exists,
+                                                  mock_create_lun,
                                                   mock_get_flashcopy,
                                                   mock_sleep):
         """add replicated volume into group."""
@@ -2663,6 +2693,7 @@ class DS8KProxyTest(test.TestCase):
 
         mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
         mock_create_lun.return_value = '2200'
+        mock_lun_exists.return_value = True
         model_update, add_volumes_update, remove_volumes_update = (
             self.driver.update_group(self.ctxt, group, [volume], []))
         location = ast.literal_eval(add_volumes_update[0]['provider_location'])

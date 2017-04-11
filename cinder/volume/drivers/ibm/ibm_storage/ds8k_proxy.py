@@ -541,10 +541,14 @@ class DS8KProxy(proxy.IBMStorageProxy):
                      _('Target volume should be bigger or equal '
                        'to the Source volume in size.'))
         self._ensure_vol_not_fc_target(src_lun.ds_id)
-        # volume ID of src_lun and tgt_lun will be the same one if tgt_lun is
-        # image-volume, because _clone_image_volume in manager.py does not pop
-        # the provider_location.
-        if (tgt_lun.ds_id is None) or (src_lun.ds_id == tgt_lun.ds_id):
+        # image volume cache brings two cases for clone lun:
+        # 1. volume ID of src_lun and tgt_lun will be the same one because
+        #    _clone_image_volume does not pop the provider_location.
+        # 2. if creating image volume failed at the first time, tgt_lun will be
+        #    deleted, so when it is sent to driver again, it will not exist.
+        if (tgt_lun.ds_id is None or
+           src_lun.ds_id == tgt_lun.ds_id or
+           not self._helper.lun_exists(tgt_lun.ds_id)):
             # It is a preferred practice to locate the FlashCopy target
             # volume on the same DS8000 server as the FlashCopy source volume.
             pool = self._helper.get_pool(src_lun.ds_id[0:2])
