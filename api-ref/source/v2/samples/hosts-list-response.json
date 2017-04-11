@@ -1,0 +1,26 @@
+{
+    "hosts": [{
+        "service-status": "available",
+        "service": "cinder-backup",
+        "zone": "nova",
+        "service-state": "enabled",
+        "host_name": "node1",
+        "last-update": "2017-03-09T21:38:41.000000"
+    },
+    {
+        "service-status": "available",
+        "service": "cinder-scheduler",
+        "zone": "nova",
+        "service-state": "enabled",
+        "host_name": "node1",
+        "last-update": "2017-03-09T21:38:38.000000"
+    },
+    {
+        "service-status": "available",
+        "service": "cinder-volume",
+        "zone": "nova",
+        "service-state": "enabled",
+        "host_name": "node1@lvm",
+        "last-update": "2017-03-09T21:38:35.000000"
+    }]
+}

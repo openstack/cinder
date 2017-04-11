@@ -12,6 +12,7 @@ Block Storage API V2 (DEPRECATED)
 .. include:: capabilities-v2.inc
 .. include:: os-cgsnapshots-v2.inc
 .. include:: consistencygroups-v2.inc
+.. include:: hosts.inc
 .. include:: limits.inc
 .. include:: os-vol-image-meta-v2.inc
 .. include:: os-vol-pool-v2.inc
