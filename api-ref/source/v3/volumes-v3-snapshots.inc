@@ -81,7 +81,7 @@ Create a snapshot
 
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume. You can create a volume from a snapshot.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -386,7 +386,7 @@ Delete a snapshot
 
 Deletes a snapshot.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request

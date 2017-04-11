@@ -14,7 +14,7 @@ Delete a consistency group snapshot
 
 Deletes a consistency group snapshot.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
@@ -149,7 +149,7 @@ Create a consistency group snapshot
 
 Creates a consistency group snapshot.
 
-Error response codes:202,
+Normal response codes: 202
 
 Request
 -------
