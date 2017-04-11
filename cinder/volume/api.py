@@ -469,9 +469,12 @@ class API(base.Base):
         if encryption_key_id is not None:
             try:
                 self.key_manager.delete(context, encryption_key_id)
-            except Exception as e:
+            except exception.CinderException as e:
                 LOG.warning(_LW("Unable to delete encryption key for "
                                 "volume: %s."), e.msg, resource=volume)
+            except Exception:
+                LOG.exception(_LE("Unable to delete encryption key for "
+                              "volume."))
 
         self.volume_rpcapi.delete_volume(context,
                                          volume,
