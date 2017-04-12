@@ -1,0 +1,14 @@
+---
+prelude: >
+    Drivers supporting consistent group snapshot in generic volume groups
+    reports "consistent_group_snapshot_enabled = True" instead of
+    "consistencygroup_support = True". As a result, a spec such as
+    "consistencygroup_support: '<is> True'" in either group type or
+    volume type will cause the scheduler not to choose the backend
+    that does not report "consistencygroup_support = True".
+
+    In order to create a generic volume group that supports consistent
+    group snapshot, "consistent_group_snapshot_enable: '<is> True'"
+    should be set in the group type specs and volume type extra specs,
+    and "consistencygroup_support: '<is> True'" should not be set
+    in group type spec and volume type extra specs.
