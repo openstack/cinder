@@ -2010,8 +2010,8 @@ class VMAXCommon(object):
         LOG.debug("Device info: %(data)s.", {'data': data})
         return data, isLiveMigration, source_data
 
-    def get_target_wwns(self, storageSystem, connector):
-        """Find target WWNs.
+    def get_target_wwns_list(self, storage_system, volume, connector):
+        """Find target WWN list.
 
         :param storageSystem: the storage system name
         :param connector: the connector dict
@@ -2019,50 +2019,23 @@ class VMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         targetWwns = set()
+        try:
+            fc_targets = self.get_target_wwns_from_masking_view(
+                storage_system, volume, connector)
+        except Exception:
+            exception_message = _("Unable to get fc targets.")
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
 
-        storageHardwareService = self.utils.find_storage_hardwareid_service(
-            self.conn, storageSystem)
-
-        hardwareIdInstances = self._find_storage_hardwareids(
-            connector, storageHardwareService)
-
-        LOG.debug(
-            "EMCGetTargetEndpoints: Service: %(service)s, "
-            "Storage HardwareIDs: %(hardwareIds)s.",
-            {'service': storageHardwareService,
-             'hardwareIds': hardwareIdInstances})
-
-        for hardwareIdInstance in hardwareIdInstances:
-            LOG.debug("HardwareID instance is: %(hardwareIdInstance)s.",
-                      {'hardwareIdInstance': hardwareIdInstance})
-            try:
-                targetEndpoints = (
-                    self.utils.get_target_endpoints(
-                        self.conn, hardwareIdInstance))
-                if not targetEndpoints:
-                    LOG.warning(_LW(
-                        "Unable to get target endpoints for hardwareId "
-                        "%(instance)s."),
-                        {'instance': hardwareIdInstance})
-                    continue
-            except Exception:
-                LOG.warning(_LW(
-                    "Unable to get target endpoints for hardwareId "
-                    "%(instance)s."),
-                    {'instance': hardwareIdInstance}, exc_info=True)
-                continue
-
-            LOG.debug("There are %(len)lu endpoints.",
-                      {'len': len(targetEndpoints)})
-            for targetendpoint in targetEndpoints:
-                wwn = targetendpoint['Name']
-                # Add target wwn to the list if it is not already there.
-                targetWwns.add(wwn)
-            break
+        LOG.debug("There are %(len)lu endpoints.", {'len': len(fc_targets)})
+        for fc_target in fc_targets:
+            wwn = fc_target
+            # Add target wwn to the list if it is not already there.
+            targetWwns.add(wwn)
 
         if not targetWwns:
             exception_message = (_(
-                "Unable to get target endpoints for any hardwareIds."))
+                "Unable to get target endpoints."))
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         LOG.debug("Target WWNs: %(targetWwns)s.",
