@@ -453,6 +453,7 @@ class VolumeManageTest(test.TestCase):
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
               {'': 'a'},
+              {'a': None},
               )
     def test_manage_volume_with_invalid_metadata(self, value):
         body = {'volume': {'host': 'host_ok',

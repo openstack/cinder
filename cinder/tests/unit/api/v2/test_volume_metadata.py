@@ -337,6 +337,16 @@ class volumeMetaDataTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, self.req_id, None)
 
+    def test_create_metadata_keys_value_none(self):
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
+        req = fakes.HTTPRequest.blank(self.url)
+        req.method = 'POST'
+        req.headers["content-type"] = "application/json"
+        body = {"meta": {"key": None}}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, self.req_id, body)
+
     def test_create_item_empty_key(self):
         self.mock_object(db, 'volume_metadata_update',
                          return_create_volume_metadata)
@@ -542,6 +552,19 @@ class volumeMetaDataTest(test.TestCase):
             expected = {'meta': {'key1': 'value1'}}
             self.assertEqual(expected, res_dict)
             get_volume.assert_called_once_with(fake_context, self.req_id)
+
+    def test_update_metadata_item_keys_value_none(self):
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
+        req = fakes.HTTPRequest.blank(self.url + '/key1')
+        req.method = 'PUT'
+        body = {"meta": {"a": None}}
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update,
+                          req, self.req_id, 'key1', body)
 
     @mock.patch.object(db, 'volume_metadata_update')
     def test_update_item_volume_maintenance(self, metadata_update):

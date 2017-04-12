@@ -15,6 +15,7 @@
 
 import uuid
 
+import ddt
 import mock
 from oslo_serialization import jsonutils
 from six.moves import http_client
@@ -105,6 +106,7 @@ def return_snapshot_nonexistent(context, snapshot_id):
     raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
 
 
+@ddt.ddt
 class SnapshotMetaDataTest(test.TestCase):
 
     def setUp(self):
@@ -606,12 +608,21 @@ class SnapshotMetaDataTest(test.TestCase):
                           self.controller.update,
                           req, self.req_id, "key1", body)
 
-    def test_update_item_too_many_keys(self):
+    @ddt.data({"meta": {"key1": "value1", "key2": "value2"}},
+              {"meta": {"key1": None}})
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_update_invalid_metadata(self, body, snapshot_get_by_id):
+        snapshot = {
+            'id': self.req_id,
+            'expected_attrs': ['metadata']
+        }
         self.mock_object(cinder.db, 'snapshot_metadata_update',
                          return_create_snapshot_metadata)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        snapshot_get_by_id.return_value = snapshot_obj
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
-        body = {"meta": {"key1": "value1", "key2": "value2"}}
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
@@ -632,8 +643,12 @@ class SnapshotMetaDataTest(test.TestCase):
                           self.controller.update, req, self.req_id, 'bad',
                           body)
 
+    @ddt.data({"metadata": {"a" * 260: "value1"}},
+              {"metadata": {"key": "v" * 260}},
+              {"metadata": {"": "value1"}},
+              {"metadata": {"key": None}})
     @mock.patch('cinder.objects.Snapshot.get_by_id')
-    def test_invalid_metadata_items_on_create(self, snapshot_get_by_id):
+    def test_invalid_metadata_items_on_create(self, data, snapshot_get_by_id):
         snapshot = {
             'id': self.req_id,
             'expected_attrs': ['metadata']
@@ -648,20 +663,11 @@ class SnapshotMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        # test for long key
-        data = {"metadata": {"a" * 260: "value1"}}
-        req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, self.req_id, data)
+        exc = webob.exc.HTTPBadRequest
+        if (len(list(data['metadata'].keys())[0]) > 255 or
+                (list(data['metadata'].values())[0] is not None and
+                    len(list(data['metadata'].values())[0]) > 255)):
+            exc = webob.exc.HTTPRequestEntityTooLarge
 
-        # test for long value
-        data = {"metadata": {"key": "v" * 260}}
         req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, self.req_id, data)
-
-        # test for empty key.
-        data = {"metadata": {"": "value1"}}
-        req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, data)
+        self.assertRaises(exc, self.controller.create, req, self.req_id, data)

@@ -623,14 +623,15 @@ class VolumeApiTest(test.TestCase):
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
-              {'': 'a'})
+              {'': 'a'},
+              {'a': None})
     def test_volume_create_with_invalid_metadata(self, value):
         vol = self._vol_in_request_body()
         vol['metadata'] = value
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
 
-        if len(list(value.keys())[0]) == 0:
+        if len(list(value.keys())[0]) == 0 or list(value.values())[0] is None:
             exc = exception.InvalidVolumeMetadata
         else:
             exc = exception.InvalidVolumeMetadataSize
@@ -790,7 +791,8 @@ class VolumeApiTest(test.TestCase):
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
-              {'': 'a'})
+              {'': 'a'},
+              {'a': None})
     @mock.patch.object(volume_api.API, 'get',
                        side_effect=v2_fakes.fake_volume_api_get, autospec=True)
     def test_volume_update_with_invalid_metadata(self, value, get):
@@ -800,7 +802,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
 
-        if len(list(value.keys())[0]) == 0:
+        if len(list(value.keys())[0]) == 0 or list(value.values())[0] is None:
             exc = exception.InvalidVolumeMetadata
         else:
             exc = webob.exc.HTTPRequestEntityTooLarge
