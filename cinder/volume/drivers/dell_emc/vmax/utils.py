@@ -799,6 +799,61 @@ class VMAXUtils(object):
             foundPoolInstanceName = foundPoolInstanceNames[0]
         return foundPoolInstanceName
 
+    def get_assoc_v2_pool_from_volume(self, conn, volumeInstanceName):
+        """Give the volume instance get the associated pool instance.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :returns: foundPoolInstanceName
+        """
+        foundPoolInstanceName = None
+        foundPoolInstanceNames = (
+            conn.AssociatorNames(volumeInstanceName,
+                                 ResultClass='EMC_VirtualProvisioningPool'))
+
+        if not foundPoolInstanceNames:
+            deviceID = volumeInstanceName['DeviceID']
+            LOG.debug("Volume %(deviceId)s not in V2 pool",
+                      {'deviceId': deviceID})
+        else:
+            LOG.debug("Retrieved pool: %(foundPoolInstanceNames)s",
+                      {'foundPoolInstanceNames': foundPoolInstanceNames})
+
+        if foundPoolInstanceNames and len(foundPoolInstanceNames) > 0:
+            foundPoolInstanceName = foundPoolInstanceNames[0]
+
+        return foundPoolInstanceName
+
+    def get_assoc_v3_pool_from_volume(self, conn, volumeInstanceName):
+        """Give the volume instance get the associated pool instance.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :returns: foundPoolInstanceName
+        """
+        foundPoolInstanceName = None
+        foundPoolInstanceNames = (
+            conn.AssociatorNames(volumeInstanceName,
+                                 ResultClass='Symm_SRPStoragePool'))
+
+        if not foundPoolInstanceNames:
+            deviceID = volumeInstanceName['DeviceID']
+            LOG.debug("Volume %(deviceId)s not in V3 SRP",
+                      {'deviceId': deviceID})
+            exceptionMessage = ("Unable to locate volume %(deviceId)s",
+                                {'deviceId': deviceID})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        else:
+            LOG.debug("Retrieved pool: %(foundPoolInstanceNames)s",
+                      {'foundPoolInstanceNames': foundPoolInstanceNames})
+
+        if foundPoolInstanceNames and len(foundPoolInstanceNames) > 0:
+            foundPoolInstanceName = foundPoolInstanceNames[0]
+
+        return foundPoolInstanceName
+
     def check_if_volume_is_extendable(self, conn, volumeInstance):
         """Checks if a volume is extendable or not.
 
@@ -2156,32 +2211,153 @@ class VMAXUtils(object):
                 myList.append(kwargs)
         return myList
 
-    def find_volume_by_device_id_on_array(self, conn, storageSystem, deviceID):
+    def find_volume_by_device_id_on_array(self, storageSystem, deviceID):
         """Find the volume by device ID on a specific array.
 
-        :param conn: connection to the ecom server
         :param storageSystem: the storage system name
         :param deviceID: string value of the volume device ID
         :returns: foundVolumeInstanceName
         """
-        foundVolumeInstanceName = None
-        volumeInstanceNames = conn.EnumerateInstanceNames(
-            'CIM_StorageVolume')
-        for volumeInstanceName in volumeInstanceNames:
-            if storageSystem not in volumeInstanceName['SystemName']:
-                continue
-            if deviceID == volumeInstanceName['DeviceID']:
-                foundVolumeInstanceName = volumeInstanceName
-                LOG.debug("Found volume: %(vol)s",
-                          {'vol': foundVolumeInstanceName})
-                break
-        if foundVolumeInstanceName is None:
-            exceptionMessage = (_("Volume %(deviceID)s not found.")
-                                % {'deviceID': deviceID})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        systemName = 'SYMMETRIX-+-%s' % storageSystem
+        bindings = {'CreationClassName': 'Symm_StorageVolume',
+                    'SystemName': systemName,
+                    'DeviceID': deviceID,
+                    'SystemCreationClassName': 'Symm_StorageSystem'}
 
-        return foundVolumeInstanceName
+        instanceName = pywbem.CIMInstanceName(
+            classname='Symm_StorageVolume',
+            namespace=EMC_ROOT,
+            keybindings=bindings)
+
+        LOG.debug("Retrieved volume from VMAX: %(instanceName)s",
+                  {'instanceName': instanceName})
+
+        return instanceName
+
+    def check_volume_no_fast(self, extraSpecs):
+        """Check if the volume's extraSpecs indicate FAST is enabled.
+
+        :param extraSpecs: dict -- extra spec dict
+        :return: True if not fast
+        :raises: VolumeBackendAPIException
+        """
+        try:
+            if extraSpecs['storagetype:fastpolicy'] is not None:
+                LOG.warning(_LW(
+                    "FAST is enabled. Policy: %(fastPolicyName)s."),
+                    {'fastPolicyName': extraSpecs['storagetype:fastpolicy']})
+                exceptionMessage = (_(
+                    "Manage volume is not supported if FAST is enabled. "
+                    "FAST policy: %(fastPolicyName)s."
+                ) % {'fastPolicyName': extraSpecs[
+                    'storagetype:fastpolicy']})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+            else:
+                return True
+        except KeyError:
+            return True
+
+    def check_volume_not_in_masking_view(self, conn, volumeInstanceName,
+                                         deviceId):
+        """Check if volume is in Masking View.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :param deviceId: string value of the volume device ID
+        :raises: VolumeBackendAPIException
+        :return: True if not in Masking View
+        """
+        sgInstanceNames = (
+            self.get_storage_groups_from_volume(
+                conn, volumeInstanceName))
+
+        mvInstanceName = None
+        for sgInstanceName in sgInstanceNames:
+            maskingViews = conn.AssociatorNames(
+                sgInstanceName,
+                ResultClass='Symm_LunMaskingView')
+            if len(maskingViews) > 0:
+                mvInstanceName = maskingViews[0]
+            if mvInstanceName:
+                exceptionMessage = (_(
+                    "Unable to import volume %(deviceId)s to cinder. "
+                    "Volume is in masking view %(mv)s.")
+                    % {'deviceId': deviceId, 'mv': mvInstanceName})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        if not mvInstanceName:
+            return True
+
+    def check_volume_not_replication_source(self, conn, storageSystemName,
+                                            deviceId):
+        """Check volume not replication source.
+
+        Check if the volume is the source of a replicated
+        volume.
+
+        :param conn: connection to the ecom server
+        :param storageSystemName: the storage system name
+        :param deviceId: string value of the volume device ID
+        :raises: VolumeBackendAPIException
+        :returns: True if not replication source
+        """
+        repSessionInstanceName = (
+            self.get_associated_replication_from_source_volume(
+                conn, storageSystemName, deviceId))
+
+        if repSessionInstanceName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. "
+                "It is the source volume of replication session %(sync)s.")
+                % {'deviceId': deviceId, 'sync': repSessionInstanceName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        else:
+            return True
+
+    def check_is_volume_in_cinder_managed_pool(
+            self, conn, volumeInstanceName, cinderPoolInstanceName,
+            deviceId):
+        """Check if volume is in a Cinder managed pool.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :param cinderPoolInstanceName: the name of the storage pool
+        :param deviceId: string value of the volume device ID
+        :raises: VolumeBackendAPIException
+        :returns: True if volume in cinder managed pool
+        """
+        volumePoolInstanceName = (
+            self.get_assoc_v2_pool_from_volume(conn,
+                                               volumeInstanceName))
+        if not volumePoolInstanceName:
+            volumePoolInstanceName = (
+                self.get_assoc_v3_pool_from_volume(conn,
+                                                   volumeInstanceName))
+
+        volumePoolName = volumePoolInstanceName['InstanceID']
+        cinderPoolName = cinderPoolInstanceName['InstanceID']
+
+        LOG.debug("Storage pool of existing volume: %(volPool)s, "
+                  "Storage pool currently managed by cinder: %(cinderPool)s.",
+                  {'volPool': volumePoolName,
+                   'cinderPool': cinderPoolName})
+
+        if volumePoolName != cinderPoolName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. The external "
+                "volume is not in the pool managed by current cinder host.")
+                % {'deviceId': deviceId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        else:
+            return True
 
     def get_volume_element_name(self, volumeId):
         """Get volume element name follows naming convention, i.e. 'OS-UUID'.
@@ -2214,6 +2390,7 @@ class VMAXUtils(object):
         """
         if type(volume) is pywbem.cim_obj.CIMInstance:
             volumeInstance = volume
+            volumeInstance['ElementName'] = newName
         else:
             volumeInstance = conn.GetInstance(volume)
             volumeInstance['ElementName'] = newName
@@ -2225,30 +2402,32 @@ class VMAXUtils(object):
 
         return volumeInstance
 
-    def get_array_and_device_id(self, volume, external_ref):
+    @staticmethod
+    def get_array_and_device_id(volume, external_ref):
         """Helper function for manage volume to get array name and device ID.
 
         :param volume: volume object from API
         :param external_ref: the existing volume object to be manged
         :returns: string value of the array name and device ID
         """
-        deviceId = external_ref.get(u'source-name', None)
-        arrayName = ''
-        for metadata in volume['volume_metadata']:
-            if metadata['key'].lower() == 'array':
-                arrayName = metadata['value']
-                break
+        device_id = external_ref.get(u'source-name', None)
+        LOG.debug("External_ref: %(er)s", {'er': external_ref})
+        if not device_id:
+            device_id = external_ref.get(u'source-id', None)
+        host = volume['host']
+        host_list = host.split('+')
+        array = host_list[(len(host_list) - 1)]
 
-        if deviceId:
+        if device_id:
             LOG.debug("Get device ID of existing volume - device ID: "
-                      "%(deviceId)s, Array: %(arrayName)s.",
-                      {'deviceId': deviceId,
-                       'arrayName': arrayName})
+                      "%(device_id)s, Array: %(array)s.",
+                      {'device_id': device_id,
+                       'array': array})
         else:
             exception_message = (_("Source volume device ID is required."))
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
-        return (arrayName, deviceId)
+        return array, device_id
 
     def get_associated_replication_from_source_volume(
             self, conn, storageSystem, sourceDeviceId):
