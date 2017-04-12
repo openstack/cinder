@@ -70,9 +70,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - SnapVX licensing checks for VMAX3 (bug #1587017)
               - VMAX oversubscription Support (blueprint vmax-oversubscription)
               - QoS support (blueprint vmax-qos)
+        2.4.1 - Pre-zoned port group fix (bug #456285)
     """
 
-    VERSION = "2.4.0"
+    VERSION = "2.4.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
@@ -315,8 +316,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
                 for initiator in map_d['initiator_port_wwn_list']:
                     init_targ_map[initiator] = map_d['target_port_wwn_list']
         else:  # No lookup service, pre-zoned case.
-            target_wwns = self.common.get_target_wwns(storage_system,
-                                                      connector)
+            target_wwns = self.common.get_target_wwns_list(
+                storage_system, volume, connector)
             for initiator in initiator_wwns:
                 init_targ_map[initiator] = target_wwns
 

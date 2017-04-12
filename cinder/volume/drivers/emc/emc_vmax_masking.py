@@ -2493,6 +2493,15 @@ class EMCVMAXMasking(object):
                     conn, sgInstanceName)
                 # Get initiator group from masking view.
                 for mvInstanceName in mvInstanceNames:
+                    host = self.utils.get_host_short_name(connector['host'])
+                    mvInstance = conn.GetInstance(mvInstanceName)
+                    if host not in mvInstance['ElementName']:
+                        LOG.info(_LI(
+                            "Check 1: Connector host %(connHost)s "
+                            "does not match mv host %(mvHost)s. Skipping..."),
+                            {'connHost': host,
+                             'mvHost': mvInstance['ElementName']})
+                        continue
                     LOG.debug("Found masking view associated with SG "
                               "%(storageGroup)s: %(maskingview)s",
                               {'maskingview': mvInstanceName,

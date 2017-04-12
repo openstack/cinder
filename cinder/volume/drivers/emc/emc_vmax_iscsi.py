@@ -76,10 +76,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - QoS support (blueprint vmax-qos)
               - VMAX2/VMAX3 iscsi multipath support (iscsi only)
               https://blueprints.launchpad.net/cinder/+spec/vmax-iscsi-multipath
-
+        2.4.1 - Pre-zoned port group fix (bug #456285)
     """
 
-    VERSION = "2.4.0"
+    VERSION = "2.4.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
