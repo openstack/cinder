@@ -14,7 +14,6 @@
 #    under the License.
 
 import ast
-import math
 import os.path
 
 from oslo_config import cfg
@@ -4630,88 +4629,38 @@ class VMAXCommon(object):
         :param volume: the volume object including the volume_type_id
         :param external_ref: reference to the existing volume
         :returns: dict -- model_update
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException
         """
         extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
-        arrayName, deviceId = self.utils.get_array_and_device_id(volume,
-                                                                 external_ref)
+        arrayName, deviceId = self.utils.get_array_and_device_id(
+            volume, external_ref)
 
-        # Manage existing volume is not supported if fast enabled.
-        if extraSpecs[FASTPOLICY]:
-            LOG.warning(
-                "FAST is enabled. Policy: %(fastPolicyName)s.",
-                {'fastPolicyName': extraSpecs[FASTPOLICY]})
-            exceptionMessage = (_(
-                "Manage volume is not supported if FAST is enable. "
-                "FAST policy: %(fastPolicyName)s.")
-                % {'fastPolicyName': extraSpecs[FASTPOLICY]})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(
-                data=exceptionMessage)
-        # Check if the volume is attached by checking if in any masking view.
+        self.utils.check_volume_no_fast(extraSpecs)
+
         volumeInstanceName = (
-            self.utils.find_volume_by_device_id_on_array(self.conn,
-                                                         arrayName, deviceId))
-        sgInstanceNames = (
-            self.utils.get_storage_groups_from_volume(
-                self.conn, volumeInstanceName))
+            self.utils.find_volume_by_device_id_on_array(
+                arrayName, deviceId))
 
-        for sgInstanceName in sgInstanceNames:
-            mvInstanceNames = (
-                self.masking.get_masking_view_from_storage_group(
-                    self.conn, sgInstanceName))
-            for mvInstanceName in mvInstanceNames:
-                exceptionMessage = (_(
-                    "Unable to import volume %(deviceId)s to cinder. "
-                    "Volume is in masking view %(mv)s.")
-                    % {'deviceId': deviceId,
-                       'mv': mvInstanceName})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+        self.utils.check_volume_not_in_masking_view(
+            self.conn, volumeInstanceName, deviceId)
 
-        # Check if there is any associated snapshots with the volume.
         cinderPoolInstanceName, storageSystemName = (
             self._get_pool_and_storage_system(extraSpecs))
-        repSessionInstanceName = (
-            self.utils.get_associated_replication_from_source_volume(
-                self.conn, storageSystemName, deviceId))
-        if repSessionInstanceName:
-            exceptionMessage = (_(
-                "Unable to import volume %(deviceId)s to cinder. "
-                "It is the source volume of replication session %(sync)s.")
-                % {'deviceId': deviceId,
-                   'sync': repSessionInstanceName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(
-                data=exceptionMessage)
 
-        # Make sure the existing external volume is in the same storage pool.
-        volumePoolInstanceName = (
-            self.utils.get_assoc_pool_from_volume(self.conn,
-                                                  volumeInstanceName))
-        volumePoolName = volumePoolInstanceName['InstanceID']
-        cinderPoolName = cinderPoolInstanceName['InstanceID']
-        LOG.debug("Storage pool of existing volume: %(volPool)s, "
-                  "Storage pool currently managed by cinder: %(cinderPool)s.",
-                  {'volPool': volumePoolName,
-                   'cinderPool': cinderPoolName})
-        if volumePoolName != cinderPoolName:
-            exceptionMessage = (_(
-                "Unable to import volume %(deviceId)s to cinder. The external "
-                "volume is not in the pool managed by current cinder host.")
-                % {'deviceId': deviceId})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(
-                data=exceptionMessage)
+        self.utils.check_volume_not_replication_source(
+            self.conn, storageSystemName, deviceId)
 
-        # Rename the volume
-        volumeId = volume['id']
+        self.utils.check_is_volume_in_cinder_managed_pool(
+            self.conn, volumeInstanceName, cinderPoolInstanceName,
+            deviceId)
+
+        volumeId = volume.name
         volumeElementName = self.utils.get_volume_element_name(volumeId)
-        LOG.debug("Rename volume %(vol)s to %(elementName)s.",
+        LOG.debug("Rename volume %(vol)s to %(volumeId)s.",
                   {'vol': volumeInstanceName,
-                   'elementName': volumeElementName})
+                   'volumeId': volumeElementName})
+
         volumeInstance = self.utils.rename_volume(self.conn,
                                                   volumeInstanceName,
                                                   volumeElementName)
@@ -4722,25 +4671,44 @@ class VMAXCommon(object):
         keys['DeviceID'] = volpath['DeviceID']
         keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
 
-        model_update = {}
         provider_location = {}
         provider_location['classname'] = volpath['CreationClassName']
         provider_location['keybindings'] = keys
 
-        # set-up volume replication, if enabled
+        model_update = self.set_volume_replication_if_enabled(
+            self.conn, extraSpecs, volume, provider_location)
+
+        volumeDisplayName = volume.display_name
+        model_update.update(
+            {'display_name': volumeDisplayName})
+        model_update.update(
+            {'provider_location': six.text_type(provider_location)})
+        return model_update
+
+    def set_volume_replication_if_enabled(self, conn, extraSpecs,
+                                          volume, provider_location):
+        """Set volume replication if enabled
+
+        If volume replication is enabled, set relevant
+        values in associated model_update dict.
+
+        :param conn: connection to the ecom server
+        :param extraSpecs: additional info
+        :param volume: the volume object
+        :param provider_location: volume classname & keybindings
+        :return: updated model_update
+        """
+        model_update = {}
         if self.utils.is_replication_enabled(extraSpecs):
             replication_status, replication_driver_data = (
                 self.setup_volume_replication(
-                    self.conn, volume, provider_location, extraSpecs))
+                    conn, volume, provider_location, extraSpecs))
             model_update.update(
                 {'replication_status': replication_status})
             model_update.update(
                 {'replication_driver_data': six.text_type(
                     replication_driver_data)})
 
-        model_update.update({'display_name': volumeElementName})
-        model_update.update(
-            {'provider_location': six.text_type(provider_location)})
         return model_update
 
     def manage_existing_get_size(self, volume, external_ref):
@@ -4756,15 +4724,25 @@ class VMAXCommon(object):
         arrayName, deviceId = self.utils.get_array_and_device_id(volume,
                                                                  external_ref)
         volumeInstanceName = (
-            self.utils.find_volume_by_device_id_on_array(self.conn,
-                                                         arrayName, deviceId))
-        volumeInstance = self.conn.GetInstance(volumeInstanceName)
-        byteSize = self.utils.get_volume_size(self.conn, volumeInstance)
-        gbSize = int(math.ceil(float(byteSize) / units.Gi))
+            self.utils.find_volume_by_device_id_on_array(arrayName, deviceId))
+
+        try:
+            volumeInstance = self.conn.GetInstance(volumeInstanceName)
+            byteSize = self.utils.get_volume_size(self.conn, volumeInstance)
+            fByteSize = float(byteSize)
+            gbSize = int(fByteSize / units.Gi)
+
+        except Exception:
+            exceptionMessage = (_("Volume %(deviceID)s not found.")
+                                % {'deviceID': deviceId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
         LOG.debug(
-            "Size of volume %(deviceID)s is %(volumeSize)s GB.",
+            "Size of volume %(deviceID)s is %(volumeSize)s GB",
             {'deviceID': deviceId,
              'volumeSize': gbSize})
+
         return gbSize
 
     def unmanage(self, volume):
@@ -4791,9 +4769,7 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         # Rename the volume to volumeId, thus remove the 'OS-' prefix.
-        volumeInstance = self.utils.rename_volume(self.conn,
-                                                  volumeInstance,
-                                                  volumeId)
+        self.utils.rename_volume(self.conn, volumeInstance, volumeId)
 
     def update_consistencygroup(self, group, add_volumes,
                                 remove_volumes):
