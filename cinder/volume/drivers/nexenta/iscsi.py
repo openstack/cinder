@@ -123,7 +123,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         return '%s/%s' % (self.volume, volume_name)
 
     def _create_target(self, target_idx):
-        target_name = '%s%s-%i' % (
+        target_name = '%s-%s-%i' % (
             self.configuration.nexenta_target_prefix,
             self.nms_host,
             target_idx
