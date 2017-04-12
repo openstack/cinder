@@ -4257,17 +4257,21 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=RPLAY)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_init_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume')
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
     def test_create_replay_inact_vol(self,
                                      mock_post,
+                                     mock_get_volume,
                                      mock_init_volume,
                                      mock_first_result,
                                      mock_close_connection,
                                      mock_open_connection,
                                      mock_init):
         # Test case where the specified volume is inactive
+        mock_get_volume.return_value = self.VOLUME
         res = self.scapi.create_replay(self.INACTIVE_VOLUME,
                                        'Test Replay',
                                        60)
@@ -4275,6 +4279,20 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_init_volume.assert_called_once_with(self.INACTIVE_VOLUME)
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.RPLAY, res, 'Unexpected ScReplay')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_init_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume')
+    def test_create_replay_inact_vol_init_fail(
+            self, mock_get_volume, mock_init_volume, mock_close_connection,
+            mock_open_connection, mock_init):
+        # Test case where the specified volume is inactive
+        mock_get_volume.return_value = self.INACTIVE_VOLUME
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_replay,
+                          self.INACTIVE_VOLUME, 'Test Replay', 60)
+        mock_init_volume.assert_called_once_with(self.INACTIVE_VOLUME)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
