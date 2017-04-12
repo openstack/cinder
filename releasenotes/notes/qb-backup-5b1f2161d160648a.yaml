@@ -1,0 +1,7 @@
+---
+
+fixes:
+  - |
+    A bug in the Quobyte driver was fixed that prevented backing up volumes
+    and snapshots
+
