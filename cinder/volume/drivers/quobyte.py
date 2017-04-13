@@ -31,7 +31,7 @@ from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.1'
+VERSION = '1.1.3'
 
 LOG = logging.getLogger(__name__)
 
@@ -82,6 +82,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1   - Adds optional insecure NAS settings
         1.1.1 - Removes getfattr calls from driver
         1.1.2 - Fixes a bug in the creation of cloned volumes
+        1.1.3 - Explicitely mounts Quobyte volumes w/o xattrs
 
     """
 
@@ -450,7 +451,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             if not os.path.isdir(mount_path):
                 self._execute('mkdir', '-p', mount_path)
 
-            command = ['mount.quobyte', quobyte_volume, mount_path]
+            command = ['mount.quobyte', '--disable-xattrs',
+                       quobyte_volume, mount_path]
             if self.configuration.quobyte_client_cfg:
                 command.extend(['-c', self.configuration.quobyte_client_cfg])
 
