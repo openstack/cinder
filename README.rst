@@ -2,8 +2,8 @@
 Team and repository tags
 ========================
 
-.. image:: http://governance.openstack.org/badges/cinder.svg
-    :target: http://governance.openstack.org/reference/tags/index.html
+.. image:: https://governance.openstack.org/badges/cinder.svg
+    :target: https://governance.openstack.org/reference/tags/index.html
 
 .. Change things from this point on
 
@@ -14,8 +14,8 @@ CINDER
 You have come across a storage service for an open cloud computing service.
 It has identified itself as `Cinder`. It was abstracted from the Nova project.
 
-* Wiki: http://wiki.openstack.org/Cinder
-* Developer docs: http://docs.openstack.org/developer/cinder
+* Wiki: https://wiki.openstack.org/Cinder
+* Developer docs: https://docs.openstack.org/developer/cinder
 
 Getting Started
 ---------------
