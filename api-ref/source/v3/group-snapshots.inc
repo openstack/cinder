@@ -193,7 +193,7 @@ Response Parameters
 Reset group snapshot status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v3/{project_id}/group_snapshots/{group_snapshot_id}/action
+.. rest_method::  POST /v3/{project_id}/group_snapshots/{group_snapshot_id}/action
 
 Resets the status for a group snapshot. Specifies the ``reset_status`` action in the request body.
 

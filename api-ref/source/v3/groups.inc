@@ -261,7 +261,7 @@ Request Example
 Reset group status
 ~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  PUT /v3/{project_id}/groups/{group_id}/action
+.. rest_method::  POST /v3/{project_id}/groups/{group_id}/action
 
 Resets the status for a group. Specify the ``reset_status`` action in the request body.
 
