@@ -403,13 +403,13 @@ class CommonAdapter(object):
         :param connector: the host connector information.
         :param res_id: the ID of the LUN or snapshot.
 
-        :return the connection information, in a dict with format like (same as
-        the one returned by `_connect_device`):
-        {
+        :return: the connection information, in a dict with format
+         like (same as the one returned by `_connect_device`):
+         {
             'conn': <info returned by `initialize_connection`>,
             'device': <value returned by `connect_volume`>,
             'connector': <host connector info>
-        }
+         }
         """
         init_conn_func = functools.partial(self._initialize_connection,
                                            lun_or_snap, connector, res_id)
