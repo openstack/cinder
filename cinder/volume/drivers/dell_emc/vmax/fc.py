@@ -76,6 +76,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Volume replication 2.1 (bp add-vmax-replication)
               - rename and restructure driver (bp vmax-rename-dell-emc)
         3.0.0 - REST based driver
+              - Retype (storage-assisted migration)
     """
 
     VERSION = "3.0.0"
@@ -423,3 +424,17 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         Leave the volume intact on the backend array.
         """
         return self.common.unmanage(volume)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Migrate volume to another host using retype.
+
+        :param ctxt: context
+        :param volume: the volume object including the volume_type_id
+        :param new_type: the new volume type.
+        :param diff: difference between old and new volume types.
+            Unused in driver.
+        :param host: the host dict holding the relevant
+            target(destination) information
+        :returns: boolean -- True if retype succeeded, False if error
+        """
+        return self.common.retype(volume, host)
