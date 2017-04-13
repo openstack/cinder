@@ -1983,6 +1983,12 @@ class StorageCenterApi(object):
                 storageusage = self._get_json(r)
         return storageusage
 
+    def _is_active(self, scvolume):
+        if (scvolume.get('active') is not True or
+           scvolume.get('replayAllowed') is not True):
+            return False
+        return True
+
     def create_replay(self, scvolume, replayid, expire):
         """Takes a snapshot of a volume.
 
@@ -1999,12 +2005,19 @@ class StorageCenterApi(object):
                        cloning a volume we will snap it right before creating
                        the clone.
         :returns: The Dell replay object or None.
+        :raises VolumeBackendAPIException: On failure to intialize volume.
         """
         replay = None
         if scvolume is not None:
-            if (scvolume.get('active') is not True or
-                    scvolume.get('replayAllowed') is not True):
+            if not self._is_active(scvolume):
                 self._init_volume(scvolume)
+                scvolume = self.get_volume(self._get_id(scvolume))
+                if not self._is_active(scvolume):
+                    raise exception.VolumeBackendAPIException(
+                        message=(
+                            _('Unable to create snapshot from empty volume.'
+                              ' %s') % scvolume['name']))
+            # We have a volume and it is initialized.
             payload = {}
             payload['description'] = replayid
             payload['expireTime'] = expire
