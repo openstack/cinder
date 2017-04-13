@@ -169,6 +169,8 @@ class AttachmentsController(wsgi.Controller):
                                                   volume_ref,
                                                   instance_uuid,
                                                   connector=connector))
+        except exception.NotAuthorized:
+            raise
         except exception.CinderException as ex:
             err_msg = _(
                 "Unable to create attachment for volume (%s).") % ex.msg
@@ -222,13 +224,14 @@ class AttachmentsController(wsgi.Controller):
                 self.volume_api.attachment_update(context,
                                                   attachment_ref,
                                                   connector))
-
+        except exception.NotAuthorized:
+            raise
         except exception.CinderException as ex:
             err_msg = (
-                _("Unable to create attachment for volume (%s).") % ex.msg)
+                _("Unable to update attachment.(%s).") % ex.msg)
             LOG.exception(err_msg)
-        except Exception as ex:
-            err_msg = _("Unable to create attachment for volume.")
+        except Exception:
+            err_msg = _("Unable to update the attachment.")
             LOG.exception(err_msg)
         finally:
             if err_msg:
