@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added RBD keyring configuration parameter ``rbd_keyring_conf`` to define
+    custom path of Ceph keyring file.
