@@ -17,7 +17,6 @@ import json
 import re
 import six
 import socket
-import ssl
 import time
 
 from oslo_log import log as logging
@@ -73,14 +72,6 @@ class RestClient(object):
         opener = urllib.request.build_opener(handler)
         urllib.request.install_opener(opener)
         res_json = None
-        try:
-            create_unverified_https_context = ssl._create_unverified_context
-        except AttributeError:
-            # Legacy Python that doesn't verify HTTPS certificates by default
-            pass
-        else:
-            # Handle target environment that doesn't support HTTPS verification
-            ssl._create_default_https_context = create_unverified_https_context
 
         try:
             socket.setdefaulttimeout(calltimeout)

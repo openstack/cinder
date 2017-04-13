@@ -1,3 +1,0 @@
----
-fixes:
-   SSL certificate validation is now disabled for the Huawei driver.
