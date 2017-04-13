@@ -1,4 +1,4 @@
-{% set image_name = "^cirros.*uec$" %}
+{% set image_name = "^(cirros.*-disk|TestVM)$" %}
 ---
   Authenticate.validate_cinder:
     -
@@ -333,7 +333,6 @@
   CinderVolumes.create_snapshot_and_attach_volume:
     -
       args:
-        volume_type: false
         size:
           min: 1
           max: 1
@@ -361,7 +360,7 @@
 
     -
       args:
-        volume_type: true
+        volume_type: "test"
         size:
           min: 1
           max: 1
@@ -379,6 +378,8 @@
           flavor:
             name: "m1.tiny"
           servers_per_tenant: 1
+        volume_types:
+          - "test"
         api_versions:
           cinder:
             version: 2
