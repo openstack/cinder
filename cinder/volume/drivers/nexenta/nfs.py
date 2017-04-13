@@ -534,7 +534,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                          {
                              'folder': folder,
                              'snapshot': snapshot,
-                })
+                         })
                 return
             elif 'has dependent clones' in exc.args[0]:
                 LOG.info('Snapshot %(folder)s@%(snapshot)s has dependent '
@@ -542,7 +542,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                          {
                              'folder': folder,
                              'snapshot': snapshot,
-                })
+                         })
                 return
 
     def _create_sparsed_file(self, nms, path, size):

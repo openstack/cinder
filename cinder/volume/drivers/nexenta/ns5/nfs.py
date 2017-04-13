@@ -313,7 +313,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
                 LOG.warning("Cannot destroy cloned filesystem: "
                             "%(vol)s/%(filesystem)s",
                             {'vol': dataset_path,
-                            'filesystem': volume['name']})
+                             'filesystem': volume['name']})
             raise
         if volume['size'] > snapshot['volume_size']:
             new_size = volume['size']
