@@ -1122,7 +1122,7 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
             LOG.info('Flexvisor succeeded to create volume %(id)s '
                      'from snapshot.', {'id': volume['id']})
 
-        if volume['size'] > snapshot['size']:
+        if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
 
         if volume.get('consistencygroup_id', None):

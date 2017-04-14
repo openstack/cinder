@@ -142,7 +142,7 @@ DATA_IN_SNAPSHOT = {'id': 'snapshot1',
                     'volume_id': 'abc123',
                     'display_name': 'snapshot1',
                     'display_description': '',
-                    'size': 5}
+                    'volume_size': 5}
 
 DATA_OUT_SNAPSHOT_CG = {
     'id': 'snapshot1',
