@@ -13,7 +13,7 @@
 import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer
-from sqlalchemy import ForeignKey, MetaData, String, Table
+from sqlalchemy import ForeignKey, MetaData, String, Table, func, select
 
 # Default number of quota groups. We should not read from config file.
 DEFAULT_QUOTA_GROUPS = 10
@@ -80,9 +80,8 @@ def upgrade(migrate_engine):
     # Add group quota data into DB.
     quota_classes = Table('quota_classes', meta, autoload=True)
 
-    rows = (quota_classes.count().
-            where(quota_classes.c.resource == 'groups').
-            execute().scalar())
+    rows = select([func.count()]).select_from(quota_classes).where(
+        quota_classes.c.resource == 'groups').execute().scalar()
 
     # Do not add entries if there are already 'groups' entries.
     if rows:
