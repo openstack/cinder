@@ -220,6 +220,12 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
                                                instance_uuid, None,
                                                mountpoint, 'ro',
                                                volume=volume_passed)
+        attachment2 = self.volume.attach_volume(self.user_context,
+                                                volume_id,
+                                                instance_uuid, None,
+                                                mountpoint, 'ro',
+                                                volume=volume_passed)
+        self.assertEqual(attachment.id, attachment2.id)
         vol = objects.Volume.get_by_id(self.context, volume_id)
         self.assertEqual("in-use", vol.status)
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,

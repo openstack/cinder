@@ -1005,11 +1005,6 @@ class VolumeManager(manager.CleanableManager,
                 raise exception.InvalidVolume(
                     reason=_("being attached by different mode"))
 
-        if (volume.status == 'in-use' and not volume.multiattach
-           and not volume.migration_status):
-            raise exception.InvalidVolume(
-                reason=_("volume is already attached"))
-
         host_name_sanitized = utils.sanitize_hostname(
             host_name) if host_name else None
         if instance_uuid:
@@ -1027,6 +1022,11 @@ class VolumeManager(manager.CleanableManager,
                     volume.status = 'in-use'
                     volume.save()
                     return attachment
+
+        if (volume.status == 'in-use' and not volume.multiattach
+           and not volume.migration_status):
+            raise exception.InvalidVolume(
+                reason=_("volume is already attached"))
 
         self._notify_about_volume_usage(context, volume,
                                         "attach.start")
