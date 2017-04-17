@@ -579,15 +579,15 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
                        return_value=VOLUME)
-    def test_create_volume_consistency_group(self,
-                                             mock_create_volume,
-                                             mock_update_cg_volumes,
-                                             mock_find_replay_profile,
-                                             mock_close_connection,
-                                             mock_open_connection,
-                                             mock_init):
+    def test_create_volume_with_group(self,
+                                      mock_create_volume,
+                                      mock_update_cg_volumes,
+                                      mock_find_replay_profile,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
         volume = {'id': fake.VOLUME_ID, 'size': 1,
-                  'consistencygroup_id': fake.CONSISTENCY_GROUP_ID}
+                  'group_id': fake.GROUP_ID}
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, None, None, None, None)
@@ -1681,7 +1681,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         model_update = {'something': 'something'}
         mock_create_replications.return_value = model_update
         volume = {'id': fake.VOLUME_ID,
-                  'consistencygroup_id': fake.CONSISTENCY_GROUP_ID, 'size': 1}
+                  'group_id': fake.GROUP_ID, 'size': 1}
         snapshot = {'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
                     'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
@@ -1975,7 +1975,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                     mock_open_connection,
                                                     mock_init):
         volume = {'id': fake.VOLUME_ID,
-                  'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
+                  'group_id': fake.CONSISTENCY_GROUP_ID,
                   'size': 1}
         src_vref = {'id': fake.VOLUME2_ID, 'size': 1}
         self.driver.create_cloned_volume(volume, src_vref)
@@ -2254,31 +2254,48 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_create_consistencygroup(self,
-                                     mock_create_replay_profile,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group(self,
+                          mock_is_cg,
+                          mock_create_replay_profile,
+                          mock_close_connection,
+                          mock_open_connection,
+                          mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID}
-        self.driver.create_consistencygroup(context, group)
-        mock_create_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        group = {'id': fake.GROUP_ID}
+        model_update = self.driver.create_group(context, group)
+        mock_create_replay_profile.assert_called_once_with(fake.GROUP_ID)
+        self.assertEqual({'status': 'available'}, model_update)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_group_not_a_cg(self,
+                                   mock_is_cg,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        context = {}
+        group = {'id': fake.GROUP_ID}
+        self.assertRaises(NotImplementedError, self.driver.create_group,
+                          context, group)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_replay_profile',
                        return_value=None)
-    def test_create_consistencygroup_fail(self,
-                                          mock_create_replay_profile,
-                                          mock_close_connection,
-                                          mock_open_connection,
-                                          mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_fail(self,
+                               mock_is_cg,
+                               mock_create_replay_profile,
+                               mock_close_connection,
+                               mock_open_connection,
+                               mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_consistencygroup, context, group)
-        mock_create_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        group = {'id': fake.GROUP_ID}
+        model_update = self.driver.create_group(context, group)
+        mock_create_replay_profile.assert_called_once_with(fake.GROUP_ID)
+        self.assertEqual({'status': 'error'}, model_update)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_replay_profile')
@@ -2287,27 +2304,42 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=SCRPLAYPROFILE)
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        'delete_volume')
-    def test_delete_consistencygroup(self,
-                                     mock_delete_volume,
-                                     mock_find_replay_profile,
-                                     mock_delete_replay_profile,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group(self,
+                          mock_is_cg,
+                          mock_delete_volume,
+                          mock_find_replay_profile,
+                          mock_delete_replay_profile,
+                          mock_close_connection,
+                          mock_open_connection,
+                          mock_init):
         volume = {'id': fake.VOLUME_ID}
         expected_volumes = [{'id': fake.VOLUME_ID,
                              'status': 'deleted'}]
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID,
+        group = {'id': fake.GROUP_ID,
                  'status': fields.ConsistencyGroupStatus.DELETED}
-        model_update, volumes = self.driver.delete_consistencygroup(
+        model_update, volumes = self.driver.delete_group(
             context, group, [volume])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_delete_replay_profile.assert_called_once_with(self.SCRPLAYPROFILE)
         mock_delete_volume.assert_called_once_with(volume)
         self.assertEqual(group['status'], model_update['status'])
         self.assertEqual(expected_volumes, volumes)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_delete_group_not_a_cg(
+            self, mock_is_cg, mock_close_connection,
+            mock_open_connection, mock_init):
+
+        volume = {'id': fake.VOLUME_ID}
+        context = {}
+        group = {'id': fake.GROUP_ID,
+                 'status': fields.ConsistencyGroupStatus.DELETED}
+        self.assertRaises(NotImplementedError, self.driver.delete_group,
+                          context, group, [volume])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_replay_profile')
@@ -2316,21 +2348,21 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=None)
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        'delete_volume')
-    def test_delete_consistencygroup_not_found(self,
-                                               mock_delete_volume,
-                                               mock_find_replay_profile,
-                                               mock_delete_replay_profile,
-                                               mock_close_connection,
-                                               mock_open_connection,
-                                               mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_not_found(self,
+                                    mock_is_cg,
+                                    mock_delete_volume,
+                                    mock_find_replay_profile,
+                                    mock_delete_replay_profile,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID,
+        group = {'id': fake.GROUP_ID,
                  'status': fields.ConsistencyGroupStatus.DELETED}
-        model_update, volumes = self.driver.delete_consistencygroup(context,
-                                                                    group,
-                                                                    [])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        model_update, volumes = self.driver.delete_group(context, group, [])
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         self.assertFalse(mock_delete_replay_profile.called)
         self.assertFalse(mock_delete_volume.called)
         self.assertEqual(group['status'], model_update['status'])
@@ -2342,49 +2374,65 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_update_consistencygroup(self,
-                                     mock_find_replay_profile,
-                                     mock_update_cg_volumes,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_update_group(self,
+                          mock_is_cg,
+                          mock_find_replay_profile,
+                          mock_update_cg_volumes,
+                          mock_close_connection,
+                          mock_open_connection,
+                          mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID}
+        group = {'id': fake.GROUP_ID}
         add_volumes = [{'id': fake.VOLUME_ID}]
         remove_volumes = [{'id': fake.VOLUME2_ID}]
-        rt1, rt2, rt3 = self.driver.update_consistencygroup(context,
-                                                            group,
-                                                            add_volumes,
-                                                            remove_volumes)
+        rt1, rt2, rt3 = self.driver.update_group(context, group, add_volumes,
+                                                 remove_volumes)
         mock_update_cg_volumes.assert_called_once_with(self.SCRPLAYPROFILE,
                                                        add_volumes,
                                                        remove_volumes)
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         self.assertIsNone(rt1)
         self.assertIsNone(rt2)
         self.assertIsNone(rt3)
 
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_update_group_not_a_cg(self,
+                                   mock_is_cg,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        context = {}
+        group = {'id': fake.GROUP_ID}
+        add_volumes = [{'id': fake.VOLUME_ID}]
+        remove_volumes = [{'id': fake.VOLUME2_ID}]
+        self.assertRaises(NotImplementedError, self.driver.update_group,
+                          context, group, add_volumes, remove_volumes)
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=None)
-    def test_update_consistencygroup_not_found(self,
-                                               mock_find_replay_profile,
-                                               mock_close_connection,
-                                               mock_open_connection,
-                                               mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_update_group_not_found(self,
+                                    mock_is_cg,
+                                    mock_find_replay_profile,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID}
+        group = {'id': fake.GROUP_ID}
         add_volumes = [{'id': fake.VOLUME_ID}]
         remove_volumes = [{'id': fake.VOLUME2_ID}]
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.update_consistencygroup,
+                          self.driver.update_group,
                           context,
                           group,
                           add_volumes,
                           remove_volumes)
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'update_cg_volumes',
@@ -2392,27 +2440,112 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_update_consistencygroup_error(self,
-                                           mock_find_replay_profile,
-                                           mock_update_cg_volumes,
-                                           mock_close_connection,
-                                           mock_open_connection,
-                                           mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_update_group_error(self,
+                                mock_is_cg,
+                                mock_find_replay_profile,
+                                mock_update_cg_volumes,
+                                mock_close_connection,
+                                mock_open_connection,
+                                mock_init):
         context = {}
-        group = {'id': fake.CONSISTENCY_GROUP_ID}
+        group = {'id': fake.GROUP_ID}
         add_volumes = [{'id': fake.VOLUME_ID}]
         remove_volumes = [{'id': fake.VOLUME2_ID}]
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.update_consistencygroup,
+                          self.driver.update_group,
                           context,
                           group,
                           add_volumes,
                           remove_volumes)
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_update_cg_volumes.assert_called_once_with(self.SCRPLAYPROFILE,
                                                        add_volumes,
                                                        remove_volumes)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'update_group')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'create_group')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'create_cloned_volume')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_from_src(
+            self, mock_is_cg, mock_create_cloned_volume, mock_create_group,
+            mock_update_group, mock_close_connection, mock_open_connection,
+            mock_init):
+        context = {}
+        group = {'id': fake.GROUP2_ID}
+        volumes = [{'id': fake.VOLUME3_ID}, {'id': fake.VOLUME4_ID}]
+        source_group = {'id': fake.GROUP_ID}
+        source_volumes = [{'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
+        mock_create_cloned_volume.side_effect = [{'id': fake.VOLUME3_ID},
+                                                 {'id': fake.VOLUME4_ID}]
+        mock_create_group.return_value = {'status': 'available'}
+        model_update, volumes_model_update = self.driver.create_group_from_src(
+            context, group, volumes, group_snapshot=None, snapshots=None,
+            source_group=source_group, source_vols=source_volumes)
+        expected = [{'id': fake.VOLUME3_ID, 'status': 'available'},
+                    {'id': fake.VOLUME4_ID, 'status': 'available'}]
+        self.assertEqual({'status': 'available'}, model_update)
+        self.assertEqual(expected, volumes_model_update)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'update_group')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'create_group')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'create_volume_from_snapshot')
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_from_src_from_snapshot(
+            self, mock_is_cg, mock_create_volume_from_snapshot,
+            mock_create_group, mock_update_group, mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        context = {}
+        group = {'id': fake.GROUP_ID}
+        volumes = [{'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
+        group_snapshot = {'id': fake.GROUP_SNAPSHOT_ID}
+        source_snapshots = [{'id': fake.SNAPSHOT_ID},
+                            {'id': fake.SNAPSHOT2_ID}]
+        mock_create_volume_from_snapshot.side_effect = [
+            {'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
+        mock_create_group.return_value = {'status': 'available'}
+        model_update, volumes_model_update = self.driver.create_group_from_src(
+            context, group, volumes,
+            group_snapshot=group_snapshot, snapshots=source_snapshots,
+            source_group=None, source_vols=None)
+        expected = [{'id': fake.VOLUME_ID, 'status': 'available'},
+                    {'id': fake.VOLUME2_ID, 'status': 'available'}]
+        self.assertEqual({'status': 'available'}, model_update)
+        self.assertEqual(expected, volumes_model_update)
+
+    def test_create_group_from_src_bad_input(
+            self, mock_close_connection, mock_open_connection, mock_init):
+        context = {}
+        group = {'id': fake.GROUP2_ID}
+        volumes = [{'id': fake.VOLUME3_ID}, {'id': fake.VOLUME4_ID}]
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_group_from_src,
+                          context, group, volumes, None, None, None, None)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_group_from_src_not_a_cg(
+            self, mock_is_cg, mock_close_connection,
+            mock_open_connection, mock_init):
+        context = {}
+        group = {'id': fake.GROUP2_ID}
+        volumes = [{'id': fake.VOLUME3_ID}, {'id': fake.VOLUME4_ID}]
+        source_group = {'id': fake.GROUP_ID}
+        source_volumes = [{'id': fake.VOLUME_ID}, {'id': fake.VOLUME2_ID}]
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_from_src,
+                          context, group, volumes, None, None,
+                          source_group, source_volumes)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'snap_cg_replay',
@@ -2420,25 +2553,26 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_create_cgsnapshot(self,
-                               mock_find_replay_profile,
-                               mock_snap_cg_replay,
-                               mock_close_connection,
-                               mock_open_connection,
-                               mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_snapshot(self,
+                                   mock_is_cg,
+                                   mock_find_replay_profile,
+                                   mock_snap_cg_replay,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
         mock_snapshot = mock.MagicMock()
         mock_snapshot.id = fake.SNAPSHOT_ID
         expected_snapshots = [{'id': fake.SNAPSHOT_ID, 'status': 'available'}]
 
         context = {}
-        cggrp = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                 'id': fake.CGSNAPSHOT_ID}
-        model_update, snapshots = self.driver.create_cgsnapshot(
+        cggrp = {'group_id': fake.GROUP_ID, 'id': fake.GROUP_SNAPSHOT_ID}
+        model_update, snapshots = self.driver.create_group_snapshot(
             context, cggrp, [mock_snapshot])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_snap_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
-                                                    fake.CGSNAPSHOT_ID,
+                                                    fake.GROUP_SNAPSHOT_ID,
                                                     0)
         self.assertEqual('available', model_update['status'])
         self.assertEqual(expected_snapshots, snapshots)
@@ -2446,19 +2580,33 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=None)
-    def test_create_cgsnapshot_profile_not_found(self,
-                                                 mock_find_replay_profile,
-                                                 mock_close_connection,
-                                                 mock_open_connection,
-                                                 mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_snapshot_profile_not_found(self,
+                                                     mock_is_cg,
+                                                     mock_find_replay_profile,
+                                                     mock_close_connection,
+                                                     mock_open_connection,
+                                                     mock_init):
         context = {}
-        cggrp = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                 'id': fake.CGSNAPSHOT_ID}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cgsnapshot,
+        cggrp = {'group_id': fake.GROUP_ID, 'id': fake.GROUP_SNAPSHOT_ID}
+        model_update, snapshot_updates = self.driver.create_group_snapshot(
+            context, cggrp, [])
+        self.assertEqual({'status': 'error'}, model_update)
+        self.assertIsNone(snapshot_updates)
+
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_group_snapshot_not_a_cg(
+            self, mock_is_cg, mock_close_connection,
+            mock_open_connection, mock_init):
+        context = {}
+        cggrp = {'group_id': fake.GROUP_ID, 'id': fake.GROUP_SNAPSHOT_ID}
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_snapshot,
                           context, cggrp, [])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'snap_cg_replay',
@@ -2466,22 +2614,24 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_create_cgsnapshot_fail(self,
-                                    mock_find_replay_profile,
-                                    mock_snap_cg_replay,
-                                    mock_close_connection,
-                                    mock_open_connection,
-                                    mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_snapshot_fail(self,
+                                        mock_is_cg,
+                                        mock_find_replay_profile,
+                                        mock_snap_cg_replay,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
         context = {}
-        cggrp = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                 'id': fake.CGSNAPSHOT_ID}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cgsnapshot,
-                          context, cggrp, [])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        cggrp = {'group_id': fake.GROUP_ID, 'id': fake.GROUP_SNAPSHOT_ID}
+        model_update, snapshot_updates = self.driver.create_group_snapshot(
+            context, cggrp, [])
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_snap_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
-                                                    fake.CGSNAPSHOT_ID, 0)
+                                                    fake.GROUP_SNAPSHOT_ID, 0)
+        self.assertEqual({'status': 'error'}, model_update)
+        self.assertIsNone(snapshot_updates)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_cg_replay',
@@ -2489,22 +2639,24 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_delete_cgsnapshot(self,
-                               mock_find_replay_profile,
-                               mock_delete_cg_replay,
-                               mock_close_connection,
-                               mock_open_connection,
-                               mock_init):
-        snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snapshot(self,
+                                   mock_is_cg,
+                                   mock_find_replay_profile,
+                                   mock_delete_cg_replay,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        mock_snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
-        cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                  'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
-        model_update, snapshots = self.driver.delete_cgsnapshot(
-            context, cgsnap, [snapshot])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        cgsnap = {'group_id': fake.GROUP_ID,
+                  'id': fake.GROUP_SNAPSHOT_ID, 'status': 'deleted'}
+        model_update, snapshots = self.driver.delete_group_snapshot(
+            context, cgsnap, [mock_snapshot])
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
-                                                      fake.CGSNAPSHOT_ID)
+                                                      fake.GROUP_SNAPSHOT_ID)
         self.assertEqual({'status': cgsnap['status']}, model_update)
         self.assertEqual([{'id': fake.SNAPSHOT_ID, 'status': 'deleted'}],
                          snapshots)
@@ -2514,24 +2666,25 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=None)
-    def test_delete_cgsnapshot_profile_not_found(self,
-                                                 mock_find_replay_profile,
-                                                 mock_delete_cg_replay,
-                                                 mock_close_connection,
-                                                 mock_open_connection,
-                                                 mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snapshot_profile_not_found(self,
+                                                     mock_is_cg,
+                                                     mock_find_replay_profile,
+                                                     mock_delete_cg_replay,
+                                                     mock_close_connection,
+                                                     mock_open_connection,
+                                                     mock_init):
         snapshot = {'id': fake.SNAPSHOT_ID, 'status': 'available'}
         context = {}
-        cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                  'id': fake.CGSNAPSHOT_ID, 'status': 'deleted'}
-        model_update, snapshots = self.driver.delete_cgsnapshot(
+        cgsnap = {'group_id': fake.GROUP_ID,
+                  'id': fake.GROUP_SNAPSHOT_ID, 'status': 'available'}
+        model_update, snapshots = self.driver.delete_group_snapshot(
             context, cgsnap, [snapshot])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         self.assertFalse(mock_delete_cg_replay.called)
-        self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual([{'id': fake.SNAPSHOT_ID, 'status': 'deleted'}],
-                         snapshots)
+        self.assertEqual({'status': 'error'}, model_update)
+        self.assertIsNone(snapshots)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_cg_replay',
@@ -2539,24 +2692,32 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    def test_delete_cgsnapshot_profile_failed_delete(self,
-                                                     mock_find_replay_profile,
-                                                     mock_delete_cg_replay,
-                                                     mock_close_connection,
-                                                     mock_open_connection,
-                                                     mock_init):
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snapshot_profile_failed_delete(
+            self, mock_is_cg, mock_find_replay_profile, mock_delete_cg_replay,
+            mock_close_connection, mock_open_connection, mock_init):
         context = {}
-        cgsnap = {'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
-                  'id': fake.CGSNAPSHOT_ID, 'status': 'available'}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.delete_cgsnapshot,
-                          context,
-                          cgsnap,
-                          [])
-        mock_find_replay_profile.assert_called_once_with(
-            fake.CONSISTENCY_GROUP_ID)
+        cgsnap = {'group_id': fake.GROUP_ID,
+                  'id': fake.GROUP_SNAPSHOT_ID, 'status': 'available'}
+        model_update, snapshot_updates = self.driver.delete_group_snapshot(
+            context, cgsnap, [])
+        self.assertEqual({'status': 'error_deleting'}, model_update)
+        mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
-                                                      fake.CGSNAPSHOT_ID)
+                                                      fake.GROUP_SNAPSHOT_ID)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_delete_group_snapshot_not_a_cg(
+            self, mock_is_cg, mock_close_connection,
+            mock_open_connection, mock_init):
+        context = {}
+        cgsnap = {'group_id': fake.GROUP_ID,
+                  'id': fake.GROUP_SNAPSHOT_ID, 'status': 'available'}
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group_snapshot,
+                          context, cgsnap, [])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',

@@ -1,0 +1,4 @@
+---
+features:
+  - Add consistency group capability to Generic Volume Groups in the
+    Dell EMC SC driver.
