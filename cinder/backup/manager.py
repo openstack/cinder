@@ -418,9 +418,14 @@ class BackupManager(manager.ThreadPoolManager):
             self._run_backup(context, backup, volume)
         except Exception as err:
             with excutils.save_and_reraise_exception():
-                self.db.volume_update(context, volume_id,
-                                      {'status': previous_status,
-                                       'previous_status': 'error_backing-up'})
+                if snapshot_id:
+                    snapshot.status = fields.SnapshotStatus.AVAILABLE
+                    snapshot.save()
+                else:
+                    self.db.volume_update(
+                        context, volume_id,
+                        {'status': previous_status,
+                         'previous_status': 'error_backing-up'})
                 self._update_backup_error(backup, six.text_type(err))
 
         # Restore the original status.
