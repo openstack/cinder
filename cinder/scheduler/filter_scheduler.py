@@ -277,7 +277,8 @@ class FilterScheduler(driver.Scheduler):
         # Since Cinder is using mixed filters from Oslo and it's own, which
         # takes 'resource_XX' and 'volume_XX' as input respectively, copying
         # 'volume_XX' to 'resource_XX' will make both filters happy.
-        volume_type = resource_type = request_spec.get("volume_type")
+        volume_type = request_spec.get("volume_type")
+        resource_type = request_spec.get("volume_type", {})
 
         config_options = self._get_configuration_options()
 
