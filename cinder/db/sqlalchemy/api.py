@@ -6224,6 +6224,17 @@ def message_destroy(context, message):
     return updated_values
 
 
+@require_admin_context
+def cleanup_expired_messages(context):
+    session = get_session()
+    now = timeutils.utcnow()
+    with session.begin():
+        # NOTE(tommylikehu): Directly delete the expired
+        # messages here.
+        return session.query(models.Message).filter(
+            models.Message.expires_at < now).delete()
+
+
 ###############################
 
 

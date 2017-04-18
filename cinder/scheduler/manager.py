@@ -26,6 +26,7 @@ import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -38,6 +39,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
 from cinder import manager
+from cinder.message import api as mess_api
 from cinder import objects
 from cinder import quota
 from cinder import rpc
@@ -75,6 +77,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         self._startup_delay = True
         self.volume_api = volume_rpcapi.VolumeAPI()
         self.sch_api = scheduler_rpcapi.SchedulerAPI()
+        self.message_api = mess_api.API()
         self.rpc_api_version = versionutils.convert_version_to_int(
             self.RPC_API_VERSION)
 
@@ -90,6 +93,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         self.volume_api = volume_rpcapi.VolumeAPI()
         self.sch_api = scheduler_rpcapi.SchedulerAPI()
         self.driver.reset()
+
+    @periodic_task.periodic_task(spacing=CONF.message_reap_interval,
+                                 run_immediately=True)
+    def _clean_expired_messages(self, context):
+        self.message_api.cleanup_expired_messages(context)
 
     def update_service_capabilities(self, context, service_name=None,
                                     host=None, capabilities=None,

@@ -24,7 +24,11 @@ from cinder.message import defined_messages
 
 messages_opts = [
     cfg.IntOpt('message_ttl', default=2592000,
-               help='message minimum life in seconds.')]
+               help='message minimum life in seconds.'),
+    cfg.IntOpt('message_reap_interval', default=86400,
+               help='interval between period task to clean expired messages.')
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(messages_opts)
@@ -80,3 +84,8 @@ class API(base.Base):
         """Delete message with the specified id."""
         ctx = context.elevated()
         return self.db.message_destroy(ctx, id)
+
+    def cleanup_expired_messages(self, context):
+        ctx = context.elevated()
+        count = self.db.cleanup_expired_messages(ctx)
+        LOG.info("Deleted %s expired messages.", count)

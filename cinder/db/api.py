@@ -1651,6 +1651,11 @@ def message_destroy(context, message_id):
     return IMPL.message_destroy(context, message_id)
 
 
+def cleanup_expired_messages(context):
+    """Soft delete expired messages"""
+    return IMPL.cleanup_expired_messages(context)
+
+
 ###################
 
 
