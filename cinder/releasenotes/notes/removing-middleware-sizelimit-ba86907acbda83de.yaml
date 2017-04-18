@@ -1,0 +1,6 @@
+---
+upgrade:
+  - Removing deprecated file cinder.middleware.sizelimit. In your
+    api-paste.ini, replace
+    cinder.middleware.sizelimit:RequestBodySizeLimiter.factory with
+    oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
