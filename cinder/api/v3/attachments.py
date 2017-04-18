@@ -70,10 +70,10 @@ class AttachmentsController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(search_opts)
         marker, limit, offset = common.get_pagination_params(search_opts)
 
-        if search_opts.get('instance_id', None):
-            search_opts['instance_uuid'] = search_opts.get('instance_id')
         utils.remove_invalid_filter_options(context, search_opts,
                                             self.allowed_filters)
+        if search_opts.get('instance_id', None):
+            search_opts['instance_uuid'] = search_opts.pop('instance_id', None)
         if context.is_admin and 'all_tenants' in search_opts:
             del search_opts['all_tenants']
             return objects.VolumeAttachmentList.get_all(
