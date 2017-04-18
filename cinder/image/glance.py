@@ -562,17 +562,6 @@ def _extract_attributes(image):
 
     output['properties'] = getattr(image, 'properties', {})
 
-    # NOTE(jbernard): Update image properties for API version 2.  For UEC
-    # images stored in glance, the necessary boot information is stored in the
-    # properties dict in version 1 so there is nothing more to do.  However, in
-    # version 2 these are standalone fields in the GET response.  This bit of
-    # code moves them back into the properties dict as the caller expects, thus
-    # producing a volume with correct metadata for booting.
-    for attr in ('kernel_id', 'ramdisk_id'):
-        value = getattr(image, attr, None)
-        if value:
-            output['properties'][attr] = value
-
     return output
 
 
