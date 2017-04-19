@@ -13,23 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
-import testtools
-
 from tempest.api.volume import base as volume_base
 from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import decorators
 
-# TODO(obutenko): Remove this when liberty-eol happens.
-snapshot_backup_opt = cfg.BoolOpt('snapshot_backup',
-                                  default=False,
-                                  help='Creating backup from snapshot not '
-                                  'implemented in Liberty.')
-
 CONF = config.CONF
-CONF.register_opt(snapshot_backup_opt, group='volume-feature-enabled')
 
 
 class VolumesBackupsTest(volume_base.BaseVolumeTest):
@@ -40,8 +30,6 @@ class VolumesBackupsTest(volume_base.BaseVolumeTest):
         if not CONF.volume_feature_enabled.backup:
             raise cls.skipException("Cinder backup feature disabled")
 
-    @testtools.skipUnless(CONF.volume_feature_enabled.snapshot_backup,
-                          "Skip. Not implemented in Liberty.")
     @decorators.idempotent_id('885410c6-cd1d-452c-a409-7c32b7e0be15')
     def test_volume_snapshot_backup(self):
         """Create backup from snapshot."""
