@@ -26,7 +26,8 @@ messages_opts = [
     cfg.IntOpt('message_ttl', default=2592000,
                help='message minimum life in seconds.'),
     cfg.IntOpt('message_reap_interval', default=86400,
-               help='interval between period task to clean expired messages.')
+               help='interval between periodic task runs to clean expired '
+                    'messages in seconds.')
 ]
 
 
