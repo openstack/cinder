@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import os
 import shutil
 import tempfile
@@ -54,6 +55,9 @@ class TargetDriverFixture(test.TestCase):
              'provider_geometry': '512 512',
              'created_at': timeutils.utcnow(),
              'host': 'fake_host@lvm#lvm'}
+
+        self.testvol_no_prov_loc = copy.copy(self.testvol)
+        self.testvol_no_prov_loc['provider_location'] = None
 
         self.iscsi_target_prefix = 'iqn.2010-10.org.openstack:'
         self.target_string = ('127.0.0.1:3260,1 ' +
