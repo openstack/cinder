@@ -96,17 +96,17 @@ class VolumeApiTest(test.TestCase):
                                          'qcow2')
         return [vol1, vol2]
 
-    def _create_volume_with_consistency_group(self):
+    def _create_volume_with_group(self):
         vol1 = db.volume_create(self.ctxt, {'display_name': 'test1',
                                             'project_id':
                                             self.ctxt.project_id,
-                                            'consistencygroup_id':
-                                            fake.CONSISTENCY_GROUP_ID})
+                                            'group_id':
+                                            fake.GROUP_ID})
         vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
                                             'project_id':
                                             self.ctxt.project_id,
-                                            'consistencygroup_id':
-                                            fake.CONSISTENCY_GROUP2_ID})
+                                            'group_id':
+                                            fake.GROUP2_ID})
         return [vol1, vol2]
 
     def test_volume_index_filter_by_glance_metadata(self):
@@ -133,9 +133,9 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(2, len(volumes))
 
     def test_volume_index_filter_by_group_id(self):
-        vols = self._create_volume_with_consistency_group()
+        vols = self._create_volume_with_group()
         req = fakes.HTTPRequest.blank(("/v3/volumes?group_id=%s") %
-                                      fake.CONSISTENCY_GROUP_ID)
+                                      fake.GROUP_ID)
         req.headers["OpenStack-API-Version"] = "volume 3.10"
         req.api_version_request = api_version.APIVersionRequest('3.10')
         req.environ['cinder.context'] = self.ctxt
@@ -145,9 +145,9 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(vols[0].id, volumes[0]['id'])
 
     def test_volume_index_filter_by_group_id_in_unsupport_version(self):
-        self._create_volume_with_consistency_group()
+        self._create_volume_with_group()
         req = fakes.HTTPRequest.blank(("/v3/volumes?group_id=%s") %
-                                      fake.CONSISTENCY_GROUP2_ID)
+                                      fake.GROUP_ID)
         req.headers["OpenStack-API-Version"] = "volume 3.9"
         req.api_version_request = api_version.APIVersionRequest('3.9')
         req.environ['cinder.context'] = self.ctxt
