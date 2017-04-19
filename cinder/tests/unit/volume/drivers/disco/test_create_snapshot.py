@@ -145,7 +145,7 @@ class CreateSnapshotTestCase(disco.TestDISCODriver):
         """Snapshot request timeout."""
         timeout = 3
         mock_time.side_effect = utils.generate_timeout_series(timeout)
-        self.driver.configuration.snapshot_check_timeout = timeout
+        self.driver.configuration.disco_snapshot_check_timeout = timeout
         self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
             self.FAKE_RESPONSE['snapshot_detail']['pending'])

@@ -20,7 +20,6 @@ import mock
 from suds import client
 
 from os_brick.initiator import connector
-from oslo_config import cfg
 
 from cinder import context
 from cinder import test
@@ -52,18 +51,14 @@ class TestDISCODriver(test.TestCase):
         self.cfg.disco_client = '127.0.0.1'
         self.cfg.disco_client_port = '9898'
         self.cfg.disco_wsdl_path = 'somewhere'
-        self.cfg.volume_name_prefix = 'openstack-'
-        self.cfg.num_volume_device_scan_tries = 1
-        self.cfg.snapshot_check_timeout = 3600
-        self.cfg.restore_check_timeout = 3600
-        self.cfg.clone_check_timeout = 3600
-        self.cfg.snapshot_reserve_days = -1
-        self.cfg.retry_interval = 2
+        self.cfg.disco_volume_name_prefix = 'openstack-'
+        self.cfg.disco_snapshot_check_timeout = 3600
+        self.cfg.disco_restore_check_timeout = 3600
+        self.cfg.disco_clone_check_timeout = 3600
+        self.cfg.disco_retry_interval = 2
         self.cfg.num_volume_device_scan_tries = 3
-
-        CONF = cfg.CONF
-        CONF.choice_client = 'SOAP'
-        CONF.rest_ip = '127.0.0.1'
+        self.cfg.disco_choice_client = 'SOAP'
+        self.cfg.disco_rest_ip = '127.0.0.1'
 
         self.FAKE_RESPONSE = {
             'standard': {
@@ -87,7 +82,7 @@ class TestDISCODriver(test.TestCase):
                                          configuration=self.cfg)
         self.driver.do_setup(None)
 
-        self.attach_detach = attach_detach.AttachDetachDiscoVolume()
+        self.attach_detach = attach_detach.AttachDetachDiscoVolume(self.cfg)
 
         self.ctx = context.RequestContext('fake', 'fake', auth_token=True)
         self.volume = fake_volume.fake_volume_obj(self.ctx)

@@ -1,0 +1,27 @@
+---
+upgrade:
+  - |
+    Some of DISCO driver options were incorrectly read from ``[DEFAULT]``
+    section in the cinder.conf. Now those are correctly read from
+    ``[<backend_id>]`` section. This includes following options:
+
+    * ``disco_client``
+    * ``disco_client_port``
+    * ``rest_ip``
+    * ``choice_client``
+    * ``disco_src_api_port``
+    * ``retry_interval``
+
+    Also some options are renamed (note that 3 of them were both moved and
+    renamed):
+
+    * ``rest_ip`` to ``disco_rest_ip``
+    * ``choice_client`` to ``disco_choice_client``
+    * ``volume_name_prefix`` to ``disco_volume_name_prefix``
+    * ``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``
+    * ``restore_check_timeout`` to ``disco_restore_check_timeout``
+    * ``clone_check_timeout`` to ``disco_clone_check_timeout``
+    * ``retry_interval`` to ``disco_retry_interval``
+
+    Old names and locations are still supported but support will be removed in
+    the future.
