@@ -257,7 +257,11 @@ class AttachmentsAPITestCase(test.TestCase):
               {'admin': True, 'request_url':
                   '?all_tenants=1&project_id=%s' % fake.PROJECT2_ID,
                'count': 1},
-              {'admin': False, 'request_url': '', 'count': 3})
+              {'admin': False, 'request_url': '', 'count': 3},
+              {'admin': False, 'request_url': '?instance_id=%s' % fake.UUID1,
+               'count': 2},
+              {'admin': False, 'request_url': '?instance_id=%s' % fake.UUID2,
+               'count': 1})
     @ddt.unpack
     def test_list_attachment_with_tenants(self, admin, request_url, count):
         url = '/v3/%s/attachments%s' % (fake.PROJECT_ID, request_url)
