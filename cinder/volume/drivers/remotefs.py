@@ -15,6 +15,7 @@
 #    under the License.
 
 import collections
+import errno
 import hashlib
 import inspect
 import json
@@ -659,6 +660,13 @@ class RemoteFSDriver(driver.BaseVD):
                         LOG.error('Failed to created Cinder secure '
                                   'environment indicator file: %s',
                                   err)
+                        if err.errno == errno.EACCES:
+                            LOG.warning('Reverting to non-secure mode. Adjust '
+                                        'permissions at %s to allow the '
+                                        'cinder volume service write access '
+                                        'to use secure mode.',
+                                        mount_point)
+                            nas_option = 'false'
                 else:
                     # For existing installs, we default to 'false'. The
                     # admin can always set the option at the driver config.
