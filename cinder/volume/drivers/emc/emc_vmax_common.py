@@ -348,7 +348,12 @@ class EMCVMAXCommon(object):
         vol_instance = self._find_lun(volume)
         storage_system = vol_instance['SystemName']
 
-        if self._is_volume_multiple_masking_views(vol_instance):
+        livemigrationrecord = self.utils.get_live_migration_record(volume)
+        if livemigrationrecord:
+            self.utils.delete_live_migration_record(volume)
+
+        if livemigrationrecord and self._is_volume_multiple_masking_views(
+                vol_instance):
             return
 
         configservice = self.utils.find_controller_configuration_service(
@@ -430,12 +435,14 @@ class EMCVMAXCommon(object):
                          "The device number is  %(deviceNumber)s."),
                      {'volume': volumeName,
                       'deviceNumber': deviceNumber})
+            self.utils.insert_live_migration_record(volume)
             # Special case, we still need to get the iscsi ip address.
             portGroupName = (
                 self._get_correct_port_group(
                     deviceInfoDict, maskingViewDict['storageSystemName']))
         else:
             if isLiveMigration:
+                self.utils.insert_live_migration_record(volume)
                 maskingViewDict['storageGroupInstanceName'] = (
                     self._get_storage_group_from_source(sourceInfoDict))
                 maskingViewDict['portGroupInstanceName'] = (
@@ -493,6 +500,9 @@ class EMCVMAXCommon(object):
                     (rollbackDict['isV3'] is not None)):
                 (self.masking._check_if_rollback_action_for_masking_required(
                     self.conn, rollbackDict))
+            livemigrationrecord = self.utils.get_live_migration_record(volume)
+            if livemigrationrecord:
+                self.utils.delete_live_migration_record(volume)
             exception_message = (_("Error Attaching volume %(vol)s.")
                                  % {'vol': volumeName})
             raise exception.VolumeBackendAPIException(
@@ -1636,14 +1646,16 @@ class EMCVMAXCommon(object):
         """
         maskedvols = []
         data = {}
+        isLiveMigration = False
+        source_data = {}
         foundController = None
         foundNumDeviceNumber = None
         foundMaskingViewName = None
         volumeName = volume['name']
         volumeInstance = self._find_lun(volume)
         storageSystemName = volumeInstance['SystemName']
-        isLiveMigration = False
-        source_data = {}
+        if not volumeInstance:
+            return data, isLiveMigration, source_data
 
         unitnames = self.conn.ReferenceNames(
             volumeInstance.path,
@@ -1656,7 +1668,15 @@ class EMCVMAXCommon(object):
             if index > -1:
                 unitinstance = self.conn.GetInstance(unitname,
                                                      LocalOnly=False)
-                numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
+                if unitinstance['DeviceNumber']:
+                    numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
+                else:
+                    LOG.debug(
+                        "Device number not found for volume "
+                        "%(volumeName)s %(volumeInstance)s.",
+                        {'volumeName': volumeName,
+                         'volumeInstance': volumeInstance.path})
+                    break
                 foundNumDeviceNumber = numDeviceNumber
                 foundController = controller
                 controllerInstance = self.conn.GetInstance(controller,

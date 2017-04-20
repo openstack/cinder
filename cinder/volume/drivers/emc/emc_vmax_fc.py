@@ -72,9 +72,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - QoS support (blueprint vmax-qos)
         2.4.1 - Pre-zoned port group fix (bug #456285)
         2.4.2 - Rollback error on Live Migration (bug #1686174)
+        2.4.3 - Detaching volumes if part of two or more MVs (bug #1684595)
     """
 
-    VERSION = "2.4.2"
+    VERSION = "2.4.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
