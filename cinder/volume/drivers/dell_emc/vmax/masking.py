@@ -2126,10 +2126,16 @@ class VMAXMasking(object):
         self._last_volume_delete_masking_view(
             conn, controllerConfigService, mvInstanceName,
             maskingViewName, extraSpecs)
-        if initiatorGroupInstanceName:
-            self._last_volume_delete_initiator_group(
-                conn, controllerConfigService,
-                initiatorGroupInstanceName, extraSpecs, short_host_name)
+        initiatorGroupInstance = conn.GetInstance(initiatorGroupInstanceName)
+        if initiatorGroupInstance:
+            initiatorGroupName = initiatorGroupInstance['ElementName']
+
+            @coordination.synchronized('emc-ig-{initiatorGroupName}')
+            def inner_do_delete_initiator_group(initiatorGroupName):
+                self._last_volume_delete_initiator_group(
+                    conn, controllerConfigService,
+                    initiatorGroupInstanceName, extraSpecs, short_host_name)
+            inner_do_delete_initiator_group(initiatorGroupName)
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
                 self._get_tiering_info(conn, storageSystemInstanceName,
@@ -2688,15 +2694,19 @@ class VMAXMasking(object):
         :param hardwareIdManagementService - hardware id management service
         :param hardwareIdPath - The path of the initiator object
         """
-        ret = conn.InvokeMethod('DeleteStorageHardwareID',
-                                hardwareIdManagementService,
-                                HardwareID = hardwareIdPath)
+        ret = -1
+        try:
+            ret = conn.InvokeMethod('DeleteStorageHardwareID',
+                                    hardwareIdManagementService,
+                                    HardwareID = hardwareIdPath)
+        except Exception:
+            pass
         if ret == 0:
             LOG.debug("Deletion of initiator path %(hardwareIdPath)s "
                       "is successful.", {'hardwareIdPath': hardwareIdPath})
         else:
-            LOG.warning(_LW("Deletion of initiator path %(hardwareIdPath)s "
-                            "is failed."), {'hardwareIdPath': hardwareIdPath})
+            LOG.debug("Deletion of initiator path %(hardwareIdPath)s "
+                      "failed.", {'hardwareIdPath': hardwareIdPath})
 
     def _delete_initiators_from_initiator_group(self, conn,
                                                 controllerConfigService,
