@@ -142,12 +142,16 @@ class QuotaReserveTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaReserveTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, size, optional_args):
+    def execute(self, context, size, snapshot_ref, optional_args):
         try:
             if CONF.no_snapshot_gb_quota:
                 reserve_opts = {'snapshots': 1}
             else:
                 reserve_opts = {'snapshots': 1, 'gigabytes': size}
+            volume = objects.Volume.get_by_id(context, snapshot_ref.volume_id)
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume.volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
             return {
                 'reservations': reservations,

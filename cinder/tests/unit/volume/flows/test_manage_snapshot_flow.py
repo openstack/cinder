@@ -20,7 +20,9 @@ import mock
 
 from cinder import context
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.volume.flows.manager import manage_existing_snapshot as manager
 
 
@@ -50,3 +52,25 @@ class ManageSnapshotFlowTestCase(test.TestCase):
         snap_after_manage = result['snapshot']
         #  assure value is equal that size, that we want
         self.assertEqual(real_size, snap_after_manage['volume_size'])
+
+    @mock.patch('cinder.quota.QuotaEngine.reserve')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_quota_reservation_task(self, mock_get_vol_by_id, mock_type_get,
+                                    mock_quota_reserve):
+        fake_size = 1
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.ctxt,
+                                                    volume_size=fake_size)
+        fake_snap.save = mock.MagicMock()
+        fake_vol = fake_volume.fake_volume_obj(
+            self.ctxt, id=fake.VOLUME_ID, volume_type_id=fake.VOLUME_TYPE_ID)
+        mock_get_vol_by_id.return_value = fake_vol
+        mock_type_get.return_value = {'name': 'fake_type_name'}
+
+        task = manager.QuotaReserveTask()
+        task.execute(self.ctxt, fake_size, fake_snap, {})
+
+        reserve_opts = {'gigabytes': 1, 'snapshots': 1,
+                        'gigabytes_fake_type_name': 1,
+                        'snapshots_fake_type_name': 1}
+        mock_quota_reserve.assert_called_once_with(self.ctxt, **reserve_opts)
