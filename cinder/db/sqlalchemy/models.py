@@ -354,6 +354,7 @@ class VolumeAttachment(BASE, CinderBase):
     detach_time = Column(DateTime)
     attach_status = Column(String(255))
     attach_mode = Column(String(255))
+    connection_info = Column(Text)
 
 
 class VolumeTypes(BASE, CinderBase):
