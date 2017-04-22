@@ -19,6 +19,7 @@ import ddt
 import json
 import mock
 import re
+import requests
 import tempfile
 import unittest
 from xml.dom import minidom
@@ -1214,10 +1215,10 @@ FAKE_GET_METROROUP_ID_RESPONSE = """
 # mock login info map
 MAP_COMMAND_TO_FAKE_RESPONSE = {}
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions/POST'] = (
     FAKE_GET_LOGIN_STORAGE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/sessions'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/sessions/DELETE'] = (
     FAKE_LOGIN_OUT_STORAGE_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/LUN_MIGRATION/POST'] = (
@@ -1230,11 +1231,11 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/LUN_MIGRATION/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock storage info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/storagepool'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/storagepool/GET'] = (
     FAKE_STORAGE_POOL_RESPONSE)
 
 # mock lun info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/lun'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/POST'] = (
     FAKE_LUN_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/GET'] = (
@@ -1290,10 +1291,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/associate?TYPE=27&ASSOCIATEOBJTYPE=256'
 MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup?range=[0-8191]/GET'] = (
     FAKE_QUERY_LUN_GROUP_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/POST'] = (
     FAKE_QUERY_LUN_GROUP_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate/POST'] = (
     FAKE_QUERY_LUN_GROUP_ASSOCIAT_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/LUNGroup/11/DELETE'] = (
@@ -1343,14 +1344,14 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?ID=12&ASSOCIATEOBJTYPE=11'
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock snapshot info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/POST'] = (
     FAKE_CREATE_SNAPSHOT_INFO_RESPONSE)
 
 # mock snapshot info map
 MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/11/GET'] = (
     FAKE_GET_SNAPSHOT_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/activate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/activate/POST'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/stop/PUT'] = (
@@ -1375,10 +1376,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/active/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/POST'] = (
     FAKE_QOS_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/count'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/count/GET'] = (
     FAKE_COMMON_FAIL_RESPONSE)
 
 # mock iscsi info map
@@ -1392,13 +1393,13 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/eth_port/associate?TYPE=213&ASSOCIATEOBJTYPE'
                              '=257&ASSOCIATEOBJID=11/GET'] = (
     FAKE_GET_ETH_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/iscsidevicename'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsidevicename/GET'] = (
     FAKE_GET_ISCSI_DEVICE_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator?range=[0-256]/GET'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/GET'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/POST'] = (
@@ -1427,13 +1428,13 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/host/1/DELETE'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/host/1/GET'] = (
     FAKE_GET_HOST_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/host'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/POST'] = (
     FAKE_CREATE_HOST_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup?range=[0-8191]/GET'] = (
     FAKE_GET_ALL_HOST_GROUP_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup/GET'] = (
     FAKE_GET_HOST_GROUP_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=14&ID=0'
@@ -1457,11 +1458,11 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=21&'
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup/associate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup/associate/POST'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock copy info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/luncopy'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/luncopy/POST'] = (
     FAKE_GET_LUN_COPY_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/LUNCOPY?range=[0-1023]/GET'] = (
@@ -1477,7 +1478,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/LUNCOPY/0/DELETE'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview?range=[0-8191]/GET'] = (
     FAKE_GET_MAPPING_VIEW_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/POST'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/PUT'] = (
@@ -1561,7 +1562,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup?range=[0-8191]&TYPE=257/GET'] = (
     FAKE_PORT_GROUP_RESPONSE)
 
 # mock system info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/system//GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/system/GET'] = (
     FAKE_SYSTEM_VERSION_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-256]/GET'] = (
@@ -1594,7 +1595,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/0/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/REMOVE_ASSOCIATE/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/count'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/count/GET'] = (
     FAKE_COMMON_FAIL_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/cachepartition/0/GET'] = (
@@ -1633,10 +1634,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/synchronize_hcpair/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror?range=[0-8191]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror/count'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror/count/GET'] = (
     FAKE_COMMON_FAIL_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/smartcachepool/count'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/smartcachepool/count/GET'] = (
     FAKE_COMMON_FAIL_RESPONSE)
 
 FAKE_GET_PORTG_BY_VIEW = """
@@ -2130,7 +2131,7 @@ class FakeClient(rest_client.RestClient):
     def add_lun_to_cache(self, lunid, cache_id):
         pass
 
-    def do_call(self, url=False, data=None, method=None, calltimeout=4,
+    def do_call(self, url, data, method, calltimeout=4,
                 log_filter_flag=False):
         url = url.replace('http://192.0.2.69:8082/deviceManager/rest', '')
         command = url.replace('/210235G7J20000000000/', '')
@@ -2322,7 +2323,8 @@ class HuaweiTestBase(test.TestCase):
              "COPYSPEED": actual_speed,
              "LUNCOPYTYPE": "1",
              "SOURCELUN": "INVALID;fake_src_lun;INVALID;INVALID;INVALID",
-             "TARGETLUN": "INVALID;fake_tgt_lun;INVALID;INVALID;INVALID"}
+             "TARGETLUN": "INVALID;fake_tgt_lun;INVALID;INVALID;INVALID"},
+            'POST'
         )
 
 
@@ -5310,3 +5312,58 @@ class HuaweiConfTestCase(test.TestCase):
         fakefile = open(self.conf.cinder_huawei_conf_file, 'w')
         fakefile.write(doc.toprettyxml(indent=''))
         fakefile.close()
+
+
+@ddt.ddt
+class HuaweiRestClientTestCase(test.TestCase):
+    def setUp(self):
+        super(HuaweiRestClientTestCase, self).setUp()
+        config = mock.Mock(spec=conf.Configuration)
+        huawei_conf = FakeHuaweiConf(config, 'iSCSI')
+        huawei_conf.update_config_value()
+        self.client = rest_client.RestClient(
+            config, config.san_address, config.san_user, config.san_password)
+
+    def test_init_http_head(self):
+        self.client.init_http_head()
+        self.assertIsNone(self.client.url)
+        self.assertEqual("keep-alive",
+                         self.client.session.headers["Connection"])
+        self.assertEqual("application/json",
+                         self.client.session.headers["Content-Type"])
+        self.assertEqual(False, self.client.session.verify)
+
+    @ddt.data('POST', 'PUT', 'GET', 'DELETE')
+    def test_do_call_method(self, method):
+        self.client.init_http_head()
+
+        if method:
+            mock_func = self.mock_object(self.client.session, method.lower())
+        else:
+            mock_func = self.mock_object(self.client.session, 'post')
+
+        self.client.do_call("http://fake-rest-url", None, method)
+        mock_func.assert_called_once_with("http://fake-rest-url",
+                                          timeout=constants.SOCKET_TIMEOUT)
+
+    def test_do_call_method_invalid(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.do_call,
+                          "http://fake-rest-url", None, 'fake-method')
+
+    def test_do_call_http_error(self):
+        self.client.init_http_head()
+
+        fake_res = requests.Response()
+        fake_res.reason = 'something wrong'
+        fake_res.status_code = 500
+        fake_res.url = "http://fake-rest-url"
+
+        self.mock_object(self.client.session, 'post', return_value=fake_res)
+        res = self.client.do_call("http://fake-rest-url", None, 'POST')
+
+        expected = {"error": {"code": 500,
+                              "description":
+                                  '500 Server Error: something wrong for '
+                                  'url: http://fake-rest-url'}}
+        self.assertEqual(expected, res)
