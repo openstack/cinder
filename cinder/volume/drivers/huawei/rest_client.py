@@ -15,14 +15,12 @@
 
 import json
 import re
+import requests
 import six
-import socket
 import time
 
 from oslo_log import log as logging
 from oslo_utils import excutils
-from six.moves import http_cookiejar
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -41,7 +39,6 @@ class RestClient(object):
         self.san_address = san_address
         self.san_user = san_user
         self.san_password = san_password
-        self.init_http_head()
         self.storage_pools = kwargs.get('storage_pools',
                                         self.configuration.storage_pools)
         self.iscsi_info = kwargs.get('iscsi_info',
@@ -49,17 +46,19 @@ class RestClient(object):
         self.iscsi_default_target_ip = kwargs.get(
             'iscsi_default_target_ip',
             self.configuration.iscsi_default_target_ip)
-
-    def init_http_head(self):
-        self.cookie = http_cookiejar.CookieJar()
+        self.session = None
         self.url = None
         self.device_id = None
-        self.headers = {
-            "Connection": "keep-alive",
-            "Content-Type": "application/json",
-        }
 
-    def do_call(self, url=None, data=None, method=None,
+    def init_http_head(self):
+        self.url = None
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Connection": "keep-alive",
+            "Content-Type": "application/json"})
+        self.session.verify = False
+
+    def do_call(self, url, data, method,
                 calltimeout=constants.SOCKET_TIMEOUT, log_filter_flag=False):
         """Send requests to Huawei storage server.
 
@@ -68,43 +67,42 @@ class RestClient(object):
         """
         if self.url:
             url = self.url + url
-        handler = urllib.request.HTTPCookieProcessor(self.cookie)
-        opener = urllib.request.build_opener(handler)
-        urllib.request.install_opener(opener)
-        res_json = None
+
+        kwargs = {'timeout': calltimeout}
+        if data:
+            kwargs['data'] = json.dumps(data)
+
+        if method in ('POST', 'PUT', 'GET', 'DELETE'):
+            func = getattr(self.session, method.lower())
+        else:
+            msg = _("Request method %s is invalid.") % method
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         try:
-            socket.setdefaulttimeout(calltimeout)
-            if data:
-                data = json.dumps(data)
-            req = urllib.request.Request(url, data, self.headers)
-            if method:
-                req.get_method = lambda: method
-            res = urllib.request.urlopen(req).read().decode("utf-8")
-
-            if not log_filter_flag:
-                LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
-                             'Call Method: %(method)s\n\n'
-                             'Request Data: %(data)s\n\n'
-                             'Response Data:%(res)s\n\n'),
-                         {'url': url,
-                          'method': method,
-                          'data': data,
-                          'res': res})
-
+            res = func(url, **kwargs)
         except Exception as err:
-            LOG.error(_LE('Bad response from server: %(url)s.'
-                          ' Error: %(err)s'), {'url': url, 'err': err})
-            json_msg = ('{"error":{"code": %s,"description": "Connect to '
-                        'server error."}}') % constants.ERROR_CONNECT_TO_SERVER
-            res_json = json.loads(json_msg)
-            return res_json
+            LOG.exception(_LE('Bad response from server: %(url)s.'
+                              ' Error: %(err)s'), {'url': url, 'err': err})
+            return {"error": {"code": constants.ERROR_CONNECT_TO_SERVER,
+                              "description": "Connect to server error."}}
 
         try:
-            res_json = json.loads(res)
-        except Exception as err:
-            LOG.error(_LE('JSON transfer error: %s.'), err)
-            raise
+            res.raise_for_status()
+        except requests.HTTPError as exc:
+            return {"error": {"code": exc.response.status_code,
+                              "description": six.text_type(exc)}}
+
+        res_json = res.json()
+        if not log_filter_flag:
+            LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
+                         'Call Method: %(method)s\n\n'
+                         'Request Data: %(data)s\n\n'
+                         'Response Data:%(res)s\n\n'),
+                     {'url': url,
+                      'method': method,
+                      'data': data,
+                      'res': res_json})
 
         return res_json
 
@@ -117,7 +115,7 @@ class RestClient(object):
                     "password": self.san_password,
                     "scope": "0"}
             self.init_http_head()
-            result = self.do_call(url, data,
+            result = self.do_call(url, data, 'POST',
                                   calltimeout=constants.LOGIN_SOCKET_TIMEOUT,
                                   log_filter_flag=True)
 
@@ -131,7 +129,7 @@ class RestClient(object):
             device_id = result['data']['deviceid']
             self.device_id = device_id
             self.url = item_url + device_id
-            self.headers['iBaseToken'] = result['data']['iBaseToken']
+            self.session.headers['iBaseToken'] = result['data']['iBaseToken']
             if (result['data']['accountstate']
                     in (constants.PWD_EXPIRED, constants.PWD_RESET)):
                 self.logout()
@@ -204,7 +202,7 @@ class RestClient(object):
 
     def create_lun(self, lun_params):
         url = "/lun"
-        result = self.call(url, lun_params)
+        result = self.call(url, lun_params, 'POST')
         if result['error']['code'] == constants.ERROR_VOLUME_ALREADY_EXIST:
             lun_id = self.get_lun_id_by_name(lun_params['NAME'])
             if lun_id:
@@ -239,7 +237,7 @@ class RestClient(object):
 
     def get_all_pools(self):
         url = "/storagepool"
-        result = self.call(url, None, log_filter_flag=True)
+        result = self.call(url, None, "GET", log_filter_flag=True)
         msg = _('Query resource pool error.')
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
@@ -305,7 +303,7 @@ class RestClient(object):
         data = ({"SNAPSHOTLIST": snapshot_id}
                 if type(snapshot_id) in (list, tuple)
                 else {"SNAPSHOTLIST": [snapshot_id]})
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Activate snapshot error.'))
 
     def create_snapshot(self, lun_id, snapshot_name, snapshot_description):
@@ -315,7 +313,7 @@ class RestClient(object):
                 "PARENTTYPE": "11",
                 "DESCRIPTION": snapshot_description,
                 "PARENTID": lun_id}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
 
         msg = _('Create snapshot error.')
         self._assert_rest_result(result, msg)
@@ -381,7 +379,7 @@ class RestClient(object):
                               % srclunid),
                 "TARGETLUN": ("INVALID;%s;INVALID;INVALID;INVALID"
                               % tgtlunid)}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
 
         msg = _('Create luncopy error.')
         self._assert_rest_result(result, msg)
@@ -512,7 +510,7 @@ class RestClient(object):
 
     def _get_iscsi_tgt_port(self):
         url = "/iscsidevicename"
-        result = self.call(url, None)
+        result = self.call(url, None, 'GET')
 
         msg = _('Get iSCSI target port error.')
         self._assert_rest_result(result, msg)
@@ -576,7 +574,7 @@ class RestClient(object):
     def _create_hostgroup(self, hostgroup_name):
         url = "/hostgroup"
         data = {"TYPE": "14", "NAME": hostgroup_name}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
 
         msg = _('Create hostgroup error.')
         self._assert_rest_result(result, msg)
@@ -590,7 +588,7 @@ class RestClient(object):
                 "APPTYPE": '0',
                 "GROUPTYPE": '0',
                 "NAME": lungroup_name}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
 
         msg = _('Create lungroup error.')
         self._assert_rest_result(result, msg)
@@ -695,7 +693,7 @@ class RestClient(object):
                 "NAME": hostname,
                 "OPERATIONSYSTEM": "0",
                 "DESCRIPTION": host_name_before_hash}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Add new host error.'))
 
         if 'data' in result:
@@ -737,7 +735,7 @@ class RestClient(object):
                 "ASSOCIATEOBJTYPE": "21",
                 "ASSOCIATEOBJID": host_id}
 
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Associate host to hostgroup '
                                  'error.'))
 
@@ -748,7 +746,7 @@ class RestClient(object):
         data = {"ID": lungroup_id,
                 "ASSOCIATEOBJTYPE": lun_type,
                 "ASSOCIATEOBJID": lun_id}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Associate lun to lungroup error.'))
 
     def remove_lun_from_lungroup(self, lungroup_id, lun_id,
@@ -902,7 +900,7 @@ class RestClient(object):
     def _add_mapping_view(self, name):
         url = "/mappingview"
         data = {"NAME": name, "TYPE": "245"}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Add mapping view error.'))
 
         return result['data']['ID']
@@ -1417,7 +1415,7 @@ class RestClient(object):
         data.update(qos)
         url = "/ioclass/"
 
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Create QoS policy error.'))
 
         return result['data']['ID']
@@ -1852,7 +1850,7 @@ class RestClient(object):
         url = '/fc_initiator/'
         data = {"TYPE": '223',
                 "ID": ininame}
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Add fc initiator to array error.'))
 
     def ensure_fc_initiator_added(self, initiator_name, host_id):
