@@ -3095,6 +3095,7 @@ class DBAPIBackendTestCase(BaseTest):
                          db.is_backend_frozen(self.ctxt, host, cluster))
 
 
+@ddt.ddt
 class DBAPIGroupTestCase(BaseTest):
     def test_group_get_all_by_host(self):
         grp_type = db.group_type_create(self.ctxt, {'name': 'my_group_type'})
@@ -3148,3 +3149,72 @@ class DBAPIGroupTestCase(BaseTest):
         db.group_destroy(self.ctxt, grp_foobar['id'])
 
         db.group_type_destroy(self.ctxt, grp_type['id'])
+
+    def _create_gs_to_test_include_in(self):
+        """Helper method for test_group_include_in_* tests."""
+        return [
+            db.group_create(
+                self.ctxt, {'host': 'host1@backend1#pool1',
+                            'cluster_name': 'cluster1@backend1#pool1'}),
+            db.group_create(
+                self.ctxt, {'host': 'host1@backend2#pool2',
+                            'cluster_name': 'cluster1@backend2#pool1'}),
+            db.group_create(
+                self.ctxt, {'host': 'host2@backend#poo1',
+                            'cluster_name': 'cluster2@backend#pool'}),
+        ]
+
+    @ddt.data('host1@backend1#pool1', 'host1@backend1')
+    def test_group_include_in_cluster_by_host(self, host):
+        group = self._create_gs_to_test_include_in()[0]
+
+        cluster_name = 'my_cluster'
+        result = db.group_include_in_cluster(self.ctxt, cluster_name,
+                                             partial_rename=False, host=host)
+        self.assertEqual(1, result)
+        db_group = db.group_get(self.ctxt, group.id)
+        self.assertEqual(cluster_name, db_group.cluster_name)
+
+    def test_group_include_in_cluster_by_host_multiple(self):
+        groups = self._create_gs_to_test_include_in()[0:2]
+
+        host = 'host1'
+        cluster_name = 'my_cluster'
+        result = db.group_include_in_cluster(self.ctxt, cluster_name,
+                                             partial_rename=True, host=host)
+        self.assertEqual(2, result)
+        db_group = [db.group_get(self.ctxt, groups[0].id),
+                    db.group_get(self.ctxt, groups[1].id)]
+        for i in range(2):
+            self.assertEqual(cluster_name + groups[i].host[len(host):],
+                             db_group[i].cluster_name)
+
+    @ddt.data('cluster1@backend1#pool1', 'cluster1@backend1')
+    def test_group_include_in_cluster_by_cluster_name(self, cluster_name):
+        group = self._create_gs_to_test_include_in()[0]
+
+        new_cluster_name = 'cluster_new@backend1#pool'
+        result = db.group_include_in_cluster(self.ctxt, new_cluster_name,
+                                             partial_rename=False,
+                                             cluster_name=cluster_name)
+
+        self.assertEqual(1, result)
+        db_group = db.group_get(self.ctxt, group.id)
+        self.assertEqual(new_cluster_name, db_group.cluster_name)
+
+    def test_group_include_in_cluster_by_cluster_multiple(self):
+        groups = self._create_gs_to_test_include_in()[0:2]
+
+        cluster_name = 'cluster1'
+        new_cluster_name = 'my_cluster'
+        result = db.group_include_in_cluster(self.ctxt, new_cluster_name,
+                                             partial_rename=True,
+                                             cluster_name=cluster_name)
+
+        self.assertEqual(2, result)
+        db_groups = [db.group_get(self.ctxt, groups[0].id),
+                     db.group_get(self.ctxt, groups[1].id)]
+        for i in range(2):
+            self.assertEqual(
+                new_cluster_name + groups[i].cluster_name[len(cluster_name):],
+                db_groups[i].cluster_name)

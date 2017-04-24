@@ -1352,6 +1352,23 @@ def consistencygroup_include_in_cluster(context, cluster, partial_rename=True,
                                                     **filters)
 
 
+def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
+    """Include all generic groups matching the filters into a cluster.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of generic groups that have been changed.
+    """
+    return IMPL.group_include_in_cluster(context, cluster, partial_rename,
+                                         **filters)
+
 ###################
 
 
