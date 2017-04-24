@@ -563,6 +563,33 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
         # We must have called detach method.
         self.assertEqual(1, mock_detach.call_count)
 
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.utils.brick_get_connector')
+    @mock.patch('cinder.volume.driver.BaseVD._connect_device')
+    @mock.patch('cinder.volume.driver.BaseVD._detach_volume')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_unavailable_no_attach_info(
+            self, mock_qemu_info, mock_detach, mock_connect, *args):
+        """Test create volume with ImageCopyFailure
+
+        We'll raise an exception on _connect_device call to confirm that it
+        detaches the volume even if the exception doesn't have attach_info.
+        """
+        mock_connect.side_effect = NameError
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
+        unbound_copy_method = cinder.volume.driver.BaseVD.copy_image_to_volume
+        bound_copy_method = unbound_copy_method.__get__(self.volume.driver)
+        with mock.patch.object(self.volume.driver, 'copy_image_to_volume',
+                               side_effect=bound_copy_method):
+            self.assertRaises(exception.ImageCopyFailure,
+                              self._create_volume_from_image,
+                              fakeout_copy_image_to_volume=False)
+        # We must have called detach method.
+        self.assertEqual(1, mock_detach.call_count)
+
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_volume_from_image_clone_image_volume(self, mock_qemu_info):
         """Test create volume from image via image volume.

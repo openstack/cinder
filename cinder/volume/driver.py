@@ -434,10 +434,10 @@ class BaseVD(object):
                        force=False, remote=False):
         """Disconnect the volume from the host."""
         # Use Brick's code to do attach/detach
-        connector = attach_info['connector']
-        connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'])
-
+        if attach_info:
+            connector = attach_info['connector']
+            connector.disconnect_volume(attach_info['conn']['data'],
+                                        attach_info['device'])
         if remote:
             # Call remote manager's terminate_connection which includes
             # driver's terminate_connection and remove export
@@ -976,20 +976,20 @@ class BaseVD(object):
 
         try:
             attach_info = self._connect_device(conn)
-        except exception.DeviceUnavailable as exc:
+        except Exception as exc:
             # We may have reached a point where we have attached the volume,
             # so we have to detach it (do the cleanup).
-            attach_info = exc.kwargs.get('attach_info', None)
-            if attach_info:
-                try:
-                    LOG.debug('Device for volume %s is unavailable but did '
-                              'attach, detaching it.', volume['id'])
-                    self._detach_volume(context, attach_info, volume,
-                                        properties, force=True,
-                                        remote=remote)
-                except Exception:
-                    LOG.exception('Error detaching volume %s',
-                                  volume['id'])
+            attach_info = getattr(exc, 'kwargs', {}).get('attach_info', None)
+
+            try:
+                LOG.debug('Device for volume %s is unavailable but did '
+                          'attach, detaching it.', volume['id'])
+                self._detach_volume(context, attach_info, volume,
+                                    properties, force=True,
+                                    remote=remote)
+            except Exception:
+                LOG.exception('Error detaching volume %s',
+                              volume['id'])
             raise
 
         return (attach_info, volume)
