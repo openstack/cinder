@@ -1501,8 +1501,13 @@ class VolumeManager(manager.CleanableManager,
             if model_update:
                 volume.update(model_update)
                 volume.save()
-        except exception.CinderException as ex:
+        except Exception as ex:
             LOG.exception(_LE("Model update failed."), resource=volume)
+            try:
+                self.driver.remove_export(context.elevated(), volume)
+            except Exception:
+                LOG.exception(_LE('Could not remove export after DB model '
+                                  'failed.'))
             raise exception.ExportFailure(reason=six.text_type(ex))
 
         try:
