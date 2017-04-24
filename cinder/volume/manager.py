@@ -1935,7 +1935,7 @@ class VolumeManager(manager.CleanableManager,
         volume.save()
 
         # Detach the source volume (if it fails, don't fail the migration)
-        # As after detach and refresh, volume_attchments will be None.
+        # As after detach and refresh, volume_attachments will be None.
         # We keep volume_attachment for later attach.
         volume_attachments = []
         if orig_volume_status == 'in-use':
@@ -1969,7 +1969,7 @@ class VolumeManager(manager.CleanableManager,
                    'previous_status': volume.status,
                    'migration_status': 'success'}
 
-        # Restore the attachmens
+        # Restore the attachments
         if orig_volume_status == 'in-use':
             for attachment in volume_attachments:
                 LOG.debug('Re-attaching: %s', attachment)
