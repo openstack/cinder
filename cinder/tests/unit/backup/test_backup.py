@@ -623,7 +623,9 @@ class BackupTestCase(BaseBackupTest):
         mock_get_backup_device.assert_called_once_with(self.ctxt, backup, vol)
         mock_get_conn.assert_called_once_with()
         mock_detach_device.assert_called_once_with(self.ctxt, attach_info,
-                                                   vol, properties, False)
+                                                   vol, properties, False,
+                                                   force=True,
+                                                   ignore_errors=True)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol['status'])
@@ -738,7 +740,7 @@ class BackupTestCase(BaseBackupTest):
         mock_get_backup_device.assert_called_once_with(self.ctxt, backup, vol)
         mock_get_conn.assert_called_once_with()
         mock_terminate_connection_snapshot.assert_called_once_with(
-            self.ctxt, snap, properties, force=False)
+            self.ctxt, snap, properties, force=True)
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('in-use', vol['status'])
         self.assertEqual('backing-up', vol['previous_status'])
@@ -927,7 +929,7 @@ class BackupTestCase(BaseBackupTest):
         mock_attach_device.assert_called_once_with(self.ctxt, vol,
                                                    properties)
         mock_detach_device.assert_called_once_with(self.ctxt, attach_info,
-                                                   vol, properties)
+                                                   vol, properties, force=True)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol['status'])

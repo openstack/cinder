@@ -382,7 +382,8 @@ class BackupManager(manager.ThreadPoolManager):
             finally:
                 self._detach_device(context, attach_info,
                                     backup_device.device_obj, properties,
-                                    backup_device.is_snapshot)
+                                    backup_device.is_snapshot, force=True,
+                                    ignore_errors=True)
         finally:
             backup = objects.Backup.get_by_id(context, backup.id)
             self._cleanup_temp_volumes_snapshots_when_backup_created(
@@ -487,7 +488,8 @@ class BackupManager(manager.ThreadPoolManager):
             else:
                 backup_service.restore(backup, volume.id, device_path)
         finally:
-            self._detach_device(context, attach_info, volume, properties)
+            self._detach_device(context, attach_info, volume, properties,
+                                force=True)
 
     def delete_backup(self, context, backup):
         """Delete volume backup from configured backup service."""
@@ -894,11 +896,13 @@ class BackupManager(manager.ThreadPoolManager):
         return {'conn': conn, 'device': vol_handle, 'connector': connector}
 
     def _detach_device(self, ctxt, attach_info, device,
-                       properties, is_snapshot=False, force=False):
+                       properties, is_snapshot=False, force=False,
+                       ignore_errors=False):
         """Disconnect the volume or snapshot from the host. """
         connector = attach_info['connector']
         connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'])
+                                    attach_info['device'],
+                                    force=force, ignore_errors=ignore_errors)
         rpcapi = self.volume_rpcapi
         if not is_snapshot:
             rpcapi.terminate_connection(ctxt, device, properties,
