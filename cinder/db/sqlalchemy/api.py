@@ -2100,7 +2100,22 @@ def get_volume_summary(context, project_only):
         return []
 
     result = query.first()
-    return (result[0] or 0, result[1] or 0)
+
+    query_metadata = model_query(
+        context, models.VolumeMetadata.key, models.VolumeMetadata.value,
+        read_deleted="no")
+    if project_only:
+        query_metadata = query_metadata.join(
+            models.Volume,
+            models.Volume.id == models.VolumeMetadata.volume_id).filter_by(
+            project_id=context.project_id)
+    result_metadata = query_metadata.distinct().all()
+
+    result_metadata_list = collections.defaultdict(list)
+    for key, value in result_metadata:
+        result_metadata_list[key].append(value)
+
+    return (result[0] or 0, result[1] or 0, result_metadata_list)
 
 
 @require_admin_context

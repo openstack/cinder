@@ -89,7 +89,7 @@ REST_API_VERSION_HISTORY = """
              ``message``, ``attachment``, ``group`` and ``group-snapshot``
              list APIs.
     * 3.35 - Add ``volume-type`` filter to Get-Pools API.
-
+    * 3.36 - Add metadata to volumes/summary response body.
 """
 
 # The minimum and maximum versions of the API supported
@@ -97,7 +97,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.35"
+_MAX_API_VERSION = "3.36"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
