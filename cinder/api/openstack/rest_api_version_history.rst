@@ -313,3 +313,7 @@ user documentation.
 ----
   Add like filter support in ``volume``, ``backup``, ``snapshot``, ``message``,
   ``attachment``, ``group`` and ``group-snapshot`` list APIs.
+
+3.35
+----
+  Add ``volume-type`` filter to Get-Pools API.

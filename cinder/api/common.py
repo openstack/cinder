@@ -449,8 +449,9 @@ def get_enabled_resource_filters(resource=None):
 
 def reject_invalid_filters(context, filters, resource,
                            enable_like_filter=False):
-    if context.is_admin:
-        # Allow all options
+    if context.is_admin and resource not in ['pool']:
+        # Allow all options except resource is pool
+        # pool API is only available for admin
         return
     # Check the configured filters against those passed in resource
     configured_filters = get_enabled_resource_filters(resource)

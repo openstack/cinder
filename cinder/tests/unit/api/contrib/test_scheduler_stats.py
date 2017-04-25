@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 
 from cinder.api.contrib import scheduler_stats
@@ -45,6 +46,7 @@ def schedule_rpcapi_get_pools(self, context, filters=None):
     return all_pools
 
 
+@ddt.data
 class SchedulerStatsAPITest(test.TestCase):
     def setUp(self):
         super(SchedulerStatsAPITest, self).setUp()
@@ -171,3 +173,34 @@ class SchedulerStatsAPITest(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           self.controller.get_pools,
                           req)
+
+    @ddt.data(('3.34', False),
+              ('3.35', True))
+    @ddt.unpack
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools')
+    @mock.patch('cinder.api.common.update_general_filters')
+    def test_get_pools_by_volume_type(self,
+                                      version,
+                                      support_volume_type,
+                                      mock_update_filter,
+                                      mock_get_pools
+                                      ):
+        req = fakes.HTTPRequest.blank('/v3/%s/scheduler_stats?'
+                                      'volume_type=lvm' % fake.PROJECT_ID)
+        mock_get_pools.return_value = [{'name': 'pool1',
+                                        'capabilities': {'foo': 'bar'}}]
+        req.api_version_request = api_version.APIVersionRequest(version)
+        req.environ['cinder.context'] = self.ctxt
+        res = self.controller.get_pools(req)
+
+        expected = {
+            'pools': [{'name': 'pool1'}]
+        }
+
+        filters = None
+        if support_volume_type:
+            filters = {'volume_type': 'lvm'}
+        mock_update_filter.assert_called_once_with(self.ctxt, filters,
+                                                   'pool')
+        self.assertDictEqual(expected, res)
+        mock_get_pools.assert_called_with(mock.ANY, filters=filters)

@@ -1,0 +1,3 @@
+---
+features:
+  - Add ``volume-type`` filter to API Get-Pools
