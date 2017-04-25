@@ -600,6 +600,67 @@ class XIVProxyTest(test.TestCase):
         perf_name = p._check_perf_class_on_backend({})
         self.assertEqual('', perf_name)
 
+    def test_qos_class_name_contains_qos_type(self):
+        """Test backend naming
+
+        Test if the naming convention is correct
+        when getting the right specs with qos type
+        """
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.perf_class_list.return_value.as_list = []
+        perf_name = p._check_perf_class_on_backend({'bw': '100',
+                                                    'type': 'independent'})
+
+        self.assertEqual('cinder-qos_bw_100_type_independent', perf_name)
+
+    def test_qos_called_with_type_parameter(self):
+        """Test xcli call for qos creation with type"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.perf_class_list.return_value.as_list = []
+        perf_name = p._check_perf_class_on_backend({'bw': '100',
+                                                    'type': 'independent'})
+        p.ibm_storage_cli.cmd.perf_class_create.assert_called_once_with(
+            perf_class=perf_name,
+            type='independent')
+
+    def test_qos_called_with_wrong_type_parameter(self):
+        """Test xcli call for qos creation with wrong type"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.perf_class_list.return_value.as_list = []
+        p.ibm_storage_cli.cmd.perf_class_create.side_effect = (
+            errors.XCLIError('llegal value'))
+
+        ex = getattr(p, "_get_exception")()
+        self.assertRaises(ex, p._check_perf_class_on_backend,
+                          {'bw': '100', 'type': 'BAD'})
+
     def test_qos_class_on_backend_name_correct(self):
         """Test backend naming
 

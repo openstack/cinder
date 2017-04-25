@@ -111,6 +111,13 @@ class XIVProxy(proxy.IBMStorageProxy):
     """Proxy between the Cinder Volume and Spectrum Accelerate Storage.
 
     Supports IBM XIV, Spectrum Accelerate, A9000, A9000R
+    Version: 2.1.0
+    Required pyxcli version: 1.1.2
+
+    2.0 - First open source driver version
+    2.1.0 - Support Consistency groups through Generic volume groups
+          - Support XIV\A9000 Volume independent QoS
+
     """
     async_rates = (
         Rate(rpo=120, schedule='00:01:00'),
@@ -172,6 +179,10 @@ class XIVProxy(proxy.IBMStorageProxy):
             self.ibm_storage_remote_cli = self._init_xcli(remote_id)
         self._event_service_start()
         self._update_stats()
+        LOG.info("IBM Storage %(common_ver)s "
+                 "xiv_proxy %(proxy_ver)s. ",
+                 {'common_ver': self.full_version,
+                  'proxy_ver': self.full_version})
         self._update_system_id()
         if remote_id:
             self._update_active_schedule_objects()
@@ -355,8 +366,10 @@ class XIVProxy(proxy.IBMStorageProxy):
 
             # list is not empty, check if class has the right values
             for perf_class in classes_list:
-                if (not perf_class.max_iops == specs.get('iops', '0') or
-                        not perf_class.max_bw == specs.get('bw', '0')):
+                if (not perf_class.get('max_iops',
+                                       None) == specs.get('iops', '0') or
+                        not perf_class.get('max_bw',
+                                           None) == specs.get('bw', '0')):
                     raise self.meta['exception'].VolumeBackendAPIException(
                         data=PERF_CLASS_VALUES_ERROR %
                         {'details': perf_class_name})
@@ -374,8 +387,16 @@ class XIVProxy(proxy.IBMStorageProxy):
     def _create_qos_class(self, perf_class_name, specs):
         """Create the qos class on the backend."""
         try:
-            self._call_xiv_xcli("perf_class_create",
-                                perf_class=perf_class_name)
+            # check if we have a shared (default) perf class
+            # or an independent perf class
+            if 'type_' in perf_class_name:
+                _type = perf_class_name.split('type_')[1]
+                self._call_xiv_xcli("perf_class_create",
+                                    perf_class=perf_class_name,
+                                    type=_type)
+            else:
+                self._call_xiv_xcli("perf_class_create",
+                                    perf_class=perf_class_name)
 
         except errors.XCLIError as e:
             details = self._get_code_and_status_or_message(e)
