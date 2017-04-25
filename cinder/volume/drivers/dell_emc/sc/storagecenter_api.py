@@ -1972,6 +1972,12 @@ class SCApi(object):
         # return true/false.
         return rtn
 
+    def unmap_all(self, scvolume):
+        volumeid = self._get_id(scvolume)
+        r = self.client.post('StorageCenter/ScVolume/%s/Unmap' % volumeid,
+                             {}, True)
+        return self._check_result(r)
+
     def get_storage_usage(self):
         """Gets the storage usage object from the Dell backend.
 
