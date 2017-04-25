@@ -34,23 +34,23 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.BoolOpt('dsware_isthin',
-                default = False,
-                help = 'The flag of thin storage allocation.'),
+                default=False,
+                help='The flag of thin storage allocation.'),
     cfg.StrOpt('dsware_manager',
-               default = '',
-               help = 'Fusionstorage manager ip addr for cinder-volume.'),
+               default='',
+               help='Fusionstorage manager ip addr for cinder-volume.'),
     cfg.StrOpt('fusionstorageagent',
-               default = '',
-               help = 'Fusionstorage agent ip addr range.'),
+               default='',
+               help='Fusionstorage agent ip addr range.'),
     cfg.StrOpt('pool_type',
-               default = 'default',
+               default='default',
                help = 'Pool type, like sata-2copy.'),
     cfg.ListOpt('pool_id_filter',
-                default = [],
-                help = 'Pool id permit to use.'),
+                default=[],
+                help='Pool id permit to use.'),
     cfg.IntOpt('clone_volume_timeout',
-               default = 680,
-               help = 'Create clone volume timeout.'),
+               default=680,
+               help='Create clone volume timeout.'),
 ]
 
 CONF = cfg.CONF
@@ -108,7 +108,7 @@ class DSWAREDriver(driver.VolumeDriver):
         LOG.debug("Dsware Driver do_setup finish.")
 
     def _get_dsware_manage_ip(self, volume):
-        dsw_manager_ip = volume['provider_id']
+        dsw_manager_ip = volume.provider_id
         if dsw_manager_ip is not None:
             return dsw_manager_ip
         else:
@@ -124,7 +124,7 @@ class DSWAREDriver(driver.VolumeDriver):
                 return host.split('#')[1]
         return self.pool_type
 
-    def _create_volume(self, volume_id, volume_size, isThin, volume_host):
+    def _create_volume(self, volume_id, volume_size, is_thin, volume_host):
         pool_id = 0
         result = 1
 
@@ -147,7 +147,7 @@ class DSWAREDriver(driver.VolumeDriver):
 
         try:
             result = self.dsware_client.create_volume(
-                volume_id, pool_id, volume_size, int(isThin))
+                volume_id, pool_id, volume_size, int(is_thin))
         except Exception as e:
             LOG.exception("Create volume error, details is: %s.", e)
             raise
@@ -158,13 +158,13 @@ class DSWAREDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         # Creates a volume in Dsware.
-        LOG.debug("Begin to create volume %s in Dsware.", volume['name'])
-        volume_id = volume['name']
-        volume_size = volume['size']
-        volume_host = volume['host']
+        LOG.debug("Begin to create volume %s in Dsware.", volume.name)
+        volume_id = volume.name
+        volume_size = volume.size
+        volume_host = volume.host
         is_thin = self.configuration.dsware_isthin
         # Change GB to MB.
-        volume_size = volume_size * 1024
+        volume_size *= 1024
         self._create_volume(volume_id, volume_size, is_thin, volume_host)
 
         dsw_manager_ip = self.dsware_client.get_manage_ip()
@@ -180,14 +180,14 @@ class DSWAREDriver(driver.VolumeDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         # Creates a volume from snapshot.
-        volume_id = volume['name']
-        volume_size = volume['size']
-        snapshot_name = snapshot['name']
-        if volume_size < int(snapshot['volume_size']):
+        volume_id = volume.name
+        volume_size = volume.size
+        snapshot_name = snapshot.name
+        if volume_size < int(snapshot.volume_size):
             msg = _("Dsware: volume size can not be less than snapshot size.")
             raise exception.VolumeBackendAPIException(data=msg)
-
-        volume_size = volume_size * 1024
+        # Change GB to MB.
+        volume_size *= 1024
         self._create_volume_from_snap(volume_id, volume_size, snapshot_name)
 
         dsw_manager_ip = self.dsware_client.get_manage_ip()
@@ -198,11 +198,11 @@ class DSWAREDriver(driver.VolumeDriver):
 
         Wait volume create finished.
         """
-        volume_name = volume['name']
-        volume_size = volume['size']
-        src_volume_name = src_volume['name']
-
-        volume_size = volume_size * 1024
+        volume_name = volume.name
+        volume_size = volume.size
+        src_volume_name = src_volume.name
+        # Change GB to MB.
+        volume_size *= 1024
         result = self.dsware_client.create_volume_from_volume(
             volume_name, volume_size, src_volume_name)
         if result:
@@ -317,7 +317,7 @@ class DSWAREDriver(driver.VolumeDriver):
         # Step1: attach volume to host.
         LOG.debug("Begin to copy image to volume.")
         dsw_manager_ip = self._get_dsware_manage_ip(volume)
-        volume_attach_result = self._attach_volume(volume['name'],
+        volume_attach_result = self._attach_volume(volume.name,
                                                    dsw_manager_ip)
         volume_attach_path = ''
         if volume_attach_result is not None and int(
@@ -338,7 +338,7 @@ class DSWAREDriver(driver.VolumeDriver):
         finally:
             # Step3: detach volume from host.
             dsw_manager_ip = self._get_dsware_manage_ip(volume)
-            volume_detach_result = self._detach_volume(volume['name'],
+            volume_detach_result = self._detach_volume(volume.name,
                                                        dsw_manager_ip)
             if volume_detach_result is not None and int(
                     volume_detach_result['ret_code']) != 0:
@@ -353,12 +353,12 @@ class DSWAREDriver(driver.VolumeDriver):
         dsw_manager_ip = self._get_dsware_manage_ip(volume)
 
         already_attached = False
-        _attach_result = self._attach_volume(volume['name'], dsw_manager_ip)
+        _attach_result = self._attach_volume(volume.name, dsw_manager_ip)
         if _attach_result:
             retcode = _attach_result['ret_code']
             if int(retcode) == VOLUME_ALREADY_ATTACHED:
                 already_attached = True
-                result = self._query_volume_attach(volume['name'],
+                result = self._query_volume_attach(volume.name,
                                                    dsw_manager_ip)
                 if not result or int(result['ret_code']) != 0:
                     msg = (_("Query volume attach failed, result=%s.") %
@@ -390,7 +390,7 @@ class DSWAREDriver(driver.VolumeDriver):
             raise
         finally:
             if not already_attached:
-                self._detach_volume(volume['name'], dsw_manager_ip)
+                self._detach_volume(volume.name, dsw_manager_ip)
 
     def _get_volume(self, volume_name):
         result = self.dsware_client.query_volume(volume_name)
@@ -423,11 +423,11 @@ class DSWAREDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         # Delete volume.
         # If volume does not exist, then return.
-        LOG.debug("Begin to delete volume in Dsware: %s.", volume['name'])
-        if not self._get_volume(volume['name']):
+        LOG.debug("Begin to delete volume in Dsware: %s.", volume.name)
+        if not self._get_volume(volume.name):
             return True
 
-        return self._delete_volume(volume['name'])
+        return self._delete_volume(volume.name)
 
     def _get_snapshot(self, snapshot_name):
         snapshot_info = self.dsware_client.query_snap(snapshot_name)
@@ -459,8 +459,8 @@ class DSWAREDriver(driver.VolumeDriver):
             raise exception.SnapshotIsBusy(snapshot_name=snapshot_id)
 
     def create_snapshot(self, snapshot):
-        vol_id = 'volume-%s' % snapshot['volume_id']
-        snapshot_id = snapshot['name']
+        vol_id = 'volume-%s' % snapshot.volume_id
+        snapshot_id = snapshot.name
         if not self._get_volume(vol_id):
             LOG.error('Create Snapshot, but volume: %s not found!', vol_id)
             raise exception.VolumeNotFound(volume_id=vol_id)
@@ -468,8 +468,8 @@ class DSWAREDriver(driver.VolumeDriver):
             self._create_snapshot(snapshot_id, vol_id)
 
     def delete_snapshot(self, snapshot):
-        LOG.debug("Delete snapshot %s.", snapshot['name'])
-        snapshot_id = snapshot['name']
+        LOG.debug("Delete snapshot %s.", snapshot.name)
+        snapshot_id = snapshot.name
         if self._get_snapshot(snapshot_id):
             self._delete_snapshot(snapshot_id)
 
@@ -583,14 +583,14 @@ class DSWAREDriver(driver.VolumeDriver):
 
     def extend_volume(self, volume, new_size):
         # Extend volume in Dsware.
-        LOG.debug("Begin to extend volume in Dsware: %s.", volume['name'])
-        volume_id = volume['name']
-        if volume['size'] > new_size:
+        LOG.debug("Begin to extend volume in Dsware: %s.", volume.name)
+        volume_id = volume.name
+        if volume.size > new_size:
             msg = (_("Dsware extend Volume failed! "
                      "New size %(new_size)s should be greater than "
                      "old size %(old_size)s!")
                    % {'new_size': new_size,
-                      'old_size': volume['size']})
+                      'old_size': volume.size})
             raise exception.VolumeBackendAPIException(data=msg)
         # Change GB to MB.
         volume_size = new_size * 1024
@@ -604,7 +604,7 @@ class DSWAREDriver(driver.VolumeDriver):
         LOG.debug("Begin initialize connection.")
 
         properties = {}
-        properties['volume_name'] = volume['name']
+        properties['volume_name'] = volume.name
         properties['volume'] = volume
         properties['dsw_manager_ip'] = self._get_dsware_manage_ip(volume)
 
