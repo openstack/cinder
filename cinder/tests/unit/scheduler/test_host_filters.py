@@ -72,6 +72,18 @@ class CapacityFilterTestCase(BackendFiltersTestCase):
                                        'service': service})
         self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
+    def test_filter_passes_without_volume_id(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filter_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filter_cls.backend_passes(host, filter_properties))
+
     def test_filter_current_backend_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
