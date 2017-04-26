@@ -78,6 +78,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         3.0.0 - REST based driver
               - Retype (storage-assisted migration)
               - QoS support
+              - Support for compression on All Flash
     """
 
     VERSION = "3.0.0"
@@ -438,4 +439,4 @@ class VMAXFCDriver(driver.FibreChannelDriver):
             target(destination) information
         :returns: boolean -- True if retype succeeded, False if error
         """
-        return self.common.retype(volume, host)
+        return self.common.retype(volume, new_type, host)

@@ -35,7 +35,8 @@ class VMAXProvision(object):
         self.rest = rest
 
     def create_storage_group(
-            self, array, storagegroup_name, srp, slo, workload, extra_specs):
+            self, array, storagegroup_name, srp, slo, workload,
+            extra_specs, do_disable_compression=False):
         """Create a new storage group.
 
         :param array: the array serial number
@@ -44,6 +45,7 @@ class VMAXProvision(object):
         :param slo: the SLO (String)
         :param workload: the workload (String)
         :param extra_specs: additional info
+        :param do_disable_compression: disable compression flag
         :returns: storagegroup - storage group object
         """
         start_time = time.time()
@@ -51,7 +53,8 @@ class VMAXProvision(object):
         @coordination.synchronized("emc-sg-{storage_group}")
         def do_create_storage_group(storage_group):
             storagegroup = self.rest.create_storage_group(
-                array, storage_group, srp, slo, workload, extra_specs)
+                array, storage_group, srp, slo, workload, extra_specs,
+                do_disable_compression)
 
             LOG.debug("Create storage group took: %(delta)s H:MM:SS.",
                       {'delta': self.utils.get_time_delta(start_time,

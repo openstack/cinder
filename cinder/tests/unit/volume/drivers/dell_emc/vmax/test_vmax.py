@@ -60,6 +60,7 @@ class VMAXCommonData(object):
     storagegroup_name_i = 'OS-HostX-SRP_1-Diamond-DSS-OS-iscsi-PG'
     defaultstoragegroup_name = 'OS-SRP_1-Diamond-DSS-SG'
     default_sg_no_slo = 'OS-no_SLO-SG'
+    default_sg_compr_disabled = 'OS-SRP_1-Diamond-DSS-CD-SG'
     failed_resource = 'OS-failed-resource'
     fake_host = 'HostX@Backend#Diamond+DSS+SRP_1+000197800123'
     new_host = 'HostX@Backend#Silver+OLTP+SRP_1+000197800123'
@@ -155,6 +156,9 @@ class VMAXCommonData(object):
 
     # extra-specs
     vol_type_extra_specs = {'pool_name': u'Diamond+DSS+SRP_1+000197800123'}
+    vol_type_extra_specs_compr_disabled = {
+        'pool_name': u'Diamond+DSS+SRP_1+000197800123',
+        'storagetype:disablecompression': "true"}
     extra_specs = {'pool_name': u'Diamond+DSS+SRP_1+000197800123',
                    'slo': slo,
                    'workload': workload,
@@ -162,6 +166,8 @@ class VMAXCommonData(object):
                    'array': array,
                    'interval': 3,
                    'retries': 120}
+    extra_specs_disable_compression = deepcopy(extra_specs)
+    extra_specs_disable_compression[utils.DISABLECOMPRESSION] = "true"
     extra_specs_intervals_set = deepcopy(extra_specs)
     extra_specs_intervals_set['interval'] = 1
     extra_specs_intervals_set['retries'] = 1
@@ -176,6 +182,7 @@ class VMAXCommonData(object):
         'maskingview_name': masking_view_name_f,
         'parent_sg_name': parent_sg_f,
         'srp': srp,
+        'storagetype:disablecompression': False,
         'port_group_name': port_group_name_f,
         'slo': slo,
         'storagegroup_name': storagegroup_name_f,
@@ -190,6 +197,7 @@ class VMAXCommonData(object):
         'initiator_check': False,
         'maskingview_name': masking_view_name_f,
         'srp': srp,
+        'storagetype:disablecompression': False,
         'port_group_name': port_group_name_f,
         'slo': None,
         'parent_sg_name': parent_sg_f,
@@ -197,8 +205,25 @@ class VMAXCommonData(object):
         'volume_name': test_volume.name,
         'workload': None}
 
+    masking_view_dict_compression_disabled = {
+        'array': array,
+        'connector': connector,
+        'device_id': '00001',
+        'init_group_name': initiatorgroup_name_f,
+        'initiator_check': False,
+        'maskingview_name': masking_view_name_f,
+        'srp': srp,
+        'storagetype:disablecompression': True,
+        'port_group_name': port_group_name_f,
+        'slo': slo,
+        'parent_sg_name': parent_sg_f,
+        'storagegroup_name': 'OS-HostX-SRP_1-DiamondDSS-OS-fibre-PG-CD',
+        'volume_name': test_volume['name'],
+        'workload': workload}
+
     # vmax data
     # sloprovisioning
+    compression_info = {"symmetrixId": ["000197800128"]}
     inititiatorgroup = [{"initiator": [wwpn1],
                          "hostId": initiatorgroup_name_f,
                          "maskingview": [masking_view_name_f]},
@@ -452,6 +477,8 @@ class FakeRequestsSession(object):
                 return_object = self.data.srp_details
             elif 'workloadtype' in url:
                 return_object = self.data.workloadtype
+            elif 'compressionCapable' in url:
+                return_object = self.data.compression_info
             else:
                 return_object = self.data.slo_details
 
@@ -857,6 +884,14 @@ class VMAXUtilsTest(test.TestCase):
             srp_name, slo, workload)
         self.assertEqual(self.data.default_sg_no_slo, sg_name)
 
+    def test_get_default_storage_group_name_compr_disabled(self):
+        srp_name = self.data.srp
+        slo = self.data.slo
+        workload = self.data.workload
+        sg_name = self.utils.get_default_storage_group_name(
+            srp_name, slo, workload, True)
+        self.assertEqual(self.data.default_sg_compr_disabled, sg_name)
+
     def test_get_time_delta(self):
         start_time = 1487781721.09
         end_time = 1487781758.16
@@ -909,6 +944,41 @@ class VMAXUtilsTest(test.TestCase):
         pg2 = self.utils.get_pg_short_name(pg_over_12_chars)
         pg3 = self.utils.get_pg_short_name(pg_over_12_chars)
         self.assertEqual(pg2, pg3)
+
+    def test_is_compression_disabled_true(self):
+        extra_specs = self.data.extra_specs_disable_compression
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        self.assertTrue(do_disable_compression)
+
+    def test_is_compression_disabled_false(self):
+        # Path 1: no compressiion extra spec set
+        extra_specs = self.data.extra_specs
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        self.assertFalse(do_disable_compression)
+        # Path 2: compression extra spec set to false
+        extra_specs2 = deepcopy(extra_specs)
+        extra_specs2.update({utils.DISABLECOMPRESSION: 'false'})
+        do_disable_compression2 = self.utils.is_compression_disabled(
+            extra_specs)
+        self.assertFalse(do_disable_compression2)
+
+    def test_change_compression_type_true(self):
+        source_compr_disabled_true = 'true'
+        new_type_compr_disabled = {
+            'extra_specs': {utils.DISABLECOMPRESSION: 'no'}}
+        ans = self.utils.change_compression_type(
+            source_compr_disabled_true, new_type_compr_disabled)
+        self.assertTrue(ans)
+
+    def test_change_compression_type_false(self):
+        source_compr_disabled_true = True
+        new_type_compr_disabled = {
+            'extra_specs': {utils.DISABLECOMPRESSION: 'true'}}
+        ans = self.utils.change_compression_type(
+            source_compr_disabled_true, new_type_compr_disabled)
+        self.assertFalse(ans)
 
 
 class VMAXRestTest(test.TestCase):
@@ -1115,6 +1185,17 @@ class VMAXRestTest(test.TestCase):
             self.data.slo, self.data.workload)
         self.assertIsNone(headroom_cap)
 
+    def test_is_compression_capable_true(self):
+        compr_capable = self.rest.is_compression_capable('000197800128')
+        self.assertTrue(compr_capable)
+
+    def test_is_compression_capable_false(self):
+        compr_capable = self.rest.is_compression_capable(self.data.array)
+        self.assertFalse(compr_capable)
+        with mock.patch.object(self.rest, 'request', return_value=(200, {})):
+            compr_capable = self.rest.is_compression_capable(self.data.array)
+            self.assertFalse(compr_capable)
+
     def test_get_storage_group(self):
         ref_details = self.data.sg_details[0]
         sg_details = self.rest.get_storage_group(
@@ -1158,6 +1239,28 @@ class VMAXRestTest(test.TestCase):
             self.data.array, self.data.default_sg_no_slo, self.data.srp,
             None, None, self.data.extra_specs)
         self.assertEqual(self.data.default_sg_no_slo, sg_name)
+
+    def test_create_storage_group_compression_disabled(self):
+        with mock.patch.object(self.rest, '_create_storagegroup',
+                               return_value=(200, self.data.job_list[0])):
+            self.rest.create_storage_group(
+                self.data.array, self.data.default_sg_compr_disabled,
+                self.data.srp, self.data.slo, self.data.workload,
+                self.data.extra_specs, True)
+            payload = {"srpId": self.data.srp,
+                       "storageGroupId": self.data.default_sg_compr_disabled,
+                       "emulation": "FBA",
+                       "create_empty_storage_group": "true",
+                       "sloBasedStorageGroupParam": [
+                           {"num_of_vols": 0,
+                            "sloId": self.data.slo,
+                            "workloadSelection": self.data.workload,
+                            "volumeAttribute": {
+                                "volume_size": "0",
+                                "capacityUnit": "GB"},
+                            "noCompression": "true"}]}
+            self.rest._create_storagegroup.assert_called_once_with(
+                self.data.array, payload)
 
     def test_modify_storage_group(self):
         array = self.data.array
@@ -2651,6 +2754,17 @@ class VMAXCommonTest(test.TestCase):
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
 
+    def test_populate_masking_dict_compr_disabled(self):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs['port_group_name'] = self.data.port_group_name_f
+        extra_specs[utils.DISABLECOMPRESSION] = "true"
+        ref_mv_dict = self.data.masking_view_dict_compression_disabled
+        masking_view_dict = self.common._populate_masking_dict(
+            volume, connector, extra_specs)
+        self.assertEqual(ref_mv_dict, masking_view_dict)
+
     def test_create_cloned_volume(self):
         volume = self.data.test_clone_volume
         source_volume = self.data.test_volume
@@ -2822,6 +2936,27 @@ class VMAXCommonTest(test.TestCase):
             self.fake_xml)
         extra_specs = self.common._set_vmax_extra_specs({}, srp_record)
         self.assertEqual('Optimized', extra_specs['slo'])
+
+    def test_set_vmax_extra_specs_compr_disabled(self):
+        with mock.patch.object(self.rest, 'is_compression_capable',
+                               return_value=True):
+            srp_record = self.utils.parse_file_to_get_array_map(
+                self.fake_xml)
+            extra_specs = self.common._set_vmax_extra_specs(
+                self.data.vol_type_extra_specs_compr_disabled, srp_record)
+            ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+            ref_extra_specs['port_group_name'] = self.data.port_group_name_f
+            ref_extra_specs[utils.DISABLECOMPRESSION] = "true"
+            self.assertEqual(ref_extra_specs, extra_specs)
+
+    def test_set_vmax_extra_specs_compr_disabled_not_compr_capable(self):
+        srp_record = self.utils.parse_file_to_get_array_map(
+            self.fake_xml)
+        extra_specs = self.common._set_vmax_extra_specs(
+            self.data.vol_type_extra_specs_compr_disabled, srp_record)
+        ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        ref_extra_specs['port_group_name'] = self.data.port_group_name_f
+        self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_portgroup_as_spec(self):
         srp_record = self.utils.parse_file_to_get_array_map(
@@ -3161,41 +3296,44 @@ class VMAXCommonTest(test.TestCase):
         extra_specs = self.data.extra_specs_intervals_set
         extra_specs['port_group_name'] = self.data.port_group_name_f
         volume = self.data.test_volume
+        new_type = {'extra_specs': {}}
         host = {'host': self.data.new_host}
-        self.common.retype(volume, host)
+        self.common.retype(volume, new_type, host)
         mock_migrate.assert_called_once_with(
-            device_id, volume, host, volume_name, extra_specs)
+            device_id, volume, host, volume_name, new_type, extra_specs)
         mock_migrate.reset_mock()
         with mock.patch.object(
                 self.common, '_find_device_on_array', return_value=None):
-            self.common.retype(volume, host)
+            self.common.retype(volume, new_type, host)
             mock_migrate.assert_not_called()
 
     def test_slo_workload_migration_valid(self):
         device_id = self.data.volume_details[0]['volumeId']
         volume_name = self.data.test_volume['name']
         extra_specs = self.data.extra_specs
+        new_type = {'extra_specs': {}}
         volume = self.data.test_volume
         host = {'host': self.data.new_host}
         with mock.patch.object(self.common, '_migrate_volume'):
             self.common._slo_workload_migration(
-                device_id, volume, host, volume_name, extra_specs)
+                device_id, volume, host, volume_name, new_type, extra_specs)
             self.common._migrate_volume.assert_called_once_with(
                 extra_specs[utils.ARRAY], device_id,
                 extra_specs[utils.SRP], 'Silver',
-                'OLTP', volume_name, extra_specs)
+                'OLTP', volume_name, new_type, extra_specs)
 
     def test_slo_workload_migration_not_valid(self):
         device_id = self.data.volume_details[0]['volumeId']
         volume_name = self.data.test_volume['name']
         extra_specs = self.data.extra_specs
         volume = self.data.test_volume
+        new_type = {'extra_specs': {}}
         host = {'host': self.data.new_host}
         with mock.patch.object(self.common,
                                '_is_valid_for_storage_assisted_migration',
                                return_value=(False, 'Silver', 'OLTP')):
             migrate_status = self.common._slo_workload_migration(
-                device_id, volume, host, volume_name, extra_specs)
+                device_id, volume, host, volume_name, new_type, extra_specs)
             self.assertFalse(migrate_status)
 
     def test_slo_workload_migration_same_hosts(self):
@@ -3204,9 +3342,30 @@ class VMAXCommonTest(test.TestCase):
         extra_specs = self.data.extra_specs
         volume = self.data.test_volume
         host = {'host': self.data.fake_host}
+        new_type = {'extra_specs': {}}
         migrate_status = self.common._slo_workload_migration(
-            device_id, volume, host, volume_name, extra_specs)
+            device_id, volume, host, volume_name, new_type, extra_specs)
         self.assertFalse(migrate_status)
+
+    def test_slo_workload_migration_same_host_change_compression(self):
+        device_id = self.data.volume_details[0]['volumeId']
+        volume_name = self.data.test_volume['name']
+        extra_specs = self.data.extra_specs
+        volume = self.data.test_volume
+        host = {'host': self.data.fake_host}
+        new_type = {'extra_specs': {utils.DISABLECOMPRESSION: "true"}}
+        with mock.patch.object(
+                self.common, '_is_valid_for_storage_assisted_migration',
+                return_value=(True, self.data.slo, self.data.workload)):
+            with mock.patch.object(self.common, '_migrate_volume'):
+                migrate_status = self.common._slo_workload_migration(
+                    device_id, volume, host, volume_name, new_type,
+                    extra_specs)
+                self.assertTrue(migrate_status)
+                self.common._migrate_volume.assert_called_once_with(
+                    extra_specs[utils.ARRAY], device_id,
+                    extra_specs[utils.SRP], self.data.slo,
+                    self.data.workload, volume_name, new_type, extra_specs)
 
     @mock.patch.object(masking.VMAXMasking, 'remove_and_reset_members')
     def test_migrate_volume_success(self, mock_remove):
@@ -3215,9 +3374,10 @@ class VMAXCommonTest(test.TestCase):
             device_id = self.data.volume_details[0]['volumeId']
             volume_name = self.data.test_volume['name']
             extra_specs = self.data.extra_specs
+            new_type = {'extra_specs': {}}
             migrate_status = self.common._migrate_volume(
                 self.data.array, device_id, self.data.srp, self.data.slo,
-                self.data.workload, volume_name, extra_specs)
+                self.data.workload, volume_name, new_type, extra_specs)
             self.assertTrue(migrate_status)
             mock_remove.assert_called_once_with(
                 self.data.array, device_id, None, extra_specs, False)
@@ -3227,7 +3387,7 @@ class VMAXCommonTest(test.TestCase):
                     return_value=[]):
                 migrate_status = self.common._migrate_volume(
                     self.data.array, device_id, self.data.srp, self.data.slo,
-                    self.data.workload, volume_name, extra_specs)
+                    self.data.workload, volume_name, new_type, extra_specs)
                 self.assertTrue(migrate_status)
                 mock_remove.assert_not_called()
 
@@ -3236,24 +3396,26 @@ class VMAXCommonTest(test.TestCase):
         device_id = self.data.volume_details[0]['volumeId']
         volume_name = self.data.test_volume['name']
         extra_specs = self.data.extra_specs
+        new_type = {'extra_specs': {}}
         with mock.patch.object(
                 self.masking, 'get_or_create_default_storage_group',
                 side_effect=exception.VolumeBackendAPIException):
             migrate_status = self.common._migrate_volume(
                 self.data.array, device_id, self.data.srp, self.data.slo,
-                self.data.workload, volume_name, extra_specs)
+                self.data.workload, volume_name, new_type, extra_specs)
             self.assertFalse(migrate_status)
 
     def test_migrate_volume_failed_vol_not_added(self):
         device_id = self.data.volume_details[0]['volumeId']
         volume_name = self.data.test_volume['name']
         extra_specs = self.data.extra_specs
+        new_type = {'extra_specs': {}}
         with mock.patch.object(
                 self.rest, 'is_volume_in_storagegroup',
                 return_value=False):
             migrate_status = self.common._migrate_volume(
                 self.data.array, device_id, self.data.srp, self.data.slo,
-                self.data.workload, volume_name, extra_specs)
+                self.data.workload, volume_name, new_type, extra_specs)
             self.assertFalse(migrate_status)
 
     def test_is_valid_for_storage_assisted_migration_true(self):
@@ -3262,13 +3424,15 @@ class VMAXCommonTest(test.TestCase):
         volume_name = self.data.test_volume['name']
         ref_return = (True, 'Silver', 'OLTP')
         return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host, self.data.array, self.data.srp, volume_name)
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
         # No current sgs found
         with mock.patch.object(self.rest, 'get_storage_groups_from_volume',
                                return_value=None):
             return_val = self.common._is_valid_for_storage_assisted_migration(
-                device_id, host, self.data.array, self.data.srp, volume_name)
+                device_id, host, self.data.array, self.data.srp,
+                volume_name, False)
             self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_false(self):
@@ -3278,22 +3442,26 @@ class VMAXCommonTest(test.TestCase):
         # IndexError
         host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host, self.data.array, self.data.srp, volume_name)
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
         # Wrong array
         host2 = {'host': 'HostX@Backend#Silver+OLTP+SRP_1+00012345678'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host2, self.data.array, self.data.srp, volume_name)
+            device_id, host2, self.data.array,
+            self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
         # Wrong srp
         host3 = {'host': 'HostX@Backend#Silver+OLTP+SRP_2+000197800123'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host3, self.data.array, self.data.srp, volume_name)
+            device_id, host3, self.data.array,
+            self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
         # Already in correct sg
         host4 = {'host': self.data.fake_host}
         return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host4, self.data.array, self.data.srp, volume_name)
+            device_id, host4, self.data.array,
+            self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
 
 
@@ -3509,11 +3677,12 @@ class VMAXFCTest(test.TestCase):
 
     def test_retype(self):
         host = {'host': self.data.new_host}
+        new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
                                return_value=True):
-            self.driver.retype({}, self.data.test_volume, '', '', host)
+            self.driver.retype({}, self.data.test_volume, new_type, '', host)
             self.common.retype.assert_called_once_with(
-                self.data.test_volume, host)
+                self.data.test_volume, new_type, host)
 
 
 class VMAXISCSITest(test.TestCase):
@@ -3739,11 +3908,12 @@ class VMAXISCSITest(test.TestCase):
 
     def test_retype(self):
         host = {'host': self.data.new_host}
+        new_type = {'extra_specs': {}}
         with mock.patch.object(self.common, 'retype',
                                return_value=True):
-            self.driver.retype({}, self.data.test_volume, '', '', host)
+            self.driver.retype({}, self.data.test_volume, new_type, '', host)
             self.common.retype.assert_called_once_with(
-                self.data.test_volume, host)
+                self.data.test_volume, new_type, host)
 
 
 class VMAXMaskingTest(test.TestCase):
