@@ -33,6 +33,7 @@ class CapacityFilter(filters.BaseBackendFilter):
     def backend_passes(self, backend_state, filter_properties):
         """Return True if host has sufficient capacity."""
 
+        volid = None
         # If the volume already exists on this host, don't fail it for
         # insufficient capacity (e.g., if we are retyping)
         if backend_state.backend_id == filter_properties.get('vol_exists_on'):
