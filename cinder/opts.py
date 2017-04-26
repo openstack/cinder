@@ -299,6 +299,7 @@ def list_opts():
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
+                cinder_volume_drivers_ibm_gpfs.gpfs_remote_ssh_opts,
                 cinder_volume_drivers_ibm_ibm_storage_ds8kproxy.ds8k_opts,
                 cinder_volume_drivers_ibm_ibm_storage_ibmstorage.driver_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon.
