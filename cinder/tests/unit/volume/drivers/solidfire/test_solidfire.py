@@ -1587,7 +1587,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual(1, rem_vag.call_count)
             rem_vag.assert_called_with(1)
 
-    def test_create_group_snapshot(self):
+    def test_sf_create_group_snapshot(self):
         # Sunny day group snapshot creation.
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         name = 'great_gsnap_name'
@@ -1598,7 +1598,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(sfv,
                                '_issue_api_request',
                                return_value=fake_result) as fake_api:
-            res = sfv._create_group_snapshot(name, sf_volumes)
+            res = sfv._sf_create_group_snapshot(name, sf_volumes)
             self.assertEqual('contrived_test', res)
             fake_api.assert_called_with('CreateGroupSnapshot',
                                         expected_params,
@@ -1616,7 +1616,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_all_active_volumes',
                                return_value=active_vols),\
             mock.patch.object(sfv,
-                              '_create_group_snapshot',
+                              '_sf_create_group_snapshot',
                               return_value=None) as create:
             sfv._group_snapshot_creator(gsnap_name, vol_uuids)
             create.assert_called_with(gsnap_name,
@@ -1732,13 +1732,13 @@ class SolidFireVolumeTestCase(test.TestCase):
             mock.patch.object(sfv,
                               '_do_clone_volume',
                               return_value=kek):
-            model, vol_models = sfv.create_consistencygroup_from_src(
+            model, vol_models = sfv._create_consistencygroup_from_src(
                 ctxt, group, volumes,
                 cgsnapshot, snapshots,
                 source_cg, source_vols)
             get_snap.assert_called_with(name)
             self.assertEqual(
-                {'status': fields.ConsistencyGroupStatus.AVAILABLE}, model)
+                {'status': fields.GroupStatus.AVAILABLE}, model)
 
     def test_create_consisgroup_from_src_source_cg(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1768,14 +1768,14 @@ class SolidFireVolumeTestCase(test.TestCase):
                               return_value=kek),\
             mock.patch.object(sfv,
                               '_delete_cgsnapshot_by_name'):
-            model, vol_models = sfv.create_consistencygroup_from_src(
+            model, vol_models = sfv._create_consistencygroup_from_src(
                 ctxt, group, volumes,
                 cgsnapshot, snapshots,
                 source_cg,
                 source_vols)
             get_snap.assert_called_with(source_cg['id'])
             self.assertEqual(
-                {'status': fields.ConsistencyGroupStatus.AVAILABLE}, model)
+                {'status': fields.GroupStatus.AVAILABLE}, model)
 
     def test_create_cgsnapshot(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1790,8 +1790,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_all_active_volumes',
                                return_value=active_vols),\
             mock.patch.object(sfv,
-                              '_create_group_snapshot') as create_gsnap:
-            sfv.create_cgsnapshot(ctxt, cgsnapshot, snapshots)
+                              '_sf_create_group_snapshot') as create_gsnap:
+            sfv._create_cgsnapshot(ctxt, cgsnapshot, snapshots)
             create_gsnap.assert_called_with(pfx + cgsnapshot['id'],
                                             active_vols)
 
@@ -1807,9 +1807,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_all_active_volumes',
                                return_value=active_vols),\
             mock.patch.object(sfv,
-                              '_create_group_snapshot'):
+                              '_sf_create_group_snapshot'):
             self.assertRaises(exception.SolidFireDriverException,
-                              sfv.create_cgsnapshot,
+                              sfv._create_cgsnapshot,
                               ctxt,
                               cgsnapshot,
                               snapshots)
@@ -1818,11 +1818,11 @@ class SolidFireVolumeTestCase(test.TestCase):
         # cgsnaps on the backend yield numerous identically named snapshots.
         # create_volume_from_snapshot now searches for the correct snapshot.
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        source = {'cgsnapshot_id': 'typical_cgsnap_id',
+        source = {'group_snapshot_id': 'typical_cgsnap_id',
                   'volume_id': 'typical_vol_id',
                   'id': 'no_id_4_u'}
         name = (self.configuration.sf_volume_prefix
-                + source.get('cgsnapshot_id'))
+                + source.get('group_snapshot_id'))
         with mock.patch.object(sfv,
                                '_get_group_snapshot_by_name',
                                return_value={}) as get,\
@@ -1832,6 +1832,136 @@ class SolidFireVolumeTestCase(test.TestCase):
             result = sfv.create_volume_from_snapshot({}, source)
             get.assert_called_once_with(name)
             self.assertEqual('model', result)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_cg(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = True
+        group = mock.MagicMock()
+        result = sfv.create_group(self.ctxt, group)
+        self.assertEqual(result,
+                         {'status': fields.GroupStatus.AVAILABLE})
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_rainy(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = False
+        group = mock.MagicMock()
+        self.assertRaises(NotImplementedError,
+                          sfv.create_group,
+                          self.ctxt, group)
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_src_rainy(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = False
+        group = mock.MagicMock()
+        volumes = [mock.MagicMock()]
+        self.assertRaises(NotImplementedError,
+                          sfv.create_group_from_src,
+                          self.ctxt, group, volumes)
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_src_cg(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = True
+        group = mock.MagicMock()
+        volumes = [mock.MagicMock()]
+        ret = 'things'
+        with mock.patch.object(sfv,
+                               '_create_consistencygroup_from_src',
+                               return_value=ret):
+            result = sfv.create_group_from_src(self.ctxt,
+                                               group,
+                                               volumes)
+            self.assertEqual(ret, result)
+            group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot_rainy(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = False
+        group_snapshot = mock.MagicMock()
+        snapshots = [mock.MagicMock()]
+        self.assertRaises(NotImplementedError,
+                          sfv.create_group_snapshot,
+                          self.ctxt,
+                          group_snapshot,
+                          snapshots)
+        group_cg_test.assert_called_once_with(group_snapshot)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = True
+        group_snapshot = mock.MagicMock()
+        snapshots = [mock.MagicMock()]
+        ret = 'things'
+        with mock.patch.object(sfv,
+                               '_create_cgsnapshot',
+                               return_value=ret):
+            result = sfv.create_group_snapshot(self.ctxt,
+                                               group_snapshot,
+                                               snapshots)
+            self.assertEqual(ret, result)
+        group_cg_test.assert_called_once_with(group_snapshot)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group_rainy(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = False
+        group = mock.MagicMock()
+        volumes = [mock.MagicMock()]
+        self.assertRaises(NotImplementedError,
+                          sfv.delete_group,
+                          self.ctxt,
+                          group,
+                          volumes)
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_delete_group(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = True
+        group = mock.MagicMock()
+        volumes = [mock.MagicMock()]
+        ret = 'things'
+        with mock.patch.object(sfv,
+                               '_delete_consistencygroup',
+                               return_value=ret):
+            result = sfv.delete_group(self.ctxt,
+                                      group,
+                                      volumes)
+            self.assertEqual(ret, result)
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group_rainy(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = False
+        group = mock.MagicMock()
+        self.assertRaises(NotImplementedError,
+                          sfv.update_group,
+                          self.ctxt,
+                          group)
+        group_cg_test.assert_called_once_with(group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    def test_update_group(self, group_cg_test):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_cg_test.return_value = True
+        group = mock.MagicMock()
+        ret = 'things'
+        with mock.patch.object(sfv,
+                               '_update_consistencygroup',
+                               return_value=ret):
+            result = sfv.update_group(self.ctxt,
+                                      group)
+            self.assertEqual(ret, result)
+        group_cg_test.assert_called_once_with(group)
 
     def test_getattr_failure(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
