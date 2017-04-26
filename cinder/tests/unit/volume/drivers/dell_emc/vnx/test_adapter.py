@@ -294,6 +294,7 @@ class TestCommonAdapter(test.TestCase):
         self.assertTrue(stats['deduplication_support'])
         self.assertTrue(stats['thin_provisioning_support'])
         self.assertTrue(stats['consistencygroup_support'])
+        self.assertTrue(stats['consistent_group_snapshot_enabled'])
 
     @res_mock.patch_common_adapter
     def test_get_pool_stats(self, vnx_common, mocked):
@@ -306,6 +307,7 @@ class TestCommonAdapter(test.TestCase):
             'deduplication_support': True,
             'thin_provisioning_support': True,
             'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
 
         }
         pool_stats = vnx_common.get_pool_stats(stats)
@@ -336,6 +338,7 @@ class TestCommonAdapter(test.TestCase):
             'deduplication_support': True,
             'thin_provisioning_support': True,
             'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
 
         }
         pool_stats = vnx_common.get_pool_stats(stats)
@@ -354,6 +357,7 @@ class TestCommonAdapter(test.TestCase):
             'deduplication_support': True,
             'thin_provisioning_support': True,
             'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
 
         }
         vnx_common.reserved_percentage = 15

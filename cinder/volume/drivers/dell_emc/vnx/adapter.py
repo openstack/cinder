@@ -742,6 +742,8 @@ class CommonAdapter(object):
             pool_stats['thick_provisioning_support'] = True
             pool_stats['consistencygroup_support'] = (
                 stats['consistencygroup_support'])
+            pool_stats['consistent_group_snapshot_enabled'] = (
+                stats['consistent_group_snapshot_enabled'])
             pool_stats['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
             # Add replication v2.1 support
