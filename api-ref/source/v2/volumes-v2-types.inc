@@ -113,8 +113,8 @@ Response Example
    :language: javascript
 
 
-Show volume type details
-~~~~~~~~~~~~~~~~~~~~~~~~
+Show volume type details for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/types/{volume_type_id}
 
@@ -171,8 +171,8 @@ Request
    - tenant_id: tenant_id
 
 
-List volume types
-~~~~~~~~~~~~~~~~~
+List all volume types for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/{tenant_id}/types
 
@@ -212,8 +212,8 @@ Response Example
    :language: javascript
 
 
-Create volume type
-~~~~~~~~~~~~~~~~~~
+Create volume type for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/{tenant_id}/types
 
@@ -270,3 +270,174 @@ Response Example
 .. literalinclude:: ./samples/volume-type-show-response.json
    :language: javascript
 
+Show an encryption type for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET //v2/{tenant_id}/types/{volume_type_id}/encryption
+
+Show an encryption type.
+
+To show an encryption type for an existing volume type.
+
+Normal response codes: 200
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id
+   - tenant_id: tenant_id
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id_body
+   - encryption_id: encryption_id
+   - encryption: encryption
+   - key_size: key_size
+   - provider: provider
+   - control_location: control_location
+   - cipher: cipher
+   - deleted: deleted
+   - created_at: created_at
+   - updated_at: updated_at
+   - deleted_at: deleted_at
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/encryption-type-show-response.json
+   :language: javascript
+
+
+Delete an encryption type for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET //v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
+
+Delete an encryption type.
+
+To delete an encryption type for an existing volume type.
+
+Normal response codes: 202
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id
+   - tenant_id: tenant_id
+   - encryption_id: encryption_id
+
+Create an encryption type for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST //v2/{tenant_id}/types/{volume_type_id}/encryption
+
+Creates an encryption type.
+
+To create an encryption type for an existing volume type.
+
+Normal response codes: 200
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id
+   - tenant_id: tenant_id
+   - encryption: encryption
+   - key_size: key_size
+   - provider: provider
+   - control_location: control_location
+   - cipher: cipher
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/encryption-type-create-request.json
+   :language: javascript
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id_body
+   - encryption_id: encryption_id
+   - encryption: encryption
+   - key_size: key_size
+   - provider: provider
+   - control_location: control_location
+   - cipher: cipher
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/encryption-type-create-response.json
+   :language: javascript
+
+
+Update an encryption type for v2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST //v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
+
+Update an encryption type.
+
+To update an encryption type for an existing volume type.
+
+Normal response codes: 200
+Error response codes:
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_type_id: volume_type_id
+   - tenant_id: tenant_id
+   - encryption_id: encryption_id
+   - encryption: encryption
+   - key_size: key_size
+   - provider: provider_optional
+   - control_location: control_location
+   - cipher: cipher
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/encryption-type-update-request.json
+   :language: javascript
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - encryption: encryption
+   - key_size: key_size
+   - provider: provider_optional
+   - control_location: control_location
+   - cipher: cipher
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/encryption-type-update-response.json
+   :language: javascript

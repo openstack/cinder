@@ -1,0 +1,8 @@
+{
+    "encryption":{
+        "key_size": 128,
+        "provider": "nova.volume.encryptors.luks.LuksEncryptor",
+        "control_location":"front-end",
+        "cipher": "aes-xts-plain64"
+    }
+}

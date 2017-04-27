@@ -1,0 +1,12 @@
+{
+    "volume_type_id": "2d29462d-76cb-417c-8a9f-fb23140f1577",
+    "control_location": "front-end",
+    "deleted": false,
+    "created_at": "2016-12-28T02:32:25.000000",
+    "updated_at": null,
+    "encryption_id": "81e069c6-7394-4856-8df7-3b237ca61f74",
+    "key_size": 128,
+    "provider": "nova.volume.encryptors.luks.LuksEncryptor",
+    "deleted_at": null,
+    "cipher": "aes-xts-plain64"
+}

@@ -31,6 +31,12 @@ consistencygroup_id_2:
   in: path
   required: false
   type: string
+encryption_id:
+  description: |
+    The ID of the encryption type.
+  in: path
+  required: true
+  type: string
 force_3:
   description: |
     To delete a QoS specification even if it is in-
@@ -345,6 +351,13 @@ cgsnapshot_id:
   in: body
   required: false
   type: string
+cipher:
+  description: |
+    The encryption algorithm or mode. For example, aes-xts-plain64. The default
+    value is None.
+  in: body
+  required: false
+  type: string
 connector:
   description: |
     The ``connector`` object.
@@ -381,6 +394,13 @@ container:
   in: body
   required: true
   type: string
+control_location:
+  description: |
+    Notional service where encryption is performed. Valid values are
+    "front-end" or "back-end". The default value is "front-end".
+  in: body
+  required: false
+  type: string
 cores:
   description: |
     The number of instance cores that are allowed for
@@ -409,6 +429,33 @@ created_at:
 created_at_1:
   description: |
     Date and time when the volume was created.
+  in: body
+  required: true
+  type: string
+deleted:
+  description: |
+    The resource is deleted or not.
+  in: body
+  required: true
+  type: boolean
+deleted_at:
+  description: |
+    The date and time when the resource was deleted.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC. In the previous example, the offset value is ``-05:00``.
+
+    If the ``deleted_at`` date and time stamp is not set, its value is
+    ``null``.
   in: body
   required: true
   type: string
@@ -503,6 +550,18 @@ encrypted:
   in: body
   required: true
   type: boolean
+encryption:
+  description: |
+    The encryption information.
+  in: body
+  required: true
+  type: object
+encryption_id_body:
+  description: |
+    The UUID of the encryption.
+  in: body
+  required: true
+  type: string
 extra_specs:
   description: |
     A set of key and value pairs that contains the
@@ -727,6 +786,13 @@ key_pairs:
     user.
   in: body
   required: true
+  type: integer
+key_size:
+  description: |
+    Size of encryption key, in bits. For example, 128 or 256. The default value
+    is None.
+  in: body
+  required: false
   type: integer
 keys:
   description: |
@@ -1179,6 +1245,18 @@ properties:
   in: body
   required: true
   type: object
+provider:
+  description: |
+    The class that provides encryption support.
+  in: body
+  required: true
+  type: string
+provider_optional:
+  description: |
+    The class that provides encryption support.
+  in: body
+  required: false
+  type: string
 qos_specs:
   description: |
     A ``qos_specs`` object.
@@ -1645,6 +1723,12 @@ volume_type_5:
   in: body
   required: true
   type: array
+volume_type_id_body:
+  description: |
+    The UUID of the volume type.
+  in: body
+  required: true
+  type: string
 volume_types:
   description: |
     The list of volume types.  In an environment with
