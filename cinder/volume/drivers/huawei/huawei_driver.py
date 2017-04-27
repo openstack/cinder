@@ -201,7 +201,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             if self.metro_flag:
                 pool['hypermetro'] = self.check_func_support("HyperMetroPair")
 
-            # Asign the support function to global paramenter.
+            # assign the support function to global parameter.
             self.support_func = pool
 
         return stats
