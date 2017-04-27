@@ -349,7 +349,8 @@ class API(base.Base):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
             vref = flow_engine.storage.fetch('volume')
-            LOG.info("Volume created successfully.", resource=vref)
+            LOG.info("Create volume request issued successfully.",
+                     resource=vref)
             return vref
 
     @wrap_check_policy
