@@ -214,6 +214,10 @@ class VolumeController(volumes_v2.VolumeController):
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
+            if not uuidutils.is_uuid_like(source_volid):
+                msg = _("Source volume ID '%s' must be a "
+                        "valid UUID.") % source_volid
+                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['source_volume'] = (
                 self.volume_api.get_volume(context,
@@ -223,6 +227,10 @@ class VolumeController(volumes_v2.VolumeController):
 
         source_replica = volume.get('source_replica')
         if source_replica is not None:
+            if not uuidutils.is_uuid_like(source_replica):
+                msg = _("Source replica ID '%s' must be a "
+                        "valid UUID") % source_replica
+                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             src_vol = self.volume_api.get_volume(context,
                                                  source_replica)
@@ -238,6 +246,10 @@ class VolumeController(volumes_v2.VolumeController):
         kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
         if consistencygroup_id is not None:
+            if not uuidutils.is_uuid_like(consistencygroup_id):
+                msg = _("Consistency group ID '%s' must be a "
+                        "valid UUID.") % consistencygroup_id
+                raise exc.HTTPBadRequest(explanation=msg)
             # Not found exception will be handled at the wsgi level
             kwargs['group'] = self.group_api.get(context, consistencygroup_id)
 
