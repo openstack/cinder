@@ -247,7 +247,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 LOG.info('Volume %s does not exist, it '
                          'seems it was already deleted.', volume_name)
                 return
-            if 'zvol has children' in exc.args[0]:
+            if 'has children' in exc.args[0]:
                 self._mark_as_garbage(volume_name)
                 LOG.info('Volume %s will be deleted later.', volume_name)
                 return
