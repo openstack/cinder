@@ -3598,7 +3598,7 @@ class VolumeManager(manager.CleanableManager,
                         group, remove_volumes_ref)
                     model_update, add_volumes_update, remove_volumes_update = (
                         self.driver.update_consistencygroup(
-                            context, group,
+                            context, cg,
                             add_volumes=add_volumes_ref,
                             remove_volumes=remove_volumes_ref))
                     self._remove_consistencygroup_id_from_volumes(
