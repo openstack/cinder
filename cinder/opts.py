@@ -243,7 +243,7 @@ def list_opts():
                 cinder_common_config.core_opts,
                 cinder_common_config.global_opts,
                 cinder.compute.compute_opts,
-                cinder_compute_nova.nova_opts,
+                cinder_compute_nova.old_opts,
                 cinder_context.context_opts,
                 cinder_db_api.db_opts,
                 [cinder_db_base.db_driver_opt],
@@ -387,5 +387,11 @@ def list_opts():
         ('KEY_MANAGER',
             itertools.chain(
                 cinder_keymgr_confkeymgr.key_mgr_opts,
+            )),
+        ('NOVA_GROUP',
+            itertools.chain(
+                cinder_compute_nova.nova_opts,
+                cinder_compute_nova.nova_session_opts,
+                cinder_compute_nova.nova_auth_opts,
             )),
     ]

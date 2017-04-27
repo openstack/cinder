@@ -43,9 +43,9 @@ class InstanceLocalityFilter(filters.BaseBackendFilter):
       is by default), so that the 'OS-EXT-SRV-ATTR:host' property is returned
       when requesting instance info.
     - Either an account with privileged rights for Nova must be configured in
-      Cinder configuration (see 'os_privileged_user_name'), or the user making
-      the call needs to have sufficient rights (see
-      'extended_server_attributes' in Nova policy).
+      Cinder configuration (configure a keystone authentication plugin in the
+      [nova] section), or the user making the call needs to have sufficient
+      rights (see 'extended_server_attributes' in Nova policy).
 
     """
 

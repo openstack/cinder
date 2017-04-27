@@ -1,0 +1,11 @@
+---
+features:
+  - a [nova] section is added to configure the connection
+    to the compute service, which is needed to the
+    InstanceLocalityFilter, for example.
+deprecations:
+  - The os_privileged_xxx and nova_xxx in the [default]
+    section are deprecated in favor of the settings in
+    the [nova] section.
+fixes:
+  - Fixed using of the user's token in the nova client (bug #1686616)
