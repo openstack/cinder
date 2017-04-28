@@ -351,11 +351,6 @@ class RemoteFSDriver(driver.BaseVD):
                       'count=%d' % block_count,
                       run_as_root=self._execute_as_root)
 
-    def _fallocate(self, path, size):
-        """Creates a raw file of given size in GiB using fallocate."""
-        self._execute('fallocate', '--length=%sG' % size,
-                      path, run_as_root=self._execute_as_root)
-
     def _create_qcow2_file(self, path, size_gb):
         """Creates a QCOW2 file of a given size in GiB."""
 
