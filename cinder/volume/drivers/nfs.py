@@ -531,7 +531,10 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
 
     def _qemu_img_info(self, path, volume_name):
         return super(NfsDriver, self)._qemu_img_info_base(
-            path, volume_name, self.configuration.nfs_mount_point_base)
+            path,
+            volume_name,
+            self.configuration.nfs_mount_point_base,
+            run_as_root=True)
 
     def _check_snapshot_support(self, setup_checking=False):
         """Ensure snapshot support is enabled in config."""
