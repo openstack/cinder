@@ -155,6 +155,8 @@ class StorwizeSVCManagementSimulator(object):
                                'because it is not valid given the current '
                                'relationship state.'),
             'CMMVC5963E': ('', 'CMMVC5963E No direction has been defined.'),
+            'CMMVC5713E': ('', 'CMMVC5713E Some parameters are mutually '
+                               'exclusive.'),
 
         }
         self._fc_transitions = {'begin': {'make': 'idle_or_copied'},
@@ -210,6 +212,12 @@ class StorwizeSVCManagementSimulator(object):
                                     'delete_force': 'end'},
                                 'consistent_synchronized': {
                                     'start': 'consistent_synchronized',
+                                    'stop': 'consistent_stopped',
+                                    'stop_access': 'idling',
+                                    'delete': 'end',
+                                    'delete_force': 'end'},
+                                'consistent_copying': {
+                                    'start': 'consistent_copying',
                                     'stop': 'consistent_stopped',
                                     'stop_access': 'idling',
                                     'delete': 'end',
@@ -326,7 +334,11 @@ class StorwizeSVCManagementSimulator(object):
             'cluster',
             'linkbandwidthmbits',
             'backgroundcopyrate',
-            'copies'
+            'copies',
+            'cyclingmode',
+            'cycleperiodseconds',
+            'masterchange',
+            'auxchange',
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -1880,6 +1892,11 @@ port_speed!N/A
         if (self._volumes_list[master_vol]['capacity'] !=
                 self._volumes_list[aux_vol]['capacity']):
             return self._errors['CMMVC5754E']
+
+        cyclingmode = None
+        if 'cyclingmode' in kwargs:
+            cyclingmode = kwargs['cyclingmode'].strip('\'\"')
+
         rcrel_info = {}
         rcrel_info['id'] = self._find_unused_id(self._rcrelationship_list)
         rcrel_info['name'] = 'rcrel' + rcrel_info['id']
@@ -1901,7 +1918,7 @@ port_speed!N/A
         rcrel_info['status'] = 'online'
         rcrel_info['sync'] = ''
         rcrel_info['copy_type'] = 'global' if 'global' in kwargs else 'metro'
-        rcrel_info['cycling_mode'] = ''
+        rcrel_info['cycling_mode'] = cyclingmode if cyclingmode else ''
         rcrel_info['cycle_period_seconds'] = '300'
         rcrel_info['master_change_vdisk_id'] = ''
         rcrel_info['master_change_vdisk_name'] = ''
@@ -1918,47 +1935,64 @@ port_speed!N/A
 
     def _cmd_lsrcrelationship(self, **kwargs):
         rows = []
-        rows.append(['id', 'name', 'master_cluster_id', 'master_cluster_name',
-                     'master_vdisk_id', 'master_vdisk_name', 'aux_cluster_id',
-                     'aux_cluster_name', 'aux_vdisk_id', 'aux_vdisk_name',
-                     'consistency_group_id', 'primary',
-                     'consistency_group_name', 'state', 'bg_copy_priority',
-                     'progress', 'freeze_time', 'status', 'sync',
-                     'copy_type', 'cycling_mode', 'cycle_period_seconds',
-                     'master_change_vdisk_id', 'master_change_vdisk_name',
-                     'aux_change_vdisk_id', 'aux_change_vdisk_name'])
 
-        # Assume we always get a filtervalue argument
-        filter_key = kwargs['filtervalue'].split('=')[0]
-        filter_value = kwargs['filtervalue'].split('=')[1]
-        for k, v in self._rcrelationship_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
-                self._rc_state_transition('wait', v)
+        if 'obj' in kwargs:
+            name = kwargs['obj']
+            for k, v in self._rcrelationship_list.items():
+                if six.text_type(v['name']) == name:
+                    self._rc_state_transition('wait', v)
 
-                if self._next_cmd_error['lsrcrelationship'] == 'speed_up':
-                    self._next_cmd_error['lsrcrelationship'] = ''
-                    curr_state = v['status']
-                    while self._rc_state_transition('wait', v) == ("", ""):
-                        if curr_state == v['status']:
-                            break
+                    if self._next_cmd_error['lsrcrelationship'] == 'speed_up':
+                        self._next_cmd_error['lsrcrelationship'] = ''
                         curr_state = v['status']
+                        while self._rc_state_transition('wait', v) == ("", ""):
+                            if curr_state == v['status']:
+                                break
+                            curr_state = v['status']
 
-                rows.append([v['id'], v['name'], v['master_cluster_id'],
-                             v['master_cluster_name'], v['master_vdisk_id'],
-                             v['master_vdisk_name'], v['aux_cluster_id'],
-                             v['aux_cluster_name'], v['aux_vdisk_id'],
-                             v['aux_vdisk_name'], v['consistency_group_id'],
-                             v['primary'], v['consistency_group_name'],
-                             v['state'], v['bg_copy_priority'], v['progress'],
-                             v['freeze_time'], v['status'], v['sync'],
-                             v['copy_type'], v['cycling_mode'],
-                             v['cycle_period_seconds'],
-                             v['master_change_vdisk_id'],
-                             v['master_change_vdisk_name'],
-                             v['aux_change_vdisk_id'],
-                             v['aux_change_vdisk_name']])
+                    rows.append(['id', v['id']])
+                    rows.append(['name', v['name']])
+                    rows.append(['master_cluster_id', v['master_cluster_id']])
+                    rows.append(['master_cluster_name',
+                                v['master_cluster_name']])
+                    rows.append(['master_vdisk_id', v['master_vdisk_id']])
+                    rows.append(['master_vdisk_name', v['master_vdisk_name']])
+                    rows.append(['aux_cluster_id', v['aux_cluster_id']])
+                    rows.append(['aux_cluster_name', v['aux_cluster_name']])
+                    rows.append(['aux_vdisk_id', v['aux_vdisk_id']])
+                    rows.append(['aux_vdisk_name', v['aux_vdisk_name']])
+                    rows.append(['consistency_group_id',
+                                 v['consistency_group_id']])
+                    rows.append(['primary', v['primary']])
+                    rows.append(['consistency_group_name',
+                                 v['consistency_group_name']])
+                    rows.append(['state', v['state']])
+                    rows.append(['bg_copy_priority', v['bg_copy_priority']])
+                    rows.append(['progress', v['progress']])
+                    rows.append(['freeze_time', v['freeze_time']])
+                    rows.append(['status', v['status']])
+                    rows.append(['sync', v['sync']])
+                    rows.append(['copy_type', v['copy_type']])
+                    rows.append(['cycling_mode', v['cycling_mode']])
+                    rows.append(['cycle_period_seconds',
+                                 v['cycle_period_seconds']])
+                    rows.append(['master_change_vdisk_id',
+                                 v['master_change_vdisk_id']])
+                    rows.append(['master_change_vdisk_name',
+                                 v['master_change_vdisk_name']])
+                    rows.append(['aux_change_vdisk_id',
+                                 v['aux_change_vdisk_id']])
+                    rows.append(['aux_change_vdisk_name',
+                                 v['aux_change_vdisk_name']])
 
-        return self._print_info_cmd(rows=rows, **kwargs)
+        if 'nohdr' in kwargs:
+            for index in range(len(rows)):
+                rows[index] = ' '.join(rows[index][1:])
+        if 'delim' in kwargs:
+            for index in range(len(rows)):
+                rows[index] = kwargs['delim'].join(rows[index])
+
+        return ('%s' % '\n'.join(rows), '')
 
     def _cmd_startrcrelationship(self, **kwargs):
         if 'obj' not in kwargs:
@@ -2037,6 +2071,44 @@ port_speed!N/A
 
         return ('', '')
 
+    def _cmd_chrcrelationship(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5707E']
+        id_num = kwargs['obj']
+
+        try:
+            rcrel = self._rcrelationship_list[id_num]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        nonull_num = 0
+        masterchange = None
+        if 'masterchange' in kwargs:
+            masterchange = kwargs['masterchange'].strip('\'\"')
+            nonull_num += 1
+
+        auxchange = None
+        if 'auxchange' in kwargs:
+            auxchange = kwargs['auxchange'].strip('\'\"')
+            nonull_num += 1
+
+        cycleperiodseconds = None
+        if 'cycleperiodseconds' in kwargs:
+            cycleperiodseconds = kwargs['cycleperiodseconds'].strip('\'\"')
+            nonull_num += 1
+
+        if nonull_num > 1:
+            return self._errors['CMMVC5713E']
+        elif masterchange:
+            rcrel['master_change_vdisk_name'] = masterchange
+            return ('', '')
+        elif auxchange:
+            rcrel['aux_change_vdisk_name'] = auxchange
+            return ('', '')
+        elif cycleperiodseconds:
+            rcrel['cycle_period_seconds'] = cycleperiodseconds
+        return ('', '')
+
     def _rc_state_transition(self, function, rcrel):
         if (function == 'wait' and
                 'wait' not in self._rc_transitions[rcrel['state']]):
@@ -2045,6 +2117,10 @@ port_speed!N/A
         if rcrel['state'] == 'inconsistent_copying' and function == 'wait':
             if rcrel['progress'] == '0':
                 rcrel['progress'] = '50'
+            elif (storwize_const.GMCV_MULTI == rcrel['cycling_mode']
+                  and storwize_const.GLOBAL == rcrel['copy_type']):
+                rcrel['progress'] = '100'
+                rcrel['state'] = 'consistent_copying'
             else:
                 rcrel['progress'] = '100'
                 rcrel['state'] = 'consistent_synchronized'
@@ -3794,7 +3870,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'replication': False,
                'stretched_cluster': None,
                'nofmtdisk': False,
-               'mirror_pool': None}
+               'mirror_pool': None,
+               'cycle_period_seconds': 300,
+               }
         return opt
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
@@ -4389,7 +4467,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.replications[rep_type] = (
             self.driver.replication_factory(rep_type, fake_target))
         volume = self._create_volume()
-        volume['replication_status'] = 'enabled'
+        volume['replication_status'] = fields.ReplicationStatus.ENABLED
         fake_target_vol = 'vol-target-id'
         get_relationship.return_value = {'aux_vdisk_name': fake_target_vol}
         with mock.patch.object(
@@ -4410,7 +4488,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def _storwize_svc_extend_volume_replication_failover(self):
         volume = self._create_volume()
-        volume['replication_status'] = 'failed-over'
+        volume['replication_status'] = fields.ReplicationStatus.FAILED_OVER
         with mock.patch.object(
                 self.driver,
                 '_get_volume_replicated_type_mirror') as mirror_type:
@@ -4833,151 +4911,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertIn(volume['id'], self.driver._vdiskcopyops)
             self.driver.delete_volume(volume)
             self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
-
-    def test_storwize_create_volume_with_replication_disable(self):
-        volume = self._generate_vol_info()
-
-        model_update = self.driver.create_volume(volume)
-        self.assertIsNone(model_update)
-
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertIsNone(model_update)
-
-    def test_storwize_create_volume_with_strech_cluster_replication(self):
-        # Set replication flag, set pool openstack2 for secondary volume.
-        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
-
-        # Create a type for repliation.
-        volume = self._generate_vol_info()
-        volume_type = self._create_replication_volume_type(True)
-        volume['volume_type_id'] = volume_type['id']
-
-        self.driver.do_setup(self.ctxt)
-
-        model_update = self.driver.create_volume(volume)
-        self.assertEqual('copying', model_update['replication_status'])
-
-        volume['replication_status'] = 'copying'
-        volume['replication_extended_status'] = None
-
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('copying', model_update['replication_status'])
-
-        # Primary copy offline, secondary copy online, data consistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline')
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('active-stop', model_update['replication_status'])
-
-        # Primary copy offline, secondary copy online, data inconsistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'No',
-                                       copy="secondary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('error', model_update['replication_status'])
-
-        # Primary copy online, secondary copy offline, data consistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
-                                       copy="secondary")
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline',
-                                       copy="secondary")
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online')
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('error', model_update['replication_status'])
-
-        # Primary copy online, secondary copy offline, data inconsistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
-                                       copy="secondary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('error', model_update['replication_status'])
-
-        # Primary copy offline, secondary copy offline, data consistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
-                                       copy="secondary")
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline',
-                                       copy="primary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('error', model_update['replication_status'])
-
-        # Primary copy offline, secondary copy offline, data inconsistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
-                                       copy="secondary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('error', model_update['replication_status'])
-
-        # Primary copy online, secondary copy online, data inconsistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online',
-                                       copy="secondary")
-        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online',
-                                       copy="primary")
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
-                                       copy="secondary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('copying', model_update['replication_status'])
-
-        # Primary copy online, secondary copy online, data consistent
-        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
-                                       copy="secondary")
-        model_update = self.driver.get_replication_status(self.ctxt, volume)
-        self.assertEqual('active', model_update['replication_status'])
-
-        # Check the volume copy created on pool openstack2.
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        self.assertIn('openstack2', attrs['mdisk_grp_name'])
-
-        primary_status = attrs['primary']
-        self.driver.promote_replica(self.ctxt, volume)
-
-        # After promote_replica, primary copy should be swiched.
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        self.assertEqual(primary_status[0], attrs['primary'][1])
-        self.assertEqual(primary_status[1], attrs['primary'][0])
-
-        self.driver.delete_volume(volume)
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        self.assertIsNone(attrs)
-
-    def test_storwize_create_cloned_volume_with_strech_cluster_replica(self):
-        # Set replication flag, set pool openstack2 for secondary volume.
-        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
-        self.driver.do_setup(self.ctxt)
-
-        # Create a source volume.
-        src_volume = self._generate_vol_info()
-        self.driver.create_volume(src_volume)
-
-        # Create a type for repliation.
-        volume = self._generate_vol_info()
-        volume_type = self._create_replication_volume_type(True)
-        volume['volume_type_id'] = volume_type['id']
-
-        # Create a cloned volume from source volume.
-        model_update = self.driver.create_cloned_volume(volume, src_volume)
-        self.assertEqual('copying', model_update['replication_status'])
-
-        # Check the replication volume created on pool openstack2.
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        self.assertIn('openstack2', attrs['mdisk_grp_name'])
-
-    def test_storwize_create_snapshot_volume_with_strech_cluster_replica(self):
-        # Set replication flag, set pool openstack2 for secondary volume.
-        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
-        self.driver.do_setup(self.ctxt)
-
-        vol1 = self._create_volume()
-        snap = self._generate_snap_info(vol1.id)
-        self.driver.create_snapshot(snap)
-        vol2 = self._generate_vol_info()
-
-        # Create a type for repliation.
-        vol2 = self._generate_vol_info()
-        volume_type = self._create_replication_volume_type(True)
-        vol2['volume_type_id'] = volume_type['id']
-
-        model_update = self.driver.create_volume_from_snapshot(vol2, snap)
-        self._assert_vol_exists(vol2['name'], True)
-        self.assertEqual('copying', model_update['replication_status'])
-        # Check the replication volume created on pool openstack2.
-        attrs = self.driver._helpers.get_vdisk_attributes(vol2['name'])
-        self.assertIn('openstack2', attrs['mdisk_grp_name'])
 
     # Test groups operation ####
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
@@ -6210,13 +6143,25 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
     def _create_replica_volume_type(self, enable,
                                     rep_type=storwize_const.METRO,
-                                    opts=None, vol_type_name=None):
+                                    opts=None, vol_type_name=None,
+                                    cycle_period_seconds=None):
         # Generate a volume type for volume repliation.
         if enable:
             if rep_type == storwize_const.METRO:
                 spec = {'replication_enabled': '<is> True',
                         'replication_type': '<in> metro'}
                 type_name = 'rep_metro'
+            elif rep_type == storwize_const.GMCV:
+                if cycle_period_seconds:
+                    spec = {'replication_enabled': '<is> True',
+                            'replication_type': '<in> gmcv',
+                            'drivers:cycle_period_seconds':
+                                cycle_period_seconds}
+                    type_name = 'rep_gmcv_with_cps' + cycle_period_seconds
+                else:
+                    spec = {'replication_enabled': '<is> True',
+                            'replication_type': '<in> gmcv'}
+                    type_name = 'rep_gmcv_default'
             else:
                 spec = {'replication_enabled': '<is> True',
                         'replication_type': '<in> global'}
@@ -6238,6 +6183,14 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             True, rep_type=storwize_const.METRO)
         self.gm_type = self._create_replica_volume_type(
             True, rep_type=storwize_const.GLOBAL)
+        self.gmcv_default_type = self._create_replica_volume_type(
+            True, rep_type=storwize_const.GMCV)
+        self.gmcv_with_cps600_type = self._create_replica_volume_type(
+            True, rep_type=storwize_const.GMCV, cycle_period_seconds="600")
+        self.gmcv_with_cps900_type = self._create_replica_volume_type(
+            True, rep_type=storwize_const.GMCV, cycle_period_seconds="900")
+        self.gmcv_with_cps86401_type = self._create_replica_volume_type(
+            True, rep_type=storwize_const.GMCV, cycle_period_seconds="86401")
         self.non_replica_type = self._create_replica_volume_type(False)
 
     def _create_test_volume(self, rep_type):
@@ -6328,44 +6281,146 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
 
         # Create global mirror replication.
         volume, model_update = self._create_test_volume(self.gm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
 
-    def _validate_replic_vol_creation(self, volume):
-        # Create metro mirror volume
+        # Create global mirror with change volumes replication.
+        volume, model_update = self._create_test_volume(
+            self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
+        # gmcv with specified cycle_period_seconds
+        volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
+        # gmcv with invalid cycle_period_seconds
+        self.assertRaises(exception.InvalidInput,
+                          self._create_test_volume,
+                          self.gmcv_with_cps86401_type)
+
+    def _validate_replic_vol_creation(self, volume, isGMCV=False):
         self._assert_vol_exists(volume['name'], True)
         self._assert_vol_exists(
+            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], True)
+        if isGMCV:
+            self._assert_vol_exists(
+                storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'], True)
+            self._assert_vol_exists(
+                storwize_const.REPLICA_CHG_VOL_PREFIX +
+                storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], True)
+
+        rel_info = self.driver._helpers.get_relationship_info(volume['name'])
+        self.assertIsNotNone(rel_info)
+        if isGMCV:
+            vol_rep_type = rel_info['copy_type']
+            cycling_mode = rel_info['cycling_mode']
+            cycle_period_seconds = rel_info['cycle_period_seconds']
+            rep_type = self.driver._get_volume_replicated_type(
+                self.ctxt, volume)
+            src_opts = self.driver._get_vdisk_params(volume['volume_type_id'])
+            opt_cycle_period_seconds = six.text_type(
+                src_opts.get('cycle_period_seconds'))
+            self.assertEqual(opt_cycle_period_seconds, cycle_period_seconds)
+            self.assertEqual(storwize_const.GMCV_MULTI, cycling_mode)
+            self.assertEqual(storwize_const.GLOBAL, vol_rep_type)
+            self.assertEqual(storwize_const.GMCV, rep_type)
+            self.assertEqual('master', rel_info['primary'])
+            self.assertEqual(volume['name'], rel_info['master_vdisk_name'])
+            self.assertEqual(
+                storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
+                rel_info['aux_vdisk_name'])
+            self.assertEqual('inconsistent_copying', rel_info['state'])
+            self.assertEqual(
+                storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'],
+                rel_info['master_change_vdisk_name'])
+            self.assertEqual(
+                storwize_const.REPLICA_CHG_VOL_PREFIX +
+                storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
+                rel_info['aux_change_vdisk_name'])
+            self.assertEqual('inconsistent_copying', rel_info['state'])
+            self.sim._rc_state_transition('wait', rel_info)
+            self.assertEqual('consistent_copying', rel_info['state'])
+        else:
+            vol_rep_type = rel_info['copy_type']
+            rep_type = self.driver._get_volume_replicated_type(
+                self.ctxt, volume)
+            self.assertEqual(rep_type, vol_rep_type)
+
+            self.assertEqual('master', rel_info['primary'])
+            self.assertEqual(volume['name'], rel_info['master_vdisk_name'])
+            self.assertEqual(
+                storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
+                rel_info['aux_vdisk_name'])
+            self.assertEqual('inconsistent_copying', rel_info['state'])
+
+            self.sim._rc_state_transition('wait', rel_info)
+            self.assertEqual('consistent_synchronized', rel_info['state'])
+
+    def _validate_gmcv_vol_retype(self, volume):
+        self._assert_vol_exists(volume['name'], True)
+        self._assert_vol_exists(
+            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], True)
+        self._assert_vol_exists(storwize_const.REPLICA_CHG_VOL_PREFIX +
+                                volume['name'], True)
+        self._assert_vol_exists(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
             storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], True)
 
         rel_info = self.driver._helpers.get_relationship_info(volume['name'])
         self.assertIsNotNone(rel_info)
-        vol_rep_type = rel_info['copy_type']
-        rep_type = self.driver._get_volume_replicated_type(self.ctxt, volume)
-        self.assertEqual(vol_rep_type, rep_type)
 
-        self.assertEqual(rel_info['primary'], 'master')
-        self.assertEqual(rel_info['master_vdisk_name'], volume['name'])
-        self.assertEqual(
-            rel_info['aux_vdisk_name'],
-            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'])
-        self.assertEqual(rel_info['state'], 'inconsistent_copying')
+        src_opts = self.driver._get_vdisk_params(volume['volume_type_id'])
+        opt_cycle_period_seconds = six.text_type(
+            src_opts.get('cycle_period_seconds'))
+        self.assertEqual(opt_cycle_period_seconds,
+                         rel_info['cycle_period_seconds'])
+        self.assertEqual(storwize_const.GMCV_MULTI, rel_info['cycling_mode'])
+        self.assertEqual(storwize_const.GLOBAL, rel_info['copy_type'])
+        self.assertEqual(storwize_const.GMCV,
+                         self.driver._get_volume_replicated_type(
+                             self.ctxt, volume))
+        self.assertEqual('master', rel_info['primary'])
+        self.assertEqual(volume['name'], rel_info['master_vdisk_name'])
+        self.assertEqual((storwize_const.REPLICA_CHG_VOL_PREFIX
+                          + volume['name']),
+                         rel_info['master_change_vdisk_name'])
+        aux_vdisk_name = (storwize_const.REPLICA_AUX_VOL_PREFIX
+                          + volume['name'])
+        self.assertEqual(aux_vdisk_name,
+                         rel_info['aux_vdisk_name'])
+        self.assertEqual((storwize_const.REPLICA_CHG_VOL_PREFIX
+                          + aux_vdisk_name),
+                         rel_info['aux_change_vdisk_name'])
 
-        self.sim._rc_state_transition('wait', rel_info)
-        self.assertEqual(rel_info['state'], 'consistent_synchronized')
-
-    def _validate_replic_vol_deletion(self, volume):
+    def _validate_replic_vol_deletion(self, volume, isGMCV=False):
         self._assert_vol_exists(volume['name'], False)
         self._assert_vol_exists(
             storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], False)
+        if isGMCV:
+            # All change volumes should be deleted
+            self._assert_vol_exists(
+                storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'], False)
+            self._assert_vol_exists(
+                storwize_const.REPLICA_CHG_VOL_PREFIX +
+                storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], False)
         rel_info = self.driver._helpers.get_relationship_info(volume['name'])
         self.assertIsNone(rel_info)
 
@@ -6377,19 +6432,43 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication volume.
         vol1, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         snap = testutils.create_snapshot(self.ctxt, vol1.id)
         self.driver.create_snapshot(snap)
 
         vol2 = self._generate_vol_info(self.mm_type)
         model_update = self.driver.create_volume_from_snapshot(vol2, snap)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(vol2)
 
         self.driver.delete_snapshot(snap)
         self.driver.delete_volume(vol1)
         self.driver.delete_volume(vol2)
+
+        # Create gmcv replication volume.
+        vol1, model_update = self._create_test_volume(self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(vol1, True)
+        snap = testutils.create_snapshot(self.ctxt, vol1.id)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_snapshot,
+                          snap)
+        self.driver.delete_volume(vol1)
+
+        # gmcv with specified cycle_period_seconds
+        vol1, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(vol1, True)
+        snap = testutils.create_snapshot(self.ctxt, vol1.id)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_snapshot, snap)
+        self.driver.delete_volume(vol1)
 
     def test_storwize_create_cloned_volume_with_mirror_replica(self):
         # Set replication target
@@ -6399,14 +6478,48 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create a source metro mirror replication volume.
         src_volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         volume = self._generate_vol_info(self.mm_type)
 
         # Create a cloned volume from source volume.
         model_update = self.driver.create_cloned_volume(volume, src_volume)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
+
+        self.driver.delete_volume(src_volume)
+        self.driver.delete_volume(volume)
+        # Create a source gmcv replication volume.
+        src_volume, model_update = self._create_test_volume(
+            self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        volume = self._generate_vol_info(self.gmcv_default_type)
+
+        # Create a cloned volume from source volume.
+        model_update = self.driver.create_cloned_volume(volume, src_volume)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        self.driver.delete_volume(src_volume)
+        self.driver.delete_volume(volume)
+
+        # Create a source gmcv volume with specified cycle_period_seconds
+        src_volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        volume = self._generate_vol_info(self.gmcv_with_cps600_type)
+
+        # Create a cloned volume from source volume.
+        model_update = self.driver.create_cloned_volume(volume, src_volume)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
 
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
@@ -6456,15 +6569,64 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         host = {'host': 'openstack@svc#openstack'}
 
         volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.mm_type['id'], self.gm_type['id'])
+        # Change the mirror type from mm to gm
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt,
+                          volume, self.gm_type, diff, host)
+
+        # Retype from mm to gmcv
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.mm_type['id'], self.gmcv_with_cps600_type['id'])
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt,
+                          volume, self.gmcv_with_cps600_type, diff, host)
 
         diff, _equal = volume_types.volume_types_diff(
             self.ctxt, self.non_replica_type['id'], self.mm_type['id'])
-        # Disable replica
+        # Retype from mm to non-replica
         retyped, model_update = self.driver.retype(
             self.ctxt, volume, self.non_replica_type, diff, host)
-        self.assertEqual('disabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.DISABLED,
+                         model_update['replication_status'])
         self._assert_vol_exists(
+            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], False)
+
+        self.driver.delete_volume(volume)
+        self._assert_vol_exists(volume['name'], False)
+        rel_info = self.driver._helpers.get_relationship_info(volume['name'])
+        self.assertIsNone(rel_info)
+
+        # Create gmcv volume
+        volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        # Retype from gmcv to gm
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.gmcv_with_cps900_type['id'], self.gm_type['id'])
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt,
+                          volume, self.gm_type, diff, host)
+        # Retype from gmcv to non-replica
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.gmcv_with_cps900_type['id'],
+            self.non_replica_type['id'])
+        retyped, model_update = self.driver.retype(
+            self.ctxt, volume, self.non_replica_type, diff, host)
+        self.assertEqual(fields.ReplicationStatus.DISABLED,
+                         model_update['replication_status'])
+        # All change volumes should be deleted
+        self._assert_vol_exists(
+            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], False)
+        self._assert_vol_exists(
+            storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'], False)
+        self._assert_vol_exists(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
             storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'], False)
 
         self.driver.delete_volume(volume)
@@ -6477,23 +6639,98 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
-        host = {'host': 'openstack@svc#openstack'}
-
-        diff, _equal = volume_types.volume_types_diff(
-            self.ctxt, self.non_replica_type['id'], self.mm_type['id'])
 
         volume, model_update = self._create_test_volume(self.non_replica_type)
         self.assertIsNone(model_update)
 
-        # Enable replica
+        # Retype to mm replica
+        host = {'host': 'openstack@svc#openstack'}
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.non_replica_type['id'], self.mm_type['id'])
         retyped, model_update = self.driver.retype(
             self.ctxt, volume, self.mm_type, diff, host)
         volume['volume_type_id'] = self.mm_type['id']
         volume['volume_type'] = self.mm_type
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
 
         self.driver.delete_volume(volume)
+
+        # Create non-replica volume
+        volume, model_update = self._create_test_volume(self.non_replica_type)
+        self.assertIsNone(model_update)
+
+        # Retype to gmcv replica
+        host = {'host': 'openstack@svc#openstack'}
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.non_replica_type['id'],
+            self.gmcv_with_cps900_type['id'])
+        retyped, model_update = self.driver.retype(
+            self.ctxt, volume, self.gmcv_with_cps900_type, diff, host)
+        volume['volume_type_id'] = self.gmcv_with_cps900_type['id']
+        volume['volume_type'] = self.gmcv_with_cps900_type
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
+
+    def test_storwize_retype_from_gmcv_to_gmcv_replication(self):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create gmcv default volume
+        volume, model_update = self._create_test_volume(self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        # Retype to gmcv with cycle_period_seconds 600 replica
+        host = {'host': 'openstack@svc#openstack'}
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.gmcv_default_type['id'],
+            self.gmcv_with_cps600_type['id'])
+        self.driver.retype(self.ctxt, volume,
+                           self.gmcv_with_cps600_type, diff, host)
+        volume['volume_type_id'] = self.gmcv_with_cps600_type['id']
+        volume['volume_type'] = self.gmcv_with_cps600_type
+        self._validate_gmcv_vol_retype(volume)
+
+        # Retype to gmcv with cycle_period_seconds 900 replica
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.gmcv_with_cps600_type['id'],
+            self.gmcv_with_cps900_type['id'])
+        self.driver.retype(self.ctxt, volume,
+                           self.gmcv_with_cps900_type, diff, host)
+        volume['volume_type_id'] = self.gmcv_with_cps900_type['id']
+        volume['volume_type'] = self.gmcv_with_cps900_type
+        self._validate_gmcv_vol_retype(volume)
+
+        # Retype to gmcv with invalid cycle_period_seconds
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.gmcv_with_cps600_type['id'],
+            self.gmcv_with_cps86401_type['id'])
+        self.assertRaises(exception.InvalidInput, self.driver.retype,
+                          self.ctxt, volume, self.gmcv_with_cps86401_type,
+                          diff, host)
+
+        # Retype to gmcv default volume
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt,
+            self.gmcv_with_cps900_type['id'],
+            self.gmcv_default_type['id'])
+        self.driver.retype(self.ctxt, volume,
+                           self.gmcv_default_type, diff, host)
+        volume['volume_type_id'] = self.gmcv_default_type['id']
+        volume['volume_type'] = self.gmcv_default_type
+        self._validate_gmcv_vol_retype(volume)
+
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
 
     def test_storwize_extend_volume_replication(self):
         # Set replication target.
@@ -6501,9 +6738,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
 
-        # Create metro mirror replication.
+        # Create metro mirror replication volume.
         volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         self.driver.extend_volume(volume, '13')
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
@@ -6518,15 +6756,47 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
 
+        # Create gmcv replication volume.
+        volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        self.driver.extend_volume(volume, 15)
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 15)
+
+        attrs = self.driver._aux_backend_helpers.get_vdisk_attributes(
+            storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 15)
+
+        attrs = self.driver._aux_backend_helpers.get_vdisk_attributes(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
+            storwize_const.REPLICA_AUX_VOL_PREFIX +
+            volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 15)
+
+        attrs = self.driver._helpers.get_vdisk_attributes(
+            storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 15)
+
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume)
+
     def test_storwize_manage_existing_mismatch_with_volume_replication(self):
         # Set replication target.
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
 
-        # Create replication volume.
+        # Create mm replication volume.
         rep_volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         # Create non-replication volume.
         non_rep_volume, model_update = self._create_test_volume(
@@ -6551,6 +6821,31 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         new_volume['volume_type'] = self.gm_type
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver.manage_existing, new_volume, ref)
+
+        ref = {'source-name': rep_volume['name']}
+        new_volume['volume_type_id'] = self.gmcv_with_cps900_type['id']
+        new_volume['volume_type'] = self.gmcv_with_cps900_type
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        self.driver.delete_volume(rep_volume)
+        self.driver.delete_volume(new_volume)
+
+        # Create gmcv default replication volume
+        rep_volume, model_update = self._create_test_volume(
+            self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        new_volume = self._generate_vol_info()
+        ref = {'source-name': rep_volume['name']}
+        new_volume['volume_type_id'] = self.gmcv_with_cps900_type['id']
+        new_volume['volume_type'] = self.gmcv_with_cps900_type
+        # manage existing gmcv volume with different cycle period seconds
+        self.assertRaises(
+            exception.ManageExistingVolumeTypeMismatch,
+            self.driver.manage_existing,
+            new_volume,
+            ref)
         self.driver.delete_volume(rep_volume)
         self.driver.delete_volume(new_volume)
 
@@ -6560,9 +6855,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
 
-        # Create replication volume.
+        # Create mm replication volume.
         rep_volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         uid_of_master = self._get_vdisk_uid(rep_volume['name'])
         uid_of_aux = self._get_vdisk_uid(
@@ -6580,6 +6876,49 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             storwize_const.REPLICA_AUX_VOL_PREFIX + new_volume['name'])
         self.assertEqual(uid_of_master, uid_of_master_volume)
         self.assertEqual(uid_of_aux, uid_of_aux_volume)
+
+        self.driver.delete_volume(rep_volume)
+        # Create gmcv replication volume.
+        rep_volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        uid_of_master = self._get_vdisk_uid(rep_volume['name'])
+        uid_of_master_change = self._get_vdisk_uid(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
+            rep_volume['name'])
+        uid_of_aux = self._get_vdisk_uid(
+            storwize_const.REPLICA_AUX_VOL_PREFIX +
+            rep_volume['name'])
+        uid_of_aux_change = self._get_vdisk_uid(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
+            storwize_const.REPLICA_AUX_VOL_PREFIX +
+            rep_volume['name'])
+
+        new_volume = self._generate_vol_info()
+        ref = {'source-name': rep_volume['name']}
+        new_volume['volume_type_id'] = self.gmcv_with_cps900_type['id']
+        new_volume['volume_type'] = self.gmcv_with_cps900_type
+        self.driver.manage_existing(new_volume, ref)
+
+        # Check the uid of the volume which has been renamed.
+        uid_of_new_master = self._get_vdisk_uid(new_volume['name'])
+        uid_of_new_master_change = self._get_vdisk_uid(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
+            new_volume['name'])
+        uid_of_new_aux = self._get_vdisk_uid(
+            storwize_const.REPLICA_AUX_VOL_PREFIX +
+            new_volume['name'])
+        uid_of_new_aux_change = self._get_vdisk_uid(
+            storwize_const.REPLICA_CHG_VOL_PREFIX +
+            storwize_const.REPLICA_AUX_VOL_PREFIX +
+            new_volume['name'])
+
+        self.assertEqual(uid_of_master, uid_of_new_master)
+        self.assertEqual(uid_of_aux, uid_of_new_aux)
+        self.assertEqual(uid_of_master_change, uid_of_new_master_change)
+        self.assertEqual(uid_of_aux_change, uid_of_new_aux_change)
 
         self.driver.delete_volume(rep_volume)
 
@@ -6618,18 +6957,30 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         volume, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         self._validate_replic_vol_creation(volume)
 
         # Delete volume in non-failover state
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
 
+        # Create gmcv replication.
+        gmcv_volume, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(gmcv_volume, True)
+
+        # Delete gmcv volume in non-failover state
+        self.driver.delete_volume(gmcv_volume)
+        self._validate_replic_vol_deletion(gmcv_volume, True)
+
         non_replica_vol, model_update = self._create_test_volume(
             self.non_replica_type)
         self.assertIsNone(model_update)
 
-        volumes = [volume, non_replica_vol]
+        volumes = [volume, non_replica_vol, gmcv_volume]
         # Delete volume in failover state
         self.driver.failover_host(
             self.ctxt, volumes, self.rep_target['backend_id'])
@@ -6641,6 +6992,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         # Delete replicate volume in failover state
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
+
+        self.driver.delete_volume(gmcv_volume)
+        self._validate_replic_vol_deletion(gmcv_volume, True)
+
         self.driver.failover_host(
             self.ctxt, volumes, 'default')
         self.driver.delete_volume(non_replica_vol)
@@ -6665,7 +7020,12 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver._helpers.delete_rc_volume(fake_name)
         get_relationship_info.assert_called_once_with(fake_name)
         delete_relationship.assert_called_once_with(fake_name)
-        delete_vdisk.assert_called_once_with(fake_name, False)
+        master_change_fake_name = (
+            storwize_const.REPLICA_CHG_VOL_PREFIX + fake_name)
+        calls = [mock.call(master_change_fake_name, False),
+                 mock.call(fake_name, False)]
+        delete_vdisk.assert_has_calls(calls, any_order=True)
+        self.assertEqual(2, delete_vdisk.call_count)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_vdisk')
@@ -6714,9 +7074,16 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
-        volumes = [mm_vol]
+        # Create gmcv replication.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        volumes = [mm_vol, gmcv_vol]
 
         self.driver._replica_enabled = False
         self.assertRaises(exception.UnableToFailOver,
@@ -6742,27 +7109,41 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                               self.driver.failover_host,
                               self.ctxt, volumes, 'default')
         self.driver.delete_volume(mm_vol)
+        self.driver.delete_volume(gmcv_vol)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_relationship_info')
     def test_failover_volume_relationship_error(self, get_relationship_info):
         # Create global mirror replication.
         gm_vol, model_update = self._create_test_volume(self.gm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create gmcv replication.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         get_relationship_info.side_effect = [None,
+                                             exception.VolumeDriverException,
+                                             None,
                                              exception.VolumeDriverException]
         expected_list = [{'updates': {'replication_status':
-                                      'error_failing-over',
+                                      fields.ReplicationStatus.FAILOVER_ERROR,
                                       'status': 'error'},
-                          'volume_id': gm_vol['id']}
+                          'volume_id': gm_vol['id']},
+                         {'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILOVER_ERROR,
+                                      'status': 'error'},
+                          'volume_id': gmcv_vol['id']}
                          ]
-        volumes_update = self.driver._failover_replica_volumes(self.ctxt,
-                                                               [gm_vol])
+        volumes_update = self.driver._failover_replica_volumes(
+            self.ctxt, [gm_vol, gmcv_vol])
         self.assertEqual(expected_list, volumes_update)
 
-        volumes_update = self.driver._failover_replica_volumes(self.ctxt,
-                                                               [gm_vol])
+        volumes_update = self.driver._failover_replica_volumes(
+            self.ctxt, [gm_vol, gmcv_vol])
         self.assertEqual(expected_list, volumes_update)
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
@@ -6778,18 +7159,31 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         # Create global replication volume.
         gm_vol, model_update = self._create_test_volume(self.gm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
-        volumes = [mm_vol, gm_vol]
-        expected_list = [{'updates': {'replication_status': 'failed-over'},
-                          'volume_id': mm_vol['id']},
-                         {'updates': {'replication_status': 'failed-over'},
-                          'volume_id': gm_vol['id']}
-                         ]
+        # Create gmcv volume.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        volumes = [mm_vol, gm_vol, gmcv_vol]
+        expected_list = [
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': mm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': gm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': gmcv_vol['id']}]
 
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, self.rep_target['backend_id'])
@@ -6806,6 +7200,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gm_vol)
+        self.driver.delete_volume(gmcv_vol)
 
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, None)
@@ -6825,8 +7220,16 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         mm_vol['status'] = 'in-use'
+
+        # Create gmcv replication.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_with_cps600_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        gmcv_vol['status'] = 'in-use'
 
         # Create non-replication volume.
         non_replica_vol, model_update = self._create_test_volume(
@@ -6834,15 +7237,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertIsNone(model_update)
         non_replica_vol['status'] = 'error'
 
-        volumes = [mm_vol, non_replica_vol]
+        volumes = [mm_vol, gmcv_vol, non_replica_vol]
 
         rep_data1 = json.dumps({'previous_status': mm_vol['status']})
-        rep_data2 = json.dumps({'previous_status': non_replica_vol['status']})
+        rep_data2 = json.dumps({'previous_status': gmcv_vol['status']})
+        rep_data3 = json.dumps({'previous_status': non_replica_vol['status']})
+
         expected_list = [{'updates': {'status': 'error',
                                       'replication_driver_data': rep_data1},
                           'volume_id': mm_vol['id']},
                          {'updates': {'status': 'error',
                                       'replication_driver_data': rep_data2},
+                          'volume_id': gmcv_vol['id']},
+                         {'updates': {'status': 'error',
+                                      'replication_driver_data': rep_data3},
                           'volume_id': non_replica_vol['id']},
                          ]
 
@@ -6869,6 +7277,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                           non_replica_vol)
         self.driver.failover_host(self.ctxt, volumes, 'default')
         self.driver.delete_volume(mm_vol)
+        self.driver.delete_volume(gmcv_vol)
         self.driver.delete_volume(non_replica_vol)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
@@ -6907,26 +7316,45 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create metro mirror replication.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
         # Create global mirror replication.
         gm_vol, model_update = self._create_test_volume(self.gm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
-        volumes = [gm_vol, mm_vol]
-        failover_expect = [{'updates': {'replication_status': 'failed-over'},
-                            'volume_id': gm_vol['id']},
-                           {'updates': {'replication_status': 'failed-over'},
-                            'volume_id': mm_vol['id']}
-                           ]
+        # Create gmcv replication.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_with_cps900_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
 
-        failback_expect = [{'updates': {'replication_status': 'enabled',
-                                        'status': 'available'},
-                            'volume_id': gm_vol['id']},
-                           {'updates': {'replication_status': 'enabled',
-                                        'status': 'available'},
-                            'volume_id': mm_vol['id']},
-                           ]
+        volumes = [gm_vol, mm_vol, gmcv_vol]
+        failover_expect = [
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': gm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': mm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': gmcv_vol['id']}]
+
+        failback_expect = [
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.ENABLED,
+                 'status': 'available'},
+             'volume_id': gm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.ENABLED,
+                 'status': 'available'},
+             'volume_id': mm_vol['id']},
+            {'updates':
+                {'replication_status': fields.ReplicationStatus.ENABLED,
+                 'status': 'available'},
+             'volume_id': gmcv_vol['id']}]
         # Already failback
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, 'default')
@@ -6952,6 +7380,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertTrue(update_volume_stats.called)
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gm_vol)
+        self.driver.delete_volume(gmcv_vol)
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_volume_stats')
@@ -6967,11 +7396,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create replication volume.
         mm_vol, model_update = self._create_test_volume(self.mm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         mm_vol['status'] = 'in-use'
         gm_vol, model_update = self._create_test_volume(self.gm_type)
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
         gm_vol['status'] = 'available'
+
+        # Create gmcv replication.
+        gmcv_vol, model_update = self._create_test_volume(
+            self.gmcv_default_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        gmcv_vol['status'] = 'in-use'
 
         # Create non-replication volume.
         non_replica_vol1, model_update = self._create_test_volume(
@@ -6983,22 +7421,30 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         non_replica_vol1['status'] = 'error'
         non_replica_vol2['status'] = 'available'
 
-        volumes = [mm_vol, non_replica_vol1, non_replica_vol2, gm_vol]
+        volumes = [mm_vol, gmcv_vol, non_replica_vol1,
+                   non_replica_vol2, gm_vol]
 
         rep_data0 = json.dumps({'previous_status': mm_vol['status']})
-        rep_data1 = json.dumps({'previous_status': non_replica_vol1['status']})
-        rep_data2 = json.dumps({'previous_status': non_replica_vol2['status']})
-        failover_expect = [{'updates': {'replication_status': 'failed-over'},
-                            'volume_id': gm_vol['id']},
-                           {'updates': {'status': 'error',
-                                        'replication_driver_data': rep_data0},
-                            'volume_id': mm_vol['id']},
-                           {'updates': {'status': 'error',
-                                        'replication_driver_data': rep_data1},
-                            'volume_id': non_replica_vol1['id']},
-                           {'updates': {'status': 'error',
-                                        'replication_driver_data': rep_data2},
-                            'volume_id': non_replica_vol2['id']}]
+        rep_data1 = json.dumps({'previous_status': gmcv_vol['status']})
+        rep_data2 = json.dumps({'previous_status': non_replica_vol1['status']})
+        rep_data3 = json.dumps({'previous_status': non_replica_vol2['status']})
+        failover_expect = [
+            {'updates':
+             {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+             'volume_id': gm_vol['id']},
+            {'updates': {'status': 'error',
+             'replication_driver_data': rep_data0},
+             'volume_id': mm_vol['id']},
+            {'updates': {'status': 'error',
+             'replication_driver_data': rep_data1},
+             'volume_id': gmcv_vol['id']},
+            {'updates': {'status': 'error',
+             'replication_driver_data': rep_data2},
+             'volume_id': non_replica_vol1['id']},
+            {'updates': {'status': 'error',
+             'replication_driver_data': rep_data3},
+             'volume_id': non_replica_vol2['id']}]
+
         # Already failback
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, 'default')
@@ -7016,15 +7462,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         # fail back operation
         mm_vol['replication_driver_data'] = json.dumps(
             {'previous_status': 'in-use'})
+        gmcv_vol['replication_driver_data'] = json.dumps(
+            {'previous_status': 'in-use'})
         non_replica_vol1['replication_driver_data'] = json.dumps(
             {'previous_status': 'error'})
         non_replica_vol2['replication_driver_data'] = json.dumps(
             {'previous_status': 'available'})
         gm_vol['status'] = 'in-use'
-        rep_data3 = json.dumps({'previous_status': gm_vol['status']})
+        rep_data4 = json.dumps({'previous_status': gm_vol['status']})
         failback_expect = [{'updates': {'status': 'in-use',
                                         'replication_driver_data': ''},
                             'volume_id': mm_vol['id']},
+                           {'updates': {'status': 'in-use',
+                                        'replication_driver_data': ''},
+                            'volume_id': gmcv_vol['id']},
                            {'updates': {'status': 'error',
                                         'replication_driver_data': ''},
                             'volume_id': non_replica_vol1['id']},
@@ -7032,7 +7483,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                         'replication_driver_data': ''},
                             'volume_id': non_replica_vol2['id']},
                            {'updates': {'status': 'error',
-                                        'replication_driver_data': rep_data3},
+                                        'replication_driver_data': rep_data4},
                             'volume_id': gm_vol['id']}]
         target_id, volume_list = self.driver.failover_host(
             self.ctxt, volumes, 'default')
@@ -7043,6 +7494,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertTrue(update_storwize_state.called)
         self.assertTrue(update_volume_stats.called)
         self.driver.delete_volume(mm_vol)
+        self.driver.delete_volume(gmcv_vol)
         self.driver.delete_volume(non_replica_vol1)
         self.driver.delete_volume(non_replica_vol2)
 
@@ -7111,20 +7563,29 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         mm_vol = self._generate_vol_info(self.mm_type)
         tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol['name']
 
-        volumes = [mm_vol]
+        # Create gmcv replication.
+        gmcv_vol = self._generate_vol_info(self.gmcv_with_cps600_type)
+        tgt_gmcv_volume = (storwize_const.REPLICA_AUX_VOL_PREFIX +
+                           gmcv_vol['name'])
+        volumes = [mm_vol, gmcv_vol]
+
         fake_info = {'volume': 'fake',
                      'master_vdisk_name': 'fake',
                      'aux_vdisk_name': 'fake'}
         sync_state = {'state': storwize_const.REP_CONSIS_SYNC,
                       'primary': 'fake'}
         sync_state.update(fake_info)
+
+        sync_copying_state = {'state': storwize_const.REP_CONSIS_COPYING,
+                              'primary': 'fake'}
+        sync_copying_state.update(fake_info)
+
         disconn_state = {'state': storwize_const.REP_IDL_DISC,
                          'primary': 'master'}
         disconn_state.update(fake_info)
         stop_state = {'state': storwize_const.REP_CONSIS_STOP,
                       'primary': 'aux'}
         stop_state.update(fake_info)
-
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_relationship_info',
                                mock.Mock(return_value=None)):
@@ -7139,17 +7600,29 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_relationship_info',
+                               mock.Mock(return_value=sync_copying_state)):
+            self.driver._sync_with_aux(self.ctxt, volumes)
+            self.assertFalse(start_relationship.called)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_relationship_info',
                                mock.Mock(return_value=disconn_state)):
             self.driver._sync_with_aux(self.ctxt, volumes)
-            start_relationship.assert_called_once_with(tgt_volume)
+            calls = [mock.call(tgt_volume), mock.call(tgt_gmcv_volume)]
+            start_relationship.assert_has_calls(calls, any_order=True)
+            self.assertEqual(2, start_relationship.call_count)
 
+        start_relationship.reset_mock()
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_relationship_info',
                                mock.Mock(return_value=stop_state)):
             self.driver._sync_with_aux(self.ctxt, volumes)
-            start_relationship.assert_called_with(tgt_volume,
-                                                  primary='aux')
+            calls = [mock.call(tgt_volume, primary='aux'),
+                     mock.call(tgt_gmcv_volume, primary='aux')]
+            start_relationship.assert_has_calls(calls, any_order=True)
+            self.assertEqual(2, start_relationship.call_count)
         self.driver.delete_volume(mm_vol)
+        self.driver.delete_volume(gmcv_vol)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_relationship_info')
@@ -7158,12 +7631,18 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     def test_wait_replica_vol_ready(self, get_relationship_info):
         # Create metro mirror replication.
         mm_vol = self._generate_vol_info(self.mm_type)
+
+        # Create gmcv replication.
+        gmcv_vol = self._generate_vol_info(self.gmcv_with_cps900_type)
+
         fake_info = {'volume': 'fake',
                      'master_vdisk_name': 'fake',
                      'aux_vdisk_name': 'fake',
                      'primary': 'fake'}
         sync_state = {'state': storwize_const.REP_CONSIS_SYNC}
         sync_state.update(fake_info)
+        sync_copying_state = {'state': storwize_const.REP_CONSIS_COPYING}
+        sync_copying_state.update(fake_info)
         disconn_state = {'state': storwize_const.REP_IDL_DISC}
         disconn_state.update(fake_info)
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
@@ -7175,8 +7654,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_relationship_info',
+                               mock.Mock(return_value=None)):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver._wait_replica_vol_ready,
+                              self.ctxt, gmcv_vol)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_relationship_info',
                                mock.Mock(return_value=sync_state)):
             self.driver._wait_replica_vol_ready(self.ctxt, mm_vol)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_relationship_info',
+                               mock.Mock(return_value=sync_copying_state)):
+            self.driver._wait_replica_vol_ready(self.ctxt, gmcv_vol)
 
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_relationship_info',
@@ -7184,3 +7675,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver._wait_replica_vol_ready,
                               self.ctxt, mm_vol)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_relationship_info',
+                               mock.Mock(return_value=disconn_state)):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver._wait_replica_vol_ready,
+                              self.ctxt, gmcv_vol)
