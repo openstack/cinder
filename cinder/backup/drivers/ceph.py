@@ -1202,6 +1202,7 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug('Delete started for backup=%s', backup.id)
 
         delete_failed = False
+        has_pool = True
         try:
             self._try_delete_base_image(backup)
         except self.rbd.ImageNotFound:
@@ -1210,9 +1211,15 @@ class CephBackupDriver(driver.BackupDriver):
                 "not found. Deleting backup metadata.",
                 {'backup': backup.id, 'volume': backup.volume_id})
             delete_failed = True
+        except self.rados.ObjectNotFound:
+            LOG.warning("The pool %(pool)s doesn't exist.",
+                        {'pool': backup.container})
+            delete_failed = True
+            has_pool = False
 
-        with rbd_driver.RADOSClient(self, backup.container) as client:
-            VolumeMetadataBackup(client, backup.id).remove_if_exists()
+        if has_pool:
+            with rbd_driver.RADOSClient(self, backup.container) as client:
+                VolumeMetadataBackup(client, backup.id).remove_if_exists()
 
         if delete_failed:
             LOG.info("Delete of backup '%(backup)s' for volume '%(volume)s' "
