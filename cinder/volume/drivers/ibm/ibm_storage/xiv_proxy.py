@@ -2452,12 +2452,28 @@ class XIVProxy(proxy.IBMStorageProxy):
         :returns: array of FC target WWPNs
         """
         target_wwpns = []
-        target_wwpns += (
-            [t.get('wwpn') for t in
-                self._call_xiv_xcli("fc_port_list") if
-                t.get('wwpn') != '0000000000000000' and
-                t.get('role') == 'Target' and
-                t.get('port_state') == 'Online'])
+
+        fc_port_list = self._call_xiv_xcli("fc_port_list")
+        if host is None:
+            target_wwpns += (
+                [t.get('wwpn') for t in
+                 fc_port_list if
+                 t.get('wwpn') != '0000000000000000' and
+                 t.get('role') == 'Target' and
+                 t.get('port_state') == 'Online'])
+        else:
+            host_conect_list = self._call_xiv_xcli("host_connectivity_list",
+                                                   host=host.get('name'))
+            for connection in host_conect_list:
+                fc_port = connection.get('local_fc_port')
+                target_wwpns += (
+                    [t.get('wwpn') for t in
+                     fc_port_list if
+                     t.get('wwpn') != '0000000000000000' and
+                     t.get('role') == 'Target' and
+                     t.get('port_state') == 'Online' and
+                     t.get('component_id') == fc_port])
+
         fc_targets = list(set(target_wwpns))
         fc_targets.sort(key=self._sort_last_digit)
         LOG.debug("fc_targets : %s" % fc_targets)
