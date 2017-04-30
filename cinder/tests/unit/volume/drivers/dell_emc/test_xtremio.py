@@ -37,9 +37,10 @@ typ2id = {'volumes': 'vol-id',
           'consistency-group-volumes': 'cg-vol-id',
           }
 
-xms_init = {'xms': {1: {'version': '4.0.0'}},
+xms_init = {'xms': {1: {'version': '4.2.0',
+                        'sw-version': '4.2.0-30'}},
             'clusters': {1: {'name': 'brick1',
-                             'sys-sw-version': "4.0.0-devel_ba23ee5381eeab73",
+                             'sys-sw-version': "4.2.0-devel_ba23ee5381eeab73",
                              'ud-ssd-space': '8146708710',
                              'ud-ssd-space-in-use': '708710',
                              'vol-size': '29884416',
@@ -249,16 +250,16 @@ class CommonData(object):
                  }
 
     test_volume = fake_volume_obj(context,
-                                  name = 'vol1',
-                                  size = 1,
-                                  volume_name = 'vol1',
-                                  id = '192eb39b-6c2f-420c-bae3-3cfd117f0001',
-                                  provider_auth = None,
-                                  project_id = 'project',
-                                  display_name = 'vol1',
-                                  display_description = 'test volume',
-                                  volume_type_id = None,
-                                  consistencygroup_id =
+                                  name='vol1',
+                                  size=1,
+                                  volume_name='vol1',
+                                  id='192eb39b-6c2f-420c-bae3-3cfd117f0001',
+                                  provider_auth=None,
+                                  project_id='project',
+                                  display_name='vol1',
+                                  display_description='test volume',
+                                  volume_type_id=None,
+                                  consistencygroup_id=
                                   '192eb39b-6c2f-420c-bae3-3cfd117f0345',
                                   )
     test_snapshot = D()
@@ -328,7 +329,9 @@ class BaseXtremIODriverTestCase(test.TestCase):
                                 xtremio_volumes_per_glance_cache = 100,
                                 driver_ssl_cert_verify = True,
                                 driver_ssl_cert_path =
-                                '/test/path/root_ca.crt')
+                                '/test/path/root_ca.crt',
+                                xtremio_array_busy_retry_count=5,
+                                xtremio_array_busy_retry_interval=5)
 
         def safe_get(key):
             return getattr(self.config, key)
@@ -339,9 +342,9 @@ class BaseXtremIODriverTestCase(test.TestCase):
         clean_xms_data()
 
         self.driver = xtremio.XtremIOISCSIDriver(configuration=self.config)
-        self.driver.client = xtremio.XtremIOClient4(self.config,
-                                                    self.config
-                                                    .xtremio_cluster_name)
+        self.driver.client = xtremio.XtremIOClient42(self.config,
+                                                     self.config
+                                                     .xtremio_cluster_name)
         self.data = CommonData()
 
 
@@ -351,6 +354,8 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
     def test_check_for_setup_error(self, req):
         req.side_effect = xms_request
         self.driver.check_for_setup_error()
+        self.assertEqual(self.driver.client.__class__.__name__,
+                         'XtremIOClient42')
 
     def test_fail_check_for_setup_error(self, req):
         req.side_effect = xms_request
@@ -358,6 +363,13 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.check_for_setup_error)
         xms_data['clusters'] = clusters
+
+    def test_check_for_setup_error_ver4(self, req):
+        req.side_effect = xms_request
+        xms_data['xms'][1]['sw-version'] = '4.0.10-34.hotfix1'
+        self.driver.check_for_setup_error()
+        self.assertEqual(self.driver.client.__class__.__name__,
+                         'XtremIOClient4')
 
     def test_fail_check_for_array_version(self, req):
         req.side_effect = xms_request
@@ -1300,6 +1312,22 @@ class XtremIODriverFCTestCase(BaseXtremIODriverTestCase):
                                                          self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
         self.assertEqual(1, len(xms_data['initiator-groups']))
+
+    def test_get_initiator_igs_ver4(self, req):
+        req.side_effect = xms_request
+        wwpn1 = '11:22:33:44:55:66:77:88'
+        wwpn2 = '11:22:33:44:55:66:77:89'
+        port_addresses = [wwpn1, wwpn2]
+        ig_id = ['', 'my_ig', 1]
+        self.driver.client = xtremio.XtremIOClient4(self.config,
+                                                    self.config
+                                                    .xtremio_cluster_name)
+
+        def get_fake_initiator(wwpn):
+            return {'port-address': wwpn, 'ig-id': ig_id}
+        with mock.patch.object(self.driver.client, 'get_initiator',
+                               side_effect=get_fake_initiator):
+            self.driver.client.get_initiators_igs(port_addresses)
 
     def test_get_free_lun(self, req):
         def lm_response(*args, **kwargs):
