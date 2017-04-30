@@ -76,7 +76,6 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Support for compression on All Flash
               - Volume replication 2.1 (bp add-vmax-replication)
               - rename and restructure driver (bp vmax-rename-dell-emc)
-
     """
 
     VERSION = "2.5.0"
@@ -357,8 +356,8 @@ class VMAXFCDriver(driver.FibreChannelDriver):
                 for initiator in map_d['initiator_port_wwn_list']:
                     init_targ_map[initiator] = map_d['target_port_wwn_list']
         else:  # No lookup service, pre-zoned case.
-            target_wwns = self.common.get_target_wwns(storage_system,
-                                                      connector)
+            target_wwns = self.common.get_target_wwns_list(
+                storage_system, volume, connector)
             for initiator in initiator_wwns:
                 init_targ_map[initiator] = target_wwns
 
