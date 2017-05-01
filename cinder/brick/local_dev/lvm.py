@@ -639,8 +639,8 @@ class LVM(executor.Executor):
         # order to prevent a race condition.
         self._wait_for_volume_deactivation(name)
 
-    @utils.retry(exceptions=exception.VolumeNotDeactivated, retries=3,
-                 backoff_rate=1)
+    @utils.retry(exceptions=exception.VolumeNotDeactivated, retries=5,
+                 backoff_rate=2)
     def _wait_for_volume_deactivation(self, name):
         LOG.debug("Checking to see if volume %s has been deactivated.",
                   name)
