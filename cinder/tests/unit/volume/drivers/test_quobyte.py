@@ -608,13 +608,11 @@ class QuobyteDriverTestCase(test.TestCase):
 
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
-        drv.get_active_image_from_info = mock.Mock(return_value=volume['name'])
         image_utils.qemu_img_info = mock.Mock(return_value=img_info)
         image_utils.resize_image = mock.Mock()
 
         drv.extend_volume(volume, 3)
 
-        drv.get_active_image_from_info.assert_called_once_with(volume)
         image_utils.qemu_img_info.assert_called_once_with(volume_path,
                                                           run_as_root=False)
         image_utils.resize_image.assert_called_once_with(volume_path, 3)
