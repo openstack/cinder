@@ -2119,19 +2119,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume_api.scheduler_rpcapi.extend_volume.assert_called_once_with(
             self.context, volume, 3, ["RESERVATION"], request_spec)
 
-        # Test direct volume path
-        limit_check.side_effect = None
-        reserve.side_effect = None
-        db.volume_update(self.context, volume.id, {'status': 'available'})
-        ext_mock = mock.MagicMock(side_effect=exception.ServiceTooOld)
-        volume_api.volume_rpcapi.extend_volume = mock.MagicMock()
-        volume_api.scheduler_rpcapi.extend_volume = ext_mock
-
-        volume_api.extend(self.context, volume, 3)
-
-        volume_api.volume_rpcapi.extend_volume.assert_called_once_with(
-            self.context, volume, 3, ["RESERVATION"])
-
         # clean up
         self.volume.delete_volume(self.context, volume)
 
