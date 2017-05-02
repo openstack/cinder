@@ -29,6 +29,7 @@ from oslo_db.sqlalchemy import test_base
 from oslo_db.sqlalchemy import test_migrations
 from oslo_db.sqlalchemy import utils as db_utils
 import sqlalchemy
+from sqlalchemy.engine import reflection
 
 from cinder.db import migration
 import cinder.db.sqlalchemy.migrate_repo
@@ -1098,13 +1099,55 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(workers.c.race_preventer.type,
                               self.INTEGER_TYPE)
 
+    def get_table_names(self, engine):
+        inspector = reflection.Inspector.from_engine(engine)
+        return inspector.get_table_names()
+
+    def get_foreign_key_columns(self, engine, table_name):
+        foreign_keys = set()
+        table = db_utils.get_table(engine, table_name)
+        inspector = reflection.Inspector.from_engine(engine)
+        for column_dict in inspector.get_columns(table_name):
+            column_name = column_dict['name']
+            column = getattr(table.c, column_name)
+            if column.foreign_keys:
+                foreign_keys.add(column_name)
+        return foreign_keys
+
+    def get_indexed_columns(self, engine, table_name):
+        indexed_columns = set()
+        for index in db_utils.get_indexes(engine, table_name):
+            for column_name in index['column_names']:
+                indexed_columns.add(column_name)
+        return indexed_columns
+
+    def assert_each_foreign_key_is_part_of_an_index(self):
+        engine = self.migrate_engine
+
+        non_indexed_foreign_keys = set()
+
+        for table_name in self.get_table_names(engine):
+            indexed_columns = self.get_indexed_columns(engine, table_name)
+            foreign_key_columns = self.get_foreign_key_columns(
+                engine, table_name
+            )
+            for column_name in foreign_key_columns - indexed_columns:
+                non_indexed_foreign_keys.add(table_name + '.' + column_name)
+
+        self.assertSetEqual(set(), non_indexed_foreign_keys)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
+        self.assert_each_foreign_key_is_part_of_an_index()
 
 
 class TestSqliteMigrations(test_base.DbTestCase,
                            MigrationsMixin):
-    pass
+    def assert_each_foreign_key_is_part_of_an_index(self):
+        # Skip the test for SQLite because SQLite does not list
+        # UniqueConstraints as indexes, which makes this test fail.
+        # Given that SQLite is only for testing purposes, it is safe to skip
+        pass
 
 
 class TestMysqlMigrations(test_base.MySQLOpportunisticTestCase,
