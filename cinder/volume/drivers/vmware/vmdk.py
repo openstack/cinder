@@ -877,7 +877,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # We first create a descriptor with desired settings.
         self.volumeops.create_flat_extent_virtual_disk_descriptor(
-            dc_ref, path, image_size_in_bytes / units.Ki, adapter_type,
+            dc_ref, path, image_size_in_bytes // units.Ki, adapter_type,
             EAGER_ZEROED_THICK_VMDK_TYPE)
         # Upload the image and use it as the flat extent.
         try:
@@ -996,7 +996,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             profile_id = self._get_storage_profile_id(volume)
             self.volumeops.attach_disk_to_backing(
                 backing,
-                image_size_in_bytes / units.Ki, disk_type,
+                image_size_in_bytes // units.Ki, disk_type,
                 adapter_type,
                 profile_id,
                 vmdk_path.get_descriptor_ds_file_path())
