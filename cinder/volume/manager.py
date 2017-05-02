@@ -3097,6 +3097,41 @@ class VolumeManager(manager.CleanableManager,
         # anything in the backend storage.
         return None, None, None
 
+    def _collect_volumes_for_group(self, context, group, volumes, add=True):
+        if add:
+            valid_status = VALID_ADD_VOL_TO_GROUP_STATUS
+        else:
+            valid_status = VALID_REMOVE_VOL_FROM_GROUP_STATUS
+        volumes_ref = []
+        if not volumes:
+            return volumes_ref
+        for add_vol in volumes.split(','):
+            try:
+                add_vol_ref = objects.Volume.get_by_id(context, add_vol)
+            except exception.VolumeNotFound:
+                LOG.error("Update group "
+                          "failed to %(op)s volume-%(volume_id)s: "
+                          "VolumeNotFound.",
+                          {'volume_id': add_vol_ref.id,
+                           'op': 'add' if add else 'remove'},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                raise
+            if add_vol_ref.status not in valid_status:
+                msg = (_("Can not %(op)s volume %(volume_id)s to "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': add_vol_ref.id,
+                        'group_id': group.id,
+                        'status': add_vol_ref.status,
+                        'valid': valid_status,
+                        'op': 'add' if add else 'remove'})
+                raise exception.InvalidVolume(reason=msg)
+            if add:
+                self._check_is_our_resource(add_vol_ref)
+            volumes_ref.append(add_vol_ref)
+        return volumes_ref
+
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
         """Updates group.
@@ -3105,60 +3140,14 @@ class VolumeManager(manager.CleanableManager,
         or removing volumes from the group.
         """
 
-        add_volumes_ref = []
-        remove_volumes_ref = []
-        add_volumes_list = []
-        remove_volumes_list = []
-        if add_volumes:
-            add_volumes_list = add_volumes.split(',')
-        if remove_volumes:
-            remove_volumes_list = remove_volumes.split(',')
-        for add_vol in add_volumes_list:
-            try:
-                add_vol_ref = objects.Volume.get_by_id(context, add_vol)
-            except exception.VolumeNotFound:
-                LOG.error("Update group "
-                          "failed to add volume-%(volume_id)s: "
-                          "VolumeNotFound.",
-                          {'volume_id': add_vol_ref.id},
-                          resource={'type': 'group',
-                                    'id': group.id})
-                raise
-            if add_vol_ref.status not in VALID_ADD_VOL_TO_GROUP_STATUS:
-                msg = (_("Cannot add volume %(volume_id)s to "
-                         "group %(group_id)s because volume is in an invalid "
-                         "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': add_vol_ref.id,
-                        'group_id': group.id,
-                        'status': add_vol_ref.status,
-                        'valid': VALID_ADD_VOL_TO_GROUP_STATUS})
-                raise exception.InvalidVolume(reason=msg)
-            self._check_is_our_resource(add_vol_ref)
-            add_volumes_ref.append(add_vol_ref)
-
-        for remove_vol in remove_volumes_list:
-            try:
-                remove_vol_ref = objects.Volume.get_by_id(context, remove_vol)
-            except exception.VolumeNotFound:
-                LOG.error("Update group "
-                          "failed to remove volume-%(volume_id)s: "
-                          "VolumeNotFound.",
-                          {'volume_id': remove_vol_ref.id},
-                          resource={'type': 'group',
-                                    'id': group.id})
-                raise
-            if (remove_vol_ref.status not in
-                    VALID_REMOVE_VOL_FROM_GROUP_STATUS):
-                msg = (_("Cannot remove volume %(volume_id)s from "
-                         "group %(group_id)s because volume is in an invalid "
-                         "state: %(status)s. Valid states are: %(valid)s.") %
-                       {'volume_id': remove_vol_ref.id,
-                        'group_id': group.id,
-                        'status': remove_vol_ref.status,
-                        'valid': VALID_REMOVE_VOL_FROM_GROUP_STATUS})
-                raise exception.InvalidVolume(reason=msg)
-            remove_volumes_ref.append(remove_vol_ref)
-
+        add_volumes_ref = self._collect_volumes_for_group(context,
+                                                          group,
+                                                          add_volumes,
+                                                          add=True)
+        remove_volumes_ref = self._collect_volumes_for_group(context,
+                                                             group,
+                                                             remove_volumes,
+                                                             add=False)
         self._notify_about_group_usage(
             context, group, "update.start")
 
@@ -3190,11 +3179,12 @@ class VolumeManager(manager.CleanableManager,
                     self._remove_consistencygroup_id_from_volumes(
                         remove_volumes_ref)
 
+            volumes_to_update = []
             if add_volumes_update:
-                self.db.volumes_update(context, add_volumes_update)
-
+                volumes_to_update.extend(add_volumes_update)
             if remove_volumes_update:
-                self.db.volumes_update(context, remove_volumes_update)
+                volumes_to_update.extend(remove_volumes_update)
+            self.db.volumes_update(context, volumes_to_update)
 
             if model_update:
                 if model_update['status'] in (
@@ -3206,31 +3196,24 @@ class VolumeManager(manager.CleanableManager,
                 group.update(model_update)
                 group.save()
 
-        except exception.VolumeDriverException:
+        except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error("Error occurred in the volume driver when "
-                          "updating group %(group_id)s.",
-                          {'group_id': group.id})
-                group.status = 'error'
-                group.save()
-                for add_vol in add_volumes_ref:
-                    add_vol.status = 'error'
-                    add_vol.save()
-                self._remove_consistencygroup_id_from_volumes(
-                    remove_volumes_ref)
-                for rem_vol in remove_volumes_ref:
-                    rem_vol.status = 'error'
-                    rem_vol.save()
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error("Error occurred when updating group %(group_id)s.",
-                          {'group_id': group.id})
+                if isinstance(e, exception.VolumeDriverException):
+                    LOG.error("Error occurred in the volume driver when "
+                              "updating group %(group_id)s.",
+                              {'group_id': group.id})
+                else:
+                    LOG.error("Failed to update group %(group_id)s.",
+                              {'group_id': group.id})
                 group.status = 'error'
                 group.save()
                 for add_vol in add_volumes_ref:
                     add_vol.status = 'error'
                     add_vol.save()
                 for rem_vol in remove_volumes_ref:
+                    if isinstance(e, exception.VolumeDriverException):
+                        rem_vol.consistencygroup_id = None
+                        rem_vol.consistencygroup = None
                     rem_vol.status = 'error'
                     rem_vol.save()
 

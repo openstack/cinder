@@ -140,6 +140,53 @@ class GroupManagerTestCase(test.TestCase):
                           self.context,
                           group.id)
 
+    @ddt.data(('', [], 0, None, True),
+              ('1,2', ['available', 'in-use'], 2, None, True),
+              ('1,2,3', ['available', 'in-use', 'error_deleting'], 3,
+               None, False),
+              ('1,2', ['wrong_status', 'available'], 0,
+               exception.InvalidVolume, True),
+              ('1,2', ['available', exception.VolumeNotFound],
+               0, exception.VolumeNotFound, True))
+    @ddt.unpack
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test__collect_volumes_for_group(self, add_volumes, returned, expected,
+                                        raise_error, add, mock_get):
+        side_effect = []
+
+        class FakeVolume(object):
+            def __init__(self, status):
+                self.status = status
+                self.id = fake.UUID1
+
+        for value in returned:
+            if isinstance(value, str):
+                value = FakeVolume(value)
+            else:
+                value = value(volume_id=fake.UUID1)
+            side_effect.append(value)
+        mock_get.side_effect = side_effect
+        group = tests_utils.create_group(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type_ids=[fake.VOLUME_TYPE_ID],
+            group_type_id=fake.GROUP_TYPE_ID,
+            host=CONF.host)
+
+        with mock.patch.object(self.volume, '_check_is_our_resource',
+                               mock.Mock()) as mock_check:
+            if raise_error:
+                self.assertRaises(raise_error,
+                                  self.volume._collect_volumes_for_group,
+                                  None, group, add_volumes, add)
+            else:
+                result = self.volume._collect_volumes_for_group(None, group,
+                                                                add_volumes,
+                                                                add=add)
+                if add:
+                    self.assertEqual(expected, mock_check.call_count)
+                self.assertEqual(expected, len(result))
+
     @ddt.data((False, fake.GROUP_TYPE_ID),
               (True, fake.GROUP_TYPE_ID),
               (True, fake.GROUP_TYPE2_ID))
