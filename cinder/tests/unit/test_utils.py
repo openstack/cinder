@@ -1395,25 +1395,31 @@ class TestComparableMixin(test.TestCase):
                          self.one._compare(1, self.one._cmpkey))
 
 
+@ddt.ddt
 class TestValidateInteger(test.TestCase):
 
-    def test_validate_integer_greater_than_max_int_limit(self):
-        value = (2 ** 31) + 1
+    @ddt.data(
+        (2 ** 31) + 1,  # More than max value
+        -12,  # Less than min value
+        2.05,  # Float value
+        "12.05",  # Float value in string format
+        "should be int",  # String
+        u"test"  # String in unicode format
+    )
+    def test_validate_integer_raise_assert(self, value):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           utils.validate_integer,
                           value, 'limit', min_value=-1, max_value=(2 ** 31))
 
-    def test_validate_integer_less_than_min_int_limit(self):
-        value = -12
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          utils.validate_integer,
-                          value, 'limit', min_value=-1, max_value=(2 ** 31))
-
-    def test_validate_integer_invalid_limit(self):
-        value = "should_be_int"
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          utils.validate_integer,
-                          value, 'limit', min_value=-1, max_value=(2 ** 31))
+    @ddt.data(
+        "123",  # integer in string format
+        123,  # integer
+        u"123"  # integer in unicode format
+    )
+    def test_validate_integer(self, value):
+        res = utils.validate_integer(value, 'limit', min_value=-1,
+                                     max_value=(2 ** 31))
+        self.assertEqual(123, res)
 
 
 @ddt.ddt
