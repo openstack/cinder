@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 LSS_VOL_SLOTS = 0x100
 LSS_SLOTS = 0xFF
-# if use new REST API, please update the verison below
+# if use new REST API, please update the version below
 VALID_REST_VERSION_5_7_MIN = '5.7.51.1047'
 VALID_REST_VERSION_5_8_MIN = '5.8.20.1018'
 VALID_STORAGE_VERSION = '8.1'
