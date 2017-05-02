@@ -1217,7 +1217,6 @@ class VMwareVolumeOps(object):
                   {'backing': backing,
                    'profile': profile_id})
         cf = self._session.vim.client.factory
-        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
 
         if profile_id is None:
             vm_profile = cf.create('ns0:VirtualMachineEmptyProfileSpec')
@@ -1226,7 +1225,16 @@ class VMwareVolumeOps(object):
             vm_profile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
             vm_profile.profileId = profile_id.uniqueId
 
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
         reconfig_spec.vmProfile = [vm_profile]
+
+        disk_device = self._get_disk_device(backing)
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.device = disk_device
+        disk_spec.operation = 'edit'
+        disk_spec.profile = [vm_profile]
+        reconfig_spec.deviceChange = [disk_spec]
+
         self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %(backing)s reconfigured with new profile: "
                   "%(profile)s.",
