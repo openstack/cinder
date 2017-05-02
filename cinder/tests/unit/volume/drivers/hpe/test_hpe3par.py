@@ -1458,6 +1458,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_not_3par(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -1470,7 +1471,8 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_DIFF,
                               self.RETYPE_HOST_NOT3PAR)
 
-            expected = [mock.call.getVolume(self.VOLUME_3PAR_NAME)]
+            expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
+                        mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -1480,6 +1482,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_volume_not_found(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
         mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -1493,7 +1496,8 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_DIFF,
                               self.RETYPE_HOST)
 
-            expected = [mock.call.getVolume(self.VOLUME_3PAR_NAME)]
+            expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
+                        mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -1571,6 +1575,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_different_array(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
 
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.CLIENT_ID,
@@ -1588,6 +1593,7 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_HOST)
 
             expected = [
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
                 mock.call.getStorageSystemInfo()]
 
@@ -1600,6 +1606,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_across_cpg_domains(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
 
         mock_client.getCPG.side_effect = [
             {'domain': 'domain1'},
@@ -1618,6 +1625,7 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_HOST)
 
             expected = [
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
                 mock.call.getStorageSystemInfo(),
                 mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['userCPG']),
@@ -1633,6 +1641,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_across_snap_cpg_domains(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
 
         mock_client.getCPG.side_effect = [
             {'domain': 'cpg_domain'},
@@ -1652,6 +1661,7 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_HOST)
 
             expected = [
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
                 mock.call.getStorageSystemInfo(),
                 mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['userCPG']),
@@ -1669,6 +1679,7 @@ class HPE3PARBaseDriver(object):
     def test_retype_to_bad_persona(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_BAD_PERSONA
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolumeSnapshots.return_value = []
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -1681,7 +1692,8 @@ class HPE3PARBaseDriver(object):
                               self.RETYPE_DIFF,
                               self.RETYPE_HOST)
 
-            expected = [mock.call.getVolume(self.VOLUME_3PAR_NAME)]
+            expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
+                        mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -2270,12 +2282,19 @@ class HPE3PARBaseDriver(object):
                         'size': 2, 'status': 'available'}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            # snapshot name is random
+            snap_name = mock.ANY
+            optional = mock.ANY
             expectedcall = [
                 mock.call.getStorageSystemInfo()]
 
             expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    self.VOLUME_NAME_3PAR,
+                    snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2293,14 +2312,14 @@ class HPE3PARBaseDriver(object):
     def test_clone_volume_with_vvs(self, _mock_volume_types):
         # Setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        conf = self.setup_configuration()
+        mock_client = self.setup_driver(config=conf)
 
         _mock_volume_types.return_value = {
             'name': 'gold',
             'id': 'gold-id',
             'extra_specs': {'vvs': self.VVS_NAME}}
 
-        mock_client = self.setup_driver()
         mock_client.getVolume.return_value = {'name': mock.ANY}
         mock_client.copyVolume.return_value = {'taskid': 1}
 
@@ -2323,6 +2342,11 @@ class HPE3PARBaseDriver(object):
                         'volume_type': 'gold',
                         'host': self.FAKE_CINDER_HOST,
                         'volume_type_id': 'gold-id'}
+            # creation of the temp snapshot
+            common = hpecommon.HPE3PARCommon(conf)
+            snap_name = mock.ANY
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = mock.ANY
 
             model_update = self.driver.create_cloned_volume(volume_vvs,
                                                             src_vref)
@@ -2334,8 +2358,10 @@ class HPE3PARBaseDriver(object):
             self.assertEqual(clone_vol_vvs, source_vol_vvs)
 
             expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    self.VOLUME_NAME_3PAR,
+                    snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     'OpenStackCPG',
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2372,10 +2398,17 @@ class HPE3PARBaseDriver(object):
                         'size': 2, 'status': 'backing-up'}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
+            # creation of the temp snapshot
+            common = hpecommon.HPE3PARCommon(None)
+            snap_name = mock.ANY
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = mock.ANY
 
             expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    self.VOLUME_NAME_3PAR,
+                    snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2413,13 +2446,17 @@ class HPE3PARBaseDriver(object):
             self.assertIsNone(model_update)
 
             common = hpecommon.HPE3PARCommon(None)
+            snap_name = mock.ANY
             vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = mock.ANY
 
             expected = [
                 mock.call.getVolumeMetaData(vol_name,
                                             'HPQ-cinder-CHAP-name'),
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    self.VOLUME_NAME_3PAR,
+                    snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2553,11 +2590,18 @@ class HPE3PARBaseDriver(object):
             volume['source_volid'] = HPE3PARBaseDriver.CLONE_ID
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
+            # creation of the temp snapshot
+            common = hpecommon.HPE3PARCommon(None)
+            snap_name = mock.ANY
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = mock.ANY
 
             expected = [
                 mock.call.getCPG(expected_cpg),
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    snap_name,
                     self.VOLUME_3PAR_NAME,
                     expected_cpg,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
