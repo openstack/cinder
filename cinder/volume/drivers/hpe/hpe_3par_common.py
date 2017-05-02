@@ -261,10 +261,12 @@ class HPE3PARCommon(object):
         3.0.34 - Add cloned volume to vvset in online copy. bug #1664464
         3.0.35 - Add volume to consistency group if flag enabled. bug #1702317
         3.0.36 - Swap volume name in migration. bug #1699733
+        3.0.37 - Fixed image cache enabled capability. bug #1686985
+
 
     """
 
-    VERSION = "3.0.36"
+    VERSION = "3.0.37"
 
     stats = {}
 
@@ -2151,6 +2153,7 @@ class HPE3PARCommon(object):
                 LOG.debug("Creating a clone of volume, using online copy.")
 
                 type_info = self.get_volume_settings_from_type(volume)
+                snapshot = self._create_temp_snapshot(src_vref)
                 cpg = type_info['cpg']
                 qos = type_info['qos']
                 vvs_name = type_info['vvs_name']
@@ -2161,7 +2164,7 @@ class HPE3PARCommon(object):
                     type_info['hpe3par_keys'])
                 # make the 3PAR copy the contents.
                 # can't delete the original until the copy is done.
-                self._copy_volume(src_vol_name, vol_name, cpg=cpg,
+                self._copy_volume(snapshot['name'], vol_name, cpg=cpg,
                                   snap_cpg=type_info['snap_cpg'],
                                   tpvv=type_info['tpvv'],
                                   tdvv=type_info['tdvv'],
@@ -3054,9 +3057,31 @@ class HPE3PARCommon(object):
                                                      'new_type': new_type,
                                                      'diff': diff,
                                                      'host': host})
+        self.remove_temporary_snapshots(volume)
         old_volume_settings = self.get_volume_settings_from_type(volume, host)
         return self._retype_from_old_to_new(volume, new_type,
                                             old_volume_settings, host)
+
+    def remove_temporary_snapshots(self, volume):
+        vol_name = self._get_3par_vol_name(volume['id'])
+        snapshots_list = self.client.getVolumeSnapshots(vol_name)
+        tmp_snapshots_list = [snap
+                              for snap in snapshots_list
+                              if snap.startswith('tss-')]
+        LOG.debug("temporary snapshot list %(name)s",
+                  {'name': tmp_snapshots_list})
+        for temp_snap in tmp_snapshots_list:
+            LOG.debug("Found a temporary snapshot %(name)s",
+                      {'name': temp_snap})
+            try:
+                self.client.deleteVolume(temp_snap)
+            except hpeexceptions.HTTPNotFound:
+                # if the volume is gone, it's as good as a
+                # successful delete
+                pass
+            except Exception:
+                msg = _("Volume has a temporary snapshot.")
+                raise exception.VolumeIsBusy(message=msg)
 
     def find_existing_vlun(self, volume, host):
         """Finds an existing VLUN for a volume on a host.
