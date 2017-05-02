@@ -134,10 +134,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         volume_name = self._get_target_vol(volume)
 
         # Check if a host object is defined for this host name
-        host_name = self._helpers.get_host_from_connector(connector)
+        host_name = self._helpers.get_host_from_connector(connector,
+                                                          iscsi=True)
         if host_name is None:
             # Host does not exist - add a new host to Storwize/SVC
-            host_name = self._helpers.create_host(connector)
+            host_name = self._helpers.create_host(connector, iscsi=True)
 
         chap_secret = self._helpers.get_chap_secret_for_host(host_name)
         chap_enabled = self.configuration.storwize_svc_iscsi_chap_enabled
@@ -241,7 +242,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                               auth_password=chap_secret,
                               discovery_auth_method='CHAP',
                               discovery_auth_username=connector['initiator'],
-                              discovery_auth_password= chap_secret)
+                              discovery_auth_password=chap_secret)
         LOG.debug('leave: _get_single_iscsi_data:\n volume: %(vol)s\n '
                   'connector: %(conn)s\n lun_id: %(lun_id)s\n '
                   'properties: %(prop)s',
@@ -333,8 +334,8 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             # get host according to iSCSI protocol
             info = {'driver_volume_type': 'iscsi',
                     'data': {}}
-
-            host_name = self._helpers.get_host_from_connector(connector)
+            host_name = self._helpers.get_host_from_connector(connector,
+                                                              iscsi=True)
             if host_name is None:
                 msg = (_('terminate_connection: Failed to get host name from'
                          ' connector.'))
