@@ -292,3 +292,7 @@ user documentation.
 3.29
 ----
   Add filter, sorter and pagination support in group snapshot.
+
+3.30
+----
+  Support sort snapshots with "name".

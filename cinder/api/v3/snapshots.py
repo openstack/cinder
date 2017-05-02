@@ -81,6 +81,10 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         # process filters
         self._process_filters(req, context, search_opts)
 
+        req_version = req.api_version_request
+        if req_version.matches("3.30", None) and 'name' in sort_keys:
+            sort_keys[sort_keys.index('name')] = 'display_name'
+
         # NOTE(thingee): v3 API allows name instead of display_name
         if 'name' in search_opts:
             search_opts['display_name'] = search_opts.pop('name')
