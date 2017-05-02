@@ -1,0 +1,3 @@
+---
+features:
+  - Added ``resource_filters`` API to retrieve configured resource filters.

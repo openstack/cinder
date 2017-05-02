@@ -1,0 +1,21 @@
+{
+    "resource_filters": [
+        {
+            "filters": [
+                "name",
+                "status",
+                "image_metadata", "bootable",
+                "migration_status"
+            ],
+            "resource": "volume"
+        },
+        {
+            "filters": [
+                "name",
+                "status",
+                "volume_id"
+            ],
+            "resource": "snapshot"
+        }
+    ]
+}

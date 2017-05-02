@@ -113,6 +113,12 @@ qos_id:
   in: path
   required: false
   type: string
+resource:
+  description: |
+    Filter filters by resource name.
+  in: path
+  required: false
+  type: string
 snapshot_id_1:
   description: |
     The UUID of the snapshot.
@@ -1586,6 +1592,18 @@ reset_status:
   in: body
   required: true
   type: object
+resource_1:
+  description: |
+    Resource which the filters will be applied to.
+  in: body
+  required: true
+  type: string
+resource_filters:
+  description: |
+    The resource filter array.
+  in: body
+  required: true
+  type: array
 resource_type:
   description: |
     The resource type corresponding to ``resource_uuid``.
