@@ -1173,10 +1173,12 @@ class SynoCommon(object):
                         'snapshot': snapshot_uuid})
             raise exception.VolumeDriverException(message=message)
 
-        return {
-            'metadata': {
-                self.METADATA_DS_SNAPSHOT_UUID: snapshot_uuid
-            }}
+        metadata = snapshot['metadata']
+        metadata.update({
+            self.METADATA_DS_SNAPSHOT_UUID: snapshot_uuid
+        })
+
+        return {'metadata': metadata}
 
     def delete_snapshot(self, snapshot):
         try:
