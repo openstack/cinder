@@ -2383,9 +2383,9 @@ class VolumeManager(manager.CleanableManager,
                 # and update db
                 if volume_stats.get('replication_status') == (
                         fields.ReplicationStatus.ERROR):
-                    backend = vol_utils.extract_host(self.host, 'backend')
-                    groups = vol_utils.get_replication_groups_by_host(
-                        context, backend)
+                    filters = self._get_cluster_or_host_filters()
+                    groups = objects.GroupList.get_all_replicated(
+                        context, filters=filters)
                     group_model_updates, volume_model_updates = (
                         self.driver.get_replication_error_status(context,
                                                                  groups))
@@ -2811,11 +2811,15 @@ class VolumeManager(manager.CleanableManager,
 
         return vol_ref
 
-    def _get_my_resources(self, ctxt, ovo_class_list):
+    def _get_cluster_or_host_filters(self):
         if self.cluster:
             filters = {'cluster_name': self.cluster}
         else:
             filters = {'host': self.host}
+        return filters
+
+    def _get_my_resources(self, ctxt, ovo_class_list):
+        filters = self._get_cluster_or_host_filters()
         return getattr(ovo_class_list, 'get_all')(ctxt, filters=filters)
 
     def _get_my_volumes(self, ctxt):
@@ -3961,6 +3965,7 @@ class VolumeManager(manager.CleanableManager,
                     snapshot.save()
 
         volume_update_list = None
+        group_update_list = None
         try:
             # For non clustered we can call v2.1 failover_host, but for
             # clustered we call a/a failover method.  We know a/a method
@@ -3971,16 +3976,29 @@ class VolumeManager(manager.CleanableManager,
             # expected form of volume_update_list:
             # [{volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}},
             #  {volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}}]
-
-            active_backend_id, volume_update_list = failover(
-                context,
-                replicated_vols,
-                secondary_id=secondary_backend_id)
+            # It includes volumes in replication groups and those not in them
+            # expected form of group_update_list:
+            # [{group_id: <cinder-grpid>, updates: {'xxxx': xxxx....}},
+            #  {group_id: <cinder-grpid>, updates: {'xxxx': xxxx....}}]
+            filters = self._get_cluster_or_host_filters()
+            groups = objects.GroupList.get_all_replicated(context,
+                                                          filters=filters)
+            active_backend_id, volume_update_list, group_update_list = (
+                failover(context,
+                         replicated_vols,
+                         secondary_id=secondary_backend_id,
+                         groups=groups))
             try:
                 update_data = {u['volume_id']: u['updates']
                                for u in volume_update_list}
             except KeyError:
                 msg = "Update list, doesn't include volume_id"
+                raise exception.ProgrammingError(reason=msg)
+            try:
+                update_group_data = {g['group_id']: g['updates']
+                                     for g in group_update_list}
+            except KeyError:
+                msg = "Update list, doesn't include group_id"
                 raise exception.ProgrammingError(reason=msg)
         except Exception as exc:
             # NOTE(jdg): Drivers need to be aware if they fail during
@@ -4045,6 +4063,19 @@ class VolumeManager(manager.CleanableManager,
                 update['previous_status'] = volume.status
             volume.update(update)
             volume.save()
+
+        for grp in groups:
+            update = update_group_data.get(grp.id, {})
+            if update.get('status', '') == 'error':
+                update['replication_status'] = repl_status.FAILOVER_ERROR
+            elif update.get('replication_status') in (None,
+                                                      repl_status.FAILED_OVER):
+                update['replication_status'] = updates['replication_status']
+
+            if update['replication_status'] == repl_status.FAILOVER_ERROR:
+                update.setdefault('status', 'error')
+            grp.update(update)
+            grp.save()
 
         LOG.info("Failed over to replication target successfully.")
 

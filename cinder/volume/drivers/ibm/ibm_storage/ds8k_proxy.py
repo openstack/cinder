@@ -1059,7 +1059,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
     @proxy.logger
     @proxy._trace_time
-    def failover_host(self, ctxt, volumes, secondary_id):
+    def failover_host(self, ctxt, volumes, secondary_id, groups=None):
         """Fail over the volume back and forth.
 
         if secondary_id is 'default', volumes will be failed back,
@@ -1070,12 +1070,12 @@ class DS8KProxy(proxy.IBMStorageProxy):
             if not self._active_backend_id:
                 LOG.info("Host has been failed back. doesn't need "
                          "to fail back again.")
-                return self._active_backend_id, volume_update_list
+                return self._active_backend_id, volume_update_list, []
         else:
             if self._active_backend_id:
                 LOG.info("Host has been failed over to %s.",
                          self._active_backend_id)
-                return self._active_backend_id, volume_update_list
+                return self._active_backend_id, volume_update_list, []
 
             backend_id = self._replication._target_helper.backend['id']
             if secondary_id is None:
@@ -1134,4 +1134,4 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._switch_backend_connection(self._active_backend_id)
                 self._active_backend_id = ""
 
-        return secondary_id, volume_update_list
+        return secondary_id, volume_update_list, []

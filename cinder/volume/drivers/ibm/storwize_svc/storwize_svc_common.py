@@ -2835,7 +2835,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.debug("Exit: update volume copy status.")
 
     # #### V2.1 replication methods #### #
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         LOG.debug('enter: failover_host: secondary_id=%(id)s',
                   {'id': secondary_id})
         if not self._replica_enabled:
@@ -2859,7 +2859,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         LOG.debug('leave: failover_host: secondary_id=%(id)s',
                   {'id': secondary_id})
-        return secondary_id, volumes_update
+        return secondary_id, volumes_update, []
 
     def _replication_failback(self, ctxt, volumes):
         """Fail back all the volume on the secondary backend."""

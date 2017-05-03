@@ -542,7 +542,7 @@ class XIVProxyTest(test.TestCase):
         volume = {'id': 'WTF64', 'size': 16,
                   'name': 'WTF32', 'volume_type_id': 'WTF'}
         target = REPLICA_ID
-        p.failover_host({}, [volume], target)
+        p.failover_host({}, [volume], target, [])
 
     def test_failover_host_invalid_target(self):
         """Test failover_host with invalid target"""
@@ -559,7 +559,7 @@ class XIVProxyTest(test.TestCase):
                   'name': 'WTF32', 'volume_type_id': 'WTF'}
         target = 'Invalid'
         ex = getattr(p, "_get_exception")()
-        self.assertRaises(ex, p.failover_host, {}, [volume], target)
+        self.assertRaises(ex, p.failover_host, {}, [volume], target, [])
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.client.XCLIClient")
@@ -585,7 +585,7 @@ class XIVProxyTest(test.TestCase):
                   'name': 'WTF32', 'volume_type_id': 'WTF'}
         target = REPLICA_ID
         ex = getattr(p, "_get_exception")()
-        self.assertRaises(ex, p.failover_host, {}, [volume], target)
+        self.assertRaises(ex, p.failover_host, {}, [volume], target, [])
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.client.XCLIClient")
@@ -606,7 +606,7 @@ class XIVProxyTest(test.TestCase):
         volume = {'id': 'WTF64', 'size': 16,
                   'name': 'WTF32', 'volume_type_id': 'WTF'}
         target = 'default'
-        p.failover_host(None, [volume], target)
+        p.failover_host(None, [volume], target, [])
 
     def qos_test_empty_name_if_no_specs(self):
         """Test empty name in case no specs are specified"""

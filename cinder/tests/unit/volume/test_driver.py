@@ -141,11 +141,13 @@ class DriverTestCase(test.TestCase):
         with mock.patch.object(my_driver, 'failover_host') as failover_mock:
             res = my_driver.failover(mock.sentinel.context,
                                      mock.sentinel.volumes,
-                                     secondary_id=mock.sentinel.secondary_id)
+                                     secondary_id=mock.sentinel.secondary_id,
+                                     groups=[])
         self.assertEqual(failover_mock.return_value, res)
         failover_mock.assert_called_once_with(mock.sentinel.context,
                                               mock.sentinel.volumes,
-                                              mock.sentinel.secondary_id)
+                                              mock.sentinel.secondary_id,
+                                              [])
 
 
 class BaseDriverTestCase(test.TestCase):

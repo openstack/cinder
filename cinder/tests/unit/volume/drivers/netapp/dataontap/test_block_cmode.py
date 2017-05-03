@@ -710,8 +710,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          return_value=fake_utils.SSC.keys())
         self.mock_object(self.library, '_update_zapi_client')
 
-        actual_active, vol_updates = self.library.failover_host(
-            'fake_context', [], secondary_id='dev1')
+        actual_active, vol_updates, __ = self.library.failover_host(
+            'fake_context', [], secondary_id='dev1', groups=[])
 
         data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
             'dev0', ['dev1', 'dev2'], fake_utils.SSC.keys(), [],

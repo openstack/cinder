@@ -400,14 +400,16 @@ class TestKaminarioISCSI(test.TestCase):
         self.driver.target = FakeKrest()
         self.driver.target.search().total = 1
         self.driver.client.search().total = 1
-        backend_ip, res_volumes = self.driver.failover_host(None, volumes)
+        backend_ip, res_volumes, __ = self.driver.failover_host(
+            None, volumes, [])
         self.assertEqual('10.0.0.1', backend_ip)
         status = res_volumes[0]['updates']['replication_status']
         self.assertEqual(fields.ReplicationStatus.FAILED_OVER, status)
         # different backend ip
         self.driver.configuration.san_ip = '10.0.0.2'
         self.driver.client.search().hits[0].state = 'in_sync'
-        backend_ip, res_volumes = self.driver.failover_host(None, volumes)
+        backend_ip, res_volumes, __ = self.driver.failover_host(
+            None, volumes, [])
         self.assertEqual('10.0.0.2', backend_ip)
         status = res_volumes[0]['updates']['replication_status']
         self.assertEqual(fields.ReplicationStatus.DISABLED, status)

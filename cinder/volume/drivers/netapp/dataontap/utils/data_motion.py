@@ -603,7 +603,7 @@ class DataMotionMixin(object):
 
         return active_backend_name, volume_updates
 
-    def _failover_host(self, volumes, secondary_id=None):
+    def _failover_host(self, volumes, secondary_id=None, groups=None):
 
         if secondary_id == self.backend_name:
             msg = _("Cannot failover to the same host as the primary.")
@@ -641,4 +641,4 @@ class DataMotionMixin(object):
         self.failed_over = True
         self.failed_over_backend_name = active_backend_name
 
-        return active_backend_name, volume_updates
+        return active_backend_name, volume_updates, []

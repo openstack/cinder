@@ -1057,7 +1057,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     def test_enable_replication(self, mock_rep_grp_type, mock_rep_vol_type):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
@@ -1078,7 +1078,7 @@ class GroupsAPITestCase(test.TestCase):
     @ddt.data((True, False), (False, True), (False, False))
     @ddt.unpack
     @mock.patch('cinder.volume.utils.is_replicated_spec')
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type')
+    @mock.patch('cinder.volume.utils.is_group_a_type')
     def test_enable_replication_wrong_type(self, is_grp_rep_type,
                                            is_vol_rep_type,
                                            mock_rep_grp_type,
@@ -1097,7 +1097,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=False)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     def test_enable_replication_wrong_group_type(self, mock_rep_grp_type,
                                                  mock_rep_vol_type):
@@ -1113,7 +1113,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
                fields.GroupStatus.CREATING,
@@ -1146,7 +1146,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     def test_disable_replication(self, mock_rep_grp_type, mock_rep_vol_type):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
@@ -1167,7 +1167,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
                fields.GroupStatus.CREATING,
@@ -1209,7 +1209,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     def test_failover_replication(self, mock_rep_grp_type, mock_rep_vol_type):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
@@ -1230,7 +1230,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
                fields.GroupStatus.CREATING,
@@ -1272,7 +1272,7 @@ class GroupsAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.utils.is_replicated_spec',
                 return_value=True)
-    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+    @mock.patch('cinder.volume.utils.is_group_a_type',
                 return_value=True)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.list_replication_targets')
     def test_list_replication_targets(self, mock_list_rep_targets,

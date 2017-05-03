@@ -1210,7 +1210,8 @@ class CommonAdapter(object):
             raise exception.InvalidInput(
                 reason='Invalid backend_id specified.')
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_backend_id,
+                      groups=None):
         """Fails over the volume back and forth.
 
         Driver needs to update following info for failed-over volume:
@@ -1269,7 +1270,7 @@ class CommonAdapter(object):
         # any sequential request will be redirected to it.
         self.client = mirror_view.secondary_client
 
-        return secondary_backend_id, volume_update_list
+        return secondary_backend_id, volume_update_list, []
 
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)

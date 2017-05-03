@@ -1555,7 +1555,7 @@ class RBDTestCase(test.TestCase):
         self.driver._is_replication_enabled = False
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host,
-                          self.context, [self.volume_a])
+                          self.context, [self.volume_a], [])
 
     @ddt.data(None, 'tertiary-backend')
     @common_mocks
@@ -1572,9 +1572,10 @@ class RBDTestCase(test.TestCase):
         remote = self.driver._replication_targets[1 if secondary_id else 0]
         mock_get_cfg.return_value = (remote['name'], remote)
 
-        res = self.driver.failover_host(self.context, volumes, secondary_id)
+        res = self.driver.failover_host(self.context, volumes, secondary_id,
+                                        [])
 
-        self.assertEqual((remote['name'], volumes), res)
+        self.assertEqual((remote['name'], volumes, []), res)
         self.assertEqual(remote, self.driver._active_config)
         mock_failover_vol.assert_has_calls(
             [mock.call(mock.ANY, v, remote, False,
@@ -1593,9 +1594,9 @@ class RBDTestCase(test.TestCase):
 
         remote = self.driver._get_target_config('default')
         volumes = [self.volume_a, self.volume_b]
-        res = self.driver.failover_host(self.context, volumes, 'default')
+        res = self.driver.failover_host(self.context, volumes, 'default', [])
 
-        self.assertEqual(('default', volumes), res)
+        self.assertEqual(('default', volumes, []), res)
         self.assertEqual(remote, self.driver._active_config)
         mock_failover_vol.assert_has_calls(
             [mock.call(mock.ANY, v, remote, False,
@@ -1613,7 +1614,7 @@ class RBDTestCase(test.TestCase):
         volumes = [self.volume_a, self.volume_b]
         self.assertRaises(exception.InvalidReplicationTarget,
                           self.driver.failover_host,
-                          self.context, volumes, None)
+                          self.context, volumes, None, [])
 
     def test_failover_volume_non_replicated(self):
         self.volume_a.replication_status = fields.ReplicationStatus.DISABLED

@@ -189,7 +189,7 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         model_update = super(FakeLoggingVolumeDriver, self).create_group(
             context, group)
         try:
-            if vol_utils.is_group_a_replication_group_type(group):
+            if group.is_replicated:
                 # Sets the new group's replication_status to disabled
                 model_update['replication_status'] = (
                     fields.ReplicationStatus.DISABLED)

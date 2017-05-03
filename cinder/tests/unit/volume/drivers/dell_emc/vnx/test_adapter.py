@@ -1165,8 +1165,8 @@ class TestCommonAdapter(test.TestCase):
             fake_mirror.secondary_client.get_serial.return_value = (
                 device['backend_id'])
             fake.return_value = fake_mirror
-            backend_id, updates = common_adapter.failover_host(
-                None, [vol1], device['backend_id'])
+            backend_id, updates, __ = common_adapter.failover_host(
+                None, [vol1], device['backend_id'], [])
             fake_mirror.promote_image.assert_called_once_with(
                 'mirror_' + vol1.id)
             fake_mirror.secondary_client.get_serial.assert_called_with()
@@ -1205,8 +1205,8 @@ class TestCommonAdapter(test.TestCase):
             fake_mirror.secondary_client.get_serial.return_value = (
                 device['backend_id'])
             fake.return_value = fake_mirror
-            backend_id, updates = common_adapter.failover_host(
-                None, [vol1], 'default')
+            backend_id, updates, __ = common_adapter.failover_host(
+                None, [vol1], 'default', [])
             fake_mirror.promote_image.assert_called_once_with(
                 'mirror_' + vol1.id)
             fake_mirror.secondary_client.get_serial.assert_called_with()

@@ -1364,7 +1364,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                               "message: %s", err.text)
 
     @pure_driver_debug_trace
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover backend to a secondary array
 
         This action will not affect the original volumes in any
@@ -1377,7 +1377,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             # our current array back to the primary.
             if self._failed_over_primary_array:
                 self._set_current_array(self._failed_over_primary_array)
-                return secondary_id, []
+                return secondary_id, [], []
             else:
                 msg = _('Unable to failback to "default", this can only be '
                         'done after a failover has completed.')
@@ -1455,7 +1455,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # secondary array we just failed over to.
         self._failed_over_primary_array = self._get_current_array()
         self._set_current_array(secondary_array)
-        return secondary_array._backend_id, model_updates
+        return secondary_array._backend_id, model_updates, []
 
     def _does_pgroup_exist(self, array, pgroup_name):
         """Return True/False"""

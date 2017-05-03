@@ -997,7 +997,7 @@ class RBDDriver(driver.CloneableImageVD,
             secondary_id = candidates.pop()
         return secondary_id, self._get_target_config(secondary_id)
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover to replication target."""
         LOG.info('RBD driver failover started.')
         if not self._is_replication_enabled:
@@ -1020,7 +1020,7 @@ class RBDDriver(driver.CloneableImageVD,
         self._active_backend_id = secondary_id
         self._active_config = remote
         LOG.info('RBD driver failover completed.')
-        return secondary_id, updates
+        return secondary_id, updates, []
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""

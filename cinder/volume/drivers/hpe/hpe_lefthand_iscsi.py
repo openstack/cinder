@@ -1492,7 +1492,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     # v2 replication methods
     @cinder_utils.trace
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Force failover to a secondary replication target."""
         if secondary_id and secondary_id == self.FAILBACK_VALUE:
             volume_update_list = self._replication_failback(volumes)
@@ -1575,7 +1575,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
             self._active_backend_id = target_id
 
-        return target_id, volume_update_list
+        return target_id, volume_update_list, []
 
     def _do_replication_setup(self):
         default_san_ssh_port = self.configuration.hpelefthand_ssh_port

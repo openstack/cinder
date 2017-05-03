@@ -290,9 +290,10 @@ class VNXDriver(driver.ManageableVD,
     def backup_use_temp_snapshot(self):
         return True
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Fail-overs volumes from primary device to secondary."""
-        return self.adapter.failover_host(context, volumes, secondary_id)
+        return self.adapter.failover_host(context, volumes, secondary_id,
+                                          groups)
 
     @utils.require_consistent_group_snapshot_enabled
     def create_group(self, context, group):
