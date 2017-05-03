@@ -68,6 +68,8 @@ TEST_CHAP_SECRET = 'V1RGNjRfXw=='
 
 FC_TARGETS_OPTIMIZED = [
     "50017380FE020160", "50017380FE020190", "50017380FE020192"]
+FC_TARGETS_OPTIMIZED_WITH_HOST = [
+    "50017380FE020160", "50017380FE020192"]
 FC_TARGETS_BEFORE_SORTING = [
     "50017380FE020160", "50017380FE020161", "50017380FE020162",
     "50017380FE020190", "50017380FE020191", "50017380FE020192"]
@@ -76,18 +78,28 @@ FC_TARGETS_AFTER_SORTING = [
     "50017380FE020161", "50017380FE020162", "50017380FE020192"]
 
 FC_PORT_LIST_OUTPUT = [
-    {'port_state': 'Online', 'role': 'Target', 'wwpn': '50017380FE020160'},
-    {'port_state': 'Link Problem', 'role': 'Target',
-     'wwpn': '50017380FE020161'},
-    {'port_state': 'Online', 'role': 'Initiator', 'wwpn': '50017380FE020162'},
-    {'port_state': 'Link Problem', 'role': 'Initiator',
-     'wwpn': '50017380FE020163'},
-    {'port_state': 'Online', 'role': 'Target', 'wwpn': '50017380FE020190'},
-    {'port_state': 'Link Problem', 'role': 'Target',
-     'wwpn': '50017380FE020191'},
-    {'port_state': 'Online', 'role': 'Target', 'wwpn': '50017380FE020192'},
-    {'port_state': 'Link Problem', 'role': 'Initiator',
-     'wwpn': '50017380FE020193'}]
+    {'component_id': '1:FC_Port:4:1', 'port_state': 'Online', 'role': 'Target',
+     'wwpn': '50017380FE020160'},
+    {'component_id': '1:FC_Port:5:1', 'port_state': 'Link Problem',
+     'role': 'Target', 'wwpn': '50017380FE020161'},
+    {'component_id': '1:FC_Port:6:1', 'port_state': 'Online',
+     'role': 'Initiator', 'wwpn': '50017380FE020162'},
+    {'component_id': '1:FC_Port:7:1', 'port_state': 'Link Problem',
+     'role': 'Initiator', 'wwpn': '50017380FE020163'},
+    {'component_id': '1:FC_Port:8:1', 'port_state': 'Online', 'role': 'Target',
+     'wwpn': '50017380FE020190'},
+    {'component_id': '1:FC_Port:9:1', 'port_state': 'Link Problem',
+     'role': 'Target', 'wwpn': '50017380FE020191'},
+    {'component_id': '1:FC_Port:4:1', 'port_state': 'Online', 'role': 'Target',
+     'wwpn': '50017380FE020192'},
+    {'component_id': '1:FC_Port:5:1', 'port_state': 'Link Problem',
+     'role': 'Initiator', 'wwpn': '50017380FE020193'}]
+
+HOST_CONNECTIVITY_LIST = [
+    {'host': 'nova-compute-c5507606d5680e05', 'host_port': '10000000C97D26DB',
+     'local_fc_port': '1:FC_Port:4:1', 'local_iscsi_port': '',
+     'module': '1:Module:4', 'type': 'FC'}]
+
 REPLICA_ID = 'WTF32'
 REPLICA_IP = '1.2.3.4'
 REPLICA_USER = 'WTF64'
@@ -872,6 +884,26 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
         fc_targets = p._get_fc_targets(None)
         self.assertEqual(FC_TARGETS_OPTIMIZED, fc_targets,
+                         "FC targets are different from the expected")
+
+    def test_get_fc_targets_returns_host_optimized_wwpns_list(self):
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        hostname = storage.get_host_or_create_from_iqn(TEST_CONNECTOR)
+        host = {'name': hostname}
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
+        p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
+            HOST_CONNECTIVITY_LIST)
+        fc_targets = p._get_fc_targets(host)
+        self.assertEqual(FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
                          "FC targets are different from the expected")
 
     def test_define_ports_returns_sorted_wwpns_list(self):
