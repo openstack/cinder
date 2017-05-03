@@ -19,11 +19,11 @@ import ast
 import functools
 import math
 import operator
+from os import urandom
 import re
 import time
 import uuid
 
-from Crypto.Random import random
 import eventlet
 from eventlet import tpool
 from oslo_concurrency import processutils
@@ -32,6 +32,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
+from random import shuffle
 import six
 from six.moves import range
 
@@ -652,21 +653,27 @@ def generate_password(length=16, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
     # NOTE(jerdfelt): Some password policies require at least one character
     # from each group of symbols, so start off with one random character
     # from each symbol group
-    password = [random.choice(s) for s in symbolgroups]
+
+    bytes = 1  # Number of random bytes to generate for each choice
+
+    password = [s[ord(urandom(bytes)) % len(s)]
+                for s in symbolgroups]
     # If length < len(symbolgroups), the leading characters will only
     # be from the first length groups. Try our best to not be predictable
     # by shuffling and then truncating.
-    random.shuffle(password)
+    shuffle(password)
     password = password[:length]
     length -= len(password)
 
     # then fill with random characters from all symbol groups
     symbols = ''.join(symbolgroups)
-    password.extend([random.choice(symbols) for _i in range(length)])
+    password.extend(
+        [symbols[ord(urandom(bytes)) % len(symbols)]
+            for _i in range(length)])
 
     # finally shuffle to ensure first x characters aren't from a
     # predictable group
-    random.shuffle(password)
+    shuffle(password)
 
     return ''.join(password)
 

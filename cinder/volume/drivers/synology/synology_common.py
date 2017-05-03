@@ -18,13 +18,17 @@ import functools
 import hashlib
 import json
 import math
+from os import urandom
 from random import randint
 import string
 
-from Crypto.Cipher import AES
-from Crypto.Cipher import PKCS1_v1_5
-from Crypto.PublicKey import RSA
-from Crypto import Random
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.ciphers import algorithms
+from cryptography.hazmat.primitives.ciphers import Cipher
+from cryptography.hazmat.primitives.ciphers import modes
+from cryptography.hazmat.primitives import hashes
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -84,8 +88,8 @@ class AESCipher(object):
     SALT_MAGIC = 'Salted__'
 
     def __init__(self, password, key_length=32):
-        self._bs = AES.block_size
-        self._salt = Random.new().read(self._bs - len(self.SALT_MAGIC))
+        self._bs = 16
+        self._salt = urandom(self._bs - len(self.SALT_MAGIC))
 
         self._key, self._iv = self._derive_key_and_iv(password,
                                                       self._salt,
@@ -105,8 +109,13 @@ class AESCipher(object):
         return d[:key_length], d[key_length:key_length + iv_length]
 
     def encrypt(self, text):
-        cipher = AES.new(self._key, AES.MODE_CBC, self._iv)
-        ciphertext = cipher.encrypt(self._pad(text))
+        cipher = Cipher(
+            algorithms.AES(self._key),
+            modes.CBC(self._iv),
+            backend = default_backend()
+        )
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(self._pad(text)) + encryptor.finalize()
 
         return "%s%s%s" % (self.SALT_MAGIC, self._salt, ciphertext)
 
@@ -165,7 +174,7 @@ class Session(object):
         else:
             raise exception.SynoAuthError(reason=_('Login failed.'))
 
-    def _random_AES_passpharse(self, length):
+    def _random_AES_passphrase(self, length):
         available = ('0123456789'
                      'abcdefghijklmnopqrstuvwxyz'
                      'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -191,9 +200,20 @@ class Session(object):
         return result["data"]
 
     def _encrypt_RSA(self, modulus, passphrase, text):
-        key = RSA.construct((modulus, passphrase))
-        cipher = PKCS1_v1_5.new(key)
-        ciphertext = cipher.encrypt(text)
+        key = rsa.generate_private_key(
+            key_size = modulus,
+            public_exponent = passphrase,
+            backend = default_backend()
+        )
+        public_key = key.public_key()
+
+        ciphertext = public_key.encrypt(
+            text,
+            padding.PKCS1v15(
+                mgf = padding.PKCS1v15(algorithm = hashes.SHA1()),
+                algorithm = hashes.SHA1()
+            )
+        )
 
         return ciphertext
 
@@ -208,7 +228,7 @@ class Session(object):
         cipher_key = enc_info["cipherkey"]
         cipher_token = enc_info["ciphertoken"]
         server_time = enc_info["server_time"]
-        random_passphrase = self._random_AES_passpharse(501)
+        random_passphrase = self._random_AES_passphrase(501)
 
         params[cipher_token] = server_time
 
