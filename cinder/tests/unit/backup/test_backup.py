@@ -659,7 +659,7 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry(size=vol_size,
                                               previous_status='in-use')
         backup = self._create_backup_db_entry(volume_id=vol_id)
-        snap = self._create_snapshot_db_entry(volume_id = vol_id)
+        snap = self._create_snapshot_db_entry(volume_id=vol_id)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         mock_get_backup_device.return_value = (
@@ -740,7 +740,7 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry(size=vol_size,
                                               previous_status='in-use')
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
-        snap = self._create_snapshot_db_entry(volume_id = vol_id)
+        snap = self._create_snapshot_db_entry(volume_id=vol_id)
         mock_create_vol_from_snap.return_value = {'provider_id':
                                                   'fake_provider_id'}
 

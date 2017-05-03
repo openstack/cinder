@@ -588,7 +588,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
         self.flags(backup_file_size=(1024 * 3))
-        self.flags(backup_sha_block_size_bytes = 1024)
+        self.flags(backup_sha_block_size_bytes=1024)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
@@ -614,7 +614,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                          '_generate_object_name_prefix',
                          _fake_generate_object_name_prefix)
 
-        self.flags(backup_file_size =(1024 * 8))
+        self.flags(backup_file_size=(1024 * 8))
         self.flags(backup_sha_block_size_bytes=1024)
 
         container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',

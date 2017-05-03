@@ -1220,7 +1220,7 @@ class BackupsAPITestCase(test.TestCase):
         volume_name = 'test1'
         volume_id = utils.create_volume(self.context,
                                         size=5,
-                                        display_name = volume_name).id
+                                        display_name=volume_name).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1602,7 +1602,7 @@ class BackupsAPITestCase(test.TestCase):
         volume_name = 'test1'
         volume_id = utils.create_volume(self.context,
                                         size=15,
-                                        display_name = volume_name).id
+                                        display_name=volume_name).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (

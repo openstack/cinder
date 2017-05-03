@@ -78,7 +78,7 @@ class CinderCleanableObject(base.CinderPersistentObject):
 
         :param pinned: If we should check against pinned version or current
                        version.
-        :type pinned_version: bool
+        :type pinned: bool
         :returns: Whether this needs a workers DB entry or not
         """
         if pinned:

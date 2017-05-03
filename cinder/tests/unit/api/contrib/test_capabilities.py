@@ -37,20 +37,20 @@ def rpcapi_get_capabilities(self, context, host, discover):
                     'Cinder LVM driver, blah, blah.',
         replication_targets=[],
         visibility='public',
-        properties = dict(
-            compression = dict(
+        properties=dict(
+            compression=dict(
                 title='Compression',
                 description='Enables compression.',
                 type='boolean'),
-            qos = dict(
+            qos=dict(
                 title='QoS',
                 description='Enables QoS.',
                 type='boolean'),
-            replication = dict(
+            replication=dict(
                 title='Replication',
                 description='Enables replication.',
                 type='boolean'),
-            thin_provisioning = dict(
+            thin_provisioning=dict(
                 title='Thin Provisioning',
                 description='Sets thin provisioning.',
                 type='boolean'),

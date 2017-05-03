@@ -2424,7 +2424,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 client=mock_client,
                 volume=snapshot['volume'],
                 snapshot=snapshot,
-                target_snap_name= existing_ref['source-name'],
+                target_snap_name=existing_ref['source-name'],
                 existing_ref=existing_ref)
 
             mock_client.assert_has_calls(
@@ -2439,7 +2439,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               client=mock_client,
                               volume=snapshot['volume'],
                               snapshot=snapshot,
-                              target_snap_name= existing_ref['source-name'],
+                              target_snap_name=existing_ref['source-name'],
                               existing_ref=existing_ref)
 
             # Non existence of parent volume of a snapshot
@@ -2451,7 +2451,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               client=mock_client,
                               volume=snapshot['volume'],
                               snapshot=snapshot,
-                              target_snap_name= existing_ref['source-name'],
+                              target_snap_name=existing_ref['source-name'],
                               existing_ref=existing_ref)
 
             # Non existence of a snapshot raises HTTPNotFound exception
@@ -2462,7 +2462,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               client=mock_client,
                               volume=snapshot['volume'],
                               snapshot=snapshot,
-                              target_snap_name= existing_ref['source-name'],
+                              target_snap_name=existing_ref['source-name'],
                               existing_ref=existing_ref)
 
     def test_manage_existing_snapshot_get_size_invalid_input(self):

@@ -97,24 +97,24 @@ class GroupAPITestCase(test.TestCase):
         mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
         name = "test_group"
         description = "this is a test group"
-        grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
-                                 volume_type_ids = [fake.VOLUME_TYPE_ID],
-                                 availability_zone = 'nova', host = None,
-                                 name = name, description = description,
-                                 status = fields.GroupStatus.CREATING)
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova', host=None,
+                                 name=name, description=description,
+                                 status=fields.GroupStatus.CREATING)
         mock_group.return_value = grp
 
         ret_group = self.group_api.create(self.ctxt, name, description,
                                           fake.GROUP_TYPE_ID,
                                           [fake.VOLUME_TYPE_ID],
-                                          availability_zone = 'nova')
+                                          availability_zone='nova')
         mock_policy.assert_called_with(self.ctxt, 'create')
         self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
 
         ret_group.host = "test_host@fakedrv#fakepool"
         ret_group.status = fields.GroupStatus.AVAILABLE
         ret_group.assert_not_frozen = mock.Mock(return_value=True)
-        self.group_api.delete(self.ctxt, ret_group, delete_volumes = True)
+        self.group_api.delete(self.ctxt, ret_group, delete_volumes=True)
         mock_volume_get_all.assert_called_once_with(mock.ANY, ret_group.id)
         mock_volumes_update.assert_called_once_with(self.ctxt, [])
         mock_rpc_delete_group.assert_called_once_with(self.ctxt, ret_group)
@@ -251,17 +251,17 @@ class GroupAPITestCase(test.TestCase):
         mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
         name = "test_group"
         description = "this is a test group"
-        grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
-                                 volume_type_ids = [fake.VOLUME_TYPE_ID],
-                                 availability_zone = 'nova', host = None,
-                                 name = name, description = description,
-                                 status = fields.GroupStatus.CREATING)
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova', host=None,
+                                 name=name, description=description,
+                                 status=fields.GroupStatus.CREATING)
         mock_group.return_value = grp
 
         ret_group = self.group_api.create(self.ctxt, name, description,
                                           fake.GROUP_TYPE_ID,
                                           [fake.VOLUME_TYPE_ID],
-                                          availability_zone = 'nova')
+                                          availability_zone='nova')
         self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
 
         ret_group.volume_types = [vol_type]
@@ -270,15 +270,15 @@ class GroupAPITestCase(test.TestCase):
         ret_group.id = fake.GROUP_ID
 
         vol1 = utils.create_volume(
-            self.ctxt, host = ret_group.host,
-            availability_zone = ret_group.availability_zone,
-            volume_type_id = fake.VOLUME_TYPE_ID)
+            self.ctxt, host=ret_group.host,
+            availability_zone=ret_group.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID)
 
         vol2 = utils.create_volume(
-            self.ctxt, host = ret_group.host,
-            availability_zone = ret_group.availability_zone,
-            volume_type_id = fake.VOLUME_TYPE_ID,
-            group_id = fake.GROUP_ID)
+            self.ctxt, host=ret_group.host,
+            availability_zone=ret_group.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=fake.GROUP_ID)
         vol2_dict = {
             'id': vol2.id,
             'group_id': fake.GROUP_ID,
@@ -295,8 +295,8 @@ class GroupAPITestCase(test.TestCase):
                               vol1.id, vol2.id)
         mock_volume_get_all.assert_called_once_with(mock.ANY, ret_group.id)
         mock_rpc_update_group.assert_called_once_with(self.ctxt, ret_group,
-                                                      add_volumes = vol1.id,
-                                                      remove_volumes = vol2.id)
+                                                      add_volumes=vol1.id,
+                                                      remove_volumes=vol2.id)
         mock_policy.assert_called_with(self.ctxt, 'update', mock.ANY)
 
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
@@ -411,35 +411,35 @@ class GroupAPITestCase(test.TestCase):
 
         grp_snap = utils.create_group_snapshot(
             self.ctxt, fake.GROUP_ID,
-            group_type_id = fake.GROUP_TYPE_ID,
-            status = fields.GroupStatus.CREATING)
+            group_type_id=fake.GROUP_TYPE_ID,
+            status=fields.GroupStatus.CREATING)
         mock_group_snap_get.return_value = grp_snap
         vol1 = utils.create_volume(
             self.ctxt,
-            availability_zone = 'nova',
-            volume_type_id = vol_type['id'],
-            group_id = fake.GROUP_ID)
+            availability_zone='nova',
+            volume_type_id=vol_type['id'],
+            group_id=fake.GROUP_ID)
 
         snap = utils.create_snapshot(self.ctxt, vol1.id,
-                                     volume_type_id = vol_type['id'],
-                                     status = fields.GroupStatus.CREATING)
+                                     volume_type_id=vol_type['id'],
+                                     status=fields.GroupStatus.CREATING)
         mock_snap_get_all.return_value = [snap]
 
         name = "test_group"
         description = "this is a test group"
-        grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
-                                 volume_type_ids = [vol_type['id']],
-                                 availability_zone = 'nova',
-                                 name = name, description = description,
-                                 group_snapshot_id = grp_snap.id,
-                                 status = fields.GroupStatus.CREATING)
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type['id']],
+                                 availability_zone='nova',
+                                 name=name, description=description,
+                                 group_snapshot_id=grp_snap.id,
+                                 status=fields.GroupStatus.CREATING)
 
         vol2 = utils.create_volume(
             self.ctxt,
-            availability_zone = grp.availability_zone,
-            volume_type_id = vol_type['id'],
-            group_id = grp.id,
-            snapshot_id = snap.id)
+            availability_zone=grp.availability_zone,
+            volume_type_id=vol_type['id'],
+            group_id=grp.id,
+            snapshot_id=snap.id)
         mock_volume_get_all.return_value = [vol2]
 
         self.group_api._create_group_from_group_snapshot(self.ctxt, grp,
@@ -447,11 +447,11 @@ class GroupAPITestCase(test.TestCase):
 
         mock_volume_api_create.assert_called_once_with(
             self.ctxt, 1, None, None,
-            availability_zone = grp.availability_zone,
-            group_snapshot = grp_snap,
-            group = grp,
-            snapshot = snap,
-            volume_type = vol_type)
+            availability_zone=grp.availability_zone,
+            group_snapshot=grp_snap,
+            group=grp,
+            snapshot=snap,
+            volume_type=vol_type)
 
         mock_rpc_create_group_from_src.assert_called_once_with(
             self.ctxt, grp, grp_snap)
@@ -481,43 +481,43 @@ class GroupAPITestCase(test.TestCase):
             name='fake_volume_type')
         mock_get_volume_type.return_value = vol_type
 
-        grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
-                                 volume_type_ids = [vol_type['id']],
-                                 availability_zone = 'nova',
-                                 status = fields.GroupStatus.CREATING)
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type['id']],
+                                 availability_zone='nova',
+                                 status=fields.GroupStatus.CREATING)
         mock_group_get.return_value = grp
 
         vol = utils.create_volume(
             self.ctxt,
-            availability_zone = grp.availability_zone,
-            volume_type_id = fake.VOLUME_TYPE_ID,
-            group_id = grp.id)
+            availability_zone=grp.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=grp.id)
         mock_volume_get_all.return_value = [vol]
 
         grp2 = utils.create_group(self.ctxt,
-                                  group_type_id = fake.GROUP_TYPE_ID,
-                                  volume_type_ids = [vol_type['id']],
-                                  availability_zone = 'nova',
-                                  source_group_id = grp.id,
-                                  status = fields.GroupStatus.CREATING)
+                                  group_type_id=fake.GROUP_TYPE_ID,
+                                  volume_type_ids=[vol_type['id']],
+                                  availability_zone='nova',
+                                  source_group_id=grp.id,
+                                  status=fields.GroupStatus.CREATING)
 
         vol2 = utils.create_volume(
             self.ctxt,
-            availability_zone = grp.availability_zone,
-            volume_type_id = vol_type['id'],
-            group_id = grp2.id,
-            source_volid = vol.id)
+            availability_zone=grp.availability_zone,
+            volume_type_id=vol_type['id'],
+            group_id=grp2.id,
+            source_volid=vol.id)
 
         self.group_api._create_group_from_source_group(self.ctxt, grp2,
                                                        grp.id)
 
         mock_volume_api_create.assert_called_once_with(
             self.ctxt, 1, None, None,
-            availability_zone = grp.availability_zone,
-            source_group = grp,
-            group = grp2,
-            source_volume = vol,
-            volume_type = vol_type)
+            availability_zone=grp.availability_zone,
+            source_group=grp,
+            group=grp2,
+            source_volume=vol,
+            volume_type=vol_type)
 
         mock_rpc_create_group_from_src.assert_called_once_with(
             self.ctxt, grp2, None, grp)
@@ -539,44 +539,44 @@ class GroupAPITestCase(test.TestCase):
                              mock_create_from_snap):
         name = "test_group"
         description = "this is a test group"
-        grp = utils.create_group(self.ctxt, group_type_id = fake.GROUP_TYPE_ID,
-                                 volume_type_ids = [fake.VOLUME_TYPE_ID],
-                                 availability_zone = 'nova',
-                                 name = name, description = description,
-                                 status = fields.GroupStatus.AVAILABLE,)
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova',
+                                 name=name, description=description,
+                                 status=fields.GroupStatus.AVAILABLE,)
 
         vol1 = utils.create_volume(
             self.ctxt,
-            availability_zone = 'nova',
-            volume_type_id = fake.VOLUME_TYPE_ID,
-            group_id = grp.id)
+            availability_zone='nova',
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=grp.id)
 
         snap = utils.create_snapshot(self.ctxt, vol1.id,
-                                     volume_type_id = fake.VOLUME_TYPE_ID,
-                                     status = fields.SnapshotStatus.AVAILABLE)
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
+                                     status=fields.SnapshotStatus.AVAILABLE)
         mock_snap_get_all.return_value = [snap]
 
         grp_snap = utils.create_group_snapshot(
             self.ctxt, grp.id,
-            group_type_id = fake.GROUP_TYPE_ID,
-            status = fields.GroupStatus.AVAILABLE)
+            group_type_id=fake.GROUP_TYPE_ID,
+            status=fields.GroupStatus.AVAILABLE)
         mock_group_snap_get.return_value = grp_snap
 
         grp2 = utils.create_group(self.ctxt,
-                                  group_type_id = fake.GROUP_TYPE_ID,
-                                  volume_type_ids = [fake.VOLUME_TYPE_ID],
-                                  availability_zone = 'nova',
-                                  name = name, description = description,
-                                  status = fields.GroupStatus.CREATING,
-                                  group_snapshot_id = grp_snap.id)
+                                  group_type_id=fake.GROUP_TYPE_ID,
+                                  volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                  availability_zone='nova',
+                                  name=name, description=description,
+                                  status=fields.GroupStatus.CREATING,
+                                  group_snapshot_id=grp_snap.id)
 
         with mock.patch('cinder.objects.Group') as mock_group:
             mock_group.return_value = grp2
             with mock.patch('cinder.objects.group.Group.create'):
                 ret_group = self.group_api.create_from_src(
                     self.ctxt, name, description,
-                    group_snapshot_id = grp_snap.id,
-                    source_group_id = None)
+                    group_snapshot_id=grp_snap.id,
+                    source_group_id=None)
                 self.assertEqual(grp2.obj_to_primitive(),
                                  ret_group.obj_to_primitive())
                 mock_create_from_snap.assert_called_once_with(
