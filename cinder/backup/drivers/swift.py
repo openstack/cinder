@@ -243,7 +243,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                          preauthurl=self.swift_url,
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff,
-                                         insecure= (
+                                         insecure=(
                                              self.backup_swift_auth_insecure),
                                          cacert=CONF.backup_swift_ca_cert_file)
 

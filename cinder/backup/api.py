@@ -418,7 +418,7 @@ class API(base.Base):
         Call backup manager to execute backup status reset operation.
         :param context: running context
         :param backup_id: which backup's status to be reset
-        :parma status: backup's status to be reset
+        :param status: backup's status to be reset
         :raises InvalidBackup:
         """
         # get backup info

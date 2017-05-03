@@ -462,7 +462,7 @@ class BackupSwiftTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
                                      backup_id=fake.BACKUP2_ID,
-                                     parent_id= fake.BACKUP_ID)
+                                     parent_id=fake.BACKUP_ID)
         self.mock_object(swift, 'Connection',
                          fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)

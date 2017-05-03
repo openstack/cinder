@@ -30,7 +30,7 @@ class VolumeTypeTestCase(test.TestCase):
         super(VolumeTypeTestCase, self).setUp()
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID,
-                                           is_admin = True)
+                                           is_admin=True)
 
     def test_volume_type_delete(self):
         volume_type = db.volume_type_create(self.ctxt, {'name':
@@ -81,9 +81,9 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_volume_type_update(self):
         vol_type_ref = volume_types.create(self.ctxt, 'fake volume type')
-        updates = dict(name = 'test_volume_type_update',
-                       description = None,
-                       is_public = None)
+        updates = dict(name='test_volume_type_update',
+                       description=None,
+                       is_public=None)
         db.volume_type_update(self.ctxt, vol_type_ref.id, updates)
         updated_vol_type = db.volume_type_get(self.ctxt, vol_type_ref.id)
         self.assertEqual('test_volume_type_update', updated_vol_type['name'])
