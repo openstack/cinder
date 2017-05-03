@@ -19,6 +19,12 @@ all_tenants:
   in: path
   required: false
   type: string
+attachment_id_1:
+  description: |
+    The ID of the attachment.
+  in: path
+  required: true
+  type: string
 backup_id:
   description: |
     The UUID for a backup.
@@ -296,9 +302,22 @@ alias:
   in: body
   required: true
   type: string
+attach_mode:
+  description: |
+    The attach mode of attachment, read-only ('ro') or
+    read-and-write ('rw'), default is 'ro'.
+  in: body
+  required: false
+  type: string
 attach_status:
   description: |
     The volume attach status.
+  in: body
+  required: false
+  type: string
+attached_at:
+  description: |
+    The time when attachment is attached.
   in: body
   required: false
   type: string
@@ -307,6 +326,12 @@ attachment_id:
     The interface ID.
   in: body
   required: false
+  type: string
+attachment_id_2:
+  description: |
+    The ID of attachment.
+  in: body
+  required: true
   type: string
 attachments:
   description: |
@@ -402,6 +427,12 @@ cluster_mutex:
   in: body
   required: false
   type: string
+connection_info:
+  description: |
+    The connection info used for server to connect the volume.
+  in: body
+  required: true
+  type: object
 connector:
   description: |
     The ``connector`` object.
@@ -600,6 +631,12 @@ description_9:
     The volume description.
   in: body
   required: true
+  type: string
+detached_at:
+  description: |
+    The time when attachment is detached.
+  in: body
+  required: false
   type: string
 display_name:
   description: |
@@ -878,6 +915,12 @@ instance_uuid:
     The UUID of the attaching instance.
   in: body
   required: false
+  type: string
+instance_uuid_1:
+  description: |
+    The UUID of the attaching instance.
+  in: body
+  required: true
   type: string
 instances:
   description: |
@@ -1716,6 +1759,12 @@ status_8:
   in: body
   required: true
   type: string
+status_9:
+  description: |
+    The status of the attachment.
+  in: body
+  required: true
+  type: string
 storage_protocol:
   description: |
     The storage back end for the back-end volume. For
@@ -1902,6 +1951,13 @@ volume_id_6:
     restore a backup.
   in: body
   required: false
+  type: string
+volume_id_7:
+  description: |
+    The UUID of the volume which the attachment belongs
+    to.
+  in: body
+  required: true
   type: string
 volume_type_1:
   description: |

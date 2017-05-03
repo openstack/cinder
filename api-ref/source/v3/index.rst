@@ -7,6 +7,7 @@ Block Storage API V3 (CURRENT)
 .. rest_expand_all::
 
 .. include:: api-versions.inc
+.. include:: attachments.inc
 .. include:: ext-backups.inc
 .. include:: ext-backups-actions-v3.inc
 .. include:: capabilities-v3.inc
