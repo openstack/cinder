@@ -1039,18 +1039,14 @@ class VolumeManager(manager.CleanableManager,
             attachment.save()
             raise exception.InvalidUUID(uuid=instance_uuid)
 
-        if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-            attachment.attach_status = (
-                fields.VolumeAttachStatus.ERROR_ATTACHING)
-            attachment.save()
-            self.message_api.create(
-                context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
-                context.project_id, resource_type=resource_types.VOLUME,
-                resource_uuid=volume.id)
-            raise exception.InvalidVolumeAttachMode(mode=mode,
-                                                    volume_id=volume.id)
-
         try:
+            if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+                self.message_api.create(
+                    context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
+                    context.project_id, resource_type=resource_types.VOLUME,
+                    resource_uuid=volume.id)
+                raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                        volume_id=volume.id)
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
             # and the volume status updated.
@@ -3929,16 +3925,14 @@ class VolumeManager(manager.CleanableManager,
             attachment_ref.volume_id,
             {'attached_mode': mode}, False)
 
-        if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-            self.db.volume_update(context, vref.id,
-                                  {'status': 'error_attaching'})
-            self.message_api.create(
-                context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
-                context.project_id, resource_type=resource_types.VOLUME,
-                resource_uuid=vref.id)
-            raise exception.InvalidVolumeAttachMode(mode=mode,
-                                                    volume_id=vref.id)
         try:
+            if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+                self.message_api.create(
+                    context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
+                    context.project_id, resource_type=resource_types.VOLUME,
+                    resource_uuid=vref.id)
+                raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                        volume_id=vref.id)
             utils.require_driver_initialized(self.driver)
             self.driver.attach_volume(context,
                                       vref,
@@ -3949,7 +3943,8 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
                     context, attachment_ref.id,
-                    {'attach_status': 'error_attaching'})
+                    {'attach_status':
+                     fields.VolumeAttachStatus.ERROR_ATTACHING})
 
         self.db.volume_attached(context.elevated(),
                                 attachment_ref.id,

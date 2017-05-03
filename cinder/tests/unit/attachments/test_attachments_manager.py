@@ -17,6 +17,7 @@ from oslo_utils import importutils
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as tests_utils
@@ -40,6 +41,31 @@ class AttachmentManagerTestCase(test.TestCase):
         self.manager.driver.set_initialized()
         self.manager.stats = {'allocated_capacity_gb': 100,
                               'pools': {}}
+
+    @mock.patch.object(db, 'volume_admin_metadata_update')
+    @mock.patch('cinder.message.api.API.create', mock.Mock())
+    def test_attachment_update_with_readonly_volume(self, mock_update):
+        mock_update.return_value = {'readonly': 'True'}
+        vref = tests_utils.create_volume(self.context, **{'status':
+                                                          'available'})
+        self.manager.create_volume(self.context, vref)
+        attachment_ref = db.volume_attach(self.context,
+                                          {'volume_id': vref.id,
+                                           'volume_host': vref.host,
+                                           'attach_status': 'reserved',
+                                           'instance_uuid': fake.UUID1})
+
+        with mock.patch.object(self.manager,
+                               '_notify_about_volume_usage',
+                               return_value=None), mock.patch.object(
+                self.manager, '_connection_create'):
+            self.assertRaises(exception.InvalidVolumeAttachMode,
+                              self.manager.attachment_update,
+                              self.context, vref, {}, attachment_ref.id)
+            attachment = db.volume_attachment_get(self.context,
+                                                  attachment_ref.id)
+            self.assertEqual(fields.VolumeAttachStatus.ERROR_ATTACHING,
+                             attachment['attach_status'])
 
     def test_attachment_update(self):
         """Test attachment_update."""
