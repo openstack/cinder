@@ -2947,16 +2947,21 @@ class DBAPIGenericTestCase(BaseTest):
 
 @ddt.ddt
 class DBAPIBackendTestCase(BaseTest):
-    @ddt.data(True, False)
-    def test_is_backend_frozen_service(self, frozen):
+    @ddt.data((True, True), (True, False), (False, True), (False, False))
+    @ddt.unpack
+    def test_is_backend_frozen_service(self, frozen, pool):
         service = utils.create_service(self.ctxt, {'frozen': frozen})
         utils.create_service(self.ctxt, {'host': service.host + '2',
                                          'frozen': not frozen})
-        self.assertEqual(frozen, db.is_backend_frozen(self.ctxt, service.host,
+        host = service.host
+        if pool:
+            host += '#poolname'
+        self.assertEqual(frozen, db.is_backend_frozen(self.ctxt, host,
                                                       service.cluster_name))
 
-    @ddt.data(True, False)
-    def test_is_backend_frozen_cluster(self, frozen):
+    @ddt.data((True, True), (True, False), (False, True), (False, False))
+    @ddt.unpack
+    def test_is_backend_frozen_cluster(self, frozen, pool):
         cluster = utils.create_cluster(self.ctxt, frozen=frozen)
         utils.create_service(self.ctxt, {'frozen': frozen, 'host': 'hostA',
                                          'cluster_name': cluster.name})
@@ -2966,5 +2971,10 @@ class DBAPIBackendTestCase(BaseTest):
                                         'cluster_name': cluster.name})
         utils.create_populated_cluster(self.ctxt, 3, 0, frozen=not frozen,
                                        name=cluster.name + '2')
-        self.assertEqual(frozen, db.is_backend_frozen(self.ctxt, service.host,
-                                                      service.cluster_name))
+        host = service.host
+        cluster = service.cluster_name
+        if pool:
+            host += '#poolname'
+            cluster += '#poolname'
+        self.assertEqual(frozen,
+                         db.is_backend_frozen(self.ctxt, host, cluster))
