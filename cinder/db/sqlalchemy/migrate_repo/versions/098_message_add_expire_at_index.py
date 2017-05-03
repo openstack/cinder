@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from sqlalchemy import Index, MetaData, Table
+from oslo_db.sqlalchemy import utils
 
 
 def upgrade(migrate_engine):
-    meta = MetaData(migrate_engine)
-
-    messages = Table('messages', meta, autoload=True)
-    return Index('messages_expire_at_idx', messages.c.expires_at)
+    if not utils.index_exists_on_columns(
+            migrate_engine, 'messages', ['expires_at']):
+        utils.add_index(migrate_engine, 'messages',
+                        'messages_expire_at_idx', ['expires_at'])
