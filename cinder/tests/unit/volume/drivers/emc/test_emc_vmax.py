@@ -275,6 +275,7 @@ class EMCVMAXCommonData(object):
     storage_system = 'SYMMETRIX+000195900551'
     storage_system_v3 = 'SYMMETRIX-+-000197200056'
     port_group = 'OS-portgroup-PG'
+    port_group_instance = {'ElementName': 'OS-portgroup-PG'}
     lunmaskctrl_id = (
         'SYMMETRIX+000195900551+OS-fakehost-gold-I-MV')
     lunmaskctrl_name = (
@@ -3285,6 +3286,11 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                                           self.data.connector)
 
     @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value={'CreationClassName': 'CIM_TargetMaskingGroup',
+                      'ElementName': 'OS-portgroup-PG'})
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_port_group_from_source',
         return_value={'CreationClassName': 'CIM_TargetMaskingGroup',
@@ -3336,6 +3342,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                                                 mock_same_host,
                                                 mock_check,
                                                 mock_sg_from_mv,
+                                                mocx_sg_from_src,
                                                 mock_pg_from_mv):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
@@ -8113,6 +8120,57 @@ class EMCVMAXMaskingTest(test.TestCase):
             masking._check_existing_storage_group(conn, mv_instance_name))
         self.assertIsNone(sgFromMvInstanceName)
         self.assertIsNotNone(msg)
+
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=EMCVMAXCommonData.port_group)
+    def test_get_port_group_name_from_mv_success(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        conn.GetInstance = mock.Mock(
+            return_value=self.data.port_group_instance)
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(err_msg)
+        self.assertIsNotNone(pg_name)
+
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=None)
+    def test_get_port_group_name_from_mv_fail_1(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(pg_name)
+        self.assertIsNotNone(err_msg)
+
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=EMCVMAXCommonData.port_group)
+    def test_get_port_group_name_from_mv_fail_2(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        conn.GetInstance = mock.Mock(return_value={})
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(pg_name)
+        self.assertIsNotNone(err_msg)
 
 
 class EMCVMAXFCTest(test.TestCase):
