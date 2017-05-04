@@ -35,22 +35,22 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client = self.mock_object(client_cmode, 'Client')
         self.config = fakes.get_fake_cmode_config(self.backend)
         CONF.set_override('volume_backend_name', self.backend,
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('netapp_transport_type', 'https',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('netapp_login', 'fake_user',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('netapp_password', 'fake_password',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('netapp_server_hostname', 'fake_hostname',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('netapp_server_port', 8866,
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
 
     def test_get_backend_configuration(self):
         self.mock_object(utils, 'CONF')
         CONF.set_override('netapp_vserver', 'fake_vserver',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         utils.CONF.list_all_sections.return_value = [self.backend]
 
         config = utils.get_backend_configuration(self.backend)
@@ -60,9 +60,9 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
     def test_get_backend_configuration_different_backend_name(self):
         self.mock_object(utils, 'CONF')
         CONF.set_override('netapp_vserver', 'fake_vserver',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         CONF.set_override('volume_backend_name', 'fake_backend_name',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
         utils.CONF.list_all_sections.return_value = [self.backend]
 
         config = utils.get_backend_configuration(self.backend)
@@ -95,7 +95,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                          return_value=self.config)
 
         CONF.set_override('netapp_vserver', 'fake_vserver',
-                          group=self.backend, enforce_type=True)
+                          group=self.backend)
 
         utils.get_client_for_backend(self.backend)
 
