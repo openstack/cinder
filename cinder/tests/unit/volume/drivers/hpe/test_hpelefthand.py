@@ -1171,6 +1171,40 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 mock_replicated_client.assert_has_calls(
                     expected_calls_replica_client)
 
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume_with_different_provision(self,
+                                                           mock_volume_type):
+
+        conf = self.default_mock_conf()
+        mock_client = self.setup_driver(config=conf)
+
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.cloneVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        mock_volume_type.return_value = {
+            'name': 'replicated',
+            'extra_specs': {'hpelh:provisioning': 'full'}}
+        cloned_volume = self.cloned_volume.copy()
+        volume = self.volume.copy()
+        volume['volume_type_id'] = 2
+        with mock.patch.object(
+            hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                '_create_client') as mock_do_setup:
+
+            mock_do_setup.return_value = mock_client
+
+            # execute create_cloned_volume
+            self.driver.create_cloned_volume(
+                cloned_volume, volume)
+            expected = self.driver_startup_call_stack + [
+                mock.call.getVolumeByName('fakevolume'),
+                mock.call.cloneVolume('clone_volume', 1),
+                mock.call.getVolumeByName('clone_volume'),
+                mock.call.modifyVolume(1, {'isThinProvisioned': False}),
+                mock.call.logout()]
+            mock_client.assert_has_calls(expected)
+
     def test_create_cloned_volume_exception(self):
 
         # setup driver with default configuration
