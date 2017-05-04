@@ -392,7 +392,7 @@ class HostManager(object):
         """Return a list of available filter names.
 
         This function checks input filter names against a predefined set
-        of acceptable filterss (all loaded filters).  If input is None,
+        of acceptable filters (all loaded filters). If input is None,
         it uses CONF.scheduler_default_filters instead.
         """
         if filter_cls_names is None:
@@ -486,7 +486,7 @@ class HostManager(object):
             LOG.info('Ignoring old capability report from %s.', backend)
             return
 
-        # If the capabilites are not changed and the timestamp is older,
+        # If the capabilities are not changed and the timestamp is older,
         # record the capabilities.
 
         # There are cases: capab_old has the capabilities set,
