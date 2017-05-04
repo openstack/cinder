@@ -67,9 +67,17 @@ class IBMStorageDriver(san.SanDriver,
     IBM Storage driver is a unified Volume driver for IBM XIV, Spectrum
     Accelerate, FlashSystem A9000, FlashSystem A9000R and DS8000 storage
     systems.
+
+    Version history:
+
+    .. code-block:: none
+
+        2.0 - First open source driver version
+        2.1.0 - Support Consistency groups through Generic volume groups
+              - Support XIV\A9000 Volume independent QoS
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.1.0"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
