@@ -17,13 +17,15 @@ import os
 import subprocess
 import textwrap
 
+OrderedDict = collections.OrderedDict
+
 BASEDIR = os.path.split(os.path.realpath(__file__))[0] + "/../../"
 
 
 if __name__ == "__main__":
     os.chdir(BASEDIR)
     opt_file = open("cinder/opts.py", 'w')
-    opt_dict = collections.OrderedDict()
+    opt_dict = OrderedDict()
     dir_trees_list = []
     REGISTER_OPTS_STR = "CONF.register_opts("
     REGISTER_OPT_STR = "CONF.register_opt("
@@ -62,12 +64,14 @@ if __name__ == "__main__":
 
     cmd_opts = common_string % REGISTER_OPTS_STR
     output_opts = subprocess.check_output(  # nosec : command is hardcoded
-        '{}'.format(cmd_opts), shell=True)
+        '{}'.format(cmd_opts), shell=True,
+        universal_newlines=True)
     dir_trees_list = output_opts.split()
 
     cmd_opt = common_string % REGISTER_OPT_STR
     output_opt = subprocess.check_output(  # nosec : command is hardcoded
-        '{}'.format(cmd_opt), shell=True)
+        '{}'.format(cmd_opt), shell=True,
+        universal_newlines=True)
     temp_list = output_opt.split()
 
     for item in temp_list:
@@ -127,7 +131,7 @@ if __name__ == "__main__":
 
         flag = False
 
-    registered_opts_dict = {'DEFAULT': [], }
+    registered_opts_dict = OrderedDict([('DEFAULT', [])])
 
     def _write_item(opts):
         list_name = opts[-3:]
@@ -206,6 +210,9 @@ if __name__ == "__main__":
                  "def list_opts():\n"
                  "    return [\n")
     opt_file.write(setup_str)
+
+    registered_opts_dict = OrderedDict(sorted(registered_opts_dict.items(),
+                                              key = lambda x: x[0]))
 
     for key in registered_opts_dict:
         section_start_str = ("        ('" + key + "',\n"
