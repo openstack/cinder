@@ -56,8 +56,8 @@ class VZStorageTestCase(test.TestCase):
     def setUp(self):
         super(VZStorageTestCase, self).setUp()
 
-        self._remotefsclient = mock.patch.object(remotefs,
-                                                 'RemoteFsClient').start()
+        self._remotefsclient = mock.patch.object(
+            remotefs, 'VZStorageRemoteFSClient').start()
         get_mount_point = mock.Mock(return_value=self._FAKE_MNT_POINT)
         self._remotefsclient.get_mount_point = get_mount_point
         cfg = copy.copy(self._FAKE_VZ_CONFIG)
