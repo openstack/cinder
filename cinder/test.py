@@ -399,7 +399,7 @@ class RPCAPITestCase(TestCase, ModelsObjectComparatorMixin):
         :param server: Expected hostname.
         :param fanout: True if expected call/cast should be fanout.
         :param version: Expected autocalculated RPC API version.
-        :param epected_method: Expected RPC method name.
+        :param expected_method: Expected RPC method name.
         :param expected_kwargs_diff: Map of expected changes between keyword
                                      arguments passed into the method and sent
                                      over RPC.

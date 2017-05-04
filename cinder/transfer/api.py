@@ -94,7 +94,7 @@ class API(base.Base):
         # Note that the string returned by this function must contain only
         # characters that the recipient can enter on their keyboard. The
         # function ssh224().hexdigit() achieves this by generating a hash
-        # which will only contain hexidecimal digits.
+        # which will only contain hexadecimal digits.
         while len(rndstr) < length:
             rndstr += hashlib.sha224(os.urandom(255)).hexdigest()
 

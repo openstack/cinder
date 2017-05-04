@@ -36,7 +36,7 @@ class CinderObjectVersionsHistory(dict):
     """Helper class that maintains objects version history.
 
     Current state of object versions is aggregated in a single version number
-    that explicitily identifies a set of object versions. That way a service
+    that explicitly identifies a set of object versions. That way a service
     is able to report what objects it supports using a single string and all
     the newer services will know exactly what that mean for a single object.
     """
