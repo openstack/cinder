@@ -74,14 +74,14 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             config.netapp_snapmirror_quiesce_timeout = 10
 
         CONF.set_override('netapp_vserver', self.src_vserver,
-                          group=self.src_backend, enforce_type=True)
+                          group=self.src_backend)
         CONF.set_override('netapp_vserver', self.dest_vserver,
-                          group=self.dest_backend, enforce_type=True)
+                          group=self.dest_backend)
 
     @ddt.data(None, [], [{'some_key': 'some_value'}])
     def test_get_replication_backend_names_none(self, replication_device):
         CONF.set_override('replication_device', replication_device,
-                          group=self.src_backend, enforce_type=True)
+                          group=self.src_backend)
 
         devices = self.dm_mixin.get_replication_backend_names(self.config)
 
@@ -91,7 +91,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
               [{'backend_id': 'foobar'}])
     def test_get_replication_backend_names_valid(self, replication_device):
         CONF.set_override('replication_device', replication_device,
-                          group=self.src_backend, enforce_type=True)
+                          group=self.src_backend)
 
         devices = self.dm_mixin.get_replication_backend_names(self.config)
 
@@ -145,7 +145,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                          return_value=self.config)
         CONF.set_override('netapp_replication_aggregate_map',
                           replication_aggr_map,
-                          group=self.src_backend, enforce_type=True)
+                          group=self.src_backend)
 
         aggr_map = self.dm_mixin._get_replication_aggregate_map(
             self.src_backend, 'replication_backend_1')
@@ -159,8 +159,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_object(utils, 'get_backend_configuration',
                          return_value=self.config)
         CONF.set_override('netapp_replication_aggregate_map',
-                          replication_aggr_map, group=self.src_backend,
-                          enforce_type=True)
+                          replication_aggr_map, group=self.src_backend)
 
         aggr_map = self.dm_mixin._get_replication_aggregate_map(
             self.src_backend, 'replication_backend_1')
