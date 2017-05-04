@@ -2816,10 +2816,10 @@ class VMAXMasking(object):
             self._get_port_group_from_masking_view(
                 conn, maskingViewName, storageSystemName))
         if portGroupInstanceName is None:
-            LOG.error(
-                "Cannot get port group from masking view: "
-                "%(maskingViewName)s.",
-                {'maskingViewName': maskingViewName})
+            errorMessage = ("Cannot get port group from masking view: "
+                            "%(maskingViewName)s." %
+                            {'maskingViewName': maskingViewName})
+            LOG.error(errorMessage)
         else:
             try:
                 portGroupInstance = (
@@ -2827,8 +2827,8 @@ class VMAXMasking(object):
                 portGroupName = (
                     portGroupInstance['ElementName'])
             except Exception:
-                LOG.error(
-                    "Cannot get port group name.")
+                errorMessage = ("Cannot get port group name.")
+                LOG.error(errorMessage)
         return portGroupName, errorMessage
 
     @coordination.synchronized('emc-sg-'
