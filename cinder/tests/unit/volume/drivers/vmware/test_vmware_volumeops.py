@@ -1219,7 +1219,6 @@ class VolumeOpsTestCase(test.TestCase):
         backing = mock.sentinel.backing
         self.vops.change_backing_profile(backing, None)
 
-        self.assertEqual('profile', empty_profile_spec.dynamicType)
         self.assertEqual([empty_profile_spec], reconfig_spec.vmProfile)
         get_disk_device.assert_called_once_with(backing)
         self.assertEqual(disk_device, disk_spec.device)
