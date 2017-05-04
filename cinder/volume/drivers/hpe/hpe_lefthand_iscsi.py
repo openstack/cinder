@@ -161,9 +161,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.9 - Fix terminate connection on failover
         2.0.10 - Add entry point tracing
         2.0.11 - Fix extend volume if larger than snapshot bug #1560654
+        2.0.11a - Fix cloning operation related to provisioning, bug #1688243
     """
 
-    VERSION = "2.0.11"
+    VERSION = "2.0.11a"
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
@@ -839,6 +840,21 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             if volume['size'] > src_vref['size']:
                 LOG.debug("Resize the new volume to %s.", volume['size'])
                 self.extend_volume(volume, volume['size'])
+            # TODO(kushal) : we will use volume.volume_types when we re-write
+            # the design for unit tests to use objects instead of dicts.
+            # Get the extra specs of interest from this volume's volume type
+            volume_extra_specs = self._get_volume_extra_specs(src_vref)
+            extra_specs = self._get_lh_extra_specs(
+                volume_extra_specs,
+                extra_specs_key_map.keys())
+
+            # Check provisioning type of source volume. If it's full then need
+            # to change provisioning of clone volume to full as lefthand
+            # creates clone volume only with thin provisioning type.
+            if extra_specs.get('hpelh:provisioning') == 'full':
+                options = {'isThinProvisioned': False}
+                clone_volume_info = client.getVolumeByName(volume['name'])
+                client.modifyVolume(clone_volume_info['id'], options)
 
             model_update = self._update_provider(clone_info)
 
