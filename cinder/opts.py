@@ -207,11 +207,23 @@ from cinder.zonemanager import fc_zone_manager as \
 
 def list_opts():
     return [
-        ('FC-ZONE-MANAGER',
+        ('BACKEND',
             itertools.chain(
-                cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
-                cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
-                cinder_zonemanager_fczonemanager.zone_manager_opts,
+                [cinder_cmd_volume.host_opt],
+            )),
+        ('BRCD_FABRIC_EXAMPLE',
+            itertools.chain(
+                cinder_zonemanager_drivers_brocade_brcdfabricopts.
+                brcd_zone_opts,
+            )),
+        ('CISCO_FABRIC_EXAMPLE',
+            itertools.chain(
+                cinder_zonemanager_drivers_cisco_ciscofabricopts.
+                cisco_zone_opts,
+            )),
+        ('COORDINATION',
+            itertools.chain(
+                cinder_coordination.coordination_opts,
             )),
         ('DEFAULT',
             itertools.chain(
@@ -379,26 +391,14 @@ def list_opts():
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
             )),
-        ('CISCO_FABRIC_EXAMPLE',
+        ('FC-ZONE-MANAGER',
             itertools.chain(
-                cinder_zonemanager_drivers_cisco_ciscofabricopts.
-                cisco_zone_opts,
-            )),
-        ('BRCD_FABRIC_EXAMPLE',
-            itertools.chain(
-                cinder_zonemanager_drivers_brocade_brcdfabricopts.
-                brcd_zone_opts,
-            )),
-        ('COORDINATION',
-            itertools.chain(
-                cinder_coordination.coordination_opts,
+                cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
+                cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
+                cinder_zonemanager_fczonemanager.zone_manager_opts,
             )),
         ('KEY_MANAGER',
             itertools.chain(
                 cinder_keymgr_confkeymgr.key_mgr_opts,
-            )),
-        ('BACKEND',
-            itertools.chain(
-                [cinder_cmd_volume.host_opt],
             )),
     ]
