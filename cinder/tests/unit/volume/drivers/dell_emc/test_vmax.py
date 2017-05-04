@@ -292,6 +292,7 @@ class VMAXCommonData(object):
     storage_system = 'SYMMETRIX+000195900551'
     storage_system_v3 = 'SYMMETRIX-+-000197200056'
     port_group = 'OS-portgroup-PG'
+    port_group_instance = {'ElementName': 'OS-portgroup-PG'}
     lunmaskctrl_id = (
         'SYMMETRIX+000195900551+OS-fakehost-gold-I-MV')
     lunmaskctrl_name = (
@@ -8303,6 +8304,57 @@ class VMAXMaskingTest(test.TestCase):
             masking._check_existing_storage_group(conn, mv_instance_name))
         self.assertIsNone(sgFromMvInstanceName)
         self.assertIsNotNone(msg)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=VMAXCommonData.port_group)
+    def test_get_port_group_name_from_mv_success(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        conn.GetInstance = mock.Mock(
+            return_value=self.data.port_group_instance)
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(err_msg)
+        self.assertIsNotNone(pg_name)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=None)
+    def test_get_port_group_name_from_mv_fail_1(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(pg_name)
+        self.assertIsNotNone(err_msg)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        '_get_port_group_from_masking_view',
+        return_value=VMAXCommonData.port_group)
+    def test_get_port_group_name_from_mv_fail_2(self, mock_pg_name):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        mv_name = self.data.lunmaskctrl_name
+        system_name = self.data.storage_system
+
+        conn.GetInstance = mock.Mock(return_value={})
+        pg_name, err_msg = (
+            masking._get_port_group_name_from_mv(conn, mv_name, system_name))
+
+        self.assertIsNone(pg_name)
+        self.assertIsNotNone(err_msg)
 
 
 class VMAXFCTest(test.TestCase):
