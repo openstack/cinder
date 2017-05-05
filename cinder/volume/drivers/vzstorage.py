@@ -161,6 +161,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Virtuozzo_Storage_CI"
 
+    # TODO(smcginnis) Remove driver if CI not fixed by Queens
+    SUPPORTED = False
+
     SHARE_FORMAT_REGEX = r'(?:(\S+):\/)?([a-zA-Z0-9_-]+)(?::(\S+))?'
 
     def __init__(self, execute=putils.execute, *args, **kwargs):
