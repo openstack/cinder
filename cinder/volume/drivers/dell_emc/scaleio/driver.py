@@ -24,6 +24,7 @@ import math
 from os_brick.initiator import connector
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import units
 import re
 import requests
@@ -253,6 +254,14 @@ class ScaleIODriver(driver.VolumeDriver):
                    {'sio_ratio': SIO_MAX_OVERSUBSCRIPTION_RATIO,
                     'ratio': self.configuration.max_over_subscription_ratio})
             raise exception.InvalidInput(reason=msg)
+
+        server_api_version = self._get_server_api_version(fromcache=False)
+        if not self._version_greater_than_or_equal(
+                server_api_version, "2.0.0"):
+            # we are running against a pre-2.0.0 ScaleIO instance
+            msg = (_("Using ScaleIO versions less than v2.0.0 has been "
+                     "deprecated and will be removed in a future version"))
+            versionutils.report_deprecated_feature(LOG, msg)
 
     def _find_storage_pool_id_from_storage_type(self, storage_type):
         # Default to what was configured in configuration file if not defined.
