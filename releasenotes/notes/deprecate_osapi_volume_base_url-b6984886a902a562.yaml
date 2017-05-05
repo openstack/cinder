@@ -1,0 +1,4 @@
+---
+deprecations:
+  - Instead of using osapi_volume_base_url use public_endpoint. Both do the
+    same thing.
