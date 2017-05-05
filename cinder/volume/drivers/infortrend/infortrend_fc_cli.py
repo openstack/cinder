@@ -42,6 +42,9 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
     CI_WIKI_NAME = "Infortrend_Storage_CI"
     VERSION = common_cli.InfortrendCommon.VERSION
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues not resolved
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
