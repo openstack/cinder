@@ -93,6 +93,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         self._smbfs_driver._alloc_info_file_path = (
             self._FAKE_ALLOCATION_DATA_PATH)
 
+        self._diskutils = self._smbfs_driver._diskutils
         self._vhdutils = self._smbfs_driver._vhdutils
 
         self.volume = self._simple_volume()
@@ -568,8 +569,10 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._FAKE_SHARE, self._FAKE_SHARE_OPTS)
 
     def test_get_capacity_info(self):
-        self._smbfs_driver._smbutils.get_share_capacity_info.return_value = (
+        self._diskutils.get_disk_capacity.return_value = (
             self._FAKE_TOTAL_SIZE, self._FAKE_TOTAL_AVAILABLE)
+        self._smbfs_driver._get_mount_point_for_share = mock.Mock(
+            return_value=mock.sentinel.mnt_point)
         self._smbfs_driver._get_total_allocated = mock.Mock(
             return_value=self._FAKE_TOTAL_ALLOCATED)
 
@@ -578,6 +581,13 @@ class WindowsSmbFsTestCase(test.TestCase):
                             self._FAKE_TOTAL_AVAILABLE,
                             self._FAKE_TOTAL_ALLOCATED]]
         self.assertEqual(expected_ret_val, ret_val)
+
+        self._smbfs_driver._get_mount_point_for_share.assert_called_once_with(
+            self._FAKE_SHARE)
+        self._diskutils.get_disk_capacity.assert_called_once_with(
+            mock.sentinel.mnt_point)
+        self._smbfs_driver._get_total_allocated.assert_called_once_with(
+            self._FAKE_SHARE)
 
     def _test_get_img_info(self, backing_file=None):
         self._smbfs_driver._vhdutils.get_vhd_parent_path.return_value = (
