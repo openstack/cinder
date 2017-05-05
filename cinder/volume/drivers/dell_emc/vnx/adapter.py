@@ -15,9 +15,11 @@
 
 import json
 import math
+import os
 import random
 import re
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 import six
@@ -36,6 +38,7 @@ from cinder.volume.drivers.dell_emc.vnx import utils
 from cinder.zonemanager import utils as zm_utils
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -88,9 +91,10 @@ class CommonAdapter(object):
         self.set_extra_spec_defaults()
 
     def _normalize_config(self):
-        self.queue_path = (
+        group_name = (
             self.config.config_group if self.config.config_group
             else 'DEFAULT')
+        self.queue_path = os.path.join(CONF.state_path, 'vnx', group_name)
         # Check option `naviseccli_path`.
         # Set to None (then pass to storops) if it is not set or set to an
         # empty string.
