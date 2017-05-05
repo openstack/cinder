@@ -46,6 +46,10 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
         self.VERSION = self.common.VERSION
 
     def check_for_setup_error(self):
+        if not self.common.pywbemAvailable:
+            LOG.error('pywbem could not be imported! '
+                      'pywbem is necessary for this volume driver.')
+
         return
 
     def create_volume(self, volume):

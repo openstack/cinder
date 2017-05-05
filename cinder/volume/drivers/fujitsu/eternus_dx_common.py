@@ -154,9 +154,7 @@ class FJDXCommon(object):
 
     def __init__(self, prtcl, configuration=None):
 
-        if not pywbemAvailable:
-            LOG.error('import pywbem failed!! '
-                      'pywbem is necessary for this volume driver.')
+        self.pywbemAvailable = pywbemAvailable
 
         self.protocol = prtcl
         self.configuration = configuration
