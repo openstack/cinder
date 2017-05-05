@@ -58,6 +58,9 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
     VERSION = '1.0.1'
     CI_WIKI_NAME = "Reduxio_HX550_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues haven't been fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Initialize Reduxio ISCSI Driver."""
         LOG.info("Initializing Reduxio ISCSI Driver")
