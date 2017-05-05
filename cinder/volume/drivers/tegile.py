@@ -156,6 +156,9 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Tegile_Storage_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues not fixed
+    SUPPORTED = False
+
     _api_executor = None
 
     def __init__(self, *args, **kwargs):
