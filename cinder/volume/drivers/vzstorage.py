@@ -411,14 +411,16 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self._extend_volume(volume, size_gb, volume_format)
 
     def _extend_volume(self, volume, size_gb, volume_format):
-        volume_path = self.local_path(volume)
-
         self._check_extend_volume_support(volume, size_gb)
         LOG.info('Resizing file to %sG...', size_gb)
 
-        self._do_extend_volume(volume_path, size_gb, volume_format)
+        active_path = os.path.join(
+            self._get_mount_point_for_share(volume.provider_location),
+            self.get_active_image_from_info(volume))
+        self._do_extend_volume(active_path, size_gb, volume_format)
 
     def _do_extend_volume(self, volume_path, size_gb, volume_format):
+
         if volume_format == DISK_FORMAT_PLOOP:
             self._execute('ploop', 'resize', '-s',
                           '%dG' % size_gb,
@@ -431,16 +433,6 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                     reason='Resizing image file failed.')
 
     def _check_extend_volume_support(self, volume, size_gb):
-        volume_path = self.local_path(volume)
-        active_file = self.get_active_image_from_info(volume)
-        active_file_path = os.path.join(self._local_volume_dir(volume),
-                                        active_file)
-
-        if active_file_path != volume_path:
-            msg = _('Extend volume is only supported for this '
-                    'driver when no snapshots exist.')
-            raise exception.InvalidVolume(msg)
-
         extend_by = int(size_gb) - volume.size
         if not self._is_share_eligible(volume.provider_location,
                                        extend_by):
