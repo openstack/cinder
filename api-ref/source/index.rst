@@ -7,8 +7,8 @@ Contents:
 .. toctree::
     :maxdepth: 2
 
-    v2/index
     v3/index
+    v2/index
     Block Storage API v1 (DEPRECATED) <v1/index>
 
 
