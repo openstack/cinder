@@ -580,7 +580,7 @@ FAKE_GET_REST_VERSION_RESPONSE = {
         "api_info":
         [
             {
-                "bundle_version": "5.7.51.1047"
+                "bundle_version": "5.7.51.1068"
             }
         ]
     }
@@ -1111,22 +1111,63 @@ class DS8KProxyTest(test.TestCase):
                           FakeDS8KCommonHelper, self.configuration, None)
 
     @mock.patch.object(helper.DS8KCommonHelper, '_get_version')
-    def test_verify_rest_version_for_5_7(self, mock_get_version):
-        """test the min version of REST version for 7.x."""
+    def test_verify_rest_version_for_5_7_fb(self, mock_get_version):
+        """test the min version of REST for fb volume in 7.x."""
         mock_get_version.return_value = {
-            "bundle_version": "5.7.0.0"
+            "bundle_version": "5.7.50.0"
         }
         self.assertRaises(exception.VolumeDriverException,
                           FakeDS8KCommonHelper, self.configuration, None)
 
     @mock.patch.object(helper.DS8KCommonHelper, '_get_version')
-    def test_verify_rest_version_for_5_8(self, mock_get_version):
-        """test the min version of REST version for 8.x."""
+    def test_verify_rest_version_for_5_8_fb(self, mock_get_version):
+        """test the min version of REST for fb volume in 8.1."""
         mock_get_version.return_value = {
-            "bundle_version": "5.8.0.0"
+            "bundle_version": "5.8.10.0"
+        }
+        FakeDS8KCommonHelper(self.configuration, None)
+
+    @mock.patch.object(helper.DS8KECKDHelper, '_get_version')
+    def test_verify_rest_version_for_5_7_eckd(self, mock_get_version):
+        """test the min version of REST for eckd volume in 7.x."""
+        self.configuration.connection_type = (
+            storage.XIV_CONNECTION_TYPE_FC_ECKD)
+        self.configuration.ds8k_devadd_unitadd_mapping = 'C4-10'
+        self.configuration.ds8k_ssid_prefix = 'FF'
+        self.configuration.san_clustername = TEST_ECKD_POOL_ID
+        mock_get_version.return_value = {
+            "bundle_version": "5.7.50.0"
         }
         self.assertRaises(exception.VolumeDriverException,
-                          FakeDS8KCommonHelper, self.configuration, None)
+                          FakeDS8KECKDHelper, self.configuration, None)
+
+    @mock.patch.object(helper.DS8KECKDHelper, '_get_version')
+    def test_verify_rest_version_for_5_8_eckd_1(self, mock_get_version):
+        """test the min version of REST for eckd volume in 8.1."""
+        self.configuration.connection_type = (
+            storage.XIV_CONNECTION_TYPE_FC_ECKD)
+        self.configuration.ds8k_devadd_unitadd_mapping = 'C4-10'
+        self.configuration.ds8k_ssid_prefix = 'FF'
+        self.configuration.san_clustername = TEST_ECKD_POOL_ID
+        mock_get_version.return_value = {
+            "bundle_version": "5.8.10.0"
+        }
+        self.assertRaises(exception.VolumeDriverException,
+                          FakeDS8KECKDHelper, self.configuration, None)
+
+    @mock.patch.object(helper.DS8KECKDHelper, '_get_version')
+    def test_verify_rest_version_for_5_8_eckd_2(self, mock_get_version):
+        """test the min version of REST for eckd volume in 8.2."""
+        self.configuration.connection_type = (
+            storage.XIV_CONNECTION_TYPE_FC_ECKD)
+        self.configuration.ds8k_devadd_unitadd_mapping = 'C4-10'
+        self.configuration.ds8k_ssid_prefix = 'FF'
+        self.configuration.san_clustername = TEST_ECKD_POOL_ID
+        mock_get_version.return_value = {
+            "bundle_version": "5.8.20.0"
+        }
+        self.assertRaises(exception.VolumeDriverException,
+                          FakeDS8KECKDHelper, self.configuration, None)
 
     def test_verify_pools_with_wrong_type(self):
         """pool should be set according to the connection type."""
