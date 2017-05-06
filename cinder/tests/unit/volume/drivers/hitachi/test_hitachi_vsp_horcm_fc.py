@@ -570,7 +570,6 @@ for i in range(8):
     snapshot['name'] = 'TEST_SNAPSHOT{0:d}'.format(i)
     snapshot['provider_location'] = None if i == 2 else '{0:d}'.format(
         i if i < 5 else i + 5)
-    snapshot['size'] = 256 if i == 1 else 128
     snapshot['status'] = 'creating' if i == 2 else 'available'
     snapshot['volume_id'] = '00000000-0000-0000-0000-{0:012d}'.format(
         i if i < 5 else 7)

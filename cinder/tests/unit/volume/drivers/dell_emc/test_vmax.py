@@ -9441,7 +9441,7 @@ class VMAXCommonTest(test.TestCase):
             mock_sg):
         common = self.driver.common
         snapshot = self.data.test_snapshot_v3.copy()
-        snapshot['size'] = '100'
+        snapshot['volume_size'] = '100'
         with mock.patch.object(common, '_initial_setup',
                                return_value=self.data.extra_specs):
             self.driver.create_snapshot(snapshot)
