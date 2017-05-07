@@ -50,12 +50,7 @@ brcd_zone_opts = [
                help='Overridden zone name prefix.'),
     cfg.StrOpt('fc_virtual_fabric_id',
                default=None,
-               help='Virtual Fabric ID.'),
-    cfg.StrOpt('principal_switch_wwn',
-               default=None,
-               deprecated_for_removal=True,
-               help='Principal switch WWN of the fabric. This option is not '
-               'used anymore.')
+               help='Virtual Fabric ID.')
 ]
 
 CONF = cfg.CONF
