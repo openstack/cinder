@@ -75,6 +75,7 @@ class IBMStorageDriver(san.SanDriver,
         2.0 - First open source driver version
         2.1.0 - Support Consistency groups through Generic volume groups
               - Support XIV\A9000 Volume independent QoS
+              - Support Consistency groups replication
     """
 
     VERSION = "2.1.0"
@@ -267,3 +268,25 @@ class IBMStorageDriver(san.SanDriver,
         return self.proxy.create_group_from_src(
             context, group, volumes, group_snapshot, snapshots,
             source_cg, source_vols)
+
+    def enable_replication(self, context, group, volumes):
+        """Enable replication."""
+
+        return self.proxy.enable_replication(context, group, volumes)
+
+    def disable_replication(self, context, group, volumes):
+        """Disable replication."""
+
+        return self.proxy.disable_replication(context, group, volumes)
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id):
+        """Failover replication."""
+
+        return self.proxy.failover_replication(context, group, volumes,
+                                               secondary_backend_id)
+
+    def get_replication_error_status(self, context, groups):
+        """Returns error info for replicated groups and its volumes."""
+
+        return self.proxy.get_replication_error_status(context, groups)

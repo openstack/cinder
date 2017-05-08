@@ -56,7 +56,12 @@ MANAGED_VOLUME = {'size': 16,
 REPLICA_FAKE = "repicated_fake"
 REPLICATED_VOLUME = {'size': 64,
                      'name': REPLICA_FAKE,
-                     'id': 2}
+                     'id': '2',
+                     'replication_status': fields.ReplicationStatus.ENABLED}
+
+REPLICATED_VOLUME_DISABLED = REPLICATED_VOLUME.copy()
+REPLICATED_VOLUME_DISABLED['replication_status'] = (
+    fields.ReplicationStatus.DISABLED)
 
 REPLICATION_TARGETS = [{'target_device_id': 'fakedevice'}]
 SECONDARY = 'fakedevice'
@@ -275,6 +280,42 @@ class IBMStorageFakeProxyDriver(object):
                  'updates': {'replication_status': status}})
 
         return target_id, volume_update_list
+
+    def enable_replication(self, context, group, volumes):
+        vol_status = []
+        for vol in volumes:
+            vol_status.append(
+                {'id': vol['id'],
+                 'replication_status': fields.ReplicationStatus.ENABLED})
+        return (
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            vol_status)
+
+    def disable_replication(self, context, group, volumes):
+        volume_update_list = []
+        for volume in volumes:
+            volume_update_list.append(
+                {'id': volume['id'],
+                 'replication_status': fields.ReplicationStatus.DISABLED})
+        return (
+            {'replication_status': fields.ReplicationStatus.DISABLED},
+            volume_update_list)
+
+    def failover_replication(self, context, group, volumes, secondary_id):
+        volume_update_list = []
+        for volume in volumes:
+            volume_update_list.append(
+                {'id': volume['id'],
+                 'replication_status': fields.ReplicationStatus.FAILED_OVER})
+        return ({'replication_status': fields.ReplicationStatus.FAILED_OVER},
+                volume_update_list)
+
+    def get_replication_error_status(self, context, groups):
+        return(
+            [{'group_id': groups[0]['id'],
+              'replication_status': fields.ReplicationStatus.ERROR}],
+            [{'volume_id': VOLUME['id'],
+              'replication_status': fields.ReplicationStatus.ERROR}])
 
 
 class IBMStorageVolumeDriverTest(test.TestCase):
@@ -906,3 +947,39 @@ class IBMStorageVolumeDriverTest(test.TestCase):
 
         self.assertEqual(expected_target_id, target_id)
         self.assertEqual(expected_volume_update_list, volume_update_list)
+
+    def test_enable_replication(self):
+        self.driver.do_setup(None)
+        model_update, volumes_model_update = self.driver.enable_replication(
+            CONTEXT, GROUP, [REPLICATED_VOLUME])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        for vol in volumes_model_update:
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             vol['replication_status'])
+
+    def test_disable_replication(self):
+        self.driver.do_setup(None)
+        model_update, volumes_model_update = self.driver.disable_replication(
+            CONTEXT, GROUP, [REPLICATED_VOLUME_DISABLED])
+        self.assertEqual(fields.ReplicationStatus.DISABLED,
+                         model_update['replication_status'])
+        for vol in volumes_model_update:
+            self.assertEqual(fields.ReplicationStatus.DISABLED,
+                             volumes_model_update[0]['replication_status'])
+
+    def test_failover_replication(self):
+        self.driver.do_setup(None)
+        model_update, volumes_model_update = self.driver.failover_replication(
+            CONTEXT, GROUP, [VOLUME], SECONDARY)
+        self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                         model_update['replication_status'])
+
+    def test_get_replication_error_status(self):
+        self.driver.do_setup(None)
+        group_model_updates, volume_model_updates = (
+            self.driver.get_replication_error_status(CONTEXT, [GROUP]))
+        self.assertEqual(fields.ReplicationStatus.ERROR,
+                         group_model_updates[0]['replication_status'])
+        self.assertEqual(fields.ReplicationStatus.ERROR,
+                         volume_model_updates[0]['replication_status'])
