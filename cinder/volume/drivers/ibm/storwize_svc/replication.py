@@ -251,7 +251,7 @@ class StorwizeSVCReplicationGlobalMirror(
         except Exception as e:
             msg = (_("Unable to set up mirror mode replication for %(vol)s. "
                      "Exception: %(err)s.") % {'vol': vref['id'],
-                                               'err': e.message})
+                                               'err': e})
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])

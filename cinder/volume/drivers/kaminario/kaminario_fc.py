@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Volume driver for Kaminario K2 all-flash arrays."""
-import six
-
 from oslo_log import log as logging
 
 from cinder import coordination
@@ -140,8 +138,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             except Exception as ex:
                 LOG.exception("Unable to create host : %s in K2.",
                               host_name)
-                raise exception.KaminarioCinderDriverException(
-                    reason=six.text_type(ex.message))
+                raise exception.KaminarioCinderDriverException(reason=ex)
         else:
             # Use existing host.
             LOG.debug("Use existing initiator hostname: %s in K2.", host_name)
@@ -163,8 +160,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                     LOG.exception("Unable to add wwpn : %(wwpn)s to "
                                   "host: %(host)s in K2.",
                                   {'wwpn': wwpn, 'host': host_name})
-                    raise exception.KaminarioCinderDriverException(
-                        reason=six.text_type(ex.message))
+                    raise exception.KaminarioCinderDriverException(reason=ex)
         return host, host_rs, host_name
 
     def _build_initiator_target_map(self, connector, all_target_wwns):

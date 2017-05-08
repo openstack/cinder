@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Volume driver for Kaminario K2 all-flash arrays."""
-import six
-
 from oslo_log import log as logging
 
 from cinder import coordination
@@ -137,8 +135,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                 self._delete_host_by_name(host_name)
                 LOG.exception("Unable to create host: %s in K2.",
                               host_name)
-                raise exception.KaminarioCinderDriverException(
-                    reason=six.text_type(ex.message))
+                raise exception.KaminarioCinderDriverException(reason=ex)
         else:
             LOG.debug("Use existing initiator hostname: %s in K2.", host_name)
             host = host_rs.hits[0]
