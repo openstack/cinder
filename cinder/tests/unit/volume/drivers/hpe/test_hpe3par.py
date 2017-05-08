@@ -1698,6 +1698,293 @@ class HPE3PARBaseDriver(object):
             mock_client.assert_has_calls(expected + self.standard_logout)
 
     @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_non_rep_type_to_rep_type(self, _mock_volume_types):
+
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = {
+            'id': self.REPLICATION_CLIENT_ID,
+            'serialNumber': '1234567'
+        }
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        mock_client.getVolume.return_value = {
+            'name': mock.ANY,
+            'snapCPG': mock.ANY,
+            'comment': "{'display_name': 'Foo Volume'}",
+            'provisioningType': mock.ANY,
+            'userCPG': 'OpenStackCPG',
+            'snapCPG': 'OpenStackCPGSnap'}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            retyped = self.driver.retype(
+                self.ctxt,
+                self.volume,
+                self.volume_type_replicated,
+                None,
+                self.RETYPE_HOST)
+            self.assertTrue(retyped)
+            backend_id = self.replication_targets[0]['backend_id']
+            expected = [
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': backend_id,
+                      'mode': PERIODIC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': backend_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.modifyRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    {'targets': [{'syncPeriod': SYNC_PERIOD,
+                                  'targetName': backend_id}]}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(expected + self.standard_logout)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_rep_type_to_non_rep_type(self, _mock_volume_types):
+
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = {
+            'id': self.REPLICATION_CLIENT_ID,
+            'serialNumber': '1234567'
+        }
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        volume_1 = {'name': self.VOLUME_NAME,
+                    'id': self.VOLUME_ID,
+                    'display_name': 'Foo Volume',
+                    'replication_status': 'disabled',
+                    'provider_location': self.CLIENT_ID,
+                    'size': 2,
+                    'host': self.FAKE_CINDER_HOST,
+                    'volume_type': 'replicated',
+                    'volume_type_id': 'gold'}
+
+        volume_type = {'name': 'replicated',
+                       'deleted': False,
+                       'updated_at': None,
+                       'deleted_at': None,
+                       'extra_specs': {'replication_enabled': 'False'},
+                       'id': 'silver'}
+
+        def get_side_effect(*args):
+            data = {'value': None}
+            if args[1] == 'gold':
+                data['value'] = {
+                    'name': 'replicated',
+                    'id': 'gold',
+                    'extra_specs': {
+                        'replication_enabled': '<is> True',
+                        'replication:mode': 'periodic',
+                        'replication:sync_period': '900',
+                        'volume_type': self.volume_type_replicated}}
+            elif args[1] == 'silver':
+                data['value'] = {'name': 'silver',
+                                 'deleted': False,
+                                 'updated_at': None,
+                                 'extra_specs': {
+                                     'replication_enabled': 'False'},
+                                 'deleted_at': None,
+                                 'id': 'silver'}
+            return data['value']
+
+        _mock_volume_types.side_effect = get_side_effect
+
+        mock_client.getVolume.return_value = {
+            'name': mock.ANY,
+            'snapCPG': mock.ANY,
+            'comment': "{'display_name': 'Foo Volume'}",
+            'provisioningType': mock.ANY,
+            'userCPG': 'OpenStackCPG',
+            'snapCPG': 'OpenStackCPGSnap'}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            retyped = self.driver.retype(
+                self.ctxt, volume_1, volume_type, None, self.RETYPE_HOST)
+            self.assertTrue(retyped)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
+                mock.call.removeVolumeFromRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    removeFromTarget=True),
+                mock.call.removeRemoteCopyGroup(self.RCG_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout, any_order =True)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_rep_type_to_rep_type(self, _mock_volume_types):
+
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = {
+            'id': self.REPLICATION_CLIENT_ID,
+            'serialNumber': '1234567'
+        }
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        volume_1 = {'name': self.VOLUME_NAME,
+                    'id': self.VOLUME_ID,
+                    'display_name': 'Foo Volume',
+                    'replication_status': 'disabled',
+                    'provider_location': self.CLIENT_ID,
+                    'size': 2,
+                    'host': self.FAKE_CINDER_HOST,
+                    'volume_type': 'replicated',
+                    'volume_type_id': 'gold'}
+
+        volume_type = {'name': 'replicated',
+                       'deleted': False,
+                       'updated_at': None,
+                       'deleted_at': None,
+                       'extra_specs': {'replication_enabled': '<is> True'},
+                       'id': 'silver'}
+
+        def get_side_effect(*args):
+            data = {'value': None}
+            if args[1] == 'gold':
+                data['value'] = {
+                    'name': 'replicated',
+                    'id': 'gold',
+                    'extra_specs': {
+                        'replication_enabled': '<is> True',
+                        'replication:mode': 'periodic',
+                        'replication:sync_period': '900',
+                        'volume_type': self.volume_type_replicated}}
+            elif args[1] == 'silver':
+                data['value'] = {
+                    'name': 'silver',
+                    'deleted': False,
+                    'updated_at': None,
+                    'extra_specs': {
+                        'replication_enabled': '<is> True',
+                        'replication:mode': 'periodic',
+                        'replication:sync_period': '1500',
+                        'volume_type': self.volume_type_replicated},
+                    'deleted_at': None,
+                    'id': 'silver'}
+            return data['value']
+
+        _mock_volume_types.side_effect = get_side_effect
+
+        mock_client.getVolume.return_value = {
+            'name': mock.ANY,
+            'snapCPG': mock.ANY,
+            'comment': "{'display_name': 'Foo Volume'}",
+            'provisioningType': mock.ANY,
+            'userCPG': 'OpenStackCPG',
+            'snapCPG': 'OpenStackCPGSnap'}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            backend_id = self.replication_targets[0]['backend_id']
+            retyped = self.driver.retype(
+                self.ctxt, volume_1, volume_type, None, self.RETYPE_HOST)
+            self.assertTrue(retyped)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
+                mock.call.removeVolumeFromRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    removeFromTarget=True),
+                mock.call.removeRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': backend_id,
+                      'mode': PERIODIC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': backend_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout, any_order =True)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
     def test_retype_qos_spec(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
