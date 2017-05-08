@@ -985,3 +985,42 @@ class NetAppNfsDriverTestCase(test.TestCase):
             mock.call(mock_call_snap_cleanup, loopingcalls.ONE_MINUTE,
                       loopingcalls.ONE_MINUTE),
             mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
+
+    def test__clone_from_cache(self):
+        image_id = 'fake_image_id'
+        cache_result = [
+            ('fakepool_bad1', '/fakepath/img-cache-1'),
+            ('fakepool', '/fakepath/img-cache-2'),
+            ('fakepool_bad2', '/fakepath/img-cache-3'),
+        ]
+        mock_call__is_share_clone_compatible = self.mock_object(
+            self.driver, '_is_share_clone_compatible')
+        mock_call__is_share_clone_compatible.return_value = True
+        mock_call__do_clone_rel_img_cache = self.mock_object(
+            self.driver, '_do_clone_rel_img_cache')
+        cloned = self.driver._clone_from_cache(fake.test_volume, image_id,
+                                               cache_result)
+        self.assertTrue(cloned)
+        mock_call__is_share_clone_compatible.assert_called_once_with(
+            fake.test_volume, 'fakepool')
+        mock_call__do_clone_rel_img_cache.assert_called_once_with(
+            '/fakepath/img-cache-2', 'fakename', 'fakepool',
+            '/fakepath/img-cache-2'
+        )
+
+    def test__clone_from_cache_not_found(self):
+        image_id = 'fake_image_id'
+        cache_result = [
+            ('fakepool_bad1', '/fakepath/img-cache-1'),
+            ('fakepool_bad2', '/fakepath/img-cache-2'),
+            ('fakepool_bad3', '/fakepath/img-cache-3'),
+        ]
+        mock_call__is_share_clone_compatible = self.mock_object(
+            self.driver, '_is_share_clone_compatible')
+        mock_call__do_clone_rel_img_cache = self.mock_object(
+            self.driver, '_do_clone_rel_img_cache')
+        cloned = self.driver._clone_from_cache(fake.test_volume, image_id,
+                                               cache_result)
+        self.assertFalse(cloned)
+        mock_call__is_share_clone_compatible.assert_not_called()
+        mock_call__do_clone_rel_img_cache.assert_not_called()
