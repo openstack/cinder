@@ -23,4 +23,7 @@ from cinder.common import config
 
 CONF = config.CONF
 
-API = importutils.import_class(CONF.backup_api_class)
+
+def API(*args, **kwargs):
+    class_name = CONF.backup_api_class
+    return importutils.import_object(class_name, *args, **kwargs)
