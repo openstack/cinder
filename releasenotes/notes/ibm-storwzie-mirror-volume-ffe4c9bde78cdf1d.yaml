@@ -1,0 +1,3 @@
+---
+features:
+  - Add mirrored volume support in IBM SVC/Storwize driver.

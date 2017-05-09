@@ -89,9 +89,10 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
               mode
         2.1.1 - Update replication to version 2.1
         2.2 - Add CG capability to generic volume groups
+        2.2.1 - Add vdisk mirror/stretch cluster support
     """
 
-    VERSION = "2.2"
+    VERSION = "2.2.1"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
