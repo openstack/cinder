@@ -257,10 +257,11 @@ class HPE3PARCommon(object):
         3.0.32 - Add consistency group capability to generic volume group
                  in HPE-3APR
         3.0.33 - Added replication feature in retype flow. bug #1680313
+        3.0.34 - Add cloned volume to vvset in online copy. bug #1664464
 
     """
 
-    VERSION = "3.0.33"
+    VERSION = "3.0.34"
 
     stats = {}
 
@@ -2133,6 +2134,10 @@ class HPE3PARCommon(object):
 
                 type_info = self.get_volume_settings_from_type(volume)
                 cpg = type_info['cpg']
+                qos = type_info['qos']
+                vvs_name = type_info['vvs_name']
+                flash_cache = self.get_flash_cache_policy(
+                    type_info['hpe3par_keys'])
 
                 compression_val = self.get_compression_policy(
                     type_info['hpe3par_keys'])
@@ -2143,6 +2148,21 @@ class HPE3PARCommon(object):
                                   tpvv=type_info['tpvv'],
                                   tdvv=type_info['tdvv'],
                                   compression=compression_val)
+
+                if qos or vvs_name or flash_cache is not None:
+                    try:
+                        self._add_volume_to_volume_set(
+                            volume, vol_name, cpg, vvs_name, qos, flash_cache)
+                    except exception.InvalidInput as ex:
+                        # Delete volume if unable to add it to the volume set
+                        self.client.deleteVolume(vol_name)
+                        dbg = {'volume': vol_name,
+                               'vvs_name': vvs_name,
+                               'err': six.text_type(ex)}
+                        msg = _("Failed to add volume '%(volume)s' to vvset "
+                                "'%(vvs_name)s' because '%(err)s'") % dbg
+                        LOG.error(msg)
+                        raise exception.CinderException(msg)
 
                 # v2 replication check
                 replication_flag = False
