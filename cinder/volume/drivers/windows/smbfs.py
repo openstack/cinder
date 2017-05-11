@@ -24,6 +24,7 @@ from oslo_utils import fileutils
 from oslo_utils import units
 
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -82,7 +83,7 @@ CONF.register_opts(volume_opts)
 
 @interface.volumedriver
 class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
-                         remotefs_drv.RemoteFSSnapDriver):
+                         remotefs_drv.RemoteFSSnapDriverDistributed):
     VERSION = VERSION
 
     driver_volume_type = 'smbfs'
@@ -180,7 +181,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
 
             self._pool_mappings[share] = self._get_share_name(share)
 
-    @remotefs_drv.locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
@@ -324,7 +325,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                 extra_specs.get('smbfs:volume_format') or
                 self.configuration.smbfs_default_volume_format)
 
-    @remotefs_drv.locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def create_volume(self, volume):
         return super(WindowsSmbfsDriver, self).create_volume(volume)
 
@@ -349,7 +350,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
             mnt_flags = self.shares[smbfs_share]
         self._remotefsclient.mount(smbfs_share, mnt_flags)
 
-    @remotefs_drv.locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume.provider_location:
@@ -431,7 +432,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._vhdutils.create_differencing_vhd(new_snap_path,
                                                backing_file_full_path)
 
-    @remotefs_drv.locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def extend_volume(self, volume, size_gb):
         LOG.info('Extending volume %s.', volume.id)
 
@@ -504,7 +505,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                                               'extend volume %s to %sG.'
                                               % (volume.id, size_gb))
 
-    @remotefs_drv.locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
 
