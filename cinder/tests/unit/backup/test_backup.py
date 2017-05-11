@@ -16,6 +16,7 @@
 
 import copy
 import ddt
+import os
 import uuid
 
 import mock
@@ -598,7 +599,8 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('six.moves.builtins.open')
-    def test_create_backup(self, mock_open, mock_temporary_chown,
+    @mock.patch.object(os.path, 'isdir', return_value=False)
+    def test_create_backup(self, mock_isdir, mock_open, mock_temporary_chown,
                            mock_get_backup_device, mock_get_conn):
         """Test normal backup creation."""
         vol_size = 1
@@ -640,6 +642,37 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertEqual(vol_size, backup['size'])
 
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os.path, 'isdir', return_value=True)
+    def test_run_backup_with_dir_device_path(self, mock_isdir,
+                                             mock_open,
+                                             mock_chown,
+                                             mock_backup_device,
+                                             mock_brick):
+        backup_service = lambda: None
+        backup_service.backup = mock.Mock()
+        self.backup_mgr.service.get_backup_driver = lambda x: backup_service
+
+        vol_id = self._create_volume_db_entry()
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+        volume = objects.Volume.get_by_id(self.ctxt, vol_id)
+
+        # device_path is represented by a directory
+        device_path = '/fake/disk/path/'
+        attach_info = {'device': {'path': device_path}}
+        self.backup_mgr._attach_device = mock.Mock(
+            return_value=attach_info)
+        self.backup_mgr._detach_device = mock.Mock()
+        self.backup_mgr._run_backup(self.ctxt, backup, volume)
+
+        mock_chown.assert_not_called()
+        mock_open.assert_not_called()
+        backup_service.backup.assert_called_once_with(
+            backup, device_path)
+
     @mock.patch('cinder.backup.manager.BackupManager._run_backup')
     @ddt.data((fields.SnapshotStatus.BACKING_UP, 'available'),
               (fields.SnapshotStatus.BACKING_UP, 'in-use'),
@@ -669,7 +702,9 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('six.moves.builtins.open')
-    def test_create_backup_with_temp_snapshot(self, mock_open,
+    @mock.patch.object(os.path, 'isdir', return_value=False)
+    def test_create_backup_with_temp_snapshot(self, mock_isdir,
+                                              mock_open,
                                               mock_temporary_chown,
                                               mock_get_backup_device,
                                               mock_get_conn):
@@ -866,8 +901,9 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('six.moves.builtins.open')
-    def test_restore_backup(self, mock_open, mock_temporary_chown,
-                            mock_get_conn):
+    @mock.patch.object(os.path, 'isdir', return_value=False)
+    def test_restore_backup(self, mock_isdir, mock_open,
+                            mock_temporary_chown, mock_get_conn):
         """Test normal backup restoration."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='restoring-backup',
