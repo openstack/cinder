@@ -74,6 +74,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                 'instances/Volume::{}/action/setVolumeName'.format(
                     self.new_volume['provider_id']):
                         self.volume['provider_id'],
+                'version': '"{}"'.format('2.0.1'),
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
