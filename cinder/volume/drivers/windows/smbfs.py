@@ -583,11 +583,11 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         temp_path = None
 
         try:
-            if backing_file or root_file_fmt == self._DISK_FORMAT_VHDX:
+            if backing_file:
                 temp_file_name = '%s.temp_image.%s.%s' % (
                     volume.id,
                     image_meta['id'],
-                    self._DISK_FORMAT_VHD)
+                    root_file_fmt)
                 temp_path = os.path.join(self._local_volume_dir(volume),
                                          temp_file_name)
 
@@ -600,7 +600,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                                       image_service,
                                       image_meta,
                                       upload_path,
-                                      self._DISK_FORMAT_VHD)
+                                      root_file_fmt)
         finally:
             if temp_path:
                 self._delete(temp_path)
