@@ -93,6 +93,9 @@ class MessagesController(wsgi.Controller):
             marker, limit, offset = common.get_pagination_params(filters)
             sort_keys, sort_dirs = common.get_sort_params(filters)
 
+        if req.api_version_request.matches(common.FILTERING_VERSION):
+            common.reject_invalid_filters(context, filters, 'message')
+
         messages = self.message_api.get_all(context, filters=filters,
                                             marker=marker, limit=limit,
                                             offset=offset,

@@ -167,6 +167,8 @@ class GroupsController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
         filters.pop('list_volume', None)
+        if req.api_version_request.matches(common.FILTERING_VERSION):
+            common.reject_invalid_filters(context, filters, 'group')
 
         groups = self.group_api.get_all(
             context, filters=filters, marker=marker, limit=limit,

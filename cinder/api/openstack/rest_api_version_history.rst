@@ -296,3 +296,7 @@ user documentation.
 3.30
 ----
   Support sort snapshots with "name".
+
+3.31
+----
+  Add support for configure resource query filters.

@@ -239,6 +239,19 @@ class GroupsAPITestCase(test.TestCase):
         self.assertRaises(exception.GroupNotFound, self.controller.show,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
+    @ddt.data('3.30', '3.31')
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_group_list_with_general_filter(self, version, mock_update):
+        url = '/v3/%s/groups' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=version,
+                                      use_admin_context=False)
+        self.controller.index(req)
+
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'group')
+
     def test_list_groups_json(self):
         self.group2.group_type_id = fake.GROUP_TYPE2_ID
         # TODO(geguileo): One `volume_type_ids` gets sorted out make proper

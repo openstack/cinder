@@ -15,6 +15,8 @@
 
 """The backups V3 api."""
 
+import ddt
+import mock
 import webob
 
 from cinder.api.openstack import api_version_request as api_version
@@ -29,6 +31,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as test_utils
 
 
+@ddt.ddt
 class BackupsControllerAPITestCase(test.TestCase):
     """Test cases for backups API."""
 
@@ -81,6 +84,19 @@ class BackupsControllerAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound,
                           self.controller.update,
                           req, fake.BACKUP_ID, body)
+
+    @ddt.data('3.30', '3.31')
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_backup_list_with_general_filter(self, version, mock_update):
+        url = '/v3/%s/backups' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=version,
+                                      use_admin_context=False)
+        self.controller.index(req)
+
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'backup')
 
     def test_backup_update(self):
         backup = test_utils.create_backup(

@@ -139,6 +139,19 @@ class AttachmentsAPITestCase(test.TestCase):
                           self.controller.delete, req,
                           self.attachment1.id)
 
+    @ddt.data('3.30', '3.31')
+    @mock.patch('cinder.api.common.reject_invalid_filters')
+    def test_attachment_list_with_general_filter(self, version, mock_update):
+        url = '/v3/%s/attachments' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url,
+                                      version=version,
+                                      use_admin_context=False)
+        self.controller.index(req)
+
+        if version != '3.30':
+            mock_update.assert_called_once_with(req.environ['cinder.context'],
+                                                mock.ANY, 'attachment')
+
     @ddt.data('reserved', 'attached')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'attachment_delete')
     def test_delete_attachment(self, status, mock_delete):

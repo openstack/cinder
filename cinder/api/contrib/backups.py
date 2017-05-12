@@ -83,16 +83,23 @@ class BackupsController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return ('name', 'status', 'volume_id')
 
+    @common.process_general_filtering('backup')
+    def _process_backup_filtering(self, context=None, filters=None,
+                                  req_version=None):
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_backup_filter_options())
+
     def _get_backups(self, req, is_detail):
         """Returns a list of backups, transformed through view builder."""
         context = req.environ['cinder.context']
         filters = req.params.copy()
+        req_version = req.api_version_request
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_backup_filter_options())
+        self._process_backup_filtering(context=context, filters=filters,
+                                       req_version=req_version)
 
         if 'name' in filters:
             filters['display_name'] = filters.pop('name')
