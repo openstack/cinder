@@ -833,7 +833,7 @@ class GPFSDriverTestCase(test.TestCase):
                                          mock_resize_volume_file):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = self._fake_volume()
-        volume['consistencygroup_id'] = None
+        volume['group_id'] = None
         self.driver.db = mock.Mock()
         self.driver.db.volume_get = mock.Mock()
         self.driver.db.volume_get.return_value = volume
@@ -866,7 +866,7 @@ class GPFSDriverTestCase(test.TestCase):
                                                   mock_resize_volume_file):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = self._fake_volume()
-        volume['consistencygroup_id'] = None
+        volume['group_id'] = None
         self.driver.db = mock.Mock()
         self.driver.db.volume_get = mock.Mock()
         self.driver.db.volume_get.return_value = volume
@@ -1736,7 +1736,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     def test_local_path_volume_not_in_cg(self):
         volume = self._fake_volume()
-        volume['consistencygroup_id'] = None
+        volume['group_id'] = None
         volume_path = os.path.join(
             self.driver.configuration.gpfs_mount_point_base,
             volume['name']
@@ -1746,7 +1746,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     def test_local_path_volume_in_cg(self):
         volume = self._fake_volume()
-        cgname = "consisgroup-%s" % volume['consistencygroup_id']
+        cgname = "consisgroup-%s" % volume['group_id']
         volume_path = os.path.join(
             self.driver.configuration.gpfs_mount_point_base,
             cgname,
@@ -1785,7 +1785,7 @@ class GPFSDriverTestCase(test.TestCase):
         volume['metadata'] = {'key1': 'val1'}
         volume['_name_id'] = None
         volume['size'] = 1000
-        volume['consistencygroup_id'] = fake.CONSISTENCY_GROUP_ID
+        volume['group_id'] = fake.CONSISTENCY_GROUP_ID
 
         return objects.Volume(self.context, **volume)
 
@@ -1802,7 +1802,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     def _fake_volume_in_cg(self):
         volume = self._fake_volume()
-        volume.consistencygroup_id = fake.CONSISTENCY_GROUP_ID
+        volume.group_id = fake.CONSISTENCY_GROUP_ID
         return volume
 
     def _fake_group(self):
@@ -1813,7 +1813,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     def _fake_cgsnapshot(self):
         snapshot = self._fake_snapshot()
-        snapshot.consistencygroup_id = fake.CONSISTENCY_GROUP_ID
+        snapshot.group_id = fake.CONSISTENCY_GROUP_ID
         return snapshot
 
     def _fake_qemu_qcow2_image_info(self, path):
@@ -2010,7 +2010,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         volume['id'] = '123456'
         volume['name'] = 'test'
         volume['size'] = 1000
-        volume['consistencygroup_id'] = 'cg-1234'
+        volume['group_id'] = 'cg-1234'
         return volume
 
     def _fake_snapshot(self):
@@ -2065,7 +2065,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         volume = self._fake_volume()
         self.assertEqual('/export/consisgroup-cg-1234/test',
                          self.driver._get_volume_path(volume))
-        volume['consistencygroup_id'] = None
+        volume['group_id'] = None
         self.assertEqual('/export/test',
                          self.driver._get_volume_path(volume))
 
@@ -2077,7 +2077,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         volume['provider_location'] = self.TEST_GPFS_MNT_POINT_BASE
         self.assertEqual('/mnt/nfs/consisgroup-cg-1234/test',
                          self.driver.local_path(volume))
-        volume['consistencygroup_id'] = None
+        volume['group_id'] = None
         self.assertEqual('/mnt/nfs/test',
                          self.driver.local_path(volume))
 
