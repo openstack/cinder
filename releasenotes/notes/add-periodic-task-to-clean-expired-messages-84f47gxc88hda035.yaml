@@ -1,5 +1,5 @@
 ---
 features:
-  -  Added perodic task to clean expired messages in
+  -  Added periodic task to clean expired messages in
      cinder scheduler, also added a configuration option
      ``message_reap_interval`` to handle the interval.
