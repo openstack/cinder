@@ -42,11 +42,13 @@ List backups with detail
 
 .. rest_method::  GET /v3/{project_id}/backups/detail
 
-Lists Block Storage backups, with details, to which the project has access.
+Lists Block Storage backups, with details, to which the project has access,
+since v3.31 if non-admin users specify invalid filters in the url,
+API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request
@@ -242,10 +244,12 @@ List backups for project
 
 .. rest_method::  GET /v3/{project_id}/backups
 
-Lists Block Storage backups to which the project has access.
+Lists Block Storage backups to which the project has access,
+since v3.31 if non-admin users specify invalid filters in the
+url, API will return bad request.
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 Request
 -------

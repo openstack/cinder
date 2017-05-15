@@ -74,11 +74,12 @@ List attachments with details
 
 .. rest_method::  GET /v3/{project_id}/attachments/detail
 
-Lists all attachments with details.
+Lists all attachments with details, since v3.31 if non-admin
+users specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 Request
 -------
@@ -118,11 +119,12 @@ List attachments
 
 .. rest_method::  GET /v3/{project_id}/attachments
 
-Lists all attachments.
+Lists all attachments, since v3.31 if non-admin users
+specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request

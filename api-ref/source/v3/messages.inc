@@ -75,11 +75,12 @@ List messages
 
 .. rest_method::  GET /v3/{project_id}/messages
 
-Lists all messages.
+Lists all messages, since v3.31 if non-admin users
+specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request

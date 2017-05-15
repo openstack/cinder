@@ -22,11 +22,12 @@ List groups
 
 .. rest_method::  GET /v3/{project_id}/groups
 
-Lists groups.
+Lists groups, since v3.31 if non-admin users specify
+invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request
@@ -187,11 +188,12 @@ List groups with details
 
 .. rest_method::  GET /v3/{project_id}/groups/detail
 
-Lists groups with details.
+Lists groups with details, since v3.31 if non-admin
+users specify invalid filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request
