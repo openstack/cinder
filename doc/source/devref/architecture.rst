@@ -25,7 +25,7 @@ Cinder uses a sql-based central database that is shared by all Cinder services i
 Components
 ----------
 
-Below you will a brief explanation of the different components.
+Below you will find a brief explanation of the different components.
 
 ::
 
@@ -45,9 +45,9 @@ Below you will a brief explanation of the different components.
                                   < REST >
 
 
-* DB: sql database for data storage. Used by all components (LINKS NOT SHOWN)
-* Web Dashboard: potential external component that talks to the api
-* api: component that receives http requests, converts commands and communicates with other components via the queue or http
+* DB: sql database for data storage. Used by all components (LINKS NOT SHOWN).
+* Web Dashboard: potential external component that talks to the api.
+* api: component that receives http requests, converts commands and communicates with other components via the queue or http.
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
-* scheduler: decides which host gets each volume
+* scheduler: decides which host gets each volume.
 * volume: manages dynamically attachable block devices.
