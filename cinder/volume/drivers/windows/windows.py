@@ -29,6 +29,7 @@ from oslo_utils import fileutils
 from oslo_utils import units
 from oslo_utils import uuidutils
 
+from cinder import exception
 from cinder.image import image_utils
 from cinder.volume import driver
 from cinder.volume import utils
@@ -74,16 +75,37 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
-        self._tgt_utils.get_portal_locations(available_only=True,
-                                             fail_if_none_found=True)
+        self._get_portals()
 
-    def _get_host_information(self, volume):
+    def _get_portals(self):
+        available_portals = set(self._tgt_utils.get_portal_locations(
+            available_only=True,
+            fail_if_none_found=True))
+        LOG.debug("Available iSCSI portals: %s", available_portals)
+
+        iscsi_port = self.configuration.iscsi_port
+        iscsi_ips = ([self.configuration.iscsi_ip_address] +
+                     self.configuration.iscsi_secondary_ip_addresses)
+        requested_portals = {':'.join([iscsi_ip, str(iscsi_port)])
+                             for iscsi_ip in iscsi_ips}
+
+        unavailable_portals = requested_portals - available_portals
+        if unavailable_portals:
+            LOG.warning("The following iSCSI portals were requested but "
+                        "are not available: %s.", unavailable_portals)
+
+        selected_portals = requested_portals & available_portals
+        if not selected_portals:
+            err_msg = "None of the configured iSCSI portals are available."
+            raise exception.VolumeDriverException(err_msg)
+
+        return list(selected_portals)
+
+    def _get_host_information(self, volume, multipath=False):
         """Getting the portal and port information."""
-        # TODO(lpetrut): properly handle multiple existing portals, also
-        # use the iSCSI traffic addresses config options.
         target_name = self._get_target_name(volume)
 
-        available_portal_location = self._tgt_utils.get_portal_locations()[0]
+        available_portals = self._get_portals()
         properties = self._tgt_utils.get_target_information(target_name)
 
         # Note(lpetrut): the WT_Host CHAPSecret field cannot be accessed
@@ -95,10 +117,17 @@ class WindowsDriver(driver.ISCSIDriver):
             properties['auth_username'] = auth_username
             properties['auth_password'] = auth_secret
 
+        properties['target_portal'] = available_portals[0]
         properties['target_discovered'] = False
-        properties['target_portal'] = available_portal_location
         properties['target_lun'] = 0
         properties['volume_id'] = volume.id
+
+        if multipath:
+            properties['target_portals'] = available_portals
+            properties['target_iqns'] = [properties['target_iqn']
+                                         for portal in available_portals]
+            properties['target_luns'] = [properties['target_lun']
+                                         for portal in available_portals]
 
         return properties
 
@@ -110,7 +139,8 @@ class WindowsDriver(driver.ISCSIDriver):
         self._tgt_utils.associate_initiator_with_iscsi_target(initiator_name,
                                                               target_name)
 
-        properties = self._get_host_information(volume)
+        properties = self._get_host_information(volume,
+                                                connector.get('multipath'))
 
         return {
             'driver_volume_type': 'iscsi',
