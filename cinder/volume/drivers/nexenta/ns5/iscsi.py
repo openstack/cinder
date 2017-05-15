@@ -70,7 +70,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 options.NEXENTA_RRMGR_OPTS)
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
-        self.vip = self.configuration.nexenta_host
+        self.iscsi_host = self.configuration.nexenta_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
@@ -94,7 +94,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         return backend_name
 
     def do_setup(self, context):
-        host = self.nef_host or self.vip
+        host = self.nef_host or self.iscsi_host
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
             self.nef_password, self.use_https)
@@ -112,7 +112,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             else:
                 raise
 
-        # self._fetch_volumes()
+        self._fetch_volumes()
 
     def _fetch_volumes(self):
         url = 'san/iscsi/targets?fields=alias,name&limit=50000'
@@ -287,14 +287,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 (self._get_volume_path(src_vref), snapshot['name'])))
         except exception.NexentaException:
             LOG.error('Volume creation failed, deleting created snapshot '
-                      '%s', '@'.join(
-                [snapshot['volume_name'], snapshot['name']]))
+                      '%s', '@'.join([snapshot['volume_name'],
+                                     snapshot['name']]))
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning('Failed to delete zfs snapshot '
-                            '%s', '@'.join(
-                    [snapshot['volume_name'], snapshot['name']]))
+                            '%s', '@'.join([snapshot['volume_name'],
+                                           snapshot['name']]))
             raise
 
     def create_export(self, _ctx, volume, connector):
@@ -365,10 +365,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         free_amount = utils.str2gib_size(
             stats['bytesAvailable'] - stats['bytesUsed'])
 
-        host = self.vip.split(',')[0] if self.vip else self.nef_host
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
-            'host': host,
+            'host': self.iscsi_host,
             'pool': self.storage_pool,
             'group': self.volume_group,
         }
@@ -433,7 +432,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
                 # Create new target
                 url = 'san/iscsi/targets'
-                portal = self.vip.split(',')[0] if self.vip else self.nef_host
+                portal = self.iscsi_host
                 data = {
                     "portals": [
                         {"address": portal}
@@ -465,7 +464,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             except exception.NexentaException as e:
                 if 'No such target group' in e.args[0]:
                     self._create_target_group(tg_name, target_name)
-                    # self._fill_volumes(tg_name)
+                    self._fill_volumes(tg_name)
                     self.nef.post(url, data)
                 else:
                     raise
@@ -479,10 +478,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
-            host = self.vip.split(',')[0] if self.vip else self.nef_host
-            LOG.warning(host)
+            # host = self.vip.split(',')[0] if self.vip else self.nef_host
+            # LOG.warning(host)
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': host,
+                'host': self.iscsi_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
                 'name': target_name,
                 'lun': lun,

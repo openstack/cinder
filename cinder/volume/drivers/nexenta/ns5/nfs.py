@@ -75,7 +75,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         self.nef = None
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
-        self.vip = self.configuration.nas_host
+        self.nas_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -91,7 +91,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         return backend_name
 
     def do_setup(self, context):
-        host = self.nef_host or self.vip
+        host = self.nef_host or self.nas_host
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
             self.nef_password, self.use_https)
@@ -158,13 +158,13 @@ class NexentaNfsDriver(nfs.NfsDriver,
                 LOG.info('Filesystem %s already exists, using it.', filesystem)
             else:
                 raise
-        host = self.vip.split(',')[0] if self.vip else self.nef_host
+        # host = self.vip.split(',')[0] if self.vip else self.nef_host
         volume['provider_location'] = '%s:/%s/%s' % (
-            host, self.share, volume['name'])
+            self.nas_host, self.share, volume['name'])
         try:
             self._share_folder(fs, volume['name'])
             self._ensure_share_mounted('%s:/%s/%s' % (
-                host, self.share, volume['name']))
+                self.nas_host, self.share, volume['name']))
 
             volume_size = volume['size']
             if getattr(self.configuration,
@@ -448,8 +448,8 @@ class NexentaNfsDriver(nfs.NfsDriver,
         total, free, allocated = self._get_capacity_info(self.share)
         total_space = utils.str2gib_size(total)
         free_space = utils.str2gib_size(free)
-        host = self.vip.split(',')[0] if self.vip else self.nef_host
-        share = ':/'.join([host, self.share])
+        # host = self.vip.split(',')[0] if self.vip else self.nef_host
+        share = ':/'.join([self.nas_host, self.share])
 
         location_info = '%(driver)s:%(share)s' % {
             'driver': self.__class__.__name__,
