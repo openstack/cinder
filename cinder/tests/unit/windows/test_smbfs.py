@@ -481,7 +481,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         if volume_meta_contains_fmt:
             volume_metadata['volume_format'] = fake_vol_meta_fmt
         elif volume_type_contains_fmt:
-            volume_type_extra_specs['volume_format'] = fake_vol_type_fmt
+            volume_type_extra_specs['smbfs:volume_format'] = fake_vol_type_fmt
 
         volume_type = fake_volume.fake_volume_type_obj(self.context)
         volume = fake_volume.fake_volume_obj(self.context)
