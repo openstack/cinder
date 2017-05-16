@@ -153,7 +153,7 @@ class BackupMetadataAPI(base.Base):
 
         :param metadata: master set of metadata
         :param fields: list of fields we want to extract
-        :param excludes: fields to be exluded
+        :param excludes: fields to be excluded
         :returns: filtered metadata
         """
         if not fields:

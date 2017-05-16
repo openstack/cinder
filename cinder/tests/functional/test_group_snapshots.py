@@ -342,7 +342,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
         found_group = self._poll_group_while(group_id, ['deleting'])
 
-        # Created resoueces should be gone
+        # Created resources should be gone
         self.assertFalse(found_group_snapshot)
         self.assertFalse(found_volume)
         self.assertFalse(found_group)

@@ -113,7 +113,7 @@ class VolumeCapabilitiesTestCase(base.BaseVolumeTestCase):
                                            mock_init_vendor,
                                            mock_get_volume_stats):
 
-        # Error test case: propety does not match vendor prefix
+        # Error test case: property does not match vendor prefix
         def init_vendor_properties(self):
             properties = {}
             self._set_property(
@@ -153,7 +153,7 @@ class VolumeCapabilitiesTestCase(base.BaseVolumeTestCase):
                                             mock_init_vendor,
                                             mock_get_volume_stats):
 
-        # Error test case: propety cannot override any standard capabilities
+        # Error test case: property cannot override any standard capabilities
         def init_vendor_properties(self):
             properties = {}
             self._set_property(
