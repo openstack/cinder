@@ -71,6 +71,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     SNAPSHOT_DESCRIPTION = 'test snapshot'
     IMAGE_ID = 'eb87f4b0-d625-47f8-bb45-71c43b486d3a'
     IMAGE_NAME = 'image-1'
+    ADAPTER_TYPE = volumeops.VirtualDiskAdapterType.BUS_LOGIC
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
@@ -92,6 +93,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_cluster_name = self.CLUSTERS
         self._config.vmware_host_version = self.DEFAULT_VC_VERSION
         self._config.vmware_connection_pool_size = self.POOL_SIZE
+        self._config.vmware_adapter_type = self.ADAPTER_TYPE
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
@@ -2024,7 +2026,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 volume['name'])
             exp_adapter_type = (
                 create_params.get(vmdk.CREATE_PARAM_ADAPTER_TYPE) or
-                'lsiLogic')
+                self._driver.configuration.vmware_adapter_type)
             vops.create_backing.assert_called_once_with(
                 exp_backing_name,
                 volume['size'] * units.Mi,
@@ -2393,7 +2395,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             src_dc, src_path, dest_path, dest_dc_ref=dest_dc)
         get_storage_profile_id.assert_called_once_with(volume)
         vops.attach_disk_to_backing.assert_called_once_with(
-            backing, disk_device.capacityInKB, disk_type, 'lsiLogic',
+            backing, disk_device.capacityInKB, disk_type,
+            self._driver.configuration.vmware_adapter_type,
             profile_id, dest_path)
         vops.update_backing_disk_uuid.assert_called_once_with(backing,
                                                               volume['id'])

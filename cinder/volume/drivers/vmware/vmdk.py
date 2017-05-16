@@ -128,6 +128,14 @@ vmdk_opts = [
     cfg.IntOpt('vmware_connection_pool_size',
                default=10,
                help='Maximum number of connections in http connection pool.'),
+    cfg.StrOpt('vmware_adapter_type',
+               choices=[volumeops.VirtualDiskAdapterType.LSI_LOGIC,
+                        volumeops.VirtualDiskAdapterType.BUS_LOGIC,
+                        volumeops.VirtualDiskAdapterType.LSI_LOGIC_SAS,
+                        volumeops.VirtualDiskAdapterType.PARA_VIRTUAL,
+                        volumeops.VirtualDiskAdapterType.IDE],
+               default=volumeops.VirtualDiskAdapterType.LSI_LOGIC,
+               help='Default adapter type to be used for attaching volumes.'),
 ]
 
 CONF = cfg.CONF
@@ -438,8 +446,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # create a backing with single disk
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
         size_kb = volume['size'] * units.Mi
-        adapter_type = create_params.get(CREATE_PARAM_ADAPTER_TYPE,
-                                         'lsiLogic')
+        adapter_type = create_params.get(
+            CREATE_PARAM_ADAPTER_TYPE, self.configuration.vmware_adapter_type)
         backing = self.volumeops.create_backing(backing_name,
                                                 size_kb,
                                                 disk_type,
@@ -1151,7 +1159,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # Get the disk type, adapter type and size of vmdk image
         image_disk_type = ImageDiskType.PREALLOCATED
-        image_adapter_type = volumeops.VirtualDiskAdapterType.LSI_LOGIC
+        image_adapter_type = self.configuration.vmware_adapter_type
         image_size_in_bytes = metadata['size']
         properties = metadata['properties']
         if properties:
@@ -1560,7 +1568,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             backing,
             disk.capacityInKB,
             VMwareVcVmdkDriver._get_disk_type(volume),
-            'lsiLogic',
+            self.configuration.vmware_adapter_type,
             profile_id,
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
