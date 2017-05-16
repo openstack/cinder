@@ -1380,7 +1380,7 @@ class BackupsAPITestCase(test.TestCase):
         # Ensure that the original volume name wasn't overridden
         self.assertEqual(orig_vol_name, restored_vol['display_name'])
 
-    @mock.patch('cinder.backup.API.restore')
+    @mock.patch('cinder.backup.api.API.restore')
     def test_restore_backup_with_InvalidInput(self,
                                               _mock_volume_api_restore):
 
@@ -1503,7 +1503,7 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.backup.API.restore')
+    @mock.patch('cinder.backup.api.API.restore')
     def test_restore_backup_with_VolumeSizeExceedsAvailableQuota(
             self,
             _mock_backup_restore):
@@ -1536,7 +1536,7 @@ class BackupsAPITestCase(test.TestCase):
                          '2G has been consumed.',
                          res_dict['overLimit']['message'])
 
-    @mock.patch('cinder.backup.API.restore')
+    @mock.patch('cinder.backup.api.API.restore')
     def test_restore_backup_with_VolumeLimitExceeded(self,
                                                      _mock_backup_restore):
 
