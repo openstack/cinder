@@ -566,6 +566,16 @@ class TestZFSSAISCSIDriver(test.TestCase):
                                               large_img,
                                               img_service))
 
+        # Creating a volume equal as image:
+        eq_img = large_img.copy()
+        eq_img['virtual_size'] = self.test_vol['size'] * units.Gi
+        _info.return_value = ImgInfo(eq_img['virtual_size'])
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              eq_img,
+                                              img_service))
+
         # Exception raised in _verify_cache_image
         _info.return_value = ImgInfo(small_img['virtual_size'])
         self.drv._verify_cache_volume.side_effect = (
