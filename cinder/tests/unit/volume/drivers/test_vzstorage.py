@@ -366,3 +366,33 @@ class VZStorageTestCase(test.TestCase):
             'ploop', 'resize', '-s', '100G',
             '%s/DiskDescriptor.xml' % self._FAKE_VOLUME_PATH,
             run_as_root=True)
+
+    @mock.patch.object(os.path, 'exists', return_value=False)
+    def test_do_create_volume_with_volume_type(self, mock_exists):
+        drv = self._vz_driver
+        drv.local_path = mock.Mock(
+            return_value=self._FAKE_VOLUME_PATH)
+        drv._write_info_file = mock.Mock()
+        drv._qemu_img_info = mock.Mock()
+        drv._create_qcow2_file = mock.Mock()
+        drv._create_ploop = mock.Mock()
+
+        volume_type = fake_volume.fake_volume_type_obj(self.context)
+        volume_type.extra_specs = {
+            'vz:volume_format': 'qcow2'
+        }
+        volume1 = fake_volume.fake_volume_obj(self.context)
+        volume1.size = 1024
+        volume1.volume_type = volume_type
+        volume2 = copy.deepcopy(volume1)
+        volume2.metadata = {
+            'volume_format': 'ploop'
+        }
+
+        drv._do_create_volume(volume1)
+        drv._create_qcow2_file.assert_called_once_with(
+            self._FAKE_VOLUME_PATH, 1024)
+
+        drv._do_create_volume(volume2)
+        drv._create_ploop.assert_called_once_with(
+            self._FAKE_VOLUME_PATH, 1024)

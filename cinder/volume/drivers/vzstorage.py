@@ -33,8 +33,6 @@ from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.0'
-
 LOG = logging.getLogger(__name__)
 
 vzstorage_opts = [
@@ -153,17 +151,17 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     Version history:
         1.0     - Initial driver.
+        1.1     - Supports vz:volume_format in vendor properties.
     """
-    driver_volume_type = 'vzstorage'
-    driver_prefix = 'vzstorage'
-    volume_backend_name = 'Virtuozzo_Storage'
-    VERSION = VERSION
-    # ThirdPartySystems wiki page
+    VERSION = '1.1'
     CI_WIKI_NAME = "Virtuozzo_Storage_CI"
 
     SHARE_FORMAT_REGEX = r'(?:(\S+):\/)?([a-zA-Z0-9_-]+)(?::(\S+))?'
 
     def __init__(self, execute=putils.execute, *args, **kwargs):
+        self.driver_volume_type = 'vzstorage'
+        self.driver_prefix = 'vzstorage'
+        self.volume_backend_name = 'Virtuozzo_Storage'
         self._remotefsclient = None
         super(VZStorageDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(vzstorage_opts)
@@ -181,6 +179,25 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             'vzstorage', root_helper, execute=execute,
             vzstorage_mount_point_base=self.base,
             vzstorage_mount_options=opts)
+
+    def _update_volume_stats(self):
+        super(VZStorageDriver, self)._update_volume_stats()
+        self._stats['vendor_name'] = 'Virtuozzo'
+
+    def _init_vendor_properties(self):
+        namespace = 'vz'
+        properties = {}
+
+        self._set_property(
+            properties,
+            "%s:volume_format" % namespace,
+            "Volume format",
+            _("Specifies volume format."),
+            "string",
+            enum=["qcow2", "ploop", "raw"],
+            default=self.configuration.vzstorage_default_volume_format)
+
+        return properties, namespace
 
     def _qemu_img_info(self, path, volume_name):
         qemu_img_cache = path + ".qemu_img_info"
@@ -338,15 +355,23 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         return True
 
     def choose_volume_format(self, volume):
-        vol_type = volume.volume_type
-        if vol_type:
-            extra_specs = vol_type.extra_specs or {}
-        else:
-            extra_specs = {}
+        volume_format = None
+        volume_type = volume.volume_type
 
-        extra_specs.update(volume.metadata or {})
+        # Retrieve volume format from volume metadata
+        if 'volume_format' in volume.metadata:
+            volume_format = volume.metadata['volume_format']
 
-        return (extra_specs.get('volume_format') or
+        # If volume format wasn't found in metadata, use
+        # volume type extra specs
+        if not volume_format and volume_type:
+            extra_specs = volume_type.extra_specs or {}
+            if 'vz:volume_format' in extra_specs:
+                volume_format = extra_specs['vz:volume_format']
+
+        # If volume format is still undefined, return default
+        # volume format from backend configuration
+        return (volume_format or
                 self.configuration.vzstorage_default_volume_format)
 
     def get_volume_format(self, volume):

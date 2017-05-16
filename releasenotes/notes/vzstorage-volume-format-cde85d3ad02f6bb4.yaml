@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VzStorage volume driver now supports choosing desired volume format by setting
+    vendor property 'vz:volume_format' in volume type metadata.
+    Allowed values are 'ploop', 'qcow2' and 'raw'.
