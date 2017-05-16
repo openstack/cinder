@@ -167,6 +167,14 @@ MAPPING = {
     'cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver',
     'cinder.volume.drivers.eqlx.DellEQLSanISCSIDriver':
     'cinder.volume.drivers.dell_emc.ps.PSSeriesISCSIDriver',
+    'cinder.volume.drivers.dell.dell_storagecenter_iscsi.'
+    'DellStorageCenterISCSIDriver':
+    'cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.'
+    'SCISCSIDriver',
+    'cinder.volume.drivers.dell.dell_storagecenter_fc.'
+    'DellStorageCenterFCDriver':
+    'cinder.volume.drivers.dell_emc.sc.storagecenter_fc.'
+    'SCFCDriver',
 }
 
 

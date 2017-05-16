@@ -18,18 +18,18 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
-from cinder.volume.drivers.dell import dell_storagecenter_api
-from cinder.volume.drivers.dell import dell_storagecenter_fc
+from cinder.volume.drivers.dell_emc.sc import storagecenter_api
+from cinder.volume.drivers.dell_emc.sc import storagecenter_fc
 
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-@mock.patch.object(dell_storagecenter_api.HttpClient,
+@mock.patch.object(storagecenter_api.HttpClient,
                    '__init__',
                    return_value=None)
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(storagecenter_api.SCApi,
                    'open_connection')
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(storagecenter_api.SCApi,
                    'close_connection')
 class DellSCSanFCDriverTestCase(test.TestCase):
 
@@ -145,7 +145,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         self.configuration.dell_sc_api_port = 3033
         self._context = context.get_admin_context()
 
-        self.driver = dell_storagecenter_fc.DellStorageCenterFCDriver(
+        self.driver = storagecenter_fc.SCFCDriver(
             configuration=self.configuration)
 
         self.driver.do_setup(None)
@@ -172,22 +172,22 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           'initiator': 'iqn.1993-08.org.debian:01:e1b1312f9e1',
                           'wwpns': ['21000024ff30441c', '21000024ff30441d']}
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -225,25 +225,25 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None, False)
         mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns')
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        'initialize_secondary')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_live_volume')
     def test_initialize_connection_live_vol(self,
                                             mock_get_live_volume,
@@ -293,23 +293,23 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None, True)
         mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns')
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        'initialize_secondary')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_live_volume')
     def test_initialize_connection_live_vol_afo(self,
                                                 mock_get_live_volume,
@@ -361,19 +361,19 @@ class DellSCSanFCDriverTestCase(test.TestCase):
             fake.VOLUME_ID, '101.101', True)
         mock_get_volume.assert_called_once_with('102.101')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(None, [], {}))
     def test_initialize_connection_no_wwns(self,
@@ -392,19 +392,19 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(None, [], {}))
     def test_initialize_connection_no_server(self,
@@ -423,16 +423,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPING)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(None, [], {}))
     def test_initialize_connection_vol_not_found(self,
@@ -450,16 +450,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(None, [], {}))
     def test_initialize_connection_map_vol_fail(self,
@@ -573,16 +573,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         expected = (None, [], {})
         self.assertEqual(expected, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -591,7 +591,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
     def test_terminate_connection(self,
@@ -611,16 +611,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -629,12 +629,12 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+    @mock.patch.object(storagecenter_fc.SCFCDriver,
                        'terminate_secondary')
     def test_terminate_connection_live_vol(self,
                                            mock_terminate_secondary,
@@ -657,16 +657,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -675,7 +675,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
     def test_terminate_connection_no_server(self,
@@ -694,16 +694,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -712,7 +712,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
     def test_terminate_connection_no_volume(self,
@@ -731,21 +731,21 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(None,
                                      [],
                                      {}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
     def test_terminate_connection_no_wwns(self,
@@ -764,16 +764,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=False)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -782,7 +782,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=1)
     def test_terminate_connection_failure(self,
@@ -801,16 +801,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_wwns',
                        return_value=(1,
                                      [u'5000D31000FCBE3D',
@@ -819,7 +819,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                       [u'5000D31000FCBE35'],
                                       u'21000024FF30441D':
                                       [u'5000D31000FCBE3D']}))
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume_count',
                        return_value=0)
     def test_terminate_connection_vol_count_zero(self,
@@ -863,7 +863,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         expected = (None, [], {})
         self.assertEqual(expected, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_update_volume_stats_with_refresh(self,
@@ -875,7 +875,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         self.assertEqual('FC', stats['storage_protocol'])
         mock_get_storage_usage.assert_called_once_with()
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_get_volume_stats_no_refresh(self,

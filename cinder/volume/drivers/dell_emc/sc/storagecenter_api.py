@@ -1,4 +1,4 @@
-#    Copyright 2016 Dell Inc.
+#    Copyright (c) 2015-2017 Dell Inc, or its subsidiaries.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -176,7 +176,7 @@ class HttpClient(object):
                 # r.content blanks.
                 # Object returned switches to one without objectType or with
                 # a different objectType.
-                if not StorageCenterApi._check_result(r):
+                if not SCApi._check_result(r):
                     LOG.debug('Async error:\n'
                               '\tstatus_code: %(code)s\n'
                               '\ttext:        %(text)s\n',
@@ -273,8 +273,8 @@ class HttpClient(object):
             self.session.delete(self.__formatUrl(url), **named), async)
 
 
-class StorageCenterApiHelper(object):
-    """StorageCenterApiHelper
+class SCApiHelper(object):
+    """SCApiHelper
 
     Helper class for API access.  Handles opening and closing the
     connection to the Dell REST API.
@@ -328,12 +328,12 @@ class StorageCenterApiHelper(object):
 
     def _setup_connection(self):
         """Attempts to open a connection to the storage center."""
-        connection = StorageCenterApi(self.san_ip,
-                                      self.san_port,
-                                      self.san_login,
-                                      self.san_password,
-                                      self.config.dell_sc_verify_cert,
-                                      self.apiversion)
+        connection = SCApi(self.san_ip,
+                           self.san_port,
+                           self.san_login,
+                           self.san_password,
+                           self.config.dell_sc_verify_cert,
+                           self.apiversion)
         # This instance is for a single backend.  That backend has a
         # few items of information we should save rather than passing them
         # about.
@@ -357,9 +357,9 @@ class StorageCenterApiHelper(object):
         return connection
 
     def open_connection(self):
-        """Creates the StorageCenterApi object.
+        """Creates the SCApi object.
 
-        :return: StorageCenterApi object.
+        :return: SCApi object.
         :raises VolumeBackendAPIException:
         """
         connection = None
@@ -390,8 +390,8 @@ class StorageCenterApiHelper(object):
         return connection
 
 
-class StorageCenterApi(object):
-    """StorageCenterApi
+class SCApi(object):
+    """SCApi
 
     Handles calls to Dell SC and EM via the REST API interface.
 
@@ -416,10 +416,11 @@ class StorageCenterApi(object):
         3.5.0 - Support for AFO.
         3.6.0 - Server type support.
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
+        4.0.0 - Driver moved to dell_emc.
 
     """
 
-    APIDRIVERVERSION = '3.7.0'
+    APIDRIVERVERSION = '4.0.0'
 
     def __init__(self, host, port, user, password, verify, apiversion):
         """This creates a connection to Dell SC or EM.

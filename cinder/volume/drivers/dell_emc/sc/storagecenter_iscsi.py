@@ -1,4 +1,4 @@
-#    Copyright 2015 Dell Inc.
+#    Copyright (c) 2015-2017 Dell Inc, or its subsidiaries.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,19 +21,20 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.volume import driver
-from cinder.volume.drivers.dell import dell_storagecenter_common
+from cinder.volume.drivers.dell_emc.sc import storagecenter_common
+
 LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
-                                   driver.ISCSIDriver):
+class SCISCSIDriver(storagecenter_common.SCCommonDriver,
+                    driver.ISCSIDriver):
 
     """Implements commands for Dell Storage Center ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
-        volume_driver=cinder.volume.drivers.dell.dell_storagecenter_iscsi.\
-        DellStorageCenterISCSIDriver
+        volume_driver=cinder.volume.drivers.dell_emc.sc.\
+        dell_storagecenter_iscsi.SCISCSIDriver
 
     Version history:
 
@@ -60,14 +61,15 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         3.5.0 - Support for AFO.
         3.6.0 - Server type support.
         3.7.0 - Support for Data Reduction, Group QOS and Volume QOS.
+        4.0.0 - Driver moved to dell_emc.
 
     """
 
-    VERSION = '3.7.0'
+    VERSION = '4.0.0'
     CI_WIKI_NAME = "Dell_Storage_CI"
 
     def __init__(self, *args, **kwargs):
-        super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)
+        super(SCISCSIDriver, self).__init__(*args, **kwargs)
         self.backend_name = (
             self.configuration.safe_get('volume_backend_name') or 'Dell-iSCSI')
 

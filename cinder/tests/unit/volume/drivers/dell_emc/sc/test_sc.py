@@ -23,23 +23,22 @@ from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.volume.drivers.dell import dell_storagecenter_api
-from cinder.volume.drivers.dell import dell_storagecenter_iscsi
+from cinder.volume.drivers.dell_emc.sc import storagecenter_api
+from cinder.volume.drivers.dell_emc.sc import storagecenter_iscsi
 from cinder.volume import volume_types
-
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
 MOCKAPI = mock.MagicMock()
 
 
-@mock.patch.object(dell_storagecenter_api.HttpClient,
+@mock.patch.object(storagecenter_api.HttpClient,
                    '__init__',
                    return_value=None)
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(storagecenter_api.SCApi,
                    'open_connection',
                    return_value=MOCKAPI)
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(storagecenter_api.SCApi,
                    'close_connection')
 class DellSCSanISCSIDriverTestCase(test.TestCase):
 
@@ -229,7 +228,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.configuration.iscsi_port = 3260
         self._context = context.get_admin_context()
 
-        self.driver = dell_storagecenter_iscsi.DellStorageCenterISCSIDriver(
+        self.driver = storagecenter_iscsi.SCISCSIDriver(
             configuration=self.configuration)
 
         self.driver.do_setup(None)
@@ -240,7 +239,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                               'driver_version': '1.0.1',
                               'total_capacity_gb': 12388,
                               'reserved_percentage': 0,
-                              'vendor_name': 'Dell',
+                              'vendor_name': 'Dell EMC',
                               'storage_protocol': 'iSCSI'}
 
         # Start with none.  Add in the specific tests later.
@@ -280,7 +279,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                self.fake_iqn)
         }
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_sc')
     def test_check_for_setup_error(self,
                                    mock_find_sc,
@@ -328,7 +327,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.check_for_setup_error()
         mock_find_sc.assert_called_once_with()
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test__create_replications(self,
                                   mock_get_volume_extra_specs,
@@ -412,7 +411,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual({}, res)
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test__create_replications_live_volume(self,
                                               mock_get_volume_extra_specs,
@@ -477,7 +476,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test__delete_replications(self,
                                   mock_get_volume_extra_specs,
@@ -507,7 +506,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_api.delete_replication.assert_any_call(scvol, 67890)
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test__delete_live_volume(self,
                                  mock_get_volume_extra_specs,
@@ -558,7 +557,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     def test_create_volume(self,
@@ -571,12 +570,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, None, None, None, None)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_cg_volumes')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     def test_create_volume_with_group(self,
@@ -594,7 +593,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     @mock.patch.object(
@@ -612,7 +611,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, None, 'volumeqos', None, None)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     @mock.patch.object(
@@ -630,7 +629,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, None, None, 'groupqos', None)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     @mock.patch.object(
@@ -648,7 +647,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, None, None, None, 'drprofile')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     @mock.patch.object(
@@ -666,7 +665,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, "HighPriority", None, None, None, None)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
     @mock.patch.object(
@@ -684,10 +683,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_volume.assert_called_once_with(
             fake.VOLUME_ID, 1, None, 'Daily', None, None, None)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={'replication_status': 'enabled',
                                      'replication_driver_data': 'ssn'})
@@ -703,12 +702,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           'replication_driver_data': 'ssn',
                           'provider_id': self.VOLUME[u'instanceId']}, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
     def test_create_volume_replication_raises(self,
                                               mock_create_replications,
@@ -725,10 +724,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
     def test_create_volume_failure(self,
                                    mock_delete_volume,
@@ -741,12 +740,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_volume, volume)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_delete_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True,
                                      'live': False})
@@ -768,12 +767,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_delete_replications.called)
         self.assertEqual(2, mock_delete_replications.call_count)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_delete_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True,
                                      'live': False})
@@ -789,12 +788,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
         mock_delete_volume.assert_called_once_with(fake.VOLUME2_ID, None)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_delete_live_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True,
                                      'live': True})
@@ -810,12 +809,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_delete_volume.assert_called_with(fake.VOLUME_ID, '1.1')
         self.assertTrue(mock_delete_live_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_delete_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume',
                        return_value=False)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True,
                                      'live': False})
@@ -832,22 +831,22 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume)
         self.assertTrue(mock_delete_replications.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS[0])
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=ISCSI_PROPERTIES)
     def test_initialize_connection(self,
@@ -874,22 +873,22 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                     'driver_volume_type': 'iscsi'}
         self.assertEqual(expected, data, 'Unexpected return value')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS[0])
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=ISCSI_PROPERTIES)
     def test_initialize_connection_multi_path(self,
@@ -918,16 +917,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                     'driver_volume_type': 'iscsi'}
         self.assertEqual(expected, data, 'Unexpected return value')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=None)
     def test_initialize_connection_no_iqn(self,
@@ -946,19 +945,19 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=None)
     def test_initialize_connection_no_server(self,
@@ -977,16 +976,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=None)
     def test_initialize_connection_vol_not_found(self,
@@ -1004,19 +1003,19 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=ISCSI_PROPERTIES)
     def test_initialize_connection_map_vol_fail(self,
@@ -1036,27 +1035,27 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS[0])
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties',
                        return_value=ISCSI_PROPERTIES)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'initialize_secondary')
     def test_initialize_connection_live_volume(self,
                                                mock_initialize_secondary,
@@ -1096,26 +1095,26 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                     'driver_volume_type': 'iscsi'}
         self.assertEqual(expected, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'map_volume',
                        return_value=MAPPINGS[0])
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_iscsi_properties')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_live_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'initialize_secondary')
     def test_initialize_connection_live_volume_afo(self,
                                                    mock_initialize_secondary,
@@ -1165,7 +1164,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(expected, ret)
         self.assertFalse(mock_initialize_secondary.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True, 'live': True})
     def test_is_live_vol(self,
@@ -1178,7 +1177,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         ret = self.driver._is_live_vol(volume)
         self.assertTrue(ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': True, 'live': False})
     def test_is_live_vol_repl_not_live(self,
@@ -1190,7 +1189,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         ret = self.driver._is_live_vol(volume)
         self.assertFalse(ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs',
                        return_value={'enabled': False, 'live': False})
     def test_is_live_vol_no_repl(self,
@@ -1326,13 +1325,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_api.unmap_volume.assert_called_once_with(self.VOLUME,
                                                       self.SCSERVER)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
     def test_terminate_connection(self,
@@ -1348,20 +1347,20 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
         self.assertIsNone(res, 'None expected')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_is_live_vol')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'terminate_secondary')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_live_volume')
     def test_terminate_connection_live_volume(self,
                                               mock_get_live_vol,
@@ -1387,13 +1386,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertIsNone(res, 'None expected')
         self.assertTrue(mock_terminate_secondary.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
     def test_terminate_connection_no_server(self,
@@ -1410,13 +1409,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=True)
     def test_terminate_connection_no_volume(self,
@@ -1433,13 +1432,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmap_volume',
                        return_value=False)
     def test_terminate_connection_failure(self,
@@ -1478,10 +1477,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         return snapshot
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay',
                        return_value='fake')
     def test_create_snapshot(self,
@@ -1497,10 +1496,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         ret = self.driver.create_snapshot(snapshot)
         self.assertEqual(expected, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay',
                        return_value=None)
     def test_create_snapshot_no_volume(self,
@@ -1514,10 +1513,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_snapshot,
                           snapshot)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay',
                        return_value=None)
     def test_create_snapshot_failure(self,
@@ -1531,17 +1530,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_snapshot,
                           snapshot)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=VOLUME)
     def test_create_volume_from_snapshot(self,
@@ -1568,17 +1567,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_create_replications.called)
         self.assertEqual(model_update, res)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test_create_volume_from_snapshot_with_profiles(
             self, mock_get_volume_extra_specs, mock_create_view_volume,
@@ -1610,20 +1609,20 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_create_replications.called)
         self.assertEqual(model_update, res)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume',
                        return_value=VOLUME)
     def test_create_volume_from_snapshot_expand(self,
@@ -1652,20 +1651,20 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_expand_volume.assert_called_once_with(self.VOLUME, 2)
         self.assertEqual(model_update, res)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_cg_volumes')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=VOLUME)
     def test_create_volume_from_snapshot_cg(self,
@@ -1695,18 +1694,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_create_replications.called)
         self.assertEqual(model_update, res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
     def test_create_volume_from_snapshot_failed(self,
                                                 mock_delete_volume,
@@ -1727,18 +1726,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertFalse(mock_find_replay_profile.called)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
     def test_create_volume_from_snapshot_failed_replication(
             self,
@@ -1760,13 +1759,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, snapshot)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_view_volume',
                        return_value=VOLUME)
     def test_create_volume_from_snapshot_no_replay(self,
@@ -1785,13 +1784,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_replay.called)
         self.assertFalse(mock_create_view_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
     def test_create_cloned_volume(self,
@@ -1810,13 +1809,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test_create_cloned_volume_with_profiles(
             self, mock_get_volume_extra_specs, mock_create_cloned_volume,
@@ -1841,16 +1840,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({'provider_id': provider_id}, ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume',
                        return_value=VOLUME)
     def test_create_cloned_volume_expand(self,
@@ -1871,16 +1870,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual({'provider_id': provider_id}, ret)
         self.assertTrue(mock_expand_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
     def test_create_cloned_volume_failed(self,
                                          mock_delete_volume,
@@ -1897,18 +1896,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, src_vref)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume')
     def test_create_cloned_volume_expand_failed(self,
                                                 mock_expand_volume,
@@ -1928,14 +1927,14 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, src_vref)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
     def test_create_cloned_volume_replication_fail(self,
@@ -1955,15 +1954,15 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, src_vref)
         self.assertTrue(mock_delete_volume.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value='fake')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_cg_volumes')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
     def test_create_cloned_volume_consistency_group(self,
@@ -1985,10 +1984,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_cloned_volume',
                        return_value=VOLUME)
     def test_create_cloned_volume_no_volume(self,
@@ -2005,10 +2004,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_volume.called)
         self.assertFalse(mock_create_cloned_volume.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replay',
                        return_value=True)
     def test_delete_snapshot(self,
@@ -2023,10 +2022,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_delete_replay.assert_called_once_with(
             self.VOLUME, fake.SNAPSHOT_ID)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replay',
                        return_value=True)
     def test_delete_snapshot_no_volume(self,
@@ -2041,7 +2040,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.delete_snapshot,
                           snapshot)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
     def test_ensure_export(self,
@@ -2054,7 +2053,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.ensure_export(context, volume)
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, 'fake', False)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
     def test_ensure_export_failed(self,
@@ -2069,7 +2068,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           context, volume)
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None, False)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
     def test_ensure_export_no_volume(self,
@@ -2083,10 +2082,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.ensure_export, context, volume)
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, 'fake', False)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume',
                        return_value=VOLUME)
     def test_extend_volume(self,
@@ -2101,10 +2100,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
         mock_expand_volume.assert_called_once_with(self.VOLUME, new_size)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume',
                        return_value=None)
     def test_extend_volume_no_volume(self,
@@ -2120,10 +2119,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, new_size)
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, 'fake')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'expand_volume',
                        return_value=None)
     def test_extend_volume_fail(self,
@@ -2139,7 +2138,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
         mock_expand_volume.assert_called_once_with(self.VOLUME, new_size)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_update_volume_stats_with_refresh(self,
@@ -2151,7 +2150,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual('iSCSI', stats['storage_protocol'])
         self.assertTrue(mock_get_storage_usage.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_update_volume_stats_with_refresh_and_repl(
@@ -2172,7 +2171,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.backends = backends
         self.driver.replication_enabled = repliation_enabled
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_get_volume_stats_no_refresh(self,
@@ -2184,10 +2183,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual('iSCSI', stats['storage_protocol'])
         self.assertFalse(mock_get_storage_usage.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'rename_volume',
                        return_value=True)
     def test_update_migrated_volume(self,
@@ -2205,10 +2204,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_rename_volume.assert_called_once_with(self.VOLUME, fake.VOLUME_ID)
         self.assertEqual(model_update, rt)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'rename_volume',
                        return_value=False)
     def test_update_migrated_volume_rename_fail(self,
@@ -2236,7 +2235,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                 'available')
         self.assertEqual({'_name_id': fake.VOLUME2_NAME_ID}, rt)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
     def test_update_migrated_volume_no_backend_id(self,
@@ -2251,7 +2250,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(None, None)
         self.assertEqual({'_name_id': None}, rt)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2280,7 +2279,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError, self.driver.create_group,
                           context, group)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay_profile',
                        return_value=None)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2297,12 +2296,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_replay_profile.assert_called_once_with(fake.GROUP_ID)
         self.assertEqual({'status': 'error'}, model_update)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'delete_volume')
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -2341,12 +2340,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError, self.driver.delete_group,
                           context, group, [volume])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replay_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'delete_volume')
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -2368,10 +2367,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(group['status'], model_update['status'])
         self.assertEqual([], volumes)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_cg_volumes',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2411,7 +2410,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError, self.driver.update_group,
                           context, group, add_volumes, remove_volumes)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2434,10 +2433,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           remove_volumes)
         mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_cg_volumes',
                        return_value=False)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2464,11 +2463,11 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                        add_volumes,
                                                        remove_volumes)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'update_group')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_group')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_cloned_volume')
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -2492,11 +2491,11 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual({'status': 'available'}, model_update)
         self.assertEqual(expected, volumes_model_update)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'update_group')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_group')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_volume_from_snapshot')
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -2547,10 +2546,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           context, group, volumes, None, None,
                           source_group, source_volumes)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'snap_cg_replay',
                        return_value={'instanceId': '100'})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2577,7 +2576,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual('available', model_update['status'])
         self.assertEqual(expected_snapshots, snapshots)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2608,10 +2607,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_group_snapshot,
                           context, cggrp, [])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'snap_cg_replay',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2633,10 +2632,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual({'status': 'error'}, model_update)
         self.assertIsNone(snapshot_updates)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_cg_replay',
                        return_value=True)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2661,9 +2660,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual([{'id': fake.SNAPSHOT_ID, 'status': 'deleted'}],
                          snapshots)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_cg_replay')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2686,10 +2685,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual({'status': 'error'}, model_update)
         self.assertIsNone(snapshots)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_cg_replay',
                        return_value=False)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
@@ -2719,13 +2718,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.delete_group_snapshot,
                           context, cgsnap, [])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value={'id': 'guid'})
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'manage_existing')
     def test_manage_existing(self,
                              mock_manage_existing,
@@ -2742,13 +2741,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_manage_existing.assert_called_once_with(fake.VOLUME_ID,
                                                      existing_ref)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value={'id': 'guid'})
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'manage_existing')
     def test_manage_existing_id(self,
                                 mock_manage_existing,
@@ -2775,7 +2774,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.manage_existing,
                           volume, existing_ref)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_unmanaged_volume_size',
                        return_value=4)
     def test_manage_existing_get_size(self,
@@ -2791,7 +2790,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         # The above is 4GB and change.
         self.assertEqual(4, res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_unmanaged_volume_size',
                        return_value=4)
     def test_manage_existing_get_size_id(self,
@@ -2817,16 +2816,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.manage_existing_get_size,
                           volume, existing_ref)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_storage_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_replay_profiles')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_replicate_active_replay')
     def test_retype_not_our_extra_specs(self,
                                         mock_update_replicate_active_replay,
@@ -2845,10 +2844,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertFalse(mock_update_replay_profile.called)
         self.assertFalse(mock_update_storage_profile.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_replay_profiles')
     def test_retype_replay_profiles(self,
                                     mock_update_replay_profiles,
@@ -2871,14 +2870,14 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None)
         self.assertFalse(res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_create_replications',
                        return_value={'replication_status': 'enabled',
                                      'replication_driver_data': '54321'})
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_delete_replications')
     def test_retype_create_replications(self,
                                         mock_delete_replications,
@@ -2905,9 +2904,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual((True, {'replication_status': 'disabled',
                                  'replication_driver_data': ''}), res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_replicate_active_replay')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
     def test_retype_active_replay(self,
@@ -2939,7 +2938,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None)
         self.assertFalse(res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
     def test_retype_same(self,
@@ -2953,10 +2952,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None)
         self.assertTrue(res)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmanage')
     def test_unmanage(self,
                       mock_unmanage,
@@ -2969,10 +2968,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, '11111.1')
         mock_unmanage.assert_called_once_with(self.VOLUME)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmanage')
     def test_unmanage_volume_not_found(self,
                                        mock_unmanage,
@@ -2985,9 +2984,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_volume.assert_called_once_with(fake.VOLUME_ID, '11111.1')
         self.assertFalse(mock_unmanage.called)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'update_storage_profile')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
     def test_retype(self,
@@ -3025,7 +3024,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(12345, destssn)
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_sc')
     def test__parse_secondary_sc_down(self,
                                       mock_find_sc,
@@ -3107,17 +3106,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                 '101.100', 102)
         self.assertEqual(model_update, ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_failover_replication')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_parse_secondary')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'remove_mappings')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'failback_volumes')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs')
     def test_failover_host(self,
                            mock_get_replication_specs,
@@ -3225,17 +3224,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.failover_host, {}, volumes, '67890')
         self.driver.replication_enabled = False
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_failover_live_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_parse_secondary')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'remove_mappings')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'failback_volumes')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs')
     def test_failover_host_live_volume(self,
                                        mock_get_replication_specs,
@@ -3380,9 +3379,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                 '11111.1', existing_ref)
         self.assertEqual({'instanceId': '11111.101'}, ret)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_unmanaged_replay')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'manage_replay')
     def test_manage_existing_snapshot(self,
                                       mock_manage_replay,
@@ -3407,7 +3406,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           snapshot,
                           existing_ref)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_unmanaged_replay')
     def test_manage_existing_snapshot_get_size(self,
                                                mock_get_unmanaged_replay,
@@ -3431,11 +3430,11 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           snapshot,
                           existing_ref)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'unmanage_replay')
     def test_unmanage_snapshot(self,
                                mock_unmanage_replay,
@@ -3460,32 +3459,32 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.unmanage_snapshot(snapshot)
         mock_unmanage_replay.assert_called_once_with(screplay)
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_qos',
                        return_value='cinderqos')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_parse_extraspecs',
                        return_value={'replay_profile_string': 'pro'})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_repl_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replication')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'replicate_to_common')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'remove_mappings')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_wait_for_replication')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_reattach_remaining_replications')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_fixup_types')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_volume_updates',
                        return_value=[])
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_update_backend')
     def test_failback_volumes(self,
                               mock_update_backend,
@@ -3563,18 +3562,18 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.failed_over = False
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_qos',
                        return_value='cinderqos')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_update_backend')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_live_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'swap_roles_live_volume')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_replication_specs')
     def test_failback_volumes_live_vol(self,
                                        mock_get_replication_specs,
@@ -3634,32 +3633,32 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.failed_over = False
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_qos',
                        return_value='cinderqos')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_parse_extraspecs',
                        return_value={'replay_profile_string': 'pro'})
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'find_repl_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'delete_replication')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'replicate_to_common')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'remove_mappings')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_wait_for_replication')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_reattach_remaining_replications')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_fixup_types')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_volume_updates',
                        return_value=[])
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_update_backend')
     def test_failback_volumes_with_some_not_replicated(
             self,
@@ -3737,10 +3736,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.failed_over = False
         self.driver.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_qos',
                        return_value='cinderqos')
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_update_backend')
     def test_failback_volumes_with_none_replicated(
             self,
@@ -3832,7 +3831,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                      'replication_driver_data': '12345'}})
         self.assertEqual(expected, ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
     def test_fixup_types(self,
@@ -3882,7 +3881,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                      'status': 'available'}]
         self.assertEqual(expected, items)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
     def test_fixup_types_with_error(self,
@@ -3933,7 +3932,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                      'status': 'error'}]
         self.assertEqual(expected, items)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+    @mock.patch.object(storagecenter_api.SCApi,
                        'get_volume',
                        return_value=VOLUME)
     def test_fixup_types_with_previous_error(self,
@@ -4274,7 +4273,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.mock_sleep.assert_has_calls(calls)
         self.backends = backends
 
-    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+    @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        '_get_volume_extra_specs')
     def test_parse_extraspecs(self,
                               mock_get_volume_extra_specs,
