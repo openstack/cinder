@@ -75,8 +75,7 @@ class RESTCaller(object):
         kwargs = {'timeout': TIMEOUT, 'verify': False}
         data = None
         if len(args) > 1:
-            data = args[1]
-            kwargs['json'] = data
+            kwargs['json'] = args[1]
 
         LOG.debug('Issuing call to NS: %s %s, data: %s',
                   url, self.__method, data)
@@ -94,14 +93,14 @@ class RESTCaller(object):
         try:
             check_error(response)
         except exception.NexentaException as exc:
-            if 'zpool' in exc.args[0] and 'ENOENT' in exc.args[0]:
+            if (exc.kwargs['message']['source'] == 'zpool' and
+                    exc.kwargs['message']['code'] == 'ENOENT'):
                 self.handle_failover()
                 url = self.get_full_url(args[0])
                 LOG.debug('NexentaException call to NS: %s %s, data: %s',
                           url, self.__method, data)
                 response = getattr(
                     self.__proxy.session, self.__method)(url, **kwargs)
-                LOG.warning(url)
             else:
                 raise
         check_error(response)
@@ -129,10 +128,9 @@ class RESTCaller(object):
         if self.__proxy.backup:
             LOG.info('Server %s is unavailable, failing over to %s',
                      self.__proxy.host, self.__proxy.backup)
-            self.__proxy.host, self.__proxy.backup = (
-                self.__proxy.backup, self.__proxy.host)
+            host = '%s,%s' % (self.__proxy.backup, self.__proxy.host)
             self.__proxy.__init__(
-                self.__proxy.host, self.__proxy.port, self.__proxy.user,
+                host, self.__proxy.port, self.__proxy.user,
                 self.__proxy.password, self.__proxy.use_https)
         else:
             raise
