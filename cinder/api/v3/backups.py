@@ -65,7 +65,7 @@ class BackupsController(backups_v2.BackupsController):
 
     def show(self, req, id):
         """Return data about the given backup."""
-        LOG.debug('show called for member %s', id)
+        LOG.debug('Show backup with id %s.', id)
         context = req.environ['cinder.context']
         req_version = req.api_version_request
 

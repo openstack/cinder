@@ -682,15 +682,14 @@ class BackupManager(manager.ThreadPoolManager):
                     'actual_status': actual_status})
             raise exception.InvalidBackup(reason=err)
 
-        backup_record = {}
-        backup_record['backup_service'] = backup.service
+        backup_record = {'backup_service': backup.service}
         backup_service = self._map_service_to_driver(backup.service)
         configured_service = self.driver_name
         if backup_service != configured_service:
-            err = (_('Export record aborted, the backup service currently'
-                     ' configured [%(configured_service)s] is not the'
-                     ' backup service that was used to create this'
-                     ' backup [%(backup_service)s].') %
+            err = (_('Export record aborted, the backup service currently '
+                     'configured [%(configured_service)s] is not the '
+                     'backup service that was used to create this '
+                     'backup [%(backup_service)s].') %
                    {'configured_service': configured_service,
                     'backup_service': backup_service})
             raise exception.InvalidBackup(reason=err)
@@ -727,7 +726,7 @@ class BackupManager(manager.ThreadPoolManager):
         LOG.info('Import record started, backup_url: %s.', backup_url)
 
         # Can we import this backup?
-        if (backup_service != self.driver_name):
+        if backup_service != self.driver_name:
             # No, are there additional potential backup hosts in the list?
             if len(backup_hosts) > 0:
                 # try the next host on the list, maybe he can import
@@ -742,7 +741,7 @@ class BackupManager(manager.ThreadPoolManager):
                 # empty list - we are the last host on the list, fail
                 err = _('Import record failed, cannot find backup '
                         'service to perform the import. Request service '
-                        '%(service)s') % {'service': backup_service}
+                        '%(service)s.') % {'service': backup_service}
                 self._update_backup_error(backup, err)
                 raise exception.ServiceNotFound(service_id=backup_service)
         else:
