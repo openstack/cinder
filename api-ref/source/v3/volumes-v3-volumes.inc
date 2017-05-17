@@ -59,16 +59,18 @@ status values are:
 +------------------+--------------------------------------------------------+
 
 
-List accessbile volumes with details
+List accessible volumes with details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v3/{project_id}/volumes/detail
 
-Lists all Block Storage volumes, with details, that the project can access.
+Lists all Block Storage volumes, with details, that the project can access,
+since v3.31 if non-admin users specify invalid filters in the url, API will
+return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request
@@ -234,11 +236,13 @@ List accessible volumes
 
 .. rest_method::  GET /v3/{project_id}/volumes
 
-Lists summary information for all Block Storage volumes that the project can access.
+Lists summary information for all Block Storage volumes that the
+project can access, since v3.31 if non-admin users specify invalid
+filters in the url, API will return bad request.
 
 
 Normal response codes: 200
-Error response codes:
+Error response codes: badRequest(400)
 
 
 Request
