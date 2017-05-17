@@ -148,6 +148,14 @@ class InfiniboxDriverTestCase(test.TestCase):
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
 
+    def test_terminate_connection_delete_host(self):
+        self._mock_host.get_luns.return_value = [object()]
+        self.driver.terminate_connection(test_volume, test_connector)
+        self.assertEqual(0, self._mock_host.safe_delete.call_count)
+        self._mock_host.get_luns.return_value = []
+        self.driver.terminate_connection(test_volume, test_connector)
+        self.assertEqual(1, self._mock_host.safe_delete.call_count)
+
     def test_terminate_connection_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
         self.assertRaises(exception.InvalidVolume,
