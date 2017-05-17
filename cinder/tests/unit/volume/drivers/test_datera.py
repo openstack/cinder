@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+import six
 
 from cinder import context
 from cinder import exception
@@ -473,7 +474,8 @@ class DateraVolumeTestCasev2(test.TestCase):
     def test_get_manageable_volumes(self):
         if self._apiv == '2':
             self.mock_api.return_value = non_cinder_ais
-            self.assertEqual(
+            six.assertCountEqual(
+                self,
                 self.driver.get_manageable_volumes(
                     {}, "", 10, 0, "", ""),
                 [{'cinder_id': None,
