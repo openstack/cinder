@@ -2051,8 +2051,9 @@ def get_volume_summary(context, project_only):
     if not (project_only or is_admin_context(context)):
         raise exception.AdminRequired()
     query = model_query(context, func.count(models.Volume.id),
-                        func.sum(models.Volume.size), read_deleted="no",
-                        project_only=project_only)
+                        func.sum(models.Volume.size), read_deleted="no")
+    if project_only:
+        query = query.filter_by(project_id=context.project_id)
 
     if query is None:
         return []
