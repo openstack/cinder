@@ -40,7 +40,7 @@ work. Update backend information to fit your environment.
                      n-api,n-cond,n-cpu,n-crt,n-net,n-sch,rabbit,tempest
     CINDER_ENABLED_BACKENDS=lvmdriver-1
     CINDER_DEFAULT_VOLUME_TYPE=lvmdriver-1
-    CINDER_SECURE_DELETE=False
+    CINDER_VOLUME_CLEAR=none
     TEMPEST_ENABLED_BACKENDS=lvmdriver-1
     TEMPEST_VOLUME_DRIVER=lvmdriver-1
     TEMPEST_VOLUME_VENDOR="Open Source"
