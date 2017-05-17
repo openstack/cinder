@@ -71,6 +71,12 @@ key_2:
   in: path
   required: true
   type: string
+project_id_path:
+  description: |
+    The UUID of the project in a multi-tenancy cloud.
+  in: path
+  required: false
+  type: string
 qos_id:
   description: |
     The ID of the QoS specification.
@@ -944,6 +950,13 @@ metadata_items:
   in: body
   required: true
   type: integer
+migration_policy:
+  description: |
+    Specify if make migration when retyping volume, the value is 'on-demand'
+    or 'never'.
+  in: body
+  required: false
+  type: string
 migration_status:
   description: |
     The volume migration status.
@@ -1093,6 +1106,12 @@ new_size:
   in: body
   required: true
   type: integer
+new_type:
+  description: |
+    The new volume type that volume is changed with.
+  in: body
+  required: true
+  type: string
 object_count:
   description: |
     The number of objects in the backup.
@@ -1144,6 +1163,12 @@ os-force_detach:
 os-reset_status:
   description: |
     The ``os-reset_status`` action.
+  in: body
+  required: true
+  type: object
+os-retype:
+  description: |
+    The ``os-retype`` action.
   in: body
   required: true
   type: object
@@ -1759,6 +1784,12 @@ volume_types_2:
   in: body
   required: true
   type: string
+volumes:
+  description: |
+    A list of ``volume`` objects.
+  in: body
+  required: true
+  type: array
 volumes:
   description: |
     A list of ``volume`` objects.
