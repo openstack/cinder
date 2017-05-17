@@ -14,6 +14,7 @@
 #    under the License.
 #
 import mock
+import six
 from xml.etree import ElementTree
 
 from cinder import context
@@ -883,8 +884,7 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
         p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
         fc_targets = p._get_fc_targets(None)
-        self.assertEqual(FC_TARGETS_OPTIMIZED, fc_targets,
-                         "FC targets are different from the expected")
+        six.assertCountEqual(self, FC_TARGETS_OPTIMIZED, fc_targets)
 
     def test_get_fc_targets_returns_host_optimized_wwpns_list(self):
         driver = mock.MagicMock()
