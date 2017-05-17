@@ -27,14 +27,17 @@ Attach/Detach Operations are multi-part commands
 There are three things that happen in the workflow for an attach or detach call.
 
 1. Update the status of the volume in the DB (ie attaching/detaching)
+
 - For Attach, this is the cinder.volume.api.reserve method
 - For Detach, the analogous call is cinder.volume.api.begin_detaching
 
 2. Handle the connection operations that need to be done on the Volume
+
 - For Attach, this is the cinder.volume.api.initialize_connection method
 - For Detach, the analogous calls is cinder.volume.api.terminate_connection
 
 3. Finalize the status of the volume and release the resource
+
 - For attach, this is the cinder.volume.api.attach method
 - For detach, the analogous call is cinder.volume.api.detach
 
@@ -66,17 +69,23 @@ things like CHAP credential, iqn and lun information.  An example response is
 shown here:
 
 ::
-    {‘driver_volume_type': ‘iscsi’,  ‘data': {‘auth_password': ‘YZ2Hceyh7VySh5HY’,
-                ‘target_discovered': False,
-                ‘encrypted': False,
-                ‘qos_specs': None,
-                ‘target_iqn': ‘iqn.2010-10.org.openstack:volume-8b1ec3fe-8c5
-                ‘target_portal': ‘11.0.0.8:3260′,
-                ‘volume_id': ‘8b1ec3fe-8c57-45ca-a1cf-a481bfc8fce2′,
-                ‘target_lun': 1,
-                ‘access_mode': ‘rw’,
-                ‘auth_username': ‘nE9PY8juynmmZ95F7Xb7′,
-                ‘auth_method': ‘CHAP’}}``
+
+    {
+        'driver_volume_type': 'iscsi',
+        'data': {
+            'auth_password': 'YZ2Hceyh7VySh5HY',
+            'target_discovered': False,
+            'encrypted': False,
+            'qos_specs': None,
+            'target_iqn': 'iqn.2010-10.org.openstack:volume-8b1ec3fe-8c57-45ca-a1cf-a481bfc8fce2',
+            'target_portal': '11.0.0.8:3260',
+            'volume_id': '8b1ec3fe-8c57-45ca-a1cf-a481bfc8fce2',
+            'target_lun': 1,
+            'access_mode': 'rw',
+            'auth_username': 'nE9PY8juynmmZ95F7Xb7',
+            'auth_method': 'CHAP'
+        }
+    }
 
 In the process of building this data structure, the Cinder Volume Manager makes a number of
 calls to the backend driver, and builds a volume_attachment entry in the database to store
