@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -88,8 +89,8 @@ class InfiniboxVolumeDriver(san.SanDriver):
             raise exception.VolumeDriverException(message=msg)
         auth = (self.configuration.san_login,
                 self.configuration.san_password)
-        management_address = self.configuration.san_ip
-        self._system = infinisdk.InfiniBox(management_address, auth=auth)
+        self.management_address = self.configuration.san_ip
+        self._system = infinisdk.InfiniBox(self.management_address, auth=auth)
         self._system.login()
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._backend_name = backend_name or self.__class__.__name__
@@ -173,6 +174,7 @@ class InfiniboxVolumeDriver(san.SanDriver):
 
     @fczm_utils.add_fc_zone
     @infinisdk_to_cinder_exceptions
+    @coordination.synchronized('infinidat-{self.management_address}-lock')
     def initialize_connection(self, volume, connector):
         """Map an InfiniBox volume to the host"""
         volume_name = self._make_volume_name(volume)
@@ -195,6 +197,7 @@ class InfiniboxVolumeDriver(san.SanDriver):
 
     @fczm_utils.remove_fc_zone
     @infinisdk_to_cinder_exceptions
+    @coordination.synchronized('infinidat-{self.management_address}-lock')
     def terminate_connection(self, volume, connector, **kwargs):
         """Unmap an InfiniBox volume from the host"""
         infinidat_volume = self._get_infinidat_volume(volume)
