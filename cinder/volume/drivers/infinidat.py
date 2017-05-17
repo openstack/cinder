@@ -34,13 +34,18 @@ from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
 
 try:
-    # capacity is a dependency of infinisdk, so if infinisdk is available
-    # then capacity should be available too
+    # we check that infinisdk is installed. the other imported modules
+    # are dependencies, so if any of the dependencies are not importable
+    # we assume infinisdk is not installed
     import capacity
+    from infi.dtypes import iqn
+    from infi.dtypes import wwn
     import infinisdk
 except ImportError:
     capacity = None
     infinisdk = None
+    iqn = None
+    wwn = None
 
 
 LOG = logging.getLogger(__name__)
@@ -50,6 +55,18 @@ VENDOR_NAME = 'INFINIDAT'
 infinidat_opts = [
     cfg.StrOpt('infinidat_pool_name',
                help='Name of the pool from which volumes are allocated'),
+    # We can't use the existing "storage_protocol" option because its default
+    # is "iscsi", but for backward-compatibility our default must be "fc"
+    cfg.StrOpt('infinidat_storage_protocol',
+               ignore_case=True,
+               default='fc',
+               choices=['iscsi', 'fc'],
+               help='Protocol for transferring data between host and '
+                    'storage back-end.'),
+    cfg.ListOpt('infinidat_iscsi_netspaces',
+                default=[],
+                help='List of names of network spaces to use for iSCSI '
+                     'connectivity'),
 ]
 
 CONF = cfg.CONF
@@ -70,8 +87,8 @@ def infinisdk_to_cinder_exceptions(func):
 
 
 @interface.volumedriver
-class InfiniboxVolumeDriver(san.SanDriver):
-    VERSION = '1.1'
+class InfiniboxVolumeDriver(san.SanISCSIDriver):
+    VERSION = '1.2'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_Cinder_CI"
@@ -95,10 +112,14 @@ class InfiniboxVolumeDriver(san.SanDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._backend_name = backend_name or self.__class__.__name__
         self._volume_stats = None
+        if self.configuration.infinidat_storage_protocol.lower() == 'iscsi':
+            self._protocol = 'iSCSI'
+            if len(self.configuration.infinidat_iscsi_netspaces) == 0:
+                msg = _('No iSCSI network spaces configured')
+                raise exception.VolumeDriverException(message=msg)
+        else:
+            self._protocol = 'FC'
         LOG.debug('setup complete')
-
-    def _cleanup_wwpn(self, wwpn):
-        return wwpn.replace(':', '')
 
     def _make_volume_name(self, cinder_volume):
         return 'openstack-vol-%s' % cinder_volume.id
@@ -106,9 +127,8 @@ class InfiniboxVolumeDriver(san.SanDriver):
     def _make_snapshot_name(self, cinder_snapshot):
         return 'openstack-snap-%s' % cinder_snapshot.id
 
-    def _make_host_name(self, wwpn):
-        wwn_for_name = self._cleanup_wwpn(wwpn)
-        return 'openstack-host-%s' % wwn_for_name
+    def _make_host_name(self, port):
+        return 'openstack-host-%s' % str(port).replace(":", ".")
 
     def _get_infinidat_volume_by_name(self, name):
         volume = self._system.volumes.safe_get(name=name)
@@ -143,12 +163,12 @@ class InfiniboxVolumeDriver(san.SanDriver):
             raise exception.VolumeDriverException(message=msg)
         return pool
 
-    def _get_or_create_host(self, wwpn):
-        host_name = self._make_host_name(wwpn)
+    def _get_or_create_host(self, port):
+        host_name = self._make_host_name(port)
         infinidat_host = self._system.hosts.safe_get(name=host_name)
         if infinidat_host is None:
             infinidat_host = self._system.hosts.create(name=host_name)
-            infinidat_host.add_port(self._cleanup_wwpn(wwpn))
+            infinidat_host.add_port(port)
         return infinidat_host
 
     def _get_mapping(self, host, volume):
@@ -172,19 +192,15 @@ class InfiniboxVolumeDriver(san.SanDriver):
                    port.get_state() == 'OK'):
                     yield str(port.get_wwpn())
 
-    @fczm_utils.add_fc_zone
-    @infinisdk_to_cinder_exceptions
-    @coordination.synchronized('infinidat-{self.management_address}-lock')
-    def initialize_connection(self, volume, connector):
-        """Map an InfiniBox volume to the host"""
+    def _initialize_connection_fc(self, volume, connector):
         volume_name = self._make_volume_name(volume)
         infinidat_volume = self._get_infinidat_volume_by_name(volume_name)
-        for wwpn in connector['wwpns']:
-            infinidat_host = self._get_or_create_host(wwpn)
+        ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
+        for port in ports:
+            infinidat_host = self._get_or_create_host(port)
             mapping = self._get_or_create_mapping(infinidat_host,
                                                   infinidat_volume)
             lun = mapping.get_lun()
-
         # Create initiator-target mapping.
         target_wwpns = list(self._get_online_fc_ports())
         target_wwpns, init_target_map = self._build_initiator_target_map(
@@ -195,15 +211,93 @@ class InfiniboxVolumeDriver(san.SanDriver):
                               target_lun=lun,
                               initiator_target_map=init_target_map))
 
+    def _get_iscsi_network_space(self, netspace_name):
+        netspace = self._system.network_spaces.safe_get(
+            service='ISCSI_SERVICE',
+            name=netspace_name)
+        if netspace is None:
+            msg = (_('Could not find iSCSI network space with name "%s"') %
+                   netspace_name)
+            raise exception.VolumeDriverException(message=msg)
+        return netspace
+
+    def _get_iscsi_portal(self, netspace):
+        for netpsace_interface in netspace.get_ips():
+            if netpsace_interface.enabled:
+                port = netspace.get_properties().iscsi_tcp_port
+                return "%s:%s" % (netpsace_interface.ip_address, port)
+        # if we get here it means there are no enabled ports
+        msg = (_('No available interfaces in iSCSI network space %s') %
+               netspace.get_name())
+        raise exception.VolumeDriverException(message=msg)
+
+    def _initialize_connection_iscsi(self, volume, connector):
+        volume_name = self._make_volume_name(volume)
+        infinidat_volume = self._get_infinidat_volume_by_name(volume_name)
+        port = iqn.IQN(connector['initiator'])
+        infinidat_host = self._get_or_create_host(port)
+        if self.configuration.use_chap_auth:
+            chap_username = (self.configuration.chap_username or
+                             vol_utils.generate_username())
+            chap_password = (self.configuration.chap_password or
+                             vol_utils.generate_password())
+            infinidat_host.update_fields(
+                security_method='CHAP',
+                security_chap_inbound_username=chap_username,
+                security_chap_inbound_secret=chap_password)
+        mapping = self._get_or_create_mapping(infinidat_host,
+                                              infinidat_volume)
+        lun = mapping.get_lun()
+        netspace_names = self.configuration.infinidat_iscsi_netspaces
+        target_portals = []
+        target_iqns = []
+        target_luns = []
+        for netspace_name in netspace_names:
+            netspace = self._get_iscsi_network_space(netspace_name)
+            target_portals.append(self._get_iscsi_portal(netspace))
+            target_iqns.append(netspace.get_properties().iscsi_iqn)
+            target_luns.append(lun)
+        result_data = dict(target_discovered=True,
+                           target_portal=target_portals[0],
+                           target_iqn=target_iqns[0],
+                           target_lun=target_luns[0])
+        if len(target_portals) > 1:
+            # multiple network spaces defined
+            result_data.update(dict(target_portals=target_portals,
+                                    target_iqns=target_iqns,
+                                    target_luns=target_luns))
+        if self.configuration.use_chap_auth:
+            result_data.update(dict(auth_method='CHAP',
+                                    auth_username=chap_username,
+                                    auth_password=chap_password))
+        return dict(driver_volume_type='iscsi',
+                    data=result_data)
+
+    @fczm_utils.add_fc_zone
+    @infinisdk_to_cinder_exceptions
+    @coordination.synchronized('infinidat-{self.management_address}-lock')
+    def initialize_connection(self, volume, connector):
+        """Map an InfiniBox volume to the host"""
+        if self._protocol == 'FC':
+            return self._initialize_connection_fc(volume, connector)
+        else:
+            return self._initialize_connection_iscsi(volume, connector)
+
     @fczm_utils.remove_fc_zone
     @infinisdk_to_cinder_exceptions
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def terminate_connection(self, volume, connector, **kwargs):
         """Unmap an InfiniBox volume from the host"""
         infinidat_volume = self._get_infinidat_volume(volume)
+        if self._protocol == 'FC':
+            volume_type = 'fibre_channel'
+            ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
+        else:
+            volume_type = 'iscsi'
+            ports = [iqn.IQN(connector['initiator'])]
         result_data = dict()
-        for wwpn in connector['wwpns']:
-            host_name = self._make_host_name(wwpn)
+        for port in ports:
+            host_name = self._make_host_name(port)
             host = self._system.hosts.safe_get(name=host_name)
             if host is None:
                 # not found. ignore.
@@ -213,17 +307,17 @@ class InfiniboxVolumeDriver(san.SanDriver):
                 host.unmap_volume(infinidat_volume)
             except KeyError:
                 continue      # volume mapping not found
-        # check if the host now doesn't have mappings, to delete host_entry
-        # if needed
-        if len(host.get_luns()) == 0:
+        # check if the host now doesn't have mappings
+        if host is not None and len(host.get_luns()) == 0:
             host.safe_delete()
-            # Create initiator-target mapping.
-            target_wwpns = list(self._get_online_fc_ports())
-            target_wwpns, init_target_map = self._build_initiator_target_map(
-                connector, target_wwpns)
-            result_data = dict(target_wwn=target_wwpns,
-                               initiator_target_map=init_target_map)
-        return dict(driver_volume_type='fibre_channel',
+            if self._protocol == 'FC':
+                # Create initiator-target mapping to delete host entry
+                target_wwpns = list(self._get_online_fc_ports())
+                target_wwpns, target_map = self._build_initiator_target_map(
+                    connector, target_wwpns)
+                result_data = dict(target_wwn=target_wwpns,
+                                   initiator_target_map=target_map)
+        return dict(driver_volume_type=volume_type,
                     data=result_data)
 
     @infinisdk_to_cinder_exceptions
@@ -239,7 +333,7 @@ class InfiniboxVolumeDriver(san.SanDriver):
             self._volume_stats = dict(volume_backend_name=self._backend_name,
                                       vendor_name=VENDOR_NAME,
                                       driver_version=self.VERSION,
-                                      storage_protocol='FC',
+                                      storage_protocol=self._protocol,
                                       consistencygroup_support='False',
                                       total_capacity_gb=total_capacity_gb,
                                       free_capacity_gb=free_capacity_gb)
@@ -288,13 +382,44 @@ class InfiniboxVolumeDriver(san.SanDriver):
         volume.create_snapshot(name=name)
 
     @contextmanager
-    def _device_connect_context(self, volume):
-        connector = utils.brick_get_connector_properties()
+    def _connection_context(self, volume):
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        connector = utils.brick_get_connector_properties(use_multipath,
+                                                         enforce_multipath)
         connection = self.initialize_connection(volume, connector)
         try:
-            yield self._connect_device(connection)
+            yield connection
         finally:
             self.terminate_connection(volume, connector)
+
+    @contextmanager
+    def _attach_context(self, connection):
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        device_scan_attempts = self.configuration.num_volume_device_scan_tries
+        protocol = connection['driver_volume_type']
+        connector = utils.brick_get_connector(
+            protocol,
+            use_multipath=use_multipath,
+            device_scan_attempts=device_scan_attempts,
+            conn=connection)
+        attach_info = None
+        try:
+            attach_info = self._connect_device(connection)
+            yield attach_info
+        except exception.DeviceUnavailable as exc:
+            attach_info = exc.kwargs.get('attach_info', None)
+            raise
+        finally:
+            if attach_info:
+                connector.disconnect_volume(attach_info['conn']['data'],
+                                            attach_info['device'])
+
+    @contextmanager
+    def _device_connect_context(self, volume):
+        with self._connection_context(volume) as connection:
+            with self._attach_context(connection) as attach_info:
+                yield attach_info
 
     @infinisdk_to_cinder_exceptions
     def create_volume_from_snapshot(self, volume, snapshot):
