@@ -65,8 +65,9 @@ class VolumeImageMetadataController(wsgi.Controller):
                 return
         if image_metas:
             for vol in resp_volume_list:
-                image_meta = image_metas.get(vol['id'], {})
-                vol['volume_image_metadata'] = dict(image_meta)
+                image_meta = image_metas.get(vol['id'])
+                if image_meta:
+                    vol['volume_image_metadata'] = dict(image_meta)
 
     @wsgi.extends
     def show(self, req, resp_obj, id):

@@ -34,7 +34,7 @@ from cinder import volume
 
 def fake_db_volume_get(*args, **kwargs):
     return {
-        'id': fake.VOLUME_ID,
+        'id': kwargs.get('volume_id') or fake.VOLUME_ID,
         'host': 'host001',
         'status': 'available',
         'size': 5,
@@ -53,12 +53,14 @@ def fake_db_volume_get(*args, **kwargs):
 
 def fake_volume_api_get(*args, **kwargs):
     ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
-    db_volume = fake_db_volume_get()
+    db_volume = fake_db_volume_get(volume_id=kwargs.get('volume_id'))
     return fake_volume.fake_volume_obj(ctx, **db_volume)
 
 
 def fake_volume_get_all(*args, **kwargs):
-    return objects.VolumeList(objects=[fake_volume_api_get()])
+    return objects.VolumeList(objects=[fake_volume_api_get(),
+                                       fake_volume_api_get(
+                                           volume_id=fake.VOLUME2_ID)])
 
 
 def fake_volume_get_all_empty(*args, **kwargs):
@@ -129,10 +131,12 @@ class VolumeImageMetadataTest(test.TestCase):
         return [
             volume['volume_image_metadata']
             for volume in jsonutils.loads(body)['volumes']
+            if volume.get('volume_image_metadata')
         ]
 
     def _create_volume_and_glance_metadata(self):
         ctxt = context.get_admin_context()
+        # create a bootable volume
         db.volume_create(ctxt, {'id': fake.VOLUME_ID, 'status': 'available',
                                 'host': 'test', 'provider_location': '',
                                 'size': 1})
@@ -144,6 +148,11 @@ class VolumeImageMetadataTest(test.TestCase):
                                          'somekernel')
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'ramdisk_id',
                                          'someramdisk')
+
+        # create a unbootable volume
+        db.volume_create(ctxt, {'id': fake.VOLUME2_ID, 'status': 'available',
+                                'host': 'test', 'provider_location': '',
+                                'size': 1})
 
     def test_get_volume(self):
         self._create_volume_and_glance_metadata()
