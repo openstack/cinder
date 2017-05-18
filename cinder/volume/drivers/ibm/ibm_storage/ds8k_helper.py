@@ -62,8 +62,9 @@ class DS8KCommonHelper(object):
     OPTIONAL_PARAMS = ['ds8k_host_type', 'lss_range_for_cg']
     # if use new REST API, please update the version below
     VALID_REST_VERSION_5_7_MIN = '5.7.51.1047'
-    VALID_REST_VERSION_5_8_MIN = ''
     INVALID_STORAGE_VERSION = '8.0.1'
+    REST_VERSION_5_7_MIN_PPRC_CG = '5.7.51.1068'
+    REST_VERSION_5_8_MIN_PPRC_CG = '5.8.20.1059'
 
     def __init__(self, conf, HTTPConnectorObject=None):
         self.conf = conf
@@ -111,8 +112,8 @@ class DS8KCommonHelper(object):
         self.backend['pools_str'] = self._get_value('san_clustername')
         self._storage_pools = self.get_pools()
         self.verify_pools(self._storage_pools)
-        self._get_lss_ids_for_cg()
-        self._verify_version()
+        self.backend['lss_ids_for_cg'] = self._get_lss_ids_for_cg()
+        self._verify_rest_version()
 
     def update_client(self):
         self._client.close()
@@ -160,6 +161,7 @@ class DS8KCommonHelper(object):
         self.backend['storage_version'] = storage_info['release']
 
     def _get_lss_ids_for_cg(self):
+        lss_ids_for_cg = set()
         lss_range = self._get_value('lss_range_for_cg')
         if lss_range:
             lss_range = lss_range.replace(' ', '').split('-')
@@ -173,10 +175,9 @@ class DS8KCommonHelper(object):
                 raise exception.InvalidParameterValue(
                     err=_('Param [lss_range_for_cg] is invalid, it '
                           'should be within 00-FF.'))
-            self.backend['lss_ids_for_cg'] = set(
+            lss_ids_for_cg = set(
                 ('%02x' % i).upper() for i in range(begin, end + 1))
-        else:
-            self.backend['lss_ids_for_cg'] = set()
+        return lss_ids_for_cg
 
     def _check_host_type(self):
         ds8k_host_type = self._get_value('ds8k_host_type')
@@ -189,7 +190,7 @@ class DS8KCommonHelper(object):
         self.backend['host_type_override'] = (
             None if ds8k_host_type == 'auto' else ds8k_host_type)
 
-    def _verify_version(self):
+    def _verify_rest_version(self):
         if self.backend['storage_version'] == self.INVALID_STORAGE_VERSION:
             raise exception.VolumeDriverException(
                 message=(_("%s does not support bulk deletion of volumes, "
@@ -204,6 +205,28 @@ class DS8KCommonHelper(object):
                            "%(valid)s, please upgrade it in DS8K.")
                          % {'invalid': self.backend['rest_version'],
                             'valid': self.VALID_REST_VERSION_5_7_MIN}))
+
+    def verify_rest_version_for_pprc_cg(self):
+        if '8.1' in self.backend['rest_version']:
+            raise exception.VolumeDriverException(
+                message=_("REST for DS8K 8.1 does not support PPRC "
+                          "consistency group, please upgrade the CCL."))
+        valid_rest_version = None
+        if ('5.7' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.backend['rest_version']) <
+           dist_version.LooseVersion(self.REST_VERSION_5_7_MIN_PPRC_CG)):
+            valid_rest_version = self.REST_VERSION_5_7_MIN_PPRC_CG
+        elif ('5.8' in self.backend['rest_version'] and
+              dist_version.LooseVersion(self.backend['rest_version']) <
+              dist_version.LooseVersion(self.REST_VERSION_5_8_MIN_PPRC_CG)):
+            valid_rest_version = self.REST_VERSION_5_8_MIN_PPRC_CG
+
+        if valid_rest_version:
+            raise exception.VolumeDriverException(
+                message=(_("REST version %(invalid)s is lower than "
+                           "%(valid)s, please upgrade it in DS8K.")
+                         % {'invalid': self.backend['rest_version'],
+                            'valid': valid_rest_version}))
 
     def verify_pools(self, storage_pools):
         if self._connection_type == storage.XIV_CONNECTION_TYPE_FC:
@@ -821,14 +844,14 @@ class DS8KCommonHelper(object):
     def delete_pprc_path(self, path_id):
         self._client.send('DELETE', '/cs/pprcs/paths/%s' % path_id)
 
-    def create_pprc_pair(self, pairData):
-        self._client.send('POST', '/cs/pprcs', pairData)
+    def create_pprc_pair(self, pair_data):
+        self._client.send('POST', '/cs/pprcs', pair_data)
 
     def delete_pprc_pair_by_pair_id(self, pids):
         self._client.statusok('DELETE', '/cs/pprcs', params=pids)
 
-    def do_failback(self, pairData):
-        self._client.send('POST', '/cs/pprcs/resume', pairData)
+    def do_failback(self, pair_data):
+        self._client.send('POST', '/cs/pprcs/resume', pair_data)
 
     def get_pprc_pairs(self, min_vol_id, max_vol_id):
         return self._client.fetchall(
@@ -844,14 +867,27 @@ class DS8KCommonHelper(object):
             return None
         # don't use pprc pair ID to delete it, because it may have
         # communication issues.
-        pairData = {
+        pair_data = {
             'volume_full_ids': [{
                 'volume_id': vol_id,
                 'system_id': self.backend['storage_unit']
             }],
             'options': ['unconditional', 'issue_source']
         }
-        self._client.send('POST', '/cs/pprcs/delete', pairData)
+        self._client.send('POST', '/cs/pprcs/delete', pair_data)
+
+    def pause_pprc_pairs(self, pprc_pair_ids):
+        pair_data = {'pprc_ids': pprc_pair_ids}
+        self._client.send('POST', '/cs/pprcs/pause', pair_data)
+
+    def resume_pprc_pairs(self, pprc_pair_ids):
+        pair_data = {
+            'pprc_ids': pprc_pair_ids,
+            'type': 'metro_mirror',
+            'options': ['permit_space_efficient_target',
+                        'initial_copy_out_of_sync']
+        }
+        self._client.send('POST', '/cs/pprcs/resume', pair_data)
 
 
 class DS8KReplicationSourceHelper(DS8KCommonHelper):
@@ -890,18 +926,19 @@ class DS8KReplicationSourceHelper(DS8KCommonHelper):
 class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
     """Manage target storage for replication."""
 
-    OPTIONAL_PARAMS = ['ds8k_host_type', 'port_pairs']
+    OPTIONAL_PARAMS = ['ds8k_host_type', 'port_pairs', 'lss_range_for_cg']
 
     def setup(self):
         self._create_client()
         self._get_storage_information()
         self._get_replication_information()
         self._check_host_type()
+        self.backend['lss_ids_for_cg'] = self._get_lss_ids_for_cg()
         self.backend['pools_str'] = self._get_value(
             'san_clustername').replace('_', ',')
         self._storage_pools = self.get_pools()
         self.verify_pools(self._storage_pools)
-        self._verify_version()
+        self._verify_rest_version()
 
     def _get_replication_information(self):
         port_pairs = []
@@ -916,20 +953,6 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
                 port_pairs.append(port_pair)
         self.backend['port_pairs'] = port_pairs
         self.backend['id'] = self._get_value('backend_id')
-
-    @proxy.logger
-    def _find_lss_for_type_replication(self, node, excluded_lss):
-        # prefer to choose non-existing one first.
-        existing_lss = self.get_all_lss()
-        LOG.info("existing LSS IDs are %s",
-                 ','.join([lss['id'] for lss in existing_lss]))
-        lss_id = self._find_from_nonexistent_lss(node, existing_lss)
-        if not lss_id:
-            if excluded_lss:
-                existing_lss = [lss for lss in existing_lss
-                                if lss['id'] not in excluded_lss]
-            lss_id = self._find_from_existing_lss(node, existing_lss)
-        return lss_id
 
     def create_lun(self, lun):
         volData = {
@@ -952,14 +975,14 @@ class DS8KReplicationTargetHelper(DS8KReplicationSourceHelper):
     def delete_pprc_pair(self, vol_id):
         if not self.get_pprc_pairs(vol_id, vol_id):
             return None
-        pairData = {
+        pair_data = {
             'volume_full_ids': [{
                 'volume_id': vol_id,
                 'system_id': self.backend['storage_unit']
             }],
             'options': ['unconditional', 'issue_target']
         }
-        self._client.send('POST', '/cs/pprcs/delete', pairData)
+        self._client.send('POST', '/cs/pprcs/delete', pair_data)
 
 
 class DS8KECKDHelper(DS8KCommonHelper):
@@ -999,16 +1022,16 @@ class DS8KECKDHelper(DS8KCommonHelper):
         self._create_client()
         self._get_storage_information()
         self._check_host_type()
-        self._get_lss_ids_for_cg()
+        self.backend['lss_ids_for_cg'] = self._get_lss_ids_for_cg()
         self.backend['pools_str'] = self._get_value('san_clustername')
         self._storage_pools = self.get_pools()
         self.verify_pools(self._storage_pools)
         ssid_prefix = self._get_value('ds8k_ssid_prefix')
         self.backend['ssid_prefix'] = ssid_prefix if ssid_prefix else 'FF'
         self.backend['device_mapping'] = self._get_device_mapping()
-        self._verify_version()
+        self._verify_rest_version()
 
-    def _verify_version(self):
+    def _verify_rest_version(self):
         if self.backend['storage_version'] == self.INVALID_STORAGE_VERSION:
             raise exception.VolumeDriverException(
                 message=(_("%s does not support bulk deletion of volumes, "
@@ -1034,6 +1057,7 @@ class DS8KECKDHelper(DS8KCommonHelper):
                                       in self.backend['rest_version'] else
                                       self.VALID_REST_VERSION_5_8_MIN)}))
 
+    @proxy.logger
     def _get_device_mapping(self):
         map_str = self._get_value('ds8k_devadd_unitadd_mapping')
         mappings = map_str.replace(' ', '').upper().split(';')
@@ -1198,6 +1222,7 @@ class DS8KReplicationTargetECKDHelper(DS8KECKDHelper,
         self._get_storage_information()
         self._get_replication_information()
         self._check_host_type()
+        self.backend['lss_ids_for_cg'] = self._get_lss_ids_for_cg()
         self.backend['pools_str'] = self._get_value(
             'san_clustername').replace('_', ',')
         self._storage_pools = self.get_pools()
@@ -1205,7 +1230,7 @@ class DS8KReplicationTargetECKDHelper(DS8KECKDHelper,
         ssid_prefix = self._get_value('ds8k_ssid_prefix')
         self.backend['ssid_prefix'] = ssid_prefix if ssid_prefix else 'FF'
         self.backend['device_mapping'] = self._get_device_mapping()
-        self._verify_version()
+        self._verify_rest_version()
 
     def create_lun(self, lun):
         volData = {
