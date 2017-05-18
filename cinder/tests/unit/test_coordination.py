@@ -50,6 +50,8 @@ class MockToozLock(tooz.locking.Lock):
 @mock.patch('tooz.coordination.get_coordinator')
 @mock.patch('random.uniform', lambda _a, _b: 0)
 class CoordinatorTestCase(test.TestCase):
+    MOCK_TOOZ = False
+
     def test_coordinator_start(self, get_coordinator, heartbeat):
         crd = get_coordinator.return_value
 
