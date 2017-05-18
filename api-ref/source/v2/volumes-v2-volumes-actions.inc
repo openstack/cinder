@@ -305,3 +305,39 @@ Request Example
 
 
 
+Retype volume
+~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{project_id}/volumes/{volume_id}/action
+
+Change type of existing volume. Specify the ``os-retype`` action in the request body.
+
+Change the volume type of exisiting volume, Cinder may migrate the volume to
+proper volume host according to the new volume type.
+
+Normal response codes: 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - new_type: new_type
+   - migration_policy: migration_policy
+   - os-retype: os-retype
+   - volume_id: volume_id_path
+   - project_id: project_id_path
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-os-retype-request.json
+   :language: javascript
+
+
+
+
+
+
+
