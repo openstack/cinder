@@ -165,22 +165,19 @@ def check_metadata_properties(metadata=None):
         metadata = {}
 
     for k, v in metadata.items():
-        if len(k) == 0:
-            msg = _("Metadata property key blank.")
-            LOG.debug(msg)
-            raise exception.InvalidVolumeMetadata(reason=msg)
+        try:
+            check_string_length(k, "Metadata key: %s" % k, min_length=1)
+            check_string_length(v, "Value for metadata key: %s" % k)
+        except exception.InvalidInput as exc:
+            raise exception.InvalidVolumeMetadata(reason=exc)
+        # for backward compatibility
         if len(k) > 255:
             msg = _("Metadata property key %s greater than 255 "
                     "characters.") % k
-            LOG.debug(msg)
             raise exception.InvalidVolumeMetadataSize(reason=msg)
-        if v is None:
-            msg = _("Metadata property key '%s' value is None.") % k
-            raise exception.InvalidVolumeMetadata(reason=msg)
         if len(v) > 255:
             msg = _("Metadata property key %s value greater than "
                     "255 characters.") % k
-            LOG.debug(msg)
             raise exception.InvalidVolumeMetadataSize(reason=msg)
 
 
