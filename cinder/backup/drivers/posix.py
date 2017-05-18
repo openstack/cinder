@@ -23,6 +23,7 @@ import stat
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import timeutils
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -127,7 +128,11 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
         os.remove(path)
 
     def _generate_object_name_prefix(self, backup):
-        return 'backup'
+        timestamp = timeutils.utcnow().strftime("%Y%m%d%H%M%S")
+        prefix = 'volume_%s_%s_backup_%s' % (backup.volume_id, timestamp,
+                                             backup.id)
+        LOG.debug('_generate_object_name_prefix: %s', prefix)
+        return prefix
 
     def get_extra_metadata(self, backup, volume):
         return None
