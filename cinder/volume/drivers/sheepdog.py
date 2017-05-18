@@ -505,7 +505,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Clone a sheepdog volume from another volume."""
-        snapshot_name = 'tmp-snap-%s' % src_vref['name']
+        snapshot_name = 'tmp-snap-%s-%s' % (src_vref['name'], volume.id)
         snapshot = {
             'name': snapshot_name,
             'volume_name': src_vref['name'],
