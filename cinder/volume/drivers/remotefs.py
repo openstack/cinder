@@ -147,6 +147,7 @@ class RemoteFSDriver(driver.BaseVD):
         self._mounted_shares = []
         self._execute_as_root = True
         self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
+        self._supports_encryption = False
 
         if self.configuration:
             self.configuration.append_config_values(nas_opts)
@@ -233,6 +234,10 @@ class RemoteFSDriver(driver.BaseVD):
         :param volume: volume reference
         :returns: provider_location update dict for database
         """
+
+        if volume.encryption_key_id and not self._supports_encryption:
+            message = _("Encryption is not yet supported.")
+            raise exception.VolumeDriverException(message=message)
 
         LOG.debug('Creating volume %(vol)s', {'vol': volume.id})
         self._ensure_shares_mounted()
