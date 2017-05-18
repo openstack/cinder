@@ -1,0 +1,18 @@
+{
+  "manageable-volumes": [
+    {
+      "safe_to_manage": false,
+      "reference": {
+        "source-name": "volume-3a81fdac-e8ae-4e61-b6a2-2e14ff316f19"
+      },
+      "size": 1
+    },
+    {
+      "safe_to_manage": true,
+      "reference": {
+        "source-name": "lvol0"
+      },
+      "size": 1
+    }
+  ]
+}

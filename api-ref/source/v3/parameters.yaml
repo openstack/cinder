@@ -85,7 +85,7 @@ hostname:
     The name of the host that hosts the storage back
     end.
   in: path
-  required: false
+  required: true
   type: string
 key_1:
   description: |
@@ -425,6 +425,12 @@ cgsnapshot_id:
   in: body
   required: false
   type: string
+cinder_id:
+  description: |
+    The UUID of the snapshot in Cinder.
+  in: body
+  required: false
+  type: string
 cipher:
   description: |
     The encryption algorithm or mode. For example, aes-xts-plain64. The default
@@ -695,6 +701,12 @@ event_id:
     eventually be translated into ``user_message``.
   in: body
   required: true
+  type: string
+extra_info:
+  description: |
+    More information about the resource.
+  in: body
+  required: false
   type: string
 extra_specs:
   description: |
@@ -1047,6 +1059,18 @@ location:
   in: body
   required: true
   type: string
+manageable-snapshots:
+  description: |
+    A list of manageable snapshots.
+  in: body
+  required: true
+  type: list
+manageable-volumes:
+  description: |
+    A list of manageable volumes.
+  in: body
+  required: true
+  type: list
 maxTotalBackupGigabytes:
   description: |
     The maximum total amount of backups, in gibibytes
@@ -1537,6 +1561,12 @@ rate:
   in: body
   required: true
   type: array
+reason_not_safe:
+  description: |
+    The reason why the resource can't be managed.
+  in: body
+  required: false
+  type: string
 ref:
   description: |
     A reference to the existing volume. The internal
@@ -1552,6 +1582,12 @@ ref_1:
     structure of this reference is dependent on the implementation of
     the volume driver, see the specific driver's documentation for
     details of the required elements in the structure.
+  in: body
+  required: true
+  type: object
+reference:
+  description: |
+    Some information for the resource.
   in: body
   required: true
   type: object
@@ -1632,6 +1668,12 @@ restore:
   in: body
   required: true
   type: object
+safe_to_manage:
+  description: |
+    If the resource can be managed or not.
+  in: body
+  required: true
+  type: boolean
 security_group_rules:
   description: |
     The number of rules that are allowed for each
@@ -1705,6 +1747,12 @@ snapshot_id_3:
   in: body
   required: true
   type: string
+source-name:
+  description: |
+    The resource's name.
+  in: body
+  required: true
+  type: string
 source_cgid:
   description: |
     The UUID of the source consistency group.
@@ -1717,6 +1765,12 @@ source_group_id:
   in: body
   required: false
   type: string
+source_reference:
+  description: |
+    The snapshot's origin volume information.
+  in: body
+  required: true
+  type: object
 source_replica:
   description: |
     The UUID of the primary volume to clone.

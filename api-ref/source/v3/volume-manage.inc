@@ -3,7 +3,7 @@
 Volume manage extension (os-volume-manage)
 ==========================================
 
-Creates volumes by using existing storage instead of allocating new
+Creates or lists volumes by using existing storage instead of allocating new
 storage.
 
 
@@ -54,4 +54,94 @@ Request Example
    :language: javascript
 
 .. literalinclude:: ./samples/volume-manage-request-cluster.json
+   :language: javascript
+
+
+List summary of volumes available to manage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/os-volume-manage
+
+Search a volume backend and list summary of volumes which are available to
+manage.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - sort: sort
+   - offset: offset
+   - limit: limit
+   - marker: marker
+   - project_id: project_id_path
+   - host: hostname
+
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - manageable-volumes: manageable-volumes
+   - safe_to_manage: safe_to_manage
+   - reference: reference
+   - source-name: source-name
+   - size: size
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-manage-list-response.json
+   :language: javascript
+
+
+
+List detail of volumes available to manage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/os-volume-manage/detail
+
+Search a volume backend and list detail of volumes which are available to
+manage.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - sort: sort
+   - offset: offset
+   - limit: limit
+   - marker: marker
+   - project_id: project_id_path
+   - host: hostname
+
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - manageable-volumes: manageable-volumes
+   - cinder_id: cinder_id
+   - safe_to_manage: safe_to_manage
+   - reason_not_safe: reason_not_safe
+   - reference: reference
+   - source-name: source-name
+   - size: size
+   - extra_info: extra_info
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-manage-list-detail-response.json
    :language: javascript

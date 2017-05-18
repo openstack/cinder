@@ -1,0 +1,24 @@
+{
+  "manageable-snapshots": [
+    {
+      "source_reference": {
+        "source-name": "volume-7c064b34-1e4b-40bd-93ca-4ac5a973661b"
+      },
+      "safe_to_manage": true,
+      "reference": {
+        "source-name": "lvol0"
+      },
+      "size": 1
+    },
+    {
+      "source_reference": {
+        "source-name": "volume-7c064b34-1e4b-40bd-93ca-4ac5a973661b"
+      },
+      "safe_to_manage": false,
+      "reference": {
+        "source-name": "_snapshot-d0c84570-a01f-4579-9789-5e9f266587cd"
+      },
+      "size": 1
+    }
+  ]
+}

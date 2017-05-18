@@ -25,6 +25,7 @@ Block Storage API V3 (CURRENT)
 .. include:: os-vol-image-meta-v3.inc
 .. include:: volume-manage.inc
 .. include:: volumes-v3-snapshots.inc
+.. include:: snapshot-manage.inc
 .. include:: os-vol-transfer-v3.inc
 
 .. Now the other random things in alphabetical order.
