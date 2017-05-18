@@ -17,6 +17,7 @@
 
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import webob
 
 from cinder.api.contrib import types_extra_specs
@@ -38,6 +39,21 @@ def return_volume_type_extra_specs(context, volume_type_id):
     return fake_volume_type_extra_specs()
 
 
+def return_volume_type(context, volume_type_id, expected_fields=None):
+    specs = {"key1": "value1",
+             "key2": "value2",
+             "key3": "value3",
+             "key4": "value4",
+             "key5": "value5"}
+    return dict(id=id,
+                name='vol_type_%s' % id,
+                description='vol_type_desc_%s' % id,
+                extra_specs=specs,
+                created_at=timeutils.utcnow(),
+                updated_at=timeutils.utcnow(),
+                deleted_at=timeutils.utcnow())
+
+
 def fake_volume_type_extra_specs():
     specs = {"key1": "value1",
              "key2": "value2",
@@ -52,7 +68,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.flags(host='fake')
-        self.mock_object(cinder.db, 'volume_type_get')
+        self.mock_object(cinder.db, 'volume_type_get', return_volume_type)
         self.api_path = '/v2/%s/os-volume-types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
@@ -101,6 +117,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         self.controller.delete(req, fake.VOLUME_ID, 'key5')
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertIn('created_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('deleted_at', self.notifier.notifications[0]['payload'])
 
     def test_delete_not_found(self):
         self.mock_object(cinder.db, 'volume_type_extra_specs_delete',
@@ -122,6 +141,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, fake.VOLUME_ID, body)
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertIn('created_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
         self.assertTrue(mock_check.called)
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
@@ -188,6 +209,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
         res_dict = self.controller.update(req, fake.VOLUME_ID, 'key1', body)
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertIn('created_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
         self.assertTrue(mock_check.called)
 
         self.assertEqual('value1', res_dict['key1'])
