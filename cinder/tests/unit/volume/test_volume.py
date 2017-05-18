@@ -1264,49 +1264,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.volume.delete_volume(self.context, src_vol)
         mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
 
-    def test_create_volume_from_volume_delete_lock_taken(self):
-        # create source volume
-        src_vol = tests_utils.create_volume(self.context, **self.volume_params)
-        src_vol_id = src_vol['id']
-
-        # no lock
-        self.volume.create_volume(self.context, src_vol)
-
-        dst_vol = tests_utils.create_volume(self.context,
-                                            source_volid=src_vol_id,
-                                            **self.volume_params)
-
-        orig_elevated = self.context.elevated
-
-        gthreads = []
-
-        def mock_elevated(*args, **kwargs):
-            # unset mock so it is only called once
-            self.mock_object(self.context, 'elevated', orig_elevated)
-
-            # we expect this to block and then fail
-            t = eventlet.spawn(self.volume.create_volume,
-                               self.context,
-                               volume=dst_vol,
-                               request_spec={'source_volid': src_vol_id})
-            gthreads.append(t)
-
-            return orig_elevated(*args, **kwargs)
-
-        # mock something from early on in the delete operation and within the
-        # lock so that when we do the create we expect it to block.
-        self.mock_object(self.context, 'elevated', mock_elevated)
-
-        # locked
-        self.volume.delete_volume(self.context, src_vol)
-
-        # we expect the volume create to fail with the following err since the
-        # source volume was deleted while the create was locked. Note that the
-        # volume is still in the db since it was created by the test prior to
-        # calling manager.create_volume.
-        with mock.patch('sys.stderr', new=six.StringIO()):
-            self.assertRaises(exception.VolumeNotFound, gthreads[0].wait)
-
     def _raise_metadata_copy_failure(self, method, dst_vol):
         # MetadataCopyFailure exception will be raised if DB service is Down
         # while copying the volume glance metadata
@@ -1507,61 +1464,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         # cleanup resource
         db.volume_destroy(self.context, volume_dst['id'])
         db.volume_destroy(self.context, volume_src['id'])
-
-    def test_create_volume_from_snapshot_delete_lock_taken(self):
-        # create source volume
-        src_vol = tests_utils.create_volume(self.context, **self.volume_params)
-
-        # no lock
-        self.volume.create_volume(self.context, src_vol)
-
-        # create snapshot
-        snap_id = create_snapshot(src_vol.id,
-                                  size=src_vol['size'])['id']
-        snapshot_obj = objects.Snapshot.get_by_id(self.context, snap_id)
-        # no lock
-        self.volume.create_snapshot(self.context, snapshot_obj)
-
-        # create vol from snapshot...
-        dst_vol = tests_utils.create_volume(self.context,
-                                            snapshot_id=snap_id,
-                                            source_volid=src_vol.id,
-                                            **self.volume_params)
-
-        orig_elevated = self.context.elevated
-
-        gthreads = []
-
-        def mock_elevated(*args, **kwargs):
-            # unset mock so it is only called once
-            self.mock_object(self.context, 'elevated', orig_elevated)
-
-            # We expect this to block and then fail
-            t = eventlet.spawn(self.volume.create_volume, self.context,
-                               volume=dst_vol,
-                               request_spec={'snapshot_id': snap_id})
-            gthreads.append(t)
-
-            return orig_elevated(*args, **kwargs)
-
-        # mock something from early on in the delete operation and within the
-        # lock so that when we do the create we expect it to block.
-        self.mock_object(self.context, 'elevated', mock_elevated)
-
-        # locked
-        self.volume.delete_snapshot(self.context, snapshot_obj)
-
-        # we expect the volume create to fail with the following err since the
-        # snapshot was deleted while the create was locked. Note that the
-        # volume is still in the db since it was created by the test prior to
-        #  calling manager.create_volume.
-        with mock.patch('sys.stderr', new=six.StringIO()):
-            self.assertRaises(exception.SnapshotNotFound, gthreads[0].wait)
-        # locked
-        self.volume.delete_volume(self.context, src_vol)
-        # make sure it is gone
-        self.assertRaises(exception.VolumeNotFound, db.volume_get,
-                          self.context, src_vol.id)
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_from_snapshot_with_encryption(self):
@@ -2652,3 +2554,105 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with mock.patch.object(volume, 'save') as save_mock:
             manager._set_resource_host(volume)
             save_mock.assert_not_called()
+
+
+class VolumeTestCaseLocks(base.BaseVolumeTestCase):
+    MOCK_TOOZ = False
+
+    def test_create_volume_from_volume_delete_lock_taken(self):
+        # create source volume
+        src_vol = tests_utils.create_volume(self.context, **self.volume_params)
+        src_vol_id = src_vol['id']
+
+        # no lock
+        self.volume.create_volume(self.context, src_vol)
+
+        dst_vol = tests_utils.create_volume(self.context,
+                                            source_volid=src_vol_id,
+                                            **self.volume_params)
+
+        orig_elevated = self.context.elevated
+
+        gthreads = []
+
+        def mock_elevated(*args, **kwargs):
+            # unset mock so it is only called once
+            self.mock_object(self.context, 'elevated', orig_elevated)
+
+            # we expect this to block and then fail
+            t = eventlet.spawn(self.volume.create_volume,
+                               self.context,
+                               volume=dst_vol,
+                               request_spec={'source_volid': src_vol_id})
+            gthreads.append(t)
+
+            return orig_elevated(*args, **kwargs)
+
+        # mock something from early on in the delete operation and within the
+        # lock so that when we do the create we expect it to block.
+        self.mock_object(self.context, 'elevated', mock_elevated)
+
+        # locked
+        self.volume.delete_volume(self.context, src_vol)
+
+        # we expect the volume create to fail with the following err since the
+        # source volume was deleted while the create was locked. Note that the
+        # volume is still in the db since it was created by the test prior to
+        # calling manager.create_volume.
+        with mock.patch('sys.stderr', new=six.StringIO()):
+            self.assertRaises(exception.VolumeNotFound, gthreads[0].wait)
+
+    def test_create_volume_from_snapshot_delete_lock_taken(self):
+        # create source volume
+        src_vol = tests_utils.create_volume(self.context, **self.volume_params)
+
+        # no lock
+        self.volume.create_volume(self.context, src_vol)
+
+        # create snapshot
+        snap_id = create_snapshot(src_vol.id,
+                                  size=src_vol['size'])['id']
+        snapshot_obj = objects.Snapshot.get_by_id(self.context, snap_id)
+        # no lock
+        self.volume.create_snapshot(self.context, snapshot_obj)
+
+        # create vol from snapshot...
+        dst_vol = tests_utils.create_volume(self.context,
+                                            snapshot_id=snap_id,
+                                            source_volid=src_vol.id,
+                                            **self.volume_params)
+
+        orig_elevated = self.context.elevated
+
+        gthreads = []
+
+        def mock_elevated(*args, **kwargs):
+            # unset mock so it is only called once
+            self.mock_object(self.context, 'elevated', orig_elevated)
+
+            # We expect this to block and then fail
+            t = eventlet.spawn(self.volume.create_volume, self.context,
+                               volume=dst_vol,
+                               request_spec={'snapshot_id': snap_id})
+            gthreads.append(t)
+
+            return orig_elevated(*args, **kwargs)
+
+        # mock something from early on in the delete operation and within the
+        # lock so that when we do the create we expect it to block.
+        self.mock_object(self.context, 'elevated', mock_elevated)
+
+        # locked
+        self.volume.delete_snapshot(self.context, snapshot_obj)
+
+        # we expect the volume create to fail with the following err since the
+        # snapshot was deleted while the create was locked. Note that the
+        # volume is still in the db since it was created by the test prior to
+        #  calling manager.create_volume.
+        with mock.patch('sys.stderr', new=six.StringIO()):
+            self.assertRaises(exception.SnapshotNotFound, gthreads[0].wait)
+        # locked
+        self.volume.delete_volume(self.context, src_vol)
+        # make sure it is gone
+        self.assertRaises(exception.VolumeNotFound, db.volume_get,
+                          self.context, src_vol.id)
