@@ -5641,13 +5641,11 @@ def group_create(context, values, group_snapshot_id=None,
                 mapping['group_id'] = values['id']
                 session.add(mapping)
         else:
-            mappings = []
             for item in values.get('volume_type_ids') or []:
                 mapping = models.GroupVolumeTypeMapping()
                 mapping['volume_type_id'] = item
                 mapping['group_id'] = values['id']
-                mappings.append(mapping)
-            values['volume_types'] = mappings
+                session.add(mapping)
 
             group = group_model()
             group.update(values)
