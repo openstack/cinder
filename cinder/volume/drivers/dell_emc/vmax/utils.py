@@ -25,6 +25,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.volume import volume_types
 
 
@@ -53,6 +54,7 @@ PARENT_SG_NAME = 'parent_sg_name'
 CONNECTOR = 'connector'
 VOL_NAME = 'volume_name'
 EXTRA_SPECS = 'extra_specs'
+IS_RE = 'replication_enabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
 
 
@@ -147,13 +149,15 @@ class VMAXUtils(object):
 
     @staticmethod
     def get_default_storage_group_name(
-            srp_name, slo, workload, is_compression_disabled=False):
+            srp_name, slo, workload, is_compression_disabled=False,
+            is_re=False):
         """Determine default storage group from extra_specs.
 
         :param srp_name: the name of the srp on the array
         :param slo: the service level string e.g Bronze
         :param workload: the workload string e.g DSS
         :param is_compression_disabled:  flag for disabling compression
+        :param is_re: flag for replication
         :returns: storage_group_name
         """
         if slo and workload:
@@ -166,6 +170,8 @@ class VMAXUtils(object):
 
         else:
             prefix = "OS-no_SLO"
+        if is_re:
+            prefix += "-RE"
 
         storage_group_name = ("%(prefix)s-SG" % {'prefix': prefix})
         return storage_group_name
@@ -374,7 +380,7 @@ class VMAXUtils(object):
 
         :param clone_name: the name of the clone
         :param source_device_id: the source device id
-        :return: snap_name
+        :returns: snap_name
         """
         trunc_clone = self.truncate_string(clone_name, 10)
         snap_name = ("temp-%(device)s-%(clone)s"
@@ -434,3 +440,64 @@ class VMAXUtils(object):
             return False
         else:
             return True
+
+    @staticmethod
+    def is_replication_enabled(extra_specs):
+        """Check if replication is to be enabled.
+
+        :param extra_specs: extra specifications
+        :returns: bool - true if enabled, else false
+        """
+        replication_enabled = False
+        if IS_RE in extra_specs:
+            replication_enabled = True
+        return replication_enabled
+
+    def get_replication_config(self, rep_device_list):
+        """Gather necessary replication configuration info.
+
+        :param rep_device_list: the replication device list from cinder.conf
+        :returns: rep_config, replication configuration dict
+        """
+        rep_config = {}
+        if not rep_device_list:
+            return None
+        else:
+            target = rep_device_list[0]
+            try:
+                rep_config['array'] = target['target_device_id']
+                rep_config['srp'] = target['remote_pool']
+                rep_config['rdf_group_label'] = target['rdf_group_label']
+                rep_config['portgroup'] = target['remote_port_group']
+
+            except KeyError as ke:
+                error_message = (_("Failed to retrieve all necessary SRDF "
+                                   "information. Error received: %(ke)s.") %
+                                 {'ke': six.text_type(ke)})
+                LOG.exception(error_message)
+                raise exception.VolumeBackendAPIException(data=error_message)
+
+            try:
+                allow_extend = target['allow_extend']
+                if strutils.bool_from_string(allow_extend):
+                    rep_config['allow_extend'] = True
+                else:
+                    rep_config['allow_extend'] = False
+            except KeyError:
+                rep_config['allow_extend'] = False
+
+        return rep_config
+
+    @staticmethod
+    def is_volume_failed_over(volume):
+        """Check if a volume has been failed over.
+
+        :param volume: the volume object
+        :returns: bool
+        """
+        if volume is not None:
+            if volume.get('replication_status') and (
+                volume.replication_status ==
+                    fields.ReplicationStatus.FAILED_OVER):
+                    return True
+        return False

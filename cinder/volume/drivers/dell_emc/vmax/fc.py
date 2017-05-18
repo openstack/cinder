@@ -79,6 +79,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - Retype (storage-assisted migration)
               - QoS support
               - Support for compression on All Flash
+              - Support for volume replication
     """
 
     VERSION = "3.0.0"
@@ -89,10 +90,12 @@ class VMAXFCDriver(driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
 
         super(VMAXFCDriver, self).__init__(*args, **kwargs)
+        self.active_backend_id = kwargs.get('active_backend_id', None)
         self.common = common.VMAXCommon(
             'FC',
             self.VERSION,
-            configuration=self.configuration)
+            configuration=self.configuration,
+            active_backend_id=self.active_backend_id)
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
     def check_for_setup_error(self):
@@ -102,7 +105,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         """Creates a VMAX volume.
 
         :param volume: the cinder volume object
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_volume(volume)
 
@@ -111,7 +114,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
         :param volume: the cinder volume object
         :param snapshot: the cinder snapshot object
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_volume_from_snapshot(
             volume, snapshot)
@@ -121,7 +124,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
         :param volume: the cinder volume object
         :param src_vref: the source volume reference
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_cloned_volume(volume, src_vref)
 
@@ -136,7 +139,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         """Creates a snapshot.
 
         :param snapshot: the cinder snapshot object
-        :return: provider location dict
+        :returns: provider location dict
         """
         src_volume = snapshot.volume
         return self.common.create_snapshot(snapshot, src_volume)
@@ -215,7 +218,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
             }
         :param volume: the cinder volume object
         :param connector: the connector object
-        :return: dict -- the target_wwns and initiator_target_map
+        :returns: dict -- the target_wwns and initiator_target_map
         """
         device_info = self.common.initialize_connection(
             volume, connector)
@@ -349,7 +352,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
 
         :param volume: the cinder volume object
         :param connector: the connector object
-        :return: target_wwns -- list, init_targ_map -- dict
+        :returns: target_wwns -- list, init_targ_map -- dict
         """
         target_wwns, init_targ_map = [], {}
         initiator_wwns = connector['wwpns']
@@ -406,7 +409,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         Also need to consider things like QoS, Emulation, account/tenant.
         :param volume: the volume object
         :param external_ref: the reference for the VMAX volume
-        :return: model_update
+        :returns: model_update
         """
         return self.common.manage_existing(volume, external_ref)
 
@@ -440,3 +443,15 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(volume, new_type, host)
+
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failover volumes to a secondary host/ backend.
+
+        :param context: the context
+        :param volumes: the list of volumes to be failed over
+        :param secondary_id: the backend to be failed over to, is 'default'
+                             if fail back
+        :param groups: replication groups
+        :returns: secondary_id, volume_update_list, group_update_list
+        """
+        return self.common.failover_host(volumes, secondary_id, groups)

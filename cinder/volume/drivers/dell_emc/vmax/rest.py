@@ -106,7 +106,7 @@ class VMAXRest(object):
         :param method: The method (GET, POST, PUT, or DELETE)
         :param params: Additional URL parameters
         :param request_object: request payload (dict)
-        :return: server response object (dict)
+        :returns: server response object (dict)
         :raises: VolumeBackendAPIException
         """
         message, status_code = None, None
@@ -158,8 +158,8 @@ class VMAXRest(object):
 
         :param job: the job dict
         :param extra_specs: the extra_specs dict.
-        :return rc -- int, result -- string, status -- string,
-                task -- list of dicts detailing tasks in the job
+        :returns: rc -- int, result -- string, status -- string,
+                  task -- list of dicts detailing tasks in the job
         :raises: VolumeBackendAPIException
         """
         res, tasks = None, None
@@ -259,7 +259,7 @@ class VMAXRest(object):
         :param status_code: the status code
         :param job: the job
         :param extra_specs: the extra specifications
-        :return: task -- list of dicts detailing tasks in the job
+        :returns: task -- list of dicts detailing tasks in the job
         :raises: VolumeBackendAPIException
         """
         task = None
@@ -288,7 +288,7 @@ class VMAXRest(object):
         :param resource_type: the resource type e.g. maskingview
         :param resource_name: the name of a specific resource
         :param private: empty string or '/private' if private url
-        :return: target url, string
+        :returns: target url, string
         """
         target_uri = ('%(private)s/%(version)s/%(category)s/symmetrix/'
                       '%(array)s/%(resource_type)s'
@@ -306,7 +306,7 @@ class VMAXRest(object):
         :param target_uri: the target uri
         :param resource_type: the resource type, e.g. maskingview
         :param params: optional dict of filter params
-        :return: resource_object -- dict or None
+        :returns: resource_object -- dict or None
         """
         resource_object = None
         sc, message = self.request(target_uri, GET, params=params)
@@ -330,7 +330,7 @@ class VMAXRest(object):
         :param resource_name: the name of a specific resource
         :param params: query parameters
         :param private: empty string or '/private' if private url
-        :return: resource object -- dict or None
+        :returns: resource object -- dict or None
         """
         target_uri = self._build_uri(array, category, resource_type,
                                      resource_name, private)
@@ -345,7 +345,7 @@ class VMAXRest(object):
         :param resource_type: the resource type
         :param payload: the payload
         :param private: empty string or '/private' if private url
-        :return: status_code -- int, message -- string, server response
+        :returns: status_code -- int, message -- string, server response
         """
         target_uri = self._build_uri(array, category, resource_type,
                                      None, private)
@@ -366,7 +366,7 @@ class VMAXRest(object):
         :param payload: the payload
         :param resource_name: the resource name
         :param private: empty string or '/private' if private url
-        :return: status_code -- int, message -- string (server response)
+        :returns: status_code -- int, message -- string (server response)
         """
         target_uri = self._build_uri(array, category, resource_type,
                                      resource_name, private)
@@ -378,7 +378,7 @@ class VMAXRest(object):
 
     def delete_resource(
             self, array, category, resource_type, resource_name,
-            payload=None, private=''):
+            payload=None, private='', params=None):
         """Delete a provisioning resource.
 
         :param array: the array serial number
@@ -387,11 +387,13 @@ class VMAXRest(object):
         :param resource_name: the name of the resource to be deleted
         :param payload: the payload, optional
         :param private: empty string or '/private' if private url
+        :param params: dict of optional query params
         """
         target_uri = self._build_uri(array, category, resource_type,
                                      resource_name, private)
         status_code, message = self.request(target_uri, DELETE,
-                                            request_object=payload)
+                                            request_object=payload,
+                                            params=params)
         operation = 'delete %(res)s resource' % {'res': resource_type}
         self.check_status_code_success(operation, status_code, message)
 
@@ -399,7 +401,7 @@ class VMAXRest(object):
         """Get an array from its serial number.
 
         :param array: the array serial number
-        :return: array_details -- dict or None
+        :returns: array_details -- dict or None
         """
         target_uri = '/%s/system/symmetrix/%s' % (U4V_VERSION, array)
         array_details = self._get_request(target_uri, 'system')
@@ -422,14 +424,14 @@ class VMAXRest(object):
         return srp_details
 
     def get_slo_list(self, array):
-        """Returns the list of service levels associated with an srp.
+        """Retrieve the list of slo's from the array
 
         :param array: the array serial number
-        :return slo_list -- list of service level names
+        :returns: slo_list -- list of service level names
         """
         slo_list = []
         slo_dict = self.get_resource(array, SLOPROVISIONING, 'slo')
-        if slo_dict:
+        if slo_dict and slo_dict.get('sloId'):
             slo_list = slo_dict['sloId']
         return slo_list
 
@@ -437,7 +439,7 @@ class VMAXRest(object):
         """Get valid workload options from array.
 
         :param array: the array serial number
-        :return: workload_setting -- list of workload names
+        :returns: workload_setting -- list of workload names
         """
         workload_setting = []
         wl_details = self.get_resource(array, SLOPROVISIONING, 'workloadtype')
@@ -452,7 +454,7 @@ class VMAXRest(object):
         :param srp: the storage resource srp
         :param slo: the service level
         :param workload: the workload
-        :return remaining_capacity -- string, or None
+        :returns: remaining_capacity -- string, or None
         """
         params = {'srp': srp, 'slo': slo, 'workloadtype': workload}
         try:
@@ -484,7 +486,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param storage_group_name: the name of the storage group
-        :return: storage group dict or None
+        :returns: storage group dict or None
         """
         return self.get_resource(
             array, SLOPROVISIONING, 'storagegroup',
@@ -495,7 +497,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param params: optional filter parameters
-        :return: storage group list
+        :returns: storage group list
         """
         sg_list = []
         sg_details = self.get_resource(array, SLOPROVISIONING,
@@ -509,7 +511,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param storage_group_name: the storage group name
-        :return: num_vols -- int
+        :returns: num_vols -- int
         """
         num_vols = 0
         storagegroup = self.get_storage_group(array, storage_group_name)
@@ -525,7 +527,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param child_name: the child sg name
         :param parent_name: the parent sg name
-        :return: bool
+        :returns: bool
         """
         parent_sg = self.get_storage_group(array, parent_name)
         if parent_sg and parent_sg.get('child_storage_group'):
@@ -575,7 +577,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param payload: the payload -- dict
-        :return: status_code -- int, message -- string, server response
+        :returns: status_code -- int, message -- string, server response
         """
         return self.create_resource(
             array, SLOPROVISIONING, 'storagegroup', payload)
@@ -625,7 +627,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param storagegroup: storage group name
         :param payload: the request payload
-        :return: status_code -- int, message -- string, server response
+        :returns: status_code -- int, message -- string, server response
         """
         return self.modify_resource(
             array, SLOPROVISIONING, 'storagegroup', payload,
@@ -806,8 +808,9 @@ class VMAXRest(object):
                 return_value = False
         return return_value
 
-    def get_vmax_default_storage_group(self, array, srp, slo, workload,
-                                       do_disable_compression=False):
+    def get_vmax_default_storage_group(
+            self, array, srp, slo, workload,
+            do_disable_compression=False, is_re=False):
         """Get the default storage group.
 
         :param array: the array serial number
@@ -815,10 +818,11 @@ class VMAXRest(object):
         :param slo: the SLO
         :param workload: the workload
         :param do_disable_compression: flag for disabling compression
+        :param is_re: flag for replication
         :returns: the storage group dict (or None), the storage group name
         """
         storagegroup_name = self.utils.get_default_storage_group_name(
-            srp, slo, workload)
+            srp, slo, workload, do_disable_compression, is_re)
         storagegroup = self.get_storage_group(array, storagegroup_name)
         return storagegroup, storagegroup_name
 
@@ -837,7 +841,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the volume device id
-        :return: volume dict
+        :returns: volume dict
         :raises: VolumeBackendAPIException
         """
         volume_dict = self.get_resource(
@@ -854,7 +858,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the volume device id
-        :return: volume dict
+        :returns: volume dict
         :raises: VolumeBackendAPIException
         """
         try:
@@ -864,7 +868,7 @@ class VMAXRest(object):
                 array, SLOPROVISIONING, 'volume', params=params,
                 private='/private')
             volume_dict = volume_info['resultList']['result'][0]
-        except KeyError:
+        except (KeyError, TypeError):
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
             LOG.error(exception_message)
@@ -878,7 +882,7 @@ class VMAXRest(object):
         very large and could affect performance if called often.
         :param array: the array serial number
         :param params: filter parameters
-        :return: device_ids -- list
+        :returns: device_ids -- list
         """
         device_ids = []
         volumes = self.get_resource(
@@ -960,7 +964,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param maskingview: the masking view name
         :param device_id: the device ID
-        :return: host_lun_id -- int
+        :returns: host_lun_id -- int
         """
         host_lun_id = None
         resource_name = ('%(maskingview)s/connections'
@@ -990,7 +994,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the volume device id
-        :return: storagegroup_list
+        :returns: storagegroup_list
         """
         sg_list = []
         vol = self.get_volume(array, device_id)
@@ -1008,7 +1012,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param device_id: the device id
         :param storagegroup: the storage group name
-        :return: bool
+        :returns: bool
         """
         is_vol_in_sg = False
         sg_list = self.get_storage_groups_from_volume(array, device_id)
@@ -1021,7 +1025,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param volume_name: the volume name (OS-<UUID>)
-        :return: device_id
+        :returns: device_id
         """
         device_id = None
         params = {"volume_identifier": volume_name}
@@ -1039,7 +1043,7 @@ class VMAXRest(object):
 
         :param array: array serial number
         :param device_id: the device id
-        :return: the volume identifier -- string
+        :returns: the volume identifier -- string
         """
         vol = self.get_volume(array, device_id)
         return vol['volume_identifier']
@@ -1049,7 +1053,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the volume device id
-        :return: size --  or None
+        :returns: size --  or None
         """
         cap = None
         try:
@@ -1066,7 +1070,7 @@ class VMAXRest(object):
 
         :param array: array serial number
         :param portgroup: the portgroup name
-        :return: portgroup dict or None
+        :returns: portgroup dict or None
         """
         return self.get_resource(
             array, SLOPROVISIONING, 'portgroup', resource_name=portgroup)
@@ -1076,7 +1080,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param portgroup: the name of the portgroup
-        :return: list of port ids, e.g. ['FA-3D:35', 'FA-4D:32']
+        :returns: list of port ids, e.g. ['FA-3D:35', 'FA-4D:32']
         """
         portlist = []
         portgroup_info = self.get_portgroup(array, portgroup)
@@ -1092,7 +1096,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param port_id: the port id
-        :return: port dict, or None
+        :returns: port dict, or None
         """
         dir_id = port_id.split(':')[0]
         port_no = port_id.split(':')[1]
@@ -1107,7 +1111,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param port_id: the director port identifier
-        :return: (list of ip_addresses, iqn)
+        :returns: (list of ip_addresses, iqn)
         """
         ip_addresses, iqn = None, None
         port_details = self.get_port(array, port_id)
@@ -1142,7 +1146,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param initiator_group: the initaitor group name
         :param params: optional filter parameters
-        :return: initiator group dict, or None
+        :returns: initiator group dict, or None
         """
         return self.get_resource(
             array, SLOPROVISIONING, 'host',
@@ -1153,7 +1157,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param initiator_id: the initiator id
-        :return: initiator dict, or None
+        :returns: initiator dict, or None
         """
         return self.get_resource(
             array, SLOPROVISIONING, 'initiator',
@@ -1164,7 +1168,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param params: dict of optional params
-        :return: list of initiators
+        :returns: list of initiators
         """
         init_dict = self.get_resource(
             array, SLOPROVISIONING, 'initiator', params=params)
@@ -1180,7 +1184,7 @@ class VMAXRest(object):
         Gets the list of initiators from the array which are in
         hosts/ initiator groups.
         :param array: the array serial number
-        :return: init_list
+        :returns: init_list
         """
         params = {'in_a_host': 'true'}
         return self.get_initiator_list(array, params)
@@ -1190,7 +1194,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param initiator: the initiator id
-        :return: found_init_group_name -- string
+        :returns: found_init_group_name -- string
         """
         found_init_group_name = None
         init_details = self.get_initiator(array, initiator)
@@ -1231,7 +1235,7 @@ class VMAXRest(object):
 
         :param array: array serial number
         :param masking_view_name: the masking view name
-        :return: masking view dict
+        :returns: masking view dict
         """
         return self.get_resource(
             array, SLOPROVISIONING, 'maskingview', masking_view_name)
@@ -1241,7 +1245,7 @@ class VMAXRest(object):
 
         :param array: array serial number
         :param params: optional GET parameters
-        :return: masking view list
+        :returns: masking view list
         """
         masking_view_list = []
         masking_view_details = self.get_resource(
@@ -1257,7 +1261,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param storagegroup: the storage group name
-        :return: masking view list
+        :returns: masking view list
         """
         maskingviewlist = []
         storagegroup = self.get_storage_group(array, storagegroup)
@@ -1296,7 +1300,7 @@ class VMAXRest(object):
         :param portgroup: the port group name - optional
         :param host: the host name - optional
         :param storagegroup: the storage group name - optional
-        :return: name of the specified element -- string
+        :returns: name of the specified element -- string
         :raises: VolumeBackendAPIException
         """
         element = None
@@ -1320,7 +1324,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param portgroup_name: the port group name
         :param ig_name: the initiator group name
-        :return: masking view list
+        :returns: masking view list
         """
         params = {'port_group_name': portgroup_name,
                   'host_or_host_group_name': ig_name}
@@ -1473,7 +1477,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param source_device_id: the source volume device ID
-        :return: message -- dict, or None
+        :returns: message -- dict, or None
         """
         resource_name = ("%(device_id)s/snapshot"
                          % {'device_id': source_device_id})
@@ -1486,7 +1490,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param device_id: the source volume device id
         :param snap_name: the name of the snapshot
-        :return: snapshot dict, or None
+        :returns: snapshot dict, or None
         """
         snapshot = None
         snap_info = self.get_volume_snap_info(array, device_id)
@@ -1503,7 +1507,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param source_device_id: the osurce device id
-        :return: snapshot list or None
+        :returns: snapshot list or None
         """
         snapshot_list = []
         snap_info = self.get_volume_snap_info(array, source_device_id)
@@ -1517,7 +1521,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param device_id: the device id
-        :return: snapvx_tgt -- bool, snapvx_src -- bool,
+        :returns: snapvx_tgt -- bool, snapvx_src -- bool,
                  rdf_grp -- list or None
         """
         snapvx_src = False
@@ -1544,7 +1548,7 @@ class VMAXRest(object):
         :param target_device_id: target device id
         :param snap_name: snapshot name
         :param extra_specs: extra specifications
-        :return: bool
+        :returns: bool
         """
 
         def _wait_for_sync():
@@ -1579,8 +1583,7 @@ class VMAXRest(object):
         kwargs = {'retries': 0,
                   'wait_for_sync_called': False}
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
-        rc = timer.start(interval=int(
-            extra_specs[utils.INTERVAL])).wait()
+        rc = timer.start(interval=extra_specs[utils.INTERVAL]).wait()
         return rc
 
     def _is_sync_complete(self, array, source_device_id, snap_name,
@@ -1591,24 +1594,24 @@ class VMAXRest(object):
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param target_device_id: the target device id
-        :return: defined -- bool
+        :returns: defined -- bool
         """
         defined = True
-        session = self._get_sync_session(
+        session = self.get_sync_session(
             array, source_device_id, snap_name, target_device_id)
         if session:
             defined = session['defined']
         return defined
 
-    def _get_sync_session(self, array, source_device_id, snap_name,
-                          target_device_id):
+    def get_sync_session(self, array, source_device_id, snap_name,
+                         target_device_id):
         """Get a particular sync session.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param target_device_id: the target device id
-        :return: sync session -- dict, or None
+        :returns: sync session -- dict, or None
         """
         session = None
         linked_device_list = self.get_snap_linked_device_list(
@@ -1623,7 +1626,7 @@ class VMAXRest(object):
 
         :param array: the array serial number
         :param source_device_id: the source device id
-        :return: list of snapshot dicts
+        :returns: list of snapshot dicts
         """
         snap_dict_list = []
         snapshots = self.get_volume_snapshot_list(array, source_device_id)
@@ -1640,7 +1643,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
-        :return: linked_device_list
+        :returns: linked_device_list
         """
         linked_device_list = []
         snap_list = self._find_snap_vx_source_sessions(array, source_device_id)
@@ -1655,7 +1658,7 @@ class VMAXRest(object):
         :param array: the array serial number
         :param device_id: the device id
         :param tgt_only: Flag - return only sessions where device is target
-        :return: list of snapshot dicts
+        :returns: list of snapshot dicts
         """
         snap_dict_list, sessions = [], []
         vol_details = self._get_private_volume(array, device_id)
@@ -1691,3 +1694,156 @@ class VMAXRest(object):
                                  'source_vol': source_vol}
                     snap_dict_list.append(link_info)
         return snap_dict_list
+
+    def get_rdf_group(self, array, rdf_number):
+        """Get specific rdf group details.
+
+        :param array: the array serial number
+        :param rdf_number: the rdf number
+        """
+        return self.get_resource(array, REPLICATION, 'rdf_group',
+                                 rdf_number)
+
+    def get_rdf_group_list(self, array):
+        """Get rdf group list from array.
+
+        :param array: the array serial number
+        """
+        return self.get_resource(array, REPLICATION, 'rdf_group')
+
+    def get_rdf_group_volume(self, array, rdf_number, device_id):
+        """Get specific volume details, from an RDF group.
+
+        :param array: the array serial number
+        :param rdf_number: the rdf group number
+        :param device_id: the device id
+        """
+        resource_name = "%(rdf)s/volume/%(dev)s" % {
+            'rdf': rdf_number, 'dev': device_id}
+        return self.get_resource(array, REPLICATION, 'rdf_group',
+                                 resource_name)
+
+    def are_vols_rdf_paired(self, array, remote_array, device_id,
+                            target_device, rdf_group):
+        """Check if a pair of volumes are RDF paired.
+
+        :param array: the array serial number
+        :param remote_array: the remote array serial number
+        :param device_id: the device id
+        :param target_device: the target device id
+        :param rdf_group: the rdf group
+        :returns: paired -- bool, state -- string
+        """
+        paired, local_vol_state, rdf_pair_state = False, '', ''
+        volume = self.get_rdf_group_volume(array, rdf_group, device_id)
+        if volume:
+            remote_volume = volume['remoteVolumeName']
+            remote_symm = volume['remoteSymmetrixId']
+            if (remote_volume == target_device
+                    and remote_array == remote_symm):
+                paired = True
+                local_vol_state = volume['localVolumeState']
+                rdf_pair_state = volume['rdfpairState']
+        else:
+            LOG.warning("Cannot locate source RDF volume %s", device_id)
+        return paired, local_vol_state, rdf_pair_state
+
+    def get_rdf_group_number(self, array, rdf_group_label):
+        """Given an rdf_group_label, return the associated group number.
+
+        :param array: the array serial number
+        :param rdf_group_label: the group label
+        :returns: rdf_group_number
+        """
+        number = None
+        rdf_list = self.get_rdf_group_list(array)
+        if rdf_list and rdf_list.get('rdfGroupID'):
+            number = [rdf['rdfgNumber'] for rdf in rdf_list['rdfGroupID']
+                      if rdf['label'] == rdf_group_label][0]
+        if number:
+            rdf_group = self.get_rdf_group(array, number)
+            if not rdf_group:
+                number = None
+        return number
+
+    def create_rdf_device_pair(self, array, device_id, rdf_group_no,
+                               target_device, remote_array,
+                               target_vol_name, extra_specs):
+        """Create an RDF pairing.
+
+        Create a remote replication relationship between source and target
+        devices.
+        :param array: the array serial number
+        :param device_id: the device id
+        :param rdf_group_no: the rdf group number
+        :param target_device: the target device id
+        :param remote_array: the remote array serial
+        :param target_vol_name: the name of the target volume
+        :param extra_specs: the extra specs
+        :returns: rdf_dict
+        """
+        payload = ({"deviceNameListSource": [{"name": device_id}],
+                    "deviceNameListTarget": [{"name": target_device}],
+                    "replicationMode": "Synchronous",
+                    "establish": 'true',
+                    "rdfType": 'RDF1'})
+        resource_type = ("rdf_group/%(rdf_num)s/volume"
+                         % {'rdf_num': rdf_group_no})
+        status_code, job = self.create_resource(array, REPLICATION,
+                                                resource_type, payload,
+                                                private="/private")
+        self.wait_for_job('Create rdf pair', status_code,
+                          job, extra_specs)
+        rdf_dict = {'array': remote_array, 'device_id': target_device}
+        return rdf_dict
+
+    def modify_rdf_device_pair(
+            self, array, device_id, rdf_group, extra_specs, split=False):
+        """Modify an rdf device pair.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param rdf_group: the rdf group
+        :param extra_specs: the extra specs
+        :param split: flag to indicate "split" action
+        """
+        common_opts = {"force": 'false',
+                       "symForce": 'false',
+                       "star": 'false',
+                       "hop2": 'false',
+                       "bypass": 'false'}
+        if split:
+            common_opts.update({"immediate": 'false'})
+            payload = {"action": "Split",
+                       "executionOption": "ASYNCHRONOUS",
+                       "split": common_opts}
+
+        else:
+            common_opts.update({"establish": 'true',
+                                "restore": 'false',
+                                "remote": 'false',
+                                "immediate": 'false'})
+            payload = {"action": "Failover",
+                       "executionOption": "ASYNCHRONOUS",
+                       "failover": common_opts}
+        resource_name = ("%(rdf_num)s/volume/%(device_id)s"
+                         % {'rdf_num': rdf_group, 'device_id': device_id})
+        sc, job = self.modify_resource(
+            array, REPLICATION, 'rdf_group',
+            payload, resource_name=resource_name, private="/private")
+        self.wait_for_job('Modify device pair', sc,
+                          job, extra_specs)
+
+    def delete_rdf_pair(self, array, device_id, rdf_group):
+        """Delete an rdf pair.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param rdf_group: the rdf group
+        """
+        params = {'half': 'false', 'force': 'true', 'symforce': 'false',
+                  'star': 'false', 'bypass': 'false'}
+        resource_name = ("%(rdf_num)s/volume/%(device_id)s"
+                         % {'rdf_num': rdf_group, 'device_id': device_id})
+        self.delete_resource(array, REPLICATION, 'rdf_group', resource_name,
+                             private="/private", params=params)

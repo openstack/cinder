@@ -84,6 +84,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Retype (storage-assisted migration)
               - QoS support
               - Support for compression on All Flash
+              - Support for volume replication
     """
 
     VERSION = "3.0.0"
@@ -94,11 +95,13 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
 
         super(VMAXISCSIDriver, self).__init__(*args, **kwargs)
+        self.active_backend_id = kwargs.get('active_backend_id', None)
         self.common = (
             common.VMAXCommon(
                 'iSCSI',
                 self.VERSION,
-                configuration=self.configuration))
+                configuration=self.configuration,
+                active_backend_id=self.active_backend_id))
 
     def check_for_setup_error(self):
         pass
@@ -107,7 +110,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         """Creates a VMAX volume.
 
         :param volume: the cinder volume object
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_volume(volume)
 
@@ -116,7 +119,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
 
         :param volume: the cinder volume object
         :param snapshot: the cinder snapshot object
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_volume_from_snapshot(
             volume, snapshot)
@@ -126,7 +129,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
 
         :param volume: the cinder volume object
         :param src_vref: the source volume reference
-        :return: provider location dict
+        :returns: provider location dict
         """
         return self.common.create_cloned_volume(volume, src_vref)
 
@@ -141,7 +144,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         """Creates a snapshot.
 
         :param snapshot: the cinder snapshot object
-        :return: provider location dict
+        :returns: provider location dict
         """
         src_volume = snapshot.volume
         return self.common.create_snapshot(snapshot, src_volume)
@@ -220,7 +223,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
             }
         :param volume: the cinder volume object
         :param connector: the connector object
-        :return: dict -- the iscsi dict
+        :returns: dict -- the iscsi dict
         """
         device_info = self.common.initialize_connection(
             volume, connector)
@@ -231,7 +234,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
 
         :param device_info: device info dict
         :param volume: volume object
-        :return: iscsi dict
+        :returns: iscsi dict
         """
         try:
             ip_and_iqn = device_info['ip_and_iqn']
@@ -273,7 +276,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :param ip_and_iqn: list of ip and iqn dicts
         :param is_multipath: flag for multipath
         :param host_lun_id: the host lun id of the device
-        :return: properties
+        :returns: properties
         """
         properties = {}
         if len(ip_and_iqn) > 1 and is_multipath:
@@ -384,3 +387,15 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(volume, new_type, host)
+
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failover volumes to a secondary host/ backend.
+
+        :param context: the context
+        :param volumes: the list of volumes to be failed over
+        :param secondary_id: the backend to be failed over to, is 'default'
+                             if fail back
+        :param groups: replication groups
+        :returns: secondary_id, volume_update_list, group_update_list
+        """
+        return self.common.failover_host(volumes, secondary_id, groups)
