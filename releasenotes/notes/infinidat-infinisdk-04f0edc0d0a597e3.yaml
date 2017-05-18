@@ -1,0 +1,4 @@
+---
+upgrade:
+  - INFINIDAT volume driver now requires the 'infinisdk' python module to be
+    installed.
