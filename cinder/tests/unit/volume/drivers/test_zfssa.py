@@ -421,10 +421,9 @@ class TestZFSSAISCSIDriver(test.TestCase):
             self.test_snap['volume_name'],
             self.test_snap['name'])
 
-    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_clone_size')
-    def test_create_volume_from_snapshot(self, _verify_clone_size):
-        self.drv._verify_clone_size.return_value = True
+    def test_create_volume_from_snapshot(self):
         lcfg = self.configuration
+        self.drv.zfssa.get_lun.return_value = self.test_vol
         self.drv.create_snapshot(self.test_snap)
         self.drv.zfssa.create_snapshot.assert_called_once_with(
             lcfg.zfssa_pool,
@@ -433,9 +432,6 @@ class TestZFSSAISCSIDriver(test.TestCase):
             self.test_snap['name'])
         self.drv.create_volume_from_snapshot(self.test_vol_snap,
                                              self.test_snap)
-        self.drv._verify_clone_size.assert_called_once_with(
-            self.test_snap,
-            self.test_vol_snap['size'] * units.Gi)
         self.drv.zfssa.clone_snapshot.assert_called_once_with(
             lcfg.zfssa_pool,
             lcfg.zfssa_project,
@@ -443,6 +439,27 @@ class TestZFSSAISCSIDriver(test.TestCase):
             self.test_snap['name'],
             lcfg.zfssa_project,
             self.test_vol_snap['name'])
+
+    def test_create_larger_volume_from_snapshot(self):
+        lcfg = self.configuration
+        self.drv.zfssa.get_lun.return_value = self.test_vol
+        self.drv.create_snapshot(self.test_snap)
+        self.drv.zfssa.create_snapshot.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_snap['volume_name'],
+            self.test_snap['name'])
+
+        # use the larger test volume
+        self.drv.create_volume_from_snapshot(self.test_vol2,
+                                             self.test_snap)
+        self.drv.zfssa.clone_snapshot.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_snap['volume_name'],
+            self.test_snap['name'],
+            lcfg.zfssa_project,
+            self.test_vol2['name'])
 
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
     def test_volume_attach_detach(self, _get_provider_info):
