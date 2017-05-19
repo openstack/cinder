@@ -78,9 +78,6 @@ class Coordinator(object):
         self._ev = None
         self._dead = None
 
-    def is_active(self):
-        return self.coordinator is not None
-
     def start(self):
         """Connect to coordination backend and start heartbeat."""
         if not self.started:
