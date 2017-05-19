@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VMware VMDK driver now supports volume type extra-spec
+    option ``vmware:adapter_type`` to specify the adapter
+    type of volumes in vCenter server.
