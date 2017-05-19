@@ -98,6 +98,7 @@ backend that supports replication, the extra-specs entry would be::
     {replication: enabled}
 
 Additionally you could provide additional details using scoped keys::
+
     {replication: enabled, replication_type: async, replication_count: 2,
     replication_targets: [fake_id1, fake_id2]}
 
@@ -128,6 +129,7 @@ The number of API methods associated with replication is intentionally very limi
 Admin only methods.
 
 They include::
+
     replication_failover(self, context, volumes)
 
 Additionally we have freeze/thaw methods that will act on the scheduler
@@ -157,10 +159,12 @@ backend is lost, and we're just providing a DR mechanism to preserve user data
 for volumes that were specified as such via type settings.
 
 **freeze_backend**
+
 Puts a backend host/service into a R/O state for the control plane.  For
 example if a failover is issued, it is likely desirable that while data access
 to existing volumes is maintained, it likely would not be wise to continue
 doing things like creates, deletes, extends etc.
 
 **thaw_backend**
+
 Clear frozen control plane on a backend.
