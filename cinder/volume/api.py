@@ -1350,20 +1350,8 @@ class API(base.Base):
             'volume_id': volume.id
         }
 
-        try:
-            self.scheduler_rpcapi.extend_volume(context, volume, new_size,
-                                                reservations, request_spec)
-        except exception.ServiceTooOld as e:
-            # NOTE(erlon): During rolling upgrades scheduler and volume can
-            # have different versions. This check makes sure that a new
-            # version of the volume service won't break.
-            msg = ("Failed to send extend volume request to scheduler. "
-                   "Falling back to old behaviour. This is normal during a "
-                   "live-upgrade. Error: %(e)s")
-            LOG.warning(msg, {'e': e})
-            # TODO(erlon): Remove in Pike
-            self.volume_rpcapi.extend_volume(context, volume, new_size,
-                                             reservations)
+        self.scheduler_rpcapi.extend_volume(context, volume, new_size,
+                                            reservations, request_spec)
 
         LOG.info("Extend volume request issued successfully.",
                  resource=volume)
