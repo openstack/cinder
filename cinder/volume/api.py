@@ -75,12 +75,17 @@ az_cache_time_opt = cfg.IntOpt('az_cache_duration',
                                help='Cache volume availability zones in '
                                     'memory for the provided duration in '
                                     'seconds')
+enable_across_az_opt = cfg.BoolOpt('enable_across_az_migrate',
+                                   default=True,
+                                   help='Enable that the volumes migrate'
+                                        'between different AZ')
 
 CONF = cfg.CONF
 CONF.register_opt(allow_force_upload_opt)
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
+CONF.register_opt(enable_across_az_opt)
 
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 
@@ -1396,6 +1401,7 @@ class API(base.Base):
         # Even if we were requested to do a migration to a host, if the host is
         # in a cluster we will do a cluster migration.
         cluster_name = svc.cluster_name
+        dest_availability_zone = svc.availability_zone
 
         # Build required conditions for conditional update
         expected = {'status': ('available', 'in-use'),
@@ -1443,6 +1449,11 @@ class API(base.Base):
         if volume.volume_type_id:
             volume_type = volume_types.get_volume_type(context.elevated(),
                                                        volume.volume_type_id)
+        migrate_availability_zone = {'availability_zone':
+                                     dest_availability_zone}
+        if dest_availability_zone and CONF.enable_across_az_migrate:
+            volume.update(migrate_availability_zone)
+
         request_spec = {'volume_properties': volume,
                         'volume_type': volume_type,
                         'volume_id': volume.id}
