@@ -455,7 +455,7 @@ connector:
   description: |
     The ``connector`` object.
   in: body
-  required: true
+  required: false
   type: object
 consistencygroup_id:
   description: |

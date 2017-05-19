@@ -978,24 +978,6 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             resp = req.get_response(app())
             self.assertEqual(http_client.BAD_REQUEST, resp.status_int)
 
-        # test for KeyError when missing connector
-        volume_remote_error = (
-            messaging.RemoteError(exc_type='KeyError'))
-        with mock.patch.object(volume_api.API, 'detach',
-                               side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-                fake.PROJECT_ID, volume.id))
-            req.method = 'POST'
-            req.headers['content-type'] = 'application/json'
-            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
-            req.body = jsonutils.dump_as_bytes(body)
-            # attach admin context to request
-            req.environ['cinder.context'] = self.ctx
-            # make request
-            self.assertRaises(messaging.RemoteError,
-                              req.get_response,
-                              app())
-
         # test for VolumeBackendAPIException
         volume_remote_error = (
             messaging.RemoteError(exc_type='VolumeBackendAPIException'))
@@ -1060,6 +1042,46 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             self.assertRaises(messaging.RemoteError,
                               req.get_response,
                               app())
+
+    def test_volume_force_detach_missing_connector(self):
+        # current status is available
+        volume = self._create_volume(self.ctx, {'provider_location': '',
+                                                'size': 1})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+
+        self.volume_api.reserve_volume(self.ctx, volume)
+        mountpoint = '/dev/vbd'
+        attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
+                                            None, mountpoint, 'rw')
+        # volume is attached
+        volume.refresh()
+        self.assertEqual('in-use', volume.status)
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
+        self.assertEqual(mountpoint, attachment['mountpoint'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
+        admin_metadata = volume.admin_metadata
+        self.assertEqual(2, len(admin_metadata))
+        self.assertEqual('False', admin_metadata['readonly'])
+        self.assertEqual('rw', admin_metadata['attached_mode'])
+        conn_info = self.volume_api.initialize_connection(self.ctx,
+                                                          volume,
+                                                          connector)
+        self.assertEqual('rw', conn_info['data']['access_mode'])
+
+        # test when missing connector
+        with mock.patch.object(volume_api.API, 'detach'):
+            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+                fake.PROJECT_ID, volume.id))
+            req.method = 'POST'
+            req.headers['content-type'] = 'application/json'
+            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
+            req.body = jsonutils.dump_as_bytes(body)
+            # attach admin context to request
+            req.environ['cinder.context'] = self.ctx
+            # make request
+            resp = req.get_response(app())
+            self.assertEqual(http_client.ACCEPTED, resp.status_int)
 
     def test_attach_in_used_volume_by_instance(self):
         """Test that attaching to an in-use volume fails."""
