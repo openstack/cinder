@@ -19,9 +19,9 @@ from sqlalchemy import MetaData, Table
 
 
 def upgrade(migrate_engine):
-    """Add microseconds precission on updated_at field in MySQL databases.
+    """Add microseconds precision on updated_at field in MySQL databases.
 
-    PostgreSQL, SQLite, and MSSQL have sub-second precission by default, but
+    PostgreSQL, SQLite, and MSSQL have sub-second precision by default, but
     MySQL defaults to second precision in DateTime fields, which creates
     problems for the resource cleanup mechanism.
     """

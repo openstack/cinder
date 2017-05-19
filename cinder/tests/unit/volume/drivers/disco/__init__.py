@@ -142,7 +142,7 @@ class FakeMethod(object):
         """"Mock function to delete snapshot."""
 
     def restoreFromSnapshot(self, *args, **kwargs):
-        """"Mock function to create a volume from a snasphot."""
+        """"Mock function to create a volume from a snapshot."""
 
     def restoreDetail(self, *args, **kwargs):
         """"Mock function to detail the restore operation."""

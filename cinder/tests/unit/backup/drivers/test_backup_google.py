@@ -557,7 +557,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         self.assertGreater(len(fake_data), len(result))
 
     @gcs_client
-    def test_prepare_output_data_no_compresssion(self):
+    def test_prepare_output_data_no_compression(self):
         self.flags(backup_compression_algorithm='none')
         service = google_dr.GoogleBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes

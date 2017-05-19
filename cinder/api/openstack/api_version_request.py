@@ -88,7 +88,7 @@ REST_API_VERSION_HISTORY = """
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
-# Explicitly using /v1 or /v2 enpoints will still work
+# Explicitly using /v1 or /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
 _MAX_API_VERSION = "3.31"
 _LEGACY_API_VERSION1 = "1.0"
