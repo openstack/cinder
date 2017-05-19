@@ -213,6 +213,7 @@ class InfiniboxVolumeDriver(san.SanDriver):
         # check if the host now doesn't have mappings, to delete host_entry
         # if needed
         if len(host.get_luns()) == 0:
+            host.safe_delete()
             # Create initiator-target mapping.
             target_wwpns = list(self._get_online_fc_ports())
             target_wwpns, init_target_map = self._build_initiator_target_map(
