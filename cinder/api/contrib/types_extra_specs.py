@@ -102,7 +102,11 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     specs)
-        notifier_info = dict(type_id=type_id, specs=specs)
+        # Get created_at and updated_at for notification
+        volume_type = volume_types.get_volume_type(context, type_id)
+        notifier_info = dict(type_id=type_id, specs=specs,
+                             created_at=volume_type['created_at'],
+                             updated_at=volume_type['updated_at'])
         notifier = rpc.get_notifier('volumeTypeExtraSpecs')
         notifier.info(context, 'volume_type_extra_specs.create',
                       notifier_info)
@@ -129,7 +133,11 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     body)
-        notifier_info = dict(type_id=type_id, id=id)
+        # Get created_at and updated_at for notification
+        volume_type = volume_types.get_volume_type(context, type_id)
+        notifier_info = dict(type_id=type_id, id=id,
+                             created_at=volume_type['created_at'],
+                             updated_at=volume_type['updated_at'])
         notifier = rpc.get_notifier('volumeTypeExtraSpecs')
         notifier.info(context,
                       'volume_type_extra_specs.update',
@@ -158,7 +166,12 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         db.volume_type_extra_specs_delete(context, type_id, id)
 
-        notifier_info = dict(type_id=type_id, id=id)
+        # Get created_at and updated_at for notification
+        volume_type = volume_types.get_volume_type(context, type_id)
+        notifier_info = dict(type_id=type_id, id=id,
+                             created_at=volume_type['created_at'],
+                             updated_at=volume_type['updated_at'],
+                             deleted_at=volume_type['deleted_at'])
         notifier = rpc.get_notifier('volumeTypeExtraSpecs')
         notifier.info(context,
                       'volume_type_extra_specs.delete',
