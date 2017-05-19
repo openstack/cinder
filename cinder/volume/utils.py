@@ -17,6 +17,7 @@
 
 import ast
 import functools
+import json
 import math
 import operator
 from os import urandom
@@ -839,6 +840,13 @@ def paginate_entries_list(entries, marker, limit, offset, sort_keys,
     if offset is None:
         offset = 0
     if marker:
+        if not isinstance(marker, dict):
+            try:
+                marker = json.loads(marker)
+            except ValueError:
+                msg = _('marker %s can not be analysed, please use json like '
+                        'format') % marker
+                raise exception.InvalidInput(reason=msg)
         start_index = -1
         for i, entry in enumerate(sorted_entries):
             if entry['reference'] == marker:

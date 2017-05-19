@@ -911,7 +911,8 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_snapshot_name(snap_name)
         self.assertIsNone(result)
 
-    def test_paginate_entries_list_with_marker(self):
+    @ddt.data({"name": "vol02"}, '{"name": "vol02"}')
+    def test_paginate_entries_list_with_marker(self, marker):
         entries = [{'reference': {'name': 'vol03'}, 'size': 1},
                    {'reference': {'name': 'vol01'}, 'size': 3},
                    {'reference': {'name': 'vol02'}, 'size': 3},
@@ -922,7 +923,7 @@ class VolumeUtilsTestCase(test.TestCase):
         expected = [{'reference': {'name': 'vol04'}, 'size': 2},
                     {'reference': {'name': 'vol03'}, 'size': 1},
                     {'reference': {'name': 'vol05'}, 'size': 1}]
-        res = volume_utils.paginate_entries_list(entries, {'name': 'vol02'}, 3,
+        res = volume_utils.paginate_entries_list(entries, marker, 3,
                                                  1, ['size', 'reference'],
                                                  ['desc', 'asc'])
         self.assertEqual(expected, res)
@@ -941,6 +942,14 @@ class VolumeUtilsTestCase(test.TestCase):
         res = volume_utils.paginate_entries_list(entries, None, 3, None,
                                                  ['reference'], ['desc'])
         self.assertEqual(expected, res)
+
+    def test_paginate_entries_list_marker_invalid_format(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3}]
+        self.assertRaises(exception.InvalidInput,
+                          volume_utils.paginate_entries_list,
+                          entries, "invalid_format", 3, None,
+                          ['size', 'reference'], ['desc', 'asc'])
 
     def test_paginate_entries_list_marker_not_found(self):
         entries = [{'reference': {'name': 'vol03'}, 'size': 1},
