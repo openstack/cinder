@@ -341,3 +341,31 @@ Request Example
 
 
 
+Force delete volume
+~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{tenant_id}/volumes/{volume_id}/action
+
+Attempts force-delete of volume, regardless of state. Specify the ``os-force_delete`` action
+in the request body.
+
+
+Normal response codes: 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - os-force_delete: os-force_delete
+   - tenant_id: tenant_id
+   - volume_id: volume_id_path
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-force-delete-request.json
+   :language: javascript
+
+
