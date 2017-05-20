@@ -223,3 +223,23 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
                               self.context,
                               cleanup_request)
             can_send_mock.assert_called_once_with('3.4')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_set_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('set_log_levels',
+                           rpc_method='cast',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='3.7')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_get_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('get_log_levels',
+                           rpc_method='call',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='3.7')

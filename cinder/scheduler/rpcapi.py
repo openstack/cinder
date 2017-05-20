@@ -67,9 +67,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.4 - Adds work_cleanup and do_cleanup methods.
         3.5 - Make notify_service_capabilities support A/A
         3.6 - Removed create_consistencygroup method
+        3.7 - Adds set_log_levels and get_log_levels
     """
 
-    RPC_API_VERSION = '3.6'
+    RPC_API_VERSION = '3.7'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -208,3 +209,13 @@ class SchedulerAPI(rpc.RPCAPI):
         """Perform this scheduler's resource cleanup as per cleanup_request."""
         cctxt = self.client.prepare(version='3.4')
         cctxt.cast(ctxt, 'do_cleanup', cleanup_request=cleanup_request)
+
+    @rpc.assert_min_rpc_version('3.7')
+    def set_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(server=service.host, version='3.7')
+        cctxt.cast(context, 'set_log_levels', log_request=log_request)
+
+    @rpc.assert_min_rpc_version('3.7')
+    def get_log_levels(self, context, service, log_request):
+        cctxt = self._get_cctxt(server=service.host, version='3.7')
+        return cctxt.call(context, 'get_log_levels', log_request=log_request)

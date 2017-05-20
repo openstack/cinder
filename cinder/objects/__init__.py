@@ -41,3 +41,4 @@ def register_all():
     __import__('cinder.objects.group')
     __import__('cinder.objects.group_snapshot')
     __import__('cinder.objects.manageableresources')
+    __import__('cinder.objects.dynamic_log')

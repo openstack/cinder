@@ -1455,3 +1455,42 @@ class TestNotificationShortCircuit(test.TestCase):
                              group='oslo_messaging_notifications')
         result = self._decorated_method()
         self.assertEqual(utils.DO_NOTHING, result)
+
+
+@ddt.ddt
+class TestLogLevels(test.TestCase):
+    @ddt.data(None, '', 'wronglevel')
+    def test_get_log_method_invalid(self, level):
+        self.assertRaises(exception.InvalidInput,
+                          utils.get_log_method, level)
+
+    @ddt.data(('info', utils.logging.INFO), ('warning', utils.logging.WARNING),
+              ('INFO', utils.logging.INFO), ('wArNiNg', utils.logging.WARNING),
+              ('error', utils.logging.ERROR), ('debug', utils.logging.DEBUG))
+    @ddt.unpack
+    def test_get_log_method(self, level, logger):
+        result = utils.get_log_method(level)
+        self.assertEqual(logger, result)
+
+    def test_get_log_levels(self):
+        levels = utils.get_log_levels('cinder.api')
+        self.assertTrue(len(levels) > 1)
+        self.assertSetEqual({'DEBUG'}, set(levels.values()))
+
+    @ddt.data(None, '', 'wronglevel')
+    def test_set_log_levels_invalid(self, level):
+        self.assertRaises(exception.InvalidInput,
+                          utils.set_log_levels, '', level)
+
+    def test_set_log_levels(self):
+        prefix = 'cinder.utils'
+        levels = utils.get_log_levels(prefix)
+        self.assertEqual('DEBUG', levels[prefix])
+
+        utils.set_log_levels(prefix, 'warning')
+        levels = utils.get_log_levels(prefix)
+        self.assertEqual('WARNING', levels[prefix])
+
+        utils.set_log_levels(prefix, 'debug')
+        levels = utils.get_log_levels(prefix)
+        self.assertEqual('DEBUG', levels[prefix])

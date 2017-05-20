@@ -16,7 +16,10 @@
 Unit Tests for cinder.backup.rpcapi
 """
 
+import mock
+
 from cinder.backup import rpcapi as backup_rpcapi
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
@@ -79,3 +82,23 @@ class BackupRPCAPITestCase(test.RPCAPITestCase):
                            server='fake_volume_host',
                            host='fake_volume_host',
                            retval=True)
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_set_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('set_log_levels',
+                           rpc_method='cast',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='2.1')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', mock.Mock())
+    def test_get_log_levels(self):
+        service = objects.Service(self.context, host='host1')
+        self._test_rpc_api('get_log_levels',
+                           rpc_method='call',
+                           server=service.host,
+                           service=service,
+                           log_request='log_request',
+                           version='2.1')

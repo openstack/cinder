@@ -34,6 +34,8 @@ object_data = {
     'CGSnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'ConsistencyGroup': '1.4-7bf01a79b82516639fc03cd3ab6d9c01',
     'ConsistencyGroupList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
+    'LogLevel': '1.0-7a8200b6b5063b33ec7b569dc6be66d2',
+    'LogLevelList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'ManageableSnapshot': '1.0-5be933366eb17d12db0115c597158d0d',
     'ManageableSnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'ManageableVolume': '1.0-5fd0152237ec9dfb7b5c7095b8b09ffa',

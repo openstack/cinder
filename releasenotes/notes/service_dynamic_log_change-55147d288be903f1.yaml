@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added new APIs on microversion 3.32 to support dynamically changing log
+    levels in Cinder services without restart as well as retrieving current log
+    levels, which is an easy way to ping via the message broker a service.
