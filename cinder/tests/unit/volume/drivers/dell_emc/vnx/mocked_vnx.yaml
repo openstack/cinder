@@ -1775,6 +1775,8 @@ test_get_pool_name:
 
 test_normalize_config_naviseccli_path:
 
+test_normalize_config_queue_path:
+
 test_normalize_config_naviseccli_path_none:
 
 test_normalize_config_pool_names:
