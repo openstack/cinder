@@ -31,6 +31,7 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
+import os
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -464,7 +465,8 @@ class BackupManager(manager.ThreadPoolManager):
                                               backup_device.is_snapshot)
             try:
                 device_path = attach_info['device']['path']
-                if isinstance(device_path, six.string_types):
+                if (isinstance(device_path, six.string_types) and
+                        not os.path.isdir(device_path)):
                     if backup_device.secure_enabled:
                         with open(device_path) as device_file:
                             backup_service.backup(backup, device_file)
@@ -570,7 +572,8 @@ class BackupManager(manager.ThreadPoolManager):
         attach_info = self._attach_device(context, volume, properties)
         try:
             device_path = attach_info['device']['path']
-            if isinstance(device_path, six.string_types):
+            if (isinstance(device_path, six.string_types) and
+                    not os.path.isdir(device_path)):
                 if secure_enabled:
                     with open(device_path, 'wb') as device_file:
                         backup_service.restore(backup, volume.id, device_file)
