@@ -117,9 +117,6 @@ class VolumeController(volumes_v2.VolumeController):
         if 'name' in filters:
             filters['display_name'] = filters.pop('name')
 
-        if 'group_id' in filters:
-            filters['consistencygroup_id'] = filters.pop('group_id')
-
         strict = req.api_version_request.matches("3.2", None)
         self.volume_api.check_volume_filters(filters, strict)
 
