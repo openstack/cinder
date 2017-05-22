@@ -59,6 +59,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self.configuration.san_is_local = False
         self.configuration.chap_username = None
         self.configuration.chap_password = None
+        self.configuration.infinidat_use_compression = None
 
         self.driver = infinidat.InfiniboxVolumeDriver(
             configuration=self.configuration)
@@ -207,6 +208,31 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_create_volume_metadata(self, *mocks):
         self.driver.create_volume(test_volume)
         self._mock_volume.set_metadata_from_dict.assert_called_once()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume_compression_enabled(self, *mocks):
+        self.configuration.infinidat_use_compression = True
+        self.driver.create_volume(test_volume)
+        self.assertTrue(
+            self._system.volumes.create.call_args[1]["compression_enabled"]
+        )
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume_compression_not_enabled(self, *mocks):
+        self.configuration.infinidat_use_compression = False
+        self.driver.create_volume(test_volume)
+        self.assertFalse(
+            self._system.volumes.create.call_args[1]["compression_enabled"]
+        )
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume_compression_not_available(self, *mocks):
+        self._system.compat.has_compression.return_value = False
+        self.driver.create_volume(test_volume)
+        self.assertNotIn(
+            "compression_enabled",
+            self._system.volumes.create.call_args[1]
+        )
 
     def test_delete_volume(self):
         self.driver.delete_volume(test_volume)
