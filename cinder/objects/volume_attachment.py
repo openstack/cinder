@@ -13,6 +13,7 @@
 #    under the License.
 
 from oslo_serialization import jsonutils
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -63,6 +64,14 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):
         return ['volume']
+
+    def obj_make_compatible(self, primitive, target_version):
+        """Make a object representation compatible with target version."""
+        super(VolumeAttachment, self).obj_make_compatible(primitive,
+                                                          target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 2):
+            primitive.pop('connection_info', None)
 
     @classmethod
     def _from_db_object(cls, context, attachment, db_attachment,

@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 import six
 
@@ -22,6 +23,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 
+@ddt.ddt
 class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
@@ -95,6 +97,21 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         self.assertEqual(fake.INSTANCE_ID, attachment.instance_uuid)
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          attachment.attach_status)
+
+    @ddt.data('1.0', '1.1', '1.2')
+    def test_obj_make_compatible(self, version):
+        connection_info = {'field': 'value'}
+        vol_attach = objects.VolumeAttachment(self.context,
+                                              connection_info=connection_info)
+        primitive = vol_attach.obj_to_primitive(version)
+        converted_vol_attach = objects.VolumeAttachment.obj_from_primitive(
+            primitive)
+        if version == '1.2':
+            self.assertEqual(connection_info,
+                             converted_vol_attach.connection_info)
+        else:
+            self.assertFalse(converted_vol_attach.obj_attr_is_set(
+                'connection_info'))
 
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
