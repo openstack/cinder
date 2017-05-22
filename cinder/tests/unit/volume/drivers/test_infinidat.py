@@ -141,6 +141,11 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.initialize_connection,
                           test_volume, test_connector)
 
+    def test_initialize_connection_metadata(self):
+        self._system.hosts.safe_get.return_value = None
+        self.driver.initialize_connection(test_volume, test_connector)
+        self._mock_host.set_metadata_from_dict.assert_called_once()
+
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
 
@@ -194,6 +199,10 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
+    def test_create_volume_metadata(self):
+        self.driver.create_volume(test_volume)
+        self._mock_volume.set_metadata_from_dict.assert_called_once()
+
     def test_delete_volume(self):
         self.driver.delete_volume(test_volume)
 
@@ -217,6 +226,11 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_create_snapshot(self):
         self.driver.create_snapshot(test_snapshot)
+
+    def test_create_snapshot_metadata(self):
+        self._mock_volume.create_snapshot.return_value = self._mock_volume
+        self.driver.create_snapshot(test_snapshot)
+        self._mock_volume.set_metadata_from_dict.assert_called_once()
 
     def test_create_snapshot_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
@@ -311,6 +325,12 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 return_value=True)
     def test_create_group(self, *mocks):
         self.driver.create_group(None, test_group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_metadata(self, *mocks):
+        self.driver.create_group(None, test_group)
+        self._mock_group.set_metadata_from_dict.assert_called_once()
 
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
