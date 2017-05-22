@@ -813,7 +813,7 @@ class Message(BASE, CinderBase):
     """Represents a message"""
     __tablename__ = 'messages'
     id = Column(String(36), primary_key=True, nullable=False)
-    project_id = Column(String(36), nullable=False)
+    project_id = Column(String(255), nullable=False)
     # Info/Error/Warning.
     message_level = Column(String(255), nullable=False)
     request_id = Column(String(255), nullable=True)

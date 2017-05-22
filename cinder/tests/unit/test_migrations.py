@@ -120,6 +120,9 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             # NOTE(ameade): 87 sets messages.request_id to nullable. This
             # should be safe for the same reason as migration 66.
             87,
+            # NOTE : 104 modifies size of messages.project_id to 255.
+            # This should be safe for the same reason as migration 87.
+            104,
         ]
 
         # NOTE(dulek): We only started requiring things be additive in
@@ -1253,6 +1256,10 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                               self.VARCHAR_TYPE)
         self.assertIsInstance(attachment.c.action_id.type,
                               self.VARCHAR_TYPE)
+
+    def _check_104(self, engine, data):
+        messages = db_utils.get_table(engine, 'messages')
+        self.assertEqual(255, messages.c.project_id.type.length)
 
     def test_walk_versions(self):
         self.walk_versions(False, False)
