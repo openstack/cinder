@@ -444,6 +444,15 @@ created_at_1:
   in: body
   required: true
   type: string
+data_timestamp:
+  description: |
+    The time when the data on the volume was first saved. If it is
+    a backup from volume, it will be the same as ``created_at``
+    for a backup. If it is a backup from a snapshot, it will be the
+    same as ``created_at`` for the snapshot.
+  in: body
+  required: true
+  type: string
 deleted:
   description: |
     The resource is deleted or not.
@@ -1707,6 +1716,12 @@ volume_id_6:
     restore a backup.
   in: body
   required: false
+  type: string
+volume_name:
+  description: |
+    The volume name.
+  in: body
+  required: true
   type: string
 volume_type_1:
   description: |
