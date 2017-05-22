@@ -122,7 +122,8 @@ def check_qemu_img_version(minimum_version):
         raise exception.VolumeBackendAPIException(data=_msg)
 
 
-def _convert_image(prefix, source, dest, out_format, run_as_root=True):
+def _convert_image(prefix, source, dest, out_format,
+                   src_format=None, run_as_root=True):
     """Convert image to other format."""
 
     cmd = prefix + ('qemu-img', 'convert',
@@ -142,8 +143,12 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
                                                    dest,
                                                    'oflag=direct')):
         cmd = prefix + ('qemu-img', 'convert',
-                        '-t', 'none',
-                        '-O', out_format, source, dest)
+                        '-t', 'none')
+
+        if src_format is not None:
+            cmd += ('-f', src_format)  # prevent detection of format
+
+        cmd += ('-O', out_format, source, dest)
 
     start_time = timeutils.utcnow()
     utils.execute(*cmd, run_as_root=run_as_root)
@@ -177,13 +182,16 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
-def convert_image(source, dest, out_format, run_as_root=True, throttle=None):
+def convert_image(source, dest, out_format, src_format=None,
+                  run_as_root=True, throttle=None):
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
         _convert_image(tuple(throttle_cmd['prefix']),
                        source, dest,
-                       out_format, run_as_root=run_as_root)
+                       out_format,
+                       src_format=src_format,
+                       run_as_root=run_as_root)
 
 
 def resize_image(source, size, run_as_root=False):
@@ -400,6 +408,7 @@ def fetch_to_volume_format(context, image_service,
         # malicious.
         LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
         convert_image(tmp, dest, volume_format,
+                      src_format=image_meta['disk_format'],
                       run_as_root=run_as_root)
 
         data = qemu_img_info(dest, run_as_root=run_as_root)
