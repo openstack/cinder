@@ -41,6 +41,7 @@ Block Storage API V3 (CURRENT)
 .. include:: hosts.inc
 .. include:: limits.inc
 .. include:: messages.inc
+.. include:: resource-filters.inc
 .. include:: qos-specs-v3-qos-specs.inc
 .. quota-sets should arguably live closer to limits, but that would mess up
    our nice alphabetical ordering

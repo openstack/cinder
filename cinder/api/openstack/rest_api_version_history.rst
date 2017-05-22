@@ -304,3 +304,7 @@ user documentation.
 3.32
 ----
   Added ``set-log`` and ``get-log`` service actions.
+
+3.33
+----
+  Add ``resource_filters`` API to retrieve configured resource filters.
