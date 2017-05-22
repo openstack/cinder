@@ -144,6 +144,10 @@ class BackupSwiftTestCase(test.TestCase):
                                       u'endpoints': [{
                                           u'adminURL':
                                               u'http://example.com'}]}]
+        self.override_config("backup_swift_auth",
+                             "single_user")
+        self.override_config("backup_swift_user",
+                             "fake_user")
         self.assertRaises(exception.BackupDriverException,
                           swift_dr.SwiftBackupDriver,
                           self.ctxt)
@@ -167,6 +171,16 @@ class BackupSwiftTestCase(test.TestCase):
                                    self.ctxt.project_id),
                          backup.swift_url)
 
+    def test_backup_swift_url_conf_nocatalog(self):
+        self.ctxt.service_catalog = []
+        self.ctxt.project_id = fake.PROJECT_ID
+        self.override_config("backup_swift_url",
+                             "http://public.example.com/")
+        backup = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertEqual("%s%s" % (CONF.backup_swift_url,
+                                   self.ctxt.project_id),
+                         backup.swift_url)
+
     def test_backup_swift_auth_url_conf(self):
         self.ctxt.service_catalog = [{u'type': u'object-store',
                                       u'name': u'swift',
@@ -182,6 +196,10 @@ class BackupSwiftTestCase(test.TestCase):
         self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_auth_url",
                              "http://public.example.com")
+        self.override_config("backup_swift_auth",
+                             "single_user")
+        self.override_config("backup_swift_user",
+                             "fake_user")
         backup = swift_dr.SwiftBackupDriver(self.ctxt)
         self.assertEqual(CONF.backup_swift_auth_url, backup.auth_url)
 

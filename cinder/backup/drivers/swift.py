@@ -153,71 +153,45 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                 backup_default_container,
                                                 enable_progress_timer,
                                                 db_driver)
-        if CONF.backup_swift_url is None:
-            self.swift_url = None
-            info = CONF.swift_catalog_info
-            try:
-                service_type, service_name, endpoint_type = info.split(':')
-            except ValueError:
-                raise exception.BackupDriverException(_(
-                    "Failed to parse the configuration option "
-                    "'swift_catalog_info', must be in the form "
-                    "<service_type>:<service_name>:<endpoint_type>"))
-            for entry in context.service_catalog:
-                if entry.get('type') == service_type:
-                    # It is assumed that service_types are unique within
-                    # the service catalog, so once the correct one is found
-                    # it is safe to break out of the loop
-                    self.swift_url = entry.get(
-                        'endpoints')[0].get(endpoint_type)
-                    break
-        else:
-            self.swift_url = '%s%s' % (CONF.backup_swift_url,
-                                       context.project_id)
-        if self.swift_url is None:
-            raise exception.BackupDriverException(_(
-                "Could not determine which Swift endpoint to use. This can "
-                "either be set in the service catalog or with the "
-                "cinder.conf config option 'backup_swift_url'."))
-        if CONF.backup_swift_auth_url is None:
-            self.auth_url = None
-            info = CONF.keystone_catalog_info
-            try:
-                service_type, service_name, endpoint_type = info.split(':')
-            except ValueError:
-                raise exception.BackupDriverException(_(
-                    "Failed to parse the configuration option "
-                    "'keystone_catalog_info', must be in the form "
-                    "<service_type>:<service_name>:<endpoint_type>"))
-            for entry in context.service_catalog:
-                if entry.get('type') == service_type:
-                    # It is assumed that service_types are unique within
-                    # the service catalog, so once the correct one is found
-                    # it is safe to break out of the loop
-                    self.auth_url = entry.get(
-                        'endpoints')[0].get(endpoint_type)
-                    break
-        else:
-            self.auth_url = CONF.backup_swift_auth_url
-
-        if self.auth_url is None:
-            raise exception.BackupDriverException(_(
-                "Could not determine which Keystone endpoint to use. This can "
-                "either be set in the service catalog or with the "
-                "cinder.conf config option 'backup_swift_auth_url'."))
-        LOG.debug("Using swift URL %s", self.swift_url)
-        LOG.debug("Using auth URL %s", self.auth_url)
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
-        LOG.debug('Connect to %s in "%s" mode', CONF.backup_swift_url,
-                  CONF.backup_swift_auth)
         self.backup_swift_auth_insecure = CONF.backup_swift_auth_insecure
+
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
                 LOG.error("single_user auth mode enabled, "
                           "but %(param)s not set",
                           {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
+            if CONF.backup_swift_auth_url is None:
+                self.auth_url = None
+                info = CONF.keystone_catalog_info
+                try:
+                    service_type, service_name, endpoint_type = info.split(':')
+                except ValueError:
+                    raise exception.BackupDriverException(_(
+                        "Failed to parse the configuration option "
+                        "'keystone_catalog_info', must be in the form "
+                        "<service_type>:<service_name>:<endpoint_type>"))
+                for entry in context.service_catalog:
+                    if entry.get('type') == service_type:
+                        # It is assumed that service_types are unique within
+                        # the service catalog, so once the correct one is found
+                        # it is safe to break out of the loop
+                        self.auth_url = entry.get(
+                            'endpoints')[0].get(endpoint_type)
+                        break
+            else:
+                self.auth_url = CONF.backup_swift_auth_url
+            if self.auth_url is None:
+                raise exception.BackupDriverException(_(
+                    "Could not determine which Keystone endpoint to use. This "
+                    "can either be set in the service catalog or with the "
+                    "cinder.conf config option 'backup_swift_auth_url'."))
+            LOG.debug("Using auth URL %s", self.auth_url)
+            LOG.debug('Connect to %s in "%s" mode', CONF.backup_swift_auth_url,
+                      CONF.backup_swift_auth)
+
             os_options = {}
             if CONF.backup_swift_user_domain is not None:
                 os_options['user_domain_name'] = CONF.backup_swift_user_domain
@@ -239,6 +213,36 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 insecure=self.backup_swift_auth_insecure,
                 cacert=CONF.backup_swift_ca_cert_file)
         else:
+            if CONF.backup_swift_url is None:
+                self.swift_url = None
+                info = CONF.swift_catalog_info
+                try:
+                    service_type, service_name, endpoint_type = info.split(':')
+                except ValueError:
+                    raise exception.BackupDriverException(_(
+                        "Failed to parse the configuration option "
+                        "'swift_catalog_info', must be in the form "
+                        "<service_type>:<service_name>:<endpoint_type>"))
+                for entry in context.service_catalog:
+                    if entry.get('type') == service_type:
+                        # It is assumed that service_types are unique within
+                        # the service catalog, so once the correct one is found
+                        # it is safe to break out of the loop
+                        self.swift_url = entry.get(
+                            'endpoints')[0].get(endpoint_type)
+                        break
+            else:
+                self.swift_url = '%s%s' % (CONF.backup_swift_url,
+                                           context.project_id)
+            if self.swift_url is None:
+                raise exception.BackupDriverException(_(
+                    "Could not determine which Swift endpoint to use. This "
+                    "can either be set in the service catalog or with the "
+                    "cinder.conf config option 'backup_swift_url'."))
+            LOG.debug("Using swift URL %s", self.swift_url)
+            LOG.debug('Connect to %s in "%s" mode', CONF.backup_swift_url,
+                      CONF.backup_swift_auth)
+
             self.conn = swift.Connection(retries=self.swift_attempts,
                                          preauthurl=self.swift_url,
                                          preauthtoken=self.context.auth_token,
