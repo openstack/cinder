@@ -526,12 +526,6 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         """
         self.discard_zero_page(dest_vol)
 
-    def restore_backup(self, context, backup, volume, backup_service):
-        self.do_setup_status.wait()
-        super(HBSDFCDriver, self).restore_backup(context, backup,
-                                                 volume, backup_service)
-        self.discard_zero_page(volume)
-
     def manage_existing(self, volume, existing_ref):
         return self.common.manage_existing(volume, existing_ref)
 

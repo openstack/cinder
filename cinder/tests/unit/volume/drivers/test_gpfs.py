@@ -1401,45 +1401,6 @@ class GPFSDriverTestCase(test.TestCase):
         volume = self._fake_volume()
         self.driver.copy_volume_to_image('', volume, '', '')
 
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._delete_gpfs_file')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
-                '_create_gpfs_clone')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
-    def test_backup_volume(self,
-                           mock_local_path,
-                           mock_create_gpfs_clone,
-                           mock_gpfs_redirect,
-                           mock_temp_chown,
-                           mock_file_open,
-                           mock_delete_gpfs_file):
-        volume = self._fake_volume()
-        self.driver.db = mock.Mock()
-        self.driver.db.volume_get = mock.Mock()
-        self.driver.db.volume_get.return_value = volume
-        backup = {}
-        backup['volume_id'] = 'test'
-        backup['id'] = '123456'
-        backup_service = mock.Mock()
-        mock_local_path.return_value = self.volumes_path
-        self.driver.backup_volume('', backup, backup_service)
-
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
-    def test_restore_backup(self,
-                            mock_local_path,
-                            mock_temp_chown,
-                            mock_file_open):
-        volume = self._fake_volume()
-        backup = {}
-        backup['id'] = '123456'
-        backup_service = mock.Mock()
-        mock_local_path.return_value = self.volumes_path
-        self.driver.restore_backup('', backup, volume, backup_service)
-
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_can_migrate_locally')
@@ -2160,27 +2121,3 @@ class GPFSNFSDriverTestCase(test.TestCase):
         mock_find_share.return_value = self.TEST_VOLUME_PATH
         self.assertEqual({'provider_location': self.TEST_VOLUME_PATH},
                          self.driver.create_cloned_volume(volume, src_vref))
-
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
-                '_delete_gpfs_file')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
-                '_do_backup')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
-                '_create_backup_source')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
-                'local_path')
-    def test_backup_volume(self,
-                           mock_local_path,
-                           mock_create_backup_source,
-                           mock_do_backup,
-                           mock_delete_gpfs_file):
-        volume = self._fake_volume()
-        self.driver.db = mock.Mock()
-        self.driver.db.volume_get = mock.Mock()
-        self.driver.db.volume_get.return_value = volume
-        backup = {}
-        backup['volume_id'] = 'test'
-        backup['id'] = '123456'
-        backup_service = mock.Mock()
-        mock_local_path.return_value = self.TEST_VOLUME_PATH
-        self.driver.backup_volume('', backup, backup_service)

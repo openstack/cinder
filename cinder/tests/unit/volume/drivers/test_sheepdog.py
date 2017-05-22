@@ -24,14 +24,11 @@ from oslo_concurrency import processutils
 from oslo_utils import importutils
 from oslo_utils import units
 
-from cinder.backup import driver as backup_driver
 from cinder import context
-from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import test
-from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -50,8 +47,6 @@ class SheepdogDriverTestDataGenerator(object):
             self.TEST_CLONED_VOL_DATA)
         self.TEST_SNAPSHOT = self._make_fake_snapshot(
             self.TEST_SNAPSHOT_DATA, self.TEST_VOLUME)
-        self.TEST_BACKUP_VOLUME = self._make_fake_backup_volume(
-            self.TEST_BACKUP_VOL_DATA)
 
     def sheepdog_cmd_error(self, cmd, exit_code, stdout, stderr):
         return (('(Command: %(cmd)s) '
@@ -72,10 +67,6 @@ class SheepdogDriverTestDataGenerator(object):
             context.get_admin_context(), **snapshot_data)
         snapshot_obj.volume = src_volume
         return snapshot_obj
-
-    def _make_fake_backup_volume(self, backup_data):
-        return fake_backup.fake_backup_obj(context.get_admin_context(),
-                                           **backup_data)
 
     def cmd_dog_vdi_create(self, name, size):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'create', name,
@@ -150,10 +141,6 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_SNAPSHOT_DATA = {
         'id': fake.SNAPSHOT_ID,
-    }
-
-    TEST_BACKUP_VOL_DATA = {
-        'volume_id': fake.VOLUME_ID,
     }
 
     COLLIE_NODE_INFO = """
@@ -1392,100 +1379,3 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.extend_volume(self.test_data.TEST_VOLUME, 10)
         fake_execute.assert_called_once_with(self._vdiname, 10)
         self.assertTrue(fake_logger.debug.called)
-
-    @mock.patch.object(db, 'volume_get')
-    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
-    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
-    @mock.patch.object(backup_driver, 'BackupDriver')
-    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
-    def test_backup_volume_success(self, fake_delete_snapshot,
-                                   fake_backup_service, fake_create_snapshot,
-                                   fake_execute, fake_volume_get):
-        fake_context = {}
-        fake_volume = self.test_data.TEST_VOLUME
-        fake_backup = self.test_data.TEST_BACKUP_VOLUME
-        fake_backup_service = mock.Mock()
-        fake_volume_get.return_value = fake_volume
-        self.driver.backup_volume(fake_context,
-                                  fake_backup,
-                                  fake_backup_service)
-
-        self.assertEqual(1, fake_create_snapshot.call_count)
-        self.assertEqual(2, fake_delete_snapshot.call_count)
-        self.assertEqual(fake_create_snapshot.call_args,
-                         fake_delete_snapshot.call_args)
-
-        call_args, call_kwargs = fake_backup_service.backup.call_args
-        call_backup, call_sheepdog_fd = call_args
-        self.assertEqual(fake_backup, call_backup)
-        self.assertIsInstance(call_sheepdog_fd, sheepdog.SheepdogIOWrapper)
-
-    @mock.patch.object(db, 'volume_get')
-    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
-    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
-    @mock.patch.object(backup_driver, 'BackupDriver')
-    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
-    def test_backup_volume_fail_to_create_snap(self, fake_delete_snapshot,
-                                               fake_backup_service,
-                                               fake_create_snapshot,
-                                               fake_execute, fake_volume_get):
-        fake_context = {}
-        fake_volume = self.test_data.TEST_VOLUME
-        fake_backup = self.test_data.TEST_BACKUP_VOLUME
-        fake_volume_get.return_value = fake_volume
-        fake_create_snapshot.side_effect = exception.SheepdogCmdError(
-            cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
-
-        self.assertRaises(exception.SheepdogError,
-                          self.driver.backup_volume,
-                          fake_context,
-                          fake_backup,
-                          fake_backup_service)
-        self.assertEqual(1, fake_create_snapshot.call_count)
-        self.assertEqual(1, fake_delete_snapshot.call_count)
-        self.assertEqual(fake_create_snapshot.call_args,
-                         fake_delete_snapshot.call_args)
-
-    @mock.patch.object(db, 'volume_get')
-    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
-    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
-    @mock.patch.object(backup_driver, 'BackupDriver')
-    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
-    def test_backup_volume_fail_to_backup_vol(self, fake_delete_snapshot,
-                                              fake_backup_service,
-                                              fake_create_snapshot,
-                                              fake_execute, fake_volume_get):
-        fake_context = {}
-        fake_volume = self.test_data.TEST_VOLUME
-        fake_backup = self.test_data.TEST_BACKUP_VOLUME
-        fake_volume_get.return_value = fake_volume
-
-        class BackupError(Exception):
-            pass
-
-        fake_backup_service.backup.side_effect = BackupError()
-
-        self.assertRaises(BackupError,
-                          self.driver.backup_volume,
-                          fake_context,
-                          fake_backup,
-                          fake_backup_service)
-        self.assertEqual(1, fake_create_snapshot.call_count)
-        self.assertEqual(2, fake_delete_snapshot.call_count)
-        self.assertEqual(fake_create_snapshot.call_args,
-                         fake_delete_snapshot.call_args)
-
-    @mock.patch.object(backup_driver, 'BackupDriver')
-    def test_restore_backup(self, fake_backup_service):
-        fake_context = {}
-        fake_backup = self.test_data.TEST_BACKUP_VOLUME
-        fake_volume = self.test_data.TEST_VOLUME
-
-        self.driver.restore_backup(
-            fake_context, fake_backup, fake_volume, fake_backup_service)
-
-        call_args, call_kwargs = fake_backup_service.restore.call_args
-        call_backup, call_volume_id, call_sheepdog_fd = call_args
-        self.assertEqual(fake_backup, call_backup)
-        self.assertEqual(fake_volume.id, call_volume_id)
-        self.assertIsInstance(call_sheepdog_fd, sheepdog.SheepdogIOWrapper)
