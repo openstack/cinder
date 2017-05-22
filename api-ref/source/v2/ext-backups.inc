@@ -82,6 +82,8 @@ Response Parameters
    - size: size
    - id: id
    - is_incremental: is_incremental
+   - data_timestamp: data_timestamp
+   - snapshot_id: snapshot_id_2
 
 Response Example
 ----------------
@@ -132,6 +134,8 @@ Response Parameters
    - backup: backup
    - id: id
    - is_incremental: is_incremental
+   - data_timestamp: data_timestamp
+   - snapshot_id: snapshot_id_2
 
 Response Example
 ----------------
@@ -148,6 +152,9 @@ Delete backup
 Deletes a backup.
 
 Normal response codes: 202,
+Error response codes: Bad Request(400)
+
+
 
 
 Request
@@ -170,6 +177,7 @@ You must specify either the UUID or name of the volume. If you
 specify both the UUID and name, the UUID takes priority.
 
 Normal response codes: 202,
+Error response codes: Bad Request(400), Request Entity Too Large(413)
 
 
 Request
@@ -197,6 +205,7 @@ Response Parameters
    - restore: restore
    - backup_id: backup_id
    - volume_id: volume_id
+   - volume_name: volume_name
 
 Create backup
 ~~~~~~~~~~~~~
@@ -206,6 +215,7 @@ Create backup
 Creates a Block Storage backup from a volume.
 
 Normal response codes: 202,
+Error response codes: Bad Request(400), Internal Server Error(500)
 
 Request
 -------
@@ -220,6 +230,7 @@ Request
    - backup: backup
    - name: name
    - tenant_id: tenant_id
+   - snapshot_id: snapshot_id_2
 
 Request Example
 ---------------

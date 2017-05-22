@@ -519,6 +519,15 @@ created_at_1:
   in: body
   required: true
   type: string
+data_timestamp:
+  description: |
+    The time when the data on the volume was first saved. If it is
+    a backup from volume, it will be the same as ``created_at``
+    for a backup. If it is a backup from a snapshot, it will be the
+    same as ``created_at`` for the snapshot.
+  in: body
+  required: true
+  type: string
 delete-volumes:
   description: |
     If set to ``true``, allows deletion of a
@@ -1999,6 +2008,12 @@ volume_id_7:
   description: |
     The UUID of the volume which the attachment belongs
     to.
+  in: body
+  required: true
+  type: string
+volume_name:
+  description: |
+    The volume name.
   in: body
   required: true
   type: string
