@@ -70,9 +70,14 @@ class TestObjectVersions(test.TestCase):
             base.CinderObjectRegistry.obj_classes())
         expected, actual = checker.test_hashes(object_data)
         self.assertEqual(expected, actual,
-                         'Some objects have changed; please make sure the '
-                         'versions have been bumped, and then update their '
-                         'hashes in the object_data map in this test module.')
+                         "Some objects have changed; please make sure the "
+                         "versions have been bumped and backporting "
+                         "compatibility code has been added to "
+                         "obj_make_compatible if necessary, and then update "
+                         "their hashes in the object_data map in this test "
+                         "module.  If we don't need to add backporting code "
+                         "then it means we also don't need the version bump "
+                         "and we just have to change the hash in this module.")
 
     def test_versions_history(self):
         classes = base.CinderObjectRegistry.obj_classes()
