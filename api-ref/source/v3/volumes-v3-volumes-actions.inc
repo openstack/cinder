@@ -43,7 +43,7 @@ Request
    - os-extend: os-extend
    - new_size: new_size
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -77,7 +77,7 @@ Request
    - os-reset_status: os-reset_status
    - attach_status: attach_status
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -109,7 +109,7 @@ Request
    - os-set_image_metadata: os-set_image_metadata
    - metadata: metadata
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -141,7 +141,7 @@ Request
    - os-unset_image_metadata: os-unset_image_metadata
    - key: key
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -217,7 +217,7 @@ Request
    - attachment_id: attachment_id
    - os-detach: os-detach
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -252,7 +252,7 @@ Request
 
    - os-unmanage: os-unmanage
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -288,7 +288,7 @@ Request
    - attachment_id: attachment_id
    - os-force_detach: os-force_detach
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------

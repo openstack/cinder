@@ -43,7 +43,7 @@ Request
    - os-extend: os-extend
    - new_size: new_size
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -77,7 +77,7 @@ Request
    - os-reset_status: os-reset_status
    - attach_status: attach_status
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -109,7 +109,7 @@ Request
    - os-set_image_metadata: os-set_image_metadata
    - metadata: metadata
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -141,7 +141,7 @@ Request
    - os-unset_image_metadata: os-unset_image_metadata
    - key: key
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -255,7 +255,7 @@ Request
 
    - os-unmanage: os-unmanage
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -291,7 +291,7 @@ Request
    - attachment_id: attachment_id
    - os-force_detach: os-force_detach
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
