@@ -37,9 +37,11 @@ api_common_opts = [
                help='The maximum number of items that a collection '
                     'resource returns in a single response'),
     cfg.StrOpt('osapi_volume_base_URL',
-               help='Base URL that will be presented to users in links '
-                    'to the OpenStack Volume API',
-               deprecated_name='osapi_compute_link_prefix'),
+               help='DEPRECATED: Base URL that will be presented to users in '
+                    'links to the OpenStack Volume API',
+               deprecated_name='osapi_compute_link_prefix',
+               deprecated_since='Pike',
+               deprecated_reason='Duplicate config option.'),
     cfg.StrOpt('resource_query_filters_file',
                default='/etc/cinder/resource_filters.json',
                help="Json file indicating user visible filter "
@@ -59,6 +61,7 @@ api_common_opts = [
 ]
 
 CONF = cfg.CONF
+CONF.import_opt('public_endpoint', 'cinder.api.views.versions')
 CONF.register_opts(api_common_opts)
 
 LOG = logging.getLogger(__name__)
@@ -297,7 +300,7 @@ class ViewBuilder(object):
         params = request.params.copy()
         params["marker"] = identifier
         prefix = self._update_link_prefix(get_request_url(request),
-                                          CONF.osapi_volume_base_URL)
+                                          CONF.public_endpoint)
         url = os.path.join(prefix,
                            request.environ["cinder.context"].project_id,
                            collection_name)
@@ -306,7 +309,7 @@ class ViewBuilder(object):
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""
         prefix = self._update_link_prefix(get_request_url(request),
-                                          CONF.osapi_volume_base_URL)
+                                          CONF.public_endpoint)
         return os.path.join(prefix,
                             request.environ["cinder.context"].project_id,
                             self._collection_name,
@@ -316,7 +319,7 @@ class ViewBuilder(object):
         """Create a URL that refers to a specific resource."""
         base_url = remove_version_from_href(get_request_url(request))
         base_url = self._update_link_prefix(base_url,
-                                            CONF.osapi_volume_base_URL)
+                                            CONF.public_endpoint)
         return os.path.join(base_url,
                             request.environ["cinder.context"].project_id,
                             self._collection_name,
