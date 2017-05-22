@@ -27,6 +27,7 @@ from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+from cinder import keymgr
 from cinder import utils
 from cinder import volume
 
@@ -42,7 +43,16 @@ def authorize(context, action_name):
 class VolumeActionsController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(VolumeActionsController, self).__init__(*args, **kwargs)
+        self._key_mgr = None
         self.volume_api = volume.API()
+
+    @property
+    def _key_manager(self):
+        # Allows for lazy initialization of the key manager
+        if self._key_mgr is None:
+            self._key_mgr = keymgr.API(CONF)
+
+        return self._key_mgr
 
     @wsgi.action('os-attach')
     def _attach(self, req, id, body):
@@ -245,6 +255,19 @@ class VolumeActionsController(wsgi.Controller):
             "container_format", "bare"),
             "disk_format": disk_format,
             "name": params["image_name"]}
+
+        if volume.encryption_key_id:
+            # Clone volume encryption key: the current key cannot
+            # be reused because it will be deleted when the volume is
+            # deleted.
+            # TODO(eharney): Currently, there is no mechanism to remove
+            # these keys, because Glance will not delete the key from
+            # Barbican when the image is deleted.
+            encryption_key_id = self._key_manager.store(
+                context,
+                self._key_manager.get(context, volume.encryption_key_id))
+
+            image_metadata['cinder_encryption_key_id'] = encryption_key_id
 
         if req_version >= api_version_request.APIVersionRequest('3.1'):
 
