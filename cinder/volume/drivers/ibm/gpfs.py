@@ -1235,6 +1235,20 @@ class GPFSDriver(driver.CloneableImageVD,
 
         return model_update, snapshots_model_update
 
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        msg = _('Updating a consistency group is not supported.')
+        LOG.error(msg)
+        raise exception.GPFSDriverUnsupportedOperation(msg=msg)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        msg = _('Creating a consistency group from any source consistency'
+                'group or consistency group snapshot is not supported.')
+        LOG.error(msg)
+        raise exception.GPFSDriverUnsupportedOperation(msg=msg)
+
 
 @interface.volumedriver
 class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):

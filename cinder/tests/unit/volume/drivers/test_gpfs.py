@@ -1686,6 +1686,19 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_consistencygroup, ctxt, group, [])
 
+    def test_update_consistencygroup(self):
+        ctxt = self.context
+        group = self._fake_group()
+        self.assertRaises(exception.GPFSDriverUnsupportedOperation,
+                          self.driver.update_consistencygroup, ctxt, group)
+
+    def test_create_consisgroup_from_src(self):
+        ctxt = self.context
+        group = self._fake_group()
+        self.assertRaises(exception.GPFSDriverUnsupportedOperation,
+                          self.driver.create_consistencygroup_from_src,
+                          ctxt, group, [])
+
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.create_snapshot')
     def test_create_cgsnapshot(self, mock_create_snap):
         ctxt = self.context

@@ -1359,3 +1359,8 @@ class AttachmentSpecsNotFound(NotFound):
 
 class InvalidAttachment(Invalid):
     message = _("Invalid attachment: %(reason)s")
+
+
+# GPFS driver
+class GPFSDriverUnsupportedOperation(VolumeBackendAPIException):
+    message = _("GPFS driver unsupported operation: %(msg)s")
