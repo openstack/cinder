@@ -153,20 +153,20 @@ mv: CommandFilter, mv, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 cp: CommandFilter, cp, root
-mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
-mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
-mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
-mmchattr: CommandFilter, /usr/lpp/mmfs/bin/mmchattr, root
-mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
-mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
-mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
+mmgetstate: CommandFilter, mmgetstate, root
+mmclone: CommandFilter, mmclone, root
+mmlsattr: CommandFilter, mmlsattr, root
+mmchattr: CommandFilter, mmchattr, root
+mmlsconfig: CommandFilter, mmlsconfig, root
+mmlsfs: CommandFilter, mmlsfs, root
+mmlspool: CommandFilter, mmlspool, root
 mkfs: CommandFilter, mkfs, root
-mmcrfileset: CommandFilter, /usr/lpp/mmfs/bin/mmcrfileset, root
-mmlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlinkfileset, root
-mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
-mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
-mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
-mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
+mmcrfileset: CommandFilter, mmcrfileset, root
+mmlinkfileset: CommandFilter, mmlinkfileset, root
+mmunlinkfileset: CommandFilter, mmunlinkfileset, root
+mmdelfileset: CommandFilter, mmdelfileset, root
+mmcrsnapshot: CommandFilter, mmcrsnapshot, root
+mmdelsnapshot: CommandFilter, mmdelsnapshot, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py

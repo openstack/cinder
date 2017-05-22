@@ -162,6 +162,7 @@ class GPFSDriver(driver.CloneableImageVD,
         self.configuration.append_config_values(gpfs_opts)
         self.gpfs_execute = self._gpfs_local_execute
         self._execute = utils.execute
+        self.GPFS_PATH = ''
 
     def _gpfs_local_execute(self, *cmd, **kwargs):
         if 'run_as_root' not in kwargs:
@@ -172,7 +173,7 @@ class GPFSDriver(driver.CloneableImageVD,
     def _get_gpfs_state(self):
         """Return GPFS state information."""
         try:
-            (out, err) = self.gpfs_execute('mmgetstate', '-Y')
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmgetstate', '-Y')
             return out
         except processutils.ProcessExecutionError as exc:
             LOG.error('Failed to issue mmgetstate command, error: %s.',
@@ -207,7 +208,8 @@ class GPFSDriver(driver.CloneableImageVD,
     def _get_gpfs_cluster_id(self):
         """Return the id for GPFS cluster being used."""
         try:
-            (out, err) = self.gpfs_execute('mmlsconfig', 'clusterId', '-Y')
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmlsconfig',
+                                           'clusterId', '-Y')
             lines = out.splitlines()
             value_token = lines[0].split(':').index('value')
             cluster_id = lines[1].split(':')[value_token]
@@ -221,7 +223,8 @@ class GPFSDriver(driver.CloneableImageVD,
         """Return the GPFS fileset for specified path."""
         fs_regex = re.compile(r'.*fileset.name:\s+(?P<fileset>\w+)', re.S)
         try:
-            (out, err) = self.gpfs_execute('mmlsattr', '-L', path)
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmlsattr', '-L',
+                                           path)
         except processutils.ProcessExecutionError as exc:
             LOG.error('Failed to issue mmlsattr command on path %(path)s, '
                       'error: %(error)s',
@@ -242,7 +245,8 @@ class GPFSDriver(driver.CloneableImageVD,
     def _verify_gpfs_pool(self, storage_pool):
         """Return true if the specified pool is a valid GPFS storage pool."""
         try:
-            self.gpfs_execute('mmlspool', self._gpfs_device, storage_pool)
+            self.gpfs_execute(self.GPFS_PATH + 'mmlspool', self._gpfs_device,
+                              storage_pool)
             return True
         except processutils.ProcessExecutionError:
             return False
@@ -259,7 +263,8 @@ class GPFSDriver(driver.CloneableImageVD,
             raise exception.VolumeBackendAPIException(data=msg)
 
         try:
-            self.gpfs_execute('mmchattr', '-P', new_pool, local_path)
+            self.gpfs_execute(self.GPFS_PATH + 'mmchattr', '-P', new_pool,
+                              local_path)
             LOG.debug('Updated storage pool with mmchattr to %s.', new_pool)
             return True
         except processutils.ProcessExecutionError as exc:
@@ -276,7 +281,8 @@ class GPFSDriver(driver.CloneableImageVD,
         """
         filesystem = self._get_filesystem_from_path(path)
         try:
-            (out, err) = self.gpfs_execute('mmlsfs', filesystem, '-V', '-Y')
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmlsfs',
+                                           filesystem, '-V', '-Y')
         except processutils.ProcessExecutionError as exc:
             LOG.error('Failed to issue mmlsfs command for path %(path)s, '
                       'error: %(error)s.',
@@ -295,7 +301,7 @@ class GPFSDriver(driver.CloneableImageVD,
     def _get_gpfs_cluster_release_level(self):
         """Return the GPFS version of current cluster."""
         try:
-            (out, err) = self.gpfs_execute('mmlsconfig',
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmlsconfig',
                                            'minreleaseLeveldaemon',
                                            '-Y')
         except processutils.ProcessExecutionError as exc:
@@ -314,7 +320,7 @@ class GPFSDriver(driver.CloneableImageVD,
         If not part of a gpfs file system, raise ProcessExecutionError.
         """
         try:
-            self.gpfs_execute('mmlsattr', directory)
+            self.gpfs_execute(self.GPFS_PATH + 'mmlsattr', directory)
         except processutils.ProcessExecutionError as exc:
             LOG.error('Failed to issue mmlsattr command '
                       'for path %(path)s, '
@@ -495,7 +501,7 @@ class GPFSDriver(driver.CloneableImageVD,
     def _gpfs_change_attributes(self, options, path):
         """Update GPFS attributes on the specified file."""
 
-        cmd = ['mmchattr']
+        cmd = [self.GPFS_PATH + 'mmchattr']
         cmd.extend(options)
         cmd.append(path)
         LOG.debug('Update volume attributes with mmchattr to %s.', options)
@@ -614,7 +620,8 @@ class GPFSDriver(driver.CloneableImageVD,
             if not os.path.exists(fchild_local_path):
                 return
 
-        (out, err) = self.gpfs_execute('mmclone', 'show', fchild)
+        (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'show',
+                                       fchild)
         fparent = None
         delete_parent = False
         inode_regex = re.compile(
@@ -692,13 +699,13 @@ class GPFSDriver(driver.CloneableImageVD,
         max_depth = self.configuration.gpfs_max_clone_depth
         if max_depth == 0:
             return False
-        (out, err) = self.gpfs_execute('mmclone', 'show', src)
+        (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'show', src)
         depth_regex = re.compile(r'.*\s+no\s+(?P<depth>\d+)', re.M | re.S)
         match = depth_regex.match(out)
         if match:
             depth = int(match.group('depth'))
             if depth > max_depth:
-                self.gpfs_execute('mmclone', 'redirect', src)
+                self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'redirect', src)
                 return True
         return False
 
@@ -712,7 +719,7 @@ class GPFSDriver(driver.CloneableImageVD,
 
     def _create_gpfs_copy(self, src, dest):
         """Create a GPFS file clone copy for the specified file."""
-        self.gpfs_execute('mmclone', 'copy', src, dest)
+        self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'copy', src, dest)
 
     def _gpfs_full_copy(self, src, dest):
         """Create a full copy from src to dest."""
@@ -721,13 +728,14 @@ class GPFSDriver(driver.CloneableImageVD,
     def _create_gpfs_snap(self, src, dest=None):
         """Create a GPFS file clone snapshot for the specified file."""
         if dest is None:
-            self.gpfs_execute('mmclone', 'snap', src)
+            self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'snap', src)
         else:
-            self.gpfs_execute('mmclone', 'snap', src, dest)
+            self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'snap', src, dest)
 
     def _is_gpfs_parent_file(self, gpfs_file):
         """Return true if the specified file is a gpfs clone parent."""
-        out, err = self.gpfs_execute('mmclone', 'show', gpfs_file)
+        out, err = self.gpfs_execute(self.GPFS_PATH + 'mmclone', 'show',
+                                     gpfs_file)
         ptoken = out.splitlines().pop().split()[0]
         return ptoken == 'yes'
 
@@ -780,7 +788,8 @@ class GPFSDriver(driver.CloneableImageVD,
     def _get_gpfs_encryption_status(self):
         """Determine if the backend is configured with key manager."""
         try:
-            (out, err) = self.gpfs_execute('mmlsfs', self._gpfs_device,
+            (out, err) = self.gpfs_execute(self.GPFS_PATH + 'mmlsfs',
+                                           self._gpfs_device,
                                            '--encryption', '-Y')
             lines = out.splitlines()
             value_token = lines[0].split(':').index('data')
@@ -1118,7 +1127,7 @@ class GPFSDriver(driver.CloneableImageVD,
         cgpath = os.path.join(self.configuration.gpfs_mount_point_base,
                               cgname)
         try:
-            self.gpfs_execute('mmcrfileset', fsdev, cgname,
+            self.gpfs_execute(self.GPFS_PATH + 'mmcrfileset', fsdev, cgname,
                               '--inode-space', 'new')
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to create consistency group: %(cgid)s. '
@@ -1128,7 +1137,7 @@ class GPFSDriver(driver.CloneableImageVD,
             raise exception.VolumeBackendAPIException(data=msg)
 
         try:
-            self.gpfs_execute('mmlinkfileset', fsdev, cgname,
+            self.gpfs_execute(self.GPFS_PATH + 'mmlinkfileset', fsdev, cgname,
                               '-J', cgpath)
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to link fileset for the share %(cgname)s. '
@@ -1161,7 +1170,8 @@ class GPFSDriver(driver.CloneableImageVD,
         # Unlink and delete the fileset associated with the consistency group.
         # All of the volumes and volume snapshot data will also be deleted.
         try:
-            self.gpfs_execute('mmunlinkfileset', fsdev, cgname, '-f')
+            self.gpfs_execute(self.GPFS_PATH + 'mmunlinkfileset', fsdev,
+                              cgname, '-f')
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to unlink fileset for consistency group '
                      '%(cgname)s. Error: %(excmsg)s.') %
@@ -1170,7 +1180,8 @@ class GPFSDriver(driver.CloneableImageVD,
             raise exception.VolumeBackendAPIException(data=msg)
 
         try:
-            self.gpfs_execute('mmdelfileset', fsdev, cgname, '-f')
+            self.gpfs_execute(self.GPFS_PATH + 'mmdelfileset', fsdev, cgname,
+                              '-f')
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to delete fileset for consistency group '
                      '%(cgname)s. Error: %(excmsg)s.') %
@@ -1257,6 +1268,7 @@ class GPFSRemoteDriver(GPFSDriver, san.SanDriver):
             self.configuration.gpfs_private_key)
         self.configuration.san_ssh_port = self.configuration.gpfs_ssh_port
         self.gpfs_execute = self._gpfs_remote_execute
+        self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
 
     def _gpfs_remote_execute(self, *cmd, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', None)
@@ -1319,7 +1331,8 @@ class GPFSRemoteDriver(GPFSDriver, san.SanDriver):
                 continue
             try:
                 # check if GPFS state is active on the node
-                (out, __) = processutils.ssh_execute(ssh, 'mmgetstate -Y')
+                (out, __) = processutils.ssh_execute(ssh, self.GPFS_PATH +
+                                                     'mmgetstate -Y')
                 lines = out.splitlines()
                 state_token = lines[0].split(':').index('state')
                 gpfs_state = lines[1].split(':')[state_token]
@@ -1376,6 +1389,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
         self.configuration.san_private_key = (
             self.configuration.nas_private_key)
         self.configuration.san_ssh_port = self.configuration.nas_ssh_port
+        self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
 
     def _gpfs_remote_execute(self, *cmd, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', None)
