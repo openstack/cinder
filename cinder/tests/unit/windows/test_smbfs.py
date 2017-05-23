@@ -717,11 +717,12 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._smbfs_driver.create_volume_from_snapshot,
             self.volume, self.snapshot)
 
-    def _test_copy_volume_to_image(self, has_parent=False,
-                                   volume_format='vhd'):
+    @ddt.data(True, False)
+    def test_copy_volume_to_image(self, has_parent=False):
         drv = self._smbfs_driver
 
         fake_image_meta = {'id': 'fake-image-id'}
+        fake_img_format = self._smbfs_driver._DISK_FORMAT_VHDX
 
         if has_parent:
             fake_volume_path = self._FAKE_SNAPSHOT_PATH
@@ -730,9 +731,6 @@ class WindowsSmbFsTestCase(test.TestCase):
             fake_volume_path = self._FAKE_VOLUME_PATH
             fake_parent_path = None
 
-        if volume_format == drv._DISK_FORMAT_VHD:
-            fake_volume_path = fake_volume_path[:-1]
-
         fake_active_image = os.path.basename(fake_volume_path)
 
         drv.get_active_image_from_info = mock.Mock(
@@ -740,7 +738,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         drv._local_volume_dir = mock.Mock(
             return_value=self._FAKE_MNT_POINT)
         drv.get_volume_format = mock.Mock(
-            return_value=volume_format)
+            return_value=fake_img_format)
         drv._vhdutils.get_vhd_parent_path.return_value = (
             fake_parent_path)
 
@@ -751,14 +749,11 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.context, volume,
                 mock.sentinel.image_service, fake_image_meta)
 
-            expected_conversion = (
-                has_parent or volume_format == drv._DISK_FORMAT_VHDX)
-
-            if expected_conversion:
+            if has_parent:
                 fake_temp_image_name = '%s.temp_image.%s.%s' % (
                     volume.id,
                     fake_image_meta['id'],
-                    drv._DISK_FORMAT_VHD)
+                    fake_img_format)
                 fake_temp_image_path = os.path.join(
                     self._FAKE_MNT_POINT,
                     fake_temp_image_name)
@@ -777,16 +772,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
             fake_upload_volume.assert_called_once_with(
                 mock.sentinel.context, mock.sentinel.image_service,
-                fake_image_meta, upload_path, drv._DISK_FORMAT_VHD)
-
-    def test_copy_volume_to_image_having_snapshot(self):
-        self._test_copy_volume_to_image(has_parent=True)
-
-    def test_copy_vhdx_volume_to_image(self):
-        self._test_copy_volume_to_image(volume_format='vhdx')
-
-    def test_copy_vhd_volume_to_image(self):
-        self._test_copy_volume_to_image(volume_format='vhd')
+                fake_image_meta, upload_path, fake_img_format)
 
     def test_copy_image_to_volume(self):
         drv = self._smbfs_driver
