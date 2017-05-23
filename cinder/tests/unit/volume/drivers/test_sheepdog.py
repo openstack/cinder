@@ -1195,50 +1195,65 @@ class SheepdogDriverTestCase(test.TestCase):
         fake_context = {}
         fake_volume = {'name': 'volume-00000001'}
         fake_image_service = mock.Mock()
-        fake_image_service_update = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
         temp_file = mock_temp.return_value.__enter__.return_value
 
         patch = mock.patch.object
         with patch(self.driver, '_try_execute') as fake_try_execute:
-            with patch(fake_image_service,
-                       'update') as fake_image_service_update:
-                self.driver.copy_volume_to_image(fake_context,
-                                                 fake_volume,
-                                                 fake_image_service,
-                                                 fake_image_meta)
+            self.driver.copy_volume_to_image(fake_context,
+                                             fake_volume,
+                                             fake_image_service,
+                                             fake_image_meta)
 
-                expected_cmd = ('qemu-img',
-                                'convert',
-                                '-f', 'raw',
-                                '-t', 'none',
-                                '-O', 'raw',
-                                'sheepdog:%s:%s:%s' % (
-                                    self._addr,
-                                    self._port,
-                                    fake_volume['name']),
-                                mock.ANY)
-                mock_open.assert_called_once_with(temp_file, 'rb')
-                fake_try_execute.assert_called_once_with(*expected_cmd)
-                fake_image_service_update.assert_called_once_with(
-                    fake_context, fake_image_meta['id'], mock.ANY, mock.ANY)
+            expected_cmd = ('qemu-img',
+                            'convert',
+                            '-f', 'raw',
+                            '-t', 'none',
+                            '-O', 'raw',
+                            'sheepdog:%s:%s:%s' % (
+                                self._addr,
+                                self._port,
+                                fake_volume['name']),
+                            mock.ANY)
+            mock_open.assert_called_once_with(temp_file, 'rb')
+            fake_try_execute.assert_called_once_with(*expected_cmd)
+            fake_image_service.update.assert_called_once_with(
+                fake_context, fake_image_meta['id'], mock.ANY, mock.ANY)
 
-    @mock.patch('os.makedirs')
-    def test_copy_volume_to_image_nonexistent_volume(self, mock_make):
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    def test_copy_volume_to_image_nonexistent_volume(self, mock_temp,
+                                                     mock_open):
         fake_context = {}
         fake_volume = {
             'name': 'nonexistent-volume-82c4539e-c2a5-11e4-a293-0aa186c60fe0'}
         fake_image_service = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        # The command is expected to fail, so we don't want to retry it.
-        self.driver._try_execute = self.driver._execute
+        patch = mock.patch.object
+        with patch(self.driver, '_try_execute') as fake_try_execute:
+            fake_try_execute.side_effect = (
+                processutils.ProcessExecutionError)
+            args = (fake_context, fake_volume, fake_image_service,
+                    fake_image_meta)
+            expected_cmd = ('qemu-img',
+                            'convert',
+                            '-f', 'raw',
+                            '-t', 'none',
+                            '-O', 'raw',
+                            'sheepdog:%s:%s:%s' % (
+                                self._addr,
+                                self._port,
+                                fake_volume['name']),
+                            mock.ANY)
 
-        args = (fake_context, fake_volume, fake_image_service, fake_image_meta)
-        expected_errors = (processutils.ProcessExecutionError, OSError)
-        self.assertRaises(expected_errors,
-                          self.driver.copy_volume_to_image,
-                          *args)
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.driver.copy_volume_to_image,
+                              *args)
+
+            fake_try_execute.assert_called_once_with(*expected_cmd)
+            mock_open.assert_not_called()
+            fake_image_service.update.assert_not_called()
 
     @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
     @mock.patch.object(sheepdog.SheepdogClient, 'clone')
