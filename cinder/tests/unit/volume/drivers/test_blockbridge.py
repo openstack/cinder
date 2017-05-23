@@ -245,7 +245,6 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_client.submit.assert_called_once_with(url, **kwargs)
 
         full_url = "/api/cinder" + url
-        raw_body = jsonutils.dumps(create_params)
         tsk_header = "ext_auth=keystone/%(project_id)s/%(user_id)s" % kwargs
         authz_header = "Bearer %s" % self.cfg.blockbridge_auth_token
         headers = {
@@ -256,8 +255,13 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
             'User-Agent': "cinder-volume/%s" % self.driver.VERSION,
         }
 
-        self.mock_conn.request.assert_called_once_with(
-            'PUT', full_url, raw_body, headers)
+        # This is split up because assert_called_once_with won't handle
+        # randomly ordered dictionaries.
+        args, kwargs = self.mock_conn.request.call_args
+        self.assertEqual(args[0], 'PUT')
+        self.assertEqual(args[1], full_url)
+        self.assertDictEqual(jsonutils.loads(args[2]), create_params)
+        self.assertDictEqual(args[3], headers)
 
     @common_mocks
     def test_create_volume_no_results(self):
