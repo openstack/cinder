@@ -124,7 +124,7 @@ class MStorageDriver(object):
                                      xml, option=None):
         """Pick up least used pool."""
         size = volume['size'] * units.Gi
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (len(self._properties['pool_pools']) == 0 or
                   pn in self._properties['pool_pools'])]
@@ -140,7 +140,7 @@ class MStorageDriver(object):
         temp_conf_properties = self._common.get_conf_properties(option)
 
         size = volume['size'] * units.Gi
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (len(temp_conf_properties['pool_pools']) == 0 or
                   pn in temp_conf_properties['pool_pools'])]
@@ -153,14 +153,14 @@ class MStorageDriver(object):
 
     def _select_dsv_poolnumber(self, volume, pools, option=None):
         """Pick up backup pool for DSV."""
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if pn in self._properties['pool_backup_pools']]
         return self._return_poolnumber(pools)
 
     def _select_ddr_poolnumber(self, volume, pools, xml, option):
         """Pick up backup pool for DDR."""
         size = option * units.Gi
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (pn in self._properties['pool_backup_pools'])]
         return self._return_poolnumber(pools)
@@ -168,7 +168,7 @@ class MStorageDriver(object):
     def _select_volddr_poolnumber(self, volume, pools, xml, option):
         """Pick up backup pool for DDR."""
         size = option * units.Gi
-        pools = [pool for (pn, pool) in six.iteritems(pools)
+        pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (pn in self._properties['pool_pools'])]
         return self._return_poolnumber(pools)
@@ -288,7 +288,7 @@ class MStorageDriver(object):
         ld_count_in_pool = {}
         if ld['RPL Attribute'] == 'MV':
             pair_lds = self._cli.get_pair_lds(ld['ldname'], lds)
-            for (ldn, pair_ld) in six.iteritems(pair_lds):
+            for (ldn, pair_ld) in pair_lds.items():
                 rv_name = pair_ld['ldname']
                 pool_number = pair_ld['pool_num']
                 ldn = pair_ld['ldn']
@@ -307,7 +307,7 @@ class MStorageDriver(object):
                     ld_count_in_pool[pool_number] = [ldn]
 
         # check pool capacity.
-        for (pool_number, tmp_ldn_list) in six.iteritems(ld_count_in_pool):
+        for (pool_number, tmp_ldn_list) in ld_count_in_pool.items():
             ld_capacity = (
                 ld['ld_capacity'] * units.Gi)
             new_size_byte = new_size * units.Gi
@@ -369,7 +369,7 @@ class MStorageDriver(object):
         # rv expand.
         if ld['RPL Attribute'] == 'MV':
             # ld expand.
-            for (ldn, rv) in six.iteritems(rvs):
+            for (ldn, rv) in rvs.items():
                 self._cli.expand(ldn, new_size)
         elif ld['RPL Attribute'] != 'IV':
             msg = (_('RPL Attribute Error. RPL Attribute = %s.')
@@ -1093,7 +1093,7 @@ class MStorageDriver(object):
         # get target wwpns and initiator/target map.
 
         fc_ports = []
-        for director, hostport in six.iteritems(hostports):
+        for director, hostport in hostports.items():
             for port in hostport:
                 if port['protocol'] == 'FC':
                     fc_ports.append(port)
@@ -1169,7 +1169,7 @@ class MStorageDriver(object):
 
         # get target wwpns and initiator/target map.
         fc_ports = []
-        for director, hostport in six.iteritems(hostports):
+        for director, hostport in hostports.items():
             for port in hostport:
                 if port['protocol'] == 'FC':
                     fc_ports.append(port)

@@ -914,7 +914,7 @@ class QnapAPIExecutor(object):
     def _get_res_details(self, url, **kwargs):
         sanitized_params = {}
 
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
             if value is not None:
@@ -1152,7 +1152,7 @@ class QnapAPIExecutor(object):
     @_connection_checker
     def get_lun_info(self, **kwargs):
         """Execute get_lun_info API."""
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
         res_details = self._get_res_details(
@@ -1191,7 +1191,7 @@ class QnapAPIExecutor(object):
     @_connection_checker
     def get_snapshot_info(self, **kwargs):
         """Execute get_snapshot_info API."""
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
         res_details = self._get_res_details(
@@ -1477,7 +1477,7 @@ class QnapAPIExecutorTS(QnapAPIExecutor):
     @_connection_checker
     def get_snapshot_info(self, **kwargs):
         """Execute get_snapshot_info API."""
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
         LOG.debug('in get_ethernet_ip')
