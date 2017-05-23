@@ -10331,7 +10331,7 @@ class EMCV3ReplicationTest(test.TestCase):
         self.driver.common.failover = True
         secondary_id, volume_update_list = (
             self.driver.failover_host('context', volumes, 'default'))
-        self.assertEqual(check_update_list, volume_update_list)
+        six.assertCountEqual(self, check_update_list, volume_update_list)
 
     @mock.patch.object(
         volume_types,
