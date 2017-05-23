@@ -163,12 +163,16 @@ class GroupsController(wsgi.Controller):
         """Returns a list of groups through view builder."""
         context = req.environ['cinder.context']
         filters = req.params.copy()
+        api_version = req.api_version_request
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
         filters.pop('list_volume', None)
-        if req.api_version_request.matches(common.FILTERING_VERSION):
-            common.reject_invalid_filters(context, filters, 'group')
+        if api_version.matches(common.FILTERING_VERSION):
+            support_like = (True if api_version.matches(
+                common.LIKE_FILTER_VERSION) else False)
+            common.reject_invalid_filters(context, filters, 'group',
+                                          support_like)
 
         groups = self.group_api.get_all(
             context, filters=filters, marker=marker, limit=limit,

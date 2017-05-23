@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added like operator support to filters for the following resources::
+
+    - volume
+    - snapshot
+    - backup
+    - group
+    - group-snapshot
+    - attachment
+    - message

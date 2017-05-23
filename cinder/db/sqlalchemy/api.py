@@ -1725,6 +1725,45 @@ def volume_detached(context, volume_id, attachment_id):
         return (volume_updates, attachment_updates)
 
 
+def _process_model_like_filter(model, query, filters):
+    """Applies regex expression filtering to a query.
+
+    :param model: model to apply filters to
+    :param query: query to apply filters to
+    :param filters: dictionary of filters with regex values
+    :returns: the updated query.
+    """
+    if query is None:
+        return query
+
+    for key in filters:
+        column_attr = getattr(model, key)
+        if 'property' == type(column_attr).__name__:
+            continue
+        value = filters[key]
+        if not isinstance(value, six.string_types):
+            continue
+        query = query.filter(column_attr.op('LIKE')(u'%' + value + u'%'))
+    return query
+
+
+def apply_like_filters(model):
+    def decorator_filters(process_exact_filters):
+        def _decorator(query, filters):
+            exact_filters = filters.copy()
+            regex_filters = {}
+            for key, value in filters.items():
+                # NOTE(tommylikehu): For inexact match, the filter keys
+                # are in the format of 'key~=value'
+                if key.endswith('~'):
+                    exact_filters.pop(key)
+                    regex_filters[key.rstrip('~')] = value
+            query = process_exact_filters(query, exact_filters)
+            return _process_model_like_filter(model, query, regex_filters)
+        return _decorator
+    return decorator_filters
+
+
 @require_context
 def _volume_get_query(context, session=None, project_only=False,
                       joined_load=True):
@@ -1815,6 +1854,7 @@ def _attachment_get_query(context, session=None, project_only=False):
                        project_only=project_only).options(joinedload('volume'))
 
 
+@apply_like_filters(model=models.VolumeAttachment)
 def _process_attachment_filters(query, filters):
     if filters:
         project_id = filters.pop('project_id', None)
@@ -2227,6 +2267,7 @@ def _generate_paginate_query(context, session, marker, limit, sort_keys,
                                           offset=offset)
 
 
+@apply_like_filters(model=models.Volume)
 def _process_volume_filters(query, filters):
     """Common filter processing for Volume queries.
 
@@ -2900,6 +2941,7 @@ def _snaps_get_query(context, session=None, project_only=False):
         options(joinedload('snapshot_metadata'))
 
 
+@apply_like_filters(model=models.Snapshot)
 def _process_snaps_filters(query, filters):
     if filters:
         filters = filters.copy()
@@ -4914,6 +4956,7 @@ def _backups_get_query(context, session=None, project_only=False):
                        project_only=project_only)
 
 
+@apply_like_filters(model=models.Backup)
 def _process_backups_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model
@@ -5499,6 +5542,7 @@ def _group_snapshot_get_query(context, session=None, project_only=False):
                        project_only=project_only)
 
 
+@apply_like_filters(model=models.Group)
 def _process_groups_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model
@@ -5508,6 +5552,7 @@ def _process_groups_filters(query, filters):
     return query
 
 
+@apply_like_filters(model=models.GroupSnapshot)
 def _process_group_snapshot_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model
@@ -5784,6 +5829,7 @@ def is_valid_model_filters(model, filters, exclude_list=None):
         if exclude_list and key in exclude_list:
             continue
         try:
+            key = key.rstrip('~')
             getattr(model, key)
         except AttributeError:
             LOG.debug("'%s' filter key is not valid.", key)
@@ -6183,6 +6229,7 @@ def message_get_all(context, filters=None, marker=None, limit=None,
         return _translate_messages(results)
 
 
+@apply_like_filters(model=models.Message)
 def _process_messages_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model

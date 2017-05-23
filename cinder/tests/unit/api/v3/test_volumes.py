@@ -389,7 +389,7 @@ class VolumeApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           req, body)
 
-    @ddt.data('3.30', '3.31')
+    @ddt.data('3.30', '3.31', '3.34')
     @mock.patch.object(volume_api.API, 'check_volume_filters', mock.Mock())
     @mock.patch.object(utils, 'add_visible_admin_metadata', mock.Mock())
     @mock.patch('cinder.api.common.reject_invalid_filters')
@@ -397,8 +397,10 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/volumes', version=version)
         self.controller.index(req)
         if version != '3.30':
+            support_like = True if version == '3.34' else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
-                                                mock.ANY, 'volume')
+                                                mock.ANY, 'volume',
+                                                support_like)
 
     @ddt.data({'admin': True, 'version': '3.21'},
               {'admin': False, 'version': '3.21'},

@@ -85,7 +85,7 @@ class BackupsControllerAPITestCase(test.TestCase):
                           self.controller.update,
                           req, fake.BACKUP_ID, body)
 
-    @ddt.data('3.30', '3.31')
+    @ddt.data('3.30', '3.31', '3.34')
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_backup_list_with_general_filter(self, version, mock_update):
         url = '/v3/%s/backups' % fake.PROJECT_ID
@@ -95,8 +95,10 @@ class BackupsControllerAPITestCase(test.TestCase):
         self.controller.index(req)
 
         if version != '3.30':
+            support_like = True if version == '3.34' else False
             mock_update.assert_called_once_with(req.environ['cinder.context'],
-                                                mock.ANY, 'backup')
+                                                mock.ANY, 'backup',
+                                                support_like)
 
     def test_backup_update(self):
         backup = test_utils.create_backup(
