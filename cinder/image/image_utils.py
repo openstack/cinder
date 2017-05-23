@@ -407,8 +407,13 @@ def fetch_to_volume_format(context, image_service,
         # image and not a different format with a backing file, which may be
         # malicious.
         LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
+        if image_meta['disk_format'] == 'vhd':
+            # qemu-img still uses the legacy 'vpc' name for vhd format.
+            disk_format = 'vpc'
+        else:
+            disk_format = image_meta['disk_format']
         convert_image(tmp, dest, volume_format,
-                      src_format=image_meta['disk_format'],
+                      src_format=disk_format,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(dest, run_as_root=run_as_root)
