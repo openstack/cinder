@@ -383,6 +383,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         extra_specs.update(volume.metadata or {})
 
         return (extra_specs.get('volume_format') or
+                extra_specs.get('smbfs:volume_format') or
                 self.configuration.smbfs_default_volume_format)
 
     @remotefs_drv.locked_volume_id_operation
