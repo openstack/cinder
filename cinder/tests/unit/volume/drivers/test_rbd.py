@@ -905,6 +905,21 @@ class RBDTestCase(test.TestCase):
                 mock_enable_repl.assert_not_called()
 
     @common_mocks
+    def test_create_cloned_volume_different_size_copy_only(self):
+        self.cfg.rbd_max_clone_depth = 0
+
+        with mock.patch.object(self.driver, '_get_clone_depth') as \
+                mock_get_clone_depth:
+            # Try with no flatten required
+            with mock.patch.object(self.driver, '_resize') as mock_resize:
+                mock_get_clone_depth.return_value = 1
+
+                self.volume_b.size = 20
+                self.driver.create_cloned_volume(self.volume_b, self.volume_a)
+
+                self.assertEqual(1, mock_resize.call_count)
+
+    @common_mocks
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
     def test_create_cloned_volume_w_flatten(self, mock_enable_repl):
         self.cfg.rbd_max_clone_depth = 1

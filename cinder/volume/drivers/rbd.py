@@ -445,6 +445,19 @@ class RBDDriver(driver.CloneableImageVD,
 
         return self._get_clone_depth(client, parent, depth + 1)
 
+    def _extend_if_required(self, volume, src_vref):
+        """Extends a volume if required
+
+        In case src_vref size is smaller than the size if the requested
+        new volume call _resize().
+        """
+        if volume.size != src_vref.size:
+            LOG.debug("resize volume '%(dst_vol)s' from %(src_size)d to "
+                      "%(dst_size)d",
+                      {'dst_vol': volume.name, 'src_size': src_vref.size,
+                       'dst_size': volume.size})
+            self._resize(volume)
+
     def create_cloned_volume(self, volume, src_vref):
         """Create a cloned volume from another volume.
 
@@ -464,15 +477,15 @@ class RBDDriver(driver.CloneableImageVD,
         if self.configuration.rbd_max_clone_depth <= 0:
             with RBDVolumeProxy(self, src_name, read_only=True) as vol:
                 vol.copy(vol.ioctx, dest_name)
-
+                self._extend_if_required(volume, src_vref)
             return
 
         # Otherwise do COW clone.
         with RADOSClient(self) as client:
             depth = self._get_clone_depth(client, src_name)
             # If source volume is a clone and rbd_max_clone_depth reached,
-            # flatten the source before cloning. Zero rbd_max_clone_depth means
-            # infinite is allowed.
+            # flatten the source before cloning. Zero rbd_max_clone_depth
+            # means infinite is allowed.
             if depth == self.configuration.rbd_max_clone_depth:
                 LOG.debug("maximum clone depth (%d) has been reached - "
                           "flattening source volume",
@@ -531,12 +544,7 @@ class RBDDriver(driver.CloneableImageVD,
             finally:
                 src_volume.close()
 
-        if volume.size != src_vref.size:
-            LOG.debug("resize volume '%(dst_vol)s' from %(src_size)d to "
-                      "%(dst_size)d",
-                      {'dst_vol': volume.name, 'src_size': src_vref.size,
-                       'dst_size': volume.size})
-            self._resize(volume)
+            self._extend_if_required(volume, src_vref)
 
         LOG.debug("clone created successfully")
         return volume_update
