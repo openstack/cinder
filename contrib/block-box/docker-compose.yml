@@ -1,0 +1,86 @@
+version: "2"
+services:
+    rabbitmq:
+        image: rabbitmq
+        ports:
+          - "5672:5672"
+        hostname: rabbitmq
+        networks:
+            cindernet:
+                ipv4_address: 172.49.49.5
+    mariadb:
+        image: mariadb
+        hostname: mariadb
+        environment:
+          - MYSQL_ROOT_PASSWORD=password
+        ports:
+          - 3306:3306
+        networks:
+            cindernet:
+                ipv4_address: 172.49.49.6
+        volumes:
+            - ./db-data:/var/lib/mysql
+            - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    cinder-api:
+        image: cinder
+        hostname: cinder-api
+        volumes:
+            - ./etc-cinder:/etc/cinder
+            - ./init-scripts:/init-scripts
+        network_mode: "host"
+        ports:
+            - 8776:8776
+        depends_on:
+          - mariadb
+        extra_hosts:
+            - "rabbitmq:172.49.49.5"
+            - "mariadb:172.49.49.6"
+        environment:
+            - INIT_DB=true
+        command: sh /init-scripts/cinder-api.sh
+    cinder-scheduler:
+        image: cinder
+        hostname: cinder-scheduler
+        volumes:
+            - ./etc-cinder:/etc/cinder
+        depends_on:
+          - mariadb
+          - rabbitmq
+          - cinder-api
+        extra_hosts:
+            - "rabbitmq:172.49.49.5"
+            - "mariadb:172.49.49.6"
+        network_mode: "host"
+        depends_on:
+          - cinder-api
+        restart: on-failure
+        command: cinder-scheduler
+    cinder-volume:
+        image: cinder-lvm
+        hostname: cinder-lvm
+        privileged: true
+        volumes:
+            - ./etc-cinder:/etc/cinder
+            - /dev/:/dev/
+            - /run/:/run/:shared
+            - /etc/localtime:/etc/localtime:ro
+            - /lib/modules:/lib/modules:ro
+        depends_on:
+          - cinder-scheduler
+        ports:
+            - 3260:3260
+        extra_hosts:
+            - "rabbitmq:172.49.49.5"
+            - "mariadb:172.49.49.6"
+        network_mode: "host"
+        restart: on-failure
+        command: bash -c "sleep 5 && /usr/sbin/tgtd && cinder-volume -d"
+
+networks:
+    cindernet:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+            -
+              subnet: 172.49.49.0/24

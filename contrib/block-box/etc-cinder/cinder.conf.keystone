@@ -1,0 +1,35 @@
+[DEFAULT]
+rootwrap_config = /etc/cinder/rootwrap.conf
+api_paste_confg = /etc/cinder/api-paste.ini
+iscsi_helper = tgtadm
+volume_name_template = volume-%s
+volume_group = cinder-volumes
+verbose = True
+auth_strategy = keystone
+state_path = /var/lib/cinder
+lock_path = /var/lock/cinder
+volumes_dir = /var/lib/cinder/volumes
+rabbit_host = rabbitmq
+enabled_backends = solidfire
+
+[database]
+connection = mysql+pymysql://cinder:password@mariadb/cinder?charset=utf8
+
+[keystone_authtoken]
+auth_uri = http://keystone:5000
+auth_url = http://keystone:35357
+memcached_servers = keystone:11211
+auth_type = password
+project_domain_name = default
+user_domain_name = default
+project_name = service
+username = cinder
+password = password
+
+[solidfire]
+volume_driver=cinder.volume.drivers.solidfire.SolidFireDriver
+san_ip=10.117.36.101
+san_login=admin
+san_password=admin
+volume_backend_name=solidfire
+sf_allow_template_caching=false

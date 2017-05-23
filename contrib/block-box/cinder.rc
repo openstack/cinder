@@ -1,0 +1,5 @@
+export OS_AUTH_TYPE=noauth
+export CINDERCLIENT_BYPASS_URL=http://10.117.36.106:8776/v3
+export OS_PROJECT_ID=cinderflex
+export OS_USERNAME=kubernetes
+export OS_VOLUME_API_VERSION=3.27
