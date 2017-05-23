@@ -24,7 +24,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - tenant_id: quotas_tenant_id
    - admin_tenant_id: admin_tenant_id
    - usage: usage
 
@@ -91,7 +91,7 @@ Request
    - fixed_ips: fixed_ips
    - id: id
    - security_groups: security_groups
-   - tenant_id: tenant_id
+   - tenant_id: quotas_tenant_id
    - admin_tenant_id: admin_tenant_id
 
 Request Example
@@ -146,7 +146,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - tenant_id: quotas_tenant_id
    - admin_tenant_id: admin_tenant_id
 
 Response Example
@@ -158,7 +158,7 @@ Response Example
 Get default quotas
 ~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/{tenant_id}/os-quota-sets/defaults
+.. rest_method::  GET /v2/{admin_tenant_id}/os-quota-sets/{tenant_id}/defaults
 
 Gets default quotas for a tenant.
 
@@ -173,6 +173,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
+   - admin_tenant_id: admin_tenant_id
 
 
 Response Parameters
