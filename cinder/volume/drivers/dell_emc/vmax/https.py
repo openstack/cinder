@@ -284,14 +284,13 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
     elif no_verification:
         ca_certs = None
 
-    if use_ssl:
-        h = HTTPSConnection(
-            host,
-            port=port,
-            key_file=key_file,
-            cert_file=cert_file,
-            ca_certs=ca_certs,
-            no_verification=no_verification)
+    h = HTTPSConnection(
+        host,
+        port=port,
+        key_file=key_file,
+        cert_file=cert_file,
+        ca_certs=ca_certs,
+        no_verification=no_verification)
 
     locallogin = None
     while numTries < tryLimit:
@@ -325,6 +324,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
 
             response = h.getresponse()
             body = response.read()
+            h.close()
 
             if response.status != 200:
                 raise pywbem.cim_http.Error('HTTP error')
