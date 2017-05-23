@@ -112,7 +112,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(cinder.db, 'service_get_all')
     def test_failover_unexpected_status(self, mock_db_get_all, mock_db_update,
                                         mock_failover):
-        """Test replication failover unxepected status."""
+        """Test replication failover unexpected status."""
 
         mock_db_get_all.return_value = [fake_service.fake_service_obj(
             self.context,
