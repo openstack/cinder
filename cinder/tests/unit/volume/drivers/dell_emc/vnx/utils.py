@@ -82,4 +82,5 @@ def get_replication_device():
         'san_password': 'admin',
         'storage_vnx_authentication_type': 'global',
         'storage_vnx_security_file_dir': None,
+        'pool_name': 'remote_pool',
     }

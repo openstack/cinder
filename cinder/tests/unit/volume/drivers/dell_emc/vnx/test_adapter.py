@@ -1074,6 +1074,8 @@ class TestCommonAdapter(test.TestCase):
         fake_mirror.secondary_client.create_lun.return_value = (
             mocked_res['lun'])
         common_adapter.mirror_view = fake_mirror
+        common_adapter.config.replication_device = (
+            [utils.get_replication_device()])
         rep_update = common_adapter.setup_lun_replication(
             vol1, 111)
         fake_mirror.create_mirror.assert_called_once_with(
