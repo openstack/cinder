@@ -64,6 +64,7 @@ import ast
 import json
 import six
 
+import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -100,7 +101,8 @@ EXTRA_SPECS_DEFAULTS = {
     'consistency': False,
     'os400': '',
     'storage_pool_ids': '',
-    'storage_lss_ids': ''
+    'storage_lss_ids': '',
+    'async_clone': False
 }
 
 ds8k_opts = [
@@ -139,9 +141,10 @@ class Lun(object):
         1.0.0 - initial revision.
         2.1.0 - Added support for specify pool and lss, also improve the code.
         2.1.1 - Added support for replication consistency group.
+        2.1.2 - Added support for cloning volume asynchronously.
     """
 
-    VERSION = "2.1.1"
+    VERSION = "2.1.2"
 
     class FakeLun(object):
 
@@ -159,6 +162,8 @@ class Lun(object):
             self.group = lun.group
             self.specified_pool = lun.specified_pool
             self.specified_lss = lun.specified_lss
+            self.async_clone = lun.async_clone
+            self.status = lun.status
             if not self.is_snapshot:
                 self.replica_ds_name = lun.replica_ds_name
                 self.replication_driver_data = (
@@ -221,6 +226,8 @@ class Lun(object):
             self.ds_name = (
                 "OS%s:%s" % ('snap', helper.filter_alnum(self.cinder_name))
             )[:16]
+            self.metadata = self._get_snapshot_metadata(volume)
+            self.source_volid = volume.volume_id
         else:
             self.group = Group(volume.group) if volume.group else None
             self.size = volume.size
@@ -253,6 +260,13 @@ class Lun(object):
                                     else False)
             else:
                 self.failed_over = False
+            self.metadata = self._get_volume_metadata(volume)
+            self.source_volid = volume.source_volid
+        self.async_clone = self.metadata.get(
+            'async_clone',
+            '%s' % EXTRA_SPECS_DEFAULTS['async_clone']
+        ).upper() == 'TRUE'
+
         if os400:
             if os400 not in VALID_OS400_VOLUME_TYPES.keys():
                 raise restclient.APIException(
@@ -309,25 +323,22 @@ class Lun(object):
         volume_update['provider_location'] = six.text_type(
             {'vol_hex_id': self.ds_id})
         # update metadata
-        if self.is_snapshot:
-            metadata = self._get_snapshot_metadata(self.volume)
-        else:
-            metadata = self._get_volume_metadata(self.volume)
+        if not self.is_snapshot:
             if self.type_replication:
-                metadata['replication'] = six.text_type(
+                self.metadata['replication'] = six.text_type(
                     self.replication_driver_data)
             else:
-                metadata.pop('replication', None)
+                self.metadata.pop('replication', None)
             volume_update['replication_driver_data'] = json.dumps(
                 self.replication_driver_data)
             volume_update['replication_status'] = (
                 self.replication_status or
                 fields.ReplicationStatus.NOT_CAPABLE)
 
-        metadata['data_type'] = (self.data_type if self.data_type else
-                                 metadata['data_type'])
-        metadata['vol_hex_id'] = self.ds_id
-        volume_update['metadata'] = metadata
+        self.metadata['data_type'] = (self.data_type or
+                                      self.metadata['data_type'])
+        self.metadata['vol_hex_id'] = self.ds_id
+        volume_update['metadata'] = self.metadata
 
         # need to update volume size for OS400
         if self.type_os400:
@@ -365,12 +376,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
     prefix = "[IBM DS8K STORAGE]:"
 
     def __init__(self, storage_info, logger, exception, driver,
-                 active_backend_id=None, HTTPConnectorObject=None):
+                 active_backend_id=None, HTTPConnectorObject=None, host=None):
         proxy.IBMStorageProxy.__init__(
             self, storage_info, logger, exception, driver, active_backend_id)
         self._helper = None
         self._replication = None
         self._connector_obj = HTTPConnectorObject
+        self._host = host
         self._replication_enabled = False
         self._active_backend_id = active_backend_id
         self.configuration = driver.configuration
@@ -402,6 +414,31 @@ class DS8KProxy(proxy.IBMStorageProxy):
 
         if replication_devices:
             self._do_replication_setup(replication_devices, self._helper)
+        # checking volumes which are still in clone process.
+        self._check_async_cloned_volumes()
+
+    @proxy.logger
+    def _check_async_cloned_volumes(self):
+        ctxt = context.get_admin_context()
+        volumes = objects.VolumeList.get_all_by_host(ctxt, self._host)
+        src_luns = []
+        tgt_luns = []
+        for volume in volumes:
+            tgt_lun = Lun(volume)
+            if tgt_lun.metadata.get('flashcopy') == 'started':
+                try:
+                    src_vol = objects.Volume.get_by_id(
+                        ctxt, tgt_lun.source_volid)
+                except exception.VolumeNotFound:
+                    LOG.error("Failed to get source volume %(src) for "
+                              "target volume %(tgt)s",
+                              {'src': tgt_lun.source_volid,
+                               'tgt': tgt_lun.ds_id})
+                else:
+                    src_luns.append(Lun(src_vol))
+                    tgt_luns.append(tgt_lun)
+        if src_luns and tgt_luns:
+            eventlet.spawn(self._wait_flashcopy, src_luns, tgt_luns)
 
     @proxy.logger
     def _do_replication_setup(self, devices, src_helper):
@@ -666,29 +703,57 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 _('When target volume is pre-created, it must be equal '
                   'in size to source volume.'))
 
-        finished = False
+        vol_pairs = [{
+            "source_volume": src_lun.ds_id,
+            "target_volume": tgt_lun.ds_id
+        }]
         try:
-            vol_pairs = [{
-                "source_volume": src_lun.ds_id,
-                "target_volume": tgt_lun.ds_id
-            }]
             self._helper.start_flashcopy(vol_pairs)
-            fc_finished = self._helper.wait_flashcopy_finished(
-                [src_lun], [tgt_lun])
-            if (fc_finished and
-               tgt_lun.type_thin and
-               tgt_lun.size > src_lun.size):
-                param = {
-                    'cap': self._helper._gb2b(tgt_lun.size),
-                    'captype': 'bytes'
-                }
-                self._helper.change_lun(tgt_lun.ds_id, param)
-            finished = fc_finished
+            if ((tgt_lun.type_thin and tgt_lun.size > src_lun.size) or
+               (not tgt_lun.async_clone)):
+                self._helper.wait_flashcopy_finished([src_lun], [tgt_lun])
+                if (tgt_lun.status == 'available' and
+                   tgt_lun.type_thin and
+                   tgt_lun.size > src_lun.size):
+                    param = {
+                        'cap': self._helper._gb2b(tgt_lun.size),
+                        'captype': 'bytes'
+                    }
+                    self._helper.change_lun(tgt_lun.ds_id, param)
+            else:
+                LOG.info("Clone volume %(tgt)s from volume %(src)s "
+                         "in the background.",
+                         {'src': src_lun.ds_id, 'tgt': tgt_lun.ds_id})
+                tgt_lun.metadata['flashcopy'] = "started"
+                eventlet.spawn(self._wait_flashcopy, [src_lun], [tgt_lun])
         finally:
-            if not finished:
+            if not tgt_lun.async_clone and tgt_lun.status == 'error':
                 self._helper.delete_lun(tgt_lun)
-
         return tgt_lun
+
+    def _wait_flashcopy(self, src_luns, tgt_luns):
+        # please note that the order of volumes should be fixed.
+        self._helper.wait_flashcopy_finished(src_luns, tgt_luns)
+        for src_lun, tgt_lun in zip(src_luns, tgt_luns):
+            if tgt_lun.status == 'available':
+                tgt_lun.volume.metadata['flashcopy'] = 'success'
+            elif tgt_lun.status == 'error':
+                tgt_lun.volume.metadata['flashcopy'] = "error"
+                tgt_lun.volume.metadata['error_msg'] = (
+                    "FlashCopy from source volume %(src)s to target volume "
+                    "%(tgt)s fails, the state of target volume %(id)s is set "
+                    "to error." % {'src': src_lun.ds_id,
+                                   'tgt': tgt_lun.ds_id,
+                                   'id': tgt_lun.os_id})
+                tgt_lun.volume.status = 'error'
+                self._helper.delete_lun(tgt_lun)
+            else:
+                self._helper.delete_lun(tgt_lun)
+                raise exception.VolumeDriverException(
+                    message=_("Volume %(id)s is in unexpected state "
+                              "%(state)s.") % {'id': tgt_lun.ds_id,
+                                               'state': tgt_lun.status})
+            tgt_lun.volume.save()
 
     def _ensure_vol_not_fc_target(self, vol_hex_id):
         for cp in self._helper.get_flashcopy(vol_hex_id):
@@ -1211,7 +1276,6 @@ class DS8KProxy(proxy.IBMStorageProxy):
     def _clone_group(self, src_luns, tgt_luns):
         for src_lun in src_luns:
             self._ensure_vol_not_fc_target(src_lun.ds_id)
-        finished = False
         try:
             vol_pairs = []
             for src_lun, tgt_lun in zip(src_luns, tgt_luns):
@@ -1226,9 +1290,11 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 self._do_flashcopy_with_freeze(vol_pairs)
             else:
                 self._helper.start_flashcopy(vol_pairs)
-            finished = self._helper.wait_flashcopy_finished(src_luns, tgt_luns)
+            self._helper.wait_flashcopy_finished(src_luns, tgt_luns)
         finally:
-            if not finished:
+            # if one of volume failed, delete all volumes.
+            error_luns = [lun for lun in tgt_luns if lun.status == 'error']
+            if error_luns:
                 self._helper.delete_lun(tgt_luns)
 
     @coordination.synchronized('{self.prefix}-consistency-group')

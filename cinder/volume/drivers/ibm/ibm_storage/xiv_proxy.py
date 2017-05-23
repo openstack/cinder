@@ -117,7 +117,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     """
 
     def __init__(self, storage_info, logger, exception,
-                 driver=None, active_backend_id=None):
+                 driver=None, active_backend_id=None, host=None):
         """Initialize Proxy."""
         if not active_backend_id:
             active_backend_id = strings.PRIMARY_BACKEND_ID

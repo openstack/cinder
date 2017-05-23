@@ -111,7 +111,8 @@ class IBMStorageDriver(san.SanDriver,
             LOG,
             exception,
             driver=self,
-            active_backend_id=active_backend_id)
+            active_backend_id=active_backend_id,
+            host=self.host)
 
     def do_setup(self, context):
         """Setup and verify connection to IBM Storage."""
