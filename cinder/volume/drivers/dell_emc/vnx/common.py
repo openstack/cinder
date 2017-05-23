@@ -445,6 +445,15 @@ class ReplicationDeviceList(list):
     def __getitem__(self, item):
         return self.list[item]
 
+    @classmethod
+    def get_backend_ids(cls, config):
+        """Returns all configured device_id."""
+        rep_list = cls(config)
+        backend_ids = []
+        for item in rep_list.devices:
+            backend_ids.append(item.backend_id)
+        return backend_ids
+
 
 class VNXMirrorView(object):
     def __init__(self, primary_client, secondary_client):
