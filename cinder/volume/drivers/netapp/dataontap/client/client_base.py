@@ -207,7 +207,7 @@ class Client(object):
                 result.get_child_content("max-resize-size")
         except Exception as e:
             LOG.error("LUN %(path)s geometry failed. Message - %(msg)s",
-                      {'path': path, 'msg': e.message})
+                      {'path': path, 'msg': six.text_type(e)})
         return geometry
 
     def get_volume_options(self, volume_name):
