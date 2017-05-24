@@ -1,0 +1,4 @@
+---
+upgrade:
+  - The ``service`` filter for service list API was deprecated 3 years ago in
+    2013 July (Havana). Removed this filter and please use "binary" instead.
