@@ -532,8 +532,8 @@ class GPFSDriver(driver.CloneableImageVD,
         clone = False
         ctxt = context.get_admin_context()
         snap_parent_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
-        if (volume['consistencygroup_id'] ==
-                snap_parent_vol['consistencygroup_id']):
+        if (volume['group_id'] ==
+                snap_parent_vol['group_id']):
             clone = True
         volume_path = self._get_volume_path(volume)
         if clone:
@@ -557,7 +557,7 @@ class GPFSDriver(driver.CloneableImageVD,
     def _create_cloned_volume(self, volume, src_vref):
         src = self._get_volume_path(src_vref)
         dest = self._get_volume_path(volume)
-        if (volume['consistencygroup_id'] == src_vref['consistencygroup_id']):
+        if (volume['group_id'] == src_vref['group_id']):
             self._create_gpfs_clone(src, dest)
         else:
             self._gpfs_full_copy(src, dest)
@@ -731,8 +731,8 @@ class GPFSDriver(driver.CloneableImageVD,
         """Return the local path for the specified volume."""
         # Check if the volume is part of a consistency group and return
         # the local_path accordingly.
-        if volume['consistencygroup_id'] is not None:
-            cgname = "consisgroup-%s" % volume['consistencygroup_id']
+        if volume['group_id'] is not None:
+            cgname = "consisgroup-%s" % volume['group_id']
             volume_path = os.path.join(
                 self.configuration.gpfs_mount_point_base,
                 cgname,
@@ -1189,7 +1189,7 @@ class GPFSDriver(driver.CloneableImageVD,
 
         model_update = {'status': group['status']}
 
-        return model_update, volumes
+        return None, None
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Create snapshot of a consistency group of GPFS volumes."""
@@ -1315,8 +1315,8 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     def _get_volume_path(self, volume):
         """Returns remote GPFS path for the given volume."""
         export_path = self.configuration.gpfs_mount_point_base
-        if volume['consistencygroup_id'] is not None:
-            cgname = "consisgroup-%s" % volume['consistencygroup_id']
+        if volume['group_id'] is not None:
+            cgname = "consisgroup-%s" % volume['group_id']
             volume_path = os.path.join(export_path, cgname, volume['name'])
         else:
             volume_path = os.path.join(export_path, volume['name'])
@@ -1329,8 +1329,8 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
 
         # Check if the volume is part of a consistency group and return
         # the local_path accordingly.
-        if volume['consistencygroup_id'] is not None:
-            cgname = "consisgroup-%s" % volume['consistencygroup_id']
+        if volume['group_id'] is not None:
+            cgname = "consisgroup-%s" % volume['group_id']
             volume_path = os.path.join(base_local_path, cgname, volume['name'])
         else:
             volume_path = os.path.join(base_local_path, volume['name'])
