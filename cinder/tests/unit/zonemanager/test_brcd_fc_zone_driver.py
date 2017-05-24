@@ -90,7 +90,6 @@ class BrcdFcZoneDriverBaseTest(object):
             configuration.zoning_policy_BRCD_FAB_1 = 'initiator-target'
         configuration.zone_activate_BRCD_FAB_1 = True
         configuration.zone_name_prefix_BRCD_FAB_1 = 'openstack_fab1'
-        configuration.principal_switch_wwn_BRCD_FAB_1 = '100000051e55a100'
         return configuration
 
 
