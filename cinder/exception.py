@@ -1389,3 +1389,8 @@ class ErrorInHyperScaleVersion(VolumeDriverException):
 
 class ErrorInParsingArguments(VolumeDriverException):
     message = _("Error in parsing message arguments : Invalid Payload")
+
+
+# GPFS driver
+class GPFSDriverUnsupportedOperation(VolumeBackendAPIException):
+    message = _("GPFS driver unsupported operation: %(msg)s")
