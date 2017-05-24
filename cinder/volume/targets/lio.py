@@ -187,6 +187,11 @@ class LioAdm(iscsi.ISCSITarget):
         return super(LioAdm, self).initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
+        if volume['provider_location'] is None:
+            LOG.debug('No provider_location for volume %s.',
+                      volume['id'])
+            return
+
         volume_iqn = volume['provider_location'].split(' ')[1]
 
         # Delete initiator iqns from target ACL

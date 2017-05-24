@@ -286,6 +286,23 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
+    def test_terminate_connection_no_prov_loc(self,
+                                              mock_execute,
+                                              mpersist_cfg,
+                                              mlock_exec):
+        """terminate_connection does nothing if provider_location is None"""
+
+        connector = {'initiator': 'fake_init'}
+        self.target.terminate_connection(self.testvol_no_prov_loc,
+                                         connector)
+
+        mlock_exec.assert_not_called()
+        mock_execute.assert_not_called()
+        mpersist_cfg.assert_not_called()
+
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
+    @mock.patch.object(lio.LioAdm, '_persist_configuration')
+    @mock.patch('cinder.utils.execute')
     def test_terminate_connection_fail(self, mock_execute, mpersist_cfg,
                                        mlock_exec):
 
