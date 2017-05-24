@@ -66,9 +66,10 @@ volume_opts = [
                  # LVM driver which is different than the global default.
                  default=1.0,
                  help='max_over_subscription_ratio setting for the LVM '
-                      'driver.  If set, this takes precedence over the '
-                      'general max_over_subscription_ratio option.  If '
-                      'None, the general option is used.'),
+                      'driver. This takes precedence over the general '
+                      'max_over_subscription_ratio by default. If set '
+                      'to None, the general max_over_subscription_ratio '
+                      'is used.'),
     cfg.BoolOpt('lvm_suppress_fd_warnings',
                 default=False,
                 help='Suppress leaked file descriptor warnings in LVM '
