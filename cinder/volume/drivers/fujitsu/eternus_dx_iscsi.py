@@ -37,6 +37,9 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
     CI_WIKI_NAME = "Fujitsu_ETERNUS_CI"
     VERSION = eternus_dx_common.FJDXCommon.VERSION
 
+    # TODO(smcginnis) Remove driver in Queens if CI requirements are not met
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
 
         super(FJDXISCSIDriver, self).__init__(*args, **kwargs)

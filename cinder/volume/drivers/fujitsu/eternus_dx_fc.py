@@ -38,6 +38,9 @@ class FJDXFCDriver(driver.FibreChannelDriver):
     CI_WIKI_NAME = "Fujitsu_ETERNUS_CI"
     VERSION = eternus_dx_common.FJDXCommon.VERSION
 
+    # TODO(smcginnis) Remove driver in Queens if CI requirements are not metA
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
 
         super(FJDXFCDriver, self).__init__(*args, **kwargs)
