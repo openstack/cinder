@@ -85,7 +85,6 @@ REST_API_VERSION_HISTORY = """
     * 3.32 - Add set-log and get-log service actions.
     * 3.33 - Add ``resource_filters`` API to retrieve configured
              resource filters.
-
     * 3.34 - Add like filter support in ``volume``, ``backup``, ``snapshot``,
              ``message``, ``attachment``, ``group`` and ``group-snapshot``
              list APIs.
