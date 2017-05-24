@@ -1,0 +1,12 @@
+FROM python
+COPY test-requirements.txt /test-requirements.txt
+RUN apt-get update \
+    && apt-get install -y \
+    libssl-dev \
+    git-core \
+    libmysqlclient-dev \
+    libpq-dev \
+    libffi-dev \
+    libxslt-dev \
+    && pip install -r test-requirements.txt \
+    && rm -rf /var/lib/apt/lists/*

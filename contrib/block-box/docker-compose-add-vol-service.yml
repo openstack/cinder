@@ -1,0 +1,28 @@
+version: "2"
+services:
+    cinder-volume-sf:
+        image: cinder
+        hostname: cinder-volume-sf
+        privileged: true
+        volumes:
+            - ./etc-cinder:/etc/cinder
+            - /dev/:/dev/
+            - /run/:/run/:shared
+            - /etc/localtime:/etc/localtime:ro
+            - /lib/modules:/lib/modules:ro
+        extra_hosts:
+            - "rabbitmq:172.49.49.5"
+            - "mariadb:172.49.49.6"
+        networks:
+            cindernet:
+                ipv4_address: 172.49.49.10
+        command: bash -c "cinder-volume -d --config-file /etc/cinder/cinder.conf.sf"
+
+networks:
+    cindernet:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+            -
+              subnet: 172.49.49.0/24
