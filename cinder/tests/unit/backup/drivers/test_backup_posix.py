@@ -24,6 +24,7 @@ from six.moves import builtins
 
 from cinder.backup.drivers import posix
 from cinder import context
+from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 
@@ -175,3 +176,15 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.assertRaises(OSError,
                           self.driver.delete_object, FAKE_CONTAINER,
                           FAKE_OBJECT_NAME)
+
+    @mock.patch.object(posix.timeutils, 'utcnow')
+    def test_generate_object_name_prefix(self, utcnow_mock):
+        timestamp = '20170518102205'
+        utcnow_mock.return_value.strftime.return_value = timestamp
+        backup = objects.Backup(self.ctxt, volume_id=fake.VOLUME_ID,
+                                id=fake.BACKUP_ID)
+        res = self.driver._generate_object_name_prefix(backup)
+        expected = 'volume_%s_%s_backup_%s' % (backup.volume_id,
+                                               timestamp,
+                                               backup.id)
+        self.assertEqual(expected, res)
