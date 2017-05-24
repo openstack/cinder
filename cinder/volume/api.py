@@ -134,12 +134,13 @@ class API(base.Base):
         self.key_manager = key_manager.API(CONF)
         super(API, self).__init__(db_driver)
 
-    def list_availability_zones(self, enable_cache=False):
+    def list_availability_zones(self, enable_cache=False, refresh_cache=False):
         """Describe the known availability zones
 
-        :retval tuple of dicts, each with a 'name' and 'available' key
+        :param enable_cache: Enable az cache
+        :param refresh_cache: Refresh cache immediately
+        :return: tuple of dicts, each with a 'name' and 'available' key
         """
-        refresh_cache = False
         if enable_cache:
             if self.availability_zones_last_fetched is None:
                 refresh_cache = True
@@ -347,11 +348,21 @@ class API(base.Base):
         # taskflow sends out and redirect them to a more useful log for
         # cinders debugging (or error reporting) usage.
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
-            flow_engine.run()
-            vref = flow_engine.storage.fetch('volume')
-            LOG.info("Create volume request issued successfully.",
-                     resource=vref)
-            return vref
+            try:
+                flow_engine.run()
+                vref = flow_engine.storage.fetch('volume')
+                # NOTE(tommylikehu): If the target az is not hit,
+                # refresh the az cache immediately.
+                if flow_engine.storage.fetch('refresh_az'):
+                    self.list_availability_zones(enable_cache=True,
+                                                 refresh_cache=True)
+                LOG.info("Create volume request issued successfully.",
+                         resource=vref)
+                return vref
+            except exception.InvalidAvailabilityZone:
+                with excutils.save_and_reraise_exception():
+                    self.list_availability_zones(enable_cache=True,
+                                                 refresh_cache=True)
 
     @wrap_check_policy
     def revert_to_snapshot(self, context, volume, snapshot):

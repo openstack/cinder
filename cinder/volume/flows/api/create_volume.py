@@ -69,7 +69,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'source_replicaid',
                             'consistencygroup_id', 'cgsnapshot_id',
-                            'qos_specs', 'group_id'])
+                            'qos_specs', 'group_id', 'refresh_az'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -290,6 +290,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         the validated availability zone.
         """
 
+        refresh_az = False
         # If the volume will be created in a group, it should be placed in
         # in same availability zone as the group.
         if group:
@@ -321,6 +322,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 availability_zone = CONF.storage_availability_zone
 
         if availability_zone not in self.availability_zones:
+            refresh_az = True
             if CONF.allow_availability_zone_fallback:
                 original_az = availability_zone
                 availability_zone = (
@@ -332,9 +334,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             {'s_az': original_az,
                              's_fallback_az': availability_zone})
             else:
-                msg = _("Availability zone '%(s_az)s' is invalid.")
-                msg = msg % {'s_az': availability_zone}
-                raise exception.InvalidInput(reason=msg)
+                raise exception.InvalidAvailabilityZone(az=availability_zone)
 
         # If the configuration only allows cloning to the same availability
         # zone then we need to enforce that.
@@ -358,7 +358,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                         "availability zone as the source volume")
                 raise exception.InvalidInput(reason=msg)
 
-        return availability_zone
+        return availability_zone, refresh_az
 
     def _get_encryption_key_id(self, key_manager, context, volume_type_id,
                                snapshot, source_volume,
@@ -434,10 +434,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                                               image_id,
                                               size)
 
-        availability_zone = self._extract_availability_zone(availability_zone,
-                                                            snapshot,
-                                                            source_volume,
-                                                            group)
+        availability_zone, refresh_az = self._extract_availability_zone(
+            availability_zone, snapshot, source_volume, group)
 
         # TODO(joel-coffman): This special handling of snapshots to ensure that
         # their volume type matches the source volume is too convoluted. We
@@ -500,6 +498,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'cgsnapshot_id': cgsnapshot_id,
             'group_id': group_id,
             'replication_status': replication_status,
+            'refresh_az': refresh_az
         }
 
 

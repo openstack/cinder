@@ -39,6 +39,19 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
         self.volume_api.list_availability_zones(enable_cache=True)
         self.assertEqual(1, self.get_all.call_count)
 
+    def test_list_availability_zones_cached_and_refresh_on(self):
+        azs = self.volume_api.list_availability_zones(enable_cache=True,
+                                                      refresh_cache=True)
+        self.assertEqual([{"name": 'a', 'available': True}], list(azs))
+        time_before = self.volume_api.availability_zones_last_fetched
+        self.assertIsNotNone(time_before)
+        self.assertEqual(1, self.get_all.call_count)
+        self.volume_api.list_availability_zones(enable_cache=True,
+                                                refresh_cache=True)
+        self.assertTrue(time_before !=
+                        self.volume_api.availability_zones_last_fetched)
+        self.assertEqual(2, self.get_all.call_count)
+
     def test_list_availability_zones_no_cached(self):
         azs = self.volume_api.list_availability_zones(enable_cache=False)
         self.assertEqual([{"name": 'a', 'available': True}], list(azs))

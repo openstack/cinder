@@ -210,6 +210,10 @@ class InvalidInput(Invalid):
     message = _("Invalid input received: %(reason)s")
 
 
+class InvalidAvailabilityZone(Invalid):
+    message = _("Availability zone '%(az)s' is invalid.")
+
+
 class InvalidVolumeType(Invalid):
     message = _("Invalid volume type: %(reason)s")
 
