@@ -1494,3 +1494,20 @@ class TestLogLevels(test.TestCase):
         utils.set_log_levels(prefix, 'debug')
         levels = utils.get_log_levels(prefix)
         self.assertEqual('DEBUG', levels[prefix])
+
+
+@ddt.ddt
+class TestCheckMetadataProperties(test.TestCase):
+    @ddt.data(
+        {'a': {'foo': 'bar'}},  # value is a nested dict
+        {'a': 123},  # value is an integer
+        {'a': 123.4},  # value is a float
+        {'a': True},  # value is a bool
+        {'a': ('foo', 'bar')},  # value is a tuple
+        {'a': []},  # value is a list
+        {'a': None}  # value is None
+    )
+    def test_metadata_value_not_string_raise(self, meta):
+        self.assertRaises(exception.InvalidVolumeMetadata,
+                          utils.check_metadata_properties,
+                          meta)
