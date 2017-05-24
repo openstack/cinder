@@ -297,6 +297,10 @@ class VMAXCommonData(object):
         'SYMMETRIX+000195900551+OS-fakehost-gold-I-MV')
     lunmaskctrl_name = (
         'OS-fakehost-gold-I-MV')
+    mv_instance_name = {
+        'CreationClassName': 'Symm_LunMaskingView',
+        'ElementName': 'OS-fakehost-SRP_1-Bronze-DSS-I-Mv',
+        'SystemName': 'SYMMETRIX+000195900551'}
 
     rdf_group = 'test_rdf'
     srdf_group_instance = (
@@ -4481,6 +4485,10 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
                           self.data.connector)
 
     @mock.patch.object(
+        common.VMAXCommon,
+        'get_target_wwns_from_masking_view',
+        return_value=[{'Name': '5000090000000000'}])
+    @mock.patch.object(
         masking.VMAXMasking,
         'get_initiator_group_from_masking_view',
         return_value='myInitGroup')
@@ -4498,7 +4506,7 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSIFAST'})
     def test_detach_fast_success(
             self, mock_volume_type, mock_storage_group,
-            mock_ig, mock_igc):
+            mock_ig, mock_igc, mock_tw):
         self.driver.terminate_connection(
             self.data.test_volume, self.data.connector)
 
@@ -5601,15 +5609,16 @@ class VMAXFCDriverFastTestCase(test.TestCase):
     def test_map_fast_success(self, _mock_volume_type, mock_maskingview,
                               mock_is_same_host):
         common = self.driver.common
-        common.get_target_wwns = mock.Mock(
+        common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
         self.driver.common._get_correct_port_group = mock.Mock(
             return_value=self.data.port_group)
         data = self.driver.initialize_connection(
             self.data.test_volume, self.data.connector)
         # Test the no lookup service, pre-zoned case.
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        common.get_target_wwns_list.assert_called_once_with(
+            VMAXCommonData.storage_system, self.data.test_volume,
+            VMAXCommonData.connector)
         for init, target in data['data']['initiator_target_map'].items():
             self.assertIn(init[::-1], target)
 
@@ -5656,12 +5665,13 @@ class VMAXFCDriverFastTestCase(test.TestCase):
     def test_detach_fast_success(self, mock_volume_type, mock_maskingview,
                                  mock_ig, mock_igc, mock_mv, mock_check_ig):
         common = self.driver.common
-        common.get_target_wwns = mock.Mock(
+        common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
         data = self.driver.terminate_connection(self.data.test_volume,
                                                 self.data.connector)
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        common.get_target_wwns_list.assert_called_once_with(
+            VMAXCommonData.storage_system, self.data.test_volume,
+            VMAXCommonData.connector)
         numTargetWwns = len(VMAXCommonData.target_wwns)
         self.assertEqual(numTargetWwns, len(data['data']))
 
@@ -6666,7 +6676,7 @@ class EMCV3DriverTestCase(test.TestCase):
             self, _mock_volume_type, mock_maskingview, mock_is_same_host,
             mock_element_name):
         common = self.driver.common
-        common.get_target_wwns = mock.Mock(
+        common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
         self.driver.common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
@@ -6675,8 +6685,9 @@ class EMCV3DriverTestCase(test.TestCase):
         data = self.driver.initialize_connection(
             self.data.test_volume_v3, self.data.connector)
         # Test the no lookup service, pre-zoned case.
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        common.get_target_wwns_list.assert_called_once_with(
+            VMAXCommonData.storage_system, self.data.test_volume_v3,
+            VMAXCommonData.connector)
         for init, target in data['data']['initiator_target_map'].items():
             self.assertIn(init[::-1], target)
 
@@ -6696,6 +6707,10 @@ class EMCV3DriverTestCase(test.TestCase):
                           self.data.test_volume,
                           self.data.connector)
 
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'get_port_group_from_masking_view',
+        return_value='myPortGroup')
     @mock.patch.object(
         masking.VMAXMasking,
         'remove_and_reset_members')
@@ -6722,23 +6737,25 @@ class EMCV3DriverTestCase(test.TestCase):
     @mock.patch.object(
         masking.VMAXMasking,
         'get_masking_view_from_storage_group',
-        return_value=VMAXCommonData.lunmaskctrl_name)
+        return_value=[VMAXCommonData.mv_instance_name])
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
     def test_detach_v3_success(self, mock_volume_type, mock_maskingview,
                                mock_ig, mock_igc, mock_mv, mock_check_ig,
-                               mock_element_name, mock_remove):
+                               mock_element_name, mock_remove, mock_pg):
         common = self.driver.common
-        with mock.patch.object(common, 'get_target_wwns',
+        with mock.patch.object(common, 'get_target_wwns_list',
                                return_value=VMAXCommonData.target_wwns):
             with mock.patch.object(common, '_initial_setup',
                                    return_value=self.default_extraspec()):
                 data = self.driver.terminate_connection(
                     self.data.test_volume_v3, self.data.connector)
-                common.get_target_wwns.assert_called_once_with(
-                    VMAXCommonData.storage_system, VMAXCommonData.connector)
+                common.get_target_wwns_list.assert_called_once_with(
+                    VMAXCommonData.storage_system,
+                    self.data.test_volume_v3,
+                    VMAXCommonData.connector)
                 numTargetWwns = len(VMAXCommonData.target_wwns)
                 self.assertEqual(numTargetWwns, len(data['data']))
 
@@ -8325,7 +8342,7 @@ class VMAXFCTest(test.TestCase):
             return_value='testMV')
         common.get_masking_views_by_port_group = mock.Mock(
             return_value=[])
-        common.get_target_wwns = mock.Mock(
+        common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
         initiatorGroupInstanceName = (
             self.driver.common.masking._get_initiator_group_from_masking_view(
@@ -8336,8 +8353,9 @@ class VMAXFCTest(test.TestCase):
                                return_value=initiatorGroupInstanceName):
             data = self.driver.terminate_connection(self.data.test_volume_v3,
                                                     self.data.connector)
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        common.get_target_wwns_list.assert_called_once_with(
+            VMAXCommonData.storage_system, self.data.test_volume_v3,
+            VMAXCommonData.connector)
         numTargetWwns = len(VMAXCommonData.target_wwns)
         self.assertEqual(numTargetWwns, len(data['data']))
 
@@ -8347,7 +8365,7 @@ class VMAXFCTest(test.TestCase):
         return_value=None)
     @mock.patch.object(
         common.VMAXCommon,
-        'get_target_wwns',
+        'get_target_wwns_list',
         return_value=VMAXCommonData.target_wwns)
     @mock.patch.object(
         common.VMAXCommon,
@@ -8367,8 +8385,9 @@ class VMAXFCTest(test.TestCase):
         common.conn = FakeEcomConnection()
         data = self.driver.terminate_connection(self.data.test_volume_v3,
                                                 self.data.connector)
-        common.get_target_wwns.assert_called_once_with(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        common.get_target_wwns_list.assert_called_once_with(
+            VMAXCommonData.storage_system, self.data.test_volume_v3,
+            VMAXCommonData.connector)
         numTargetWwns = len(VMAXCommonData.target_wwns)
         self.assertEqual(numTargetWwns, len(data['data']))
 
@@ -8535,30 +8554,6 @@ class VMAXUtilsTest(test.TestCase):
         driver.db = FakeDB()
         self.driver = driver
         self.driver.utils = utils.VMAXUtils(object)
-
-    def test_get_target_endpoints(self):
-        conn = FakeEcomConnection()
-        hardwareid = 123456789012345
-        result = self.driver.utils.get_target_endpoints(conn, hardwareid)
-        self.assertEqual(
-            ([{'Name': '5000090000000000'}]), result)
-
-    def test_get_protocol_controller(self):
-        conn = FakeEcomConnection()
-        hardwareid = 123456789012345
-        result = self.driver.utils.get_protocol_controller(conn, hardwareid)
-        self.assertEqual(
-            ({'CreationClassName': 'Symm_LunMaskingView',
-              'ElementName': 'OS-fakehost-gold-I-MV'}), result)
-
-    def test_get_protocol_controller_exception(self):
-        conn = FakeEcomConnection()
-        conn.AssociatorNames = mock.Mock(return_value=[])
-        hardwareid = 123456789012345
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.utils.get_protocol_controller,
-            conn, hardwareid)
 
     def test_set_target_element_supplier_in_rsd(self):
         conn = FakeEcomConnection()
@@ -9033,57 +9028,30 @@ class VMAXCommonTest(test.TestCase):
             sourceInstance, cloneName, extraSpecs)
         self.assertIsNotNone(duplicateVolumeInstance)
 
-    def test_get_target_wwn(self):
+    @mock.patch.object(
+        common.VMAXCommon,
+        'get_target_wwns_from_masking_view',
+        return_value=["5000090000000000"])
+    def test_get_target_wwn_list(self, mock_tw):
         common = self.driver.common
         common.conn = FakeEcomConnection()
-        targetWwns = common.get_target_wwns(
-            VMAXCommonData.storage_system, VMAXCommonData.connector)
+        targetWwns = common.get_target_wwns_list(
+            VMAXCommonData.storage_system,
+            VMAXCommonData.test_volume_v3, VMAXCommonData.connector)
         self.assertListEqual(["5000090000000000"], targetWwns)
 
     @mock.patch.object(
-        utils.VMAXUtils,
-        'get_target_endpoints',
-        return_value=None)
-    def test_get_target_wwn_all_invalid(self, mock_target_ep):
+        common.VMAXCommon,
+        'get_target_wwns_from_masking_view',
+        return_value=[])
+    def test_get_target_wwn_list_empty(self, mock_tw):
         common = self.driver.common
         common.conn = FakeEcomConnection()
 
         self.assertRaises(
             exception.VolumeBackendAPIException,
-            common.get_target_wwns, VMAXCommonData.storage_system,
-            VMAXCommonData.connector)
-
-    def test_get_target_wwn_one_invalid(self):
-        common = self.driver.common
-        common.conn = FakeEcomConnection()
-        targetEndpoints = [{'CreationClassName': 'EMC_FCSCSIProtocolEndpoint',
-                            'Name': '5000090000000000'}]
-        hardwareInstanceNames = (
-            [{'CreationClassName': 'EMC_StorageHardwareID'}] * 3)
-        e = exception.VolumeBackendAPIException('Get target endpoint ex')
-        with mock.patch.object(common, '_find_storage_hardwareids',
-                               return_value=hardwareInstanceNames):
-            with mock.patch.object(common.utils, 'get_target_endpoints',
-                                   side_effect=[e, None, targetEndpoints]):
-                targetWwns = common.get_target_wwns(
-                    VMAXCommonData.storage_system,
-                    VMAXCommonData.connector)
-                self.assertListEqual(["5000090000000000"], targetWwns)
-
-    def test_get_target_wwn_all_invalid_endpoints(self):
-        common = self.driver.common
-        common.conn = FakeEcomConnection()
-        hardwareInstanceNames = (
-            [{'CreationClassName': 'EMC_StorageHardwareID'}] * 3)
-        e = exception.VolumeBackendAPIException('Get target endpoint ex')
-        with mock.patch.object(common, '_find_storage_hardwareids',
-                               return_value=hardwareInstanceNames):
-            with mock.patch.object(common.utils, 'get_target_endpoints',
-                                   side_effect=[e, None, None]):
-                self.assertRaises(
-                    exception.VolumeBackendAPIException,
-                    common.get_target_wwns, VMAXCommonData.storage_system,
-                    VMAXCommonData.connector)
+            common.get_target_wwns_list, VMAXCommonData.storage_system,
+            VMAXCommonData.test_volume_v3, VMAXCommonData.connector)
 
     def test_cleanup_target(self):
         common = self.driver.common
