@@ -3945,7 +3945,7 @@ class VolumeManager(manager.CleanableManager,
             self.driver.attach_volume(context,
                                       vref,
                                       attachment_ref.instance_uuid,
-                                      connector.get('hostname', ''),
+                                      connector.get('host', ''),
                                       connector.get('mountpoint', 'na'))
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -3957,7 +3957,7 @@ class VolumeManager(manager.CleanableManager,
         self.db.volume_attached(context.elevated(),
                                 attachment_ref.id,
                                 attachment_ref.instance_uuid,
-                                connector.get('hostname', ''),
+                                connector.get('host', ''),
                                 connector.get('mountpoint', 'na'),
                                 mode)
         vref.refresh()
