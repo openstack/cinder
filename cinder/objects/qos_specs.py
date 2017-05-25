@@ -192,9 +192,6 @@ class QualityOfServiceSpecsList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('QualityOfServiceSpecs'),
     }
-    child_versions = {
-        '1.0': '1.0',
-    }
 
     @classmethod
     def get_all(cls, context, *args, **kwargs):
