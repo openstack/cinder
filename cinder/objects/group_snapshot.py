@@ -133,9 +133,6 @@ class GroupSnapshotList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('GroupSnapshot')
     }
-    child_version = {
-        '1.0': '1.0'
-    }
 
     @classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,

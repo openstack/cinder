@@ -102,10 +102,6 @@ class GroupTypeList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('GroupType'),
     }
 
-    child_versions = {
-        '1.0': '1.0',
-    }
-
     @classmethod
     def get_all(cls, context, inactive=0, filters=None, marker=None,
                 limit=None, sort_keys=None, sort_dirs=None, offset=None):
