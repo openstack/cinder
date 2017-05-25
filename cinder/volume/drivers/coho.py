@@ -443,7 +443,7 @@ class CohoDriver(nfs.NfsDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume['provider_location'] = self._find_share(volume)
         addr, path = volume['provider_location'].split(":")
         volume_path = os.path.join(path, volume['name'])
         snapshot_name = snapshot['name']
@@ -462,7 +462,7 @@ class CohoDriver(nfs.NfsDriver):
                       path, run_as_root=self._execute_as_root)
 
     def create_cloned_volume(self, volume, src_vref):
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume['provider_location'] = self._find_share(volume)
 
         self._do_clone_volume(volume, src_vref)
 

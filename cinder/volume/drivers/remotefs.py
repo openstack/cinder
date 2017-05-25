@@ -242,7 +242,7 @@ class RemoteFSDriver(driver.BaseVD):
         LOG.debug('Creating volume %(vol)s', {'vol': volume.id})
         self._ensure_shares_mounted()
 
-        volume.provider_location = self._find_share(volume.size)
+        volume.provider_location = self._find_share(volume)
 
         LOG.info('casted to %s', volume.provider_location)
 
@@ -549,7 +549,7 @@ class RemoteFSDriver(driver.BaseVD):
     def _get_capacity_info(self, share):
         raise NotImplementedError()
 
-    def _find_share(self, volume_size_in_gib):
+    def _find_share(self, volume):
         raise NotImplementedError()
 
     def _ensure_share_mounted(self, share):
@@ -1157,7 +1157,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         self._ensure_shares_mounted()
 
-        volume.provider_location = self._find_share(volume.size)
+        volume.provider_location = self._find_share(volume)
 
         self._do_create_volume(volume)
 

@@ -178,21 +178,21 @@ class VZStorageTestCase(test.TestCase):
         drv = self._vz_driver
         drv._mounted_shares = [self._FAKE_SHARE]
         with mock.patch.object(drv, '_is_share_eligible', return_value=True):
-            ret = drv._find_share(1)
+            ret = drv._find_share(self.vol)
             self.assertEqual(self._FAKE_SHARE, ret)
 
     def test_find_share_no_shares_mounted(self):
         drv = self._vz_driver
         with mock.patch.object(drv, '_is_share_eligible', return_value=True):
             self.assertRaises(exception.VzStorageNoSharesMounted,
-                              drv._find_share, 1)
+                              drv._find_share, self.vol)
 
     def test_find_share_no_shares_suitable(self):
         drv = self._vz_driver
         drv._mounted_shares = [self._FAKE_SHARE]
         with mock.patch.object(drv, '_is_share_eligible', return_value=False):
             self.assertRaises(exception.VzStorageNoSuitableShareFound,
-                              drv._find_share, 1)
+                              drv._find_share, self.vol)
 
     def test_is_share_eligible_false(self):
         drv = self._vz_driver

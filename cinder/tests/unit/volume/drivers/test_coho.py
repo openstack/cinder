@@ -243,7 +243,7 @@ class CohoDriverTest(test.TestCase):
         drv.create_volume_from_snapshot(VOLUME, SNAPSHOT)
 
         mock_find_share.assert_has_calls(
-            [mock.call(VOLUME['size'])])
+            [mock.call(VOLUME)])
         self.assertTrue(mock_get_admin_context.called)
         mock_get_volume_type.assert_has_calls(
             [mock.call('test', VOLUME_TYPE['id'])])
@@ -277,7 +277,7 @@ class CohoDriverTest(test.TestCase):
         drv.create_cloned_volume(VOLUME, CLONE_VOL)
 
         mock_find_share.assert_has_calls(
-            [mock.call(VOLUME['size'])])
+            [mock.call(VOLUME)])
         mock_local_path.assert_has_calls(
             [mock.call(VOLUME), mock.call(CLONE_VOL)])
         mock_execute.assert_has_calls(
@@ -333,7 +333,7 @@ class CohoDriverTest(test.TestCase):
         drv.create_cloned_volume(CLONE_VOL, VOLUME)
 
         mock_find_share.assert_has_calls(
-            [mock.call(CLONE_VOL['size'])])
+            [mock.call(CLONE_VOL)])
         mock_local_path.assert_has_calls(
             [mock.call(CLONE_VOL), mock.call(VOLUME)])
         mock_execute.assert_has_calls(

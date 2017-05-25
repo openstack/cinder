@@ -1494,7 +1494,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     def create_volume(self, volume):
         """Creates a GPFS volume."""
         super(GPFSNFSDriver, self).create_volume(volume)
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume['provider_location'] = self._find_share(volume)
         return {'provider_location': volume['provider_location']}
 
     def delete_volume(self, volume):
@@ -1511,13 +1511,13 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a GPFS volume from a snapshot."""
         self._create_volume_from_snapshot(volume, snapshot)
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume['provider_location'] = self._find_share(volume)
         self._resize_volume_file(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a GPFS volume from another volume."""
         self._create_cloned_volume(volume, src_vref)
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume['provider_location'] = self._find_share(volume)
         self._resize_volume_file(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
