@@ -3265,6 +3265,7 @@ def volume_type_create(context, values, projects=None):
         values['id'] = str(uuid.uuid4())
 
     projects = projects or []
+    orm_projects = []
 
     session = get_session()
     with session.begin():
@@ -3291,7 +3292,9 @@ def volume_type_create(context, values, projects=None):
             access_ref.update({"volume_type_id": volume_type_ref.id,
                                "project_id": project})
             access_ref.save(session=session)
-        return volume_type_ref
+            orm_projects.append(access_ref)
+    volume_type_ref.projects = orm_projects
+    return volume_type_ref
 
 
 @handle_db_data_error
