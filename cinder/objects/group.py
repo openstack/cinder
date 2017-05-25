@@ -12,13 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import versionutils
+from oslo_versionedobjects import fields
+
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
-from oslo_versionedobjects import fields
 
 
 @base.CinderObjectRegistry.register
@@ -51,6 +53,15 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         'group_snapshots': fields.ObjectField('GroupSnapshotList',
                                               nullable=True),
     }
+
+    def obj_make_compatible(self, primitive, target_version):
+        """Make an object representation compatible with target version."""
+        super(Group, self).obj_make_compatible(primitive, target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 1):
+            for key in ('group_snapshot_id', 'source_group_id',
+                        'group_snapshots'):
+                primitive.pop(key, None)
 
     @staticmethod
     def _from_db_object(context, group, db_group,
