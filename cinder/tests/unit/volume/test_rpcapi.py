@@ -592,3 +592,40 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            service=service,
                            log_request='log_request',
                            version='3.12')
+
+    @ddt.data(None, 'mycluster')
+    def test_initialize_connection_snapshot(self, cluster_name):
+        self._change_cluster_name(self.fake_snapshot.volume, cluster_name)
+        self._test_rpc_api('initialize_connection_snapshot',
+                           rpc_method='call',
+                           server=(cluster_name or
+                                   self.fake_snapshot.volume.host),
+                           connector='fake_connector',
+                           snapshot=self.fake_snapshot,
+                           expected_kwargs_diff={
+                               'snapshot_id': self.fake_snapshot.id},
+                           version='3.13')
+
+    @ddt.data(None, 'mycluster')
+    def test_terminate_connection_snapshot(self, cluster_name):
+        self._change_cluster_name(self.fake_snapshot.volume, cluster_name)
+        self._test_rpc_api('terminate_connection_snapshot',
+                           rpc_method='call',
+                           server=(cluster_name or
+                                   self.fake_snapshot.volume.host),
+                           snapshot=self.fake_snapshot,
+                           connector='fake_connector',
+                           force=False,
+                           retval=None,
+                           expected_kwargs_diff={
+                               'snapshot_id': self.fake_snapshot.id},
+                           version='3.13')
+
+    def test_remove_export_snapshot(self):
+        self._test_rpc_api('remove_export_snapshot',
+                           rpc_method='cast',
+                           server=self.fake_volume_obj.host,
+                           snapshot=self.fake_snapshot,
+                           expected_kwargs_diff={
+                               'snapshot_id': self.fake_snapshot.id},
+                           version='3.13')
