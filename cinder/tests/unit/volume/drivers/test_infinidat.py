@@ -29,19 +29,21 @@ TEST_WWN_2 = '11:11:22:33:44:55:66:77'
 test_volume = mock.Mock(id=1, size=1)
 test_snapshot = mock.Mock(id=2, volume=test_volume)
 test_clone = mock.Mock(id=3, size=1)
-test_connector = dict(wwpns=[TEST_WWN_1])
+test_connector = dict(wwpns=[TEST_WWN_1],
+                      initiator='iqn.2012-07.org.fake:01')
 
 
 class FakeInfinisdkException(Exception):
     pass
 
 
-class InfiniboxDriverTestCase(test.TestCase):
+class InfiniboxDriverTestCaseBase(test.TestCase):
     def setUp(self):
-        super(InfiniboxDriverTestCase, self).setUp()
+        super(InfiniboxDriverTestCaseBase, self).setUp()
 
         # create mock configuration
         self.configuration = mock.Mock(spec=configuration.Configuration)
+        self.configuration.infinidat_storage_protocol = 'fc'
         self.configuration.san_ip = 'mockbox'
         self.configuration.infinidat_pool_name = 'mockpool'
         self.configuration.san_thin_provision = 'thin'
@@ -50,14 +52,20 @@ class InfiniboxDriverTestCase(test.TestCase):
         self.configuration.volume_backend_name = 'mock'
         self.configuration.volume_dd_blocksize = '1M'
         self.configuration.use_multipath_for_image_xfer = False
+        self.configuration.enforce_multipath_for_image_xfer = False
         self.configuration.num_volume_device_scan_tries = 1
         self.configuration.san_is_local = False
+        self.configuration.chap_username = None
+        self.configuration.chap_password = None
 
         self.driver = infinidat.InfiniboxVolumeDriver(
             configuration=self.configuration)
         self._system = self._infinibox_mock()
+        # mock external library dependencies
         infinisdk = self.patch("cinder.volume.drivers.infinidat.infinisdk")
         capacity = self.patch("cinder.volume.drivers.infinidat.capacity")
+        self.patch("cinder.volume.drivers.infinidat.iqn")
+        self.patch("cinder.volume.drivers.infinidat.wwn")
         capacity.byte = 1
         capacity.GiB = units.Gi
         infinisdk.core.exceptions.InfiniSDKException = FakeInfinisdkException
@@ -76,34 +84,22 @@ class InfiniboxDriverTestCase(test.TestCase):
         self._mock_pool = mock.Mock()
         self._mock_pool.get_free_physical_capacity.return_value = units.Gi
         self._mock_pool.get_physical_capacity.return_value = units.Gi
+        self._mock_ns = mock.Mock()
+        self._mock_ns.get_ips.return_value = [mock.Mock(ip_address='1.1.1.1')]
         result.volumes.safe_get.return_value = self._mock_volume
         result.volumes.create.return_value = self._mock_volume
         result.pools.safe_get.return_value = self._mock_pool
         result.hosts.safe_get.return_value = self._mock_host
         result.hosts.create.return_value = self._mock_host
+        result.network_spaces.safe_get.return_value = self._mock_ns
         result.components.nodes.get_all.return_value = []
         return result
 
     def _raise_infinisdk(self, *args, **kwargs):
         raise FakeInfinisdkException()
 
-    def test_get_volume_stats_refreshes(self):
-        result = self.driver.get_volume_stats()
-        self.assertEqual(1, result["free_capacity_gb"])
-        # change the "free space" in the pool
-        self._mock_pool.get_free_physical_capacity.return_value = 0
-        # no refresh - free capacity should stay the same
-        result = self.driver.get_volume_stats(refresh=False)
-        self.assertEqual(1, result["free_capacity_gb"])
-        # refresh - free capacity should change to 0
-        result = self.driver.get_volume_stats(refresh=True)
-        self.assertEqual(0, result["free_capacity_gb"])
 
-    def test_get_volume_stats_pool_not_found(self):
-        self._system.pools.safe_get.return_value = None
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.get_volume_stats)
-
+class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_initialize_connection(self):
         self._system.hosts.safe_get.return_value = None
         result = self.driver.initialize_connection(test_volume, test_connector)
@@ -120,11 +116,6 @@ class InfiniboxDriverTestCase(test.TestCase):
         self._mock_host.get_luns.return_value = [mock_mapping]
         result = self.driver.initialize_connection(test_volume, test_connector)
         self.assertEqual(888, result["data"]["target_lun"])
-
-    def test_initialize_connection_multiple_hosts(self):
-        connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
-        result = self.driver.initialize_connection(test_volume, connector)
-        self.assertEqual(1, result["data"]["target_lun"])
 
     def test_initialize_connection_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
@@ -167,6 +158,23 @@ class InfiniboxDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
                           test_volume, test_connector)
+
+    def test_get_volume_stats_refreshes(self):
+        result = self.driver.get_volume_stats()
+        self.assertEqual(1, result["free_capacity_gb"])
+        # change the "free space" in the pool
+        self._mock_pool.get_free_physical_capacity.return_value = 0
+        # no refresh - free capacity should stay the same
+        result = self.driver.get_volume_stats(refresh=False)
+        self.assertEqual(1, result["free_capacity_gb"])
+        # refresh - free capacity should change to 0
+        result = self.driver.get_volume_stats(refresh=True)
+        self.assertEqual(0, result["free_capacity_gb"])
+
+    def test_get_volume_stats_pool_not_found(self):
+        self._system.pools.safe_get.return_value = None
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.get_volume_stats)
 
     def test_create_volume(self):
         self.driver.create_volume(test_volume)
@@ -293,3 +301,60 @@ class InfiniboxDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           test_clone, test_volume)
+
+
+class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
+    def test_initialize_connection_multiple_wwpns(self):
+        connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
+        result = self.driver.initialize_connection(test_volume, connector)
+        self.assertEqual(1, result["data"]["target_lun"])
+
+
+class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
+    def setUp(self):
+        super(InfiniboxDriverTestCaseISCSI, self).setUp()
+        self.configuration.infinidat_storage_protocol = 'iscsi'
+        self.configuration.infinidat_iscsi_netspaces = ['netspace1']
+        self.configuration.use_chap_auth = False
+        self.driver.do_setup(None)
+
+    def test_setup_without_netspaces_configured(self):
+        self.configuration.infinidat_iscsi_netspaces = []
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.do_setup, None)
+
+    def test_initialize_connection(self):
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        self.assertEqual(1, result['data']['target_lun'])
+
+    def test_initialize_netspace_does_not_exist(self):
+        self._system.network_spaces.safe_get.return_value = None
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.initialize_connection,
+                          test_volume, test_connector)
+
+    def test_initialize_netspace_has_no_ips(self):
+        self._mock_ns.get_ips.return_value = []
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.initialize_connection,
+                          test_volume, test_connector)
+
+    def test_initialize_connection_with_chap(self):
+        self.configuration.use_chap_auth = True
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        self.assertEqual(1, result['data']['target_lun'])
+        self.assertEqual('CHAP', result['data']['auth_method'])
+        self.assertIn('auth_username', result['data'])
+        self.assertIn('auth_password', result['data'])
+
+    def test_initialize_connection_multiple_netspaces(self):
+        self.configuration.infinidat_iscsi_netspaces = ['netspace1',
+                                                        'netspace2']
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        self.assertEqual(1, result['data']['target_lun'])
+        self.assertEqual(2, len(result['data']['target_luns']))
+        self.assertEqual(2, len(result['data']['target_iqns']))
+        self.assertEqual(2, len(result['data']['target_portals']))
+
+    def test_terminate_connection(self):
+        self.driver.terminate_connection(test_volume, test_connector)
