@@ -69,6 +69,9 @@ _FILTERS_COLLECTION = None
 FILTERING_VERSION = '3.31'
 LIKE_FILTER_VERSION = '3.34'
 
+ATTRIBUTE_CONVERTERS = {'name~': 'display_name~',
+                        'description~': 'display_description~'}
+
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
 
@@ -447,6 +450,14 @@ def get_enabled_resource_filters(resource=None):
         return {}
 
 
+def convert_filter_attributes(filters, resource):
+    for key in filters.copy().keys():
+        if resource in ['volume', 'backup',
+                        'snapshot'] and key in ATTRIBUTE_CONVERTERS.keys():
+            filters[ATTRIBUTE_CONVERTERS[key]] = filters[key]
+            filters.pop(key)
+
+
 def reject_invalid_filters(context, filters, resource,
                            enable_like_filter=False):
     if context.is_admin:
@@ -464,9 +475,9 @@ def reject_invalid_filters(context, filters, resource,
             if key not in configured_filters:
                 invalid_filters.append(key)
         else:
-            # If 'key~' is configured, both 'key' and 'key~' is valid.
-            if (key not in configured_filters or
-                    "%s~" % key not in configured_filters):
+            # If 'key~' is configured, both 'key' and 'key~' are valid.
+            if not (key in configured_filters or
+                    "%s~" % key in configured_filters):
                 invalid_filters.append(key)
     if invalid_filters:
         raise webob.exc.HTTPBadRequest(
@@ -486,6 +497,8 @@ def process_general_filtering(resource):
                     support_like = True
                 reject_invalid_filters(context, filters,
                                        resource, support_like)
+                convert_filter_attributes(filters, resource)
+
             else:
                 process_non_general_filtering(*args, **kwargs)
         return _decorator

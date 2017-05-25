@@ -1736,14 +1736,15 @@ def _process_model_like_filter(model, query, filters):
     if query is None:
         return query
 
-    for key in filters:
+    for key in sorted(filters):
         column_attr = getattr(model, key)
         if 'property' == type(column_attr).__name__:
             continue
         value = filters[key]
-        if not isinstance(value, six.string_types):
+        if not (isinstance(value, six.string_types) or isinstance(value, int)):
             continue
-        query = query.filter(column_attr.op('LIKE')(u'%' + value + u'%'))
+        query = query.filter(
+            column_attr.op('LIKE')(u'%%%s%%' % value))
     return query
 
 

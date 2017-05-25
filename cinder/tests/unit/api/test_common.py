@@ -412,6 +412,65 @@ class GeneralFiltersTest(test.TestCase):
                 common.reject_invalid_filters, fake_context,
                 filters, 'fake_resource')
 
+    @ddt.data({'filters': {'name': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': ['name']},
+               'expected': {'name': 'value1'}},
+              {'filters': {'name~': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': ['name']},
+               'expected': None},
+              {'filters': {'name': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': ['name~']},
+               'expected': {'name': 'value1'}},
+              {'filters': {'name~': 'value1'},
+               'is_admin': False,
+               'result': {'fake_resource': ['name~']},
+               'expected': {'name~': 'value1'}}
+              )
+    @ddt.unpack
+    @mock.patch('cinder.api.common.get_enabled_resource_filters')
+    def test_reject_invalid_filters_like_operator_enabled(
+            self, mock_get, filters, is_admin, result, expected):
+        class FakeContext(object):
+            def __init__(self, admin):
+                self.is_admin = admin
+
+        fake_context = FakeContext(is_admin)
+        mock_get.return_value = result
+        if expected:
+            common.reject_invalid_filters(fake_context,
+                                          filters, 'fake_resource', True)
+            self.assertEqual(expected, filters)
+        else:
+            self.assertRaises(
+                webob.exc.HTTPBadRequest,
+                common.reject_invalid_filters, fake_context,
+                filters, 'fake_resource')
+
+    @ddt.data({'resource': 'group',
+               'filters': {'name~': 'value'},
+               'expected': {'name~': 'value'}},
+              {'resource': 'snapshot',
+               'filters': {'status~': 'value'},
+               'expected': {'status~': 'value'}},
+              {'resource': 'volume',
+               'filters': {'name~': 'value',
+                           'description~': 'value'},
+               'expected': {'display_name~': 'value',
+                            'display_description~': 'value'}},
+              {'resource': 'backup',
+               'filters': {'name~': 'value',
+                           'description~': 'value'},
+               'expected': {'display_name~': 'value',
+                            'display_description~': 'value'}},
+              )
+    @ddt.unpack
+    def test_convert_filter_attributes(self, resource, filters, expected):
+        common.convert_filter_attributes(filters, resource)
+        self.assertEqual(expected, filters)
+
 
 @ddt.ddt
 class LinkPrefixTest(test.TestCase):
