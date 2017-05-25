@@ -18,6 +18,7 @@ import copy
 
 import ddt
 import mock
+import six
 
 from cinder import exception
 from cinder import test
@@ -114,7 +115,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         result = self.ssc_library.get_ssc_aggregates()
 
-        self.assertEqual(list(fake.SSC_AGGREGATES), result)
+        six.assertCountEqual(self, list(fake.SSC_AGGREGATES), result)
 
     def test_update_ssc(self):
 
