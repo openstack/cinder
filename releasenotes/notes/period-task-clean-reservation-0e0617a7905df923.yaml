@@ -1,0 +1,5 @@
+---
+features:
+  -  Added periodic task to clean expired reservation in cinder scheduler.
+     Added a configuration option ``reservation_clean_interval`` to handle
+     the interval.
