@@ -16,6 +16,7 @@
 import ast
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 import uuid
@@ -3432,6 +3433,9 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
                           self.data.failed_delete_vol)
 
     @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
+    @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
         return_value=True)
@@ -3451,7 +3455,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_already_mapped_no_fast_success(
             self, _mock_volume_type, mock_wrap_group, mock_wrap_device,
-            mock_is_same_host):
+            mock_is_same_host, mock_rec):
         self.driver.common._get_correct_port_group = mock.Mock(
             return_value=self.data.port_group)
         self.driver.initialize_connection(self.data.test_volume,
@@ -3481,6 +3485,9 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
+    @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
     @mock.patch.object(
         common.VMAXCommon,
         '_get_port_group_from_source',
@@ -3518,7 +3525,8 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
                                                 mock_device,
                                                 mock_same_host,
                                                 mock_sg_from_mv,
-                                                mock_pg_from_mv):
+                                                mock_pg_from_mv,
+                                                mock_rec):
         extraSpecs = self.data.extra_specs
         rollback_dict = self.driver.common._populate_masking_dict(
             self.data.test_volume, self.data.connector, extraSpecs)
@@ -3528,6 +3536,9 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.driver.initialize_connection(self.data.test_volume,
                                               self.data.connector)
 
+    @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
     @mock.patch.object(
         masking.VMAXMasking,
         '_get_initiator_group_from_masking_view',
@@ -3550,7 +3561,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_map_existing_masking_view_no_fast_success(
             self, _mock_volume_type, mock_wrap_group, mock_storage_group,
-            mock_initiator_group, mock_ig_from_mv):
+            mock_initiator_group, mock_ig_from_mv, mock_rec):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -4448,6 +4459,9 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
                           self.data.failed_delete_vol)
 
     @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
+    @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
         return_value=True)
@@ -4467,7 +4481,7 @@ class VMAXISCSIDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSIFAST'})
     def test_already_mapped_fast_success(
             self, _mock_volume_type, mock_wrap_group, mock_wrap_device,
-            mock_is_same_host):
+            mock_is_same_host, mock_rec):
         self.driver.common._get_correct_port_group = mock.Mock(
             return_value=self.data.port_group)
         self.driver.initialize_connection(self.data.test_volume,
@@ -5069,6 +5083,9 @@ class VMAXFCDriverNoFastTestCase(test.TestCase):
                           self.data.failed_delete_vol)
 
     @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
+    @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
         return_value=True)
@@ -5082,7 +5099,8 @@ class VMAXFCDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCNoFAST',
                       'FASTPOLICY': 'FC_GOLD1'})
     def test_map_lookup_service_no_fast_success(
-            self, _mock_volume_type, mock_maskingview, mock_is_same_host):
+            self, _mock_volume_type, mock_maskingview, mock_is_same_host,
+            mock_rec):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         common.get_target_wwns_from_masking_view = mock.Mock(
@@ -5598,6 +5616,9 @@ class VMAXFCDriverFastTestCase(test.TestCase):
                           self.data.failed_delete_vol)
 
     @mock.patch.object(
+        utils.VMAXUtils,
+        'insert_live_migration_record')
+    @mock.patch.object(
         common.VMAXCommon,
         '_is_same_host',
         return_value=True)
@@ -5611,7 +5632,7 @@ class VMAXFCDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCFAST',
                       'FASTPOLICY': 'FC_GOLD1'})
     def test_map_fast_success(self, _mock_volume_type, mock_maskingview,
-                              mock_is_same_host):
+                              mock_is_same_host, mock_rec):
         common = self.driver.common
         common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
@@ -6662,6 +6683,9 @@ class EMCV3DriverTestCase(test.TestCase):
 
     @mock.patch.object(
         utils.VMAXUtils,
+        'insert_live_migration_record')
+    @mock.patch.object(
+        utils.VMAXUtils,
         'get_volume_element_name',
         return_value='1')
     @mock.patch.object(
@@ -6678,7 +6702,7 @@ class EMCV3DriverTestCase(test.TestCase):
         return_value={'volume_backend_name': 'V3_BE'})
     def test_map_v3_success(
             self, _mock_volume_type, mock_maskingview, mock_is_same_host,
-            mock_element_name):
+            mock_element_name, mock_rec):
         common = self.driver.common
         common.get_target_wwns_list = mock.Mock(
             return_value=VMAXCommonData.target_wwns)
@@ -8984,6 +9008,59 @@ class VMAXUtilsTest(test.TestCase):
         external_ref = {u'source-name': None}
         self.assertRaises(exception.VolumeBackendAPIException,
                           utils.get_array_and_device_id, volume, external_ref)
+
+    @mock.patch('builtins.open' if sys.version_info >= (3,)
+                else '__builtin__.open')
+    def test_insert_live_migration_record(self, mock_open):
+        volume = {'id': '12345678-87654321'}
+        tempdir = tempfile.mkdtemp()
+        utils.LIVE_MIGRATION_FILE = (
+            tempdir + '/livemigrationarray')
+        lm_file_name = ("%(prefix)s-%(volid)s"
+                        % {'prefix': utils.LIVE_MIGRATION_FILE,
+                           'volid': volume['id'][:8]})
+        self.driver.utils.insert_live_migration_record(volume)
+        mock_open.assert_called_once_with(lm_file_name, "w")
+        self.driver.utils.delete_live_migration_record(volume)
+        shutil.rmtree(tempdir)
+
+    def test_delete_live_migration_record(self):
+        volume = {'id': '12345678-87654321'}
+        tempdir = tempfile.mkdtemp()
+        utils.LIVE_MIGRATION_FILE = (
+            tempdir + '/livemigrationarray')
+        lm_file_name = ("%(prefix)s-%(volid)s"
+                        % {'prefix': utils.LIVE_MIGRATION_FILE,
+                           'volid': volume['id'][:8]})
+        m = mock.mock_open()
+        with mock.patch('{}.open'.format(__name__), m, create=True):
+            with open(lm_file_name, "w") as f:
+                f.write('live migration details')
+        self.driver.utils.insert_live_migration_record(volume)
+        self.driver.utils.delete_live_migration_record(volume)
+        m.assert_called_once_with(lm_file_name, "w")
+        shutil.rmtree(tempdir)
+
+    def test_get_live_migration_record(self):
+        volume = {'id': '12345678-87654321'}
+        tempdir = tempfile.mkdtemp()
+        utils.LIVE_MIGRATION_FILE = (
+            tempdir + '/livemigrationarray')
+        lm_file_name = ("%(prefix)s-%(volid)s"
+                        % {'prefix': utils.LIVE_MIGRATION_FILE,
+                           'volid': volume['id'][:8]})
+        self.driver.utils.insert_live_migration_record(volume)
+        record = self.driver.utils.get_live_migration_record(volume)
+        self.assertEqual(volume['id'], record[0])
+        os.remove(lm_file_name)
+        shutil.rmtree(tempdir)
+
+    def test_get_live_migration_file_name(self):
+        volume = {'id': '12345678-87654321'}
+        lm_live_migration = self.driver.utils.get_live_migration_file_name(
+            volume)
+        self.assertIn('/livemigrationarray-12345678', lm_live_migration)
+        self.assertIn('/tmp/', lm_live_migration)
 
 
 class VMAXCommonTest(test.TestCase):

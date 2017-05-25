@@ -16,12 +16,15 @@
 import ast
 import datetime
 import hashlib
+import os
 import random
 import re
+import tempfile
 import time
 from xml.dom import minidom
 
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 from oslo_service import loopingcall
 from oslo_utils import units
 import six
@@ -53,7 +56,7 @@ EMC_ROOT = 'root/emc'
 CONCATENATED = 'concatenated'
 CINDER_EMC_CONFIG_FILE_PREFIX = '/etc/cinder/cinder_emc_config_'
 CINDER_EMC_CONFIG_FILE_POSTFIX = '.xml'
-LIVE_MIGRATION_FILE = '/etc/cinder/livemigrationarray'
+LIVE_MIGRATION_FILE = tempfile.gettempdir() + '/livemigrationarray'
 ISCSI = 'iscsi'
 FC = 'fc'
 JOB_RETRIES = 60
@@ -2978,3 +2981,68 @@ class VMAXUtils(object):
         default_dict[INTERVAL] = INTERVAL_10_SEC
         default_dict[RETRIES] = JOB_RETRIES
         return default_dict
+
+    def insert_live_migration_record(self, volume):
+        """Insert a record of live migration destination into a temporary file
+
+        :param volume: the volume dictionary
+        """
+        lm_file_name = self.get_live_migration_file_name(volume)
+        live_migration_details = self.get_live_migration_record(volume)
+        if live_migration_details:
+            return
+        else:
+            live_migration_details = {volume['id']: [volume['id']]}
+        try:
+            with open(lm_file_name, "w") as f:
+                jsonutils.dump(live_migration_details, f)
+        except Exception:
+            exceptionMessage = (_(
+                "Error in processing live migration file."))
+            LOG.exception(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+    def delete_live_migration_record(self, volume):
+        """Delete record of live migration
+
+        Delete record of live migration destination from file and if
+        after deletion of record, delete file if empty.
+
+        :param volume: the volume dictionary
+        """
+        lm_file_name = self.get_live_migration_file_name(volume)
+        live_migration_details = self.get_live_migration_record(volume)
+        if live_migration_details:
+            if volume['id'] in live_migration_details:
+                os.remove(lm_file_name)
+
+    def get_live_migration_record(self, volume):
+        """get record of live migration destination from a temporary file
+
+        :param volume: the volume dictionary
+        :returns: returns a single record
+        """
+        returned_record = None
+        lm_file_name = self.get_live_migration_file_name(volume)
+        if os.path.isfile(lm_file_name):
+            with open(lm_file_name, "rb") as f:
+                live_migration_details = jsonutils.load(f)
+            if volume['id'] in live_migration_details:
+                returned_record = live_migration_details[volume['id']]
+            else:
+                LOG.debug("%(Volume)s doesn't exist in live migration "
+                          "record.",
+                          {'Volume': volume['id']})
+        return returned_record
+
+    def get_live_migration_file_name(self, volume):
+        """get name of temporary live migration file
+
+        :param volume: the volume dictionary
+        :returns: returns file name
+        """
+        lm_file_name = ("%(prefix)s-%(volid)s"
+                        % {'prefix': LIVE_MIGRATION_FILE,
+                           'volid': volume['id'][:8]})
+        return lm_file_name
