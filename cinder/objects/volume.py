@@ -232,14 +232,17 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     def obj_make_compatible(self, primitive, target_version):
         """Make a Volume representation compatible with a target version."""
+        added_fields = (((1, 4), ('cluster', 'cluster_name')),
+                        ((1, 5), ('group', 'group_id')))
+
         # Convert all related objects
         super(Volume, self).obj_make_compatible(primitive, target_version)
 
         target_version = versionutils.convert_version_to_tuple(target_version)
-        # Before v1.4 we didn't have cluster fields so we have to remove them.
-        if target_version < (1, 4):
-            for obj_field in ('cluster', 'cluster_name'):
-                primitive.pop(obj_field, None)
+        for version, remove_fields in added_fields:
+            if target_version < version:
+                for obj_field in remove_fields:
+                    primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, volume, db_volume, expected_attrs=None):
