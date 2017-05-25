@@ -21,6 +21,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.objects import base as ovo_base
 from cinder.objects import fields
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
@@ -521,6 +522,36 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertEqual('in-use', volume.status)
             self.assertEqual({}, volume.cinder_obj_get_changes())
             self.assertFalse(volume_attachment_get.called)
+
+    @ddt.data('1.6', '1.7')
+    def test_obj_make_compatible_cluster_added(self, version):
+        extra_data = {'cluster_name': 'cluster_name',
+                      'cluster': objects.Cluster()}
+        volume = objects.Volume(self.context, host='host', **extra_data)
+
+        serializer = ovo_base.CinderObjectSerializer(version)
+        primitive = serializer.serialize_entity(self.context, volume)
+
+        converted_volume = objects.Volume.obj_from_primitive(primitive)
+        is_set = version == '1.7'
+        for key in extra_data:
+            self.assertEqual(is_set, converted_volume.obj_attr_is_set(key))
+        self.assertEqual('host', converted_volume.host)
+
+    @ddt.data('1.9', '1.10')
+    def test_obj_make_compatible_groups_added(self, version):
+        extra_data = {'group_id': fake.GROUP_ID,
+                      'group': objects.Group()}
+        volume = objects.Volume(self.context, host='host', **extra_data)
+
+        serializer = ovo_base.CinderObjectSerializer(version)
+        primitive = serializer.serialize_entity(self.context, volume)
+
+        converted_volume = objects.Volume.obj_from_primitive(primitive)
+        is_set = version == '1.10'
+        for key in extra_data:
+            self.assertEqual(is_set, converted_volume.obj_attr_is_set(key))
+        self.assertEqual('host', converted_volume.host)
 
 
 @ddt.ddt
