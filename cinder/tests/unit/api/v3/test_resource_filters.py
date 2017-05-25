@@ -15,6 +15,7 @@ Tests for resource filters API.
 """
 
 import ddt
+import six
 
 from cinder.api import common
 from cinder.api.v3 import resource_filters as v3_filters
@@ -57,5 +58,9 @@ class ResourceFiltersAPITestCase(test.TestCase):
 
         result = self.controller.index(req)
 
-        expected = {'resource_filters': expected_filters}
-        self.assertEqual(expected, result)
+        six.assertCountEqual(self,
+                             list(six.viewkeys(result)),
+                             ['resource_filters'])
+        six.assertCountEqual(self,
+                             expected_filters,
+                             result['resource_filters'])

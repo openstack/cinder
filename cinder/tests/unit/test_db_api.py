@@ -109,7 +109,7 @@ class DBCommonFilterTestCase(BaseTest):
                                                       query, filters)
             calls = [call('%fake_description%'),
                      call('%fake_name%'), call('%123%')]
-            mock_filter.assert_has_calls(calls)
+            mock_filter.assert_has_calls(calls, any_order=True)
 
     @ddt.data({'handler': [db.volume_create, db.volume_get_all],
                'column': 'display_name',
