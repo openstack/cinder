@@ -99,7 +99,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         return snapshot
 
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_check_os_platform')
-    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'do_setup')
+    @mock.patch.object(remotefs.RemoteFSSnapDriverDistributed, 'do_setup')
     @mock.patch('os.path.exists')
     @mock.patch('os.path.isabs')
     @mock.patch.object(image_utils, 'check_qemu_img_version')
@@ -422,7 +422,8 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         self.assertEqual(expected_fmt, resulted_fmt)
 
-    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'create_volume')
+    @mock.patch.object(remotefs.RemoteFSSnapDriverDistributed,
+                       'create_volume')
     def test_create_volume_base(self, mock_create_volume):
         self._smbfs_driver.create_volume(self.volume)
         mock_create_volume.assert_called_once_with(self.volume)
@@ -541,7 +542,8 @@ class WindowsSmbFsTestCase(test.TestCase):
               {'volume_status': 'available'},
               {'snap_info_contains_snap_id': False})
     @ddt.unpack
-    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_delete_snapshot')
+    @mock.patch.object(remotefs.RemoteFSSnapDriverDistributed,
+                       '_delete_snapshot')
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_local_volume_dir')
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_local_path_volume_info')
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_write_info_file')
