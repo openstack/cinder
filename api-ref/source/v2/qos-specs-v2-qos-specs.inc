@@ -110,6 +110,7 @@ Request
 
    - tenant_id: tenant_id
    - qos_id: qos_id
+   - vol_type_id: vol_type_id
 
 
 Disassociate QoS specification from volume type
@@ -129,6 +130,7 @@ Request
 
    - tenant_id: tenant_id
    - qos_id: qos_id
+   - vol_type_id: vol_type_id
 
 
 Show QoS specification details

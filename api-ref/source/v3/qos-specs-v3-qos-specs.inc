@@ -110,6 +110,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
+   - vol_type_id: vol_type_id
 
 
 Disassociate QoS specification from a volume type
@@ -129,6 +130,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
+   - vol_type_id: vol_type_id
 
 
 Show a QoS specification details
