@@ -42,7 +42,7 @@ TEST_VOLUME = {
     'name': 'BLA',
     'id': 23,
     'size': 17,
-    'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
+    'group_id': fake.CONSISTENCY_GROUP_ID,
 }
 
 TEST_EXTRA_SPECS = {
@@ -364,7 +364,7 @@ class XIVProxyTest(test.TestCase):
 
         p.ibm_storage_cli = mock.MagicMock()
 
-        volume = {'size': 16, 'name': 'WTF32', 'consistencygroup_id': 'WTF'}
+        volume = {'size': 16, 'name': 'WTF32', 'group_id': 'WTF'}
         p.create_volume(volume)
 
         p.ibm_storage_cli.cmd.vol_create.assert_called_once_with(
@@ -422,7 +422,7 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
 
         volume = {'size': 16, 'name': 'WTF32',
-                  'consistencygroup_id': 'WTF', 'volume_type_id': 'WTF'}
+                  'group_id': 'WTF', 'volume_type_id': 'WTF'}
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_volume, volume)
 
