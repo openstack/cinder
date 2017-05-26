@@ -72,6 +72,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.nms_protocol = self.configuration.nexenta_rest_protocol
         self.nms_host = self.configuration.nexenta_host
         self.nms_port = self.configuration.nexenta_rest_port
@@ -107,7 +108,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             protocol, auto = self.nms_protocol, False
         self.nms = jsonrpc.NexentaJSONProxy(
             protocol, self.nms_host, self.nms_port, '/rest/nms', self.nms_user,
-            self.nms_password, auto=auto)
+            self.nms_password, self.verify_ssl, auto=auto)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.

@@ -72,7 +72,7 @@ class RESTCaller(object):
     @retry(retry_exc_tuple, interval=1, retries=6)
     def __call__(self, *args):
         url = self.get_full_url(args[0])
-        kwargs = {'timeout': TIMEOUT, 'verify': False}
+        kwargs = {'timeout': TIMEOUT, 'verify': self.__proxy.verify}
         data = None
         if len(args) > 1:
             kwargs['json'] = args[1]
@@ -115,7 +115,8 @@ class RESTCaller(object):
             keep_going = True
             while keep_going:
                 time.sleep(1)
-                response = self.__proxy.session.get(url, verify=False)
+                response = self.__proxy.session.get(
+                    url, verify=self.__proxy.verify)
                 check_error(response)
                 LOG.debug("Got response: %(code)s %(reason)s", {
                     'code': response.status_code,
@@ -187,7 +188,7 @@ class HTTPSAuth(requests.auth.AuthBase):
         url = '/'.join((self.url, 'auth/login'))
         headers = {'Content-Type': 'application/json'}
         data = {'username': self.username, 'password': self.password}
-        response = requests.post(url, json=data, verify=False,
+        response = requests.post(url, json=data, verify=self.__proxy.verify,
                                  headers=headers, timeout=TIMEOUT)
         content = json.loads(response.content) if response.content else None
         LOG.debug("NS auth response: %(code)s %(reason)s %(content)s", {
@@ -208,10 +209,11 @@ class HTTPSAuth(requests.auth.AuthBase):
 
 class NexentaJSONProxy(object):
 
-    def __init__(self, host, port, user, password, use_https):
+    def __init__(self, host, port, user, password, use_https, verify):
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
         self.user = user
+        self.verify = verify
         self.password = password
         self.use_https = use_https
         parts = host.split(',')

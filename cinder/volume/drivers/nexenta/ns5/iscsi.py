@@ -69,6 +69,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.use_https = self.configuration.nexenta_use_https
         self.nef_host = self.configuration.nexenta_rest_address
         self.iscsi_host = self.configuration.nexenta_host
@@ -98,7 +99,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         host = self.nef_host or self.iscsi_host
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
-            self.nef_password, self.use_https)
+            self.nef_password, self.use_https, self.verify_ssl)
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
             'name': self.volume_group,

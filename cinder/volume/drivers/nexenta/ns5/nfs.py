@@ -66,6 +66,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
             self.configuration.append_config_values(
                 options.NEXENTA_DATASET_OPTS)
 
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
         self.dataset_compression = (
             self.configuration.nexenta_dataset_compression)
@@ -95,7 +96,7 @@ class NexentaNfsDriver(nfs.NfsDriver,
         host = self.nef_host or self.nas_host
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
-            self.nef_password, self.use_https)
+            self.nef_password, self.use_https, self.verify_ssl)
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.

@@ -76,6 +76,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
 
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.nms_cache_volroot = self.configuration.nexenta_nms_cache_volroot
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
@@ -764,7 +765,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         auto, scheme, user, password, host, port, path = (
             utils.parse_nms_url(url))
         return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
-                                        password, auto=auto)
+                                        password, auto=auto,
+                                        verify=self.verify_ssl)
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()

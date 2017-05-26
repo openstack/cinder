@@ -16,6 +16,7 @@
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import requests
+from requests.packages.urllib3 import exceptions
 
 from cinder import exception
 from cinder.utils import retry
@@ -23,13 +24,17 @@ from cinder.utils import retry
 LOG = logging.getLogger(__name__)
 TIMEOUT = 60
 
+requests.packages.urllib3.disable_warnings(exceptions.InsecureRequestWarning)
+requests.packages.urllib3.disable_warnings(
+    exceptions.InsecurePlatformWarning)
+
 
 class NexentaJSONProxy(object):
 
     retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
-    def __init__(self, scheme, host, port, path, user, password, auto=False,
-                 obj=None, method=None, session=None):
+    def __init__(self, scheme, host, port, path, user, password, verify,
+                 auto=False, obj=None, method=None, session=None):
         if session:
             self.session = session
         else:
@@ -39,6 +44,7 @@ class NexentaJSONProxy(object):
         self.scheme = scheme.lower()
         self.host = host
         self.port = port
+        self.verify = verify
         self.path = path
         self.user = user
         self.password = password
@@ -54,8 +60,8 @@ class NexentaJSONProxy(object):
         else:
             obj, method = '%s.%s' % (self.obj, self.method), name
         return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
-                                self.user, self.password, self.auto, obj,
-                                method, self.session)
+                                self.user, self.password, self.verify,
+                                self.auto, obj, method, self.session)
 
     @property
     def url(self):
@@ -76,7 +82,8 @@ class NexentaJSONProxy(object):
         })
 
         LOG.debug('Sending JSON data: %s', data)
-        r = self.session.post(self.url, data=data, timeout=TIMEOUT)
+        r = self.session.post(self.url, data=data, timeout=TIMEOUT,
+                              verify=self.verify)
         response = r.json()
 
         LOG.debug('Got response: %s', response)
