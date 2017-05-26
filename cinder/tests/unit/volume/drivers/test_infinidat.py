@@ -27,8 +27,10 @@ TEST_WWN_1 = '00:11:22:33:44:55:66:77'
 TEST_WWN_2 = '11:11:22:33:44:55:66:77'
 
 test_volume = mock.Mock(id=1, size=1)
-test_snapshot = mock.Mock(id=2, volume=test_volume)
+test_snapshot = mock.Mock(id=2, volume=test_volume, volume_id='1')
 test_clone = mock.Mock(id=3, size=1)
+test_group = mock.Mock(id=4)
+test_snapgroup = mock.Mock(id=5, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
                       initiator='iqn.2012-07.org.fake:01')
 
@@ -86,10 +88,13 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_pool.get_physical_capacity.return_value = units.Gi
         self._mock_ns = mock.Mock()
         self._mock_ns.get_ips.return_value = [mock.Mock(ip_address='1.1.1.1')]
+        self._mock_group = mock.Mock()
         result.volumes.safe_get.return_value = self._mock_volume
         result.volumes.create.return_value = self._mock_volume
         result.pools.safe_get.return_value = self._mock_pool
         result.hosts.safe_get.return_value = self._mock_host
+        result.cons_groups.safe_get.return_value = self._mock_group
+        result.cons_groups.create.return_value = self._mock_group
         result.hosts.create.return_value = self._mock_host
         result.network_spaces.safe_get.return_value = self._mock_ns
         result.components.nodes.get_all.return_value = []
@@ -301,6 +306,132 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           test_clone, test_volume)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group(self, *mocks):
+        self.driver.create_group(None, test_group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_twice(self, *mocks):
+        self.driver.create_group(None, test_group)
+        self.driver.create_group(None, test_group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_api_fail(self, *mocks):
+        self._system.cons_groups.create.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_group,
+                          None, test_group)
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group(self, *mocks):
+        self.driver.delete_group(None, test_group, [test_volume])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_doesnt_exist(self, *mocks):
+        self._system.cons_groups.safe_get.return_value = None
+        self.driver.delete_group(None, test_group, [test_volume])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_api_fail(self, *mocks):
+        self._mock_group.safe_delete.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.delete_group,
+                          None, test_group, [test_volume])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_update_group_add_and_remove(self, *mocks):
+        self.driver.update_group(None, test_group,
+                                 [test_volume], [test_volume])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_update_group_api_fail(self, *mocks):
+        self._mock_group.add_member.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.update_group,
+                          None, test_group,
+                          [test_volume], [test_volume])
+
+    @mock.patch("cinder.volume.utils.copy_volume")
+    @mock.patch("cinder.utils.brick_get_connector")
+    @mock.patch("cinder.utils.brick_get_connector_properties",
+                return_value=test_connector)
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_from_src_snaps(self, *mocks):
+        self.driver.create_group_from_src(None, test_group, [test_volume],
+                                          test_snapgroup, [test_snapshot],
+                                          None, None)
+
+    @mock.patch("cinder.volume.utils.copy_volume")
+    @mock.patch("cinder.utils.brick_get_connector")
+    @mock.patch("cinder.utils.brick_get_connector_properties",
+                return_value=test_connector)
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_from_src_vols(self, *mocks):
+        self.driver.create_group_from_src(None, test_group, [test_volume],
+                                          None, None,
+                                          test_group, [test_volume])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_snap(self, *mocks):
+        mock_snapgroup = mock.Mock()
+        mock_snapgroup.get_members.return_value = [self._mock_volume]
+        self._mock_volume.get_parent.return_value = self._mock_volume
+        self._mock_volume.get_name.return_value = ''
+        self._mock_group.create_snapshot.return_value = mock_snapgroup
+        self.driver.create_group_snapshot(None,
+                                          test_snapgroup,
+                                          [test_snapshot])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_snap_api_fail(self, *mocks):
+        self._mock_group.create_snapshot.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_group_snapshot, None,
+                          test_snapgroup, [test_snapshot])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snap(self, *mocks):
+        self.driver.delete_group_snapshot(None,
+                                          test_snapgroup,
+                                          [test_snapshot])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snap_does_not_exist(self, *mocks):
+        self._system.cons_groups.safe_get.return_value = None
+        self.driver.delete_group_snapshot(None,
+                                          test_snapgroup,
+                                          [test_snapshot])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snap_invalid_group(self, *mocks):
+        self._mock_group.is_snapgroup.return_value = False
+        self.assertRaises(exception.InvalidGroupSnapshot,
+                          self.driver.delete_group_snapshot,
+                          None, test_snapgroup, [test_snapshot])
+
+    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_delete_group_snap_api_fail(self, *mocks):
+        self._mock_group.safe_delete.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.delete_group_snapshot,
+                          None, test_snapgroup, [test_snapshot])
 
 
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
