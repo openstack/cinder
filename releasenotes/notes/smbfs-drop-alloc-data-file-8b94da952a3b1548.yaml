@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The 'smbfs_allocation_info_file_path' SMBFS driver config option is now
+    deprecated as we're no longer using a JSON file to store volume allocation
+    data. This file had a considerable chance of getting corrupted.

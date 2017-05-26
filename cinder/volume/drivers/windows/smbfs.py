@@ -13,12 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import inspect
-import json
 import os
 import sys
 
-import decorator
 from os_brick.remotefs import windows_remotefs as remotefs_brick
 from os_win import utilsfactory
 from oslo_config import cfg
@@ -26,6 +23,7 @@ from oslo_log import log as logging
 from oslo_utils import fileutils
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -43,7 +41,10 @@ volume_opts = [
     cfg.StrOpt('smbfs_allocation_info_file_path',
                default=r'C:\OpenStack\allocation_data.txt',
                help=('The path of the automatically generated file containing '
-                     'information about volume disk space allocation.')),
+                     'information about volume disk space allocation.'),
+               deprecated_for_removal=True,
+               deprecated_since="11.0.0",
+               deprecated_reason="This allocation file is no longer used."),
     cfg.StrOpt('smbfs_default_volume_format',
                default='vhd',
                choices=['vhd', 'vhdx'],
@@ -77,25 +78,6 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
-
-
-def update_allocation_data(delete=False):
-    @decorator.decorator
-    def wrapper(func, inst, *args, **kwargs):
-        ret_val = func(inst, *args, **kwargs)
-
-        call_args = inspect.getcallargs(func, inst, *args, **kwargs)
-        volume = call_args['volume']
-        requested_size = call_args.get('size_gb', None)
-
-        if delete:
-            allocated_size_gb = None
-        else:
-            allocated_size_gb = requested_size or volume.size
-
-        inst.update_disk_allocation_data(volume, allocated_size_gb)
-        return ret_val
-    return wrapper
 
 
 @interface.volumedriver
@@ -138,9 +120,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._pathutils = utilsfactory.get_pathutils()
         self._smbutils = utilsfactory.get_smbutils()
 
-        self._alloc_info_file_path = (
-            self.configuration.smbfs_allocation_info_file_path)
-
     def do_setup(self, context):
         self._check_os_platform()
         super(WindowsSmbfsDriver, self).do_setup(context)
@@ -177,7 +156,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
 
         self.shares = {}  # address : options
         self._ensure_shares_mounted()
-        self._setup_allocation_data()
         self._setup_pool_mappings()
 
     def _setup_pool_mappings(self):
@@ -230,49 +208,14 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                      "driver supports only Win32 platforms.") % sys.platform
             raise exception.SmbfsException(_msg)
 
-    def _setup_allocation_data(self):
-        if not os.path.exists(self._alloc_info_file_path):
-            fileutils.ensure_tree(
-                os.path.dirname(self._alloc_info_file_path))
-            self._allocation_data = {}
-            self._update_allocation_data_file()
-        else:
-            with open(self._alloc_info_file_path, 'r') as f:
-                self._allocation_data = json.load(f)
-
-    def update_disk_allocation_data(self, volume, virtual_size_gb=None):
-        volume_name = volume.name
-        smbfs_share = volume.provider_location
-        if smbfs_share:
-            share_hash = self._get_hash_str(smbfs_share)
-        else:
-            return
-
-        share_alloc_data = self._allocation_data.get(share_hash, {})
-        old_virtual_size = share_alloc_data.get(volume_name, 0)
-        total_allocated = share_alloc_data.get('total_allocated', 0)
-
-        if virtual_size_gb:
-            share_alloc_data[volume_name] = virtual_size_gb
-            total_allocated += virtual_size_gb - old_virtual_size
-        elif share_alloc_data.get(volume_name):
-            # The volume is deleted.
-            del share_alloc_data[volume_name]
-            total_allocated -= old_virtual_size
-
-        share_alloc_data['total_allocated'] = total_allocated
-        self._allocation_data[share_hash] = share_alloc_data
-        self._update_allocation_data_file()
-
-    def _update_allocation_data_file(self):
-        with open(self._alloc_info_file_path, 'w') as f:
-            json.dump(self._allocation_data, f)
-
     def _get_total_allocated(self, smbfs_share):
-        share_hash = self._get_hash_str(smbfs_share)
-        share_alloc_data = self._allocation_data.get(share_hash, {})
-        total_allocated = share_alloc_data.get('total_allocated', 0) << 30
-        return float(total_allocated)
+        pool_name = self._get_pool_name_from_share(smbfs_share)
+        host = "#".join([self.host, pool_name])
+
+        vol_sz_sum = self.db.volume_data_get_for_host(
+            context=context.get_admin_context(),
+            host=host)[1]
+        return float(vol_sz_sum * units.Gi)
 
     def _is_share_eligible(self, smbfs_share, volume_size_in_gib):
         """Verifies SMBFS share is eligible to host volume with given size.
@@ -382,7 +325,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                 self.configuration.smbfs_default_volume_format)
 
     @remotefs_drv.locked_volume_id_operation
-    @update_allocation_data()
     def create_volume(self, volume):
         return super(WindowsSmbfsDriver, self).create_volume(volume)
 
@@ -408,7 +350,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._remotefsclient.mount(smbfs_share, mnt_flags)
 
     @remotefs_drv.locked_volume_id_operation
-    @update_allocation_data(delete=True)
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume.provider_location:
@@ -491,7 +432,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                                                backing_file_full_path)
 
     @remotefs_drv.locked_volume_id_operation
-    @update_allocation_data()
     def extend_volume(self, volume, size_gb):
         LOG.info('Extending volume %s.', volume.id)
 
@@ -615,17 +555,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._vhdutils.resize_vhd(self.local_path(volume),
                                   volume.size * units.Gi,
                                   is_file_max_size=False)
-
-    @remotefs_drv.locked_volume_id_operation
-    @update_allocation_data()
-    def create_volume_from_snapshot(self, volume, snapshot):
-        return self._create_volume_from_snapshot(volume, snapshot)
-
-    @remotefs_drv.locked_volume_id_operation
-    @update_allocation_data()
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        return self._create_cloned_volume(volume, src_vref)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume."""
