@@ -236,41 +236,6 @@ class WindowsSmbFsTestCase(test.TestCase):
             context=mock_ctxt.get_admin_context.return_value,
             host='fake_host@fake_backend#pool0')
 
-    def _test_is_share_eligible(self, capacity_info, volume_size):
-        self._smbfs_driver._get_capacity_info = mock.Mock(
-            return_value=[float(x << 30) for x in capacity_info])
-        self._smbfs_driver.configuration = self._FAKE_SMBFS_CONFIG
-        return self._smbfs_driver._is_share_eligible(self._FAKE_SHARE,
-                                                     volume_size)
-
-    def test_share_volume_above_used_ratio(self):
-        fake_capacity_info = (4, 1, 1)
-        fake_volume_size = 2
-        ret_value = self._test_is_share_eligible(fake_capacity_info,
-                                                 fake_volume_size)
-        self.assertFalse(ret_value)
-
-    def test_eligible_share(self):
-        fake_capacity_info = (4, 4, 0)
-        fake_volume_size = 1
-        ret_value = self._test_is_share_eligible(fake_capacity_info,
-                                                 fake_volume_size)
-        self.assertTrue(ret_value)
-
-    def test_share_volume_above_oversub_ratio(self):
-        fake_capacity_info = (4, 4, 7)
-        fake_volume_size = 2
-        ret_value = self._test_is_share_eligible(fake_capacity_info,
-                                                 fake_volume_size)
-        self.assertFalse(ret_value)
-
-    def test_share_reserved_above_oversub_ratio(self):
-        fake_capacity_info = (4, 4, 10)
-        fake_volume_size = 1
-        ret_value = self._test_is_share_eligible(fake_capacity_info,
-                                                 fake_volume_size)
-        self.assertFalse(ret_value)
-
     @mock.patch.object(smbfs.WindowsSmbfsDriver,
                        '_get_local_volume_path_template')
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_lookup_local_volume_path')

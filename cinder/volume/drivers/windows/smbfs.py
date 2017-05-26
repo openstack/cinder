@@ -218,43 +218,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
             host=host)[1]
         return float(vol_sz_sum * units.Gi)
 
-    def _is_share_eligible(self, smbfs_share, volume_size_in_gib):
-        """Verifies SMBFS share is eligible to host volume with given size.
-
-        First validation step: ratio of actual space (used_space / total_space)
-        is less than 'smbfs_used_ratio'. Second validation step: apparent space
-        allocated (differs from actual space used when using sparse files)
-        and compares the apparent available
-        space (total_available * smbfs_oversub_ratio) to ensure enough space is
-        available for the new volume.
-
-        :param smbfs_share: smbfs share
-        :param volume_size_in_gib: int size in GB
-        """
-
-        used_ratio = self.configuration.smbfs_used_ratio
-        oversub_ratio = self.configuration.smbfs_oversub_ratio
-        requested_volume_size = volume_size_in_gib * units.Gi
-
-        total_size, total_available, total_allocated = \
-            self._get_capacity_info(smbfs_share)
-
-        apparent_size = max(0, total_size * oversub_ratio)
-        apparent_available = max(0, apparent_size - total_allocated)
-        used = (total_size - total_available) / total_size
-
-        if used > used_ratio:
-            LOG.debug('%s is above smbfs_used_ratio.', smbfs_share)
-            return False
-        if apparent_available <= requested_volume_size:
-            LOG.debug('%s is above smbfs_oversub_ratio.', smbfs_share)
-            return False
-        if total_allocated / total_size >= oversub_ratio:
-            LOG.debug('%s reserved space is above smbfs_oversub_ratio.',
-                      smbfs_share)
-            return False
-        return True
-
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
 
@@ -497,13 +460,6 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
             msg = _('Extend volume is only supported for this '
                     'driver when no snapshots exist.')
             raise exception.InvalidVolume(msg)
-
-        extend_by = int(size_gb) - volume.size
-        if not self._is_share_eligible(volume.provider_location,
-                                       extend_by):
-            raise exception.ExtendVolumeError(reason='Insufficient space to '
-                                              'extend volume %s to %sG.'
-                                              % (volume.id, size_gb))
 
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
