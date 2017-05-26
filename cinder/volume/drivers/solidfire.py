@@ -163,7 +163,7 @@ class SolidFireDriver(san.SanISCSIDriver):
     VERSION = '2.0.10'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "SolidFire_CI"
+    CI_WIKI_NAME = "NetApp_SolidFire_CI"
 
     driver_prefix = 'solidfire'
 
