@@ -42,6 +42,7 @@ from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume.targets import iscsi as iscsi_driver
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -1482,16 +1483,16 @@ class SolidFireDriver(san.SanISCSIDriver):
     @locked_source_id_operation
     def create_volume_from_snapshot(self, volume, source):
         """Create a volume from the specified snapshot."""
-        if source.get('cgsnapshot_id'):
+        if source.get('group_snapshot_id'):
             # We're creating a volume from a snapshot that resulted from a
             # consistency group snapshot. Because of the way that SolidFire
             # creates cgsnaps, we have to search for the correct snapshot.
-            cgsnapshot_id = source.get('cgsnapshot_id')
+            group_snapshot_id = source.get('group_snapshot_id')
             snapshot_id = source.get('volume_id')
-            sf_name = self.configuration.sf_volume_prefix + cgsnapshot_id
+            sf_name = self.configuration.sf_volume_prefix + group_snapshot_id
             sf_group_snap = self._get_group_snapshot_by_name(sf_name)
             return self._create_clone_from_sf_snapshot(snapshot_id,
-                                                       cgsnapshot_id,
+                                                       group_snapshot_id,
                                                        sf_group_snap,
                                                        volume)
 
@@ -1502,7 +1503,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         return model
 
     # Consistency group helpers
-    def _create_group_snapshot(self, name, sf_volumes):
+    def _sf_create_group_snapshot(self, name, sf_volumes):
         # Group snapshot is our version of a consistency group snapshot.
         vol_ids = [vol['volumeID'] for vol in sf_volumes]
         params = {'name': name,
@@ -1527,7 +1528,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             "des": len(src_vol_ids)})
             raise exception.SolidFireDriverException(msg)
 
-        result = self._create_group_snapshot(gsnap_name, target_vols)
+        result = self._sf_create_group_snapshot(gsnap_name, target_vols)
         return result
 
     def _create_temp_group_snapshot(self, source_cg, source_vols):
@@ -1607,17 +1608,68 @@ class SolidFireDriver(san.SanISCSIDriver):
                 self.configuration.sf_volume_prefix)[1]
         return vlist
 
-    # Required consistency group functions
-    def create_consistencygroup(self, ctxt, group):
-        # SolidFire does not have a viable means for storing consistency group
-        # volume associations. So, we're just going to play along with the
-        # consistency group song and dance. There will be a lot of no-ops
-        # because of this.
-        return {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+    # Generic Volume Groups.
+    def create_group(self, ctxt, group):
+        # SolidFire does not have the concept of volume groups. We're going to
+        # play along with the group song and dance. There will be a lot of
+        # no-ops because of this.
+        if vol_utils.is_group_a_cg_snapshot_type(group):
+            return {'status': fields.GroupStatus.AVAILABLE}
 
-    def create_consistencygroup_from_src(self, ctxt, group, volumes,
-                                         cgsnapshot, snapshots,
-                                         source_cg, source_vols):
+        # Blatantly ripping off this pattern from other drivers.
+        raise NotImplementedError()
+
+    def create_group_from_src(self, ctxt, group, volumes, group_snapshots=None,
+                              snapshots=None, source_group=None,
+                              source_vols=None):
+        # At this point this is just a pass-through.
+        if vol_utils.is_group_a_cg_snapshot_type(group):
+            return self._create_consistencygroup_from_src(
+                ctxt,
+                group,
+                volumes,
+                group_snapshots,
+                snapshots,
+                source_group,
+                source_vols)
+
+        # Default implementation handles other scenarios.
+        raise NotImplementedError()
+
+    def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
+        # This is a pass-through to the old consistency group stuff.
+        if vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._create_cgsnapshot(ctxt, group_snapshot, snapshots)
+
+        # Default implementation handles other scenarios.
+        raise NotImplementedError()
+
+    def delete_group(self, ctxt, group, volumes):
+        # Delete a volume group. SolidFire does not track volume groups,
+        # however we do need to actually remove the member volumes of the
+        # group. Right now only consistent volume groups are supported.
+        if vol_utils.is_group_a_cg_snapshot_type(group):
+            return self._delete_consistencygroup(ctxt, group, volumes)
+
+        # Default implementation handles other scenarios.
+        raise NotImplementedError()
+
+    def update_group(self, ctxt, group, add_volumes=None, remove_volumes=None):
+        # Regarding consistency groups SolidFire does not track volumes, so
+        # this is a no-op. In the future with replicated volume groups this
+        # might actually do something.
+        if vol_utils.is_group_a_cg_snapshot_type(group):
+            return self._update_consistencygroup(ctxt,
+                                                 group,
+                                                 add_volumes,
+                                                 remove_volumes)
+
+        # Default implementation handles other scenarios.
+        raise NotImplementedError()
+
+    def _create_consistencygroup_from_src(self, ctxt, group, volumes,
+                                          cgsnapshot, snapshots,
+                                          source_cg, source_vols):
         if cgsnapshot and snapshots:
             sf_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
             sf_group_snap = self._get_group_snapshot_by_name(sf_name)
@@ -1630,7 +1682,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                     snap['id'],
                     sf_group_snap,
                     vol))
-            return ({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+            return ({'status': fields.GroupStatus.AVAILABLE},
                     vol_models)
 
         elif source_cg and source_vols:
@@ -1649,9 +1701,9 @@ class SolidFireDriver(san.SanISCSIDriver):
                         vol))
             finally:
                 self._delete_cgsnapshot_by_name(gsnap_name)
-            return {'status': 'available'}, vol_models
+            return {'status': fields.GroupStatus.AVAILABLE}, vol_models
 
-    def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+    def _create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
         vol_ids = [snapshot['volume_id'] for snapshot in snapshots]
         vol_names = [self.configuration.sf_volume_prefix + vol_id
                      for vol_id in vol_ids]
@@ -1665,21 +1717,23 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             "des": len(snapshots)})
             raise exception.SolidFireDriverException(msg)
         snap_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
-        self._create_group_snapshot(snap_name, target_vols)
+        self._sf_create_group_snapshot(snap_name, target_vols)
         return None, None
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
+    def _update_consistencygroup(self, context, group,
+                                 add_volumes=None, remove_volumes=None):
         # Similar to create_consistencygroup, SolidFire's lack of a consistency
         # group object means there is nothing to update on the cluster.
         return None, None, None
 
-    def delete_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+    def _delete_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
         snap_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
         self._delete_cgsnapshot_by_name(snap_name)
         return None, None
 
-    def delete_consistencygroup(self, ctxt, group, volumes):
+    def _delete_consistencygroup(self, ctxt, group, volumes):
+        # TODO(chris_morrell): exception handling and return correctly updated
+        # volume_models.
         for vol in volumes:
             self.delete_volume(vol)
 
@@ -1732,6 +1786,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
         data['consistencygroup_support'] = True
+        data['consistent_group_snapshot_enabled'] = True
         data['replication_enabled'] = self.replication_enabled
         if self.replication_enabled:
             data['replication'] = 'enabled'
