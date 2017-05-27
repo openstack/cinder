@@ -4885,7 +4885,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         model_update = self.driver.get_replication_status(self.ctxt, volume)
         self.assertEqual('active', model_update['replication_status'])
 
-        # Check the volume copy created on pool opentack2.
+        # Check the volume copy created on pool openstack2.
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
         self.assertIn('openstack2', attrs['mdisk_grp_name'])
 
