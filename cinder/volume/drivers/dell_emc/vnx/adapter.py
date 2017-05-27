@@ -1118,7 +1118,7 @@ class CommonAdapter(object):
         self.client.attach_snapshot(smp_name, snapshot.name)
         lun = self.client.get_lun(name=smp_name)
         volume = common.Volume(smp_name, snapshot.id, vnx_lun_id=lun.lun_id)
-        self._initialize_connection(volume, connector)
+        return self._initialize_connection(volume, connector)
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Terminates connection for snapshot mount point."""
