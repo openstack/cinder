@@ -1038,11 +1038,11 @@ class TestCommonAdapter(test.TestCase):
     def test_initialize_connection_snapshot(self, common_adapter, mocked_res,
                                             mocked_input):
         common_adapter.client.attach_snapshot = mock.Mock()
-        common_adapter._initialize_connection = mock.Mock()
+        common_adapter._initialize_connection = mock.Mock(return_value='fake')
 
         snapshot = mocked_input['snapshot']
         smp_name = 'tmp-smp-' + snapshot.id
-        common_adapter.initialize_connection_snapshot(snapshot, None)
+        conn = common_adapter.initialize_connection_snapshot(snapshot, None)
         common_adapter.client.attach_snapshot.assert_called_once_with(
             smp_name, snapshot.name)
         lun = mocked_res['lun']
@@ -1052,6 +1052,7 @@ class TestCommonAdapter(test.TestCase):
                              called_volume.vnx_lun_id))
         self.assertIsNone(
             common_adapter._initialize_connection.call_args[0][1])
+        self.assertIs(common_adapter._initialize_connection(), conn)
 
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
