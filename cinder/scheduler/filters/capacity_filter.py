@@ -145,7 +145,9 @@ class CapacityFilter(filters.BaseBackendFilter):
                 # the currently available free capacity (taking into account
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
-                    free * backend_state.max_over_subscription_ratio)
+                    total * backend_state.max_over_subscription_ratio
+                    - backend_state.provisioned_capacity_gb
+                    - math.floor(total * reserved))
                 return adjusted_free_virtual >= requested_size
         elif thin and backend_state.thin_provisioning_support:
             LOG.warning("Filtering out %(grouping)s %(grouping_name)s "
