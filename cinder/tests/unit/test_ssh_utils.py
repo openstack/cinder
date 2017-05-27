@@ -324,3 +324,26 @@ class SSHPoolTestCase(test.TestCase):
         with sshpool.item() as ssh:
             self.assertIsInstance(ssh.get_policy(),
                                   paramiko.AutoAddPolicy)
+
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.isfile', return_value=False)
+    def test_ssh_timeout(self, mock_isfile, mock_open, mock_sshclient):
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.assertEqual(1, sshpool.current_size)
+        conn = sshpool.get()
+        conn.connect = mock.MagicMock()
+        # create failed due to time out
+        conn.connect.side_effect = paramiko.SSHException("time out")
+        mock_transport = mock.MagicMock()
+        conn.get_transport.return_value = mock_transport
+        # connection is down
+        mock_transport.is_active.return_value = False
+        sshpool.put(conn)
+        self.assertRaises(paramiko.SSHException,
+                          sshpool.get)
+        self.assertEqual(0, sshpool.current_size)
