@@ -315,6 +315,28 @@ class AddMirrorImageTask(task.Task):
         mirror.remove_image(mirror_name)
 
 
+class ExtendSMPTask(task.Task):
+    """Extend the SMP if needed.
+
+    If the SMP is thin and the new size is larger than the old one, then
+    extend it.
+    """
+    def execute(self, client, smp_name, lun_size, *args, **kwargs):
+        LOG.debug('%s.execute', self.__class__.__name__)
+        smp = client.get_lun(name=smp_name)
+        if lun_size > smp.total_capacity_gb:
+            if smp.primary_lun.is_thin_lun:
+                client.expand_lun(smp_name, lun_size)
+            else:
+                LOG.warning('Not extending the SMP: %s, because its base lun '
+                            'is not thin.', smp_name)
+        else:
+            LOG.info('Not extending the SMP: %(smp)s, size: %(size)s, because'
+                     'the new size: %(new_size)s is smaller.',
+                     {'smp': smp_name, 'size': smp.total_capacity_gb,
+                      'new_size': lun_size})
+
+
 def run_migration_taskflow(client,
                            lun_id,
                            lun_name,
@@ -410,6 +432,7 @@ def create_volume_from_snapshot(client, src_snap_name, lun_name,
     work_flow.add(CreateSMPTask(),
                   AttachSnapTask(rebind={'snap_name': 'new_snap_name'})
                   if new_snap_name else AttachSnapTask(),
+                  ExtendSMPTask(),
                   CreateLunTask(),
                   MigrateLunTask(
                       rebind={'src_id': 'smp_id',
@@ -464,6 +487,7 @@ def create_cloned_volume(client, snap_name, lun_id, lun_name,
         CreateSnapshotTask(),
         CreateSMPTask(),
         AttachSnapTask(),
+        ExtendSMPTask(),
         CreateLunTask(),
         MigrateLunTask(
             rebind={'src_id': 'smp_id', 'dst_id': 'new_lun_id'}))

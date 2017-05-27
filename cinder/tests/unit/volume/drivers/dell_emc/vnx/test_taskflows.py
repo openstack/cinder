@@ -180,3 +180,39 @@ class TestTaskflow(test.TestCase):
                                        store=store_spec)
         self.assertRaises(vnx_ex.VNXCreateSnapError,
                           engine.run)
+
+    @res_mock.patch_client
+    def test_extend_smp_task(self, client, mocked):
+        store_spec = {
+            'client': client,
+            'smp_name': 'lun_test_extend_smp_task',
+            'lun_size': 100
+        }
+        self.work_flow.add(vnx_taskflow.ExtendSMPTask())
+        engine = taskflow.engines.load(self.work_flow,
+                                       store=store_spec)
+        engine.run()
+
+    @res_mock.patch_client
+    def test_extend_smp_task_skip_small_size(self, client, mocked):
+        store_spec = {
+            'client': client,
+            'smp_name': 'lun_test_extend_smp_task',
+            'lun_size': 1
+        }
+        self.work_flow.add(vnx_taskflow.ExtendSMPTask())
+        engine = taskflow.engines.load(self.work_flow,
+                                       store=store_spec)
+        engine.run()
+
+    @res_mock.patch_client
+    def test_extend_smp_task_skip_thick(self, client, mocked):
+        store_spec = {
+            'client': client,
+            'smp_name': 'lun_test_extend_smp_task_skip_thick',
+            'lun_size': 100
+        }
+        self.work_flow.add(vnx_taskflow.ExtendSMPTask())
+        engine = taskflow.engines.load(self.work_flow,
+                                       store=store_spec)
+        engine.run()
