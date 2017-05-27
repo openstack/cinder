@@ -447,6 +447,17 @@ test_validate_cg_type:
         _uuid: GROUP_ID
       volume_type_ids: ['type1']
 
+test_is_image_cache_volume_false:
+  volume: *volume_base
+
+test_is_image_cache_volume_true:
+  volume: *volume_base
+
+test_calc_migrate_and_provision_image_cache:
+  volume: *volume_base
+
+test_calc_migrate_and_provision:
+  volume: *volume_base
 
 ###########################################################
 # TestClient

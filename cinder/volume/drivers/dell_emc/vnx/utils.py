@@ -20,6 +20,7 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import uuidutils
 
 storops = importutils.try_import('storops')
 
@@ -372,3 +373,26 @@ def get_remote_pool(config, volume):
     rep_list = common.ReplicationDeviceList(config)
     remote_pool_name = rep_list[0].pool_name
     return remote_pool_name if remote_pool_name else pool_name
+
+
+def is_image_cache_volume(volume):
+    display_name = volume.display_name
+    if (display_name.startswith('image-')
+            and uuidutils.is_uuid_like(display_name[6:])):
+        LOG.debug('Volume: %s is for image cache. Use sync migration and '
+                  'thin provisioning.', volume.name)
+        return True
+    return False
+
+
+def calc_migrate_and_provision(volume):
+    """Returns a tuple of async migrate and provision type.
+
+    The first element is the flag whether to enable async migrate,
+    the second is the provision type (thin or thick).
+    """
+    if is_image_cache_volume(volume):
+        return False, storops.VNXProvisionEnum.THIN
+    else:
+        specs = common.ExtraSpecs.from_volume(volume)
+        return is_async_migrate_enabled(volume), specs.provision
