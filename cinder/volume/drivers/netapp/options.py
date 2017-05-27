@@ -186,7 +186,13 @@ netapp_san_opts = [
                      'applied to the names of objects from the storage '
                      'backend which represent pools in Cinder. This option '
                      'is only utilized when the storage protocol is '
-                     'configured to use iSCSI or FC.')), ]
+                     'configured to use iSCSI or FC.')),
+
+    cfg.StrOpt('igroup_target_filters',
+               help=('This option will filter out target portals. '
+                     'Use a CSV with no spaces ex: 10.0.0.1,10.0.0.2')),
+
+    ]
 
 netapp_replication_opts = [
     cfg.MultiOpt('netapp_replication_aggregate_map',
