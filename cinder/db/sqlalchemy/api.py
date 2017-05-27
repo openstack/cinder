@@ -3962,13 +3962,12 @@ def group_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _group_type_get(context, id, session)
-        # TODO(xyang): Uncomment the following after groups table is added.
-        # results = model_query(context, models.Group, session=session). \
-        #     filter_by(group_type_id=id).all()
-        # if results:
-        #     LOG.error('GroupType %s deletion failed, '
-        #               'GroupType in use.', id)
-        #     raise exception.GroupTypeInUse(group_type_id=id)
+        results = model_query(context, models.Group, session=session). \
+            filter_by(group_type_id=id).all()
+        if results:
+            LOG.error('GroupType %s deletion failed, '
+                      'GroupType in use.', id)
+            raise exception.GroupTypeInUse(group_type_id=id)
         model_query(context, models.GroupTypes, session=session).\
             filter_by(id=id).\
             update({'deleted': True,

@@ -18,6 +18,8 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
+import six
+import webob
 
 from cinder import context
 from cinder import db
@@ -75,7 +77,11 @@ def destroy(context, id):
         raise exception.InvalidGroupType(reason=msg)
     else:
         elevated = context if context.is_admin else context.elevated()
-        db.group_type_destroy(elevated, id)
+        try:
+            db.group_type_destroy(elevated, id)
+        except exception.GroupTypeInUse as e:
+            msg = _('Target group type is still in use. %s') % six.text_type(e)
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
 def get_all_group_types(context, inactive=0, filters=None, marker=None,
