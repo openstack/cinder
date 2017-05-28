@@ -207,9 +207,10 @@ class VolumeAdminController(AdminController):
         volume = self._get(context, id)
         try:
             connector = body['os-force_detach'].get('connector', None)
-        except KeyError:
-            raise webob.exc.HTTPBadRequest(
-                explanation=_("Must specify 'connector'."))
+        except AttributeError:
+            msg = _("Invalid value '%s' for "
+                    "os-force_detach.") % body['os-force_detach']
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
             self.volume_api.terminate_connection(context, volume, connector)
         except exception.VolumeBackendAPIException as error:
