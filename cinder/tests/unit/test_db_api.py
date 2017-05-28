@@ -96,6 +96,7 @@ class DBCommonFilterTestCase(BaseTest):
     def test__process_model_like_filter(self, mock_filter):
         filters = {'display_name': 'fake_name',
                    'display_description': 'fake_description',
+                   'host': 123,
                    'status': []}
         session = sqlalchemy_api.get_session()
         query = session.query(models.Volume)
@@ -106,7 +107,8 @@ class DBCommonFilterTestCase(BaseTest):
             mock_op.return_value = fake_operator
             sqlalchemy_api._process_model_like_filter(models.Volume,
                                                       query, filters)
-            calls = [call('%fake_name%'), call('%fake_description%')]
+            calls = [call('%fake_description%'),
+                     call('%fake_name%'), call('%123%')]
             mock_filter.assert_has_calls(calls)
 
     @ddt.data({'handler': [db.volume_create, db.volume_get_all],
