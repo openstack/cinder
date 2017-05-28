@@ -365,14 +365,6 @@ class IBMStorageProxy(object):
         except Exception:
             return None
 
-    def _get_targets(self):
-        return self.targets
-
-    def _is_replication_supported(self):
-        if self.targets:
-            return True
-        return False
-
     @_trace_time
     def _read_replication_devices(self):
         """Read replication devices from configuration
