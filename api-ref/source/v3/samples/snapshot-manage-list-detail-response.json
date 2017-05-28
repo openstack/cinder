@@ -1,0 +1,29 @@
+{
+  "manageable-snapshots": [
+    {
+      "cinder_id": null,
+      "reason_not_safe": null,
+      "reference": {
+        "source-name": "lvol0"
+      },
+      "source_reference": {
+        "source-name": "volume-7c064b34-1e4b-40bd-93ca-4ac5a973661b"},
+      "safe_to_manage": true,
+      "size": 1,
+      "extra_info": null
+    },
+    {
+      "cinder_id": "d0c84570-a01f-4579-9789-5e9f266587cd",
+      "reason_not_safe": "already managed",
+      "reference": {
+        "source-name":"_snapshot-d0c84570-a01f-4579-9789-5e9f266587cd"
+      },
+      "source_reference": {
+        "source-name": "volume-7c064b34-1e4b-40bd-93ca-4ac5a973661b"
+      },
+      "safe_to_manage": false,
+      "size": 1,
+      "extra_info": null
+    }
+  ]
+}

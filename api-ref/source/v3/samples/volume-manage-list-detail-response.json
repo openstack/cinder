@@ -1,0 +1,24 @@
+{
+  "manageable-volumes": [
+    {
+      "cinder_id": "9ba5bb53-4a18-4b38-be06-992999da338d",
+      "reason_not_safe": "already managed",
+      "reference": {
+        "source-name": "volume-9ba5bb53-4a18-4b38-be06-992999da338d"
+      },
+      "safe_to_manage": false,
+      "size": 1,
+      "extra_info": null
+    },
+    {
+      "cinder_id": null,
+      "reason_not_safe": null,
+      "reference": {
+        "source-name": "lvol0"
+      },
+      "safe_to_manage": true,
+      "size": 1,
+      "extra_info": null
+    }
+  ]
+}
