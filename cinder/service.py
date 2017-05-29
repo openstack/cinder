@@ -67,10 +67,9 @@ service_opts = [
                help='Range, in seconds, to randomly delay when starting the'
                     ' periodic task scheduler to reduce stampeding.'
                     ' (Disable by setting to 0)'),
-    cfg.HostAddressOpt('osapi_volume_listen',
-                       default="0.0.0.0",
-                       help='IP address on which OpenStack Volume API '
-                            'listens'),
+    cfg.StrOpt('osapi_volume_listen',
+               default="0.0.0.0",
+               help='IP address on which OpenStack Volume API listens'),
     cfg.PortOpt('osapi_volume_listen_port',
                 default=8776,
                 help='Port on which OpenStack Volume API listens'),
