@@ -1667,10 +1667,33 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.delete_consistencygroup(ctxt, group, [])
         fsdev = self.driver._gpfs_device
         cgname = "consisgroup-%s" % group['id']
+        cmd = ['mmlsfileset', fsdev, cgname]
+        mock_exec.assert_any_call(*cmd)
         cmd = ['mmunlinkfileset', fsdev, cgname, '-f']
         mock_exec.assert_any_call(*cmd)
         cmd = ['mmdelfileset', fsdev, cgname, '-f']
         mock_exec.assert_any_call(*cmd)
+
+    @mock.patch('cinder.utils.execute')
+    def test_delete_consistencygroup_no_fileset(self, mock_exec):
+        ctxt = self.context
+        group = self._fake_group()
+        group['status'] = fields.ConsistencyGroupStatus.AVAILABLE
+        volume = self._fake_volume()
+        volume['status'] = 'available'
+        volumes = []
+        volumes.append(volume)
+        self.driver.db = mock.Mock()
+        self.driver.db.volume_get_all_by_group = mock.Mock()
+        self.driver.db.volume_get_all_by_group.return_value = volumes
+        mock_exec.side_effect = (
+            processutils.ProcessExecutionError(exit_code=2))
+
+        self.driver.delete_consistencygroup(ctxt, group, [])
+        fsdev = self.driver._gpfs_device
+        cgname = "consisgroup-%s" % group['id']
+        cmd = ['mmlsfileset', fsdev, cgname]
+        mock_exec.assert_called_once_with(*cmd)
 
     @mock.patch('cinder.utils.execute')
     def test_delete_consistencygroup_fail(self, mock_exec):
