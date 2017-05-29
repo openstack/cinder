@@ -1163,31 +1163,43 @@ class GPFSDriver(driver.CloneableImageVD,
         """Delete consistency group of GPFS volumes."""
         cgname = "consisgroup-%s" % group['id']
         fsdev = self._gpfs_device
+        delete_fileset = True
 
         model_update = {}
         model_update['status'] = group['status']
 
+        try:
+            self.gpfs_execute(self.GPFS_PATH + 'mmlsfileset', fsdev, cgname)
+        except processutils.ProcessExecutionError as e:
+            if e.exit_code == 2:
+                msg = (_('The fileset associated with consistency group '
+                         '%(cgname)s does not exist') %
+                       {'cgname': cgname})
+                LOG.info(msg)
+                delete_fileset = False
+
         # Unlink and delete the fileset associated with the consistency group.
         # All of the volumes and volume snapshot data will also be deleted.
-        try:
-            self.gpfs_execute(self.GPFS_PATH + 'mmunlinkfileset', fsdev,
-                              cgname, '-f')
-        except processutils.ProcessExecutionError as e:
-            msg = (_('Failed to unlink fileset for consistency group '
-                     '%(cgname)s. Error: %(excmsg)s.') %
-                   {'cgname': cgname, 'excmsg': six.text_type(e)})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        if delete_fileset:
+            try:
+                self.gpfs_execute(self.GPFS_PATH + 'mmunlinkfileset', fsdev,
+                                  cgname, '-f')
+            except processutils.ProcessExecutionError as e:
+                msg = (_('Failed to unlink fileset for consistency group '
+                         '%(cgname)s. Error: %(excmsg)s.') %
+                       {'cgname': cgname, 'excmsg': six.text_type(e)})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        try:
-            self.gpfs_execute(self.GPFS_PATH + 'mmdelfileset', fsdev, cgname,
-                              '-f')
-        except processutils.ProcessExecutionError as e:
-            msg = (_('Failed to delete fileset for consistency group '
-                     '%(cgname)s. Error: %(excmsg)s.') %
-                   {'cgname': cgname, 'excmsg': six.text_type(e)})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            try:
+                self.gpfs_execute(self.GPFS_PATH + 'mmdelfileset',
+                                  fsdev, cgname, '-f')
+            except processutils.ProcessExecutionError as e:
+                msg = (_('Failed to delete fileset for consistency group '
+                         '%(cgname)s. Error: %(excmsg)s.') %
+                       {'cgname': cgname, 'excmsg': six.text_type(e)})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
         for volume_ref in volumes:
             volume_ref['status'] = 'deleted'
@@ -1249,7 +1261,7 @@ class GPFSDriver(driver.CloneableImageVD,
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
-        msg = _('Creating a consistency group from any source consistency'
+        msg = _('Creating a consistency group from any source consistency '
                 'group or consistency group snapshot is not supported.')
         LOG.error(msg)
         raise exception.GPFSDriverUnsupportedOperation(msg=msg)

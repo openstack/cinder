@@ -162,6 +162,7 @@ mmlsfs: CommandFilter, mmlsfs, root
 mmlspool: CommandFilter, mmlspool, root
 mkfs: CommandFilter, mkfs, root
 mmcrfileset: CommandFilter, mmcrfileset, root
+mmlsfileset: CommandFilter, mmlsfileset, root
 mmlinkfileset: CommandFilter, mmlinkfileset, root
 mmunlinkfileset: CommandFilter, mmunlinkfileset, root
 mmdelfileset: CommandFilter, mmdelfileset, root
