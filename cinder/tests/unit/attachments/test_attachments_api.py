@@ -15,6 +15,7 @@ from oslo_config import cfg
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -147,3 +148,31 @@ class AttachmentManagerTestCase(test.TestCase):
         mock_rpc_attachment_delete.assert_called_once_with(self.context,
                                                            aref.id,
                                                            mock.ANY)
+
+    @mock.patch('cinder.volume.api.check_policy')
+    def test_additional_attachment_create_no_connector(self, mock_policy):
+        """Test attachment_create no connector."""
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context, **volume_params)
+        aref = self.volume_api.attachment_create(self.context,
+                                                 vref,
+                                                 fake.UUID2)
+        self.assertEqual(fake.UUID2, aref.instance_uuid)
+        self.assertIsNone(aref.attach_time)
+        self.assertEqual('reserved', aref.attach_status)
+        self.assertIsNone(aref.attach_mode)
+        self.assertEqual(vref.id, aref.volume_id)
+        self.assertEqual({}, aref.connection_info)
+
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attachment_create,
+                          self.context,
+                          vref,
+                          fake.UUID1)
+        self.volume_api.attachment_create(self.context,
+                                          vref,
+                                          fake.UUID2)
+        vref = objects.Volume.get_by_id(self.context,
+                                        vref.id)
+        self.assertEqual(2, len(vref.volume_attachment))
