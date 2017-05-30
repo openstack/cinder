@@ -105,13 +105,13 @@ project_id_path:
   description: |
     The UUID of the project in a multi-tenancy cloud.
   in: path
-  required: false
+  required: true
   type: string
 qos_id:
   description: |
     The ID of the QoS specification.
   in: path
-  required: false
+  required: true
   type: string
 quotas_project_id:
   description: |
@@ -143,6 +143,12 @@ user_id_1:
     ``user_id={user_id}``.
   in: path
   required: false
+  type: string
+vol_type_id:
+  description: |
+    The UUID for an existing volume type.
+  in: path
+  required: true
   type: string
 volume_id_path:
   description: |
