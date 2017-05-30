@@ -265,12 +265,6 @@ version bump is not required in this case it's because the actual data doesn't
 change, we are just removing magic string by an enumerate, but the strings used
 are exactly the same.
 
-A case where we may not notice that a version bump is required is on chained
-versioned objects.  That is to say, when you we change the version of a
-versioned object and that object is used in another versioned object with a
-``fields.ObjectField``.  In such a case all versioned objects that are
-including changed versioned object will also require a version bump.
-
 As mentioned before, you don't have to know all the rules, as we have a test
 that calculates the hash of all objects taking all these rules into
 consideration and will tell you exactly when you need to bump the version of a
@@ -284,6 +278,17 @@ required bumps at once.
 Then you'll see which versioned object requires a bump and you need to bump
 that version and update the object_data dictionary in the test file to reflect
 the new version as well as the new hash.
+
+There is a very common false positive on the version bump test, and that is
+when we have modified a versioned object that is being used by other objects
+using the ``fields.ObjectField`` class.  Due to the backporting mechanism
+implemented in Cinder we don't require bumping the version for these cases and
+we'll just need to update the hash used in the test.
+
+For example if we were to add a new field to the Volume object and then run the
+test we may think that we need to bump Volume, Snapshot, Backup, RequestSpec,
+and VolumeAttachment objects, but we really only need to bump the version of
+the Volume object and update the hash for all the other objects.
 
 Imagine that we (finally!) decide that :code:`request_spec` sent in
 :code:`create_volume` RPC cast is duplicating data and we want to start to
@@ -354,3 +359,49 @@ environment and without when all services are upgraded and will understand
 Note that o.vo layer is able to recursively downgrade all of its fields, so
 when `request_spec` will be used as a field in other object, it will be
 correctly downgraded.
+
+A more common case where we need backporting code is when we add new fields.
+In such case the backporting consist on removing the newly added fields.  For
+example if we add 3 new fields to the Group object in version 1.1, then we need
+to remove them if backporting to earlier versions::
+
+    from oslo_utils import versionutils
+
+    def obj_make_compatible(self, primitive, target_version):
+        super(Group, self).obj_make_compatible(primitive, target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 1):
+            for key in ('group_snapshot_id', 'source_group_id',
+                        'group_snapshots'):
+                primitive.pop(key, None)
+
+As time goes on we will be adding more and more new fields to our objects, so
+we may end up with a long series of if and for statements like in the Volume
+object::
+
+    from oslo_utils import versionutils
+
+    def obj_make_compatible(self, primitive, target_version):
+        super(Volume, self).obj_make_compatible(primitive, target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 4):
+            for key in ('cluster', 'cluster_name'):
+                primitive.pop(key, None)
+        if target_version < (1, 5):
+            for key in ('group', 'group_id'):
+                primitive.pop(key, None)
+
+So a different pattern would be preferable as it will make the backporting
+easier for future additions::
+
+    from oslo_utils import versionutils
+
+    def obj_make_compatible(self, primitive, target_version):
+        added_fields = (((1, 4), ('cluster', 'cluster_name')),
+                        ((1, 5), ('group', 'group_id')))
+        super(Volume, self).obj_make_compatible(primitive, target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        for version, remove_fields in added_fields:
+            if target_version < version:
+                for obj_field in remove_fields:
+                    primitive.pop(obj_field, None)
