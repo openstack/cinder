@@ -94,9 +94,16 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertIsNone(volume_rpcapi.client.serializer._base.manifest)
 
     @mock.patch('cinder.message.api.API.cleanup_expired_messages')
-    def test__clean_expired_messages(self, mock_clean):
+    def test_clean_expired_messages(self, mock_clean):
 
         self.manager._clean_expired_messages(self.context)
+
+        mock_clean.assert_called_once_with(self.context)
+
+    @mock.patch('cinder.quota.QuotaEngine.expire')
+    def test_clean_expired_reservation(self, mock_clean):
+
+        self.manager._clean_expired_reservation(self.context)
 
         mock_clean.assert_called_once_with(self.context)
 

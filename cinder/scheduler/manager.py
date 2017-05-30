@@ -99,6 +99,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
     def _clean_expired_messages(self, context):
         self.message_api.cleanup_expired_messages(context)
 
+    @periodic_task.periodic_task(spacing=CONF.reservation_clean_interval,
+                                 run_immediately=True)
+    def _clean_expired_reservation(self, context):
+        QUOTAS.expire(context)
+
     def update_service_capabilities(self, context, service_name=None,
                                     host=None, capabilities=None,
                                     cluster_name=None, timestamp=None,

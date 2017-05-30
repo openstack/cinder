@@ -62,6 +62,10 @@ quota_opts = [
     cfg.IntOpt('reservation_expire',
                default=86400,
                help='Number of seconds until a reservation expires'),
+    cfg.IntOpt('reservation_clean_interval',
+               default='$reservation_expire',
+               help='Interval between periodic task runs to clean expired '
+                    'reservations in seconds.'),
     cfg.IntOpt('until_refresh',
                default=0,
                help='Count of reservations until usage is refreshed'),
