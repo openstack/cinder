@@ -2,7 +2,7 @@ You'll need to modify how you're doing things to get to the iscsi Target.
 Specifically, using a Docker network hoses everything because the IP of the
 target is the internal containers IP NOT the IP of the host.
 
-Setting `network_mode: host` solves this.. but that creates a new problem.
+Setting `network_mode: host` solves this, but that creates a new problem.
 Can't use `link` when using network_mode: host.
 
 Sigh... so; docker run has "add-host=host:IP" that we should be able to find
