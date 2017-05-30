@@ -485,8 +485,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def handle_created_vol_properties(self, cg, replication_info, volume):
         volume_update = {}
         if cg:
-            volume_update['consistencygroup_id'] = (
-                volume.get('consistencygroup_id', None))
+            volume_update['group_id'] = (volume.get('group_id', None))
             try:
                 self._call_xiv_xcli(
                     "cg_add_vol", vol=volume['name'], cg=cg)
@@ -1608,7 +1607,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         '''
         LOG.debug("_cg_name_from_volume: %(vol)s",
                   {'vol': volume['name']})
-        cg_id = volume.get('consistencygroup_id', None)
+        cg_id = volume.get('group_id', None)
         if cg_id:
             cg_name = self._cg_name_from_id(cg_id)
             LOG.debug("Volume %(vol)s is in CG %(cg)s",
@@ -1733,7 +1732,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def _create_consistencygroup_from_src(self, context, group, volumes,
                                           cgsnapshot, snapshots, source_cg,
                                           sorted_source_vols):
-        """Creates a consistencygroup from source.
+        """Creates a consistency group from source.
 
         Source can be a cgsnapshot with the relevant list of snapshots,
         or another CG with its list of volumes.
