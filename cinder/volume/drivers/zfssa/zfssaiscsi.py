@@ -403,24 +403,44 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                   volume['name'])
         LOG.debug('zfssa.create_volume_from_snapshot: snapshot=%s',
                   snapshot['name'])
-        if not self._verify_clone_size(snapshot, volume['size'] * units.Gi):
-            exception_msg = (_('Error verifying clone size on '
-                               'Volume clone: %(clone)s '
-                               'Size: %(size)d on '
-                               'Snapshot: %(snapshot)s')
-                             % {'clone': volume['name'],
-                                'size': volume['size'],
-                                'snapshot': snapshot['name']})
+
+        lcfg = self.configuration
+
+        parent_lun = self.zfssa.get_lun(lcfg.zfssa_pool,
+                                        lcfg.zfssa_project,
+                                        snapshot['volume_name'])
+        parent_size = parent_lun['size']
+
+        child_size = volume['size'] * units.Gi
+
+        if child_size < parent_size:
+            exception_msg = (_('Error clone [%(clone_id)s] '
+                               'size [%(clone_size)d] cannot '
+                               'be smaller than parent volume '
+                               '[%(parent_id)s] size '
+                               '[%(parent_size)d]')
+                             % {'parent_id': snapshot['volume_name'],
+                                'parent_size': parent_size / units.Gi,
+                                'clone_id': volume['name'],
+                                'clone_size': volume['size']})
             LOG.error(exception_msg)
             raise exception.InvalidInput(reason=exception_msg)
 
-        lcfg = self.configuration
         self.zfssa.clone_snapshot(lcfg.zfssa_pool,
                                   lcfg.zfssa_project,
                                   snapshot['volume_name'],
                                   snapshot['name'],
                                   lcfg.zfssa_project,
                                   volume['name'])
+
+        if child_size > parent_size:
+            LOG.debug('zfssa.create_volume_from_snapshot:  '
+                      'Parent size [%d], Child size [%d] - '
+                      'resizing' % (parent_size, child_size))
+            self.zfssa.set_lun_props(lcfg.zfssa_pool,
+                                     lcfg.zfssa_project,
+                                     volume['name'],
+                                     volsize=child_size)
 
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
@@ -727,14 +747,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
     def local_path(self, volume):
         """Not implemented."""
         pass
-
-    def _verify_clone_size(self, snapshot, size):
-        """Check whether the clone size is the same as the parent volume."""
-        lcfg = self.configuration
-        lun = self.zfssa.get_lun(lcfg.zfssa_pool,
-                                 lcfg.zfssa_project,
-                                 snapshot['volume_name'])
-        return lun['size'] == size
 
     def initialize_connection(self, volume, connector):
         lcfg = self.configuration
