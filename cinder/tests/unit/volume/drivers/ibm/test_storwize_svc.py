@@ -77,6 +77,7 @@ class StorwizeSVCManagementSimulator(object):
         self._rcrelationship_list = {}
         self._partnership_list = {}
         self._partnershipcandidate_list = {}
+        self._rcconsistgrp_list = {}
         self._system_list = {'storwize-svc-sim': {'id': '0123456789ABCDEF',
                                                   'name': 'storwize-svc-sim'},
                              'aux-svc-sim': {'id': 'ABCDEF0123456789',
@@ -160,7 +161,13 @@ class StorwizeSVCManagementSimulator(object):
             'CMMVC5963E': ('', 'CMMVC5963E No direction has been defined.'),
             'CMMVC5713E': ('', 'CMMVC5713E Some parameters are mutually '
                                'exclusive.'),
-
+            'CMMVC5804E': ('', 'CMMVC5804E The action failed because an '
+                               'object that was specified in the command '
+                               'does not exist.'),
+            'CMMVC6065E': ('', 'CMMVC6065E The action failed as the object '
+                               'is not in a group.'),
+            'CMMVC9012E': ('', 'CMMVC9012E The copy type differs from other '
+                               'copies already in the consistency group.'),
         }
         self._fc_transitions = {'begin': {'make': 'idle_or_copied'},
                                 'idle_or_copied': {'prepare': 'preparing',
@@ -238,6 +245,45 @@ class StorwizeSVCManagementSimulator(object):
                                     'delete': 'end',
                                     'delete_force': 'end'},
                                 }
+        self._rccg_transitions = {'empty': {'add': 'inconsistent_stopped',
+                                            'delete': 'end',
+                                            'delete_force': 'end'},
+                                  'inconsistent_stopped':
+                                      {'start': 'inconsistent_copying',
+                                       'stop': 'inconsistent_stopped',
+                                       'delete': 'end',
+                                       'delete_force': 'end'},
+                                  'inconsistent_copying': {
+                                      'wait': 'consistent_synchronized',
+                                      'start': 'inconsistent_copying',
+                                      'stop': 'inconsistent_stopped',
+                                      'delete': 'end',
+                                      'delete_force': 'end'},
+                                  'consistent_synchronized': {
+                                      'start': 'consistent_synchronized',
+                                      'stop': 'consistent_stopped',
+                                      'stop_access': 'idling',
+                                      'delete': 'end',
+                                      'delete_force': 'end'},
+                                  'consistent_stopped':
+                                      {'start': 'consistent_synchronized',
+                                       'stop': 'consistent_stopped',
+                                       'delete': 'end',
+                                       'delete_force': 'end'},
+                                  'consistent_copying': {
+                                      'start': 'consistent_copying',
+                                      'stop': 'consistent_stopped',
+                                      'stop_access': 'idling',
+                                      'delete': 'end',
+                                      'delete_force': 'end'},
+                                  'end': None,
+                                  'idling': {
+                                      'start': 'inconsistent_copying',
+                                      'stop': 'inconsistent_stopped',
+                                      'stop_access': 'idling',
+                                      'delete': 'end',
+                                      'delete_force': 'end'},
+                                  }
 
     def _state_transition(self, function, fcmap):
         if (function == 'wait' and
@@ -302,6 +348,7 @@ class StorwizeSVCManagementSimulator(object):
             'force',
             'nohdr',
             'nofmtdisk',
+            'noconsistgrp',
             'global',
             'access',
             'start'
@@ -1666,6 +1713,7 @@ port_speed!N/A
             for cg_id in self._fcconsistgrp_list.keys():
                 if self._fcconsistgrp_list[cg_id]['name'] == kwargs['obj']:
                     fcconsistgrp = self._fcconsistgrp_list[cg_id]
+                    break
             rows = []
             rows.append(['id', six.text_type(cg_id)])
             rows.append(['name', fcconsistgrp['name']])
@@ -2114,6 +2162,62 @@ port_speed!N/A
         else:
             return self._errors['CMMVC5753E']
 
+    def _cmd_chrcrelationship(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        id_num = kwargs['obj']
+
+        try:
+            rcrel = self._rcrelationship_list[id_num]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        remove_from_rccg = True if 'noconsistgrp' in kwargs else False
+        add_to_rccg = True if 'consistgrp' in kwargs else False
+        if remove_from_rccg:
+            if rcrel['consistency_group_name']:
+                rccg_name = rcrel['consistency_group_name']
+            else:
+                return self._errors['CMMVC6065E']
+        elif add_to_rccg:
+            rccg_name = (kwargs['consistgrp'].strip('\'\"')
+                         if 'consistgrp' in kwargs else None)
+        else:
+            return self._chrcrelationship_attr(**kwargs)
+
+        try:
+            rccg = self._rcconsistgrp_list[rccg_name]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        if remove_from_rccg:
+            rcrel['consistency_group_name'] = ''
+            rcrel['consistency_group_id'] = ''
+
+            if int(rccg['relationship_count']) > 0:
+                rccg['relationship_count'] = str(
+                    int(rccg['relationship_count']) - 1)
+            if rccg['relationship_count'] == '0':
+                rccg['state'] = 'empty'
+                rccg['copy_type'] = 'empty_group'
+        else:
+            if rccg['copy_type'] == 'empty_group':
+                rccg['copy_type'] = rcrel['copy_type']
+            elif rccg['copy_type'] != rcrel['copy_type']:
+                return self._errors['CMMVC9012E']
+
+            rcrel['consistency_group_name'] = rccg['name']
+            rcrel['consistency_group_id'] = rccg['id']
+            rccg['relationship_count'] = str(
+                int(rccg['relationship_count']) + 1)
+            if rccg['state'] == 'empty':
+                rccg['state'] = rcrel['state']
+                rccg['primary'] = rcrel['primary']
+                rccg['cycling_mode'] = rcrel['cycling_mode']
+                rccg['cycle_period_seconds'] = rcrel['cycle_period_seconds']
+
+        return '', ''
+
     def _cmd_rmrcrelationship(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
@@ -2136,7 +2240,7 @@ port_speed!N/A
 
         return ('', '')
 
-    def _cmd_chrcrelationship(self, **kwargs):
+    def _chrcrelationship_attr(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5707E']
         id_num = kwargs['obj']
@@ -2197,6 +2301,208 @@ port_speed!N/A
                 return ('', '')
             except Exception:
                 return self._errors['CMMVC5982E']
+
+    def _rccg_state_transition(self, function, rccg):
+        if (function == 'wait' and
+                'wait' not in self._rccg_transitions[rccg['state']]):
+            return ('', '')
+
+        if rccg['state'] == 'inconsistent_copying' and function == 'wait':
+            if rccg['cycling_mode'] == storwize_const.GMCV_MULTI:
+                rccg['state'] = storwize_const.REP_CONSIS_COPYING
+            else:
+                rccg['state'] = storwize_const.REP_CONSIS_SYNC
+            for rcrel_info in self._rcrelationship_list.values():
+                if rcrel_info['consistency_group_name'] == rccg['name']:
+                    rcrel_info['progress'] = '100'
+                    rcrel_info['state'] = rccg['state']
+            return ('', '')
+        else:
+            try:
+                curr_state = rccg['state']
+                rccg['state'] = self._rccg_transitions[curr_state][function]
+                return ('', '')
+            except Exception:
+                return self._errors['CMMVC5982E']
+
+    def _cmd_mkrcconsistgrp(self, **kwargs):
+        master_sys = self._system_list['storwize-svc-sim']
+        aux_sys = self._system_list['aux-svc-sim']
+        if 'cluster' not in kwargs:
+            return self._errors['CMMVC5707E']
+        aux_cluster = kwargs['cluster'].strip('\'\"')
+        if aux_cluster != aux_sys['name']:
+            return self._errors['CMMVC5754E']
+
+        rccg_info = {}
+        rccg_info['id'] = self._find_unused_id(self._rcconsistgrp_list)
+
+        if 'name' in kwargs:
+            rccg_info['name'] = kwargs['name'].strip('\'\"')
+        else:
+            rccg_info['name'] = self.driver._get_rccg_name(None,
+                                                           rccg_info['id'])
+        rccg_info['master_cluster_id'] = master_sys['id']
+        rccg_info['master_cluster_name'] = master_sys['name']
+        rccg_info['aux_cluster_id'] = aux_sys['id']
+        rccg_info['aux_cluster_name'] = aux_sys['name']
+
+        rccg_info['primary'] = ''
+        rccg_info['state'] = 'empty'
+        rccg_info['relationship_count'] = '0'
+
+        rccg_info['freeze_time'] = ''
+        rccg_info['status'] = ''
+        rccg_info['sync'] = ''
+        rccg_info['copy_type'] = 'empty_group'
+        rccg_info['cycling_mode'] = ''
+        rccg_info['cycle_period_seconds'] = '300'
+        self._rcconsistgrp_list[rccg_info['name']] = rccg_info
+
+        return('RC Consistency Group, id [' + rccg_info['id'] +
+               '], successfully created', '')
+
+    def _cmd_lsrcconsistgrp(self, **kwargs):
+        rows = []
+
+        if 'obj' not in kwargs:
+            rows.append(['id', 'name', 'master_cluster_id',
+                         'master_cluster_name', 'aux_cluster_id',
+                         'aux_cluster_name', 'primary', 'state',
+                         'relationship_count', 'copy_type',
+                         'cycling_mode', 'freeze_time'])
+            for rccg_info in self._rcconsistgrp_list.values():
+                rows.append([rccg_info['id'], rccg_info['name'],
+                             rccg_info['master_cluster_id'],
+                             rccg_info['master_cluster_name'],
+                             rccg_info['aux_cluster_id'],
+                             rccg_info['aux_cluster_name'],
+                             rccg_info['primary'], rccg_info['state'],
+                             rccg_info['relationship_count'],
+                             rccg_info['copy_type'], rccg_info['cycling_mode'],
+                             rccg_info['freeze_time']])
+            return self._print_info_cmd(rows=rows, **kwargs)
+        else:
+            try:
+                rccg_info = self._rcconsistgrp_list[kwargs['obj']]
+            except KeyError:
+                return self._errors['CMMVC5804E']
+
+            rows = []
+            rows.append(['id', rccg_info['id']])
+            rows.append(['name', rccg_info['name']])
+            rows.append(['master_cluster_id', rccg_info['master_cluster_id']])
+            rows.append(['master_cluster_name',
+                         rccg_info['master_cluster_name']])
+            rows.append(['aux_cluster_id', rccg_info['aux_cluster_id']])
+            rows.append(['aux_cluster_name', rccg_info['aux_cluster_name']])
+            rows.append(['primary', rccg_info['primary']])
+            rows.append(['state', rccg_info['state']])
+            rows.append(['relationship_count',
+                         rccg_info['relationship_count']])
+            rows.append(['freeze_time', rccg_info['freeze_time']])
+            rows.append(['status', rccg_info['status']])
+            rows.append(['sync', rccg_info['sync']])
+            rows.append(['copy_type', rccg_info['copy_type']])
+            rows.append(['cycling_mode', rccg_info['cycling_mode']])
+            rows.append(['cycle_period_seconds',
+                         rccg_info['cycle_period_seconds']])
+
+            if 'delim' in kwargs:
+                for index in range(len(rows)):
+                    rows[index] = kwargs['delim'].join(rows[index])
+            return ('%s' % '\n'.join(rows), '')
+
+    def _cmd_startrcconsistgrp(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        id_num = kwargs['obj']
+
+        primary = (kwargs['primary'].strip('\'\"') if 'primary'
+                                                      in kwargs else None)
+        try:
+            rccg = self._rcconsistgrp_list[id_num]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        if rccg['state'] == 'idling' and not primary:
+            return self._errors['CMMVC5963E']
+
+        self._rccg_state_transition('start', rccg)
+        for rcrel_info in self._rcrelationship_list.values():
+            if rcrel_info['consistency_group_name'] == rccg:
+                self._rc_state_transition('start', rcrel_info)
+        if primary:
+            self._rcconsistgrp_list[id_num]['primary'] = primary
+            for rcrel_info in self._rcrelationship_list.values():
+                if rcrel_info['consistency_group_name'] == rccg['name']:
+                    rcrel_info['primary'] = primary
+        return ('', '')
+
+    def _cmd_stoprcconsistgrp(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        id_num = kwargs['obj']
+        force_access = True if 'access' in kwargs else False
+
+        try:
+            rccg = self._rcconsistgrp_list[id_num]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        function = 'stop_access' if force_access else 'stop'
+        self._rccg_state_transition(function, rccg)
+        for rcrel_info in self._rcrelationship_list.values():
+            if rcrel_info['consistency_group_name'] == rccg['name']:
+                self._rc_state_transition(function, rcrel_info)
+        if force_access:
+            self._rcconsistgrp_list[id_num]['primary'] = ''
+            for rcrel_info in self._rcrelationship_list.values():
+                if rcrel_info['consistency_group_name'] == rccg['name']:
+                    rcrel_info['primary'] = ''
+        return ('', '')
+
+    def _cmd_switchrcconsistgrp(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5707E']
+        id_num = kwargs['obj']
+
+        try:
+            rccg = self._rcconsistgrp_list[id_num]
+        except KeyError:
+            return self._errors['CMMVC5753E']
+
+        if (rccg['state'] == storwize_const.REP_CONSIS_SYNC or
+                (rccg['cycling_mode'] == storwize_const.GMCV_MULTI and
+                 rccg['state'] == storwize_const.REP_CONSIS_COPYING)):
+            rccg['primary'] = kwargs['primary']
+            for rcrel_info in self._rcrelationship_list.values():
+                if rcrel_info['consistency_group_name'] == rccg['name']:
+                    rcrel_info['primary'] = kwargs['primary']
+            return ('', '')
+        else:
+            return self._errors['CMMVC5753E']
+
+    def _cmd_rmrcconsistgrp(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        rccg_name = kwargs['obj'].strip('\'\"')
+        force = True if 'force' in kwargs else False
+
+        try:
+            rccg = self._rcconsistgrp_list[rccg_name]
+        except KeyError:
+            return self._errors['CMMVC5804E']
+
+        function = 'delete_force' if force else 'delete'
+        self._rccg_state_transition(function, rccg)
+        if rccg['state'] == 'end':
+            for rcrel_info in self._rcrelationship_list.values():
+                if rcrel_info['consistency_group_name'] == rccg['name']:
+                    rcrel_info['consistency_group_name'] = ''
+                    rcrel_info['consistency_group_id'] = ''
+            del self._rcconsistgrp_list[rccg_name]
+        return ('', '')
 
     def _cmd_lspartnershipcandidate(self, **kwargs):
         rows = [None] * 4
@@ -5026,10 +5332,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     # Test groups operation ####
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.utils.is_group_a_type')
     def test_storwize_group_create_with_replication(
-            self, is_grp_a_cg_snapshot_type):
+            self, is_grp_a_cg_rep_type, is_grp_a_cg_snapshot_type):
         """Test group create."""
-        is_grp_a_cg_snapshot_type.side_effect = True
+        is_grp_a_cg_snapshot_type.side_effect = [True, True, False, False]
+        is_grp_a_cg_rep_type.side_effect = [True, True]
         spec = {'replication_enabled': '<is> True',
                 'replication_type': '<in> metro'}
         rep_type_ref = volume_types.create(self.ctxt, 'rep_type', spec)
@@ -5041,30 +5349,49 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(fields.GroupStatus.ERROR,
                          model_update['status'])
 
-        self.assertFalse(is_grp_a_cg_snapshot_type.called)
+        spec = {'replication_enabled': '<is> False'}
+        non_rep_type_ref = volume_types.create(self.ctxt, 'non_rep_type', spec)
+        non_rep_group = testutils.create_group(
+            self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+            volume_type_ids=[non_rep_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, non_rep_group)
+        self.assertEqual(fields.GroupStatus.ERROR,
+                         model_update['status'])
 
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    def test_storwize_group_create(self, is_grp_a_cg_snapshot_type):
+    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_rccg')
+    def test_storwize_group_create(self, create_rccg, is_grp_a_cg_rep_type,
+                                   is_grp_a_cg_snapshot_type):
         """Test group create."""
-        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        is_grp_a_cg_snapshot_type.side_effect = [False, True, True]
+        is_grp_a_cg_rep_type.side_effect = [False, False]
         group = mock.MagicMock()
 
         self.assertRaises(NotImplementedError,
                           self.driver.create_group, self.ctxt, group)
 
         model_update = self.driver.create_group(self.ctxt, group)
+        self.assertFalse(create_rccg.called)
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    def test_storwize_delete_group(self, is_grp_a_cg_snapshot_type):
+    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_delete_replication_grp')
+    def test_storwize_delete_group(self, _del_rep_grp, is_grp_a_cg_rep_type,
+                                   is_grp_a_cg_snapshot_type):
         is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        is_grp_a_cg_rep_type.side_effect = [False, False]
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
         group = testutils.create_group(self.ctxt,
                                        group_type_id=fake.GROUP_TYPE_ID,
-                                       volume_type_id=type_ref['id'])
+                                       volume_type_ids=[type_ref['id']])
 
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
@@ -5075,24 +5402,34 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.ctxt, group, volumes)
 
         model_update = self.driver.delete_group(self.ctxt, group, volumes)
+        self.assertFalse(_del_rep_grp.called)
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    def test_storwize_group_update(self, is_grp_a_cg_snapshot_type):
+    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_update_replication_grp')
+    def test_storwize_group_update(self, _update_rep_grp, is_grp_a_cg_rep_type,
+                                   is_grp_a_cg_snapshot_type):
         """Test group update."""
-        is_grp_a_cg_snapshot_type.side_effect = [False, True]
+        is_grp_a_cg_snapshot_type.side_effect = [False, True, True, False]
+        is_grp_a_cg_rep_type.side_effect = [False, False, True, True]
         group = mock.MagicMock()
         self.assertRaises(NotImplementedError, self.driver.update_group,
                           self.ctxt, group, None, None)
 
         (model_update, add_volumes_update,
          remove_volumes_update) = self.driver.update_group(self.ctxt, group)
+        self.assertFalse(_update_rep_grp.called)
         self.assertIsNone(model_update)
         self.assertIsNone(add_volumes_update)
         self.assertIsNone(remove_volumes_update)
+
+        self.driver.update_group(self.ctxt, group)
+        self.assertTrue(_update_rep_grp.called)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
@@ -5102,7 +5439,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
         group = testutils.create_group(self.ctxt,
                                        group_type_id=fake.GROUP_TYPE_ID,
-                                       volume_type_id=type_ref['id'])
+                                       volume_type_ids=[type_ref['id']])
 
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
@@ -5131,7 +5468,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
         group = testutils.create_group(self.ctxt,
                                        group_type_id=fake.GROUP_TYPE_ID,
-                                       volume_type_id=type_ref['id'])
+                                       volume_type_ids=[type_ref['id']])
 
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
         self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
@@ -5154,19 +5491,29 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_create_group_from_src_invalid(self):
         # Invalid input case for create group from src
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
-        spec = {'consistent_group_snapshot_enabled': '<is> True'}
-        cg_type_ref = group_types.create(self.ctxt, 'cg_type', spec)
+        cg_spec = {'consistent_group_snapshot_enabled': '<is> True'}
+        rccg_spec = {'consistent_group_replication_enabled': '<is> True'}
+        cg_type_ref = group_types.create(self.ctxt, 'cg_type', cg_spec)
+        rccg_type_ref = group_types.create(self.ctxt, 'rccg_type', rccg_spec)
         vg_type_ref = group_types.create(self.ctxt, 'vg_type', None)
 
         # create group in db
-        group = self._create_group_in_db(volume_type_id=type_ref.id,
+        group = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                          group_type_id=vg_type_ref.id)
         self.assertRaises(NotImplementedError,
                           self.driver.create_group_from_src,
                           self.ctxt, group, None, None, None,
                           None, None)
 
-        group = self._create_group_in_db(volume_type_id=type_ref.id,
+        group = self._create_group_in_db(volume_type_ids=[type_ref.id],
+                                         group_type_id=rccg_type_ref.id)
+        vol1 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       group_id=group.id)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_group_from_src,
+                          self.ctxt, group, [vol1])
+
+        group = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                          group_type_id=cg_type_ref.id)
 
         # create volumes in db
@@ -5176,7 +5523,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                        group_id=group.id)
         volumes = [vol1, vol2]
 
-        source_cg = self._create_group_in_db(volume_type_id=type_ref.id,
+        source_cg = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                              group_type_id=cg_type_ref.id)
 
         # Add volumes to source CG
@@ -5250,7 +5597,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         cg_type_ref = group_types.create(self.ctxt, 'cg_type', spec)
         pool = _get_test_pool()
         # Create cg in db
-        group = self._create_group_in_db(volume_type_id=type_ref.id,
+        group = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                          group_type_id=cg_type_ref.id)
         # Create volumes in db
         testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
@@ -5263,7 +5610,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.ctxt.elevated(), group.id)
 
         # Create source CG
-        source_cg = self._create_group_in_db(volume_type_id=type_ref.id,
+        source_cg = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                              group_type_id=cg_type_ref.id)
         # Add volumes to source CG
         self._create_volume(volume_type_id=type_ref.id,
@@ -6222,6 +6569,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self._create_test_volume_types()
+        self.rccg_type = self._create_consistent_rep_grp_type()
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group
@@ -6237,14 +6585,17 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         is_vol_defined = self.driver._helpers.is_vdisk_defined(name)
         self.assertEqual(exists, is_vol_defined)
 
-    def _generate_vol_info(self, vol_type=None, size=1):
+    def _generate_vol_info(self, vol_type=None, **kwargs):
         pool = _get_test_pool()
         volume_type = vol_type if vol_type else self.non_replica_type
-        prop = {'size': size,
+        prop = {'size': 1,
                 'volume_type_id': volume_type.id,
                 'host': 'openstack@svc#%s' % pool
                 }
-        vol = testutils.create_volume(self.ctxt, **prop)
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
+        vol = testutils.create_volume(self.ctxt, **kwargs)
         return vol
 
     def _generate_snap_info(self, vol_id):
@@ -6304,10 +6655,26 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             True, rep_type=storwize_const.GMCV, cycle_period_seconds="86401")
         self.non_replica_type = self._create_replica_volume_type(False)
 
-    def _create_test_volume(self, rep_type):
-        volume = self._generate_vol_info(rep_type)
+    def _create_test_volume(self, rep_type, **kwargs):
+        volume = self._generate_vol_info(rep_type, **kwargs)
         model_update = self.driver.create_volume(volume)
         return volume, model_update
+
+    def _create_consistent_rep_grp_type(self):
+        rccg_spec = {'consistent_group_replication_enabled': '<is> True'}
+        rccg_type_ref = group_types.create(self.ctxt, 'cg_type', rccg_spec)
+        rccg_type = objects.GroupType.get_by_id(self.ctxt, rccg_type_ref['id'])
+        return rccg_type
+
+    def _create_test_rccg(self, rccg_type, vol_type_ids):
+        # create group in db
+        group = testutils.create_group(self.ctxt,
+                                       volume_type_ids=vol_type_ids,
+                                       group_type_id=rccg_type.id)
+        if self.rccg_type == rccg_type:
+            group.replication_status = fields.ReplicationStatus.ENABLED
+        self.driver.create_group(self.ctxt, group)
+        return group
 
     def _get_vdisk_uid(self, vdisk_name):
         vdisk_properties, _err = self.sim._cmd_lsvdisk(obj=vdisk_name,
@@ -6752,7 +7119,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.do_setup(self.ctxt)
 
         volume, model_update = self._create_test_volume(self.non_replica_type)
-        self.assertIsNone(model_update)
+        self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
+                         model_update['replication_status'])
 
         # Retype to mm replica
         host = {'host': 'openstack@svc#openstack'}
@@ -6770,8 +7138,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         # Create non-replica volume
         volume, model_update = self._create_test_volume(self.non_replica_type)
-        self.assertIsNone(model_update)
-
+        self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
+                         model_update['replication_status'])
         # Retype to gmcv replica
         host = {'host': 'openstack@svc#openstack'}
         diff, _equal = volume_types.volume_types_diff(
@@ -7090,7 +7458,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         non_replica_vol, model_update = self._create_test_volume(
             self.non_replica_type)
-        self.assertIsNone(model_update)
+        self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
+                         model_update['replication_status'])
 
         volumes = [volume, non_replica_vol, gmcv_volume]
         # Delete volume in failover state
@@ -7262,10 +7631,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_volume_stats')
-    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
-                       '_update_storwize_state')
     def test_storwize_failover_host_replica_volumes(self,
-                                                    update_storwize_state,
                                                     update_volume_stats):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
@@ -7280,53 +7646,159 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         gm_vol, model_update = self._create_test_volume(self.gm_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
+        gm_vol['status'] = 'in-use'
+
+        # Create global replication volume.
+        gm_vol1, model_update = self._create_test_volume(self.gm_type)
+        gm_vol1['status'] = 'in-use'
+        gm_vol1['previous_status'] = 'in-use'
+
+        gm_vol2, model_update = self._create_test_volume(self.gm_type)
+        gm_vol2['status'] = 'in-use'
+        gm_vol2['previous_status'] = 'available'
 
         # Create gmcv volume.
         gmcv_vol, model_update = self._create_test_volume(
             self.gmcv_with_cps600_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
+        gmcv_vol['status'] = 'available'
+        gmcv_vol['previous_status'] = 'in-use'
 
-        volumes = [mm_vol, gm_vol, gmcv_vol]
-        expected_list = [
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': mm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': gm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': gmcv_vol['id']}]
+        volumes = [mm_vol, gm_vol, gm_vol1, gm_vol2, gmcv_vol]
+        expected_list = [{'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILED_OVER,
+                                      'previous_status': mm_vol['status'],
+                                      'status': 'available',
+                                      'attach_status':
+                                          fields.VolumeAttachStatus.DETACHED},
+                          'volume_id': mm_vol['id']},
+                         {'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILED_OVER,
+                                      'previous_status': gm_vol['status'],
+                                      'status': 'available',
+                                      'attach_status':
+                                          fields.VolumeAttachStatus.DETACHED},
+                          'volume_id': gm_vol['id']},
+                         {'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILED_OVER,
+                                      'previous_status': gm_vol1['status'],
+                                      'status': 'in-use',
+                                      'attach_status':
+                                          fields.VolumeAttachStatus.ATTACHED},
+                          'volume_id': gm_vol1['id']},
+                         {'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILED_OVER,
+                                      'previous_status': gm_vol2['status'],
+                                      'status': 'available',
+                                      'attach_status':
+                                          fields.VolumeAttachStatus.DETACHED},
+                          'volume_id': gm_vol2['id']},
+                         {'updates': {'replication_status':
+                                      fields.ReplicationStatus.FAILED_OVER,
+                                      'previous_status': gmcv_vol['status'],
+                                      'status': 'in-use',
+                                      'attach_status':
+                                          fields.VolumeAttachStatus.ATTACHED},
+                          'volume_id': gmcv_vol['id']}
+                         ]
 
-        target_id, volume_list, __ = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'], [])
+        group1 = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        group2 = self._create_test_rccg(self.rccg_type, [self.gm_type.id])
+        mm_vol1, model_update = self._create_test_volume(
+            self.mm_type, group_id=group1.id, status='available')
+        mm_vol2, model_update = self._create_test_volume(
+            self.mm_type, group_id=group1.id, status='in-use')
+        gm_vol3, model_update = self._create_test_volume(
+            self.gm_type, group_id=group2.id,
+            status='available', previous_status='in-use')
+        vols1 = [mm_vol1, mm_vol2]
+        self.driver.update_group(self.ctxt, group1, vols1, [])
+        mm_vol1.group = group1
+        mm_vol2.group = group1
+        group1.volumes = objects.VolumeList.get_all_by_generic_group(self.ctxt,
+                                                                     group1.id)
+        vols2 = [gm_vol3]
+        self.driver.update_group(self.ctxt, group2, vols2, [])
+        gm_vol3.group = group2
+        group2.volumes = objects.VolumeList.get_all_by_generic_group(self.ctxt,
+                                                                     group2.id)
+        rccg_name = self.driver._get_rccg_name(group1)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        rccg_name = self.driver._get_rccg_name(group2)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        volumes.extend(vols1)
+        volumes.extend(vols2)
+        expected_list1 = [{'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': mm_vol1['status'],
+                                       'status': 'available',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.DETACHED},
+                           'volume_id': mm_vol1['id']},
+                          {'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': mm_vol2['status'],
+                                       'status': 'available',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.DETACHED},
+                           'volume_id': mm_vol2['id']},
+                          {'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': gm_vol3['status'],
+                                       'status': 'in-use',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.ATTACHED},
+                           'volume_id': gm_vol3['id']}]
+        expected_list.extend(expected_list1)
+        grp_expected = [{'group_id': group1.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                              'status': fields.GroupStatus.AVAILABLE}},
+                        {'group_id': group2.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                              'status': fields.GroupStatus.AVAILABLE}}
+                        ]
+
+        target_id, volume_list, groups_update = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'],
+            [group1, group2])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(expected_list, volume_list)
+        self.assertEqual(grp_expected, groups_update)
 
         self.assertEqual(self.driver._active_backend_id, target_id)
         self.assertEqual(self.driver._aux_backend_helpers,
                          self.driver._helpers)
         self.assertEqual([self.driver._replica_target['pool_name']],
                          self.driver._get_backend_pools())
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual(self.driver._state, self.driver._aux_state)
         self.assertTrue(update_volume_stats.called)
 
-        self.driver.delete_volume(mm_vol)
-        self.driver.delete_volume(gm_vol)
         self.driver.delete_volume(gmcv_vol)
 
-        target_id, volume_list, __ = self.driver.failover_host(
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, None, [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual([], volume_list)
+        self.assertEqual([], groups_update)
+
+        self.driver.delete_volume(mm_vol)
+        self.driver.delete_volume(gm_vol)
+        self.driver.delete_volume(gm_vol1)
+        self.driver.delete_volume(gm_vol2)
+        self.driver.delete_volume(gmcv_vol)
+        self.driver.delete_group(self.ctxt, group1, vols1)
+        self.driver.delete_group(self.ctxt, group2, vols2)
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_volume_stats')
-    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
-                       '_update_storwize_state')
     def test_storwize_failover_host_normal_volumes(self,
-                                                   update_storwize_state,
                                                    update_volume_stats):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
@@ -7336,19 +7808,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         mm_vol, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        mm_vol['status'] = 'in-use'
+        mm_vol['status'] = 'error'
 
         # Create gmcv replication.
         gmcv_vol, model_update = self._create_test_volume(
             self.gmcv_with_cps600_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        gmcv_vol['status'] = 'in-use'
+        gmcv_vol['status'] = 'error'
 
         # Create non-replication volume.
         non_replica_vol, model_update = self._create_test_volume(
             self.non_replica_type)
-        self.assertIsNone(model_update)
+        self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
+                         model_update['replication_status'])
         non_replica_vol['status'] = 'error'
 
         volumes = [mm_vol, gmcv_vol, non_replica_vol]
@@ -7368,23 +7841,25 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                           'volume_id': non_replica_vol['id']},
                          ]
 
-        target_id, volume_list, __ = self.driver.failover_host(
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(expected_list, volume_list)
+        self.assertEqual([], groups_update)
 
         self.assertEqual(self.driver._active_backend_id, target_id)
         self.assertEqual(self.driver._aux_backend_helpers,
                          self.driver._helpers)
         self.assertEqual([self.driver._replica_target['pool_name']],
                          self.driver._get_backend_pools())
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual(self.driver._state, self.driver._aux_state)
         self.assertTrue(update_volume_stats.called)
 
-        target_id, volume_list, __ = self.driver.failover_host(
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, None, [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual([], volume_list)
+        self.assertEqual([], groups_update)
         # Delete non-replicate volume in a failover state
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.delete_volume,
@@ -7404,25 +7879,21 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                            stop_relationship,
                                            switch_relationship):
         replica_obj = self.driver._get_replica_obj(storwize_const.METRO)
-        fake_vol = {'id': '21345678-1234-5678-1234-567812345683',
-                    'name': 'fake-volume'}
-        target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + fake_vol['name']
+        mm_vol, model_update = self._create_test_volume(self.mm_type)
+        target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol.name
         context = mock.Mock
         get_relationship_info.side_effect = [{
             'aux_vdisk_name': 'replica-12345678-1234-5678-1234-567812345678',
             'name': 'RC_name'}]
         switch_relationship.side_effect = exception.VolumeDriverException
-        replica_obj.failover_volume_host(context, fake_vol)
+        replica_obj.failover_volume_host(context, mm_vol)
         get_relationship_info.assert_called_once_with(target_vol)
         switch_relationship.assert_called_once_with('RC_name')
         stop_relationship.assert_called_once_with(target_vol, access=True)
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_volume_stats')
-    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
-                       '_update_storwize_state')
     def test_storwize_failback_replica_volumes(self,
-                                               update_storwize_state,
                                                update_volume_stats):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
@@ -7437,6 +7908,16 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         gm_vol, model_update = self._create_test_volume(self.gm_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
+        gm_vol['status'] = 'in-use'
+        gm_vol['previous_status'] = ''
+
+        gm_vol1, model_update = self._create_test_volume(self.gm_type)
+        gm_vol1['status'] = 'in-use'
+        gm_vol1['previous_status'] = 'in-use'
+
+        gm_vol2, model_update = self._create_test_volume(self.gm_type)
+        gm_vol2['status'] = 'in-use'
+        gm_vol2['previous_status'] = 'available'
 
         # Create gmcv replication.
         gmcv_vol, model_update = self._create_test_volume(
@@ -7444,64 +7925,221 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
 
-        volumes = [gm_vol, mm_vol, gmcv_vol]
-        failover_expect = [
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': gm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': mm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': gmcv_vol['id']}]
+        volumes = [mm_vol, gm_vol, gm_vol1, gm_vol2, gmcv_vol]
+        failover_expect = [{'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': mm_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': mm_vol['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': gm_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': gm_vol['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': gm_vol1['status'],
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol1['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': gm_vol2['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': gm_vol2['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': gmcv_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': gmcv_vol['id']}
+                           ]
+        group1 = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        group2 = self._create_test_rccg(self.rccg_type, [self.gm_type.id])
+        mm_vol1, model_update = self._create_test_volume(
+            self.mm_type, group_id=group1.id, status='available')
+        mm_vol2, model_update = self._create_test_volume(
+            self.mm_type, group_id=group1.id, status='in-use')
+        gm_vol3, model_update = self._create_test_volume(
+            self.gm_type, group_id=group2.id,
+            status='available', previous_status='in-use')
+        vols1 = [mm_vol1, mm_vol2]
+        self.driver.update_group(self.ctxt, group1, vols1, [])
+        mm_vol1.group = group1
+        mm_vol2.group = group1
+        group1.volumes = objects.VolumeList.get_all_by_generic_group(self.ctxt,
+                                                                     group1.id)
+        vols2 = [gm_vol3]
+        self.driver.update_group(self.ctxt, group2, vols2, [])
+        gm_vol3.group = group2
+        group2.volumes = objects.VolumeList.get_all_by_generic_group(self.ctxt,
+                                                                     group2.id)
+        rccg_name = self.driver._get_rccg_name(group1)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        rccg_name = self.driver._get_rccg_name(group2)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        volumes.extend(vols1)
+        volumes.extend(vols2)
+        expected_list1 = [{'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': mm_vol1['status'],
+                                       'status': 'available',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.DETACHED},
+                           'volume_id': mm_vol1['id']},
+                          {'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': mm_vol2['status'],
+                                       'status': 'available',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.DETACHED},
+                           'volume_id': mm_vol2['id']},
+                          {'updates': {'replication_status':
+                                       fields.ReplicationStatus.FAILED_OVER,
+                                       'previous_status': gm_vol3['status'],
+                                       'status': 'in-use',
+                                       'attach_status':
+                                           fields.VolumeAttachStatus.ATTACHED},
+                           'volume_id': gm_vol3['id']}]
+        failover_expect.extend(expected_list1)
+        grp_expected = [{'group_id': group1.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                              'status': fields.GroupStatus.AVAILABLE}},
+                        {'group_id': group2.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                              'status': fields.GroupStatus.AVAILABLE}}
+                        ]
 
-        failback_expect = [
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.ENABLED,
-                 'status': 'available'},
-             'volume_id': gm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.ENABLED,
-                 'status': 'available'},
-             'volume_id': mm_vol['id']},
-            {'updates':
-                {'replication_status': fields.ReplicationStatus.ENABLED,
-                 'status': 'available'},
-             'volume_id': gmcv_vol['id']}]
         # Already failback
-        target_id, volume_list, __ = self.driver.failover_host(
-            self.ctxt, volumes, 'default', [])
+        target_id, volume_list, groups_update = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [group1, group2])
         self.assertIsNone(target_id)
         self.assertEqual([], volume_list)
+        self.assertEqual([], groups_update)
 
         # fail over operation
-        target_id, volume_list, __ = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'], [])
+        target_id, volume_list, groups_update = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'],
+            [group1, group2])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(failover_expect, volume_list)
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual(grp_expected, groups_update)
+        self.assertEqual(self.driver._state, self.driver._aux_state)
         self.assertTrue(update_volume_stats.called)
 
+        mm_vol['status'] = 'available'
+        mm_vol['previous_status'] = 'available'
+        gm_vol['status'] = 'available'
+        gm_vol['previous_status'] = 'in-use'
+        gm_vol1['status'] = 'in-use'
+        gm_vol1['previous_status'] = 'in-use'
+        gm_vol2['status'] = 'available'
+        gm_vol2['previous_status'] = 'in-use'
+        gmcv_vol['status'] = 'available'
+        gmcv_vol['previous_status'] = ''
+        failback_expect = [{'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': mm_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': mm_vol['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': gm_vol['status'],
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': gm_vol1['status'],
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol1['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': gm_vol2['status'],
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol2['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': gmcv_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': gmcv_vol['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': 'available',
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': mm_vol1['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': 'in-use',
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': mm_vol2['id']},
+                           {'updates': {'replication_status':
+                                        fields.ReplicationStatus.ENABLED,
+                                        'previous_status': 'available',
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol3['id']}]
+        grp_expected = [{'group_id': group1.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.ENABLED,
+                              'status': fields.GroupStatus.AVAILABLE}},
+                        {'group_id': group2.id,
+                         'updates':
+                             {'replication_status':
+                              fields.ReplicationStatus.ENABLED,
+                              'status': fields.GroupStatus.AVAILABLE}}
+                        ]
         # fail back operation
-        target_id, volume_list, __ = self.driver.failover_host(
-            self.ctxt, volumes, 'default', [])
+        target_id, volume_list, groups_update = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [group1, group2])
         self.assertEqual('default', target_id)
         self.assertEqual(failback_expect, volume_list)
+        self.assertEqual(grp_expected, groups_update)
+
         self.assertIsNone(self.driver._active_backend_id)
         self.assertEqual(SVC_POOLS, self.driver._get_backend_pools())
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual(self.driver._state, self.driver._master_state)
         self.assertTrue(update_volume_stats.called)
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gm_vol)
+        self.driver.delete_volume(gm_vol1)
+        self.driver.delete_volume(gm_vol2)
         self.driver.delete_volume(gmcv_vol)
+        self.driver.delete_group(self.ctxt, group1, vols1)
+        self.driver.delete_group(self.ctxt, group2, vols2)
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_volume_stats')
-    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
-                       '_update_storwize_state')
     def test_storwize_failback_normal_volumes(self,
-                                              update_storwize_state,
                                               update_volume_stats):
 
         self.driver.configuration.set_override('replication_device',
@@ -7512,7 +8150,9 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         mm_vol, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        mm_vol['status'] = 'in-use'
+        self.assertEqual('enabled', model_update['replication_status'])
+        mm_vol['status'] = 'error'
+
         gm_vol, model_update = self._create_test_volume(self.gm_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
@@ -7523,94 +8163,72 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.gmcv_default_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        gmcv_vol['status'] = 'in-use'
-
-        # Create non-replication volume.
-        non_replica_vol1, model_update = self._create_test_volume(
-            self.non_replica_type)
-        self.assertIsNone(model_update)
-        non_replica_vol2, model_update = self._create_test_volume(
-            self.non_replica_type)
-        self.assertIsNone(model_update)
-        non_replica_vol1['status'] = 'error'
-        non_replica_vol2['status'] = 'available'
-
-        volumes = [mm_vol, gmcv_vol, non_replica_vol1,
-                   non_replica_vol2, gm_vol]
+        gmcv_vol['status'] = 'error'
+        volumes = [mm_vol, gmcv_vol, gm_vol]
 
         rep_data0 = json.dumps({'previous_status': mm_vol['status']})
         rep_data1 = json.dumps({'previous_status': gmcv_vol['status']})
-        rep_data2 = json.dumps({'previous_status': non_replica_vol1['status']})
-        rep_data3 = json.dumps({'previous_status': non_replica_vol2['status']})
-        failover_expect = [
-            {'updates':
-             {'replication_status': fields.ReplicationStatus.FAILED_OVER},
-             'volume_id': gm_vol['id']},
-            {'updates': {'status': 'error',
-             'replication_driver_data': rep_data0},
-             'volume_id': mm_vol['id']},
-            {'updates': {'status': 'error',
-             'replication_driver_data': rep_data1},
-             'volume_id': gmcv_vol['id']},
-            {'updates': {'status': 'error',
-             'replication_driver_data': rep_data2},
-             'volume_id': non_replica_vol1['id']},
-            {'updates': {'status': 'error',
-             'replication_driver_data': rep_data3},
-             'volume_id': non_replica_vol2['id']}]
+
+        failover_expect = [{'updates': {'replication_status':
+                                        fields.ReplicationStatus.FAILED_OVER,
+                                        'previous_status': gm_vol['status'],
+                                        'status': 'available',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.DETACHED},
+                            'volume_id': gm_vol['id']},
+                           {'updates': {'status': 'error',
+                                        'replication_driver_data': rep_data0},
+                            'volume_id': mm_vol['id']},
+                           {'updates': {'status': 'error',
+                                        'replication_driver_data': rep_data1},
+                            'volume_id': gmcv_vol['id']}]
 
         # Already failback
-        target_id, volume_list, __ = self.driver.failover_host(
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, 'default', [])
         self.assertIsNone(target_id)
         self.assertEqual([], volume_list)
+        self.assertEqual([], groups_update)
 
         # fail over operation
-        target_id, volume_list, __ = self.driver.failover_host(
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(failover_expect, volume_list)
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual([], groups_update)
+        self.assertEqual(self.driver._state, self.driver._aux_state)
         self.assertTrue(update_volume_stats.called)
 
         # fail back operation
         mm_vol['replication_driver_data'] = json.dumps(
-            {'previous_status': 'in-use'})
-        gmcv_vol['replication_driver_data'] = json.dumps(
-            {'previous_status': 'in-use'})
-        non_replica_vol1['replication_driver_data'] = json.dumps(
             {'previous_status': 'error'})
-        non_replica_vol2['replication_driver_data'] = json.dumps(
-            {'previous_status': 'available'})
+        gmcv_vol['replication_driver_data'] = json.dumps(
+            {'previous_status': 'error'})
         gm_vol['status'] = 'in-use'
-        rep_data4 = json.dumps({'previous_status': gm_vol['status']})
-        failback_expect = [{'updates': {'status': 'in-use',
+        gm_vol['previous_status'] = 'in-use'
+        failback_expect = [{'updates': {'replication_status': 'enabled',
+                                        'previous_status': gm_vol['status'],
+                                        'status': 'in-use',
+                                        'attach_status':
+                                        fields.VolumeAttachStatus.ATTACHED},
+                            'volume_id': gm_vol['id']},
+                           {'updates': {'status': 'error',
                                         'replication_driver_data': ''},
                             'volume_id': mm_vol['id']},
-                           {'updates': {'status': 'in-use',
-                                        'replication_driver_data': ''},
-                            'volume_id': gmcv_vol['id']},
                            {'updates': {'status': 'error',
                                         'replication_driver_data': ''},
-                            'volume_id': non_replica_vol1['id']},
-                           {'updates': {'status': 'available',
-                                        'replication_driver_data': ''},
-                            'volume_id': non_replica_vol2['id']},
-                           {'updates': {'status': 'error',
-                                        'replication_driver_data': rep_data4},
-                            'volume_id': gm_vol['id']}]
-        target_id, volume_list, __ = self.driver.failover_host(
+                            'volume_id': gmcv_vol['id']}]
+        target_id, volume_list, groups_update = self.driver.failover_host(
             self.ctxt, volumes, 'default', [])
         self.assertEqual('default', target_id)
         self.assertEqual(failback_expect, volume_list)
+        self.assertEqual([], groups_update)
         self.assertIsNone(self.driver._active_backend_id)
         self.assertEqual(SVC_POOLS, self.driver._get_backend_pools())
-        self.assertTrue(update_storwize_state.called)
+        self.assertEqual(self.driver._state, self.driver._master_state)
         self.assertTrue(update_volume_stats.called)
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gmcv_vol)
-        self.driver.delete_volume(non_replica_vol1)
-        self.driver.delete_volume(non_replica_vol2)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_system_info')
@@ -7796,3 +8414,598 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver._wait_replica_vol_ready,
                               self.ctxt, gmcv_vol)
+
+    # Replication groups operation
+    def test_storwize_rep_group_create(self):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        # create group in db
+        group = testutils.create_group(self.ctxt,
+                                       volume_type_ids=[self.mm_type.id],
+                                       group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        rccg_name = self.driver._get_rccg_name(group)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual(rccg['name'], rccg_name)
+        self.driver.delete_group(self.ctxt, group, [])
+
+    def test_storwize_rep_group_delete(self):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1, mm_vol2]
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        self.driver.update_group(self.ctxt, group, vols, [])
+        (model_update, volumes_model_update) = self.driver.delete_group(
+            self.ctxt, group, vols)
+        for vol in vols:
+            self.assertFalse(self.driver._helpers.is_vdisk_defined(vol.name))
+        self.assertIsNone(self.driver._helpers.get_rccg(
+            self.driver._get_rccg_name(group)))
+        for vol_update in volumes_model_update:
+            self.assertEqual(fields.GroupStatus.DELETED, vol_update['status'])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update['status'])
+
+    def test_storwize_rep_group_update(self):
+        """Test group update."""
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        mm_vol, model_update = self._create_test_volume(self.mm_type)
+        gm_vol, model_update = self._create_test_volume(self.gm_type)
+        add_vols = [mm_vol, gm_vol]
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(
+            self.ctxt, group, add_vols, [])
+        self.assertEqual(model_update['status'], fields.GroupStatus.ERROR)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+        self.driver.delete_group(self.ctxt, group, add_vols)
+
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        rccg_name = self.driver._get_rccg_name(group)
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        mm_vol3, model_update = self._create_test_volume(self.mm_type)
+        mm_vol4, model_update = self._create_test_volume(self.mm_type)
+
+        add_vols = [mm_vol1, mm_vol2]
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(
+            self.ctxt, group, add_vols, [])
+        self.assertEqual(
+            rccg_name,
+            self.driver._helpers.get_rccg_info(mm_vol1.name)['name'])
+        self.assertEqual(
+            rccg_name,
+            self.driver._helpers.get_rccg_info(mm_vol2.name)['name'])
+        self.assertEqual(model_update['status'], fields.GroupStatus.AVAILABLE)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+        add_vols = [mm_vol3, mm_vol4]
+        rmv_vols = [mm_vol1, mm_vol2]
+        (model_update, add_volumes_update,
+         remove_volumes_update) = self.driver.update_group(
+            self.ctxt, group, add_volumes=add_vols, remove_volumes=rmv_vols)
+        self.assertIsNone(self.driver._helpers.get_rccg_info(mm_vol1.name))
+        self.assertIsNone(self.driver._helpers.get_rccg_info(mm_vol2.name))
+        self.assertEqual(
+            rccg_name,
+            self.driver._helpers.get_rccg_info(mm_vol3.name)['name'])
+        self.assertEqual(
+            rccg_name,
+            self.driver._helpers.get_rccg_info(mm_vol4.name)['name'])
+        self.assertEqual(model_update['status'], fields.GroupStatus.AVAILABLE)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+        self.driver.delete_group(self.ctxt, group, [mm_vol1, mm_vol2,
+                                                    mm_vol3, mm_vol4])
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'startrcconsistgrp')
+    def test_storwize_enable_replication_error(self, startrccg):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        rccg_name = self.driver._get_rccg_name(group)
+        exp_mod_upd = {'replication_status': fields.ReplicationStatus.ENABLED}
+        exp_mod_upd_err = {'replication_status':
+                           fields.ReplicationStatus.ERROR}
+        # enable replicaion on empty group
+        model_update, volumes_update = self.driver.enable_replication(
+            self.ctxt, group, [])
+        self.assertEqual(exp_mod_upd_err, model_update)
+        self.assertEqual([], volumes_update)
+        self.assertFalse(startrccg.called)
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        exp_vols_upd = [
+            {'id': mm_vol1['id'],
+             'replication_status': exp_mod_upd['replication_status']}]
+        exp_vols_upd_err = [
+            {'id': mm_vol1['id'],
+             'replication_status': exp_mod_upd_err['replication_status']}]
+
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'lsrcconsistgrp',
+                               side_effect=[None, {'primary': 'master',
+                                                   'relationship_count': '1'},
+                                            {'primary': 'aux',
+                                             'relationship_count': '1'},
+                                            {'primary': 'master',
+                                             'relationship_count': '1'}]):
+            startrccg.side_effect = [
+                None, None,
+                exception.VolumeBackendAPIException(data='CMMVC6372W')]
+
+            model_update, volumes_update = self.driver.enable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd_err, model_update)
+            self.assertEqual(exp_vols_upd_err, volumes_update)
+            self.assertFalse(startrccg.called)
+
+            model_update, volumes_update = self.driver.enable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd, model_update)
+            self.assertEqual(exp_vols_upd, volumes_update)
+            startrccg.assert_called_with(rccg_name, 'master')
+
+            model_update, volumes_update = self.driver.enable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd, model_update)
+            self.assertEqual(exp_vols_upd, volumes_update)
+            startrccg.assert_called_with(rccg_name, 'aux')
+
+            model_update, volumes_update = self.driver.enable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd_err, model_update)
+            self.assertEqual(exp_vols_upd_err, volumes_update)
+
+    def test_storwize_enable_replication(self):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1, mm_vol2]
+        expect_model_update = {'replication_status':
+                               fields.ReplicationStatus.ENABLED}
+        expect_vols_update = [
+            {'id': mm_vol1['id'],
+             'replication_status': expect_model_update['replication_status']},
+            {'id': mm_vol2['id'],
+             'replication_status': expect_model_update['replication_status']}
+        ]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        model_update, volumes_update = self.driver.enable_replication(
+            self.ctxt, group, vols)
+        self.assertEqual(expect_model_update, model_update)
+        self.assertEqual(expect_vols_update, volumes_update)
+        rccg_name = self.driver._get_rccg_name(group)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual(rccg['primary'], 'master')
+        self.assertIn(rccg['state'], ['inconsistent_copying',
+                                      'consistent_synchronized'])
+        self.driver.delete_group(self.ctxt, group, vols)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'stoprcconsistgrp')
+    def test_storwize_disable_replication_error(self, stoprccg):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        rccg_name = self.driver._get_rccg_name(group)
+        exp_mod_upd = {'replication_status': fields.ReplicationStatus.DISABLED}
+        exp_mod_upd_err = {'replication_status':
+                           fields.ReplicationStatus.ERROR}
+        # disable replicarion on empty group
+        model_update, volumes_update = self.driver.disable_replication(
+            self.ctxt, group, [])
+        self.assertEqual(exp_mod_upd_err, model_update)
+        self.assertEqual([], volumes_update)
+        self.assertFalse(stoprccg.called)
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        exp_vols_upd = [
+            {'id': mm_vol1['id'],
+             'replication_status': exp_mod_upd['replication_status']}]
+        exp_vols_upd_err = [
+            {'id': mm_vol1['id'],
+             'replication_status': exp_mod_upd_err['replication_status']}]
+
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'lsrcconsistgrp',
+                               side_effect=[None, {'name': rccg_name,
+                                                   'relationship_count': '1'},
+                                            {'name': rccg_name,
+                                             'relationship_count': '1'}]):
+            stoprccg.side_effect = [
+                None, exception.VolumeBackendAPIException(data='CMMVC6372W')]
+
+            model_update, volumes_update = self.driver.disable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd_err, model_update)
+            self.assertEqual(exp_vols_upd_err, volumes_update)
+            self.assertFalse(stoprccg.called)
+
+            model_update, volumes_update = self.driver.disable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd, model_update)
+            self.assertEqual(exp_vols_upd, volumes_update)
+            stoprccg.assert_called_with(rccg_name, False)
+
+            model_update, volumes_update = self.driver.disable_replication(
+                self.ctxt, group, vols)
+            self.assertEqual(exp_mod_upd_err, model_update)
+            self.assertEqual(exp_vols_upd_err, volumes_update)
+
+    def test_storwize_disable_replication(self):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1, mm_vol2]
+        expect_model_update = {'replication_status':
+                               fields.ReplicationStatus.DISABLED}
+        expect_vols_update = [
+            {'id': mm_vol1['id'],
+             'replication_status': expect_model_update['replication_status']},
+            {'id': mm_vol2['id'],
+             'replication_status': expect_model_update['replication_status']}
+        ]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        model_update, volumes_update = self.driver.disable_replication(
+            self.ctxt, group, vols)
+        self.assertEqual(expect_model_update, model_update)
+        self.assertEqual(expect_vols_update, volumes_update)
+        rccg_name = self.driver._get_rccg_name(group)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertIn(rccg['state'], ['inconsistent_stopped',
+                                      'consistent_stopped'])
+        self.driver.delete_group(self.ctxt, group, vols)
+
+    def test_storwize_failover_group_error(self):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        # Create metro mirror replication.
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        mm_vol2, model_update = self._create_test_volume(self.mm_type)
+        vols = [mm_vol1, mm_vol2]
+
+        self.driver._replica_enabled = False
+        self.assertRaises(exception.UnableToFailOver,
+                          self.driver.failover_replication, self.ctxt, group,
+                          vols, self.rep_target['backend_id'])
+        self.driver._replica_enabled = True
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover_replication, self.ctxt, group,
+                          vols, self.fake_target['backend_id'])
+
+        self.assertRaises(exception.UnableToFailOver,
+                          self.driver.failover_replication, self.ctxt, group,
+                          vols, self.rep_target['backend_id'])
+
+        self.assertRaises(exception.UnableToFailOver,
+                          self.driver.failover_replication, self.ctxt, group,
+                          vols, storwize_const.FAILBACK_VALUE)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_sys_info:
+            get_sys_info.side_effect = [
+                exception.VolumeBackendAPIException(data='CMMVC6071E'),
+                exception.VolumeBackendAPIException(data='CMMVC6071E')]
+            self.assertRaises(exception.UnableToFailOver,
+                              self.driver.failover_replication, self.ctxt,
+                              group, vols, self.rep_target['backend_id'])
+
+            self.driver._active_backend_id = self.rep_target['backend_id']
+            self.assertRaises(exception.UnableToFailOver,
+                              self.driver.failover_replication, self.ctxt,
+                              group, vols, 'default')
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'lsrcconsistgrp', side_effect=[None]):
+            self.assertRaises(exception.UnableToFailOver,
+                              self.driver.failover_replication, self.ctxt,
+                              group, vols, self.rep_target['backend_id'])
+        self.driver.delete_group(self.ctxt, group, vols)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'switch_rccg')
+    def test_storwize_failover_group_without_action(self, switchrccg):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        self.driver.update_group(self.ctxt, group, [mm_vol1], [])
+        rccg_name = self.driver._get_rccg_name(group)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+
+        rccg['primary'] = 'aux'
+        model_update = self.driver._rep_grp_failover(self.ctxt, rccg, group)
+        self.assertIsNone(model_update)
+        self.assertFalse(switchrccg.called)
+
+        rccg['primary'] = 'master'
+        model_update = self.driver._rep_grp_failback(self.ctxt, rccg, group)
+        self.assertIsNone(model_update)
+        self.assertFalse(switchrccg.called)
+
+        self.driver.delete_group(self.ctxt, group, [])
+
+    @ddt.data(({'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}, 'test_rep_metro'),
+              ({'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv'}, 'test_rep_gmcv'))
+    @ddt.unpack
+    def test_storwize_failover_replica_group(self, spec, type_name):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        rep_type = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
+        group = self._create_test_rccg(self.rccg_type, [rep_type.id])
+        vol1, model_update = self._create_test_volume(rep_type)
+        vol2, model_update = self._create_test_volume(rep_type)
+        vol2['status'] = 'in-use'
+        vol3, model_update = self._create_test_volume(rep_type)
+        vol3['status'] = 'available'
+        vol3['previous_status'] = 'in-use'
+        vols = [vol1, vol2, vol3]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        rccg_name = self.driver._get_rccg_name(group)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        expected_list = [{'id': vol1['id'],
+                          'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                          'previous_status': vol1['status'],
+                          'status': 'available',
+                          'attach_status': fields.VolumeAttachStatus.DETACHED},
+                         {'id': vol2['id'],
+                          'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                          'previous_status': vol2['status'],
+                          'status': 'available',
+                          'attach_status': fields.VolumeAttachStatus.DETACHED},
+                         {'id': vol3['id'],
+                          'replication_status':
+                              fields.ReplicationStatus.FAILED_OVER,
+                          'previous_status': vol3['status'],
+                          'status': 'in-use',
+                          'attach_status': fields.VolumeAttachStatus.ATTACHED}]
+
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, self.rep_target['backend_id'])
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(expected_list, volumes_model_update)
+        self.assertIsNone(self.driver._active_backend_id)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         self.driver._helpers)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('aux', rccg['primary'])
+
+        group.replication_status = fields.ReplicationStatus.FAILED_OVER
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, None)
+        self.assertIsNone(model_update)
+        self.assertIsNone(volumes_model_update)
+        self.assertIsNone(self.driver._active_backend_id)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         self.driver._helpers)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('aux', rccg['primary'])
+
+        self.driver.delete_group(self.ctxt, group, vols)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'switchrcconsistgrp')
+    def test_failover_replica_group_by_force_access(self, switchrcconsistgrp):
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        mm_vol1, model_update = self._create_test_volume(self.mm_type)
+        self.driver.update_group(self.ctxt, group, [mm_vol1], [])
+        rccg_name = self.driver._get_rccg_name(group)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        switchrcconsistgrp.side_effect = [
+            exception.VolumeBackendAPIException(data='CMMVC6071E'),
+            exception.VolumeBackendAPIException(data='CMMVC6071E')]
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'startrcconsistgrp') as startrcconsistgrp:
+            self.driver.failover_replication(self.ctxt, group, [mm_vol1], None)
+            switchrcconsistgrp.assert_called_once_with(rccg_name, True)
+            startrcconsistgrp.assert_called_once_with(rccg_name, 'aux')
+
+        with mock.patch.object(storwize_svc_common.StorwizeSSH,
+                               'stoprcconsistgrp') as stoprccg:
+            stoprccg.side_effect = exception.VolumeBackendAPIException(
+                data='CMMVC6071E')
+            self.assertRaises(exception.UnableToFailOver,
+                              self.driver.failover_replication, self.ctxt,
+                              group, [mm_vol1], self.rep_target['backend_id'])
+        self.driver.delete_group(self.ctxt, group, [mm_vol1])
+
+    @ddt.data(({'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}, 'test_rep_metro'),
+              ({'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv'}, 'test_rep_gmcv_default'))
+    @ddt.unpack
+    def test_storwize_failback_replica_group(self, spec, type_name):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        rep_type = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
+        group = self._create_test_rccg(self.rccg_type, [rep_type.id])
+        vol1, model_update = self._create_test_volume(rep_type)
+        vol2, model_update = self._create_test_volume(rep_type)
+        vol2['status'] = 'in-use'
+        vol3, model_update = self._create_test_volume(rep_type)
+        vol3['status'] = 'available'
+        vol3['previous_status'] = 'in-use'
+        vols = [vol1, vol2, vol3]
+        self.driver.update_group(self.ctxt, group, vols, [])
+        rccg_name = self.driver._get_rccg_name(group)
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+        failover_expect = [{'id': vol1['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.FAILED_OVER,
+                            'previous_status': vol1['status'],
+                            'status': 'available',
+                            'attach_status':
+                                fields.VolumeAttachStatus.DETACHED},
+                           {'id': vol2['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.FAILED_OVER,
+                            'previous_status': vol2['status'],
+                            'status': 'available',
+                            'attach_status':
+                                fields.VolumeAttachStatus.DETACHED},
+                           {'id': vol3['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.FAILED_OVER,
+                            'previous_status': vol3['status'],
+                            'status': 'in-use',
+                            'attach_status':
+                                fields.VolumeAttachStatus.ATTACHED}]
+
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, self.rep_target['backend_id'])
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(failover_expect, volumes_model_update)
+        self.assertIsNone(self.driver._active_backend_id)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         self.driver._helpers)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('aux', rccg['primary'])
+
+        group.replication_status = fields.ReplicationStatus.FAILED_OVER
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, None)
+        self.assertIsNone(model_update)
+        self.assertIsNone(volumes_model_update)
+        self.assertIsNone(self.driver._active_backend_id)
+        self.assertEqual(self.driver._master_backend_helpers,
+                         self.driver._helpers)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('aux', rccg['primary'])
+        self.sim._rccg_state_transition('wait',
+                                        self.sim._rcconsistgrp_list[rccg_name])
+
+        vol1['status'] = 'available'
+        vol1['previous_status'] = 'available'
+        vol2['status'] = 'available'
+        vol2['previous_status'] = 'in-use'
+        vol3['status'] = 'in-use'
+        vol3['previous_status'] = 'in-use'
+        failback_expect = [{'id': vol1['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.ENABLED,
+                            'previous_status': vol1['status'],
+                            'status': 'available',
+                            'attach_status':
+                                fields.VolumeAttachStatus.DETACHED},
+                           {'id': vol2['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.ENABLED,
+                            'previous_status': vol2['status'],
+                            'status': 'in-use',
+                            'attach_status':
+                                fields.VolumeAttachStatus.ATTACHED},
+                           {'id': vol3['id'],
+                            'replication_status':
+                                fields.ReplicationStatus.ENABLED,
+                            'previous_status': vol3['status'],
+                            'status': 'in-use',
+                            'attach_status':
+                                fields.VolumeAttachStatus.ATTACHED}]
+        self.driver._active_backend_id = self.rep_target['backend_id']
+
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, 'default')
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
+        self.assertEqual(failback_expect, volumes_model_update)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('master', rccg['primary'])
+
+        group.replication_status = fields.ReplicationStatus.ENABLED
+        model_update, volumes_model_update = self.driver.failover_replication(
+            self.ctxt, group, vols, 'default')
+        self.assertIsNone(model_update)
+        self.assertIsNone(volumes_model_update)
+        rccg = self.driver._helpers.get_rccg(rccg_name)
+        self.assertEqual('master', rccg['primary'])
+
+        self.driver.delete_group(self.ctxt, group, vols)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'lsrcconsistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'startrcconsistgrp')
+    def test_sync_replica_group_with_aux(self, startrccg, lsrccg):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        rccg_name = 'fakerccg'
+
+        sync_state = {'state': storwize_const.REP_CONSIS_SYNC,
+                      'primary': 'fake', 'relationship_count': '1'}
+
+        sync_copying_state = {'state': storwize_const.REP_CONSIS_COPYING,
+                              'primary': 'fake', 'relationship_count': '1'}
+
+        disconn_state = {'state': storwize_const.REP_IDL_DISC,
+                         'primary': 'master', 'relationship_count': '1'}
+
+        stop_state = {'state': storwize_const.REP_CONSIS_STOP,
+                      'primary': 'aux', 'relationship_count': '1'}
+        lsrccg.side_effect = [None, sync_state, sync_copying_state,
+                              disconn_state, stop_state]
+
+        self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
+        self.assertFalse(startrccg.called)
+
+        self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
+        self.assertFalse(startrccg.called)
+
+        self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
+        self.assertFalse(startrccg.called)
+
+        self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
+        startrccg.assert_called_once_with(rccg_name, 'master')
+
+        self.driver._sync_with_aux_grp(self.ctxt, rccg_name)
+        startrccg.assert_called_with(rccg_name, 'aux')

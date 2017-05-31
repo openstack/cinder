@@ -40,8 +40,13 @@ FAILBACK_VALUE = 'default'
 DEFAULT_RC_TIMEOUT = 3600 * 24 * 7
 DEFAULT_RC_INTERVAL = 5
 
+DEFAULT_RCCG_TIMEOUT = 60 * 30
+DEFAULT_RCCG_INTERVAL = 2
+
 REPLICA_AUX_VOL_PREFIX = 'aux_'
 REPLICA_CHG_VOL_PREFIX = 'chg_'
+
+RCCG_PREFIX = 'rccg-'
 
 # remote mirror copy status
 REP_CONSIS_SYNC = 'consistent_synchronized'
