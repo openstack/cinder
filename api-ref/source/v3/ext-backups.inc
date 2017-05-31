@@ -228,7 +228,7 @@ Request
    - volume_id: volume_id
    - force: force
    - backup: backup
-   - name: name
+   - name: name_optional
    - snapshot_id: snapshot_id_2
    - project_id: project_id_path
 
