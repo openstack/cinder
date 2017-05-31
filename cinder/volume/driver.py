@@ -466,27 +466,6 @@ class BaseVD(object):
                 raise exception.RemoveExportException(volume=volume['id'],
                                                       reason=ex)
 
-    def _detach_snapshot(self, ctxt, snapshot, properties, force=False):
-        """Disconnect the snapshot from the host."""
-        try:
-            self.terminate_connection_snapshot(snapshot, properties,
-                                               force=force)
-        except Exception as err:
-            err_msg = (_('Unable to terminate snapshot connection: %(err)s')
-                       % {'err': six.text_type(err)})
-            LOG.error(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        try:
-            LOG.debug("Snapshot %s: removing export.", snapshot.id)
-            self.remove_export_snapshot(ctxt, snapshot)
-        except Exception as ex:
-            LOG.exception("Error detaching snapshot %(snapshot)s, "
-                          "due to remove export failure.",
-                          {"snapshot": snapshot.id})
-            raise exception.RemoveExportException(volume=snapshot.id,
-                                                  reason=ex)
-
     def set_initialized(self):
         self._initialized = True
 
