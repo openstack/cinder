@@ -1910,11 +1910,23 @@ class API(base.Base):
                                if vref.multiattach
                                else ('available', 'downloading'))}
         result = vref.conditional_update({'status': 'reserved'}, expected)
+
         if not result:
-            msg = (_('Volume %(vol_id)s status must be %(statuses)s') %
-                   {'vol_id': vref.id,
-                    'statuses': utils.build_or_str(expected['status'])})
-            raise exception.InvalidVolume(reason=msg)
+            # Make sure we're not going to the same instance, in which case
+            # it could be a live-migrate or similar scenario (LP BUG: 1694530)
+            override = False
+            if instance_uuid:
+                override = True
+                for attachment in vref.volume_attachment:
+                    if attachment.instance_uuid != instance_uuid:
+                        override = False
+                        break
+
+            if not override:
+                msg = (_('Volume %(vol_id)s status must be %(statuses)s') %
+                       {'vol_id': vref.id,
+                        'statuses': utils.build_or_str(expected['status'])})
+                raise exception.InvalidVolume(reason=msg)
 
         values = {'volume_id': vref.id,
                   'volume_host': vref.host,
