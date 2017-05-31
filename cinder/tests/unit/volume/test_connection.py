@@ -322,6 +322,15 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    @mock.patch('cinder.volume.manager.LOG', mock.Mock())
+    def test_initialize_connection(self):
+        volume = mock.Mock(save=mock.Mock(side_effect=Exception))
+        with mock.patch.object(self.volume, 'driver') as driver_mock:
+            self.assertRaises(exception.ExportFailure,
+                              self.volume.initialize_connection, self.context,
+                              volume, mock.Mock())
+        driver_mock.remove_export.assert_called_once_with(mock.ANY, volume)
+
     def test_run_attach_detach_2volumes_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
         # attach first volume to the instance
