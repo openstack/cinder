@@ -649,7 +649,7 @@ class VMAXUtils(object):
     def convert_gb_to_bits(self, strGbSize):
         """Convert GB(string) to bytes(string).
 
-        :param strGB: string -- The size in GB
+        :param strGbSize: string -- The size in GB
         :returns: string -- The size in bytes
         """
         strBitsSize = six.text_type(int(strGbSize) * units.Gi)
@@ -2011,8 +2011,8 @@ class VMAXUtils(object):
     def get_random_pg_from_list(portgroupnames):
         """From list of portgroup, choose one randomly
 
-        :param portGroupNames: list of available portgroups
-        :returns: portGroupName - the random portgroup
+        :param portgroupnames: list of available portgroups
+        :returns: portgroupname - the random portgroup
         """
         portgroupname = (
             portgroupnames[random.randint(0, len(portgroupnames) - 1)])
@@ -2676,7 +2676,7 @@ class VMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param storagegroup: the storagegroup instance name
-        :param extraSpecs: extra specifications
+        :param extraspecs: extra specifications
         """
         modifiedInstance = None
         if type(storagegroup) is pywbem.cim_obj.CIMInstance:
@@ -2802,7 +2802,7 @@ class VMAXUtils(object):
     def change_compression_type(self, isSourceCompressionDisabled, newType):
         """Check if volume type have different compression types.
 
-        :param isCompressionDisabled: from source
+        :param isSourceCompressionDisabled: from source
         :param newType: from target
         :returns: boolean
         """

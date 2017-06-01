@@ -917,7 +917,7 @@ class VMAXProvisionV3(object):
         """Extend a volume instance.
 
         :param conn: connection to the ecom server
-        :param storageConfigservice: the storage configuration service
+        :param storageConfigService: the storage configuration service
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
         :param volumeSize: the volume size

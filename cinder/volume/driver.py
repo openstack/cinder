@@ -1783,7 +1783,7 @@ class MigrateVD(object):
         Returns a boolean indicating whether the migration occurred, as well as
         model_update.
 
-        :param ctxt: Context
+        :param context: Context
         :param volume: A dictionary describing the volume to migrate
         :param host: A dictionary describing the host to migrate to, where
                      host['host'] is its name, and host['capabilities'] is a

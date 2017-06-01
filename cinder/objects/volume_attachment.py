@@ -163,7 +163,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
 
 @base.CinderObjectRegistry.register
 class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
-    # Versoin 1.0: Iniitial version
+    # Version 1.0: Initial version
     # Version 1.1: Remove volume_id in get_by_host|instance
     VERSION = '1.1'
 
