@@ -312,7 +312,7 @@ Retype volume
 
 Change type of existing volume. Specify the ``os-retype`` action in the request body.
 
-Change the volume type of exisiting volume, Cinder may migrate the volume to
+Change the volume type of existing volume, Cinder may migrate the volume to
 proper volume host according to the new volume type.
 
 Normal response codes: 202

@@ -245,7 +245,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
-        :param ctxt: Context
+        :param context: Context
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
         :param diff: A dictionary with the difference between the two types

@@ -134,7 +134,7 @@ class HttpClient(object):
         except IndexError:
             url = asyncTask.get('returnValue')
         except AttributeError:
-            LOG.debug('_get_async_url: Atttribute Error. (%r)', asyncTask)
+            LOG.debug('_get_async_url: Attribute Error. (%r)', asyncTask)
             url = 'api/rest/ApiConnection/AsyncTask/'
 
         # Blank URL

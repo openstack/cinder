@@ -227,7 +227,7 @@ class BrcdHTTPFCZoneClient(object):
             raise exception.BrocadeZoningHttpException(reason=msg)
         return response
 
-    def get_parsed_data(self, data, delim1, demil2):
+    def get_parsed_data(self, data, delim1, delim2):
         """Return the sub string between the delimiters.
 
         :param data: String to manipulate
@@ -238,7 +238,7 @@ class BrcdHTTPFCZoneClient(object):
         try:
             start = data.index(delim1)
             start = start + len(delim1)
-            end = data.index(demil2)
+            end = data.index(delim2)
             return data[start:end]
         except ValueError as e:
             msg = (_("Error while parsing the data: %s.") % six.text_type(e))

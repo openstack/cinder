@@ -2030,7 +2030,7 @@ class VMAXCommon(object):
     def get_target_wwns_list(self, storage_system, volume, connector):
         """Find target WWN list.
 
-        :param storageSystem: the storage system name
+        :param storage_system: the storage system name
         :param connector: the connector dict
         :returns: list -- targetWwns, the target WWN list
         :raises: VolumeBackendAPIException
