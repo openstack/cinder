@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed issue where Cinder periodic tasks could not be configured to run
+    more often than every 60 seconds. Setting ``periodic_interval`` in
+    cinder.conf to less than 60 will now work as expected.

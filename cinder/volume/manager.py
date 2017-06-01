@@ -2625,7 +2625,7 @@ class VolumeManager(manager.CleanableManager,
 
         return volume_stats
 
-    @periodic_task.periodic_task
+    @periodic_task.periodic_task(spacing=CONF.periodic_interval)
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""
         self._report_driver_status(context)
