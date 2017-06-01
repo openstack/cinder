@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.volume import utils
 from cinder.volume import volume_types
 
 
@@ -160,6 +161,9 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         expected_attrs = cls._get_expected_attrs(context)
         return cls._from_db_object(context, cls(context),
                                    orm_obj, expected_attrs=expected_attrs)
+
+    def is_replicated(self):
+        return utils.is_replicated_spec(self.extra_specs)
 
 
 @base.CinderObjectRegistry.register

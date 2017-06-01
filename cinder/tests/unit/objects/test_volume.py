@@ -553,6 +553,22 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertEqual(is_set, converted_volume.obj_attr_is_set(key))
         self.assertEqual('host', converted_volume.host)
 
+    @ddt.data(True, False)
+    def test_is_replicated(self, result):
+        volume_type = fake_volume.fake_volume_type_obj(self.context)
+        volume = fake_volume.fake_volume_obj(
+            self.context, volume_type_id=volume_type.id)
+        volume.volume_type = volume_type
+        with mock.patch.object(volume_type, 'is_replicated',
+                               return_value=result) as is_replicated:
+            self.assertEqual(result, volume.is_replicated())
+            is_replicated.assert_called_once_with()
+
+    def test_is_replicated_no_type(self):
+        volume = fake_volume.fake_volume_obj(
+            self.context, volume_type_id=None, volume_type=None)
+        self.assertFalse(volume.is_replicated())
+
 
 @ddt.ddt
 class TestVolumeList(test_objects.BaseObjectsTestCase):
