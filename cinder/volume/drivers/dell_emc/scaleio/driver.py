@@ -37,6 +37,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import objects
 from cinder import utils
 
 from cinder.objects import fields
@@ -325,6 +326,10 @@ class ScaleIODriver(driver.VolumeDriver):
     @staticmethod
     def _version_greater_than_or_equal(ver1, ver2):
         return version.LooseVersion(ver1) >= version.LooseVersion(ver2)
+
+    @staticmethod
+    def _convert_kb_to_gib(size):
+        return int(math.ceil(float(size) / units.Mi))
 
     @staticmethod
     def _id_to_base64(id):
@@ -1159,6 +1164,165 @@ class ScaleIODriver(driver.VolumeDriver):
         self._manage_existing_check_legal_response(r, existing_ref)
         return response
 
+    def _get_protection_domain_id(self):
+        """"Get the id of the configured protection domain"""
+
+        if self.protection_domain_id:
+            return self.protection_domain_id
+
+        if not self.protection_domain_name:
+            msg = _("Must specify protection domain name or"
+                    " protection domain id.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        domain_name = self.protection_domain_name
+        encoded_domain_name = urllib.parse.quote(domain_name, '')
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'encoded_domain_name': encoded_domain_name}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/types/Domain/instances/getByName::"
+                   "%(encoded_domain_name)s") % req_vars
+        LOG.debug("ScaleIO get domain id by name request: %s.", request)
+
+        r, domain_id = self._execute_scaleio_get_request(request)
+
+        if not domain_id:
+            msg = (_("Domain with name %s wasn't found.")
+                   % self.protection_domain_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if r.status_code != http_client.OK and "errorCode" in domain_id:
+            msg = (_("Error getting domain id from name %(name)s: %(id)s.")
+                   % {'name': self.protection_domain_name,
+                      'id': domain_id['message']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info("Domain id is %s.", domain_id)
+
+        return domain_id
+
+    def _get_storage_pool_id(self):
+        """Get the id of the configured storage pool"""
+
+        if self.storage_pool_id:
+            return self.storage_pool_id
+
+        if not self.protection_domain_name:
+            msg = _("Must specify storage pool name or"
+                    " storage pool id.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        domain_id = self._get_protection_domain_id()
+        pool_name = self.storage_pool_name
+        encoded_pool_name = urllib.parse.quote(pool_name, '')
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'domain_id': domain_id,
+                    'encoded_pool_name': encoded_pool_name}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/types/Pool/instances/getByName::"
+                   "%(domain_id)s,%(encoded_pool_name)s") % req_vars
+        LOG.debug("ScaleIO get pool id by name request: %s.", request)
+        r, pool_id = self._execute_scaleio_get_request(request)
+
+        if not pool_id:
+            msg = (_("Pool with name %(pool_name)s wasn't found in "
+                     "domain %(domain_id)s.")
+                   % {'pool_name': pool_name,
+                      'domain_id': domain_id})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if r.status_code != http_client.OK and "errorCode" in pool_id:
+            msg = (_("Error getting pool id from name %(pool_name)s: "
+                     "%(err_msg)s.")
+                   % {'pool_name': pool_name,
+                      'err_msg': pool_id['message']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info("Pool id is %s.", pool_id)
+
+        return pool_id
+
+    def _get_all_scaleio_volumes(self):
+        """Gets list of all SIO volumes in PD and SP"""
+
+        sp_id = self._get_storage_pool_id()
+
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'storage_pool_id': sp_id}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/instances/StoragePool::%(storage_pool_id)s"
+                   "/relationships/Volume") % req_vars
+        LOG.info("ScaleIO get volumes in SP: %s.",
+                 request)
+        r, volumes = self._execute_scaleio_get_request(request)
+
+        if r.status_code != http_client.OK:
+            msg = (_("Error calling api "
+                     "status code: %d") % r.status_code)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return volumes
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder.
+
+        Rule out volumes that are mapped to an SDC or
+        are already in the list of cinder_volumes.
+        Return references of the volume ids for any others.
+        """
+
+        all_sio_volumes = self._get_all_scaleio_volumes()
+
+        # Put together a map of existing cinder volumes on the array
+        # so we can lookup cinder id's to SIO id
+        existing_vols = {}
+        for cinder_vol in cinder_volumes:
+            provider_id = cinder_vol['provider_id']
+            existing_vols[provider_id] = cinder_vol.name_id
+
+        manageable_volumes = []
+        for sio_vol in all_sio_volumes:
+            cinder_id = existing_vols.get(sio_vol['id'])
+            is_safe = True
+            reason = None
+
+            if sio_vol['mappedSdcInfo']:
+                is_safe = False
+                numHosts = len(sio_vol['mappedSdcInfo'])
+                reason = _('Volume mapped to %d host(s).') % numHosts
+
+            if cinder_id:
+                is_safe = False
+                reason = _("Volume already managed.")
+
+            if sio_vol['volumeType'] != 'Snapshot':
+                manageable_volumes.append({
+                    'reference': {'source-id': sio_vol['id']},
+                    'size': self._convert_kb_to_gib(sio_vol['sizeInKb']),
+                    'safe_to_manage': is_safe,
+                    'reason_not_safe': reason,
+                    'cinder_id': cinder_id,
+                    'extra_info': {'volumeType': sio_vol['volumeType'],
+                                   'name': sio_vol['name']}})
+
+        return volume_utils.paginate_entries_list(
+            manageable_volumes, marker, limit, offset, sort_keys, sort_dirs)
+
+    def _is_managed(self, volume_id):
+        lst = objects.VolumeList.get_all_by_host(context.get_admin_context(),
+                                                 self.host)
+        for vol in lst:
+            if vol.provider_id == volume_id:
+                return True
+
+        return False
+
     def manage_existing(self, volume, existing_ref):
         """Manage an existing ScaleIO volume.
 
@@ -1246,11 +1410,19 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info("ScaleIO get volume by id request: %s.", request)
         return request
 
-    @staticmethod
-    def _manage_existing_check_legal_response(response, existing_ref):
+    def _manage_existing_check_legal_response(self, response, existing_ref):
         if response.status_code != http_client.OK:
             reason = (_("Error managing volume: %s.") % response.json()[
                 'message'])
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+
+        # check if it is already managed
+        if self._is_managed(response.json()['id']):
+            reason = _("manage_existing cannot manage a volume "
+                       "that is already being managed.")
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=reason
