@@ -199,7 +199,7 @@ default of ``3.1``) they would see the result from ``method_1``,
 ``3.4`` or later ``method_2``.
 
 We could use ``wsgi.Controller.api_version`` decorator on the second
-``my_api_method`` as well, but then we would have to add ``# no qa`` to that
+``my_api_method`` as well, but then we would have to add ``# noqa`` to that
 line to avoid failing flake8's ``F811`` rule.  So the recommended approach is
 to use the ``api_version`` decorator from the first method that is defined, as
 illustrated by the example above, and then use ``my_api_method`` decorator for
@@ -214,11 +214,11 @@ A method with only small changes between versions
 A method may have only small changes between microversions, in which
 case you can decorate a private method::
 
-    @api_version("3.1", "3.4")
+    @wsgi.Controller.api_version("3.1", "3.4")
     def _version_specific_func(self, req, arg1):
         pass
 
-    @api_version(min_ver="3.5")  # noqa
+    @_version_specific_func.api_version(min_ver="3.5")
     def _version_specific_func(self, req, arg1):
         pass
 
