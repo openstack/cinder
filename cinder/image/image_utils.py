@@ -145,7 +145,11 @@ def _convert_image(prefix, source, dest, out_format,
         cmd = prefix + ('qemu-img', 'convert',
                         '-t', 'none')
 
-        if src_format is not None:
+        # AMI images can be raw or qcow2 but qemu-img doesn't accept "ami" as
+        # an image format, so we use automatic detection.
+        # TODO(geguileo): This fixes unencrypted AMI image case, but we need to
+        # fix the encrypted case.
+        if (src_format or '').lower() not in ('', 'ami'):
             cmd += ('-f', src_format)  # prevent detection of format
 
         cmd += ('-O', out_format, source, dest)

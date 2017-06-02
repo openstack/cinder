@@ -229,6 +229,26 @@ class TestConvertImage(test.TestCase):
                                           out_format, source, dest,
                                           run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.utils.is_blk_device', return_value=True)
+    def test_defaults_block_dev_ami_img(self, mock_isblk, mock_exec,
+                                        mock_info):
+        source = mock.sentinel.source
+        dest = mock.sentinel.dest
+        out_format = mock.sentinel.out_format
+        mock_info.return_value.virtual_size = 1048576
+
+        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+                        return_value=True):
+            output = image_utils.convert_image(source, dest, out_format,
+                                               src_format='AMI')
+
+            self.assertIsNone(output)
+            mock_exec.assert_called_once_with('qemu-img', 'convert',
+                                              '-t', 'none', '-O', out_format,
+                                              source, dest, run_as_root=True)
+
 
 class TestResizeImage(test.TestCase):
     @mock.patch('cinder.utils.execute')
