@@ -74,5 +74,5 @@ valid for first. The supported APIs are marked with "*" below in the table.
 |                 | id, event_id, resource_uuid, resource_type, request_id, message_level,  |
 | list message*   | project_id                                                              |
 +-----------------+-------------------------------------------------------------------------+
-| get pools       | name, volume_type                                                                   |
+| get pools       | name, volume_type                                                       |
 +-----------------+-------------------------------------------------------------------------+
