@@ -559,15 +559,11 @@ class TestZFSSAISCSIDriver(test.TestCase):
             val = None
         return val
 
-    @mock.patch.object(image_utils, 'qemu_img_info')
-    @mock.patch.object(image_utils.TemporaryImages, 'fetch')
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_cache_volume')
-    def test_clone_image_negative(self, _verify_cache_volume, _fetch, _info):
+    def test_clone_image_negative(self, _verify_cache_volume):
         # Disabling local cache feature:
         self.configuration.zfssa_enable_local_cache = False
 
-        _fetch.return_value = mock.MagicMock(spec=utils.get_file_spec())
-        _info.return_value = ImgInfo(small_img['virtual_size'])
         self.assertEqual((None, False),
                          self.drv.clone_image(fakecontext, self.test_vol,
                                               img_location,
@@ -576,7 +572,6 @@ class TestZFSSAISCSIDriver(test.TestCase):
 
         self.configuration.zfssa_enable_local_cache = True
         # Creating a volume smaller than image:
-        _info.return_value = ImgInfo(large_img['virtual_size'])
         self.assertEqual((None, False),
                          self.drv.clone_image(fakecontext, self.test_vol,
                                               img_location,
@@ -586,7 +581,6 @@ class TestZFSSAISCSIDriver(test.TestCase):
         # Creating a volume equal as image:
         eq_img = large_img.copy()
         eq_img['virtual_size'] = self.test_vol['size'] * units.Gi
-        _info.return_value = ImgInfo(eq_img['virtual_size'])
         self.assertEqual((None, False),
                          self.drv.clone_image(fakecontext, self.test_vol,
                                               img_location,
@@ -594,7 +588,6 @@ class TestZFSSAISCSIDriver(test.TestCase):
                                               img_service))
 
         # Exception raised in _verify_cache_image
-        _info.return_value = ImgInfo(small_img['virtual_size'])
         self.drv._verify_cache_volume.side_effect = (
             exception.VolumeBackendAPIException('fakeerror'))
         self.assertEqual((None, False),
@@ -603,20 +596,15 @@ class TestZFSSAISCSIDriver(test.TestCase):
                                               small_img,
                                               img_service))
 
-    @mock.patch.object(image_utils, 'qemu_img_info')
-    @mock.patch.object(image_utils.TemporaryImages, 'fetch')
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_voltype_specs')
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_cache_volume')
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, 'extend_volume')
-    def test_clone_image(self, _extend_vol, _verify_cache, _get_specs,
-                         _fetch, _info):
+    def test_clone_image(self, _extend_vol, _verify_cache, _get_specs):
         lcfg = self.configuration
         cache_vol = 'volume-os-cache-vol-%s' % small_img['id']
         cache_snap = 'image-%s' % small_img['id']
         self.drv._get_voltype_specs.return_value = fakespecs.copy()
         self.drv._verify_cache_volume.return_value = cache_vol, cache_snap
-        _fetch.return_value = mock.MagicMock(spec=utils.get_file_spec())
-        _info.return_value = ImgInfo(small_img['virtual_size'])
 
         model, cloned = self.drv.clone_image(fakecontext, self.test_vol2,
                                              img_location,
