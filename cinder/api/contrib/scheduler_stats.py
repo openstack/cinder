@@ -22,6 +22,7 @@ from cinder.scheduler import rpcapi
 from cinder import utils
 
 GET_POOL_NAME_FILTER_MICRO_VERSION = '3.28'
+GET_POOL_VOLUME_TYPE_FILTER_MICRO_VERSION = '3.35'
 
 
 def authorize(context, action_name):
@@ -58,6 +59,9 @@ class SchedulerStatsController(wsgi.Controller):
         self._process_pool_filtering(context=context,
                                      filters=filters,
                                      req_version=req_version)
+
+        if not req_version.matches(GET_POOL_VOLUME_TYPE_FILTER_MICRO_VERSION):
+            filters.pop('volume_type', None)
 
         pools = self.scheduler_api.get_pools(context, filters=filters)
 

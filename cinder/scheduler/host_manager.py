@@ -32,6 +32,7 @@ from cinder import objects
 from cinder.scheduler import filters
 from cinder import utils
 from cinder.volume import utils as vol_utils
+from cinder.volume import volume_types
 
 
 # FIXME: This file should be renamed to backend_manager, we should also rename
@@ -627,15 +628,33 @@ class HostManager(object):
 
         return all_pools.values()
 
+    def _filter_pools_by_volume_type(self, context, volume_type, pools):
+        """Return the pools filtered by volume type specs"""
+
+        # wrap filter properties only with volume_type
+        filter_properties = {
+            'context': context,
+            'volume_type': volume_type,
+            'resource_type': volume_type,
+            'qos_specs': volume_type.get('qos_specs'),
+        }
+
+        filtered = self.get_filtered_backends(pools.values(),
+                                              filter_properties)
+
+        # filter the pools by value
+        return {k: v for k, v in pools.items() if v in filtered}
+
     def get_pools(self, context, filters=None):
         """Returns a dict of all pools on all hosts HostManager knows about."""
 
         self._update_backend_state_map(context)
 
-        all_pools = []
-        name = None
+        all_pools = {}
+        name = volume_type = None
         if filters:
             name = filters.pop('name', None)
+            volume_type = filters.pop('volume_type', None)
 
         for backend_key, state in self.backend_state_map.items():
             for key in state.pools:
@@ -658,9 +677,20 @@ class HostManager(object):
                             break
 
                 if not filtered:
-                    all_pools.append(new_pool)
+                    all_pools[pool_key] = pool
 
-        return all_pools
+        # filter pools by volume type
+        if volume_type:
+            volume_type = volume_types.get_by_name_or_id(
+                context, volume_type)
+            all_pools = (
+                self._filter_pools_by_volume_type(context,
+                                                  volume_type,
+                                                  all_pools))
+
+        # encapsulate pools in format:{name: XXX, capabilities: XXX}
+        return [dict(name=key, capabilities=value.capabilities)
+                for key, value in all_pools.items()]
 
     def get_usage_and_notify(self, capa_new, updated_pools, host, timestamp):
         context = cinder_context.get_admin_context()

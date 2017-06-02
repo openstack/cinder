@@ -379,11 +379,13 @@ class GeneralFiltersTest(test.TestCase):
     @ddt.data({'filters': {'key1': 'value1'},
                'is_admin': False,
                'result': {'fake_resource': ['key1']},
-               'expected': {'key1': 'value1'}},
+               'expected': {'key1': 'value1'},
+               'resource': 'fake_resource'},
               {'filters': {'key1': 'value1', 'key2': 'value2'},
                'is_admin': False,
                'result': {'fake_resource': ['key1']},
-               'expected': None},
+               'expected': None,
+               'resource': 'fake_resource'},
               {'filters': {'key1': 'value1',
                            'all_tenants': 'value2',
                            'key3': 'value3'},
@@ -391,11 +393,19 @@ class GeneralFiltersTest(test.TestCase):
                'result': {'fake_resource': []},
                'expected': {'key1': 'value1',
                             'all_tenants': 'value2',
-                            'key3': 'value3'}})
+                            'key3': 'value3'},
+               'resource': 'fake_resource'},
+              {'filters': {'key1': 'value1',
+                           'all_tenants': 'value2',
+                           'key3': 'value3'},
+               'is_admin': True,
+               'result': {'pool': []},
+               'expected': None,
+               'resource': 'pool'})
     @ddt.unpack
     @mock.patch('cinder.api.common.get_enabled_resource_filters')
     def test_reject_invalid_filters(self, mock_get, filters,
-                                    is_admin, result, expected):
+                                    is_admin, result, expected, resource):
         class FakeContext(object):
             def __init__(self, admin):
                 self.is_admin = admin
@@ -404,13 +414,13 @@ class GeneralFiltersTest(test.TestCase):
         mock_get.return_value = result
         if expected:
             common.reject_invalid_filters(fake_context,
-                                          filters, 'fake_resource')
+                                          filters, resource)
             self.assertEqual(expected, filters)
         else:
             self.assertRaises(
                 webob.exc.HTTPBadRequest,
                 common.reject_invalid_filters, fake_context,
-                filters, 'fake_resource')
+                filters, resource)
 
     @ddt.data({'filters': {'name': 'value1'},
                'is_admin': False,

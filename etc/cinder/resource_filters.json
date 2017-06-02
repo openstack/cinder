@@ -8,5 +8,5 @@
     "attachment": ["volume_id"],
     "message": ["resource_uuid", "resource_type", "event_id",
                 "request_id", "message_level"],
-    "pool": ["name"]
+    "pool": ["name", "volume_type"]
 }

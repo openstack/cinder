@@ -46,6 +46,12 @@ class FakeFilterClass2(filters.BaseBackendFilter):
         pass
 
 
+class FakeFilterClass3(filters.BaseHostFilter):
+    def host_passes(self, host_state, filter_properties):
+        return host_state.get('volume_backend_name') == \
+            filter_properties.get('volume_type')['volume_backend_name']
+
+
 @ddt.ddt
 class HostManagerTestCase(test.TestCase):
     """Test case for HostManager class."""
@@ -1019,6 +1025,45 @@ class HostManagerTestCase(test.TestCase):
             ]
 
             self.assertEqual(expected, res)
+
+    @mock.patch('cinder.scheduler.host_manager.HostManager.'
+                '_choose_backend_filters')
+    def test_get_pools_filtered_by_volume_type(self,
+                                               _mock_choose_backend_filters):
+        context = 'fake_context'
+        filter_class = FakeFilterClass3
+        _mock_choose_backend_filters.return_value = [filter_class]
+
+        hosts = {
+            'host1': {'volume_backend_name': 'AAA',
+                      'total_capacity_gb': 512,
+                      'free_capacity_gb': 200,
+                      'timestamp': None,
+                      'reserved_percentage': 0,
+                      'provisioned_capacity_gb': 312},
+            'host2@back1': {'volume_backend_name': 'BBB',
+                            'total_capacity_gb': 256,
+                            'free_capacity_gb': 100,
+                            'timestamp': None,
+                            'reserved_percentage': 0,
+                            'provisioned_capacity_gb': 156}}
+        mock_warning = mock.Mock()
+        host_manager.LOG.warn = mock_warning
+        mock_volume_type = {
+            'volume_backend_name': 'AAA',
+            'qos_specs': 'BBB',
+        }
+
+        res = self.host_manager._filter_pools_by_volume_type(context,
+                                                             mock_volume_type,
+                                                             hosts)
+        expected = {'host1': {'volume_backend_name': 'AAA',
+                              'total_capacity_gb': 512,
+                              'free_capacity_gb': 200,
+                              'timestamp': None, 'reserved_percentage': 0,
+                              'provisioned_capacity_gb': 312}}
+
+        self.assertEqual(expected, res)
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
