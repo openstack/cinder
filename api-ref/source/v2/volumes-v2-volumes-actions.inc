@@ -369,3 +369,34 @@ Request Example
    :language: javascript
 
 
+
+
+
+
+
+Update volume bootable status
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/{tenant_id}/volumes/{volume_id}/action
+
+Update the bootable status for a volume, mark it as a bootable volume. Specify the ``os-set_bootable`` action in the request body.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - tenant_id: tenant_id
+   - volume_id: volume_id_path
+   - os-set_bootable: os-set_bootable
+   - bootable: bootable
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-bootable-status-update-request.json
+   :language: javascript
+
