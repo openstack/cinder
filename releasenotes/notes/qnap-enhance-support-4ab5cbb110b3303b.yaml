@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add enhanced support to the QNAP Cinder driver, including
+    'CHAP', 'Thin Provision', 'SSD Cache', 'Dedup' and 'Compression'.

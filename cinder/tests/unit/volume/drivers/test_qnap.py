@@ -22,6 +22,7 @@ except ImportError:
 from ddt import data
 from ddt import ddt
 from ddt import unpack
+import eventlet
 import mock
 from oslo_config import cfg
 from oslo_utils import units
@@ -594,19 +595,26 @@ def create_configuration(
         management_url,
         san_iscsi_ip,
         poolname,
-        thin_provision=True):
+        thin_provision=True,
+        compression=True,
+        deduplication=False,
+        ssd_cache=False):
     """Create configuration."""
     configuration = mock.Mock()
     configuration.san_login = username
     configuration.san_password = password
     configuration.qnap_management_url = management_url
     configuration.san_thin_provision = thin_provision
+    configuration.qnap_compression = compression
+    configuration.qnap_deduplication = deduplication
+    configuration.qnap_ssd_cache = ssd_cache
     configuration.san_iscsi_ip = san_iscsi_ip
     configuration.qnap_poolname = poolname
     configuration.safe_get.return_value = 'QNAP'
     configuration.iscsi_ip_address = '1.2.3.4'
     configuration.qnap_storage_protocol = 'iscsi'
     configuration.reserved_percentage = 0
+    configuration.use_chap_auth = False
     return configuration
 
 
@@ -679,6 +687,14 @@ class VolumeClass(object):
             'name': 'fakeTargetIqn',
             'tgt_lun': '1'
         }
+        self.volume_type = {
+            'extra_specs': {
+                'qnap_thin_provision': 'True',
+                'qnap_compression': 'True',
+                'qnap_deduplication': 'False',
+                'qnap_ssd_cache': 'False'
+            }
+        }
 
     def __getitem__(self, arg):
         """Getitem."""
@@ -689,7 +705,8 @@ class VolumeClass(object):
             'name': self.name,
             'volume_metadata': self.volume_metadata,
             'metadata': self.metadata,
-            'provider_location': self.provider_location
+            'provider_location': self.provider_location,
+            'volume_type': self.volume_type
         }[arg]
 
     def __contains__(self, arg):
@@ -701,7 +718,8 @@ class VolumeClass(object):
             'name': self.name,
             'volume_metadata': self.volume_metadata,
             'metadata': self.metadata,
-            'provider_location': self.provider_location
+            'provider_location': self.provider_location,
+            'volume_type': self.volume_type
         }[arg]
 
     def __setitem__(self, key, value):
@@ -1288,6 +1306,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
         self.driver.create_volume(fake_volume)
 
@@ -1295,7 +1314,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             fake_volume,
             self.driver.configuration.qnap_poolname,
             'fakeLun',
-            True)
+            True, False, True, False)
 
         expected_call_list = [
             mock.call(LUNName='fakeLun'),
@@ -1442,6 +1461,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 'http://1.2.3.4:8080',
                 'Pool1',
                 True))
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
         self.driver.create_cloned_volume(fake_volume, fake_src_vref)
 
@@ -1506,19 +1526,18 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
         self.driver.create_cloned_volume(fake_volume, fake_src_vref)
 
         mock_extend_lun.assert_called_once_with(fake_volume, 'fakeLunNaa')
 
-    @mock.patch('eventlet.greenthread.sleep', return_value=None)
     @mock.patch.object(qnap.QnapISCSIDriver, '_create_snapshot_name')
     @mock.patch('cinder.volume.drivers.qnap.QnapAPIExecutor')
     def test_create_snapshot_positive(
             self,
             mock_api_executor,
-            mock_create_snapshot_name,
-            mock_greenthread_sleep):
+            mock_create_snapshot_name):
         """Test create snapshot."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
@@ -1542,6 +1561,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
         self.driver.create_snapshot(snapshot)
 
@@ -1647,6 +1667,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
         self.driver.create_volume_from_snapshot(fake_volume, fake_snapshot)
 
@@ -1743,7 +1764,11 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             free_capacity_gb=928732941681 / units.Gi,
             provisioned_capacity_gb=1480470528 / units.Gi,
             reserved_percentage=self.driver.configuration.reserved_percentage,
-            QoS_support=False)
+            QoS_support=False,
+            qnap_thin_provision=['True', 'False'],
+            qnap_compression=['True', 'False'],
+            qnap_deduplication=['True', 'False'],
+            qnap_ssd_cache=['True', 'False'])
         expected_res['pools'] = [single_pool]
 
         self.assertEqual(
@@ -1819,7 +1844,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             'LUNStatus': '1'}
         mock_api_return.edit_lun.assert_called_once_with(expect_lun)
 
-    @mock.patch('eventlet.greenthread.sleep', return_value=None)
     @mock.patch.object(qnap.QnapISCSIDriver,
                        '_get_lun_naa_from_volume_metadata')
     @mock.patch.object(qnap.QnapISCSIDriver, '_gen_random_name')
@@ -1828,8 +1852,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             self,
             mock_api_executor,
             mock_gen_random_name,
-            mock_get_lun_naa_from_volume_metadata,
-            mock_greenthread_sleep):
+            mock_get_lun_naa_from_volume_metadata):
         """Test create export."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
@@ -1847,8 +1870,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         mock_api_return.create_target.return_value = 'fakeTargetIndex'
         mock_api_return.get_target_info.return_value = (
             self.get_target_info_return_value())
-        mock_api_return.get_all_iscsi_portal_setting.return_value = (
-            FAKE_RES_DETAIL_GET_ALL_ISCSI_PORTAL_SETTING)
         mock_api_return.map_lun.return_value = None
         mock_api_return.get_ethernet_ip.return_value = ['1.2.3.4'], None
 
@@ -1860,7 +1881,11 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.driver.configuration.use_chap_auth = False
+        self.driver.configuration.chap_username = ''
+        self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -1874,7 +1899,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.assertEqual(expected_return, self.driver.create_export(
             'context', fake_volume, fake_connector))
 
-    @mock.patch('eventlet.greenthread.sleep', return_value=None)
     @mock.patch.object(qnap.QnapISCSIDriver,
                        '_get_lun_naa_from_volume_metadata')
     @mock.patch.object(qnap.QnapISCSIDriver, '_gen_random_name')
@@ -1883,8 +1907,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             self,
             mock_api_executor,
             mock_gen_random_name,
-            mock_get_lun_naa_from_volume_metadata,
-            mock_greenthread_sleep):
+            mock_get_lun_naa_from_volume_metadata):
         """Test create export."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
@@ -1902,8 +1925,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         mock_api_return.create_target.return_value = 'fakeTargetIndex'
         mock_api_return.get_target_info.return_value = (
             self.get_target_info_return_value())
-        mock_api_return.get_all_iscsi_portal_setting.return_value = (
-            FAKE_RES_DETAIL_GET_ALL_ISCSI_PORTAL_SETTING)
         mock_api_return.map_lun.return_value = None
         mock_api_return.get_ethernet_ip.return_value = ['1.2.3.4'], None
 
@@ -1915,7 +1936,11 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.driver.configuration.use_chap_auth = False
+        self.driver.configuration.chap_username = ''
+        self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -1929,7 +1954,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.assertEqual(expected_return, self.driver.create_export(
             'context', fake_volume, fake_connector))
 
-    @mock.patch('eventlet.greenthread.sleep', return_value=None)
     @mock.patch.object(qnap.QnapISCSIDriver,
                        '_get_lun_naa_from_volume_metadata')
     @mock.patch.object(qnap.QnapISCSIDriver, '_gen_random_name')
@@ -1938,8 +1962,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             self,
             mock_api_executor,
             mock_gen_random_name,
-            mock_get_lun_naa_from_volume_metadata,
-            mock_greenthread_sleep):
+            mock_get_lun_naa_from_volume_metadata):
         """Test create export."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
@@ -1954,8 +1977,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             FAKE_RES_DETAIL_ISCSI_PORTAL_INFO)
         mock_gen_random_name.return_value = 'fakeTargetName'
         mock_get_lun_naa_from_volume_metadata.return_value = 'fakeLunNaa'
-        mock_api_return.get_target_info_by_initiator.return_value = (
-            'fakeTargetIndex', 'fakeTargetIqn')
         mock_api_return.create_target.return_value = 'fakeTargetIndex'
         mock_api_return.get_target_info.return_value = (
             self.get_target_info_return_value())
@@ -1971,7 +1992,11 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.driver.configuration.use_chap_auth = False
+        self.driver.configuration.chap_username = ''
+        self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -1985,7 +2010,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.assertEqual(expected_return, self.driver.create_export(
             'context', fake_volume, fake_connector))
 
-    @mock.patch('eventlet.greenthread.sleep', return_value=None)
     @mock.patch.object(qnap.QnapISCSIDriver,
                        '_get_lun_naa_from_volume_metadata')
     @mock.patch.object(qnap.QnapISCSIDriver, '_gen_random_name')
@@ -1996,8 +2020,7 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             mock_api_executor,
             mock_api_executor_ts,
             mock_gen_random_name,
-            mock_get_lun_naa_from_volume_metadata,
-            mock_greenthread_sleep):
+            mock_get_lun_naa_from_volume_metadata):
         """Test create export."""
         fake_volume = VolumeClass(
             'fakeDisplayName', 'fakeId', 100, 'fakeLunName')
@@ -2016,8 +2039,6 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         mock_api_return.create_target.return_value = 'fakeTargetIndex'
         mock_api_return.get_target_info.return_value = (
             self.get_target_info_return_value())
-        mock_api_return.get_all_iscsi_portal_setting.return_value = (
-            FAKE_RES_DETAIL_GET_ALL_ISCSI_PORTAL_SETTING)
         mock_api_return.map_lun.return_value = None
         mock_api_return.get_ethernet_ip.return_value = ['1.2.3.4'], None
 
@@ -2029,7 +2050,11 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Storage Pool 1',
                 True))
+        self.driver.configuration.use_chap_auth = False
+        self.driver.configuration.chap_username = ''
+        self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
+        self.mock_object(eventlet, 'sleep')
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -2109,6 +2134,9 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
+        self.driver.configuration.use_chap_auth = False
+        self.driver.configuration.chap_username = ''
+        self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
         self.driver.do_setup('context')
 
@@ -2332,7 +2360,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', True))
+                fake_volume, 'fakepool', 'fakeLun', True, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -2342,6 +2370,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNPath'] = 'fakeLun'
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
+        fake_params['compression'] = '1'
+        fake_params['dedup'] = 'off'
         fake_params['LUNCapacity'] = 100
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
@@ -2392,7 +2422,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', False))
+                fake_volume, 'fakepool', 'fakeLun', False, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -2402,6 +2432,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         fake_params['LUNPath'] = 'fakeLun'
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
+        fake_params['compression'] = '1'
+        fake_params['dedup'] = 'off'
         fake_params['LUNCapacity'] = 100
         fake_params['lv_threshold'] = '80'
         fake_params['sid'] = 'fakeSid'
@@ -2453,7 +2485,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_create_lun_negative_with_wrong_result(
@@ -2481,7 +2514,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_delete_lun(
@@ -2845,7 +2879,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                 True))
         self.driver.do_setup('context')
         self.driver.api_executor.add_target_init(
-            'fakeTargetIqn', 'fakeInitiatorIqn')
+            'fakeTargetIqn', 'fakeInitiatorIqn', False, '', '')
 
         fake_params = {}
         fake_params['func'] = 'add_init'
@@ -2905,7 +2939,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.driver.do_setup('context')
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.add_target_init,
-                          'fakeTargetIqn', 'fakeInitiatorIqn')
+                          'fakeTargetIqn', 'fakeInitiatorIqn', False, '', '')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_add_target_init_negative_with_wrong_result(
@@ -2929,7 +2963,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.driver.do_setup('context')
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.add_target_init,
-                          'fakeTargetIqn', 'fakeInitiatorIqn')
+                          'fakeTargetIqn', 'fakeInitiatorIqn', False, '', '')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_remove_target_init(
@@ -4531,7 +4565,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                 True))
         self.driver.do_setup('context')
         self.driver.api_executor.get_target_info_by_initiator(
-            'fakeInitiatorIQN', 'fakeLunSlotId')
+            'fakeInitiatorIQN')
 
         fake_params = {}
         fake_params['func'] = 'extra_get'
@@ -4582,7 +4616,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.
                           get_target_info_by_initiator,
-                          'fakeInitiatorIQN', 'fakeLunSlotId')
+                          'fakeInitiatorIQN')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_get_target_info_by_initiator_with_wrong_result(
@@ -4605,7 +4639,7 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
                 True))
         self.driver.do_setup('context')
         self.driver.api_executor.get_target_info_by_initiator(
-            'fakeInitiatorIQN', 'fakeLunSlotId')
+            'fakeInitiatorIQN')
 
         fake_params = {}
         fake_params['func'] = 'extra_get'
@@ -4662,7 +4696,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', True))
+                fake_volume, 'fakepool', 'fakeLun', True, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -4722,7 +4756,7 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', False))
+                fake_volume, 'fakepool', 'fakeLun', False, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -4783,7 +4817,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_create_lun_negative_with_wrong_result(
@@ -4811,7 +4846,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_delete_lun(
@@ -5742,7 +5778,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', True))
+                fake_volume, 'fakepool', 'fakeLun', True, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -5752,6 +5788,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         fake_params['LUNPath'] = 'fakeLun'
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
+        fake_params['compression'] = '1'
+        fake_params['dedup'] = 'off'
         fake_params['sync'] = 'disabled'
         fake_params['LUNCapacity'] = 100
         fake_params['lv_threshold'] = '80'
@@ -5803,7 +5841,7 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         self.assertEqual(
             'fakeLunIndex',
             self.driver.api_executor.create_lun(
-                fake_volume, 'fakepool', 'fakeLun', False))
+                fake_volume, 'fakepool', 'fakeLun', False, False, True, False))
 
         fake_params = {}
         fake_params['func'] = 'add_lun'
@@ -5813,6 +5851,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
         fake_params['LUNPath'] = 'fakeLun'
         fake_params['poolID'] = 'fakepool'
         fake_params['lv_ifssd'] = 'no'
+        fake_params['compression'] = '1'
+        fake_params['dedup'] = 'off'
         fake_params['sync'] = 'disabled'
         fake_params['LUNCapacity'] = 100
         fake_params['lv_threshold'] = '80'
@@ -5865,7 +5905,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_create_lun_negative_with_wrong_result(
@@ -5893,7 +5934,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.api_executor.create_lun,
-                          fake_volume, 'fakepool', 'fakeLun', 'False')
+                          fake_volume, 'fakepool', 'fakeLun', 'False',
+                          'False', 'True', 'False')
 
     @mock.patch('six.moves.http_client.HTTPConnection')
     def test_get_ethernet_ip_with_type(
