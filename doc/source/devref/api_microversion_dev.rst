@@ -218,7 +218,7 @@ case you can decorate a private method::
     def _version_specific_func(self, req, arg1):
         pass
 
-    @api_version(min_version="3.5")  # noqa
+    @api_version(min_ver="3.5")  # noqa
     def _version_specific_func(self, req, arg1):
         pass
 
