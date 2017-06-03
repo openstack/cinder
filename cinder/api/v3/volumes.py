@@ -148,8 +148,17 @@ class VolumeController(volumes_v2.VolumeController):
         utils.remove_invalid_filter_options(context, filters,
                                             self._get_volume_filter_options())
 
-        volumes = self.volume_api.get_volume_summary(context, filters=filters)
-        return view_builder_v3.quick_summary(volumes[0], int(volumes[1]))
+        num_vols, sum_size, metadata = self.volume_api.get_volume_summary(
+            context, filters=filters)
+
+        req_version = req.api_version_request
+        if req_version.matches("3.36"):
+            all_distinct_metadata = metadata
+        else:
+            all_distinct_metadata = None
+
+        return view_builder_v3.quick_summary(num_vols, int(sum_size),
+                                             all_distinct_metadata)
 
     @wsgi.response(http_client.ACCEPTED)
     def create(self, req, body):

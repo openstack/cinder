@@ -30,6 +30,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
@@ -156,8 +157,12 @@ class VolumeApiTest(test.TestCase):
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
 
-    def _fake_volumes_summary_request(self, version='3.12'):
-        req = fakes.HTTPRequest.blank('/v3/volumes/summary')
+    def _fake_volumes_summary_request(self, version='3.12', all_tenant=False,
+                                      is_admin=False):
+        req_url = '/v3/volumes/summary'
+        if all_tenant:
+            req_url += '?all_tenants=True'
+        req = fakes.HTTPRequest.blank(req_url, use_admin_context=is_admin)
         req.headers = {'OpenStack-API-Version': 'volume ' + version}
         req.api_version_request = api_version.APIVersionRequest(version)
         return req
@@ -185,6 +190,63 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.summary(req)
         expected = {'volume-summary': {'total_size': 1.0, 'total_count': 1}}
         self.assertEqual(expected, res_dict)
+
+    @ddt.data(
+        ('3.35', {'volume-summary': {'total_size': 0.0,
+                                     'total_count': 0}}),
+        ('3.36', {'volume-summary': {'total_size': 0.0,
+                                     'total_count': 0,
+                                     'metadata': {}}}))
+    @ddt.unpack
+    def test_volume_summary_empty(self, summary_api_version, expect_result):
+        req = self._fake_volumes_summary_request(version=summary_api_version)
+        res_dict = self.controller.summary(req)
+        self.assertEqual(expect_result, res_dict)
+
+    @ddt.data(
+        ('3.35', {'volume-summary': {'total_size': 2,
+                                     'total_count': 2}}),
+        ('3.36', {'volume-summary': {'total_size': 2,
+                                     'total_count': 2,
+                                     'metadata': {
+                                         'name': ['test_name1', 'test_name2'],
+                                         'age': ['test_age']}}}))
+    @ddt.unpack
+    def test_volume_summary_return_metadata(self, summary_api_version,
+                                            expect_result):
+        test_utils.create_volume(self.ctxt, metadata={'name': 'test_name1',
+                                                      'age': 'test_age'})
+        test_utils.create_volume(self.ctxt, metadata={'name': 'test_name2',
+                                                      'age': 'test_age'})
+        ctxt2 = context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True)
+        test_utils.create_volume(ctxt2, metadata={'name': 'test_name3'})
+
+        req = self._fake_volumes_summary_request(version=summary_api_version)
+        res_dict = self.controller.summary(req)
+        self.assertEqual(expect_result, res_dict)
+
+    @ddt.data(
+        ('3.35', {'volume-summary': {'total_size': 2,
+                                     'total_count': 2}}),
+        ('3.36', {'volume-summary': {'total_size': 2,
+                                     'total_count': 2,
+                                     'metadata': {
+                                         'name': ['test_name1', 'test_name2'],
+                                         'age': ['test_age']}}}))
+    @ddt.unpack
+    def test_volume_summary_return_metadata_all_tenant(
+            self, summary_api_version, expect_result):
+        test_utils.create_volume(self.ctxt, metadata={'name': 'test_name1',
+                                                      'age': 'test_age'})
+        ctxt2 = context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True)
+        test_utils.create_volume(ctxt2, metadata={'name': 'test_name2',
+                                                  'age': 'test_age'})
+
+        req = self._fake_volumes_summary_request(version=summary_api_version,
+                                                 all_tenant=True,
+                                                 is_admin=True)
+        res_dict = self.controller.summary(req)
+        self.assertEqual(expect_result, res_dict)
 
     def _vol_in_request_body(self,
                              size=v2_fakes.DEFAULT_VOL_SIZE,

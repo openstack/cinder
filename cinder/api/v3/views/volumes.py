@@ -19,14 +19,22 @@ from cinder.api.v2.views import volumes as views_v2
 class ViewBuilder(views_v2.ViewBuilder):
     """Model a volumes API V3 response as a python dictionary."""
 
-    def quick_summary(self, volume_count, volume_size):
-        """Number of volumes and size of volumes."""
-        return {
+    def quick_summary(self, volume_count, volume_size,
+                      all_distinct_metadata=None):
+        """View of volumes summary.
+
+        It includes number of volumes, size of volumes and all distinct
+        metadata of volumes.
+        """
+        summary = {
             'volume-summary': {
                 'total_count': volume_count,
                 'total_size': volume_size
-            },
+            }
         }
+        if all_distinct_metadata is not None:
+            summary['volume-summary']['metadata'] = all_distinct_metadata
+        return summary
 
     def detail(self, request, volume):
         """Detailed view of a single volume."""

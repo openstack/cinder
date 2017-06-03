@@ -317,3 +317,7 @@ user documentation.
 3.35
 ----
   Add ``volume-type`` filter to Get-Pools API.
+
+3.36
+----
+  Add metadata to volumes/summary response body.
