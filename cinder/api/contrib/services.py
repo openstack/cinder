@@ -16,7 +16,6 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import versionutils
 from oslo_utils import timeutils
 from six.moves import http_client
 import webob.exc
@@ -71,11 +70,6 @@ class ServiceController(wsgi.Controller):
             filters['host'] = req.GET['host']
         if 'binary' in req.GET:
             filters['binary'] = req.GET['binary']
-        elif 'service' in req.GET:
-            filters['binary'] = req.GET['service']
-            versionutils.report_deprecated_feature(LOG, _(
-                "Query by service parameter is deprecated. "
-                "Please use binary parameter instead."))
 
         services = objects.ServiceList.get_all(context, filters)
 

@@ -120,14 +120,6 @@ class FakeRequest(object):
         self.api_version_request = api_version.APIVersionRequest(version)
 
 
-# NOTE(uni): deprecating service request key, binary takes precedence
-# Still keeping service key here for API compatibility sake.
-class FakeRequestWithService(FakeRequest):
-    def __init__(self, **kwargs):
-        kwargs.setdefault('service', 'cinder-volume')
-        super(FakeRequestWithService, self).__init__(**kwargs)
-
-
 class FakeRequestWithBinary(FakeRequest):
     def __init__(self, **kwargs):
         kwargs.setdefault('binary', 'cinder-volume')
@@ -138,14 +130,6 @@ class FakeRequestWithHost(FakeRequest):
     def __init__(self, **kwargs):
         kwargs.setdefault('host', 'host1')
         super(FakeRequestWithHost, self).__init__(**kwargs)
-
-
-# NOTE(uni): deprecating service request key, binary takes precedence
-# Still keeping service key here for API compatibility sake.
-class FakeRequestWithHostService(FakeRequestWithService):
-    def __init__(self, **kwargs):
-        kwargs.setdefault('host', 'host1')
-        super(FakeRequestWithHostService, self).__init__(**kwargs)
 
 
 class FakeRequestWithHostBinary(FakeRequestWithBinary):
@@ -456,94 +440,6 @@ class ServicesTest(test.TestCase):
              'disabled_reason': 'test2'}]}
         self.assertEqual(response, res_dict)
 
-    def test_services_list_with_service(self):
-        req = FakeRequestWithService()
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            {'binary': 'cinder-volume',
-             'host': 'host1',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'up',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5)},
-            {'binary': 'cinder-volume',
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 9, 18,
-                                             8, 3, 38)},
-            {'binary': 'cinder-volume',
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5)},
-            {'binary': 'cinder-volume',
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'enabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 9, 18,
-                                             8, 3, 38)}]}
-        self.assertEqual(response, res_dict)
-
-    def test_services_detail_with_service(self):
-        self.ext_mgr.extensions['os-extended-services'] = True
-        self.controller = services.ServiceController(self.ext_mgr)
-        req = FakeRequestWithService()
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            {'binary': 'cinder-volume',
-             'replication_status': None,
-             'active_backend_id': None,
-             'frozen': False,
-             'host': 'host1',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'up',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5),
-             'disabled_reason': 'test2'},
-            {'binary': 'cinder-volume',
-             'replication_status': None,
-             'active_backend_id': None,
-             'frozen': False,
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 9, 18,
-                                             8, 3, 38),
-             'disabled_reason': 'test4'},
-            {'binary': 'cinder-volume',
-             'replication_status': None,
-             'active_backend_id': None,
-             'frozen': False,
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5),
-             'disabled_reason': 'test5'},
-            {'binary': 'cinder-volume',
-             'replication_status': None,
-             'active_backend_id': None,
-             'frozen': False,
-             'host': 'host2',
-             'zone': 'cinder',
-             'status': 'enabled',
-             'state': 'down',
-             'updated_at': datetime.datetime(2012, 9, 18,
-                                             8, 3, 38),
-             'disabled_reason': ''}]}
-        self.assertEqual(response, res_dict)
-
     def test_services_list_with_binary(self):
         req = FakeRequestWithBinary()
         res_dict = self.controller.index(req)
@@ -630,40 +526,6 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38),
              'disabled_reason': ''}]}
-        self.assertEqual(response, res_dict)
-
-    def test_services_list_with_host_service(self):
-        req = FakeRequestWithHostService()
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            {'binary': 'cinder-volume',
-             'host': 'host1',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'up',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5)}]}
-        self.assertEqual(response, res_dict)
-
-    def test_services_detail_with_host_service(self):
-        self.ext_mgr.extensions['os-extended-services'] = True
-        self.controller = services.ServiceController(self.ext_mgr)
-        req = FakeRequestWithHostService()
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            {'binary': 'cinder-volume',
-             'replication_status': None,
-             'active_backend_id': None,
-             'host': 'host1',
-             'zone': 'cinder',
-             'status': 'disabled',
-             'state': 'up',
-             'updated_at': datetime.datetime(2012, 10, 29,
-                                             13, 42, 5),
-             'disabled_reason': 'test2',
-             'frozen': False}]}
         self.assertEqual(response, res_dict)
 
     def test_services_list_with_host_binary(self):
