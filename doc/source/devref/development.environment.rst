@@ -94,6 +94,13 @@ Grab the code::
 
 Running unit tests
 ------------------
+The preferred way to run the unit tests is using ``tox``. It executes tests in
+isolated environment, by creating separate virtualenv and installing
+dependencies from the ``requirements.txt`` and ``test-requirements.txt`` files,
+so the only package you install is ``tox`` itself::
+
+    sudo pip install tox
+
 Run the unit tests by doing::
 
     tox -e py35
