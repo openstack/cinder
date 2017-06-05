@@ -10615,7 +10615,7 @@ class EMCV3ReplicationTest(test.TestCase):
         rep_data = model_update['replication_driver_data']
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          rep_status)
-        self.assertTrue(isinstance(rep_data, six.text_type))
+        self.assertIsInstance(rep_data, six.text_type)
         self.assertIsNotNone(rep_data)
 
     @mock.patch.object(
@@ -10647,7 +10647,7 @@ class EMCV3ReplicationTest(test.TestCase):
         rep_data = model_update['replication_driver_data']
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          rep_status)
-        self.assertTrue(isinstance(rep_data, six.text_type))
+        self.assertIsInstance(rep_data, six.text_type)
         self.assertTrue(rep_data)
 
     @mock.patch.object(
