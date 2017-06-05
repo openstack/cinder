@@ -922,6 +922,26 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
+    @mock.patch.object(volume_api.API, "copy_volume_to_image")
+    def test_copy_volume_to_image_disk_format_parallels(self,
+                                                        mock_copy_to_image):
+        volume = utils.create_volume(self.context, metadata={'test': 'test'})
+
+        img = {"container_format": 'bare',
+               "disk_format": 'parallels',
+               "image_name": 'image_name'}
+        body = {"os-volume_upload_image": img}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, volume.id))
+
+        image_metadata = {'container_format': 'bare',
+                          'disk_format': 'ploop',
+                          'name': 'image_name'}
+        self.controller._volume_upload_image(req, volume.id, body)
+
+        mock_copy_to_image.assert_called_once_with(
+            req.environ['cinder.context'], volume, image_metadata, False)
+
     @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
     @mock.patch.object(volume_api.API, 'copy_volume_to_image',
                        side_effect=ValueError)

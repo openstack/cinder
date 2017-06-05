@@ -473,9 +473,12 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 % {'fmt': fmt, 'backing_file': backing_file})
 
         out_format = image_meta['disk_format']
-        # qemu-img accepts 'vpc' as argument for vhd format
+        # qemu-img accepts 'vpc' as argument for 'vhd 'format and 'parallels'
+        # as argument for 'ploop'.
         if out_format == 'vhd':
             out_format = 'vpc'
+        if out_format == 'ploop':
+            out_format = 'parallels'
 
         convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root)
