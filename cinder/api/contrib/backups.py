@@ -87,6 +87,10 @@ class BackupsController(wsgi.Controller):
                                             filters,
                                             self._get_backup_filter_options())
 
+    def _convert_sort_name(self, req_version, sort_keys):
+        """Convert sort key "name" to "display_name". """
+        pass
+
     def _get_backups(self, req, is_detail):
         """Returns a list of backups, transformed through view builder."""
         context = req.environ['cinder.context']
@@ -95,6 +99,7 @@ class BackupsController(wsgi.Controller):
         marker, limit, offset = common.get_pagination_params(filters)
         sort_keys, sort_dirs = common.get_sort_params(filters)
 
+        self._convert_sort_name(req_version, sort_keys)
         self._process_backup_filtering(context=context, filters=filters,
                                        req_version=req_version)
 

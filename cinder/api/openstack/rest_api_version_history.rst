@@ -321,3 +321,7 @@ user documentation.
 3.36
 ----
   Add metadata to volumes/summary response body.
+
+3.37
+----
+  Support sort backup by "name".
