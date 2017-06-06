@@ -506,6 +506,12 @@ container:
   in: body
   required: true
   type: string
+container_format:
+  description: |
+    Container format for the new image. Defualt is bare.
+  in: body
+  required: false
+  type: string
 control_location:
   description: |
     Notional service where encryption is performed. Valid values are
@@ -690,6 +696,12 @@ detached_at:
   in: body
   required: false
   type: string
+disk_format:
+  description: |
+    Disk format for the new image. Default is raw.
+  in: body
+  required: false
+  type: string
 display_name:
   description: |
     The name of volume backend capabilities.
@@ -789,6 +801,13 @@ force_2:
   description: |
     If set to ``true``, forces deletion of a
     consistency group that has a registered volume.
+  in: body
+  required: false
+  type: boolean
+force_4:
+  description: |
+    Enables or disables upload of a volume that is
+    attached to an instance. Default=False.
   in: body
   required: false
   type: boolean
@@ -925,6 +944,18 @@ id_8:
   in: body
   required: true
   type: integer
+image_id:
+  description: |
+    The uuid for the new image.
+  in: body
+  required: true
+  type: string
+image_name:
+  description: |
+    The name for the new image.
+  in: body
+  required: true
+  type: string
 imageRef:
   description: |
     The UUID of the image from which you want to
@@ -1544,6 +1575,13 @@ os-volume-type-access:is_public:
   in: body
   required: false
   type: boolean
+os-volume_upload_image:
+  description: |
+    The ``os-volume_upload_image`` action. This
+    action uploads the specified volume to image service.
+  in: body
+  required: true
+  type: object
 pool_name:
   description: |
     The name of the storage pool.
@@ -1577,6 +1615,12 @@ properties:
   in: body
   required: true
   type: object
+protected:
+  description: |
+    Whether the new image is protected. Default=False.
+  in: body
+  required: false
+  type: boolean
 provider:
   description: |
     The class that provides encryption support.
@@ -2067,6 +2111,12 @@ visibility:
   in: body
   required: true
   type: string
+visibility_1:
+  description: |
+    The visibility property of the new image. Default is private.
+  in: body
+  required: false
+  type: string
 volume:
   description: |
     A ``volume`` object.
@@ -2190,6 +2240,12 @@ volume_type_5:
   in: body
   required: true
   type: array
+volume_type_6:
+  description: |
+    The associated volume type for the volume.
+  in: body
+  required: true
+  type: string
 volume_type_id_body:
   description: |
     The UUID of the volume type.

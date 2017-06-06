@@ -1,0 +1,16 @@
+{
+  "os-volume_upload_image": {
+    "status": "uploading",
+    "container_format": "bare",
+    "image_name": "test",
+    "visibility": "private",
+    "updated_at": "2017-06-05T08:44:28.000000",
+    "image_id": "de75b74e-7f0d-4b59-a263-bd87bfc313bd",
+    "display_description": null,
+    "id": "3a81fdac-e8ae-4e61-b6a2-2e14ff316f19",
+    "size": 1,
+    "disk_format": "raw",
+    "volume_type": null,
+    "protected": false
+  }
+}

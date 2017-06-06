@@ -424,3 +424,64 @@ Request Example
 .. literalinclude:: ./samples/volume-bootable-status-update-request.json
    :language: javascript
 
+
+
+
+
+
+Upload volume to image
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Uploads the specified volume to image service.
+
+Normal response codes: 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - os-volume_upload_image: os-volume_upload_image
+   - image_name: image_name
+   - force: force_4
+   - disk_format: disk_format
+   - container_format: container_format
+   - visibility: visibility_1
+   - protected: protected
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-upload-to-image-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - os-volume_upload_image: os-volume_upload_image
+   - status: status_3
+   - image_name: image_name
+   - disk_format: disk_format
+   - container_format: container_format
+   - visibility: visibility_1
+   - protected: protected
+   - updated_at: updated_at
+   - image_id: image_id
+   - display_description: description_9
+   - id: id_5
+   - size: size
+   - volume_type: volume_type_6
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-upload-to-image-response.json
+   :language: javascript
