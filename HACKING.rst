@@ -26,6 +26,7 @@ Cinder Specific Commandments
 - [C311] Check for proper naming and usage in option registration.
 - [C312] Check that assertIsNone(value) is used and not assertEqual(None, value).
 - [C313] Check that assertTrue(value) is used and not assertEqual(True, value).
+- [C314] Check that assertFalse(value) is used and not assertEqual(False, value).
 
 General
 -------

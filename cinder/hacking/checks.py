@@ -61,6 +61,8 @@ assert_None = re.compile(
     r".*assertEqual\(None, .*\)")
 assert_True = re.compile(
     r".*assertEqual\(True, .*\)")
+assert_False = re.compile(
+    r".*assertEqual\(False, .*\)")
 
 
 class BaseASTChecker(ast.NodeVisitor):
@@ -459,6 +461,13 @@ def validate_assertTrue(logical_line):
     if re.match(assert_True, logical_line):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
+        yield(0, msg)
+
+
+def validate_assertFalse(logical_line):
+    if re.match(assert_False, logical_line):
+        msg = ("C314: Unit tests should use assertFalse(value) instead"
+               " of using assertEqual(False, value).")
         yield(0, msg)
 
 

@@ -2309,7 +2309,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume_api.check_volume_filters(filters)
 
         # Confirming converted filter value against False
-        self.assertEqual(False, filters['bootable'])
+        self.assertFalse(filters['bootable'])
 
     def test_check_volume_filters_invalid(self):
         """Test bootable as filter"""

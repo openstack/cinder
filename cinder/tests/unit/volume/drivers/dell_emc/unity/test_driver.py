@@ -137,7 +137,7 @@ class UnityDriverTest(unittest.TestCase):
         self.assertEqual('', config.san_private_key)
         self.assertEqual('', config.san_clustername)
         self.assertEqual(22, config.san_ssh_port)
-        self.assertEqual(False, config.san_is_local)
+        self.assertFalse(config.san_is_local)
         self.assertEqual(30, config.ssh_conn_timeout)
         self.assertEqual(1, config.ssh_min_pool_conn)
         self.assertEqual(5, config.ssh_max_pool_conn)

@@ -232,10 +232,10 @@ class SnapshotManageTest(test.TestCase):
     def test_get_manageable_snapshots_non_admin(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', False, False, admin=False)
         self.assertEqual(http_client.FORBIDDEN, res.status_int)
-        self.assertEqual(False, mock_api_manageable.called)
+        self.assertFalse(mock_api_manageable.called)
         res = self._get_resp_get('fakehost', True, False, admin=False)
         self.assertEqual(http_client.FORBIDDEN, res.status_int)
-        self.assertEqual(False, mock_api_manageable.called)
+        self.assertFalse(mock_api_manageable.called)
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
                 wraps=api_get_manageable_snapshots)

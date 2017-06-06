@@ -994,34 +994,24 @@ class BackupsAPITestCase(test.TestCase):
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
 
         # test empty service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(
-                             volume['availability_zone'],
-                             testhost))
+        self.assertFalse(self.backup_api._is_backup_service_enabled(
+            volume['availability_zone'], testhost))
 
         # test host not match service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(
-                             volume['availability_zone'],
-                             testhost))
+        self.assertFalse(self.backup_api._is_backup_service_enabled(
+            volume['availability_zone'], testhost))
 
         # test az not match service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(
-                             volume['availability_zone'],
-                             testhost))
+        self.assertFalse(self.backup_api._is_backup_service_enabled(
+            volume['availability_zone'], testhost))
 
         # test disabled service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(
-                             volume['availability_zone'],
-                             testhost))
+        self.assertFalse(self.backup_api._is_backup_service_enabled(
+            volume['availability_zone'], testhost))
 
         # test dead service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(
-                             volume['availability_zone'],
-                             testhost))
+        self.assertFalse(self.backup_api._is_backup_service_enabled(
+            volume['availability_zone'], testhost))
 
         # test multi services and the last service matches
         self.assertTrue(self.backup_api._is_backup_service_enabled(

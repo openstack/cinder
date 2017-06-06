@@ -725,7 +725,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v1/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
-        self.assertEqual(False, res_dict['volume']['encrypted'])
+        self.assertFalse(res_dict['volume']['encrypted'])
 
     @mock.patch.object(volume_api.API, 'delete', v2_fakes.fake_volume_delete)
     @mock.patch.object(volume_api.API, 'get', v2_fakes.fake_volume_get)
