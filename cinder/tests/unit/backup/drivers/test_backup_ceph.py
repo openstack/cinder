@@ -91,6 +91,7 @@ def common_mocks(f):
             inst.mock_rbd = mock_rbd
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
+            inst.mock_rados.ObjectNotFound = MockObjectNotFoundException
 
             inst.service.rbd = inst.mock_rbd
             inst.service.rados = inst.mock_rados
@@ -827,6 +828,20 @@ class BackupCephTestCase(test.TestCase):
             # ImageNotFound exception is caught so that db entry can be cleared
             self.service.delete(self.backup)
             self.assertEqual([MockImageNotFoundException], RAISED_EXCEPTIONS)
+
+    @common_mocks
+    @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
+    def test_delete_pool_not_found(self, mock_meta_backup):
+        with mock.patch.object(
+                self.service, '_try_delete_base_image') as mock_del_base:
+            mock_del_base.side_effect = self.mock_rados.ObjectNotFound
+            # ObjectNotFound exception is caught so that db entry can be
+            # cleared
+            self.service.delete(self.backup)
+            self.assertEqual([MockObjectNotFoundException],
+                             RAISED_EXCEPTIONS)
+            mock_del_base.assert_called_once_with(self.backup)
+            mock_meta_backup.return_value.remove_if_exists.assert_not_called()
 
     @common_mocks
     def test_diff_restore_allowed_with_image_not_exists(self):
