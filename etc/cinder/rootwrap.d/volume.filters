@@ -165,6 +165,7 @@ mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
 mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
 mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
 mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
+mmlsfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlsfileset, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py
