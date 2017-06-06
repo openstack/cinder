@@ -1,0 +1,4 @@
+---
+fixes:
+  - Creating a new volume from an image that was created
+    from an encrypted Cinder volume now succeeds.
