@@ -190,7 +190,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             size = snapshot.volume_size
 
         size = utils.as_int(size)
-        LOG.debug("Validating volume '%(size)s' using %(functors)s" %
+        LOG.debug("Validating volume size '%(size)s' using %(functors)s" %
                   {'size': size,
                    'functors': ", ".join([common.make_pretty_name(func)
                                           for func in validator_functors])})
