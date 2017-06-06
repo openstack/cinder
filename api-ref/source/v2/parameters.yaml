@@ -1199,6 +1199,12 @@ OS-SCH-HNT:scheduler_hints:
   in: body
   required: false
   type: object
+os-set_bootable:
+  description: |
+    The ``os-set_bootable`` action.
+  in: body
+  required: true
+  type: object
 os-set_image_metadata:
   description: |
     The ``os-set_image_metadata`` action.
