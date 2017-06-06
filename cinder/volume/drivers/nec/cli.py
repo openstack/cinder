@@ -197,24 +197,6 @@ class MStorageISMCLI(object):
                               conf_ismview_path)
         return out
 
-    def get_poolnumber_and_ldnumber(self, pools, used_ldns, max_ld_count):
-        selected_pool = -1
-        min_ldn = 0
-        for pool in pools:
-            nld = len(pool['ld_list'])
-            if selected_pool == -1 or min_ldn > nld:
-                selected_pool = pool['pool_num']
-                min_ldn = nld
-        for ldn in range(0, max_ld_count + 1):
-            if ldn not in used_ldns:
-                break
-        if ldn > max_ld_count - 1:
-            msg = _('All Logical Disk numbers are used.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        return selected_pool, ldn
-
     def ldbind(self, name, pool, ldn, size):
         """Bind an LD and attach a nickname to it."""
         errnum = ""
@@ -454,17 +436,17 @@ class MStorageISMCLI(object):
             if flag == 'backup':
                 LOG.debug('Volume Id not found. '
                           'LD name = %(name)s volume_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot['volume_id']})
+                          {'name': ldname, 'id': snapshot.volume_id})
                 raise exception.NotFound(_('Logical Disk does not exist.'))
             elif flag == 'restore':
                 LOG.debug('Snapshot Id not found. '
                           'LD name = %(name)s snapshot_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot['id']})
+                          {'name': ldname, 'id': snapshot.id})
                 raise exception.NotFound(_('Logical Disk does not exist.'))
             elif flag == 'delete':
                 LOG.debug('LD `%(name)s` already unbound? '
                           'snapshot_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot['id']})
+                          {'name': ldname, 'id': snapshot.id})
                 return None
             else:
                 LOG.debug('check_ld_existed_rplstatus flag error flag = %s.',

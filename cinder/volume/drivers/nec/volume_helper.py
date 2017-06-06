@@ -25,7 +25,6 @@ from oslo_utils import units
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder import volume
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 
@@ -33,41 +32,17 @@ from cinder.volume.drivers.nec import volume_common
 LOG = logging.getLogger(__name__)
 
 
-class MStorageDriver(object):
+class MStorageDriver(volume_common.MStorageVolumeCommon):
     """M-Series Storage helper class."""
 
-    VERSION = '1.8.1'
-    WIKI_NAME = 'NEC_Cinder_CI'
-
-    def _set_config(self, configuration, host, driver_name):
-        self._configuration = configuration
-        self._host = host
-        self._driver_name = driver_name
-        self._common = volume_common.MStorageVolumeCommon(configuration,
-                                                          host,
-                                                          driver_name)
-        self._properties = self._common.get_conf_properties()
-        self._cli = self._properties['cli']
-        self._volume_api = volume.API()
-        self._numofld_per_pool = 1024
-
-    def do_setup(self, context):
-        self._context = context
-        self._common.set_context(self._context)
-
-    def check_for_setup_error(self):
-        if len(getattr(self._common._local_conf, 'nec_pools', [])) == 0:
-            raise exception.ParameterNotFound(param='nec_pools')
-
     def _convert_id2name(self, volume):
-        ldname = (self._common.get_ldname(volume['id'],
-                                          self._properties['ld_name_format']))
+        ldname = (self.get_ldname(volume.id,
+                                  self._properties['ld_name_format']))
         return ldname
 
     def _convert_id2snapname(self, volume):
-        ldname = (self._common.get_ldname(volume['id'],
-                                          self._properties[
-                                              'ld_backupname_format']))
+        ldname = (self.get_ldname(volume.id,
+                                  self._properties['ld_backupname_format']))
         return ldname
 
     def _convert_id2migratename(self, volume):
@@ -77,19 +52,17 @@ class MStorageDriver(object):
 
     def _convert_id2name_in_migrate(self, volume):
         """If LD has migrate_status, get LD name from source LD UUID."""
-        LOG.debug('migration_status:%s', volume['migration_status'])
-        migstat = volume['migration_status']
+        LOG.debug('migration_status:%s', volume.migration_status)
+        migstat = volume.migration_status
         if migstat is not None and 'target:' in migstat:
             index = migstat.find('target:')
             if index != -1:
                 migstat = migstat[len('target:'):]
-            ldname = (self._common.get_ldname(migstat,
-                                              self._properties[
-                                                  'ld_name_format']))
+            ldname = (self.get_ldname(migstat,
+                                      self._properties['ld_name_format']))
         else:
-            ldname = (self._common.get_ldname(volume['id'],
-                                              self._properties[
-                                                  'ld_name_format']))
+            ldname = (self.get_ldname(volume.id,
+                                      self._properties['ld_name_format']))
 
         LOG.debug('ldname=%s.', ldname)
         return ldname
@@ -123,7 +96,7 @@ class MStorageDriver(object):
     def _select_leastused_poolnumber(self, volume, pools,
                                      xml, option=None):
         """Pick up least used pool."""
-        size = volume['size'] * units.Gi
+        size = volume.size * units.Gi
         pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (len(self._properties['pool_pools']) == 0 or
@@ -133,13 +106,13 @@ class MStorageDriver(object):
     def _select_migrate_poolnumber(self, volume, pools, xml, option):
         """Pick up migration target pool."""
         tmpPools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
-        ldname = self._common.get_ldname(volume['id'],
-                                         self._properties['ld_name_format'])
+            self.configs(xml))
+        ldname = self.get_ldname(volume.id,
+                                 self._properties['ld_name_format'])
         ld = lds[ldname]
-        temp_conf_properties = self._common.get_conf_properties(option)
+        temp_conf_properties = self.get_conf_properties(option)
 
-        size = volume['size'] * units.Gi
+        size = volume.size * units.Gi
         pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
                  (len(temp_conf_properties['pool_pools']) == 0 or
@@ -196,7 +169,7 @@ class MStorageDriver(object):
         LOG.debug('_bind_ld Start.')
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # execute validator function.
         if validator is not None:
@@ -243,7 +216,7 @@ class MStorageDriver(object):
 
     def create_volume(self, volume):
         msgparm = ('Volume ID = %(id)s, Size = %(size)dGB'
-                   % {'id': volume['id'], 'size': volume['size']})
+                   % {'id': volume.id, 'size': volume.size})
         try:
             self._create_volume(volume)
             LOG.info('Created Volume (%s)', msgparm)
@@ -260,14 +233,14 @@ class MStorageDriver(object):
         (ldname,
          ldn,
          selected_pool) = self._bind_ld(volume,
-                                        volume['size'],
+                                        volume.size,
                                         None,
                                         self._convert_id2name_in_migrate,
                                         self._select_leastused_poolnumber)
 
         # check io limit.
-        specs = self._common.get_volume_type_qos_specs(volume)
-        self._common.check_io_parameter(specs)
+        specs = self.get_volume_type_qos_specs(volume)
+        self.check_io_parameter(specs)
         # set io limit.
         self._cli.set_io_limit(ldname, specs)
 
@@ -278,7 +251,7 @@ class MStorageDriver(object):
                   'Pool=%(pool)04xh '
                   'Specs=%(specs)s.',
                   {'name': ldname,
-                   'size': volume['size'],
+                   'size': volume.size,
                    'ldn': ldn,
                    'pool': selected_pool,
                    'specs': specs})
@@ -327,8 +300,8 @@ class MStorageDriver(object):
     def extend_volume(self, volume, new_size):
         msgparm = ('Volume ID = %(id)s, New Size = %(newsize)dGB, '
                    'Old Size = %(oldsize)dGB'
-                   % {'id': volume['id'], 'newsize': new_size,
-                      'oldsize': volume['size']})
+                   % {'id': volume.id, 'newsize': new_size,
+                      'oldsize': volume.size})
         try:
             self._extend_volume(volume, new_size)
             LOG.info('Extended Volume (%s)', msgparm)
@@ -341,26 +314,26 @@ class MStorageDriver(object):
     def _extend_volume(self, volume, new_size):
         LOG.debug('_extend_volume(Volume ID = %(id)s, '
                   'new_size = %(size)s) Start.',
-                  {'id': volume['id'], 'size': new_size})
+                  {'id': volume.id, 'size': new_size})
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
-        ldname = self._common.get_ldname(volume['id'],
-                                         self._properties['ld_name_format'])
+        ldname = self.get_ldname(volume.id,
+                                 self._properties['ld_name_format'])
 
         # get volume.
         if ldname not in lds:
             msg = (_('Logical Disk has unbound already '
                      '(name=%(name)s, id=%(id)s).') %
-                   {'name': ldname, 'id': volume['id']})
+                   {'name': ldname, 'id': volume.id})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         ld = lds[ldname]
         ldn = ld['ldn']
 
-        # heck pools capacity.
+        # check pools capacity.
         rvs = self._can_extend_capacity(new_size, pools, lds, ld)
 
         # volume expand.
@@ -379,13 +352,13 @@ class MStorageDriver(object):
 
         LOG.debug('_extend_volume(Volume ID = %(id)s, '
                   'new_size = %(newsize)s) End.',
-                  {'id': volume['id'], 'newsize': new_size})
+                  {'id': volume.id, 'newsize': new_size})
 
     def create_cloned_volume(self, volume, src_vref):
         msgparm = ('Volume ID = %(id)s, '
                    'Source Volume ID = %(src_id)s'
-                   % {'id': volume['id'],
-                      'src_id': src_vref['id']})
+                   % {'id': volume.id,
+                      'src_id': src_vref.id})
         try:
             self._create_cloned_volume(volume, src_vref)
             LOG.info('Created Cloned Volume (%s)', msgparm)
@@ -399,20 +372,20 @@ class MStorageDriver(object):
         """Creates a clone of the specified volume."""
         LOG.debug('_create_cloned_volume'
                   '(Volume ID = %(id)s, Source ID = %(src_id)s ) Start.',
-                  {'id': volume['id'], 'src_id': src_vref['id']})
+                  {'id': volume.id, 'src_id': src_vref.id})
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # check MV existence and get MV info.
         source_name = (
-            self._common.get_ldname(src_vref['id'],
-                                    self._properties['ld_name_format']))
+            self.get_ldname(src_vref.id,
+                            self._properties['ld_name_format']))
         if source_name not in lds:
             msg = (_('Logical Disk `%(name)s` has unbound already. '
                      'volume_id = %(id)s.') %
-                   {'name': source_name, 'id': src_vref['id']})
+                   {'name': source_name, 'id': src_vref.id})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         source_ld = lds[source_name]
@@ -433,14 +406,14 @@ class MStorageDriver(object):
         (volume_name,
          ldn,
          selected_pool) = self._bind_ld(volume,
-                                        src_vref['size'],
+                                        src_vref.size,
                                         None,
                                         self._convert_id2name,
                                         self._select_leastused_poolnumber)
 
         # check io limit.
-        specs = self._common.get_volume_type_qos_specs(volume)
-        self._common.check_io_parameter(specs)
+        specs = self.get_volume_type_qos_specs(volume)
+        self.check_io_parameter(specs)
 
         # set io limit.
         self._cli.set_io_limit(volume_name, specs)
@@ -450,15 +423,15 @@ class MStorageDriver(object):
                   'LDN=%(ldn)04xh '
                   'Pool=%(pool)04xh.',
                   {'name': volume_name,
-                   'size': volume['size'],
+                   'size': volume.size,
                    'ldn': ldn,
                    'pool': selected_pool})
         LOG.debug('source_name=%(src_name)s, volume_name=%(name)s.',
                   {'src_name': source_name, 'name': volume_name})
 
         # compare volume size and copy data to RV.
-        mv_capacity = src_vref['size']
-        rv_capacity = volume['size']
+        mv_capacity = src_vref.size
+        rv_capacity = volume.size
         if rv_capacity <= mv_capacity:
             rv_capacity = None
 
@@ -466,8 +439,8 @@ class MStorageDriver(object):
             'mvname': source_name,
             'rvname': volume_name,
             'capacity': mv_capacity,
-            'mvid': src_vref['id'],
-            'rvid': volume['id'],
+            'mvid': src_vref.id,
+            'rvid': volume.id,
             'rvldn': ldn,
             'rvcapacity': rv_capacity,
             'flag': 'clone',
@@ -476,17 +449,17 @@ class MStorageDriver(object):
         self._cli.backup_restore(volume_properties, cli.UnpairWaitForClone)
         LOG.debug('_create_cloned_volume(Volume ID = %(id)s, '
                   'Source ID = %(src_id)s ) End.',
-                  {'id': volume['id'], 'src_id': src_vref['id']})
+                  {'id': volume.id, 'src_id': src_vref.id})
 
     def _validate_migrate_volume(self, volume, xml):
         """Validate source volume information."""
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
-        ldname = self._common.get_ldname(volume['id'],
-                                         self._properties['ld_name_format'])
+            self.configs(xml))
+        ldname = self.get_ldname(volume.id,
+                                 self._properties['ld_name_format'])
 
         # check volume status.
-        if volume['status'] != 'available':
+        if volume.status != 'available':
             msg = _('Specified Logical Disk %s is not available.') % ldname
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -507,7 +480,7 @@ class MStorageDriver(object):
     def migrate_volume(self, context, volume, host):
         msgparm = ('Volume ID = %(id)s, '
                    'Destination Host = %(dsthost)s'
-                   % {'id': volume['id'],
+                   % {'id': volume.id,
                       'dsthost': host})
         try:
             ret = self._migrate_volume(context, volume, host)
@@ -529,8 +502,8 @@ class MStorageDriver(object):
                   'Volume ID = %(id)s, '
                   'Volume Name = %(name)s, '
                   'host = %(host)s) Start.',
-                  {'id': volume['id'],
-                   'name': volume['name'],
+                  {'id': volume.id,
+                   'name': volume.name,
                    'host': host})
 
         false_ret = (False, None)
@@ -548,8 +521,8 @@ class MStorageDriver(object):
             return false_ret
 
         # get another host group configurations.
-        temp_conf = self._common.get_conf(host)
-        temp_conf_properties = self._common.get_conf_properties(temp_conf)
+        temp_conf = self.get_conf(host)
+        temp_conf_properties = self.get_conf_properties(temp_conf)
 
         # another storage configuration is not supported.
         if temp_conf_properties['cli_fip'] != self._properties['cli_fip']:
@@ -562,7 +535,7 @@ class MStorageDriver(object):
         (rvname,
          ldn,
          selected_pool) = self._bind_ld(volume,
-                                        volume['size'],
+                                        volume.size,
                                         self._validate_migrate_volume,
                                         self._convert_id2migratename,
                                         self._select_migrate_poolnumber,
@@ -570,20 +543,20 @@ class MStorageDriver(object):
 
         if selected_pool >= 0:
             # check io limit.
-            specs = self._common.get_volume_type_qos_specs(volume)
-            self._common.check_io_parameter(specs)
+            specs = self.get_volume_type_qos_specs(volume)
+            self.check_io_parameter(specs)
 
             # set io limit.
             self._cli.set_io_limit(rvname, specs)
 
             volume_properties = {
                 'mvname':
-                    self._common.get_ldname(
-                        volume['id'], self._properties['ld_name_format']),
+                    self.get_ldname(
+                        volume.id, self._properties['ld_name_format']),
                 'rvname': rvname,
                 'capacity':
-                    volume['size'] * units.Gi,
-                'mvid': volume['id'],
+                    volume.size * units.Gi,
+                'mvid': volume.id,
                 'rvid': None,
                 'flag': 'migrate',
                 'context': self._context
@@ -594,7 +567,7 @@ class MStorageDriver(object):
 
         LOG.debug('_migrate_volume(Volume ID = %(id)s, '
                   'Host = %(host)s) End.',
-                  {'id': volume['id'], 'host': host})
+                  {'id': volume.id, 'host': host})
 
         return (True, [])
 
@@ -604,7 +577,7 @@ class MStorageDriver(object):
     def iscsi_do_export(self, _ctx, volume, connector, ensure=False):
         msgparm = ('Volume ID = %(id)s, '
                    'Initiator Name = %(initiator)s'
-                   % {'id': volume['id'],
+                   % {'id': volume.id,
                       'initiator': connector['initiator']})
         try:
             ret = self._iscsi_do_export(_ctx, volume, connector, ensure)
@@ -620,27 +593,27 @@ class MStorageDriver(object):
         while True:
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self._common.configs(xml))
+                self.configs(xml))
 
             # find LD Set.
 
             # get target LD Set name.
             metadata = {}
             # image to volume or volume to image.
-            if (volume['status'] in ['downloading', 'uploading'] and
+            if (volume.status in ['downloading', 'uploading'] and
                     self._properties['ldset_controller_node_name'] != ''):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
                 LOG.debug('image to volume or volume to image:%s',
-                          volume['status'])
+                          volume.status)
             # migrate.
-            elif (volume['migration_status'] is not None and
+            elif (volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume['migration_status'])
+                LOG.debug('migrate:%s', volume.migration_status)
 
-            ldset = self._common.get_ldset(ldsets, metadata)
+            ldset = self.get_ldset(ldsets, metadata)
             if ldset is None:
                 for tldset in six.itervalues(ldsets):
                     n = tldset['initiator_list'].count(connector['initiator'])
@@ -657,19 +630,19 @@ class MStorageDriver(object):
                        ldset['ldsetname'])
                 raise exception.NotFound(msg)
 
-            LOG.debug('migration_status:%s', volume['migration_status'])
-            migstat = volume['migration_status']
+            LOG.debug('migration_status:%s', volume.migration_status)
+            migstat = volume.migration_status
             if migstat is not None and 'target:' in migstat:
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
                 ldname = (
-                    self._common.get_ldname(
+                    self.get_ldname(
                         migstat, self._properties['ld_name_format']))
             else:
                 ldname = (
-                    self._common.get_ldname(
-                        volume['id'], self._properties['ld_name_format']))
+                    self.get_ldname(
+                        volume.id, self._properties['ld_name_format']))
 
             # add LD to LD set.
             if ldname not in lds:
@@ -739,7 +712,7 @@ class MStorageDriver(object):
     def fc_do_export(self, _ctx, volume, connector, ensure=False):
         msgparm = ('Volume ID = %(id)s, '
                    'Initiator WWPNs = %(wwpns)s'
-                   % {'id': volume['id'],
+                   % {'id': volume.id,
                       'wwpns': connector['wwpns']})
         try:
             ret = self._fc_do_export(_ctx, volume, connector, ensure)
@@ -755,28 +728,28 @@ class MStorageDriver(object):
         while True:
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self._common.configs(xml))
+                self.configs(xml))
 
             # find LD Set.
 
             # get target LD Set.
             metadata = {}
             # image to volume or volume to image.
-            if (volume['status'] in ['downloading', 'uploading'] and
+            if (volume.status in ['downloading', 'uploading'] and
                     self._properties['ldset_controller_node_name'] != ''):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
                 LOG.debug('image to volume or volume to image:%s',
-                          volume['status'])
+                          volume.status)
             # migrate.
-            elif (volume['migration_status'] is not None and
+            elif (volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''
                   ):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume['migration_status'])
+                LOG.debug('migrate:%s', volume.migration_status)
 
-            ldset = self._common.get_ldset(ldsets, metadata)
+            ldset = self.get_ldset(ldsets, metadata)
             if ldset is None:
                 for conect in connector['wwpns']:
                     length = len(conect)
@@ -806,20 +779,20 @@ class MStorageDriver(object):
                     break
                 target_lun += 1
 
-            LOG.debug('migration_status:%s', volume['migration_status'])
-            migstat = volume['migration_status']
+            LOG.debug('migration_status:%s', volume.migration_status)
+            migstat = volume.migration_status
             if migstat is not None and 'target:' in migstat:
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
                 ldname = (
-                    self._common.get_ldname(
+                    self.get_ldname(
                         migstat,
                         self._properties['ld_name_format']))
             else:
                 ldname = (
-                    self._common.get_ldname(
-                        volume['id'],
+                    self.get_ldname(
+                        volume.id,
                         self._properties['ld_name_format']))
 
             # add LD to LD set.
@@ -856,7 +829,7 @@ class MStorageDriver(object):
                    'ld': ldname})
 
     def remove_export(self, context, volume):
-        msgparm = 'Volume ID = %s' % volume['id']
+        msgparm = 'Volume ID = %s' % volume.id
         try:
             self._remove_export(context, volume)
             LOG.info('Removed Export (%s)', msgparm)
@@ -867,48 +840,48 @@ class MStorageDriver(object):
                             {'msgparm': msgparm, 'exception': e})
 
     def _remove_export(self, context, volume):
-        if (volume['status'] == 'uploading' and
-                volume['attach_status'] == 'attached'):
+        if (volume.status == 'uploading' and
+                volume.attach_status == 'attached'):
             return
         else:
             LOG.debug('_remove_export Start.')
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self._common.configs(xml))
+                self.configs(xml))
 
             # get target LD Set.
             metadata = {}
             # image to volume or volume to image.
-            if (volume['status'] in ['downloading', 'uploading'] and
+            if (volume.status in ['downloading', 'uploading'] and
                     self._properties['ldset_controller_node_name'] != ''):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
                 LOG.debug('image to volume or volume to image:%s',
-                          volume['status'])
+                          volume.status)
             # migrate.
-            elif (volume['migration_status'] is not None and
+            elif (volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''
                   ):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
-                LOG.debug('migrate:%s', volume['migration_status'])
+                LOG.debug('migrate:%s', volume.migration_status)
 
-            ldset = self._common.get_ldset(ldsets, metadata)
+            ldset = self.get_ldset(ldsets, metadata)
 
-            LOG.debug('migration_status:%s', volume['migration_status'])
-            migstat = volume['migration_status']
+            LOG.debug('migration_status:%s', volume.migration_status)
+            migstat = volume.migration_status
             if migstat is not None and 'target:' in migstat:
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
                 ldname = (
-                    self._common.get_ldname(
+                    self.get_ldname(
                         migstat,
                         self._properties['ld_name_format']))
             else:
                 ldname = (
-                    self._common.get_ldname(
-                        volume['id'],
+                    self.get_ldname(
+                        volume.id,
                         self._properties['ld_name_format']))
 
             if ldname not in lds:
@@ -953,11 +926,11 @@ class MStorageDriver(object):
                 LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
                           {'ld': ldname, 'ldset': tagetldset['ldsetname']})
 
-            LOG.debug('_remove_export(Volume ID = %s) End.', volume['id'])
+            LOG.debug('_remove_export(Volume ID = %s) End.', volume.id)
 
     def iscsi_initialize_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
-                   % {'id': volume['id'], 'connector': connector})
+                   % {'id': volume.id, 'connector': connector})
 
         try:
             ret = self._iscsi_initialize_connection(volume, connector)
@@ -990,9 +963,9 @@ class MStorageDriver(object):
         """
         LOG.debug('_iscsi_initialize_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
-                  {'id': volume['id'], 'connector': connector})
+                  {'id': volume.id, 'connector': connector})
 
-        provider_location = volume['provider_location']
+        provider_location = volume.provider_location
         provider_location = provider_location.split()
         info = {'driver_volume_type': 'iscsi',
                 'data': {'target_portal': random.choice(
@@ -1000,7 +973,7 @@ class MStorageDriver(object):
                     'target_iqn': provider_location[1],
                     'target_lun': int(provider_location[2]),
                     'target_discovered': False,
-                    'volume_id': volume['id']}
+                    'volume_id': volume.id}
                 }
         if connector.get('multipath'):
             portals_len = len(provider_location[0][0:-2].split(";"))
@@ -1013,14 +986,14 @@ class MStorageDriver(object):
         LOG.debug('_iscsi_initialize_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s, '
                   'info = %(info)s) End.',
-                  {'id': volume['id'],
+                  {'id': volume.id,
                    'connector': connector,
                    'info': info})
         return info
 
     def iscsi_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
-                   % {'id': volume['id'], 'connector': connector})
+                   % {'id': volume.id, 'connector': connector})
 
         try:
             ret = self._iscsi_terminate_connection(volume, connector)
@@ -1035,11 +1008,11 @@ class MStorageDriver(object):
     def _iscsi_terminate_connection(self, volume, connector):
         LOG.debug('execute _iscsi_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s).',
-                  {'id': volume['id'], 'connector': connector})
+                  {'id': volume.id, 'connector': connector})
 
     def fc_initialize_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
-                   % {'id': volume['id'], 'connector': connector})
+                   % {'id': volume.id, 'connector': connector})
 
         try:
             ret = self._fc_initialize_connection(volume, connector)
@@ -1084,11 +1057,11 @@ class MStorageDriver(object):
 
         LOG.debug('_fc_initialize_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
-                  {'id': volume['id'], 'connector': connector})
+                  {'id': volume.id, 'connector': connector})
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # get target wwpns and initiator/target map.
 
@@ -1100,25 +1073,25 @@ class MStorageDriver(object):
         target_wwns, init_targ_map = (
             self._build_initiator_target_map(connector, fc_ports))
 
-        LOG.debug('migration_status:%s', volume['migration_status'])
-        migstat = volume['migration_status']
+        LOG.debug('migration_status:%s', volume.migration_status)
+        migstat = volume.migration_status
         if migstat is not None and 'target:' in migstat:
             index = migstat.find('target:')
             if index != -1:
                 migstat = migstat[len('target:'):]
             ldname = (
-                self._common.get_ldname(migstat,
-                                        self._properties['ld_name_format']))
+                self.get_ldname(migstat,
+                                self._properties['ld_name_format']))
         else:
             ldname = (
-                self._common.get_ldname(volume['id'],
-                                        self._properties['ld_name_format']))
+                self.get_ldname(volume.id,
+                                self._properties['ld_name_format']))
 
         # get lun.
         if ldname not in lds:
             msg = (_('Logical Disk %(ld)s has unbound already. '
                      'volume_id = %(id)s.') %
-                   {'ld': ldname, 'id': volume['id']})
+                   {'ld': ldname, 'id': volume.id})
             LOG.error(msg)
             raise exception.NotFound(msg)
         ldn = lds[ldname]['ldn']
@@ -1138,14 +1111,14 @@ class MStorageDriver(object):
         LOG.debug('_fc_initialize_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s, '
                   'info = %(info)s) End.',
-                  {'id': volume['id'],
+                  {'id': volume.id,
                    'connector': connector,
                    'info': info})
         return info
 
     def fc_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
-                   % {'id': volume['id'], 'connector': connector})
+                   % {'id': volume.id, 'connector': connector})
 
         try:
             ret = self._fc_terminate_connection(volume, connector)
@@ -1161,11 +1134,11 @@ class MStorageDriver(object):
         """Disallow connection from connector."""
         LOG.debug('_fc_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
-                  {'id': volume['id'], 'connector': connector})
+                  {'id': volume.id, 'connector': connector})
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # get target wwpns and initiator/target map.
         fc_ports = []
@@ -1182,7 +1155,7 @@ class MStorageDriver(object):
         LOG.debug('_fc_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s, '
                   'info = %(info)s) End.',
-                  {'id': volume['id'],
+                  {'id': volume.id,
                    'connector': connector,
                    'info': info})
         return info
@@ -1215,10 +1188,10 @@ class MStorageDriver(object):
         # Get xml data from file and parse.
         try:
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-                self._common.parse_xml())
+                self.parse_xml())
 
             # Get capacities from pools.
-            pool_capacity = self._common.get_pool_capacity(pools, ldsets)
+            pool_capacity = self.get_pool_capacity(pools, ldsets)
 
             data['total_capacity_gb'] = pool_capacity['total_capacity_gb']
             data['free_capacity_gb'] = pool_capacity['free_capacity_gb']
@@ -1264,7 +1237,7 @@ class MStorageDriver(object):
         return self._properties['backend_name']
 
     def delete_volume(self, volume):
-        msgparm = 'Volume ID = %s' % volume['id']
+        msgparm = 'Volume ID = %s' % volume.id
         try:
             self._delete_volume(volume)
             LOG.info('Deleted Volume (%s)', msgparm)
@@ -1278,11 +1251,11 @@ class MStorageDriver(object):
         LOG.debug('_delete_volume Start.')
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         ldname = (
-            self._common.get_ldname(volume['id'],
-                                    self._properties['ld_name_format']))
+            self.get_ldname(volume.id,
+                            self._properties['ld_name_format']))
         if ldname not in lds:
             LOG.debug('LD `%s` already unbound?', ldname)
             return
@@ -1336,176 +1309,6 @@ class MStorageDriver(object):
         self._cli.unbind(ldname)
         LOG.debug('LD unbound. Name=%s.', ldname)
 
-    def create_snapshot(self, snapshot):
-        msgparm = ('Snapshot ID = %(id)s, Snapshot Volume ID = %(vol_id)s'
-                   % {'id': snapshot['id'], 'vol_id': snapshot['volume_id']})
-        try:
-            self._create_snapshot(snapshot)
-            LOG.info('Created Snapshot (%s)', msgparm)
-        except exception.CinderException as e:
-            with excutils.save_and_reraise_exception():
-                LOG.warning('Failed to Create Snapshot '
-                            '(%(msgparm)s) (%(exception)s)',
-                            {'msgparm': msgparm, 'exception': e})
-
-    def _create_snapshot(self, snapshot):
-        LOG.debug('_create_snapshot'
-                  '(Volume ID = %(id)s, Snapshot ID = %(snap_id)s ) Start.',
-                  {'id': snapshot['volume_id'], 'snap_id': snapshot['id']})
-
-        if len(self._properties['pool_backup_pools']) == 0:
-            LOG.error('backup_pools is not set.')
-            raise exception.ParameterNotFound(param='backup_pools')
-
-        xml = self._cli.view_all(self._properties['ismview_path'])
-        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
-
-        # get MV name.
-        ldname = self._common.get_ldname(snapshot['volume_id'],
-                                         self._properties['ld_name_format'])
-
-        ld = self._cli.check_ld_existed_rplstatus(lds,
-                                                  ldname,
-                                                  snapshot,
-                                                  'backup')
-        ld_capacity = ld['ld_capacity']
-
-        (snapshotname,
-         selected_ldn,
-         selected_pool) = self._bind_ld(snapshot,
-                                        ld_capacity,
-                                        None,
-                                        self._convert_id2snapname,
-                                        self._select_ddr_poolnumber,
-                                        ld_capacity)
-
-        volume_properties = {
-            'mvname': ldname,
-            'rvname': snapshotname,
-            'capacity': ld['ld_capacity'],
-            'mvid': snapshot['volume_id'],
-            'rvid': snapshot['id'],
-            'flag': 'backup',
-            'context': self._context
-        }
-        self._cli.backup_restore(volume_properties, cli.UnpairWaitForBackup)
-
-        LOG.debug('_create_snapshot'
-                  '(Volume ID = %(vol_id)s, Snapshot ID = %(snap_id)s) End.',
-                  {'vol_id': snapshot['volume_id'],
-                   'snap_id': snapshot['id']})
-
-    def create_volume_from_snapshot(self, volume, snapshot):
-        msgparm = ('Volume ID = %(id)s, '
-                   'Snapshot ID = %(snap_id)s, '
-                   'Snapshot Volume ID = %(snapvol_id)s'
-                   % {'id': volume['id'],
-                      'snap_id': snapshot['id'],
-                      'snapvol_id': snapshot['volume_id']})
-        try:
-            self._create_volume_from_snapshot(volume, snapshot)
-            LOG.info('Created Volume from Snapshot (%s)', msgparm)
-        except exception.CinderException as e:
-            with excutils.save_and_reraise_exception():
-                LOG.warning('Failed to Create Volume from Snapshot '
-                            '(%(msgparm)s) (%(exception)s)',
-                            {'msgparm': msgparm, 'exception': e})
-
-    def _create_volume_from_snapshot(self, volume, snapshot):
-        LOG.debug('_create_volume_from_snapshot'
-                  '(Volume ID = %(vol)s, Snapshot ID = %(snap)s) Start.',
-                  {'vol': volume['id'], 'snap': snapshot['id']})
-        xml = self._cli.view_all(self._properties['ismview_path'])
-        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
-
-        # get MV name.
-        mvname = (
-            self._common.get_ldname(snapshot['id'],
-                                    self._properties['ld_backupname_format']))
-        ld = self._cli.check_ld_existed_rplstatus(lds,
-                                                  mvname,
-                                                  snapshot,
-                                                  'restore')
-        mv_capacity = ld['ld_capacity']
-        rv_capacity = volume['size']
-
-        (rvname,
-         selected_ldn,
-         selected_pool) = self._bind_ld(volume,
-                                        mv_capacity,
-                                        None,
-                                        self._convert_id2name,
-                                        self._select_volddr_poolnumber,
-                                        mv_capacity)
-
-        # check io limit.
-        specs = self._common.get_volume_type_qos_specs(volume)
-        self._common.check_io_parameter(specs)
-
-        # set io limit.
-        self._cli.set_io_limit(rvname, specs)
-
-        if rv_capacity <= mv_capacity:
-            rvnumber = None
-            rv_capacity = None
-
-        # Restore Start.
-        volume_properties = {
-            'mvname': mvname,
-            'rvname': rvname,
-            'capacity': mv_capacity,
-            'mvid': snapshot['id'],
-            'rvid': volume['id'],
-            'rvldn': rvnumber,
-            'rvcapacity': rv_capacity,
-            'flag': 'restore',
-            'context': self._context
-        }
-        self._cli.backup_restore(volume_properties, cli.UnpairWaitForRestore)
-
-        LOG.debug('_create_volume_from_snapshot'
-                  '(Volume ID = %(vol)s, Snapshot ID = %(snap)s, '
-                  'Specs=%(specs)s) End.',
-                  {'vol': volume['id'],
-                   'snap': snapshot['id'],
-                   'specs': specs})
-
-    def delete_snapshot(self, snapshot):
-        msgparm = ('Snapshot ID = %(id)s, '
-                   'Snapshot Volume ID = %(vol_id)s'
-                   % {'id': snapshot['id'],
-                      'vol_id': snapshot['volume_id']})
-        try:
-            self._delete_snapshot(snapshot)
-            LOG.info('Deleted Snapshot (%s)', msgparm)
-        except exception.CinderException as e:
-            with excutils.save_and_reraise_exception():
-                LOG.warning('Failed to Delete Snapshot '
-                            '(%(msgparm)s) (%(exception)s)',
-                            {'msgparm': msgparm, 'exception': e})
-
-    def _delete_snapshot(self, snapshot):
-        LOG.debug('_delete_snapshot(Snapshot ID = %s) Start.', snapshot['id'])
-        xml = self._cli.view_all(self._properties['ismview_path'])
-        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
-        # get ld name.
-        ldname = (
-            self._common.get_ldname(snapshot['id'],
-                                    self._properties['ld_backupname_format']))
-        ld = self._cli.check_ld_existed_rplstatus(lds,
-                                                  ldname,
-                                                  snapshot,
-                                                  'delete')
-        if ld is None:
-            return
-
-        self._cli.unbind(ldname)
-
-        LOG.debug('_delete_snapshot(Snapshot ID = %s) End.', snapshot['id'])
-
 
 class MStorageDSVDriver(MStorageDriver):
     """M-Series Storage Snapshot helper class."""
@@ -1513,8 +1316,8 @@ class MStorageDSVDriver(MStorageDriver):
     def create_snapshot(self, snapshot):
         msgparm = ('Snapshot ID = %(snap_id)s, '
                    'Snapshot Volume ID = %(snapvol_id)s'
-                   % {'snap_id': snapshot['id'],
-                      'snapvol_id': snapshot['volume_id']})
+                   % {'snap_id': snapshot.id,
+                      'snapvol_id': snapshot.volume_id})
         try:
             self._create_snapshot(snapshot,
                                   self._properties['diskarray_name'])
@@ -1529,20 +1332,20 @@ class MStorageDSVDriver(MStorageDriver):
     def _create_snapshot(self, snapshot, diskarray_name):
         LOG.debug('_create_snapshot(Volume ID = %(snapvol_id)s, '
                   'Snapshot ID = %(snap_id)s ) Start.',
-                  {'snapvol_id': snapshot['volume_id'],
-                   'snap_id': snapshot['id']})
+                  {'snapvol_id': snapshot.volume_id,
+                   'snap_id': snapshot.id})
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         if len(self._properties['pool_backup_pools']) == 0:
             LOG.error('backup_pools is not set.')
             raise exception.ParameterNotFound(param='backup_pools')
 
         # get BV name.
-        ldname = self._common.get_ldname(snapshot['volume_id'],
-                                         self._properties['ld_name_format'])
+        ldname = self.get_ldname(snapshot.volume_id,
+                                 self._properties['ld_name_format'])
         if ldname not in lds:
             msg = _('Logical Disk `%s` has unbound already.') % ldname
             LOG.error(msg)
@@ -1554,14 +1357,14 @@ class MStorageDSVDriver(MStorageDriver):
 
         LOG.debug('_create_snapshot(Volume ID = %(snapvol_id)s, '
                   'Snapshot ID = %(snap_id)s) End.',
-                  {'snapvol_id': snapshot['volume_id'],
-                   'snap_id': snapshot['id']})
+                  {'snapvol_id': snapshot.volume_id,
+                   'snap_id': snapshot.id})
 
     def delete_snapshot(self, snapshot):
         msgparm = ('Snapshot ID = %(snap_id)s, '
                    'Snapshot Volume ID = %(snapvol_id)s'
-                   % {'snap_id': snapshot['id'],
-                      'snapvol_id': snapshot['volume_id']})
+                   % {'snap_id': snapshot.id,
+                      'snapvol_id': snapshot.volume_id})
         try:
             self._delete_snapshot(snapshot)
             LOG.info('Deleted Snapshot (%s)', msgparm)
@@ -1573,37 +1376,37 @@ class MStorageDSVDriver(MStorageDriver):
 
     def _delete_snapshot(self, snapshot):
         LOG.debug('_delete_snapshot(Snapshot ID = %s) Start.',
-                  snapshot['id'])
+                  snapshot.id)
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # get BV name.
-        ldname = self._common.get_ldname(snapshot['volume_id'],
-                                         self._properties['ld_name_format'])
+        ldname = self.get_ldname(snapshot.volume_id,
+                                 self._properties['ld_name_format'])
         if ldname not in lds:
             LOG.debug('LD(MV) `%s` already unbound?', ldname)
             return
 
         # get SV name.
         snapshotname = (
-            self._common.get_ldname(snapshot['id'],
-                                    self._properties['ld_backupname_format']))
+            self.get_ldname(snapshot.id,
+                            self._properties['ld_backupname_format']))
         if snapshotname not in lds:
             LOG.debug('LD(SV) `%s` already unbound?', snapshotname)
             return
 
         self._cli.snapshot_delete(ldname, snapshotname[3:])
 
-        LOG.debug('_delete_snapshot(Snapshot ID = %s) End.', snapshot['id'])
+        LOG.debug('_delete_snapshot(Snapshot ID = %s) End.', snapshot.id)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         msgparm = ('Volume ID = %(vol_id)s, '
                    'Snapshot ID = %(snap_id)s, '
                    'Snapshot Volume ID = %(snapvol_id)s'
-                   % {'vol_id': volume['id'],
-                      'snap_id': snapshot['id'],
-                      'snapvol_id': snapshot['volume_id']})
+                   % {'vol_id': volume.id,
+                      'snap_id': snapshot.id,
+                      'snapvol_id': snapshot.volume_id})
         try:
             self._create_volume_from_snapshot(volume, snapshot)
             LOG.info('Created Volume from Snapshot (%s)', msgparm)
@@ -1617,22 +1420,22 @@ class MStorageDSVDriver(MStorageDriver):
         LOG.debug('_create_volume_from_snapshot'
                   '(Volume ID = %(vol_id)s, Snapshot ID(SV) = %(snap_id)s, '
                   'Snapshot ID(BV) = %(snapvol_id)s) Start.',
-                  {'vol_id': volume['id'],
-                   'snap_id': snapshot['id'],
-                   'snapvol_id': snapshot['volume_id']})
+                  {'vol_id': volume.id,
+                   'snap_id': snapshot.id,
+                   'snapvol_id': snapshot.volume_id})
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
-            self._common.configs(xml))
+            self.configs(xml))
 
         # get BV name.
         mvname = (
-            self._common.get_ldname(snapshot['volume_id'],
-                                    self._properties['ld_name_format']))
+            self.get_ldname(snapshot.volume_id,
+                            self._properties['ld_name_format']))
 
         # get SV name.
         rvname = (
-            self._common.get_ldname(snapshot['id'],
-                                    self._properties['ld_backupname_format']))
+            self.get_ldname(snapshot.id,
+                            self._properties['ld_backupname_format']))
 
         if rvname not in lds:
             msg = _('Logical Disk `%s` has unbound already.') % rvname
@@ -1651,7 +1454,7 @@ class MStorageDSVDriver(MStorageDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
         mv_capacity = rv['ld_capacity']
-        rv_capacity = volume['size']
+        rv_capacity = volume.size
 
         (new_rvname,
          rvnumber,
@@ -1663,8 +1466,8 @@ class MStorageDSVDriver(MStorageDriver):
                                         mv_capacity)
 
         # check io limit.
-        specs = self._common.get_volume_type_qos_specs(volume)
-        self._common.check_io_parameter(specs)
+        specs = self.get_volume_type_qos_specs(volume)
+        self.check_io_parameter(specs)
 
         # set io limit.
         self._cli.set_io_limit(new_rvname, specs)
@@ -1679,8 +1482,8 @@ class MStorageDSVDriver(MStorageDriver):
             'rvname': new_rvname,
             'prev_mvname': None,
             'capacity': mv_capacity,
-            'mvid': snapshot['id'],
-            'rvid': volume['id'],
+            'mvid': snapshot.id,
+            'rvid': volume.id,
             'rvldn': rvnumber,
             'rvcapacity': rv_capacity,
             'flag': 'esv_restore',
@@ -1693,7 +1496,7 @@ class MStorageDSVDriver(MStorageDriver):
                   'Snapshot ID(SV) = %(snap_id)s, '
                   'Snapshot ID(BV) = %(snapvol_id)s, '
                   'Specs=%(specs)s) End.',
-                  {'vol_id': volume['id'],
-                   'snap_id': snapshot['id'],
-                   'snapvol_id': snapshot['volume_id'],
+                  {'vol_id': volume.id,
+                   'snap_id': snapshot.id,
+                   'snapvol_id': snapshot.volume_id,
                    'specs': specs})
