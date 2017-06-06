@@ -326,7 +326,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             body = response.read()
             h.close()
 
-            if response.status != 200:
+            if response.status != http_client.OK:
                 raise pywbem.cim_http.Error('HTTP error')
 
         except http_client.BadStatusLine as arg:

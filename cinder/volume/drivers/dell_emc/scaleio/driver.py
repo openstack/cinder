@@ -29,6 +29,7 @@ from oslo_utils import units
 import re
 import requests
 import six
+from six.moves import http_client
 from six.moves import urllib
 
 from cinder import context
@@ -103,7 +104,6 @@ QOS_IOPS_PER_GB = 'maxIOPSperGB'
 QOS_BANDWIDTH_PER_GB = 'maxBWSperGB'
 
 BLOCK_SIZE = 8
-OK_STATUS_CODE = 200
 VOLUME_NOT_FOUND_ERROR = 79
 # This code belongs to older versions of ScaleIO
 OLD_VOLUME_NOT_FOUND_ERROR = 78
@@ -410,7 +410,7 @@ class ScaleIODriver(driver.VolumeDriver):
                        % self.protection_domain_name)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            if r.status_code != OK_STATUS_CODE and "errorCode" in domain_id:
+            if r.status_code != http_client.OK and "errorCode" in domain_id:
                 msg = (_("Error getting domain id from name %(name)s: %(id)s.")
                        % {'name': self.protection_domain_name,
                           'id': domain_id['message']})
@@ -439,7 +439,7 @@ class ScaleIODriver(driver.VolumeDriver):
                           'domain_id': domain_id})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            if r.status_code != OK_STATUS_CODE and "errorCode" in pool_id:
+            if r.status_code != http_client.OK and "errorCode" in pool_id:
                 msg = (_("Error getting pool id from name %(pool_name)s: "
                          "%(err_msg)s.")
                        % {'pool_name': pool_name,
@@ -471,7 +471,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         LOG.info("Add volume response: %s", response)
 
-        if r.status_code != OK_STATUS_CODE and "errorCode" in response:
+        if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Error creating volume: %s.") % response['message'])
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -511,7 +511,7 @@ class ScaleIODriver(driver.VolumeDriver):
                    "/api/instances/System/action/snapshotVolumes") % req_vars
         r, response = self._execute_scaleio_post_request(params, request)
         LOG.info("Snapshot volume response: %s.", response)
-        if r.status_code != OK_STATUS_CODE and "errorCode" in response:
+        if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for volume %(volname)s: "
                      "%(response)s.") %
                    {'volname': vol_id,
@@ -540,7 +540,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def _check_response(self, response, request, is_get_request=True,
                         params=None):
-        if response.status_code == 401 or response.status_code == 403:
+        if (response.status_code == http_client.UNAUTHORIZED or
+                response.status_code == http_client.FORBIDDEN):
             LOG.info("Token is invalid, going to re-login and get "
                      "a new one.")
             login_request = (
@@ -580,7 +581,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 ":" + self.server_port + "/api/version")
             r, unused = self._execute_scaleio_get_request(request)
 
-            if r.status_code == OK_STATUS_CODE:
+            if r.status_code == http_client.OK:
                 self.server_api_version = r.text.replace('\"', '')
                 LOG.info("REST API Version: %(api_version)s",
                          {'api_version': self.server_api_version})
@@ -663,7 +664,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         params = {'sizeInGB': six.text_type(volume_new_size)}
         r, response = self._execute_scaleio_post_request(params, request)
-        if r.status_code != OK_STATUS_CODE:
+        if r.status_code != http_client.OK:
             response = r.json()
             msg = (_("Error extending volume %(vol)s: %(err)s.")
                    % {'vol': vol_id,
@@ -727,7 +728,7 @@ class ScaleIODriver(driver.VolumeDriver):
                    "/action/removeVolume") % req_vars
         r, response = self._execute_scaleio_post_request(params, request)
 
-        if r.status_code != OK_STATUS_CODE:
+        if r.status_code != http_client.OK:
             error_code = response['errorCode']
             if error_code == VOLUME_NOT_FOUND_ERROR:
                 LOG.warning("Ignoring error in delete volume %s:"
@@ -876,7 +877,7 @@ class ScaleIODriver(driver.VolumeDriver):
                        % self.protection_domain_name)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            if r.status_code != OK_STATUS_CODE and "errorCode" in domain_id:
+            if r.status_code != http_client.OK and "errorCode" in domain_id:
                 msg = (_("Error getting domain id from name %(name)s: "
                          "%(err)s.")
                        % {'name': self.protection_domain_name,
@@ -903,7 +904,7 @@ class ScaleIODriver(driver.VolumeDriver):
                           'domain': domain_id})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            if r.status_code != OK_STATUS_CODE and "errorCode" in pool_id:
+            if r.status_code != http_client.OK and "errorCode" in pool_id:
                 msg = (_("Error getting pool id from name %(pool)s: "
                          "%(err)s.")
                        % {'pool': pool_name,
@@ -1132,7 +1133,7 @@ class ScaleIODriver(driver.VolumeDriver):
         params = {'newName': new_name}
         r, response = self._execute_scaleio_post_request(params, request)
 
-        if r.status_code != OK_STATUS_CODE:
+        if r.status_code != http_client.OK:
             error_code = response['errorCode']
             if ((error_code == VOLUME_NOT_FOUND_ERROR or
                  error_code == OLD_VOLUME_NOT_FOUND_ERROR or
@@ -1247,7 +1248,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     @staticmethod
     def _manage_existing_check_legal_response(response, existing_ref):
-        if response.status_code != OK_STATUS_CODE:
+        if response.status_code != http_client.OK:
             reason = (_("Error managing volume: %s.") % response.json()[
                 'message'])
             raise exception.ManageExistingInvalidReference(
@@ -1339,7 +1340,7 @@ class ScaleIODriver(driver.VolumeDriver):
         snapshot_defs = list(map(get_scaleio_snapshot_params, snapshots))
         r, response = self._snapshot_volume_group(snapshot_defs)
         LOG.info("Snapshot volume response: %s.", response)
-        if r.status_code != OK_STATUS_CODE and "errorCode" in response:
+        if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
                      "%(response)s.") %
                    {'response': response['message']})
@@ -1425,7 +1426,7 @@ class ScaleIODriver(driver.VolumeDriver):
                                 volumes)
         r, response = self._snapshot_volume_group(list(snapshot_defs))
         LOG.info("Snapshot volume response: %s.", response)
-        if r.status_code != OK_STATUS_CODE and "errorCode" in response:
+        if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
                      "%(response)s.") %
                    {'response': response['message']})

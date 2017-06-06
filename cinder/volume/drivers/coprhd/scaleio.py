@@ -20,6 +20,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import requests
 import six
+from six.moves import http_client
 from six.moves import urllib
 
 from cinder import exception
@@ -284,7 +285,7 @@ class EMCCoprHDScaleIODriver(driver.VolumeDriver):
             msg = (_("Client with ip %s wasn't found ") % sdc_ip)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        if r.status_code != 200 and "errorCode" in sdc_id:
+        if r.status_code != http_client.OK and "errorCode" in sdc_id:
             msg = (_("Error getting sdc id from ip %(sdc_ip)s:"
                      " %(sdc_id_message)s") % {'sdc_ip': sdc_ip,
                                                'sdc_id_message': sdc_id[
@@ -297,7 +298,8 @@ class EMCCoprHDScaleIODriver(driver.VolumeDriver):
     def _check_response(self, response, request,
                         server_ip, server_port,
                         server_username, server_password):
-        if response.status_code == 401 or response.status_code == 403:
+        if (response.status_code == http_client.UNAUTHORIZED) or (
+                response.status_code == http_client.FORBIDDEN):
             LOG.info(
                 "Token is invalid, going to re-login and get a new one")
 
