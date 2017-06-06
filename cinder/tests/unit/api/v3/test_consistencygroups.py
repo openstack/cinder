@@ -190,5 +190,5 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             body['consistencygroup']['description'],
             body['consistencygroup']['add_volumes'],
             body['consistencygroup']['remove_volumes'])
-        self.assertEqual(False, allow_empty)
+        self.assertFalse(allow_empty)
         consistencygroup.destroy()
