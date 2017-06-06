@@ -336,7 +336,7 @@ class DellSCSanAPITestCase(test.TestCase):
                 u'name': u'Server_21000024ff30441d',
                 u'hbaPresent': True,
                 u'hbaCount': 2,
-                u'notes': u'Created by Dell Cinder Driver',
+                u'notes': u'Created by Dell EMC Cinder Driver',
                 u'mapped': False,
                 u'operatingSystem': {u'instanceId': u'64702.38',
                                      u'instanceName': u'Red Hat Linux 6.x',
@@ -370,7 +370,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        u'name': u'Server_21000024ff30441d',
                        u'hbaPresent': True,
                        u'hbaCount': 2,
-                       u'notes': u'Created by Dell Cinder Driver',
+                       u'notes': u'Created by Dell EMC Cinder Driver',
                        u'mapped': False,
                        u'operatingSystem':
                            {u'instanceId': u'64702.38',
@@ -1369,7 +1369,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     RPLAY_PROFILE = {u'name': u'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
                      u'type': u'Consistent',
-                     u'notes': u'Created by Dell Cinder Driver',
+                     u'notes': u'Created by Dell EMC Cinder Driver',
                      u'volumeCount': 0,
                      u'expireIncompleteReplaySets': True,
                      u'replayCreationTimeout': 20,
@@ -2187,7 +2187,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        'replay_profile_string', 'volume_qos',
                                        'group_qos', 'datareductionprofile')
         expected_payload = {'Name': self.volume_name,
-                            'Notes': 'Created by Dell Cinder Driver',
+                            'Notes': 'Created by Dell EMC Cinder Driver',
                             'Size': '1 GB',
                             'StorageCenter': 12345,
                             'VolumeFolder': '12345.200',
@@ -4613,7 +4613,7 @@ class DellSCSanAPITestCase(test.TestCase):
             'name', screplay, 'replay_profile_string', 'volume_qos',
             'group_qos', 'datareductionprofile')
         expected_payload = {'Name': 'name',
-                            'Notes': 'Created by Dell Cinder Driver',
+                            'Notes': 'Created by Dell EMC Cinder Driver',
                             'VolumeFolder': '12345.200',
                             'ReplayProfileList': ['12345.4'],
                             'VolumeQosProfile': '12345.2',
@@ -4656,7 +4656,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             'group_qos',
                                             None)
         expected_payload = {'Name': 'name',
-                            'Notes': 'Created by Dell Cinder Driver',
+                            'Notes': 'Created by Dell EMC Cinder Driver',
                             'VolumeFolder': '12345.200',
                             'ReplayProfileList': ['12345.4'],
                             'VolumeQosProfile': '12345.2',
@@ -4692,7 +4692,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             'group_qos',
                                             None)
         expected_payload = {'Name': 'name',
-                            'Notes': 'Created by Dell Cinder Driver',
+                            'Notes': 'Created by Dell EMC Cinder Driver',
                             'VolumeFolder': '12345.200',
                             'VolumeQosProfile': '12345.2',
                             'GroupQosProfile': '12345.3'}
@@ -6872,7 +6872,7 @@ class DellSCSanAPITestCase(test.TestCase):
         ssn = 64702
         destssn = 65495
         qosnode = 'Cinder QoS'
-        notes = 'Created by Dell Cinder Driver'
+        notes = 'Created by Dell EMC Cinder Driver'
         repl_prefix = 'Cinder repl of '
 
         mock_find_sc.side_effect = [destssn, ssn, destssn, ssn, destssn, ssn]
@@ -6936,7 +6936,7 @@ class DellSCSanAPITestCase(test.TestCase):
         ssn = 64702
         destssn = 65495
         qosnode = 'Cinder QoS'
-        notes = 'Created by Dell Cinder Driver'
+        notes = 'Created by Dell EMC Cinder Driver'
         repl_prefix = 'Cinder repl of '
 
         mock_find_sc.side_effect = [destssn, ssn, destssn, ssn]
@@ -7515,7 +7515,7 @@ class DellSCSanAPITestCase(test.TestCase):
                     'Type': 'Synchronous',
                     'PrimaryVolume': '101.1',
                     'SecondaryVolumeAttributes':
-                        {'Notes': 'Created by Dell Cinder Driver',
+                        {'Notes': 'Created by Dell EMC Cinder Driver',
                          'CreateSourceVolumeFolderPath': True,
                          'Name': 'name'}
                     }
@@ -7783,7 +7783,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_post.assert_called_once_with(
             'StorageCenter/ScReplay/11111.201/CreateView',
             {'Name': 'fback:guidb',
-             'Notes': 'Created by Dell Cinder Driver',
+             'Notes': 'Created by Dell EMC Cinder Driver',
              'VolumeFolder': '11111.1'},
             True)
         mock_create_replay.assert_called_once_with(svolume, 'failback', 600)

@@ -433,7 +433,7 @@ class SCApi(object):
                        should be turned on or not.
         :param apiversion: Version used on login.
         """
-        self.notes = 'Created by Dell Cinder Driver'
+        self.notes = 'Created by Dell EMC Cinder Driver'
         self.repl_prefix = 'Cinder repl of '
         self.ssn = None
         # primaryssn is the ssn of the SC we are configured to use. This

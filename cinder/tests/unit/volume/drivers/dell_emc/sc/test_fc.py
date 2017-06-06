@@ -96,7 +96,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                 u'name': u'Server_21000024ff30441d',
                 u'hbaPresent': True,
                 u'hbaCount': 2,
-                u'notes': u'Created by Dell Cinder Driver',
+                u'notes': u'Created by Dell EMC Cinder Driver',
                 u'mapped': False,
                 u'operatingSystem': {u'instanceId': u'64702.38',
                                      u'instanceName': u'Red Hat Linux 6.x',
