@@ -22,7 +22,6 @@ from oslo_log import log as logging
 
 from cinder.backup.drivers import posix
 from cinder import exception
-from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 
@@ -50,7 +49,6 @@ class NFSBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using NFS supplied repository."""
 
     def __init__(self, context, db=None):
-        self._check_configuration()
         self.backup_mount_point_base = CONF.backup_mount_point_base
         self.backup_share = CONF.backup_share
         self.mount_options = CONF.backup_mount_options
@@ -59,14 +57,14 @@ class NFSBackupDriver(posix.PosixBackupDriver):
         super(NFSBackupDriver, self).__init__(context,
                                               backup_path=backup_path)
 
-    @staticmethod
-    def _check_configuration():
+    def check_for_setup_error(self):
         """Raises error if any required configuration flag is missing."""
         required_flags = ['backup_share']
         for flag in required_flags:
-            if not getattr(CONF, flag, None):
-                raise exception.ConfigNotFound(_(
-                    'Required flag %s is not set') % flag)
+            val = getattr(CONF, flag, None)
+            if not val:
+                raise exception.InvalidConfigurationValue(option=flag,
+                                                          value=val)
 
     def _init_backup_repo_path(self):
         remotefsclient = remotefs_brick.RemoteFsClient(

@@ -47,7 +47,6 @@ class GlusterfsBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using GlusterFS repository."""
 
     def __init__(self, context, db=None):
-        self._check_configuration()
         self.backup_mount_point_base = CONF.glusterfs_backup_mount_point
         self.backup_share = CONF.glusterfs_backup_share
         self._execute = putils.execute
@@ -56,13 +55,14 @@ class GlusterfsBackupDriver(posix.PosixBackupDriver):
         super(GlusterfsBackupDriver, self).__init__(context,
                                                     backup_path=backup_path)
 
-    @staticmethod
-    def _check_configuration():
+    def check_for_setup_error(self):
         """Raises error if any required configuration flag is missing."""
         required_flags = ['glusterfs_backup_share']
         for flag in required_flags:
-            if not getattr(CONF, flag, None):
-                raise exception.ConfigNotFound(path=flag)
+            val = getattr(CONF, flag, None)
+            if not val:
+                raise exception.InvalidConfigurationValue(option=flag,
+                                                          value=val)
 
     def _init_backup_repo_path(self):
         remotefsclient = remotefs_brick.RemoteFsClient(

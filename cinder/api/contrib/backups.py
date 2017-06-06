@@ -165,7 +165,7 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=error.msg)
         # Other not found exceptions will be handled at the wsgi level
         except exception.ServiceNotFound as error:
-            raise exc.HTTPInternalServerError(explanation=error.msg)
+            raise exc.HTTPServiceUnavailable(explanation=error.msg)
 
         retval = self._view_builder.summary(req, dict(new_backup))
         return retval
@@ -246,7 +246,7 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=error.msg)
         # Other Not found exceptions will be handled at the wsgi level
         except exception.ServiceNotFound as error:
-            raise exc.HTTPInternalServerError(explanation=error.msg)
+            raise exc.HTTPServiceUnavailable(explanation=error.msg)
 
         retval = self._view_builder.summary(req, dict(new_backup))
         LOG.debug('Import record output: %s.', retval)

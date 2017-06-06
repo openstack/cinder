@@ -68,10 +68,9 @@ class BackupNFSShareTestCase(test.TestCase):
         self.mock_object(nfs.NFSBackupDriver, '_init_backup_repo_path',
                          return_value=FAKE_BACKUP_PATH)
 
-        with mock.patch.object(nfs.NFSBackupDriver, '_check_configuration'):
-            driver = nfs.NFSBackupDriver(self.ctxt)
-        self.assertRaises(exception.ConfigNotFound,
-                          driver._check_configuration)
+        driver = nfs.NFSBackupDriver(self.ctxt)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          driver.check_for_setup_error)
 
     @mock.patch.object(remotefs_brick, 'RemoteFsClient')
     def test_init_backup_repo_path(self, mock_remotefs_client_class):
@@ -81,7 +80,7 @@ class BackupNFSShareTestCase(test.TestCase):
         mock_remotefsclient = mock.Mock()
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=FAKE_BACKUP_PATH)
-        self.mock_object(nfs.NFSBackupDriver, '_check_configuration')
+        self.mock_object(nfs.NFSBackupDriver, 'check_for_setup_error')
         mock_remotefs_client_class.return_value = mock_remotefsclient
         self.mock_object(utils, 'get_root_helper')
         with mock.patch.object(nfs.NFSBackupDriver, '_init_backup_repo_path'):

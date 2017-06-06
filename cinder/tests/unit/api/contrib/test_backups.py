@@ -913,11 +913,11 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR, res.status_int)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR,
-                         res_dict['computeFault']['code'])
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
+                         res_dict['serviceUnavailable']['code'])
         self.assertEqual('Service cinder-backup could not be found.',
-                         res_dict['computeFault']['message'])
+                         res_dict['serviceUnavailable']['message'])
 
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
         self.assertEqual('available', volume['status'])
@@ -1885,12 +1885,12 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR, res.status_int)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR,
-                         res_dict['computeFault']['code'])
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
+                         res_dict['serviceUnavailable']['code'])
         self.assertEqual('Service %s could not be found.'
                          % backup_service,
-                         res_dict['computeFault']['message'])
+                         res_dict['serviceUnavailable']['message'])
 
     @mock.patch('cinder.backup.api.API._list_backup_hosts')
     def test_import_backup_with_wrong_backup_url(self, _mock_list_services):
@@ -1968,11 +1968,11 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR, res.status_int)
-        self.assertEqual(http_client.INTERNAL_SERVER_ERROR,
-                         res_dict['computeFault']['code'])
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
+        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
+                         res_dict['serviceUnavailable']['code'])
         self.assertEqual('Service %s could not be found.' % backup_service,
-                         res_dict['computeFault']['message'])
+                         res_dict['serviceUnavailable']['message'])
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
