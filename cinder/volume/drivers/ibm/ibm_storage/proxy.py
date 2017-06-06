@@ -17,6 +17,7 @@ import functools
 import gettext
 import inspect
 import platform
+import six
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -262,11 +263,7 @@ class IBMStorageProxy(object):
             return "Status: '%s', Code: %s" % (
                 exception.status, exception.code)
 
-        try:
-            msg = exception.message
-        except AttributeError:
-            msg = exception
-        return msg
+        return six.text_type(exception)
 
     def _get_driver_super(self):
         """Gets the IBM Storage Drivers super class
