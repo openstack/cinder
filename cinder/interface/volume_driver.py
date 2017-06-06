@@ -206,7 +206,8 @@ class VolumeDriverCore(base.CinderInterface):
 
         :param volume: The volume to remove.
         :param connector: The Dictionary containing information about the
-                          connection.
+                          connection. This is optional when doing a
+                          force-detach and can be None.
         """
 
     def detach_volume(self, context, volume, attachment=None):

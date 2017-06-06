@@ -428,17 +428,33 @@ class PureBaseVolumeDriver(san.SanDriver):
         raise NotImplementedError
 
     def _disconnect(self, array, volume, connector, **kwargs):
-        vol_name = self._get_vol_name(volume)
-        host = self._get_host(array, connector)
-        if host:
-            host_name = host["name"]
-            result = self._disconnect_host(array, host_name, vol_name)
-        else:
-            LOG.error("Unable to disconnect host from volume, could not "
-                      "determine Purity host")
-            result = False
+        """Disconnect the volume from the host described by the connector.
 
-        return result
+        If no connector is specified it will remove *all* attachments for
+        the volume.
+
+        Returns True if it was the hosts last connection.
+        """
+        vol_name = self._get_vol_name(volume)
+        if connector is None:
+            # If no connector was provided it is a force-detach, remove all
+            # host connections for the volume
+            LOG.warning("Removing ALL host connections for volume %s",
+                        vol_name)
+            connections = array.list_volume_private_connections(vol_name)
+            for connection in connections:
+                self._disconnect_host(array, connection['host'], vol_name)
+            return False
+        else:
+            # Normal case with a specific initiator to detach it from
+            host = self._get_host(array, connector)
+            if host:
+                host_name = host["name"]
+                return self._disconnect_host(array, host_name, vol_name)
+            else:
+                LOG.error("Unable to disconnect host from volume, could not "
+                          "determine Purity host")
+                return False
 
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):

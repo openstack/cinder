@@ -1361,7 +1361,12 @@ class BaseVD(object):
 
     @abc.abstractmethod
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
+        """Disallow connection from connector.
+
+        :param volume: The volume to be disconnected.
+        :param connector: A dictionary describing the connection with details
+                          about the initiator. Can be None.
+        """
         return
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
@@ -2095,7 +2100,12 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
         """Allow connection from connector for a snapshot."""
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector
+
+        :param volume: The volume to be disconnected.
+        :param connector: A dictionary describing the connection with details
+                          about the initiator. Can be None.
+        """
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Disallow connection from connector for a snapshot."""
