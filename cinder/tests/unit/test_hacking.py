@@ -375,13 +375,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(1, len(list(checks.validate_assertTrue(
             "assertEqual(True, %s)" % test_value))))
 
-    def test_validate_assertFalse(self):
-        test_value = False
-        self.assertEqual(0, len(list(checks.validate_assertFalse(
-            "assertFalse(False)"))))
-        self.assertEqual(1, len(list(checks.validate_assertFalse(
-            "assertEqual(False, %s)" % test_value))))
-
     @ddt.unpack
     @ddt.data(
         (1, 'LOG.info', "cinder/tests/unit/fake.py", False),
