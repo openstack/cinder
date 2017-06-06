@@ -30,12 +30,12 @@ Cinder uses direct, fanout, and topic-based exchanges. The architecture looks li
 
 ..
 
-Cinder implements RPC (both request+response, and one-way, respectively nicknamed 'rpc.call' and 'rpc.cast') over AMQP by providing an adapter class which take cares of marshaling and unmarshaling of messages into function calls. Each Cinder service (for example Compute, Volume, etc.) create two queues at the initialization time, one which accepts messages with routing keys 'NODE-TYPE.NODE-ID' (for example compute.hostname) and another, which accepts messages with routing keys as generic 'NODE-TYPE' (for example compute). The former is used specifically when Cinder-API needs to redirect commands to a specific node like 'euca-terminate instance'. In this case, only the  compute node whose host's hypervisor is running the virtual machine can kill the instance. The API acts as a consumer when RPC calls are request/response, otherwise is acts as publisher only.
+Cinder implements RPC (both request+response, and one-way, respectively nicknamed 'rpc.call' and 'rpc.cast') over AMQP by providing an adapter class which take cares of marshaling and unmarshaling of messages into function calls. Each Cinder service (for example Scheduler, Volume, etc.) create two queues at the initialization time, one which accepts messages with routing keys 'NODE-TYPE.NODE-ID' (for example cinder-volume.hostname) and another, which accepts messages with routing keys as generic 'NODE-TYPE' (for example cinder-volume). The API acts as a consumer when RPC calls are request/response, otherwise is acts as publisher only.
 
 Cinder RPC Mappings
 -------------------
 
-The figure below shows the internals of a message broker node (referred to as a RabbitMQ node in the diagrams) when a single instance is deployed and shared in an OpenStack cloud. Every Cinder component connects to the message broker and, depending on its personality (for example a compute node or a network node), may use the queue either as an Invoker (such as API or Scheduler) or a Worker (such as Compute, Volume or Network). Invokers and Workers do not actually exist in the Cinder object model, but we are going to use them as an abstraction for sake of clarity. An Invoker is a component that sends messages in the queuing system via two operations: 1) rpc.call and ii) rpc.cast; a Worker is a component that receives messages from the queuing system and reply accordingly to rpc.call operations.
+The figure below shows the internals of a message broker node (referred to as a RabbitMQ node in the diagrams) when a single instance is deployed and shared in an OpenStack cloud. Every Cinder component connects to the message broker and, depending on its personality, may use the queue either as an Invoker (such as API or Scheduler) or a Worker (such as Volume). Invokers and Workers do not actually exist in the Cinder object model, but we are going to use them as an abstraction for sake of clarity. An Invoker is a component that sends messages in the queuing system via two operations: 1) rpc.call and ii) rpc.cast; a Worker is a component that receives messages from the queuing system and reply accordingly to rpc.call operations.
 
 Figure 2 shows the following internal elements:
 
@@ -88,19 +88,22 @@ At any given time the load of a message broker node running either Qpid or Rabbi
     * Throughput of API calls: the number of API calls (more precisely rpc.call ops) being served by the OpenStack cloud dictates the number of direct-based exchanges, related queues and direct consumers connected to them.
     * Number of Workers: there is one queue shared amongst workers with the same personality; however there are as many exclusive queues as the number of workers; the number of workers dictates also the number of routing keys within the topic-based exchange, which is shared amongst all workers.
 
-The figure below shows the status of a RabbitMQ node after Cinder components' bootstrap in a test environment. Exchanges and queues being created by Cinder components are:
+The figure below shows the status of a RabbitMQ node after Cinder components' bootstrap in a test environment (phantom is hostname). Exchanges and queues being created by Cinder components are:
 
     * Exchanges
-       1. cinder (topic exchange)
+       1. cinder-scheduler_fanout (fanout exchange)
+       2. cinder-volume.phantom@lvm_fanout (fanout exchange)
+       3. cinder-volume_fanout (fanout exchange)
+       4. openstack (topic exchange)
     * Queues
-       1. compute.phantom (phantom is hostname)
-       2. compute
-       3. network.phantom (phantom is hostname)
-       4. network
-       5. volume.phantom (phantom is hostname)
-       6. volume
-       7. scheduler.phantom (phantom is hostname)
-       8. scheduler
+       1. cinder-scheduler
+       2. cinder-scheduler.phantom
+       3. cinder-scheduler_fanout_572c35c0fbf94560b4c49572d5868ea5
+       4. cinder-volume
+       5. cinder-volume.phantom@lvm
+       6. cinder-volume.phantom@lvm.phantom
+       7. cinder-volume.phantom@lvm_fanout_cb3387f7a7684b1c9ee5f2f88325b7d5
+       8. cinder-volume_fanout_9017a1a7f4b44867983dcddfb56531a2
 
 .. image:: /images/rpc/state.png
    :width: 60%
@@ -133,7 +136,7 @@ More precisely Consumers need the following parameters:
 
       * Direct exchange: if the routing key property of the message and the routing_key attribute of the queue are identical, then the message is forwarded to the queue.
       * Fanout exchange: messages are forwarded to the queues bound the exchange, even if the binding does not have a key.
-      * Topic exchange: if the routing key property of the message matches the routing key of the key according to a primitive pattern matching scheme, then the message is forwarded to the queue. The message routing key then consists of words separated by dots (".", like domain names), and two special characters are available; star ("") and hash ("#"). The star matches any word, and the hash matches zero or more words. For example ".stock.#" matches the routing keys "usd.stock" and "eur.stock.db" but not "stock.nasdaq".
+      * Topic exchange: if the routing key property of the message matches the routing key of the key according to a primitive pattern matching scheme, then the message is forwarded to the queue. The message routing key then consists of words separated by dots (".", like domain names), and two special characters are available; star ("*") and hash ("#"). The star matches any word, and the hash matches zero or more words. For example ".stock.#" matches the routing keys "usd.stock" and "eur.stock.db" but not "stock.nasdaq".
 
     * Durable: this flag determines the durability of both exchanges and queues; durable exchanges and queues remain active when a RabbitMQ server restarts. Non-durable exchanges/queues (transient exchanges/queues) are purged when a server restarts. It is worth noting that AMQP specifies that durable queues cannot bind to transient exchanges. Default is True.
     * Auto_delete: if set, the exchange is deleted when all queues have finished using it. Default is False.
