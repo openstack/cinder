@@ -762,15 +762,21 @@ class BaseVD(object):
         self._stats = data
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch image from image_service and write to unencrypted volume."""
+        """Fetch image from image_service and write to unencrypted volume.
+
+        This does not attach an encryptor layer when connecting to the volume.
+        """
         self._copy_image_data_to_volume(
-            context, volume, image_service, image_id, False)
+            context, volume, image_service, image_id, encrypted=False)
 
     def copy_image_to_encrypted_volume(
             self, context, volume, image_service, image_id):
-        """Fetch image from image_service and write to encrypted volume."""
+        """Fetch image from image_service and write to encrypted volume.
+
+        This attaches the encryptor layer when connecting to the volume.
+        """
         self._copy_image_data_to_volume(
-            context, volume, image_service, image_id, True)
+            context, volume, image_service, image_id, encrypted=True)
 
     def _copy_image_data_to_volume(self, context, volume, image_service,
                                    image_id, encrypted=False):

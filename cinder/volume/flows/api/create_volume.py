@@ -198,12 +198,15 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             func(size)
         return size
 
-    def _check_image_metadata(self, context, image_id, size):
-        """Checks image existence and validates that the image metadata."""
+    def _get_image_metadata(self, context, image_id, size):
+        """Checks image existence and validates the image metadata.
+
+        Returns: image metadata or None
+        """
 
         # Check image existence
         if image_id is None:
-            return
+            return None
 
         # NOTE(harlowja): this should raise an error if the image does not
         # exist, this is expected as it signals that the image_id is missing.
@@ -231,6 +234,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                     ' than the image minDisk size %(min_disk)sGB.')
             msg = msg % {'volume_size': size, 'min_disk': min_disk}
             raise exception.InvalidInput(reason=msg)
+
+        return image_meta
 
     def _get_image_volume_type(self, context, image_id):
         """Get cinder_img_volume_type property from the image metadata."""
@@ -356,13 +361,18 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return availability_zone
 
     def _get_encryption_key_id(self, key_manager, context, volume_type_id,
-                               snapshot, source_volume):
+                               snapshot, source_volume,
+                               image_metadata):
         encryption_key_id = None
         if volume_types.is_encrypted(context, volume_type_id):
             if snapshot is not None:  # creating from snapshot
                 encryption_key_id = snapshot['encryption_key_id']
             elif source_volume is not None:  # cloning volume
                 encryption_key_id = source_volume['encryption_key_id']
+            elif image_metadata is not None:
+                # creating from image
+                encryption_key_id = image_metadata.get(
+                    'cinder_encryption_key_id')
 
             # NOTE(joel-coffman): References to the encryption key should *not*
             # be copied because the key is deleted when the volume is deleted.
@@ -420,7 +430,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
         group_id = self._extract_group(group)
 
-        self._check_image_metadata(context, image_id, size)
+        image_meta = self._get_image_metadata(context,
+                                              image_id,
+                                              size)
 
         availability_zone = self._extract_availability_zone(availability_zone,
                                                             snapshot,
@@ -447,11 +459,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         volume_type_id = self._get_volume_type_id(volume_type,
                                                   source_volume, snapshot)
 
-        encryption_key_id = self._get_encryption_key_id(key_manager,
-                                                        context,
-                                                        volume_type_id,
-                                                        snapshot,
-                                                        source_volume)
+        encryption_key_id = self._get_encryption_key_id(
+            key_manager,
+            context,
+            volume_type_id,
+            snapshot,
+            source_volume,
+            image_meta)
 
         specs = {}
         if volume_type_id:
