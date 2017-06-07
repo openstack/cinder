@@ -19,6 +19,7 @@ import six
 from cinder.tests.unit.consistencygroup import fake_cgsnapshot
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception as \
@@ -121,6 +122,10 @@ def _fake_cg_snapshot_wrapper(*args, **kwargs):
     return fake_cgsnapshot.fake_cgsnapshot_obj(None, **kwargs)
 
 
+def _fake_group_wrapper(*args, **kwargs):
+    return fake_group.fake_group_obj(None, **kwargs)
+
+
 class EnumBuilder(object):
     def __init__(self, enum_dict):
         enum_dict = enum_dict[SYMBOL_ENUM]
@@ -137,7 +142,8 @@ class CinderResourceMock(DriverResourceMock):
     fake_func_mapping = {'volume': _fake_volume_wrapper,
                          'cg': _fake_cg_wrapper,
                          'snapshot': _fake_snapshot_wrapper,
-                         'cg_snapshot': _fake_cg_snapshot_wrapper}
+                         'cg_snapshot': _fake_cg_snapshot_wrapper,
+                         'group': _fake_group_wrapper}
 
     def __init__(self, yaml_file):
         super(CinderResourceMock, self).__init__(yaml_file)
