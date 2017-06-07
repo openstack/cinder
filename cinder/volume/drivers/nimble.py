@@ -131,6 +131,9 @@ class NimbleBaseVolumeDriver(san.SanDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nimble_Storage_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues are not resolved
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(NimbleBaseVolumeDriver, self).__init__(*args, **kwargs)
         self.APIExecutor = None
