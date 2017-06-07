@@ -1426,7 +1426,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
-        self.assertFalse(res_dict['volume']['encrypted'])
+        self.assertEqual(False, res_dict['volume']['encrypted'])
 
     def test_volume_show_with_error_managing_deleting(self):
         def fake_volume_get(self, context, volume_id, **kwargs):

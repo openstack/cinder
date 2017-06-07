@@ -1048,7 +1048,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertEqual('IBM', stats['vendor_name'])
         self.assertEqual('FC', stats['storage_protocol'])
         self.assertEqual(backend_name, stats['volume_backend_name'])
-        self.assertFalse(stats['multiattach'])
+        self.assertEqual(False, stats['multiattach'])
 
         self._reset_flags()
 

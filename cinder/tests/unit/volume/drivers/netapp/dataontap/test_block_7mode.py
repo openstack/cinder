@@ -718,7 +718,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         retval = self.library._refresh_volume_info()
 
         self.assertIsNone(retval)
-        self.assertFalse(self.library.vol_refresh_voluntary)
+        self.assertEqual(False, self.library.vol_refresh_voluntary)
         self.assertEqual(['vol1', 'vol2'], self.library.volume_list)
         self.assertIsNotNone(self.library.vol_refresh_time)
         na_utils.set_safe_attr.assert_has_calls([
