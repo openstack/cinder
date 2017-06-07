@@ -756,6 +756,20 @@ class Backup(BASE, CinderBase):
         return fail_reason and fail_reason[:255] or ''
 
 
+class BackupMetadata(BASE, CinderBase):
+    """Represents a metadata key/value pair for a backup."""
+    __tablename__ = 'backup_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    backup_id = Column(String(36), ForeignKey('backups.id'), nullable=False)
+    backup = relationship(Backup, backref="backup_metadata",
+                          foreign_keys=backup_id,
+                          primaryjoin='and_('
+                          'BackupMetadata.backup_id == Backup.id,'
+                          'BackupMetadata.deleted == False)')
+
+
 class Encryption(BASE, CinderBase):
     """Represents encryption requirement for a volume type.
 

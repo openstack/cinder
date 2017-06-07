@@ -38,7 +38,10 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.2: Add new field snapshot_id and data_timestamp.
     # Version 1.3: Changed 'status' field to use BackupStatusField
     # Version 1.4: Add restore_volume_id
-    VERSION = '1.4'
+    # Version 1.5: Add metadata
+    VERSION = '1.5'
+
+    OPTIONAL_FIELDS = ('metadata',)
 
     fields = {
         'id': fields.UUIDField(),
@@ -71,9 +74,25 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'snapshot_id': fields.StringField(nullable=True),
         'data_timestamp': fields.DateTimeField(nullable=True),
         'restore_volume_id': fields.StringField(nullable=True),
+        'metadata': fields.DictOfStringsField(nullable=True),
     }
 
     obj_extra_fields = ['name', 'is_incremental', 'has_dependent_backups']
+
+    def __init__(self, *args, **kwargs):
+        super(Backup, self).__init__(*args, **kwargs)
+        self._orig_metadata = {}
+
+        self._reset_metadata_tracking()
+
+    def _reset_metadata_tracking(self, fields=None):
+        if fields is None or 'metadata' in fields:
+            self._orig_metadata = (dict(self.metadata)
+                                   if self.obj_attr_is_set('metadata') else {})
+
+    @classmethod
+    def _get_expected_attrs(cls, context, *args, **kwargs):
+        return 'metadata',
 
     @property
     def name(self):
@@ -92,17 +111,49 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         super(Backup, self).obj_make_compatible(primitive, target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
 
-    @staticmethod
-    def _from_db_object(context, backup, db_backup):
+    @classmethod
+    def _from_db_object(cls, context, backup, db_backup, expected_attrs=None):
+        if expected_attrs is None:
+            expected_attrs = []
         for name, field in backup.fields.items():
+            if name in cls.OPTIONAL_FIELDS:
+                continue
             value = db_backup.get(name)
             if isinstance(field, fields.IntegerField):
                 value = value if value is not None else 0
             backup[name] = value
 
+        if 'metadata' in expected_attrs:
+            metadata = db_backup.get('backup_metadata')
+            if metadata is None:
+                raise exception.MetadataAbsent()
+            backup.metadata = {item['key']: item['value']
+                               for item in metadata}
+
         backup._context = context
         backup.obj_reset_changes()
         return backup
+
+    def obj_reset_changes(self, fields=None):
+        super(Backup, self).obj_reset_changes(fields)
+        self._reset_metadata_tracking(fields=fields)
+
+    def obj_load_attr(self, attrname):
+        if attrname not in self.OPTIONAL_FIELDS:
+            raise exception.ObjectActionError(
+                action='obj_load_attr',
+                reason=_('attribute %s not lazy-loadable') % attrname)
+        if not self._context:
+            raise exception.OrphanedObjectError(method='obj_load_attr',
+                                                objtype=self.obj_name())
+        self.obj_reset_changes(fields=[attrname])
+
+    def obj_what_changed(self):
+        changes = super(Backup, self).obj_what_changed()
+        if hasattr(self, 'metadata') and self.metadata != self._orig_metadata:
+            changes.add('metadata')
+
+        return changes
 
     def create(self):
         if self.obj_attr_is_set('id'):
@@ -116,6 +167,11 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
+            if 'metadata' in updates:
+                metadata = updates.pop('metadata', None)
+                self.metadata = db.backup_metadata_update(self._context,
+                                                          self.id, metadata,
+                                                          True)
             db.backup_update(self._context, self.id, updates)
 
         self.obj_reset_changes()
@@ -166,14 +222,16 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                 offset=None, sort_keys=None, sort_dirs=None):
         backups = db.backup_get_all(context, filters, marker, limit, offset,
                                     sort_keys, sort_dirs)
+        expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
-                                  backups)
+                                  backups, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_by_host(cls, context, host):
         backups = db.backup_get_all_by_host(context, host)
+        expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
-                                  backups)
+                                  backups, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, filters=None,
@@ -182,20 +240,23 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         backups = db.backup_get_all_by_project(context, project_id, filters,
                                                marker, limit, offset,
                                                sort_keys, sort_dirs)
+        expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
-                                  backups)
+                                  backups, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_by_volume(cls, context, volume_id, filters=None):
         backups = db.backup_get_all_by_volume(context, volume_id, filters)
+        expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
-                                  backups)
+                                  backups, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_active_by_window(cls, context, begin, end):
         backups = db.backup_get_all_active_by_window(context, begin, end)
+        expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
-                                  backups)
+                                  backups, expected_attrs=expected_attrs)
 
 
 @base.CinderObjectRegistry.register

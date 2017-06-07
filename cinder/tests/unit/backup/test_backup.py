@@ -81,7 +81,8 @@ class BaseBackupTest(test.TestCase):
                                 service=None,
                                 temp_volume_id=None,
                                 temp_snapshot_id=None,
-                                snapshot_id=None):
+                                snapshot_id=None,
+                                metadata=None):
         """Create a backup entry in the DB.
 
         Return the entry ID
@@ -105,6 +106,7 @@ class BaseBackupTest(test.TestCase):
         kwargs['object_count'] = object_count
         kwargs['temp_volume_id'] = temp_volume_id
         kwargs['temp_snapshot_id'] = temp_snapshot_id
+        kwargs['metadata'] = metadata or {}
         backup = objects.Backup(context=self.ctxt, **kwargs)
         backup.create()
         return backup

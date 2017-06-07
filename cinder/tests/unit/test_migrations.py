@@ -1261,6 +1261,30 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         messages = db_utils.get_table(engine, 'messages')
         self.assertEqual(255, messages.c.project_id.type.length)
 
+    def _check_105(self, engine, data):
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "backup_metadata"))
+        backup_metadata = db_utils.get_table(engine, 'backup_metadata')
+
+        self.assertIsInstance(backup_metadata.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(backup_metadata.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(backup_metadata.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(backup_metadata.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(backup_metadata.c.id.type,
+                              self.INTEGER_TYPE)
+        self.assertIsInstance(backup_metadata.c.key.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(backup_metadata.c.value.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(backup_metadata.c.backup_id.type,
+                              self.VARCHAR_TYPE)
+        f_keys = self.get_foreign_key_columns(engine, 'backup_metadata')
+        self.assertEqual({'backup_id'}, f_keys)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

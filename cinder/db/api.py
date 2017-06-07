@@ -1183,6 +1183,14 @@ def backup_create(context, values):
     return IMPL.backup_create(context, values)
 
 
+def backup_metadata_get(context, backup_id):
+    return IMPL.backup_metadata_get(context, backup_id)
+
+
+def backup_metadata_update(context, backup_id, metadata, delete):
+    return IMPL.backup_metadata_update(context, backup_id, metadata, delete)
+
+
 def backup_get_all_by_project(context, project_id, filters=None, marker=None,
                               limit=None, offset=None, sort_keys=None,
                               sort_dirs=None):

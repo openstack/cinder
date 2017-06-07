@@ -2516,7 +2516,7 @@ class DBAPIBackupTestCase(BaseTest):
     """Tests for db.api.backup_* methods."""
 
     _ignored_keys = ['id', 'deleted', 'deleted_at', 'created_at',
-                     'updated_at', 'data_timestamp']
+                     'updated_at', 'data_timestamp', 'backup_metadata']
 
     def setUp(self):
         super(DBAPIBackupTestCase, self).setUp()

@@ -25,6 +25,7 @@ from six.moves import http_client
 import webob
 
 from cinder.api.contrib import backups
+from cinder.api.openstack import api_version_request as api_version
 # needed for stubs to work
 import cinder.backup
 from cinder.backup import api as backup_api
@@ -108,6 +109,23 @@ class BackupsAPITestCase(test.TestCase):
             snapshot.destroy()
         backup.destroy()
         volume.destroy()
+
+    def test_show_backup_return_metadata(self):
+        volume = utils.create_volume(self.context, size=5, status='creating')
+        backup = utils.create_backup(self.context, volume.id,
+                                     metadata={"test_key": "test_value"})
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
+                                  fake.PROJECT_ID, backup.id))
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.43'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual({"test_key": "test_value"},
+                         res_dict['backup']['metadata'])
+        volume.destroy()
+        backup.destroy()
 
     def test_show_backup_with_backup_NotFound(self):
         req = webob.Request.blank('/v2/%s/backups/%s' % (
@@ -303,6 +321,33 @@ class BackupsAPITestCase(test.TestCase):
         backup2.destroy()
         backup1.destroy()
 
+    def test_list_backups_detail_return_metadata(self):
+        backup1 = utils.create_backup(self.context, size=1,
+                                      metadata={'key1': 'value1'})
+        backup2 = utils.create_backup(self.context, size=1,
+                                      metadata={'key2': 'value2'})
+        backup3 = utils.create_backup(self.context, size=1)
+
+        req = webob.Request.blank('/v3/%s/backups/detail' % fake.PROJECT_ID)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['Accept'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.43'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual({'key1': 'value1'},
+                         res_dict['backups'][2]['metadata'])
+        self.assertEqual({'key2': 'value2'},
+                         res_dict['backups'][1]['metadata'])
+        self.assertEqual({},
+                         res_dict['backups'][0]['metadata'])
+
+        backup3.destroy()
+        backup2.destroy()
+        backup1.destroy()
+
     def test_list_backups_detail_using_filters(self):
         backup1 = utils.create_backup(self.context, display_name='test2')
         backup2 = utils.create_backup(self.context,
@@ -467,6 +512,48 @@ class BackupsAPITestCase(test.TestCase):
                                                       disabled=False,
                                                       topic='cinder-backup')
         self.assertTrue(mock_validate.called)
+
+        volume.destroy()
+
+    @mock.patch('cinder.db.service_get_all')
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_backup_with_metadata(self, mock_validate,
+                                         _mock_service_get_all):
+        _mock_service_get_all.return_value = [
+            {'availability_zone': 'fake_az', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
+
+        volume = utils.create_volume(self.context, size=1)
+        # Create a backup with metadata
+        body = {"backup": {"display_name": "nightly001",
+                           "display_description":
+                           "Nightly Backup 03-Sep-2012",
+                           "volume_id": volume.id,
+                           "container": "nightlybackups",
+                           'metadata': {'test_key': 'test_value'}
+                           }
+                }
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.43'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+        # Get the new backup
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
+                                  fake.PROJECT_ID, res_dict['backup']['id']))
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.43'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_context))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual({'test_key': 'test_value'},
+                         res_dict['backup']['metadata'])
 
         volume.destroy()
 
@@ -666,6 +753,7 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.environ['cinder.context'] = self.context
+        req.api_version_request = api_version.APIVersionRequest()
         self.assertRaises(exception.InvalidInput,
                           self.controller.create,
                           req,

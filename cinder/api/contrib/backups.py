@@ -134,6 +134,7 @@ class BackupsController(wsgi.Controller):
 
         context = req.environ['cinder.context']
         backup = body['backup']
+        req_version = req.api_version_request
 
         try:
             volume_id = backup['volume_id']
@@ -150,6 +151,8 @@ class BackupsController(wsgi.Controller):
         incremental = backup.get('incremental', False)
         force = backup.get('force', False)
         snapshot_id = backup.get('snapshot_id', None)
+        metadata = backup.get(
+            'metadata', None) if req_version.matches("3.43") else None
         LOG.info("Creating backup of volume %(volume_id)s in container"
                  " %(container)s",
                  {'volume_id': volume_id, 'container': container},
@@ -159,9 +162,11 @@ class BackupsController(wsgi.Controller):
             new_backup = self.backup_api.create(context, name, description,
                                                 volume_id, container,
                                                 incremental, None, force,
-                                                snapshot_id)
+                                                snapshot_id, metadata)
         except (exception.InvalidVolume,
-                exception.InvalidSnapshot) as error:
+                exception.InvalidSnapshot,
+                exception.InvalidVolumeMetadata,
+                exception.InvalidVolumeMetadataSize) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
         # Other not found exceptions will be handled at the wsgi level
         except exception.ServiceNotFound as error:

@@ -344,6 +344,7 @@ def create_backup(ctxt,
                   container=None,
                   availability_zone=None,
                   host=None,
+                  metadata=None,
                   **kwargs):
     """Create a backup object."""
     values = {
@@ -363,7 +364,8 @@ def create_backup(ctxt,
         'temp_volume_id': temp_volume_id,
         'temp_snapshot_id': temp_snapshot_id,
         'snapshot_id': snapshot_id,
-        'data_timestamp': data_timestamp, }
+        'data_timestamp': data_timestamp,
+        'metadata': metadata or {}, }
 
     values.update(kwargs)
     backup = objects.Backup(ctxt, **values)

@@ -105,6 +105,7 @@ REST_API_VERSION_HISTORY = """
              Administrator can disable this ability by updating the
              'volume:extend_attached_volume' policy rule. Extend in reserved
              state is intentionally NOT allowed.
+    * 3.43 - Support backup CRUD with metadata.
 """
 
 # The minimum and maximum versions of the API supported
@@ -112,7 +113,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.42"
+_MAX_API_VERSION = "3.43"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
