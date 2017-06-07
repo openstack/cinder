@@ -43,13 +43,14 @@ CONF = cfg.CONF
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10, backup_gigabytes=1000,
-              tenant_id=fake.PROJECT_ID, per_volume_gigabytes=-1):
+              tenant_id=fake.PROJECT_ID, per_volume_gigabytes=-1, groups=10):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
                  'backups': backups,
                  'backup_gigabytes': backup_gigabytes,
-                 'per_volume_gigabytes': per_volume_gigabytes, }
+                 'per_volume_gigabytes': per_volume_gigabytes,
+                 'groups': groups}
     # need to consider preexisting volume types as well
     volume_types = db.volume_type_get_all(context.get_admin_context())
 
