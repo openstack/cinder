@@ -76,6 +76,9 @@ class XIOISEDriver(driver.VolumeDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "X-IO_technologies_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI is not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
         LOG.debug("XIOISEDriver __init__ called.")
