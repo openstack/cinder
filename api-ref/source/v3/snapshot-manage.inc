@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Snapshot manage extension (os-snapshot-manage)
-==============================================
+Snapshot manage extension (manageable_snapshots)
+================================================
 
 Creates or lists snapshots by using existing storage instead of allocating new
 storage.
@@ -10,7 +10,7 @@ storage.
 Manage an existing snapshot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v3/{project_id}/os-snapshot-manage
+.. rest_method::  POST /v3/{project_id}/manageable_snapshots
 
 Creates a snapshot by using existing storage rather than allocating new storage.
 
@@ -50,7 +50,7 @@ Request Example
 List summary of snapshots available to manage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/os-snapshot-manage
+.. rest_method::  GET /v3/{project_id}/manageable_snapshots
 
 Search a volume backend and list summary of snapshots which are available to
 manage.
@@ -95,7 +95,7 @@ Response Example
 List detail of snapshots available to manage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/os-snapshot-manage/detail
+.. rest_method::  GET /v3/{project_id}/manageable_snapshots/detail
 
 Search a volume backend and list detail of snapshots which are available to
 manage.
