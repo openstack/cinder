@@ -86,9 +86,9 @@ class AttachmentManagerTestCase(test.TestCase):
                   'instance_uuid': fake.UUID1}
         attachment_ref = db.volume_attach(self.context, values)
         with mock.patch.object(
-                self.manager, '_notify_about_volume_usage',
-                return_value=None), mock.patch.object(
-                self.manager.driver, 'attach_volume') as mock_driver:
+                self.manager, '_notify_about_volume_usage'),\
+                mock.patch.object(
+                self.manager.driver, 'attach_volume') as mock_attach:
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
@@ -102,24 +102,25 @@ class AttachmentManagerTestCase(test.TestCase):
                                  vref,
                                  connector,
                                  attachment_ref.id))
-            mock_driver.assert_called_once_with(self.context,
+            mock_attach.assert_called_once_with(self.context,
                                                 vref,
                                                 attachment_ref.instance_uuid,
-                                                "tempest-1",
+                                                connector['host'],
                                                 "na")
+
             new_attachment_ref = db.volume_attachment_get(self.context,
                                                           attachment_ref.id)
-            for attr, expected in (('instance_uuid',
-                                    attachment_ref.instance_uuid),
-                                   ('attached_host', connector['host']),
-                                   ('mountpoint', 'na'),
-                                   ('attach_mode', 'rw')):
-                self.assertEqual(expected, new_attachment_ref[attr])
-            new_volume_ref = db.volume_get(self.context,
-                                           vref.id)
-            self.assertEqual('in-use', new_volume_ref['status'])
+            self.assertEqual(attachment_ref.instance_uuid,
+                             new_attachment_ref['instance_uuid'])
+            self.assertEqual(connector['host'],
+                             new_attachment_ref['attached_host'])
+            self.assertEqual('na', new_attachment_ref['mountpoint'])
+            self.assertEqual('rw', new_attachment_ref['attach_mode'])
+
+            new_volume_ref = db.volume_get(self.context, vref.id)
+            self.assertEqual('in-use', new_volume_ref.status)
             self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
-                             new_volume_ref['attach_status'])
+                             new_volume_ref.attach_status)
 
     def test_attachment_delete(self):
         """Test attachment_delete."""
