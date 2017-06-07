@@ -444,7 +444,7 @@ class EMCCoprHDISCSIDriverTest(test.TestCase):
 
     def test_get_volume_stats(self):
         vol_stats = self.driver.get_volume_stats(True)
-        self.assertTrue(vol_stats['free_capacity_gb'], 'unknown')
+        self.assertEqual('unknown', vol_stats['free_capacity_gb'])
 
     def test_create_volume_clone(self):
         src_volume_data = get_test_volume_data(self.volume_type_id)
@@ -610,7 +610,7 @@ class EMCCoprHDFCDriverTest(test.TestCase):
 
     def test_get_volume_stats(self):
         vol_stats = self.driver.get_volume_stats(True)
-        self.assertTrue(vol_stats['free_capacity_gb'], 'unknown')
+        self.assertEqual('unknown', vol_stats['free_capacity_gb'])
 
     def test_create_volume_clone(self):
 
@@ -827,7 +827,7 @@ class EMCCoprHDScaleIODriverTest(test.TestCase):
 
     def test_get_volume_stats(self):
         vol_stats = self.driver.get_volume_stats(True)
-        self.assertTrue(vol_stats['free_capacity_gb'], 'unknown')
+        self.assertEqual('unknown', vol_stats['free_capacity_gb'])
 
     def test_create_volume_clone(self):
 

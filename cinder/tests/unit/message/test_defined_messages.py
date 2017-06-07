@@ -39,5 +39,5 @@ class DefinedMessagesTest(test.TestCase):
         for attr_name in dir(defined_messages.EventIds):
             if not attr_name.startswith('_'):
                 value = getattr(defined_messages.EventIds, attr_name)
-                self.assertTrue(defined_messages.event_id_message_map.get(
-                    value))
+                msg = defined_messages.event_id_message_map.get(value)
+                self.assertGreater(len(msg), 1)

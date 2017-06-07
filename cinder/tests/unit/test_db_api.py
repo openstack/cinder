@@ -2525,7 +2525,7 @@ class DBAPIBackupTestCase(BaseTest):
     def test_backup_create(self):
         values = self._get_values()
         for i, backup in enumerate(self.created):
-            self.assertTrue(backup['id'])
+            self.assertEqual(36, len(backup['id']))  # dynamic UUID
             self._assertEqualObjects(values[i], backup, self._ignored_keys)
 
     def test_backup_get(self):

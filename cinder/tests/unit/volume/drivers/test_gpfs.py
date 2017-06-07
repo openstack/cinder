@@ -245,8 +245,8 @@ class GPFSDriverTestCase(test.TestCase):
                                   'yes '
                                   '      10485760        9953792 ( 95%)       '
                                   '10485760        9954560 ( 95%)', '')
-        self.assertTrue(self.driver._gpfs_device,
-                        self.driver._verify_gpfs_pool('/dev/gpfs'))
+        self.assertEqual('/dev/gpfs', self.driver._gpfs_device)
+        self.assertTrue(self.driver._verify_gpfs_pool('/dev/gpfs'))
 
     @mock.patch('cinder.utils.execute')
     def test_verify_gpfs_pool_fail_pool(self, mock_exec):
@@ -260,8 +260,8 @@ class GPFSDriverTestCase(test.TestCase):
                                   'yes'
                                   '       10485760        9953792 ( 95%)'
                                   '       10485760        9954560 ( 95%)', '')
-        self.assertTrue(self.driver._gpfs_device,
-                        self.driver._verify_gpfs_pool('/dev/gpfs'))
+        self.assertEqual('/dev/gpfs', self.driver._gpfs_device)
+        self.assertTrue(self.driver._verify_gpfs_pool('/dev/gpfs'))
 
     @mock.patch('cinder.utils.execute')
     def test_verify_gpfs_pool_fail_raise(self, mock_exec):
@@ -1142,11 +1142,11 @@ class GPFSDriverTestCase(test.TestCase):
             stats = self.driver.get_volume_stats()
             self.assertEqual('GPFS', stats['volume_backend_name'])
             self.assertEqual('file', stats['storage_protocol'])
-            self.assertTrue(stats['gpfs_encryption_rest'])
+            self.assertEqual('True', stats['gpfs_encryption_rest'])
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('GPFS', stats['volume_backend_name'])
             self.assertEqual('file', stats['storage_protocol'])
-            self.assertTrue(stats['gpfs_encryption_rest'])
+            self.assertEqual('True', stats['gpfs_encryption_rest'])
 
     @mock.patch('cinder.utils.execute')
     def test_get_gpfs_encryption_status_true(self, mock_exec):
