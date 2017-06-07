@@ -34,6 +34,9 @@ class SynoISCSIDriver(driver.ISCSIDriver):
     CI_WIKI_NAME = 'Synology_DSM_CI'
     VERSION = '1.0.0'
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues not addressed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(SynoISCSIDriver, self).__init__(*args, **kwargs)
 
