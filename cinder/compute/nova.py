@@ -91,6 +91,18 @@ nova_extensions = [ext for ext in
                                    "list_extensions")]
 
 
+def _get_identity_endpoint_from_sc(context):
+    # Search for the identity endpoint in the service catalog
+    for service in context.service_catalog:
+        if service.get('type') != 'identity':
+            continue
+        for endpoint in service['endpoints']:
+            if (not CONF[NOVA_GROUP].region_name or
+                    endpoint.get('region') == CONF[NOVA_GROUP].region_name):
+                return endpoint.get(CONF[NOVA_GROUP].interface + 'URL')
+    raise nova_exceptions.EndpointNotFound()
+
+
 def novaclient(context, privileged_user=False, timeout=None):
     """Returns a Nova client
 
@@ -102,29 +114,35 @@ def novaclient(context, privileged_user=False, timeout=None):
     """
 
     if privileged_user and CONF[NOVA_GROUP].auth_type:
+        LOG.debug('Creating Keystone auth plugin from conf')
         n_auth = ks_loading.load_auth_from_conf_options(CONF, NOVA_GROUP)
+    elif privileged_user and CONF.os_privileged_user_name:
+        # Fall back to the deprecated os_privileged_xxx settings.
+        # TODO(gyurco): Remove it after Pike.
+        if CONF.os_privileged_user_auth_url:
+            url = CONF.os_privileged_user_auth_url
+        else:
+            url = _get_identity_endpoint_from_sc(context)
+        LOG.debug('Creating Keystone password plugin from legacy settings '
+                  'using URL: %s', url)
+        n_auth = identity.Password(
+            auth_url=url,
+            username=CONF.os_privileged_user_name,
+            password=CONF.os_privileged_user_password,
+            project_name=CONF.os_privileged_user_tenant,
+            project_domain_id=context.project_domain,
+            user_domain_id=context.user_domain)
     else:
         if CONF[NOVA_GROUP].token_auth_url:
             url = CONF[NOVA_GROUP].token_auth_url
         else:
-            # Search for the identity endpoint in the service catalog
-            # if nova.token_auth_url is not configured
-            matching_endpoints = []
-            for service in context.service_catalog:
-                if service.get('type') != 'identity':
-                    continue
-                for endpoint in service['endpoints']:
-                    if (not CONF[NOVA_GROUP].region_name or
-                       endpoint.get('region') ==
-                       CONF[NOVA_GROUP].region_name):
-                            matching_endpoints.append(endpoint)
-            if not matching_endpoints:
-                raise nova_exceptions.EndpointNotFound()
-            url = matching_endpoints[0].get(CONF[NOVA_GROUP].interface + 'URL')
+            url = _get_identity_endpoint_from_sc(context)
+        LOG.debug('Creating Keystone token plugin using URL: %s', url)
         n_auth = identity.Token(auth_url=url,
                                 token=context.auth_token,
                                 project_name=context.project_name,
                                 project_domain_id=context.project_domain)
+
     keystone_session = ks_loading.load_session_from_conf_options(
         CONF,
         NOVA_GROUP,
