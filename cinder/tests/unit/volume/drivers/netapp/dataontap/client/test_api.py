@@ -417,9 +417,15 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         self.mock_object(root, 'add_new_child', return_value='abc')
 
-        self.assertEqual(zapi_fakes.FAKE_XML1, root.create_node_with_children(
+        result_xml = str(root.create_node_with_children(
             'options', test1=zapi_fakes.FAKE_XML_STR,
-            test2=zapi_fakes.FAKE_XML_STR).to_string())
+            test2=zapi_fakes.FAKE_XML_STR))
+
+        # No ordering is guaranteed for elements in this XML.
+        self.assertTrue(result_xml.startswith("<options>"), result_xml)
+        self.assertTrue("<test1>abc</test1>" in result_xml, result_xml)
+        self.assertTrue("<test2>abc</test2>" in result_xml, result_xml)
+        self.assertTrue(result_xml.rstrip().endswith("</options>"), result_xml)
 
     def test_add_new_child(self):
         """Tests adding a child node with its own children"""

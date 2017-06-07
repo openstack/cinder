@@ -290,7 +290,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             self.fake_volumes)
         mock_get_nodes_for_aggregates.assert_called_once_with(self.fake_aggrs)
         mock_get_node_utilization_counters.assert_has_calls([
-            mock.call('node1'), mock.call('node2')])
+            mock.call('node1'), mock.call('node2')],
+            any_order=True)
         self.assertFalse(mock_get_node_utilization.called)
 
     def test_update_performance_cache_not_supported(self):
