@@ -100,6 +100,7 @@ def _create_glance_client(context, netloc, use_ssl, version=None):
     if CONF.glance_request_timeout is not None:
         params['timeout'] = CONF.glance_request_timeout
     endpoint = '%s://%s' % (scheme, netloc)
+    params['global_request_id'] = context.global_id
     return glanceclient.Client(str(version), endpoint, **params)
 
 

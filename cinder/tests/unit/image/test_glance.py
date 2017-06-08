@@ -843,19 +843,21 @@ class TestGlanceClientVersion(test.TestCase):
     @mock.patch('cinder.image.glance.glanceclient.Client')
     def test_glance_version_by_flag(self, _mockglanceclient):
         """Test glance version set by flag is honoured."""
-        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        ctx = mock.MagicMock()
+        glance.GlanceClientWrapper(ctx, 'fake_host', 9292)
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
         self.flags(glance_api_version=1)
-        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        glance.GlanceClientWrapper(ctx, 'fake_host', 9292)
         self.assertEqual('1', _mockglanceclient.call_args[0][0])
         CONF.reset()
 
     @mock.patch('cinder.image.glance.glanceclient.Client')
     def test_glance_version_by_arg(self, _mockglanceclient):
         """Test glance version set by arg to GlanceClientWrapper"""
-        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=1)
+        ctx = mock.MagicMock()
+        glance.GlanceClientWrapper(ctx, 'fake_host', 9292, version=1)
         self.assertEqual('1', _mockglanceclient.call_args[0][0])
-        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=2)
+        glance.GlanceClientWrapper(ctx, 'fake_host', 9292, version=2)
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
     @mock.patch('cinder.image.glance.glanceclient.Client')
@@ -864,7 +866,8 @@ class TestGlanceClientVersion(test.TestCase):
     def test_call_glance_version_by_arg(self, api_servers, _mockglanceclient):
         """Test glance version set by arg to GlanceClientWrapper"""
         glance_wrapper = glance.GlanceClientWrapper()
-        glance_wrapper.call('fake_context', 'method', version=2)
+        ctx = mock.MagicMock()
+        glance_wrapper.call(ctx, 'method', version=2)
 
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 

@@ -155,6 +155,7 @@ def novaclient(context, privileged_user=False, timeout=None):
                            region_name=CONF[NOVA_GROUP].region_name,
                            endpoint_type=CONF[NOVA_GROUP].interface,
                            cacert=CONF[NOVA_GROUP].cafile,
+                           global_request_id=context.global_id,
                            extensions=nova_extensions)
 
     return c

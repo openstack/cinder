@@ -78,6 +78,7 @@ class NovaClientTestCase(test.TestCase):
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
             insecure=False, endpoint_type='public', cacert='my.ca',
+            global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.api_versions.APIVersion')
@@ -97,6 +98,7 @@ class NovaClientTestCase(test.TestCase):
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
             insecure=False, endpoint_type='public', cacert='my.ca',
+            global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.api_versions.APIVersion')
@@ -119,6 +121,7 @@ class NovaClientTestCase(test.TestCase):
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
             insecure=False, endpoint_type='public', cacert='my.ca',
+            global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.api_versions.APIVersion')
@@ -146,6 +149,7 @@ class NovaClientTestCase(test.TestCase):
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name=None,
             insecure=False, endpoint_type='public', cacert='my.ca',
+            global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.api_versions.APIVersion')
@@ -169,6 +173,7 @@ class NovaClientTestCase(test.TestCase):
             p_api_version(nova.NOVA_API_VERSION),
             session=p_session.return_value, region_name='farfaraway',
             insecure=False, endpoint_type='public', cacert='my.ca',
+            global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
     def test_novaclient_exceptions(self):
