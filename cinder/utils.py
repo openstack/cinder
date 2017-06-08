@@ -163,6 +163,9 @@ def check_metadata_properties(metadata=None):
 
     if not metadata:
         metadata = {}
+    if not isinstance(metadata, dict):
+        msg = _("Metadata should be a dict.")
+        raise exception.InvalidInput(msg)
 
     for k, v in metadata.items():
         try:
