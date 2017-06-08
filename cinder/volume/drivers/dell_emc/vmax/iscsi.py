@@ -85,6 +85,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - QoS support
               - Support for compression on All Flash
               - Support for volume replication
+              - Support for live migration
     """
 
     VERSION = "3.0.0"

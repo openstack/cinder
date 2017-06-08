@@ -68,9 +68,12 @@ class VMAXMasking(object):
         volume_name = masking_view_dict[utils.VOL_NAME]
         masking_view_dict[utils.EXTRA_SPECS] = extra_specs
         device_id = masking_view_dict[utils.DEVICE_ID]
-        default_sg_name = self._get_default_storagegroup_and_remove_vol(
-            serial_number, device_id, masking_view_dict, volume_name,
-            extra_specs)
+        if 'source_nf_sg' in masking_view_dict:
+            default_sg_name = masking_view_dict['source_nf_sg']
+        else:
+            default_sg_name = self._get_default_storagegroup_and_remove_vol(
+                serial_number, device_id, masking_view_dict, volume_name,
+                extra_specs)
 
         try:
             error_message = self._get_or_create_masking_view(
@@ -304,9 +307,12 @@ class VMAXMasking(object):
         return msg
 
     def add_child_sg_to_parent_sg(
-            self, serial_number, child_sg_name, parent_sg_name, extra_specs):
+            self, serial_number, child_sg_name, parent_sg_name, extra_specs,
+            default_version=True
+    ):
         """Add a child storage group to a parent storage group.
 
+        :param default_version: the default uv4 version
         :param serial_number: the array serial number
         :param child_sg_name: the name of the child storage group
         :param parent_sg_name: the name of the aprent storage group
@@ -323,8 +329,12 @@ class VMAXMasking(object):
                     serial_number, child_sg_name, parent_sg_name):
                 pass
             else:
-                self.rest.add_child_sg_to_parent_sg(
-                    serial_number, child_sg, parent_sg, extra_specs)
+                if default_version:
+                    self.rest.add_child_sg_to_parent_sg(
+                        serial_number, child_sg, parent_sg, extra_specs)
+                else:
+                    self.rest.add_empty_child_sg_to_parent_sg(
+                        serial_number, child_sg, parent_sg, extra_specs)
 
         do_add_sg_to_sg(child_sg_name, parent_sg_name)
 
@@ -433,6 +443,20 @@ class VMAXMasking(object):
                     masking_view_dict[utils.EXTRA_SPECS])
 
         return child_sg_name, msg
+
+    def move_volume_between_storage_groups(
+            self, array, device_id, source_storagegroup_name,
+            target_storagegroup_name, extra_specs):
+        @coordination.synchronized("emc-sg-{source_storage_group}")
+        @coordination.synchronized("emc-sg-{target_storage_group}")
+        def do_move_volume_between_storage_groups(source_storage_group,
+                                                  target_storage_group):
+            self.rest.move_volume_between_storage_groups(
+                array, device_id, source_storage_group, target_storage_group,
+                extra_specs)
+
+        do_move_volume_between_storage_groups(
+            source_storagegroup_name, target_storagegroup_name)
 
     def _check_port_group(self, serial_number, portgroup_name):
         """Check that you can get a port group.
@@ -733,6 +757,12 @@ class VMAXMasking(object):
                 if error_message:
                     LOG.error(error_message)
                 message = (_("Rollback"))
+            elif 'isLiveMigration' in rollback_dict and (
+                    rollback_dict['isLiveMigration'] is True):
+                # Live migration case.
+                # Remove from nonfast storage group to fast sg
+                self.failed_live_migration(rollback_dict, found_sg_name,
+                                           rollback_dict[utils.EXTRA_SPECS])
             else:
                 LOG.info("The storage group found is %(found_sg_name)s.",
                          {'found_sg_name': found_sg_name})
@@ -1334,3 +1364,76 @@ class VMAXMasking(object):
                         "not created by the VMAX driver so will "
                         "not be deleted by the VMAX driver.",
                         {'ig_name': initiatorgroup_name})
+
+    def pre_live_migration(self, source_nf_sg, source_sg, source_parent_sg,
+                           is_source_nf_sg, device_info_dict, extra_specs):
+        """Run before any live migration operation.
+
+        :param source_nf_sg: The non fast storage group
+        :param source_sg: The source storage group
+        :param source_parent_sg: The parent storage group
+        :param is_source_nf_sg: if the non fast storage group already exists
+        :param device_info_dict: the data dict
+        :param extra_specs: extra specifications
+        """
+        if is_source_nf_sg is False:
+            storage_group = self.rest.get_storage_group(
+                device_info_dict['array'], source_nf_sg)
+            if storage_group is None:
+                self.provision.create_storage_group(
+                    device_info_dict['array'], source_nf_sg, None, None, None,
+                    extra_specs)
+            self.add_child_sg_to_parent_sg(
+                device_info_dict['array'], source_nf_sg, source_parent_sg,
+                extra_specs, default_version=False)
+        self.move_volume_between_storage_groups(
+            device_info_dict['array'], device_info_dict['device_id'],
+            source_sg, source_nf_sg, extra_specs)
+
+    def post_live_migration(self, device_info_dict, extra_specs):
+        """Run after every live migration operation.
+
+        :param device_info_dict: : the data dict
+        :param extra_specs: extra specifications
+        """
+        array = device_info_dict['array']
+        source_sg = device_info_dict['source_sg']
+        # Delete fast storage group
+        num_vol_in_sg = self.rest.get_num_vols_in_sg(
+            array, source_sg)
+        if num_vol_in_sg == 0:
+            self.rest.remove_child_sg_from_parent_sg(
+                array, source_sg, device_info_dict['source_parent_sg'],
+                extra_specs)
+            self.rest.delete_storage_group(array, source_sg)
+
+    def failed_live_migration(self, device_info_dict,
+                              source_storage_group_list, extra_specs):
+        """This is run in the event of a failed live migration operation.
+
+        :param device_info_dict: the data dict
+        :param source_storage_group_list: list of storage groups associated
+        with the device
+        :param extra_specs: extra specifications
+        """
+        array = device_info_dict['array']
+        source_nf_sg = device_info_dict['source_nf_sg']
+        source_sg = device_info_dict['source_sg']
+        source_parent_sg = device_info_dict['source_parent_sg']
+        device_id = device_info_dict['device_id']
+        for sg in source_storage_group_list:
+            if sg not in [source_sg, source_nf_sg]:
+                self.remove_volume_from_sg(
+                    array, device_id, device_info_dict['volume_name'], sg,
+                    extra_specs)
+        if source_nf_sg in source_storage_group_list:
+            self.move_volume_between_storage_groups(
+                array, device_id, source_nf_sg,
+                source_sg, extra_specs)
+            is_descendant = self.rest.is_child_sg_in_parent_sg(
+                array, source_nf_sg, source_parent_sg)
+            if is_descendant:
+                self.rest.remove_child_sg_from_parent_sg(
+                    array, source_nf_sg, source_parent_sg, extra_specs)
+            # Delete non fast storage group
+            self.rest.delete_storage_group(array, source_nf_sg)

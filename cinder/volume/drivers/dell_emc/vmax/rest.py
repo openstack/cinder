@@ -280,7 +280,7 @@ class VMAXRest(object):
 
     @staticmethod
     def _build_uri(array, category, resource_type,
-                   resource_name=None, private=''):
+                   resource_name=None, private='', version=U4V_VERSION):
         """Build the target url.
 
         :param array: the array serial number
@@ -292,7 +292,7 @@ class VMAXRest(object):
         """
         target_uri = ('%(private)s/%(version)s/%(category)s/symmetrix/'
                       '%(array)s/%(resource_type)s'
-                      % {'private': private, 'version': U4V_VERSION,
+                      % {'private': private, 'version': version,
                          'category': category, 'array': array,
                          'resource_type': resource_type})
         if resource_name:
@@ -357,9 +357,10 @@ class VMAXRest(object):
         return status_code, message
 
     def modify_resource(self, array, category, resource_type, payload,
-                        resource_name=None, private=''):
+                        version=U4V_VERSION, resource_name=None, private=''):
         """Modify a resource.
 
+        :param version: the uv4 version
         :param array: the array serial number
         :param category: the category
         :param resource_type: the resource type
@@ -369,7 +370,7 @@ class VMAXRest(object):
         :returns: status_code -- int, message -- string (server response)
         """
         target_uri = self._build_uri(array, category, resource_type,
-                                     resource_name, private)
+                                     resource_name, private, version)
         status_code, message = self.request(target_uri, PUT,
                                             request_object=payload)
         operation = 'modify %(res)s resource' % {'res': resource_type}
@@ -554,6 +555,24 @@ class VMAXRest(object):
         sc, job = self.modify_storage_group(array, parent_sg, payload)
         self.wait_for_job('Add child sg to parent sg', sc, job, extra_specs)
 
+    def add_empty_child_sg_to_parent_sg(
+            self, array, child_sg, parent_sg, extra_specs):
+        """Add an empty storage group to a parent storage group.
+
+        This method adds an existing storage group to another storage
+        group, i.e. cascaded storage groups.
+        :param array: the array serial number
+        :param child_sg: the name of the child sg
+        :param parent_sg: the name of the parent sg
+        :param extra_specs: the extra specifications
+        """
+        payload = {"editStorageGroupActionParam": {
+            "addExistingStorageGroupParam": {
+                "storageGroupId": [child_sg]}}}
+        sc, job = self.modify_storage_group(array, parent_sg, payload,
+                                            version="83")
+        self.wait_for_job('Add child sg to parent sg', sc, job, extra_specs)
+
     def remove_child_sg_from_parent_sg(
             self, array, child_sg, parent_sg, extra_specs):
         """Remove a storage group from its parent storage group.
@@ -621,16 +640,18 @@ class VMAXRest(object):
                           job, extra_specs)
         return storagegroup_name
 
-    def modify_storage_group(self, array, storagegroup, payload):
+    def modify_storage_group(self, array, storagegroup, payload,
+                             version=U4V_VERSION):
         """Modify a storage group (PUT operation).
 
+        :param version: the uv4 version
         :param array: the array serial number
         :param storagegroup: storage group name
         :param payload: the request payload
         :returns: status_code -- int, message -- string, server response
         """
         return self.modify_resource(
-            array, SLOPROVISIONING, 'storagegroup', payload,
+            array, SLOPROVISIONING, 'storagegroup', payload, version,
             resource_name=storagegroup)
 
     def create_volume_from_sg(self, array, volume_name, storagegroup_name,
@@ -835,6 +856,28 @@ class VMAXRest(object):
         self.delete_resource(
             array, SLOPROVISIONING, 'storagegroup', storagegroup_name)
         LOG.debug("Storage Group successfully deleted.")
+
+    def move_volume_between_storage_groups(
+            self, array, device_id, source_storagegroup_name,
+            target_storagegroup_name, extra_specs):
+        """Move a volume to a different storage group.
+
+        :param array: the array serial number
+        :param source_storagegroup_name: the originating storage group name
+        :param target_storagegroup_name: the destination storage group name
+        :param device_id: the device id
+        :param extra_specs: extra specifications
+        """
+        payload = ({"executionOption": "ASYNCHRONOUS",
+                    "editStorageGroupActionParam": {
+                        "moveVolumeToStorageGroupParam": {
+                            "volumeId": [device_id],
+                            "storageGroupId": target_storagegroup_name,
+                            "useForceFlag": "false"}}})
+        status_code, job = self.modify_storage_group(
+            array, source_storagegroup_name, payload)
+        self.wait_for_job('move volume between storage groups', status_code,
+                          job, extra_specs)
 
     def get_volume(self, array, device_id):
         """Get a VMAX volume from array.
