@@ -1444,8 +1444,6 @@ class API(base.Base):
 
     @wrap_check_policy
     def migrate_volume_completion(self, context, volume, new_volume, error):
-        # This is a volume swap initiated by Nova, not Cinder. Nova expects
-        # us to return the new_volume_id.
         if not (volume.migration_status or new_volume.migration_status):
             # When we're not migrating and haven't hit any errors, we issue
             # volume attach and detach requests so the volumes don't end in

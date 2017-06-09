@@ -2013,6 +2013,12 @@ class VolumeManager(manager.CleanableManager,
                 volume.migration_status = 'error'
                 volume.save()
 
+        # NOTE(jdg):  Things get a little hairy in here and we do a lot of
+        # things based on volume previous-status and current-status.  At some
+        # point this should all be reworked but for now we need to maintain
+        # backward compatability and NOT change the API so we're going to try
+        # and make this work best we can
+
         LOG.debug("migrate_volume_completion: completing migration for "
                   "volume %(vol1)s (temporary volume %(vol2)s",
                   {'vol1': volume.id, 'vol2': new_volume.id})
@@ -2034,11 +2040,23 @@ class VolumeManager(manager.CleanableManager,
         volume.migration_status = 'completing'
         volume.save()
 
-        # Detach the source volume (if it fails, don't fail the migration)
-        # As after detach and refresh, volume_attachments will be None.
-        # We keep volume_attachment for later attach.
         volume_attachments = []
-        if orig_volume_status == 'in-use':
+
+        # NOTE(jdg): With new attach flow, we deleted the attachment, so the
+        # original volume should now be listed as available, we still need to
+        # do the magic swappy thing of name.id etc but we're done with the
+        # original attachment record
+
+        # In the "old flow" at this point the orig_volume_status will be in-use
+        # and the current status will be retyping.  This is sort of a
+        # misleading deal, because Nova has already called terminate
+        # connection
+
+        # New Attach Flow, Nova has gone ahead and deleted the attachemnt, this
+        # is the source/original volume, we've already migrated the data, we're
+        # basically done with it at this point.  We don't need to issue the
+        # detach to toggle the status
+        if orig_volume_status == 'in-use' and volume.status != 'available':
             for attachment in volume.volume_attachment:
                 # Save the attachments the volume currently have
                 volume_attachments.append(attachment)
@@ -2069,15 +2087,40 @@ class VolumeManager(manager.CleanableManager,
                    'previous_status': volume.status,
                    'migration_status': 'success'}
 
-        # Restore the attachments
-        if orig_volume_status == 'in-use':
+        # NOTE(jdg):  With new attachment API's nova will delete the
+        # attachment for the source volume for us before calling the
+        # migration-completion, now we just need to do the swapping on the
+        # volume record, but don't jack with the attachments other than
+        # updating volume_id
+
+        # In the old flow at this point the volumes are in attaching and
+        # deleting status (dest/new is deleting, but we've done our magic
+        # swappy thing so it's a bit confusing, but it does unwind properly
+        # when you step through it)
+
+        # In the new flow we simlified this and we don't need it, instead of
+        # doing a bunch of swapping we just do attachment-create/delete on the
+        # nova side, and then here we just do the ID swaps that are necessary
+        # to maintain the old beahvior
+
+        # Restore the attachments for old flow use-case
+        if orig_volume_status == 'in-use' and volume.status in ['available',
+                                                                'reserved',
+                                                                'attaching']:
             for attachment in volume_attachments:
                 LOG.debug('Re-attaching: %s', attachment)
+                # This is just a db state toggle, the volume is actually
+                # already attach and in-use, new attachment flow won't allow
+                # this
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment.instance_uuid,
                                      attachment.attached_host,
                                      attachment.mountpoint,
                                      'rw')
+                # At this point we now have done almost all of our swapping and
+                # state-changes.  The target volume is now marked back to
+                # "in-use" the destination/worker volume is now in deleting
+                # state and the next steps will finish the deletion steps
         volume.update(updates)
         volume.save()
 
@@ -2090,6 +2133,16 @@ class VolumeManager(manager.CleanableManager,
                       'vol %(vol)s: %(err)s',
                       {'vol': volume.id, 'err': ex})
 
+        # For the new flow this is realy the key part.  We just use the
+        # attachments to the worker/destination volumes that we created and
+        # used for the libvirt migration and we'll just swap their volume_id
+        # entries to coorespond with the volume.id swap we did
+        for attachment in VA_LIST.get_all_by_volume_id(ctxt, updated_new.id):
+            attachment.volume_id = volume.id
+            attachment.save()
+
+        # Phewww.. that was easy!  Once we get to a point where the old attach
+        # flow can go away we really should rewrite all of this.
         LOG.info("Complete-Migrate volume completed successfully.",
                  resource=volume)
         return volume.id
