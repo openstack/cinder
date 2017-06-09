@@ -65,6 +65,7 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
+   - user_id: user_id_2
    - volume_id: volume_id
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
@@ -116,6 +117,7 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
+   - user_id: user_id_2
    - volume_id: volume_id
    - metadata: metadata
    - id: id
@@ -158,6 +160,7 @@ Response Parameters
    - description: description
    - created_at: created_at
    - name: name
+   - user_id: user_id_2
    - volume_id: volume_id
    - metadata: metadata
    - id: id
@@ -319,6 +322,7 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
+   - user_id: user_id_2
    - volume_id: volume_id
    - os-extended-snapshot-attributes:project_id: os-extended-snapshot-attributes:project_id
    - size: size
@@ -373,6 +377,7 @@ Response Parameters
    - created_at: created_at
    - name: name
    - snapshot: snapshot
+   - user_id: user_id_2
    - volume_id: volume_id
    - metadata: metadata
    - id: id

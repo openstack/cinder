@@ -338,3 +338,7 @@ user documentation.
 3.40
 ----
   Add volume revert to its latest snapshot support.
+
+3.41
+----
+  Add ``user_id`` field to snapshot list/detail and snapshot show.

@@ -29,5 +29,6 @@ class ViewBuilder(views_v2.ViewBuilder):
         if req_version.matches("3.14", None):
             snapshot_ref['snapshot']['group_snapshot_id'] = (
                 snapshot.get('group_snapshot_id'))
-
+        if req_version.matches("3.41", None):
+            snapshot_ref['snapshot']['user_id'] = snapshot.get('user_id')
         return snapshot_ref

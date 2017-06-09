@@ -68,7 +68,7 @@ class SnapshotApiTest(test.TestCase):
         self.controller = snapshots.SnapshotsController()
         self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-    @ddt.data('3.14', '3.13')
+    @ddt.data('3.14', '3.13', '3.41')
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -98,8 +98,12 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('updated_at', resp_dict['snapshot'])
         if max_ver == '3.14':
             self.assertIn('group_snapshot_id', resp_dict['snapshot'])
+            self.assertNotIn('user_id', resp_dict['snapshot'])
         elif max_ver == '3.13':
             self.assertNotIn('group_snapshot_id', resp_dict['snapshot'])
+            self.assertNotIn('user_id', resp_dict['snapshot'])
+        elif max_ver == '3.41':
+            self.assertIn('user_id', resp_dict['snapshot'])
 
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
