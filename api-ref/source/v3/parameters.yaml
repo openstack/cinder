@@ -1383,6 +1383,16 @@ os-attach:
   in: body
   required: true
   type: object
+os-backup-project-attr:project_id:
+  description: |
+    The UUID of the owning project.
+  in: body
+  required: true
+  type: string.
+  in: body
+  required: true
+  type: string
+  min_version: 3.18
 os-detach:
   description: |
     The ``os-detach`` action.
