@@ -801,5 +801,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
         return self.target_driver.validate_connector(connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        return self.target_driver.terminate_connection(volume, connector,
-                                                       **kwargs)
+        # NOTE(jdg):  LVM has a single export for each volume, so what
+        # we need to do here is check if there is more than one attachment for
+        # the volume, if there is; let the caller know that they should NOT
+        # remove the export.
+        has_shared_connections = False
+        if len(volume.volume_attachment) > 1:
+            has_shared_connections = True
+
+        # NOTE(jdg): For the TGT driver this is a noop, for LIO this removes
+        # the initiator IQN from the targets access list, so we're good
+
+        self.target_driver.terminate_connection(volume, connector,
+                                                **kwargs)
+        return has_shared_connections
