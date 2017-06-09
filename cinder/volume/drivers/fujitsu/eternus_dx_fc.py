@@ -146,7 +146,6 @@ class FJDXFCDriver(driver.FibreChannelDriver):
         """Driver entry point to remove an export for a volume."""
         return
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         LOG.debug('initialize_connection, volume id: %(vid)s, '
@@ -163,9 +162,9 @@ class FJDXFCDriver(driver.FibreChannelDriver):
         info['data'] = data
         LOG.debug('initialize_connection, '
                   'info: %s, exit method.', info)
+        fczm_utils.add_fc_zone(info)
         return info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         wwpns = connector.get('wwpns') if connector else None
@@ -185,6 +184,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
                 # No more volumes attached to the host
                 init_tgt_map = self.common.build_fc_init_tgt_map(connector)
                 info['data'] = {'initiator_target_map': init_tgt_map}
+                fczm_utils.remove_fc_zone(info)
 
         LOG.debug('terminate_connection, unmap: %(unmap)s, '
                   'connection info: %(info)s, exit method',

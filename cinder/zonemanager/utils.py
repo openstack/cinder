@@ -73,49 +73,27 @@ def get_formatted_wwn(wwn_str):
                          for i in range(0, len(wwn_str), 2)])).lower()
 
 
-def add_fc_zone(initialize_connection):
-    """Decorator to add a FC Zone."""
-
-    def decorator(self, *args, **kwargs):
-        conn_info = initialize_connection(self, *args, **kwargs)
-        if not conn_info:
-            LOG.warning("Driver didn't return connection info, "
-                        "can't add zone.")
-            return None
-
-        vol_type = conn_info.get('driver_volume_type', None)
+def add_fc_zone(connection_info):
+    """Utility function to add a FC Zone."""
+    if connection_info:
+        vol_type = connection_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-            if 'initiator_target_map' in conn_info['data']:
+            if 'initiator_target_map' in connection_info['data']:
                 zm = create_zone_manager()
                 if zm:
                     LOG.debug("add_fc_zone connection info: %(conninfo)s.",
-                              {'conninfo': conn_info})
-                    zm.add_connection(conn_info)
-
-        return conn_info
-
-    return decorator
+                              {'conninfo': connection_info})
+                    zm.add_connection(connection_info)
 
 
-def remove_fc_zone(terminate_connection):
-    """Decorator for FC drivers to remove zone."""
-
-    def decorator(self, *args, **kwargs):
-        conn_info = terminate_connection(self, *args, **kwargs)
-        if not conn_info:
-            LOG.warning("Driver didn't return connection info from "
-                        "terminate_connection call.")
-            return None
-
-        vol_type = conn_info.get('driver_volume_type', None)
+def remove_fc_zone(connection_info):
+    """Utility function for FC drivers to remove zone."""
+    if connection_info:
+        vol_type = connection_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-            if 'initiator_target_map' in conn_info['data']:
+            if 'initiator_target_map' in connection_info['data']:
                 zm = create_zone_manager()
                 if zm:
                     LOG.debug("remove_fc_zone connection info: %(conninfo)s.",
-                              {'conninfo': conn_info})
-                    zm.delete_connection(conn_info)
-
-        return conn_info
-
-    return decorator
+                              {'conninfo': connection_info})
+                    zm.delete_connection(connection_info)

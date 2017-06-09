@@ -80,13 +80,15 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
     def get_volume_stats(self, refresh=False):
         return self.fc_get_volume_stats(refresh)
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
-        return self.fc_initialize_connection(volume, connector)
+        conn_info = self.fc_initialize_connection(volume, connector)
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
-        return self.fc_terminate_connection(volume, connector)
+        conn_info = self.fc_terminate_connection(volume, connector)
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
     def create_export_snapshot(self, context, snapshot, connector):
         return self.fc_do_export_snapshot(context, snapshot, connector)

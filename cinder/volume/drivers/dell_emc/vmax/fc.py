@@ -198,7 +198,6 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         pass
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -239,7 +238,9 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         device_info = self.common.initialize_connection(
             volume, connector)
         if device_info:
-            return self.populate_data(device_info, volume, connector)
+            conn_info = self.populate_data(device_info, volume, connector)
+            fczm_utils.add_fc_zone(conn_info)
+            return conn_info
         else:
             return {}
 
@@ -268,7 +269,6 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
 
         return data
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector.
 
@@ -290,6 +290,7 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
         if zoning_mappings:
             self.common.terminate_connection(volume, connector)
             data = self._cleanup_zones(zoning_mappings)
+        fczm_utils.remove_fc_zone(data)
         return data
 
     def _get_zoning_mappings(self, volume, connector):

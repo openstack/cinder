@@ -144,17 +144,19 @@ class IBMStorageDriver(san.SanDriver,
 
         return self.proxy.remove_export(context, volume)
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Map the created volume."""
 
-        return self.proxy.initialize_connection(volume, connector)
+        conn_info = self.proxy.initialize_connection(volume, connector)
+        fczm_utils.add_fc_zone(conn_info)
+        return conn_info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
 
-        return self.proxy.terminate_connection(volume, connector)
+        conn_info = self.proxy.terminate_connection(volume, connector)
+        fczm_utils.remove_fc_zone(conn_info)
+        return conn_info
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""

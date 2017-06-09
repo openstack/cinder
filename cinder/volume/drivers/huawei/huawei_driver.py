@@ -2113,7 +2113,6 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         data['vendor_name'] = 'Huawei'
         return data
 
-    @fczm_utils.add_fc_zone
     @coordination.synchronized('huawei-mapping-{connector[host]}')
     def initialize_connection(self, volume, connector):
         lun_id, lun_type = self.get_lun_id_and_type(volume)
@@ -2232,6 +2231,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             fc_info['data']['target_lun'] = same_host_id
             hyperm.rmt_client.logout()
 
+        fczm_utils.add_fc_zone(fc_info)
         LOG.info("Return FC info is: %s.", fc_info)
         return fc_info
 
@@ -2256,7 +2256,6 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         return same_host_id
 
-    @fczm_utils.remove_fc_zone
     @coordination.synchronized('huawei-mapping-{connector[host]}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
@@ -2346,6 +2345,9 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         LOG.info("terminate_connection, return data is: %s.",
                  fc_info)
 
+        # This only does something if and only if the initiator_target_map
+        # exists in fc_info
+        fczm_utils.remove_fc_zone(fc_info)
         return fc_info
 
     def _delete_zone_and_remove_fc_initiators(self, wwns, host_id):

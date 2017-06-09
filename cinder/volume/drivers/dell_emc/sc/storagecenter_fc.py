@@ -76,7 +76,14 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
             self.configuration.safe_get('volume_backend_name') or 'Dell-FC'
         self.storage_protocol = 'FC'
 
-    @fczm_utils.add_fc_zone
+    def validate_connector(self, connector):
+        """Fail if connector doesn't contain all the data needed by driver.
+
+        Do a check on the connector and ensure that it has wwnns, wwpns.
+        """
+        self.validate_connector_has_setting(connector, 'wwpns')
+        self.validate_connector_has_setting(connector, 'wwnns')
+
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -148,6 +155,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                                                  init_targ_map,
                                                  'discard': True}}
                                 LOG.debug('Return FC data: %s', data)
+                                fczm_utils.add_fc_zone(data)
                                 return data
                             LOG.error('Lun mapping returned null!')
 
@@ -231,7 +239,6 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                 'data': {}}
         return info
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Special case
         if connector is None:
@@ -293,6 +300,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
                     if scserver and api.get_volume_count(scserver) == 0:
                         info['data'] = {'target_wwn': targets,
                                         'initiator_target_map': init_targ_map}
+                        fczm_utils.remove_fc_zone(info)
                     return info
 
             except Exception:
