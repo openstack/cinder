@@ -156,7 +156,7 @@ class VMAXProvision(object):
 
     def break_replication_relationship(
             self, array, target_device_id, source_device_id, snap_name,
-            extra_specs, wait_for_sync=True):
+            extra_specs):
         """Unlink a snapshot from its target volume.
 
         :param array: the array serial number
@@ -164,24 +164,55 @@ class VMAXProvision(object):
         :param target_device_id: target volume device id
         :param snap_name: the name for the snap shot
         :param extra_specs: extra specifications
-        :param wait_for_sync: flag for wait for sync
         """
         LOG.debug("Break snap vx link relationship between: %(src)s "
                   "and: %(tgt)s.",
                   {'src': source_device_id, 'tgt': target_device_id})
 
-        if wait_for_sync:
-            self.rest.is_sync_complete(array, source_device_id,
-                                       target_device_id, snap_name,
-                                       extra_specs)
-        try:
-            self.rest.modify_volume_snap(
-                array, source_device_id, target_device_id, snap_name,
-                extra_specs, unlink=True)
-        except Exception as e:
-            LOG.error(
-                "Error modifying volume snap. Exception received: %(e)s.",
-                {'e': e})
+        self._unlink_volume(array, source_device_id, target_device_id,
+                            snap_name, extra_specs)
+
+    def _unlink_volume(
+            self, array, source_device_id, target_device_id, snap_name,
+            extra_specs):
+        """Unlink a target volume from its source volume.
+
+        :param array: the array serial number
+        :param source_device_id: the source device id
+        :param target_device_id: the target device id
+        :param snap_name: the snap name
+        :param extra_specs: extra specifications
+        :return: return code
+        """
+
+        def _unlink_vol():
+            """Called at an interval until the synchronization is finished.
+
+            :raises: loopingcall.LoopingCallDone
+            """
+            retries = kwargs['retries']
+            try:
+                kwargs['retries'] = retries + 1
+                if not kwargs['modify_vol_success']:
+                    self.rest.modify_volume_snap(
+                        array, source_device_id, target_device_id, snap_name,
+                        extra_specs, unlink=True)
+                    kwargs['modify_vol_success'] = True
+            except exception.VolumeBackendAPIException:
+                pass
+
+            if kwargs['retries'] > UNLINK_RETRIES:
+                LOG.error("_unlink_volume failed after %(retries)d "
+                          "tries.", {'retries': retries})
+                raise loopingcall.LoopingCallDone(retvalue=30)
+            if kwargs['modify_vol_success']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': 0,
+                  'modify_vol_success': False}
+        timer = loopingcall.FixedIntervalLoopingCall(_unlink_vol)
+        rc = timer.start(interval=UNLINK_INTERVAL).wait()
+        return rc
 
     def delete_volume_snap(self, array, snap_name, source_device_id):
         """Delete a snapVx snapshot of a volume.

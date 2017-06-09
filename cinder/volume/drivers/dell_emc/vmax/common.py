@@ -390,7 +390,8 @@ class VMAXCommon(object):
             LOG.info("Leaving delete_snapshot: %(ssname)s.",
                      {'ssname': snap_name})
 
-    def _remove_members(self, array, volume, device_id, extra_specs):
+    def _remove_members(self, array, volume, device_id,
+                        extra_specs, connector):
         """This method unmaps a volume from a host.
 
         Removes volume from the storage group that belongs to a masking view.
@@ -398,11 +399,12 @@ class VMAXCommon(object):
         :param volume: volume object
         :param device_id: the VMAX volume device id
         :param extra_specs: extra specifications
+        :param connector: the connector object
         """
         volume_name = volume.name
         LOG.debug("Detaching volume %s.", volume_name)
         return self.masking.remove_and_reset_members(
-            array, device_id, volume_name, extra_specs, True)
+            array, device_id, volume_name, extra_specs, True, connector)
 
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host.
@@ -448,7 +450,7 @@ class VMAXCommon(object):
                 extra_specs)
         else:
             self._remove_members(array, volume, device_info['device_id'],
-                                 extra_specs)
+                                 extra_specs, connector)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -668,7 +670,6 @@ class VMAXCommon(object):
         max_oversubscription_ratio = (
             self.pool_info['max_over_subscription_ratio'])
         reserved_percentage = self.pool_info['reserved_percentage']
-        array_max_over_subscription = None
         array_reserve_percent = None
         array_info_list = self.pool_info['arrays_info']
         already_queried = False
@@ -754,11 +755,11 @@ class VMAXCommon(object):
                     else:
                         pool['reserved_percentage'] = array_reserve_percent
 
-            if array_max_over_subscription:
+            if max_oversubscription_ratio and (
+                    0.0 < max_oversubscription_ratio < 1):
                 pool['max_over_subscription_ratio'] = (
-                    self.utils.override_ratio(
-                        max_oversubscription_ratio,
-                        array_max_over_subscription))
+                    self.utils.get_default_oversubscription_ratio(
+                        max_oversubscription_ratio))
             pools.append(pool)
 
         data = {'vendor_name': "Dell EMC",
@@ -1668,8 +1669,7 @@ class VMAXCommon(object):
                               "%(volume)s, Target: %(target)s.",
                               {'volume': volume_name, 'target': target})
                     self.provision.break_replication_relationship(
-                        array, target, source, snap_name,
-                        extra_specs, wait_for_sync=True)
+                        array, target, source, snap_name, extra_specs)
                 if 'temp' in snap_name:
                     self.provision.delete_temp_volume_snap(
                         array, snap_name, source)

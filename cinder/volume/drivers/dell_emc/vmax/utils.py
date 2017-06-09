@@ -234,25 +234,19 @@ class VMAXUtils(object):
         return portgroup_name
 
     @staticmethod
-    def override_ratio(max_over_sub_ratio, max_sub_ratio_from_per):
+    def get_default_oversubscription_ratio(max_over_sub_ratio):
         """Override ratio if necessary.
 
-        The over subscription ratio will be overridden if the max subscription
-        percent is less than the user supplied max oversubscription ratio.
+        The over subscription ratio will be overridden if the user supplied
+        max oversubscription ratio is less than 1.
         :param max_over_sub_ratio: user supplied over subscription ratio
-        :param max_sub_ratio_from_per: property on the srp
         :returns: max_over_sub_ratio
         """
-        if max_over_sub_ratio:
-            try:
-                max_over_sub_ratio = max(float(max_over_sub_ratio),
-                                         float(max_sub_ratio_from_per))
-            except ValueError:
-                if max_sub_ratio_from_per is not None:
-                    max_over_sub_ratio = float(max_sub_ratio_from_per)
-        elif max_sub_ratio_from_per:
-            max_over_sub_ratio = float(max_sub_ratio_from_per)
-
+        if max_over_sub_ratio < 1.0:
+            LOG.info("The user supplied value for max_over_subscription "
+                     "ratio is less than 1.0. Using the default value of "
+                     "20.0 instead...")
+            max_over_sub_ratio = 20.0
         return max_over_sub_ratio
 
     @staticmethod
