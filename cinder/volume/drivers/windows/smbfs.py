@@ -105,6 +105,8 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
     _SUPPORTED_IMAGE_FORMATS = [_DISK_FORMAT_VHD, _DISK_FORMAT_VHDX]
     _VALID_IMAGE_EXTENSIONS = _SUPPORTED_IMAGE_FORMATS
 
+    _always_use_temp_snap_when_cloning = False
+
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
         super(WindowsSmbfsDriver, self).__init__(*args, **kwargs)
@@ -396,14 +398,9 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._vhdutils.create_differencing_vhd(new_snap_path,
                                                backing_file_full_path)
 
-    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
-    def extend_volume(self, volume, size_gb):
-        LOG.info('Extending volume %s.', volume.id)
-
-        self._check_extend_volume_support(volume, size_gb)
-        self._extend_volume(volume, size_gb)
-
     def _extend_volume(self, volume, size_gb):
+        self._check_extend_volume_support(volume, size_gb)
+
         volume_path = self.local_path(volume)
 
         LOG.info('Resizing file %(volume_path)s to %(size_gb)sGB.',
@@ -541,6 +538,9 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
                                    volume_path)
         self._vhdutils.resize_vhd(volume_path, volume_size * units.Gi,
                                   is_file_max_size=False)
+
+    def _copy_volume_image(self, src_path, dest_path):
+        self._pathutils.copy(src_path, dest_path)
 
     def _get_share_name(self, share):
         return share.replace('/', '\\').lstrip('\\').split('\\', 1)[1]
