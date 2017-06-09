@@ -35,12 +35,12 @@ from cinder.objects import base as obj_base
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
-from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi
 
@@ -775,20 +775,21 @@ class AdminActionsTest(BaseAdminTest):
         # admin context
         mock_check_support.return_value = True
         # current status is dependent on argument: test_status.
-        id = test_backups.BackupsAPITestCase._create_backup(status=test_status)
+        backup = test_utils.create_backup(self.ctx, status=test_status,
+                                          size=1, availability_zone='az1',
+                                          host='testhost')
         req = webob.Request.blank('/v2/%s/backups/%s/action' % (
-            fake.PROJECT_ID, id))
+            fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         req.environ['cinder.context'] = self.ctx
         res = req.get_response(app())
 
+        backup.refresh()
         self.assertEqual(http_client.ACCEPTED, res.status_int)
-        self.assertEqual(
-            'deleting',
-            test_backups.BackupsAPITestCase._get_backup_attrib(id, 'status'))
-        db.backup_destroy(self.ctx, id)
+        self.assertEqual('deleting', backup.status)
+        backup.destroy()
 
     def test_delete_backup_force_when_creating(self):
         self._force_delete_backup_util('creating')
@@ -813,9 +814,9 @@ class AdminActionsTest(BaseAdminTest):
     def test_delete_backup_force_when_not_supported(self, mock_check_support):
         # admin context
         self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
-        id = test_backups.BackupsAPITestCase._create_backup()
+        backup = test_utils.create_backup(self.ctx, size=1)
         req = webob.Request.blank('/v2/%s/backups/%s/action' % (
-            fake.PROJECT_ID, id))
+            fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
