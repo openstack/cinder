@@ -1950,6 +1950,12 @@ class XIVProxy(proxy.IBMStorageProxy):
                 try:
                     self._call_xiv_xcli(
                         "cg_remove_vol", vol=volume['name'])
+                except (errors.VolumeNotInConsGroup,
+                        errors.VolumeBadNameError) as e:
+                    # ignore the error if the volume exists in storage but
+                    # not in cg, or the volume does not exist in the storage
+                    details = self._get_code_and_status_or_message(e)
+                    LOG.debug(details)
                 except errors.XCLIError as e:
                     error = (_("Failed removing volume %(vol)s from "
                                "consistency group %(cg)s: %(err)s"),
