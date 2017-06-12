@@ -1746,7 +1746,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.debug("Creating from cgsnapshot %(cg)s",
                       {'cg': self._cg_name_from_group(cgsnapshot)})
             try:
-                self._create_consistencygroup(context, group)
+                self._create_consistencygroup(context, cgname)
             except Exception as e:
                 LOG.error(
                     "Creating CG from cgsnapshot failed: %(details)s",

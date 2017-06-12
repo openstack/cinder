@@ -1315,8 +1315,8 @@ class XIVProxyTest(test.TestCase):
             {}, group_obj, [volume],
             cgsnap_group_obj, [snapshot], None, None)
 
-        p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(cg=group_obj,
-                                                                pool='WTF32')
+        p.ibm_storage_cli.cmd.cg_create.assert_called_once_with(
+            cg=p._cg_name_from_id(group_obj.id), pool='WTF32')
 
         self.assertEqual('available', model_update['status'])
 
