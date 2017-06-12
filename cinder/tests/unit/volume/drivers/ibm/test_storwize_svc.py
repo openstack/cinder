@@ -325,7 +325,8 @@ class StorwizeSVCManagementSimulator(object):
             'aux',
             'cluster',
             'linkbandwidthmbits',
-            'backgroundcopyrate'
+            'backgroundcopyrate',
+            'copies'
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -732,10 +733,25 @@ port_speed!N/A
         volume_info['uid'] = ('ABCDEF' * 3) + ('0' * 14) + volume_info['id']
 
         mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
+        sec_pool = None
+        is_mirror_vol = False
+        if 'copies' in kwargs:
+            # it is a mirror volume
+            pool_split = mdiskgrp.split(':')
+            if len(pool_split) != 2:
+                raise exception.InvalidInput(
+                    reason=_('mdiskgrp %s is invalid for mirror '
+                             'volume') % kwargs['mdiskgrp'])
+            else:
+                is_mirror_vol = True
+                mdiskgrp = pool_split[0]
+                sec_pool = pool_split[1]
+
         if mdiskgrp == kwargs['mdiskgrp']:
             raise exception.InvalidInput(
                 reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
         mdiskgrp_id = self._get_mdiskgrp_id(mdiskgrp)
+        sec_pool_id = self._get_mdiskgrp_id(sec_pool)
         volume_info['mdisk_grp_name'] = mdiskgrp
         volume_info['mdisk_grp_id'] = str(mdiskgrp_id)
 
@@ -803,6 +819,16 @@ port_speed!N/A
                   'easy_tier': volume_info['easy_tier'],
                   'compressed_copy': volume_info['compressed_copy']}
         volume_info['copies'] = {'0': vol_cp}
+        if is_mirror_vol:
+            vol_cp1 = {'id': '1',
+                       'status': 'online',
+                       'sync': 'yes',
+                       'primary': 'no',
+                       'mdisk_grp_id': str(sec_pool_id),
+                       'mdisk_grp_name': sec_pool,
+                       'easy_tier': volume_info['easy_tier'],
+                       'compressed_copy': volume_info['compressed_copy']}
+            volume_info['copies']['1'] = vol_cp1
 
         if volume_info['name'] in self._volumes_list:
             return self._errors['CMMVC6035E']
@@ -1588,32 +1614,17 @@ port_speed!N/A
             return self._errors['CMMVC5707E']
         mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
         vdisk = kwargs['vdisk'].strip('\'\"')
+        copy_id = kwargs['copy']
+        if vdisk not in self._volumes_list:
+            return self._errors['CMMVC5753E']
+        mdiskgrp_id = str(self._get_mdiskgrp_id(mdiskgrp))
 
-        if vdisk in self._volumes_list:
-            curr_mdiskgrp = self._volumes_list
-        else:
-            for pool in self._other_pools:
-                if vdisk in pool:
-                    curr_mdiskgrp = pool
-                    break
-            else:
-                return self._errors['CMMVC5754E']
+        self._volumes_list[vdisk]['mdisk_grp_name'] = mdiskgrp
+        self._volumes_list[vdisk]['mdisk_grp_id'] = mdiskgrp_id
 
-        if mdiskgrp == self._flags['storwize_svc_volpool_name']:
-            tgt_mdiskgrp = self._volumes_list
-        elif mdiskgrp == 'openstack2':
-            tgt_mdiskgrp = self._other_pools['openstack2']
-        elif mdiskgrp == 'openstack3':
-            tgt_mdiskgrp = self._other_pools['openstack3']
-        else:
-            return self._errors['CMMVC5754E']
-
-        if curr_mdiskgrp == tgt_mdiskgrp:
-            return self._errors['CMMVC6430E']
-
-        vol = curr_mdiskgrp[vdisk]
-        tgt_mdiskgrp[vdisk] = vol
-        del curr_mdiskgrp[vdisk]
+        vol = self._volumes_list[vdisk]
+        vol['copies'][copy_id]['mdisk_grp_name'] = mdiskgrp
+        vol['copies'][copy_id]['mdisk_grp_id'] = mdiskgrp_id
         return ('', '')
 
     def _cmd_addvdiskcopy(self, **kwargs):
@@ -1629,6 +1640,7 @@ port_speed!N/A
         if mdiskgrp == kwargs['mdiskgrp']:
             raise exception.InvalidInput(
                 reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
+        auto_del = True if 'autodelete' in kwargs else False
 
         copy_info = {}
         copy_info['id'] = self._find_unused_id(vol['copies'])
@@ -1649,6 +1661,14 @@ port_speed!N/A
             else:
                 copy_info['compressed_copy'] = 'no'
         vol['copies'][copy_info['id']] = copy_info
+        if auto_del:
+            del_copy_id = None
+            for v in vol['copies'].values():
+                if v['id'] != copy_info['id']:
+                    del_copy_id = v['id']
+                    break
+            if del_copy_id:
+                del vol['copies'][del_copy_id]
         return ('Vdisk [%(vid)s] copy [%(cid)s] successfully created' %
                 {'vid': vol['id'], 'cid': copy_info['id']}, '')
 
@@ -1725,6 +1745,8 @@ port_speed!N/A
         for key, value in kwargs.items():
             if key == 'easytier':
                 vol['easy_tier'] = value
+                for copy in vol['copies'].values():
+                    vol['copies'][copy['id']]['easy_tier'] = value
                 continue
             if key == 'warning':
                 vol['warning'] = value.rstrip('%')
@@ -1749,6 +1771,9 @@ port_speed!N/A
                     return ('', err)
             if key in params:
                 vol[key] = value
+                if key == 'autoexpand':
+                    for copy in vol['copies'].values():
+                        vol['copies'][copy['id']]['autoexpand'] = value
             else:
                 err = self._errors['CMMVC5709E'][1] % {'VALUE': key}
                 return ('', err)
@@ -3447,6 +3472,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver._helpers.check_fcmapping_interval = 0
         self.mock_object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                          'DEFAULT_GR_SLEEP', 0)
+        self._create_test_volume_types()
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:
@@ -3464,6 +3490,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.driver._helpers.is_vdisk_defined(name)
         self.assertEqual(exists, is_vol_defined)
+
+    def _create_test_volume_types(self):
+        spec = {'mirror_pool': 'openstack1'}
+        self.mirror_vol_type = self._create_volume_type(spec, 'mirror_type')
+        self.default_vol_type = self._create_volume_type(None, 'default_type')
 
     def test_storwize_svc_connectivity(self):
         # Make sure we detect if the pool doesn't exist
@@ -3656,20 +3687,25 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(self._driver.configuration.storwize_san_secondary_ip,
                          self._driver.active_ip)
 
-    def _generate_vol_info(self, vol_name, vol_id):
+    def _create_volume_type(self, opts, type_name):
+        type_ref = volume_types.create(self.ctxt, type_name, opts)
+        vol_type = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
+        return vol_type
+
+    def _generate_vol_info(self, vol_type=None, size=10):
         pool = _get_test_pool()
-        prop = {'mdisk_grp_name': pool}
-        if vol_name:
-            prop.update(volume_name=vol_name,
-                        volume_id=vol_id,
-                        volume_size=10)
-        else:
-            prop.update(size=10,
-                        volume_type_id=None,
-                        mdisk_grp_name=pool,
-                        host='openstack@svc#%s' % pool)
+        prop = {'size': size,
+                'host': 'openstack@svc#%s' % pool}
+        if vol_type:
+            prop['volume_type_id'] = vol_type.id
         vol = testutils.create_volume(self.ctxt, **prop)
         return vol
+
+    def _generate_snap_info(self, vol_id, size=10):
+        prop = {'volume_id': vol_id,
+                'volume_size': size}
+        snap = testutils.create_snapshot(self.ctxt, **prop)
+        return snap
 
     def _create_volume(self, **kwargs):
         pool = _get_test_pool()
@@ -3739,7 +3775,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def _create_test_vol(self, opts):
         ctxt = testutils.get_test_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', opts)
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         volume.volume_type_id = type_ref['id']
         volume.volume_typ = objects.VolumeType.get_by_id(ctxt,
                                                          type_ref['id'])
@@ -3761,7 +3797,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'qos': None,
                'replication': False,
                'stretched_cluster': None,
-               'nofmtdisk': False}
+               'nofmtdisk': False,
+               'mirror_pool': None}
         return opt
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
@@ -3792,7 +3829,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_snapshots(self):
         vol1 = self._create_volume()
-        snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap1 = self._generate_snap_info(vol1.id)
 
         # Test timeout and volume cleanup
         self._set_flag('storwize_svc_flashcopy_timeout', 1)
@@ -3824,7 +3861,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists(snap1['name'], True)
 
         # Try to create a snapshot from an non-existing volume - should fail
-        snap_novol = self._generate_vol_info('undefined-vol', '12345')
+        vol2 = self._generate_vol_info()
+        snap_novol = self._generate_snap_info(vol2.id)
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_snapshot,
                           snap_novol)
@@ -3880,14 +3918,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_create_volume_from_snapshot(self):
         vol1 = self._create_volume()
-        snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap1 = self._generate_snap_info(vol1.id)
         self.driver.create_snapshot(snap1)
-        vol2 = self._generate_vol_info(None, None)
-        vol3 = self._generate_vol_info(None, None)
+        vol2 = self._generate_vol_info()
+        vol3 = self._generate_vol_info()
 
         # Try to create a volume from a non-existing snapshot
-        snap_novol = self._generate_vol_info('undefined-vol', '12345')
-        vol_novol = self._generate_vol_info(None, None)
+        vol_novol = self._generate_vol_info()
+        snap_novol = self._generate_snap_info(vol_novol.id)
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_volume_from_snapshot,
                           vol_novol,
@@ -3938,10 +3976,10 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_svc_create_volfromsnap_clone_with_qos(self,
                                                             add_vdisk_qos):
         vol1 = self._create_volume()
-        snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap1 = self._generate_snap_info(vol1.id)
         self.driver.create_snapshot(snap1)
-        vol2 = self._generate_vol_info(None, None)
-        vol3 = self._generate_vol_info(None, None)
+        vol2 = self._generate_vol_info()
+        vol3 = self._generate_vol_info()
         fake_opts = self._get_default_opts()
 
         # Succeed
@@ -4002,12 +4040,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_svc_delete_vol_with_fcmap(self):
         vol1 = self._create_volume()
         # create two snapshots
-        snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
-        snap2 = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap1 = self._generate_snap_info(vol1.id)
+        snap2 = self._generate_snap_info(vol1.id)
         self.driver.create_snapshot(snap1)
         self.driver.create_snapshot(snap2)
-        vol2 = self._generate_vol_info(None, None)
-        vol3 = self._generate_vol_info(None, None)
+        vol2 = self._generate_vol_info()
+        vol3 = self._generate_vol_info()
 
         # Create vol from the second snapshot
         if self.USESIM:
@@ -4045,7 +4083,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_volumes(self):
         # Create a first volume
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         self.driver.create_volume(volume)
 
         self.driver.ensure_export(None, volume)
@@ -4067,7 +4105,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           volume)
 
         # Try to delete a volume that doesn't exist (should not fail)
-        vol_no_exist = self._generate_vol_info(None, None)
+        vol_no_exist = self._generate_vol_info()
         self.driver.delete_volume(vol_no_exist)
         # Ensure export for volume that doesn't exist (should not fail)
         self.driver.ensure_export(None, vol_no_exist)
@@ -4076,7 +4114,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
 
     def test_storwize_svc_volume_name(self):
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         self.driver.create_volume(volume)
         self.driver.ensure_export(None, volume)
 
@@ -4154,7 +4192,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
         rand_id = random.randint(10000, 99999)
-        volume1 = self._generate_vol_info(None, None)
+        volume1 = self._generate_vol_info()
         self.driver.create_volume(volume1)
         self._assert_vol_exists(volume1['name'], True)
 
@@ -4199,21 +4237,21 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Fail creating a snapshot - will force delete the snapshot
         if self.USESIM and False:
-            snap = self._generate_vol_info(master['name'], master['id'])
+            snap = self._generate_snap_info(master.id)
             self.sim.error_injection('startfcmap', 'bad_id')
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_snapshot, snap)
             self._assert_vol_exists(snap['name'], False)
 
         # Delete a snapshot
-        snap = self._generate_vol_info(master['name'], master['id'])
+        snap = self._generate_snap_info(master.id)
         self.driver.create_snapshot(snap)
         self._assert_vol_exists(snap['name'], True)
         self.driver.delete_snapshot(snap)
         self._assert_vol_exists(snap['name'], False)
 
         # Delete a volume with snapshots (regular)
-        snap = self._generate_vol_info(master['name'], master['id'])
+        snap = self._generate_snap_info(master.id)
         self.driver.create_snapshot(snap)
         self._assert_vol_exists(snap['name'], True)
         self.driver.delete_volume(master)
@@ -4221,7 +4259,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Fail create volume from snapshot - will force delete the volume
         if self.USESIM:
-            volfs = self._generate_vol_info(None, None)
+            volfs = self._generate_vol_info()
             self.sim.error_injection('startfcmap', 'bad_id')
             self.sim.error_injection('lsfcmap', 'speed_up')
             self.assertRaises(exception.VolumeBackendAPIException,
@@ -4230,7 +4268,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self._assert_vol_exists(volfs['name'], False)
 
         # Create volume from snapshot and delete it
-        volfs = self._generate_vol_info(None, None)
+        volfs = self._generate_vol_info()
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.create_volume_from_snapshot(volfs, snap)
@@ -4239,7 +4277,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists(volfs['name'], False)
 
         # Create volume from snapshot and delete the snapshot
-        volfs = self._generate_vol_info(None, None)
+        volfs = self._generate_vol_info()
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.create_volume_from_snapshot(volfs, snap)
@@ -4248,7 +4286,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Fail create clone - will force delete the target volume
         if self.USESIM:
-            clone = self._generate_vol_info(None, None)
+            clone = self._generate_vol_info()
             self.sim.error_injection('startfcmap', 'bad_id')
             self.sim.error_injection('lsfcmap', 'speed_up')
             self.assertRaises(exception.VolumeBackendAPIException,
@@ -4257,7 +4295,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self._assert_vol_exists(clone['name'], False)
 
         # Create the clone, delete the source and target
-        clone = self._generate_vol_info(None, None)
+        clone = self._generate_vol_info()
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.create_cloned_volume(clone, volfs)
@@ -4306,12 +4344,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_get_pool(self):
         ctxt = testutils.get_test_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', None)
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         volume.volume_type_id = type_ref['id']
         volume.volume_type = objects.VolumeType.get_by_id(ctxt,
                                                           type_ref['id'])
         self.driver.create_volume(volume)
-        self.assertEqual(volume['mdisk_grp_name'],
+        vol = self.driver._helpers.get_vdisk_attributes(volume.name)
+        self.assertEqual(vol['mdisk_grp_name'],
                          self.driver.get_pool(volume))
 
         self.driver.delete_volume(volume)
@@ -4325,7 +4364,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         self.assertAlmostEqual(vol_size, 13)
 
-        snap = self._generate_vol_info(volume['name'], volume['id'])
+        snap = self._generate_snap_info(volume.id)
         self.driver.create_snapshot(snap)
         self._assert_vol_exists(snap['name'], True)
         self.assertRaises(exception.VolumeDriverException,
@@ -4537,10 +4576,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
                                                       new_type_ref['id'])
 
-        volume = self._generate_vol_info(None, None)
         old_type = objects.VolumeType.get_by_id(ctxt,
                                                 old_type_ref['id'])
-        volume['volume_type'] = old_type
+        volume = self._generate_vol_info(old_type)
         volume['host'] = host['host']
         new_type = objects.VolumeType.get_by_id(ctxt,
                                                 new_type_ref['id'])
@@ -4629,10 +4667,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
                                                       new_type_ref['id'])
 
-        volume = self._generate_vol_info(None, None)
         old_type = objects.VolumeType.get_by_id(ctxt,
                                                 old_type_ref['id'])
-        volume['volume_type'] = old_type
+        volume = self._generate_vol_info(old_type)
         volume['host'] = host['host']
         new_type = objects.VolumeType.get_by_id(ctxt,
                                                 new_type_ref['id'])
@@ -4666,10 +4703,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
                                                       new_type_ref['id'])
 
-        volume = self._generate_vol_info(None, None)
         old_type = objects.VolumeType.get_by_id(ctxt,
                                                 old_type_ref['id'])
-        volume['volume_type'] = old_type
+        volume = self._generate_vol_info(old_type)
         volume['host'] = host['host']
         new_type = objects.VolumeType.get_by_id(ctxt,
                                                 new_type_ref['id'])
@@ -4801,7 +4837,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
 
     def test_storwize_create_volume_with_replication_disable(self):
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
 
         model_update = self.driver.create_volume(volume)
         self.assertIsNone(model_update)
@@ -4814,7 +4850,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
 
         # Create a type for repliation.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         volume_type = self._create_replication_volume_type(True)
         volume['volume_type_id'] = volume_type['id']
 
@@ -4907,11 +4943,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(self.ctxt)
 
         # Create a source volume.
-        src_volume = self._generate_vol_info(None, None)
+        src_volume = self._generate_vol_info()
         self.driver.create_volume(src_volume)
 
         # Create a type for repliation.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         volume_type = self._create_replication_volume_type(True)
         volume['volume_type_id'] = volume_type['id']
 
@@ -4929,12 +4965,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(self.ctxt)
 
         vol1 = self._create_volume()
-        snap = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap = self._generate_snap_info(vol1.id)
         self.driver.create_snapshot(snap)
-        vol2 = self._generate_vol_info(None, None)
+        vol2 = self._generate_vol_info()
 
         # Create a type for repliation.
-        vol2 = self._generate_vol_info(None, None)
+        vol2 = self._generate_vol_info()
         volume_type = self._create_replication_volume_type(True)
         vol2['volume_type_id'] = volume_type['id']
 
@@ -5239,6 +5275,231 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
+    # mirror/strtch cluster volume test cases
+    def test_storwize_svc_create_mirror_volume(self):
+        # create mirror volume in invalid pool
+        spec = {'mirror_pool': 'invalid_pool'}
+        mirror_vol_type = self._create_volume_type(spec, 'invalid_mirror_type')
+        vol = self._generate_vol_info(mirror_vol_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+
+        spec = {'mirror_pool': 'openstack1'}
+        mirror_vol_type = self._create_volume_type(spec, 'test_mirror_type')
+        vol = self._generate_vol_info(mirror_vol_type)
+        self.driver.create_volume(vol)
+        self._assert_vol_exists(vol.name, True)
+
+        copies = self.driver._helpers.get_vdisk_copies(vol.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+        self.driver.delete_volume(vol)
+        self._assert_vol_exists(vol['name'], False)
+
+    def test_storwize_svc_snapshots_mirror_volume(self):
+        vol1 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume(vol1)
+
+        snap1 = self._generate_snap_info(vol1.id)
+        self._assert_vol_exists(snap1.name, False)
+
+        self.driver.create_snapshot(snap1)
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self._assert_vol_exists(snap1.name, True)
+        copies = self.driver._helpers.get_vdisk_copies(snap1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.delete_snapshot(snap1)
+        self.driver.delete_volume(vol1)
+
+    def test_storwize_svc_create_cloned_mirror_volume(self):
+        vol1 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume(vol1)
+        vol2 = self._generate_vol_info(self.mirror_vol_type)
+
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_cloned_volume(vol2, vol1)
+        self._assert_vol_exists(vol2.name, True)
+        copies = self.driver._helpers.get_vdisk_copies(vol2.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.delete_volume(vol2)
+        self._assert_vol_exists(vol2.name, False)
+        self.driver.delete_volume(vol1)
+        self._assert_vol_exists(vol1.name, False)
+
+    def test_storwize_svc_create_mirror_volume_from_snapshot(self):
+        vol1 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume(vol1)
+        snap1 = self._generate_snap_info(vol1.id)
+        self.driver.create_snapshot(snap1)
+
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+
+        vol2 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume_from_snapshot(vol2, snap1)
+        self._assert_vol_exists(vol2.name, True)
+        copies = self.driver._helpers.get_vdisk_copies(vol2.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.delete_volume(vol2)
+        self._assert_vol_exists(vol2['name'], False)
+        self.driver.delete_snapshot(snap1)
+        self._assert_vol_exists(snap1['name'], False)
+        self.driver.delete_volume(vol1)
+        self._assert_vol_exists(vol1['name'], False)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_copy')
+    def test_storwize_svc_mirror_volume_migrate(self, add_vdisk_copy):
+        # use migratevdisk for mirror volume migration, rather than
+        # addvdiskcopy
+        self.driver.do_setup(None)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack2')
+        host = {'host': 'openstack@svc#openstack2',
+                'capabilities': {'location_info': loc}}
+        ctxt = context.get_admin_context()
+        vol1 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume(vol1)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.migrate_volume(ctxt, vol1, host)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack2')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+        self.assertFalse(add_vdisk_copy.called)
+        self._delete_volume(vol1)
+
+    @ddt.data(({'mirror_pool': 'openstack1'},
+               {'mirror_pool': 'openstack1', 'compression': True}),
+              ({'compression': False},
+               {'mirror_pool': 'openstack1', 'compression': True}),
+              ({}, {'mirror_pool': 'invalidpool'}))
+    @ddt.unpack
+    def test_storwize_svc_retype_mirror_volume_invalid(self, old_opts,
+                                                       new_opts):
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        ctxt = context.get_admin_context()
+
+        vol_type1 = self._create_volume_type(old_opts, 'old')
+        vol_type2 = self._create_volume_type(new_opts, 'new')
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+        vol1 = self._generate_vol_info(vol_type1)
+        self.driver.create_volume(vol1)
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt, vol1,
+                          vol_type2, diff, host)
+        self.driver.delete_volume(vol1)
+
+    @ddt.data(({'mirror_pool': 'openstack1'}, {}),
+              ({'mirror_pool': 'openstack1'}, {'mirror_pool': ''}))
+    @ddt.unpack
+    def test_storwize_retype_from_mirror_to_none_mirror(self,
+                                                        old_opts, new_opts):
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        ctxt = context.get_admin_context()
+
+        vol_type1 = self._create_volume_type(old_opts, 'old')
+        vol_type2 = self._create_volume_type(new_opts, 'new')
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+        vol1 = self._generate_vol_info(vol_type1)
+        self.driver.create_volume(vol1)
+
+        self._assert_vol_exists(vol1.name, True)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 2)
+
+        self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 1)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+
+        self.driver.delete_volume(vol1)
+
+    @ddt.data(({}, {'mirror_pool': 'openstack1'}),
+              ({'mirror_pool': ''}, {'mirror_pool': 'openstack1'}))
+    @ddt.unpack
+    def test_storwize_retype_from_none_to_mirror_volume(self,
+                                                        old_opts, new_opts):
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        ctxt = context.get_admin_context()
+
+        old_opts = {}
+        new_opts = {'mirror_pool': 'openstack1'}
+        vol_type1 = self._create_volume_type(old_opts, 'old')
+        vol_type2 = self._create_volume_type(new_opts, 'new')
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+        vol1 = self._generate_vol_info(vol_type1)
+        self.driver.create_volume(vol1)
+
+        self._assert_vol_exists(vol1.name, True)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 1)
+
+        self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 2)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.delete_volume(vol1)
+
+    @ddt.data(({}, {'mirror_pool': 'openstack1'}),
+              ({'mirror_pool': ''}, {'mirror_pool': 'openstack1'}),
+              ({'mirror_pool': 'openstack1'}, {}),
+              ({'mirror_pool': 'openstack1'}, {'mirror_pool': ''}),
+              ({'mirror_pool': 'openstack1'}, {'mirror_pool': 'invalidpool'}))
+    @ddt.unpack
+    def test_storwize_manage_existing_mismatch_with_mirror_volume(
+            self, opts1, opts2):
+        self.driver.do_setup(self.ctxt)
+        vol_type1 = self._create_volume_type(opts1, 'vol_type1')
+        vol_type2 = self._create_volume_type(opts2, 'vol_type2')
+        vol1 = self._generate_vol_info(vol_type1)
+        self.driver.create_volume(vol1)
+        vol2 = self._generate_vol_info(vol_type2)
+
+        ref = {'source-name': vol1.name}
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, vol2, ref)
+
+        self.driver.delete_volume(vol1)
+
+    def test_storwize_manage_existing_with_mirror_volume(self):
+        self.driver.do_setup(self.ctxt)
+        vol1 = self._generate_vol_info(self.mirror_vol_type)
+        self.driver.create_volume(vol1)
+        uid_of_vol1 = self._get_vdisk_uid(vol1.name)
+
+        opts1 = {'mirror_pool': 'openstack1'}
+        new_volume_type = self._create_volume_type(opts1, 'new_mirror_type')
+        new_volume = self._generate_vol_info(new_volume_type)
+        ref = {'source-name': vol1.name}
+        self.driver.manage_existing(new_volume, ref)
+
+        # Check the uid of the volume which has been renamed.
+        uid_of_new_vol = self._get_vdisk_uid(new_volume.name)
+        self.assertEqual(uid_of_vol1, uid_of_new_vol)
+
+        self.driver.delete_volume(new_volume)
+
     def _create_volume_type_qos(self, extra_specs, fake_qos):
         # Generate a QoS volume type for volume.
         if extra_specs:
@@ -5309,7 +5570,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         create_volume and then calling into the simulator to perform an
         lsvdisk directly.
         """
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         self.driver.create_volume(volume)
 
         return (volume, self._get_vdisk_uid(volume['name']))
@@ -5321,14 +5582,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         a bad reference that the Storwize driver doesn't understand.  We
         expect an exception to be raised.
         """
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
 
     def test_manage_existing_get_size_bad_uid(self):
         """Error when the specified UUID does not exist."""
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {'source-id': 'bad_uid'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
@@ -5336,7 +5597,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_manage_existing_get_size_bad_name(self):
         """Error when the specified name does not exist."""
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {'source-name': 'bad_name'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
@@ -5350,19 +5611,19 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         """
 
         # Error when neither UUID nor name are specified.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing, volume, ref)
 
         # Error when the specified UUID does not exist.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {'source-id': 'bad_uid'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing, volume, ref)
 
         # Error when the specified name does not exist.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {'source-name': 'bad_name'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing, volume, ref)
@@ -5386,7 +5647,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         opts = {'rsize': -1, 'iogrp': 1}
         type_iogrp_ref = volume_types.create(ctxt, 'testtype4', opts)
 
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
         ref = {'source-name': _volume['name']}
 
         fake_copy_thin = self._get_default_opts()
@@ -5462,7 +5723,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
 
         # Submit the request to manage it.
         ref = {'source-id': uid}
@@ -5490,7 +5751,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
 
         # Submit the request to manage it.
         ref = {'source-name': _volume['name']}
@@ -5523,7 +5784,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.
-        volume = self._generate_vol_info(None, None)
+        volume = self._generate_vol_info()
         ref = {'source-id': uid}
 
         # Attempt to manage this disk, and except an exception beause the
@@ -5555,7 +5816,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
 
         # Submit the request to manage it, specifying that it is OK to
         # manage a volume that is already attached.
@@ -5589,7 +5850,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.
-        new_volume = self._generate_vol_info(None, None)
+        new_volume = self._generate_vol_info()
 
         # Submit the request to manage it, specifying that it is OK to
         # manage a volume that is already attached.
@@ -5856,6 +6117,7 @@ class StorwizeSSHTestCase(test.TestCase):
                                   'fakevol', '1', 'gb', 'fakepool', opt, [])
 
 
+@ddt.ddt
 class StorwizeSVCReplicationTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -5949,7 +6211,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         return snap
 
     def _create_replica_volume_type(self, enable,
-                                    rep_type=storwize_const.METRO):
+                                    rep_type=storwize_const.METRO,
+                                    opts=None, vol_type_name=None):
         # Generate a volume type for volume repliation.
         if enable:
             if rep_type == storwize_const.METRO:
@@ -5960,6 +6223,9 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 spec = {'replication_enabled': '<is> True',
                         'replication_type': '<in> global'}
                 type_name = 'rep_global'
+        elif opts:
+            spec = opts
+            type_name = vol_type_name
         else:
             spec = {'replication_enabled': '<is> False'}
             type_name = "non_rep"
@@ -6041,6 +6307,21 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self.driver._active_backend_id = None
         self.driver._get_storwize_config()
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_vdisk')
+    def test_storwize_svc_create_stretch_volume_with_replication(self,
+                                                                 create_vdisk):
+        spec = {'mirror_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> global'
+                }
+        vol_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_type')
+        vol = self._generate_vol_info(vol_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume, vol)
+        self.assertFalse(create_vdisk.called)
 
     def test_storwize_create_volume_with_mirror_replication(self):
         # Set replication target.
@@ -6133,6 +6414,43 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
 
+    @ddt.data(({'replication_enabled': '<is> True',
+                'replication_type': '<in> global'},
+               {'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}),
+              ({'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'},
+               {'replication_enabled': '<is> True',
+                'replication_type': '<in> global'}),
+              ({'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'},
+               {'mirror_pool': 'openstack1'}),
+              ({'mirror_pool': 'openstack1'},
+               {'mirror_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}),
+              ({'replication_enabled': '<is> False'},
+               {'mirror_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}))
+    @ddt.unpack
+    def test_storwize_retype_invalid_replication(self, old_opts, new_opts):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        old_type = self._create_replica_volume_type(
+            False, opts=old_opts, vol_type_name='test_old_type')
+
+        volume, model_update = self._create_test_volume(old_type)
+        new_type = self._create_replica_volume_type(
+            False, opts=new_opts, vol_type_name='test_new_type')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, new_type['id'], old_type['id'])
+        self.assertRaises(exception.VolumeDriverException, self.driver.retype,
+                          self.ctxt, volume, new_type, diff, host)
+
     def test_storwize_retype_from_mirror_to_none_replication(self):
         # Set replication target
         self.driver.configuration.set_override('replication_device',
@@ -6142,13 +6460,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         volume, model_update = self._create_test_volume(self.mm_type)
         self.assertEqual('enabled', model_update['replication_status'])
-
-        diff, _equal = volume_types.volume_types_diff(
-            self.ctxt, self.mm_type['id'], self.gm_type['id'])
-        # Change the mirror type
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.retype, self.ctxt,
-                          volume, self.gm_type, diff, host)
 
         diff, _equal = volume_types.volume_types_diff(
             self.ctxt, self.non_replica_type['id'], self.mm_type['id'])
@@ -6274,6 +6585,33 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(uid_of_aux, uid_of_aux_volume)
 
         self.driver.delete_volume(rep_volume)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'rename_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_storwize_update_migrated_replication_volume(
+            self, get_rp_info, rename_vdisk):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create replication volume.
+        backend_volume, model_update = self._create_test_volume(self.mm_type)
+        volume, model_update = self._create_test_volume(self.mm_type)
+        get_rp_info.side_effect = [{'aux_vdisk_name': 'aux_test'}]
+        model_update = self.driver.update_migrated_volume(self.ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        aux_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX + volume.name)
+        rename_vdisk.assert_called_with('aux_test', aux_vol)
+        self.assertEqual({'_name_id': None}, model_update)
+
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        model_update = self.driver.update_migrated_volume(self.ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        self.assertEqual({'_name_id': backend_volume.id}, model_update)
 
     def test_storwize_delete_volume_with_mirror_replication(self):
         # Set replication target.
