@@ -688,6 +688,9 @@ class ZteISCSIDriver(ZTEVolumeDriver, driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     WIKI_CI_NAME = "ZTE_cinder2_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues not fixed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(ZteISCSIDriver, self).__init__(*args, **kwargs)
 
