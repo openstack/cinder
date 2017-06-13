@@ -17,6 +17,7 @@ import ast
 from copy import deepcopy
 import datetime
 import tempfile
+import time
 from xml.dom import minidom
 
 import mock
@@ -1218,7 +1219,8 @@ class VMAXRestTest(test.TestCase):
             self.rest.wait_for_job.assert_called_with(
                 operation, status_code, message, self.data.extra_specs)
 
-    def test_remove_vol_from_sg_failed(self):
+    @mock.patch.object(time, 'sleep')
+    def test_remove_vol_from_sg_failed(self, mock_sleep):
         device_id = [self.data.volume_details[0]['volumeId']]
         self.assertRaises(
             exception.VolumeBackendAPIException,
