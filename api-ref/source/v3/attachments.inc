@@ -14,7 +14,7 @@ Delete attachment
 
 Deletes an attachment.
 
-Normal response codes: 202
+Normal response codes: 200
 Error response codes: badRequest(400), itemNotFound(404)
 
 
@@ -214,7 +214,7 @@ Update an attachment
 Update a reserved attachment record with connector information
 and set up the appropriate connection_info from the driver.
 
-Normal response codes: 202
+Normal response codes: 200
 Error response codes: badRequest(400), itemNotFound(404)
 
 Request
