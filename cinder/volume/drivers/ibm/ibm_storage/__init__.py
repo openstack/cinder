@@ -17,7 +17,7 @@
 from cinder import exception
 from cinder.i18n import _
 
-BLOCKS_PER_17_GIGABYTES = 33554432.0
+BLOCKS_PER_GIGABYTE = 2097152
 XIV_LOG_PREFIX = "[IBM XIV STORAGE]:"
 XIV_CONNECTION_TYPE_ISCSI = 'iscsi'
 XIV_CONNECTION_TYPE_FC = 'fibre_channel'
@@ -104,7 +104,7 @@ def get_host_or_create_from_iqn(connector, connection=None):
 
 
 def gigabytes_to_blocks(gigabytes):
-    return int(round((BLOCKS_PER_17_GIGABYTES / 17.0) * float(gigabytes)))
+    return int(BLOCKS_PER_GIGABYTE * float(gigabytes))
 
 
 def get_online_iscsi_ports(ibm_storage_cli):
