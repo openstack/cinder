@@ -31,7 +31,7 @@ to choose the Cinder Branch you'd like to use and Platform then simply run:
 
 ```make base```
 
-You can also build an image to run LVM:
+You can also build an image to run LVM (**NOTE**: This is dependent on the base cinder image):
 
 ```make lvm```
 
@@ -104,9 +104,11 @@ sudo pip install pytz
 sudo pip install git+https://github.com/openstack/python-cinderclient
 sudo pip install git+https://github.com/openstack/python-brick-cinderclient-ext
 ```
+Before using, you must specify these env variables at least,
+``OS_AUTH_TYPE``, ``CINDER_ENDPOINT``, ``OS_PROJECT_ID``, ``OS_USERNAME``.
+You can utilize our sample file ``cinder.rc``, then you can use client
+to communicate with your containerized cinder deployment with noauth!!
 
-Now, you can source the included cinder.rc file to use the client to
-communicate with your containerized cinder deployment, with noauth!!
 
 Remember, to perform local-attach/local-detach of volumes you'll need to use
 sudo.  To preserve your env variables don't forget to use `sudo -E cinder xxxxx`
@@ -118,6 +120,10 @@ Don't forget to modify the `etc-cinder/cinder.conf` file as needed for your
 specific driver.  We'll be adding support for the LVM driver and LIO Tgts
 shortly, but for now you won't have much luck without using an external
 device (no worries, there are over 80 to choose from).
+
+**Note**: If you use ``cinder-lvm`` image, you must guarantee the required
+volume group which is specified in the ``cinder.conf`` already exists in
+the host environment before starting the service.
 
 ## Adding your own driver
 We don't do multi-backend in this type of environment; instead we just add
