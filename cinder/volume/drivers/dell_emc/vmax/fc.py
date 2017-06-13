@@ -225,11 +225,12 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         """
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
-        zoning_mappings = (
-            self._get_zoning_mappings(volume, connector))
-
+        zoning_mappings = {}
+        if connector:
+            zoning_mappings = (
+                self._get_zoning_mappings(volume, connector))
+        self.common.terminate_connection(volume, connector)
         if zoning_mappings:
-            self.common.terminate_connection(volume, connector)
             data = self._cleanup_zones(zoning_mappings)
         return data
 

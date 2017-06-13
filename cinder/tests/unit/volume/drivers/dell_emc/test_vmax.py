@@ -2380,6 +2380,13 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
                                                   host))
         self.assertEqual('OS-fakehost-MV', data['maskingview'])
 
+    def test_find_device_number_host_none(self):
+        host = None
+        data, __, __ = (
+            self.driver.common.find_device_number(self.data.test_volume,
+                                                  host))
+        self.assertEqual('OS-myhost-MV', data['maskingview'])
+
     @mock.patch.object(
         FakeEcomConnection,
         'ReferenceNames',
@@ -8538,6 +8545,22 @@ class VMAXFCTest(test.TestCase):
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstanceName, volumeName, extraSpecs)
 
+    @mock.patch.object(
+        fc.VMAXFCDriver,
+        '_get_zoning_mappings',
+        return_value=None)
+    @mock.patch.object(
+        common.VMAXCommon,
+        'terminate_connection')
+    @mock.patch.object(
+        fc.VMAXFCDriver,
+        '_cleanup_zones')
+    def test_terminate_connection_connector_none(
+            self, mock_cleanup_zones, mock_term_conn, mock_zone_map):
+        self.driver.terminate_connection(self.data.test_volume, None)
+        self.driver._get_zoning_mappings.assert_not_called()
+        self.driver._cleanup_zones.assert_not_called()
+
 
 @ddt.ddt
 class VMAXUtilsTest(test.TestCase):
@@ -10034,6 +10057,36 @@ class VMAXISCSITest(test.TestCase):
             self.data.test_snapshot_v3, self.data.connector)
         common._unmap_lun.assert_called_once_with(
             self.data.test_snapshot_v3, self.data.connector)
+
+    @mock.patch.object(
+        masking.VMAXMasking,
+        'return_volume_to_default_storage_group_v3')
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'FCFAST',
+                      'FASTPOLICY': 'FC_GOLD1'})
+    def test_terminate_connection_connector_none(
+            self, mock_volume_type, mock_ret):
+        common = self.driver.common
+        conn = FakeEcomConnection()
+        common.conn = conn
+        sourceInstance = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        return_vol = common.masking.return_volume_to_default_storage_group_v3
+        with mock.patch.object(common, '_initial_setup',
+                               return_value=self.data.extra_specs),\
+                mock.patch.object(common, '_find_lun',
+                                  return_value=sourceInstance):
+            self.driver.terminate_connection(self.data.test_volume,
+                                             None)
+            common._find_lun.assert_called_with(self.data.test_volume)
+            controllerConfigService = (
+                common.utils.find_controller_configuration_service(
+                    conn, self.data.storage_system))
+            return_vol.assert_called_once_with(
+                conn, controllerConfigService, sourceInstance, '1',
+                self.data.extra_specs)
 
 
 class EMCV3ReplicationTest(test.TestCase):
