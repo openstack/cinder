@@ -16,7 +16,6 @@
 """Class for DISCO to attach and detach volume."""
 
 from os_brick.initiator import connector
-from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import utils
@@ -24,23 +23,22 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
-CONF = cfg.CONF
-
 
 class AttachDetachDiscoVolume(object):
     """Class for attach and detach a DISCO volume."""
 
-    def __init__(self):
+    def __init__(self, configuration):
         """Init volume attachment class."""
+        self.configuration = configuration
         self.connector = connector.InitiatorConnector.factory(
             self._get_connector_identifier(), utils.get_root_helper(),
             device_scan_attempts=(
-                CONF.num_volume_device_scan_tries)
+                self.configuration.num_volume_device_scan_tries)
         )
         self.connection_conf = {}
-        self.connection_conf['server_ip'] = CONF.disco_client
+        self.connection_conf['server_ip'] = self.configuration.disco_client
         self.connection_conf['server_port'] = (
-            CONF.disco_client_port)
+            self.configuration.disco_client_port)
 
         self.connection_properties = {}
         self.connection_properties['name'] = None

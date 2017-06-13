@@ -152,7 +152,7 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
         """Create volume from snapshot task timeout."""
         timeout = 3
         mock_time.side_effect = utils.generate_timeout_series(timeout)
-        self.driver.configuration.restore_check_timeout = timeout
+        self.driver.configuration.disco_restore_check_timeout = timeout
         self.response = self.FAKE_RESPONSE['standard']['success']
         self.response_detail = (
             self.FAKE_RESPONSE['restore_detail']['pending'])
