@@ -2711,7 +2711,6 @@ def _volume_image_metadata_get_query(context, volume_id, session=None):
 
 
 @require_context
-@require_volume_exists
 def _volume_user_metadata_get(context, volume_id, session=None):
     return _volume_x_metadata_get(context, volume_id,
                                   models.VolumeMetadata, session=session)
@@ -2783,7 +2782,6 @@ def volume_metadata_delete(context, volume_id, key, meta_type):
 
 
 @require_context
-@require_volume_exists
 @handle_db_data_error
 @_retry_on_deadlock
 def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
@@ -4752,7 +4750,6 @@ def _volume_glance_metadata_get(context, volume_id, session=None):
 
 
 @require_context
-@require_volume_exists
 def volume_glance_metadata_get(context, volume_id):
     """Return the Glance metadata for the specified volume."""
 
@@ -4774,7 +4771,6 @@ def _volume_snapshot_glance_metadata_get(context, snapshot_id, session=None):
 
 
 @require_context
-@require_snapshot_exists
 def volume_snapshot_glance_metadata_get(context, snapshot_id):
     """Return the Glance metadata for the specified snapshot."""
 
@@ -4862,7 +4858,6 @@ def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
 
 
 @require_context
-@require_volume_exists
 def volume_glance_metadata_copy_from_volume_to_volume(context,
                                                       src_volume_id,
                                                       volume_id):
