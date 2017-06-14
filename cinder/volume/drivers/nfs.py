@@ -25,6 +25,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -32,7 +33,6 @@ from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import remotefs
-from cinder.volume.drivers.remotefs import locked_volume_id_operation
 
 VERSION = '1.4.0'
 
@@ -75,7 +75,7 @@ CONF.register_opts(nfs_opts)
 
 
 @interface.volumedriver
-class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
+class NfsDriver(remotefs.RemoteFSSnapDriverDistributed, driver.ExtendVD):
     """NFS based cinder driver.
 
     Creates file on NFS share for using it as block device on hypervisor.
@@ -500,13 +500,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
 
         self._stats = data
 
-    @locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume[id]}')
     def create_volume(self, volume):
         """Apply locking to the create volume operation."""
 
         return super(NfsDriver, self).create_volume(volume)
 
-    @locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{volume[id]}')
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
@@ -554,14 +554,14 @@ class NfsDriver(remotefs.RemoteFSSnapDriver, driver.ExtendVD):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-    @locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
     def create_snapshot(self, snapshot):
         """Apply locking to the create snapshot operation."""
 
         self._check_snapshot_support()
         return self._create_snapshot(snapshot)
 
-    @locked_volume_id_operation
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
     def delete_snapshot(self, snapshot):
         """Apply locking to the delete snapshot operation."""
 
