@@ -1118,6 +1118,50 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertIsNone(model)
         self.assertFalse(result)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.db.volume_update')
+    def test_create_from_image_extend_failure(
+            self, mock_volume_update, mock_qemu_info, mock_check_size,
+            mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+        self.mock_driver.extend_volume.side_effect = (
+            exception.CinderException('Error during extending'))
+
+        volume_size = 2
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool',
+                                             size=volume_size)
+
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
+        image_location = 'someImageLocationStr'
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824', 'size': '1073741824'}
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(exception.CinderException,
+                          manager._create_from_image,
+                          self.ctxt,
+                          volume,
+                          image_location,
+                          image_id,
+                          image_meta,
+                          self.mock_image_service)
+
+        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 1})
+        self.assertEqual(volume_size, volume.size)
+
     def test_create_from_image_bigger_size(
             self, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,

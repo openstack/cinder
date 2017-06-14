@@ -792,13 +792,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                               image_meta)
         finally:
             # If we created the volume as the minimal size, extend it back to
-            # what was originally requested. If an exception has occurred we
-            # still need to put this back before letting it be raised further
-            # up the stack.
+            # what was originally requested. If an exception has occurred or
+            # extending it back failed, we still need to put this back before
+            # letting it be raised further up the stack.
             if volume.size != original_size:
-                self.driver.extend_volume(volume, original_size)
-                volume.size = original_size
-                volume.save()
+                try:
+                    self.driver.extend_volume(volume, original_size)
+                finally:
+                    volume.size = original_size
+                    volume.save()
 
         return model_update
 
