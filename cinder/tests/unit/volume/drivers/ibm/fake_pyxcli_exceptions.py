@@ -86,3 +86,7 @@ class SnapshotGroupDoesNotExistError(XCLIError):
 
 class ClosedTransportError(XCLIError):
     pass
+
+
+class VolumeNotInConsGroup(XCLIError):
+    pass

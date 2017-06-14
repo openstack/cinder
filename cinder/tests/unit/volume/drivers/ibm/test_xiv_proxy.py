@@ -1692,6 +1692,32 @@ class XIVProxyTest(test.TestCase):
         self.assertRaises(ex, p.update_group, {},
                           group_obj, [], [vol_remove])
 
+    def test_update_consistencygroup_remove_non_exist_vol_(self):
+        """test update_group with exception in cg_remove_vol"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.cg_remove_vol.side_effect = (
+            errors.VolumeNotInConsGroup(
+                'bla', 'bla', ElementTree.Element('bla')))
+
+        group_obj = self._create_test_group()
+        vol_remove = testutils.create_volume(self.ctxt)
+
+        model_update, add_model_update, remove_model_update = (
+            p.update_group({}, group_obj, [], [vol_remove]))
+
+        p.ibm_storage_cli.cmd.cg_remove_vol.assert_called_once_with(
+            vol=vol_remove['name'])
+        self.assertEqual('available', model_update['status'])
+
     def test_create_cgsnapshot(self):
         """test a successful cgsnapshot create"""
         driver = mock.MagicMock()
