@@ -1119,16 +1119,14 @@ class API(base.Base):
     @wrap_check_policy
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
-        snapshot_obj = self.get_snapshot(context, snapshot.id)
         LOG.info("Get snapshot metadata completed successfully.",
                  resource=snapshot)
-        return snapshot_obj.metadata
+        return snapshot.metadata
 
     @wrap_check_policy
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
-        snapshot_obj = self.get_snapshot(context, snapshot.id)
-        snapshot_obj.delete_metadata_key(context, key)
+        snapshot.delete_metadata_key(context, key)
         LOG.info("Delete snapshot metadata completed successfully.",
                  resource=snapshot)
 
