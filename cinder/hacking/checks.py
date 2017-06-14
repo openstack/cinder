@@ -448,13 +448,6 @@ def no_test_log(logical_line, filename, noqa):
         yield (0, msg)
 
 
-def validate_assertIsNone(logical_line):
-    if re.match(assert_None, logical_line):
-        msg = ("C312: Unit tests should use assertIsNone(value) instead"
-               " of using assertEqual(None, value).")
-        yield(0, msg)
-
-
 def validate_assertTrue(logical_line):
     if re.match(assert_True, logical_line):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
@@ -479,5 +472,4 @@ def factory(register):
     register(no_log_warn)
     register(dict_constructor_with_list_copy)
     register(no_test_log)
-    register(validate_assertIsNone)
     register(validate_assertTrue)

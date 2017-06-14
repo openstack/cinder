@@ -179,7 +179,7 @@ class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
         self.assertTrue(obj1 == obj2)
         self.assertFalse(obj1 == obj3)
         self.assertFalse(obj1 == obj4)
-        self.assertNotEqual(obj1, None)
+        self.assertIsNotNone(obj1)
 
 
 @ddt.ddt

@@ -361,13 +361,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.dict_constructor_with_list_copy(
             "      self._render_dict(xml, data_el, data.__dict__)"))))
 
-    def test_validate_assertIsNone(self):
-        test_value = None
-        self.assertEqual(0, len(list(checks.validate_assertIsNone(
-            "assertIsNone(None)"))))
-        self.assertEqual(1, len(list(checks.validate_assertIsNone(
-            "assertEqual(None, %s)" % test_value))))
-
     def test_validate_assertTrue(self):
         test_value = True
         self.assertEqual(0, len(list(checks.validate_assertTrue(
