@@ -1,5 +1,20 @@
 {
     "quota_set": {
-        "snapshots": 45
+        "volumes": 10,
+        "volumes_ceph": -1,
+        "volumes_lvm-thin": -1,
+        "volumes_lvmdriver-1": -1,
+        "snapshots": 10,
+        "snapshots_ceph": -1,
+        "snapshots_lvm-thin": -1,
+        "snapshots_lvmdriver-1": -1,
+        "backups": 10,
+        "groups": 10,
+        "per_volume_gigabytes": -1,
+        "gigabytes": 1000,
+        "gigabytes_ceph": -1,
+        "gigabytes_lvm-thin": -1,
+        "gigabytes_lvmdriver-1": -1,
+        "backup_gigabytes": 1000
     }
 }

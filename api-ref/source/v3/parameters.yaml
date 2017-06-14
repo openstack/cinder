@@ -333,6 +333,13 @@ alias:
   in: body
   required: true
   type: string
+allocated:
+  description: |
+    Allocated data size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: integer
 attach_mode:
   description: |
     The attach mode of attachment, read-only ('ro') or
@@ -410,12 +417,24 @@ backup:
   in: body
   required: true
   type: object
+backup_gigabytes:
+  description: |
+    The size(GB) of backups that are allowed for each project.
+  in: body
+  required: true
+  type: integer
 backups:
   description: |
     A list of ``backup`` objects.
   in: body
   required: true
   type: array
+backups_number:
+  description: |
+    The number of backups that are allowed for each project.
+  in: body
+  required: true
+  type: integer
 bootable:
   description: |
     Enables or disables the bootable attribute. You
@@ -519,13 +538,6 @@ control_location:
   in: body
   required: false
   type: string
-cores:
-  description: |
-    The number of instance cores that are allowed for
-    each project.
-  in: body
-  required: true
-  type: integer
 created_at:
   description: |
     The date and time when the resource was created.
@@ -768,21 +780,6 @@ fail_reason:
   in: body
   required: true
   type: string
-fixed_ips:
-  description: |
-    The number of fixed IP addresses that are allowed
-    for each project. Must be equal to or greater than the number of
-    allowed instances.
-  in: body
-  required: true
-  type: integer
-floating_ips:
-  description: |
-    The number of floating IP addresses that are
-    allowed for each project.
-  in: body
-  required: true
-  type: integer
 force:
   description: |
     Indicates whether to backup, even if the volume
@@ -819,6 +816,19 @@ free_capacity:
   in: body
   required: true
   type: string
+gigabytes:
+  description: |
+    The size(GB) of volumes and snapshots that are allowed for each project.
+  in: body
+  required: true
+  type: integer
+gigabytes_for_type:
+  description: |
+    The size(GB) of volumes and snapshots that are allowed for each project
+    and the specifed volume type.
+  in: body
+  required: true
+  type: integer
 group_id_1:
   description: |
     The ID of the group.
@@ -850,6 +860,12 @@ group_types:
   in: body
   required: true
   type: array
+groups_number:
+  description: |
+    The number of groups that are allowed for each project.
+  in: body
+  required: true
+  type: integer
 guaranteed_until:
   description: |
     The expire time of the message, this message could be
@@ -969,7 +985,7 @@ in_use:
     ``usage=true`` query parameter.
   in: body
   required: false
-  type: string
+  type: integer
 incremental:
   description: |
     The backup mode. A valid value is ``true`` for
@@ -978,27 +994,6 @@ incremental:
   in: body
   required: false
   type: boolean
-injected_file_content_bytes:
-  description: |
-    The number of bytes of content that are allowed
-    for each injected file.
-  in: body
-  required: true
-  type: integer
-injected_file_path_bytes:
-  description: |
-    The number of bytes that are allowed for each
-    injected file path.
-  in: body
-  required: true
-  type: integer
-injected_files:
-  description: |
-    The number of injected files that are allowed for
-    each project.
-  in: body
-  required: true
-  type: integer
 instance_uuid:
   description: |
     The UUID of the attaching instance.
@@ -1011,13 +1006,6 @@ instance_uuid_1:
   in: body
   required: true
   type: string
-instances:
-  description: |
-    The number of instances that are allowed for each
-    project.
-  in: body
-  required: true
-  type: integer
 is_incremental:
   description: |
     Indicates whether the backup mode is incremental.
@@ -1045,13 +1033,6 @@ key:
   in: body
   required: true
   type: string
-key_pairs:
-  description: |
-    The number of key pairs that are allowed for each
-    user.
-  in: body
-  required: true
-  type: integer
 key_size:
   description: |
     Size of encryption key, in bits. For example, 128 or 256. The default value
@@ -1066,6 +1047,13 @@ keys:
   in: body
   required: true
   type: array
+limit_usage:
+  description: |
+    The limit data size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: integer
 limits:
   description: |
     A list of ``limit`` objects.
@@ -1234,13 +1222,6 @@ metadata_7:
   in: body
   required: false
   type: object
-metadata_items:
-  description: |
-    The number of metadata items that are allowed for
-    each instance.
-  in: body
-  required: true
-  type: integer
 migration_policy:
   description: |
     Specify if the volume should be migrated when it is re-typed.
@@ -1582,6 +1563,12 @@ os-volume_upload_image:
   in: body
   required: true
   type: object
+per_volume_gigabytes:
+  description: |
+    The size(GB) of volumes that are allowed for each volume.
+  in: body
+  required: true
+  type: integer
 pool_name:
   description: |
     The name of the storage pool.
@@ -1651,13 +1638,6 @@ quota_set:
   in: body
   required: true
   type: object
-ram:
-  description: |
-    The amount of instance RAM in megabytes that are
-    allowed for each project.
-  in: body
-  required: true
-  type: integer
 rate:
   description: |
     Rate-limit volume copy bandwidth, used to
@@ -1723,7 +1703,7 @@ request_id:
   type: string
 reserved:
   description: |
-    Reserved volume size. Visible only if you set the
+    Reserved data size. Visible only if you set the
     ``usage=true`` query parameter.
   in: body
   required: false
@@ -1784,20 +1764,6 @@ safe_to_manage:
   in: body
   required: true
   type: boolean
-security_group_rules:
-  description: |
-    The number of rules that are allowed for each
-    security group.
-  in: body
-  required: false
-  type: integer
-security_groups:
-  description: |
-    The number of security groups that are allowed
-    for each project.
-  in: body
-  required: true
-  type: integer
 service_state:
   description: |
     The state of the service. One of ``available`` or ``unavailable``.
@@ -1822,6 +1788,13 @@ size_1:
   in: body
   required: true
   type: integer
+skip_validation:
+  description: |
+    If set to false, the quota value can't be set lower than the in_use quota.
+    Default is True.
+  in: body
+  required: false
+  type: boolean
 snapshot:
   description: |
     A partial representation of a snapshot used in
@@ -1864,6 +1837,19 @@ snapshot_id_4:
   in: body
   required: true
   type: string
+snapshots_number:
+  description: |
+    The number of snapshots that are allowed for each project.
+  in: body
+  required: true
+  type: integer
+snapshots_number_for_type:
+  description: |
+    The number of snapshots that are allowed for each project and
+    the specified volume type.
+  in: body
+  required: true
+  type: integer
 source-name:
   description: |
     The resource's name.
@@ -2282,3 +2268,16 @@ volumes:
   in: body
   required: true
   type: array
+volumes_number:
+  description: |
+    The number of volumes that are allowed for each project.
+  in: body
+  required: true
+  type: integer
+volumes_number_for_type:
+  description: |
+    The number of volumes that are allowed for each project and
+    the specified volume type.
+  in: body
+  required: true
+  type: integer

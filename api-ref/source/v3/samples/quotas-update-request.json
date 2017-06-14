@@ -1,5 +1,9 @@
 {
-    "quota_set": {
-        "snapshots": 45
-    }
+    "quota_set":{
+        "groups": 11,
+        "volumes": 5,
+        "volumes_ceph": 3,
+        "backups": 4
+    },
+    "skip_validation": false
 }
