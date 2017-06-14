@@ -141,6 +141,8 @@ class ScaleIODriver(driver.VolumeDriver):
         self.server_password = self.configuration.san_password
         self.server_token = None
         self.server_api_version = self.configuration.sio_server_api_version
+        # list of statistics/properties to query from SIO
+        self.statisticProperties = None
         self.verify_server_certificate = (
             self.configuration.sio_verify_server_certificate)
         self.server_certificate_path = None
@@ -263,6 +265,39 @@ class ScaleIODriver(driver.VolumeDriver):
             msg = (_("Using ScaleIO versions less than v2.0.0 has been "
                      "deprecated and will be removed in a future version"))
             versionutils.report_deprecated_feature(LOG, msg)
+
+    def _get_queryable_statistics(self, sio_type, sio_id):
+        if self.statisticProperties is None:
+            self.statisticProperties = [
+                "capacityAvailableForVolumeAllocationInKb",
+                "capacityLimitInKb", "spareCapacityInKb",
+                "thickCapacityInUseInKb"]
+            # version 2.0 of SIO introduced thin volumes
+            if self._version_greater_than_or_equal(
+                    self._get_server_api_version(),
+                    "2.0.0"):
+                # check to see if thinCapacityAllocatedInKb is valid
+                # needed due to non-backwards compatible API
+                req_vars = {'server_ip': self.server_ip,
+                            'server_port': self.server_port,
+                            'sio_type': sio_type}
+                request = ("https://%(server_ip)s:%(server_port)s"
+                           "/api/types/%(sio_type)s/instances/action/"
+                           "querySelectedStatistics") % req_vars
+                params = {'ids': [sio_id],
+                          'properties': ["thinCapacityAllocatedInKb"]}
+                r, response = self._execute_scaleio_post_request(params,
+                                                                 request)
+                if r.status_code == http_client.OK:
+                    # is it valid, use it
+                    self.statisticProperties.append(
+                        "thinCapacityAllocatedInKb")
+                else:
+                    # it is not valid, assume use of thinCapacityAllocatedInKm
+                    self.statisticProperties.append(
+                        "thinCapacityAllocatedInKm")
+
+        return self.statisticProperties
 
     def _find_storage_pool_id_from_storage_type(self, storage_type):
         # Default to what was configured in configuration file if not defined.
@@ -922,20 +957,9 @@ class ScaleIODriver(driver.VolumeDriver):
             request = ("https://%(server_ip)s:%(server_port)s"
                        "/api/types/StoragePool/instances/action/"
                        "querySelectedStatistics") % req_vars
-            # SIO version 2+ added a property...
-            if self._version_greater_than_or_equal(
-                    self._get_server_api_version(),
-                    "2.0.0"):
-                # The 'Km' in thinCapacityAllocatedInKm is a bug in REST API
-                params = {'ids': [pool_id], 'properties': [
-                    "capacityAvailableForVolumeAllocationInKb",
-                    "capacityLimitInKb", "spareCapacityInKb",
-                    "thickCapacityInUseInKb", "thinCapacityAllocatedInKm"]}
-            else:
-                params = {'ids': [pool_id], 'properties': [
-                    "capacityAvailableForVolumeAllocationInKb",
-                    "capacityLimitInKb", "spareCapacityInKb",
-                    "thickCapacityInUseInKb"]}
+
+            props = self._get_queryable_statistics("StoragePool", pool_id)
+            params = {'ids': [pool_id], 'properties': props}
 
             r, response = self._execute_scaleio_post_request(params, request)
             LOG.info("Query capacity stats response: %s.", response)
@@ -949,16 +973,23 @@ class ScaleIODriver(driver.VolumeDriver):
                 # to 8 GB granularity in backend
                 free_capacity_gb = (
                     res['capacityAvailableForVolumeAllocationInKb'] / units.Mi)
+                thin_capacity_allocated = 0
+                # some versions of the API had a typo in the response
+                try:
+                    thin_capacity_allocated = res['thinCapacityAllocatedInKm']
+                except (TypeError, KeyError):
+                    pass
+                # some versions of the API respond without a typo
+                try:
+                    thin_capacity_allocated = res['thinCapacityAllocatedInKb']
+                except (TypeError, KeyError):
+                    pass
+
                 # Divide by two because ScaleIO creates a copy for each volume
-                if self._version_greater_than_or_equal(
-                        self._get_server_api_version(),
-                        "2.0.0"):
-                    provisioned_capacity = (
-                        ((res['thickCapacityInUseInKb'] +
-                          res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
-                else:
-                    provisioned_capacity = (
-                        (res['thickCapacityInUseInKb'] / 2) / units.Mi)
+                provisioned_capacity = (
+                    ((res['thickCapacityInUseInKb'] +
+                      thin_capacity_allocated) / 2) / units.Mi)
+
                 LOG.info("free capacity of pool %(pool)s is: %(free)s, "
                          "total capacity: %(total)s, "
                          "provisioned capacity: %(prov)s",
