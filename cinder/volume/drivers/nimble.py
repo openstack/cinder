@@ -86,9 +86,9 @@ nimble_opts = [
     cfg.StrOpt('nimble_subnet_label',
                default='*',
                help='Nimble Subnet Label'),
-    cfg.StrOpt('nimble_verify_certificate',
-               default=False,
-               help='Whether to verify Nimble SSL Certificate'),
+    cfg.BoolOpt('nimble_verify_certificate',
+                default=False,
+                help='Whether to verify Nimble SSL Certificate'),
     cfg.StrOpt('nimble_verify_cert_path',
                help='Path to Nimble Array SSL certificate'), ]
 

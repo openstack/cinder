@@ -52,10 +52,10 @@ vmax_opts = [
                default=200,
                help='Use this value to specify '
                     'number of retries.'),
-    cfg.StrOpt('initiator_check',
-               default=False,
-               help='Use this value to enable '
-                    'the initiator_check.')]
+    cfg.BoolOpt('initiator_check',
+                default=False,
+                help='Use this value to enable '
+                     'the initiator_check.')]
 
 CONF.register_opts(vmax_opts)
 
