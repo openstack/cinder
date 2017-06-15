@@ -233,6 +233,23 @@ class RemoteFSDriver(driver.BaseVD):
                   " mount_point_base.")
         return None
 
+    @staticmethod
+    def _validate_state(current_state,
+                        acceptable_states,
+                        obj_description='volume',
+                        invalid_exc=exception.InvalidVolume):
+        if current_state not in acceptable_states:
+            message = _('Invalid %(obj_description)s state. '
+                        'Acceptable states for this operation: '
+                        '%(acceptable_states)s. '
+                        'Current %(obj_description)s state: '
+                        '%(current_state)s.')
+            raise invalid_exc(
+                message=message %
+                dict(obj_description=obj_description,
+                     acceptable_states=acceptable_states,
+                     current_state=current_state))
+
     @utils.trace
     def create_volume(self, volume):
         """Creates a volume.
@@ -941,11 +958,10 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                  {'src': src_vref.id,
                   'dst': volume.id})
 
-        if src_vref.status not in ['available', 'backing-up']:
-            msg = _("Source volume status must be 'available', or "
-                    "'backing-up' but is: "
-                    "%(status)s.") % {'status': src_vref.status}
-            raise exception.InvalidVolume(msg)
+        acceptable_states = ['available', 'backing-up', 'downloading']
+        self._validate_state(src_vref.status,
+                             acceptable_states,
+                             obj_description='source volume')
 
         volume_name = CONF.volume_name_template % volume.id
 
@@ -1021,13 +1037,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                             else 'offline')})
 
         volume_status = snapshot.volume.status
-        if volume_status not in ['available', 'in-use',
-                                 'backing-up', 'deleting']:
-            msg = _("Volume status must be 'available', 'in-use', "
-                    "'backing-up' or 'deleting' but is: "
-                    "%(status)s.") % {'status': volume_status}
-
-            raise exception.InvalidVolume(msg)
+        acceptable_states = ['available', 'in-use', 'backing-up', 'deleting',
+                             'downloading']
+        self._validate_state(volume_status, acceptable_states)
 
         vol_path = self._local_volume_dir(snapshot.volume)
         self._ensure_share_writable(vol_path)
@@ -1332,12 +1344,15 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                             else 'offline')})
 
         status = snapshot.volume.status
-        if status not in ['available', 'in-use', 'backing-up']:
-            msg = _("Volume status must be 'available', 'in-use' or "
-                    "'backing-up' but is: "
-                    "%(status)s.") % {'status': status}
 
-            raise exception.InvalidVolume(msg)
+        acceptable_states = ['available', 'in-use', 'backing-up']
+        if snapshot.id.startswith('tmp-snap-'):
+            # This is an internal volume snapshot. In order to support
+            # image caching, we'll allow creating/deleting such snapshots
+            # while having volumes in 'downloading' state.
+            acceptable_states.append('downloading')
+
+        self._validate_state(status, acceptable_states)
 
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path, empty_if_missing=True)
