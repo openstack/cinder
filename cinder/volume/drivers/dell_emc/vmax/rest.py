@@ -1626,7 +1626,7 @@ class VMAXRest(object):
         kwargs = {'retries': 0,
                   'wait_for_sync_called': False}
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
-        rc = timer.start(interval=extra_specs[utils.INTERVAL]).wait()
+        rc = timer.start(interval=int(extra_specs[utils.INTERVAL])).wait()
         return rc
 
     def _is_sync_complete(self, array, source_device_id, snap_name,
@@ -1890,3 +1890,91 @@ class VMAXRest(object):
                          % {'rdf_num': rdf_group, 'device_id': device_id})
         self.delete_resource(array, REPLICATION, 'rdf_group', resource_name,
                              private="/private", params=params)
+
+    def get_storage_group_rep(self, array, storage_group_name):
+        """Given a name, return storage group details wrt replication.
+
+        :param array: the array serial number
+        :param storage_group_name: the name of the storage group
+        :returns: storage group dict or None
+        """
+        return self.get_resource(
+            array, REPLICATION, 'storagegroup',
+            resource_name=storage_group_name)
+
+    def get_volumes_in_storage_group(self, array, storagegroup_name):
+        """Given a volume identifier, find the corresponding device_id.
+
+        :param array: the array serial number
+        :param storagegroup_name: the storage group name
+        :returns: volume_list
+        """
+        volume_list = None
+        params = {"storageGroupId": storagegroup_name}
+
+        volume_list = self.get_volume_list(array, params)
+        if not volume_list:
+            LOG.debug("Cannot find record for storage group %(storageGrpId)s",
+                      {'storageGrpId': storagegroup_name})
+        return volume_list
+
+    def create_storagegroup_snap(self, array, source_group,
+                                 snap_name, extra_specs):
+        """Create a snapVx snapshot of a storage group.
+
+        :param array: the array serial number
+        :param source_group: the source group name
+        :param snap_name: the name of the snapshot
+        :param extra_specs: the extra specifications
+        """
+        payload = {"snapshotName": snap_name}
+        resource_type = ('storagegroup/%(sg_name)s/snapshot'
+                         % {'sg_name': source_group})
+        status_code, job = self.create_resource(
+            array, REPLICATION, resource_type, payload)
+        self.wait_for_job('Create storage group snapVx', status_code,
+                          job, extra_specs)
+
+    def modify_storagegroup_snap(
+            self, array, source_sg_id, target_sg_id, snap_name,
+            extra_specs, link=False, unlink=False):
+        """Link or unlink a snapVx to or from a target storagegroup.
+
+        :param array: the array serial number
+        :param source_sg_id: the source device id
+        :param target_sg_id: the target device id
+        :param snap_name: the snapshot name
+        :param extra_specs: extra specifications
+        :param link: Flag to indicate action = Link
+        :param unlink: Flag to indicate action = Unlink
+        """
+        payload = ''
+        if link:
+            payload = {"link": {"linkStorageGroupName": target_sg_id,
+                                "copy": "true"},
+                       "action": "Link"}
+        elif unlink:
+            payload = {"unlink": {"unlinkStorageGroupName": target_sg_id},
+                       "action": "Unlink"}
+
+        resource_name = ('%(sg_name)s/snapshot/%(snap_id)s/generation/0'
+                         % {'sg_name': source_sg_id, 'snap_id': snap_name})
+
+        status_code, job = self.modify_resource(
+            array, REPLICATION, 'storagegroup', payload,
+            resource_name=resource_name)
+
+        self.wait_for_job('Modify storagegroup snapVx relationship to target',
+                          status_code, job, extra_specs)
+
+    def delete_storagegroup_snap(self, array, snap_name, source_sg_id):
+        """Delete the snapshot of a storagegroup.
+
+        :param array: the array serial number
+        :param snap_name: the name of the snapshot
+        :param source_sg_id: the source device id
+        """
+        resource_name = ('%(sg_name)s/snapshot/%(snap_id)s/generation/0'
+                         % {'sg_name': source_sg_id, 'snap_id': snap_name})
+        return self.delete_resource(
+            array, REPLICATION, 'storagegroup', resource_name)

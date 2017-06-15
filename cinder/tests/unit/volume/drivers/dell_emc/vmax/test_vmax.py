@@ -27,7 +27,11 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
+from cinder.objects import group
+from cinder.objects import group_snapshot
+from cinder.objects import volume_type
 from cinder import test
+from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.dell_emc.vmax import common
@@ -37,6 +41,7 @@ from cinder.volume.drivers.dell_emc.vmax import masking
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
@@ -75,6 +80,11 @@ class VMAXCommonData(object):
     rdf_group_name = '23_24_007'
     rdf_group_no = '70'
     u4v_version = '84'
+    storagegroup_name_source = 'Grp_source_sg'
+    storagegroup_name_target = 'Grp_target_sg'
+    group_snapshot_name = 'Grp_snapshot'
+    target_group_name = 'Grp_target'
+    storagegroup_name_with_id = 'GrpId_group_name'
 
     # connector info
     wwpn1 = "123456789012345"
@@ -193,6 +203,53 @@ class VMAXCommonData(object):
     rep_extra_specs['interval'] = 0
     rep_extra_specs['retries'] = 0
     rep_extra_specs['srp'] = srp2
+
+    test_volume_type_1 = volume_type.VolumeType(
+        id='abc', name='abc',
+        extra_specs=extra_specs
+    )
+    test_volume_type_list = volume_type.VolumeTypeList(
+        objects=[test_volume_type_1])
+    test_group_1 = group.Group(
+        context=None, name=storagegroup_name_source,
+        group_id='abc', size=1,
+        id='12345', status='available',
+        provider_auth=None, volume_type_ids=['abc'],
+        group_type_id='grptypeid',
+        volume_types=test_volume_type_list,
+        host=fake_host, provider_location=six.text_type(provider_location))
+
+    test_group_failed = group.Group(
+        context=None, name=failed_resource,
+        group_id='abc', size=1,
+        id='12345', status='available',
+        provider_auth=None, volume_type_ids=['abc'],
+        group_type_id='grptypeid',
+        volume_types=test_volume_type_list,
+        host=fake_host, provider_location=six.text_type(provider_location))
+
+    test_group = fake_group.fake_group_obj(
+        context=ctx, name=storagegroup_name_source,
+        id='12345', host=fake_host)
+
+    test_group_without_name = fake_group.fake_group_obj(
+        context=ctx, name=None,
+        id='12345', host=fake_host)
+
+    test_vol_grp_name = 'Grp_source_sg_12345'
+    test_vol_grp_name_id_only = '12345'
+
+    test_group_snapshot_1 = group_snapshot.GroupSnapshot(
+        context=None, id='123456',
+        group_id='12345', name=group_snapshot_name,
+        group_type_id='grptypeid', status='available',
+        group=test_group_1)
+
+    test_group_snapshot_failed = group_snapshot.GroupSnapshot(
+        context=None, id='123456',
+        group_id='12345', name=failed_resource,
+        group_type_id='grptypeid', status='available',
+        group=test_group_failed)
 
     # masking view dict
     masking_view_dict = {
@@ -325,8 +382,20 @@ class VMAXCommonData(object):
                    "maskingview": [masking_view_name_i], }
                   ]
 
+    sg_details_rep = [{"childNames": [],
+                       "numDevicesNonGk": 2,
+                       "isLinkTarget": False,
+                       "rdf": False,
+                       "capacityGB": 2.0,
+                       "name": storagegroup_name_source,
+                       "snapVXSnapshots": ['12345'],
+                       "symmetrixId": array,
+                       "numSnapVXSnapshots": 1}]
+
     sg_list = {"storageGroupId": [storagegroup_name_f,
                                   defaultstoragegroup_name]}
+
+    sg_list_rep = [storagegroup_name_with_id]
 
     srp_details = {"srpSloDemandId": ["Bronze", "Diamond", "Gold",
                                       "None", "Optimized", "Silver"],
@@ -400,6 +469,39 @@ class VMAXCommonData(object):
                                             {"symmetrixId": array,
                                              "snapVxCapable": True,
                                              "rdfCapable": True}]}
+    group_snap_vx = {"generation": 0,
+                     "isLinked": False,
+                     "numUniqueTracks": 0,
+                     "isRestored": False,
+                     "name": group_snapshot_name,
+                     "numStorageGroupVolumes": 1,
+                     "state": ["Established"],
+                     "timeToLiveExpiryDate": "N/A",
+                     "isExpired": False,
+                     "numSharedTracks": 0,
+                     "timestamp": "00:30:50 Fri, 02 Jun 2017 IST +0100",
+                     "numSourceVolumes": 1
+                     }
+    group_snap_vx_1 = {"generation": 0,
+                       "isLinked": False,
+                       "numUniqueTracks": 0,
+                       "isRestored": False,
+                       "name": group_snapshot_name,
+                       "numStorageGroupVolumes": 1,
+                       "state": ["Copied"],
+                       "timeToLiveExpiryDate": "N/A",
+                       "isExpired": False,
+                       "numSharedTracks": 0,
+                       "timestamp": "00:30:50 Fri, 02 Jun 2017 IST +0100",
+                       "numSourceVolumes": 1,
+                       "linkedStorageGroup":
+                           {"name": target_group_name,
+                            "percentageCopied": 100},
+                       }
+    grp_snapvx_links = [{"name": target_group_name,
+                         "percentageCopied": 100},
+                        {"name": "another-target",
+                         "percentageCopied": 90}]
 
     rdf_group_list = {"rdfGroupID": [{"rdfgNumber": rdf_group_no,
                                       "label": rdf_group_name}]}
@@ -592,10 +694,20 @@ class FakeRequestsSession(object):
                 return_object = self.data.rdf_group_details
             else:
                 return_object = self.data.rdf_group_list
+        elif 'storagegroup' in url:
+            return_object = self._replication_sg(url)
         elif 'snapshot' in url:
             return_object = self.data.volume_snap_vx
         elif 'capabilities' in url:
             return_object = self.data.capabilities
+        return return_object
+
+    def _replication_sg(self, url):
+        return_object = None
+        if 'generation' in url:
+            return_object = self.data.group_snap_vx
+        elif 'storagegroup' in url:
+            return_object = self.data.sg_details_rep[0]
         return return_object
 
     def _system(self, url):
@@ -1058,6 +1170,84 @@ class VMAXUtilsTest(test.TestCase):
         self.assertFalse(is_fo2)
         is_fo3 = self.utils.is_volume_failed_over(None)
         self.assertFalse(is_fo3)
+
+    def test_update_volume_group_name(self):
+        group = self.data.test_group_1
+        ref_group_name = self.data.test_vol_grp_name
+        vol_grp_name = self.utils.update_volume_group_name(group)
+        self.assertEqual(ref_group_name, vol_grp_name)
+
+    def test_update_volume_group_name_id_only(self):
+        group = self.data.test_group_without_name
+        ref_group_name = self.data.test_vol_grp_name_id_only
+        vol_grp_name = self.utils.update_volume_group_name(group)
+        self.assertEqual(ref_group_name, vol_grp_name)
+
+    def test_update_admin_metadata(self):
+        admin_metadata = {'targetVolumeName': '123456'}
+        ref_model_update = [{'id': '12345',
+                             'admin_metadata': admin_metadata}]
+        volume_model_update = {'id': '12345'}
+        volumes_model_update = [volume_model_update]
+        key = 'targetVolumeName'
+        values = {}
+        values['12345'] = '123456'
+        self.utils.update_admin_metadata(
+            volumes_model_update, key, values)
+        self.assertEqual(ref_model_update, volumes_model_update)
+
+    def test_get_volume_group_utils(self):
+        group = self.data.test_group_1
+        array, extraspecs_dict = self.utils.get_volume_group_utils(
+            group, interval=1, retries=1)
+        ref_array = self.data.array
+        self.assertEqual(ref_array, array)
+
+    def test_update_extra_specs_list(self):
+        extra_specs = self.data.extra_specs
+        volume_type_id = 'abc'
+        extraspecs_dict = self.utils._update_extra_specs_list(
+            extra_specs, volume_type_id, interval=1, retries=1)
+        self.assertEqual(extra_specs, extraspecs_dict['extra_specs'])
+
+    def test_update_intervals_and_retries(self):
+        extra_specs = self.data.extra_specs
+        ref_interval = 1
+        extraspecs = self.utils._update_intervals_and_retries(
+            extra_specs, interval=1, retries=1)
+        self.assertEqual(ref_interval, extraspecs['interval'])
+
+    def test_get_intervals_retries_dict(self):
+        ref_value = {'interval': 1, 'retries': 1}
+        ret_dict = self.utils.get_intervals_retries_dict(
+            interval=1, retries=1)
+        self.assertEqual(ref_value, ret_dict)
+
+    def test_update_volume_model_updates(self):
+        volume_model_updates = [{'id': '1', 'status': 'available'}]
+        volumes = [self.data.test_volume]
+        ref_val = {'id': self.data.test_volume.id,
+                   'status': 'error_deleting'}
+        ret_val = self.utils.update_volume_model_updates(
+            volume_model_updates, volumes, 'abc', status='error_deleting')
+        self.assertEqual(ref_val, ret_val[1])
+
+    def test_update_volume_model_updates_empty_update_list(self):
+        volume_model_updates = []
+        volumes = [self.data.test_volume]
+        ref_val = [{'id': self.data.test_volume.id,
+                   'status': 'available'}]
+        ret_val = self.utils.update_volume_model_updates(
+            volume_model_updates, volumes, 'abc')
+        self.assertEqual(ref_val, ret_val)
+
+    def test_update_volume_model_updates_empty_vol_list(self):
+        volume_model_updates = []
+        volumes = []
+        ref_val = []
+        ret_val = self.utils.update_volume_model_updates(
+            volume_model_updates, volumes, 'abc')
+        self.assertEqual(ref_val, ret_val)
 
 
 class VMAXRestTest(test.TestCase):
@@ -2250,6 +2440,36 @@ class VMAXRestTest(test.TestCase):
                 failover_payload, resource_name=resource_name,
                 private='/private')
 
+    def test_get_storage_group_rep(self):
+        array = self.data.array
+        source_group_name = self.data.storagegroup_name_source
+        ref_details = self.data.sg_details_rep[0]
+        volume_group = self.rest.get_storage_group_rep(array,
+                                                       source_group_name)
+        self.assertEqual(volume_group, ref_details)
+
+    def test_get_volumes_in_storage_group(self):
+        array = self.data.array
+        storagegroup_name = self.data.storagegroup_name_source
+        ref_volumes = [self.data.device_id, self.data.device_id2]
+        volume_list = self.rest.get_volumes_in_storage_group(
+            array, storagegroup_name)
+        self.assertEqual(ref_volumes, volume_list)
+
+    def test_create_storagegroup_snap(self):
+        array = self.data.array
+        extra_specs = self.data.extra_specs
+        source_group = self.data.storagegroup_name_source
+        snap_name = self.data.group_snapshot_name
+        with mock.patch.object(
+                self.rest, "create_storagegroup_snap") as mock_create:
+            self.rest.create_storagegroup_snap(
+                array, source_group, snap_name, extra_specs)
+            mock_create.assert_called_once_with(array,
+                                                source_group,
+                                                snap_name,
+                                                extra_specs)
+
 
 class VMAXProvisionTest(test.TestCase):
     def setUp(self):
@@ -2267,6 +2487,7 @@ class VMAXProvisionTest(test.TestCase):
         self.common = self.driver.common
         self.provision = self.common.provision
         self.utils = self.common.utils
+        self.rest = self.common.rest
 
     def test_create_storage_group(self):
         array = self.data.array
@@ -2572,6 +2793,74 @@ class VMAXProvisionTest(test.TestCase):
             mod_rdf.assert_called_once_with(
                 array, device_id, rdf_group_name, extra_specs,
                 split=False)
+
+    def test_create_volume_group_success(self):
+        array = self.data.array
+        group_name = self.data.storagegroup_name_source
+        extra_specs = self.data.extra_specs
+        ref_value = self.data.storagegroup_name_source
+        storagegroup = self.provision.create_volume_group(array,
+                                                          group_name,
+                                                          extra_specs)
+        self.assertEqual(ref_value, storagegroup)
+
+    def test_create_group_replica(self):
+        array = self.data.array
+        source_group = self.data.storagegroup_name_source
+        snap_name = self.data.group_snapshot_name
+        extra_specs = self.data.extra_specs
+        with mock.patch.object(
+                self.provision,
+                'create_group_replica') as mock_create_replica:
+            self.provision.create_group_replica(
+                array, source_group, snap_name, extra_specs)
+            mock_create_replica.assert_called_once_with(
+                array, source_group, snap_name, extra_specs)
+
+    def test_delete_group_replica(self):
+        array = self.data.array
+        snap_name = self.data.group_snapshot_name
+        source_group_name = self.data.storagegroup_name_source
+        with mock.patch.object(
+                self.provision,
+                'delete_group_replica') as mock_delete_replica:
+            self.provision.delete_group_replica(array,
+                                                snap_name,
+                                                source_group_name)
+            mock_delete_replica.assert_called_once_with(
+                array, snap_name, source_group_name)
+
+    def test_link_and_break_replica(self):
+        array = self.data.array
+        source_group_name = self.data.storagegroup_name_source
+        target_group_name = self.data.target_group_name
+        snap_name = self.data.group_snapshot_name
+        extra_specs = self.data.extra_specs
+        deleteSnapshot = False
+        with mock.patch.object(
+                self.provision,
+                'link_and_break_replica') as mock_link_and_break_replica:
+            self.provision.link_and_break_replica(
+                array, source_group_name,
+                target_group_name, snap_name,
+                extra_specs, deleteSnapshot)
+            mock_link_and_break_replica.assert_called_once_with(
+                array, source_group_name,
+                target_group_name, snap_name,
+                extra_specs, deleteSnapshot)
+
+    def test_unlink_group(self):
+        with mock.patch.object(self.rest,
+                               'modify_storagegroup_snap') as mock_mod:
+            self.provision._unlink_group(
+                self.data.array, self.data.storagegroup_name_source,
+                self.data.target_group_name,
+                self.data.group_snapshot_name, self.data.extra_specs)
+            mock_mod.assert_called_once_with(
+                self.data.array, self.data.storagegroup_name_source,
+                self.data.target_group_name,
+                self.data.group_snapshot_name, self.data.extra_specs,
+                unlink=True)
 
 
 class VMAXCommonTest(test.TestCase):
@@ -3706,6 +3995,269 @@ class VMAXCommonTest(test.TestCase):
             device_id, host4, self.data.array,
             self.data.srp, volume_name, False)
         self.assertEqual(ref_return, return_val)
+
+    def test_find_volume_group_name_from_id(self):
+        array = self.data.array
+        group_id = 'GrpId'
+        group_name = None
+        ref_group_name = self.data.storagegroup_name_with_id
+        with mock.patch.object(
+                self.rest, 'get_storage_group_list',
+                return_value=self.data.sg_list_rep):
+            group_name = self.common._find_volume_group_name_from_id(
+                array, group_id)
+        self.assertEqual(ref_group_name, group_name)
+
+    def test_find_volume_group_name_from_id_not_found(self):
+        array = self.data.array
+        group_id = 'GrpId'
+        group_name = None
+        group_name = self.common._find_volume_group_name_from_id(
+            array, group_id)
+        self.assertIsNone(group_name)
+
+    def test_find_volume_group(self):
+        group = self.data.test_group_1
+        array = self.data.array
+        volume_group = self.common._find_volume_group(array, group)
+        ref_group = self.data.sg_details_rep[0]
+        self.assertEqual(ref_group, volume_group)
+
+    def test_get_volume_device_ids(self):
+        array = self.data.array
+        volumes = [self.data.test_volume]
+        ref_device_ids = [self.data.device_id]
+        device_ids = self.common._get_volume_device_ids(volumes, array)
+        self.assertEqual(ref_device_ids, device_ids)
+
+    def test_get_members_of_volume_group(self):
+        array = self.data.array
+        group_name = self.data.storagegroup_name_source
+        ref_volumes = [self.data.device_id, self.data.device_id2]
+        member_device_ids = self.common._get_members_of_volume_group(
+            array, group_name)
+        self.assertEqual(ref_volumes, member_device_ids)
+
+    def test_get_members_of_volume_group_empty(self):
+        array = self.data.array
+        group_name = self.data.storagegroup_name_source
+        with mock.patch.object(
+                self.rest, 'get_volumes_in_storage_group',
+                return_value=None):
+            member_device_ids = self.common._get_members_of_volume_group(
+                array, group_name
+            )
+        self.assertIsNone(member_device_ids)
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_create_group_replica(self, mock_check):
+        source_group = self.data.test_group_1
+        snap_name = self.data.group_snapshot_name
+        with mock.patch.object(
+                self.common,
+                '_create_group_replica') as mock_create_replica:
+            self.common._create_group_replica(
+                source_group, snap_name)
+            mock_create_replica.assert_called_once_with(
+                source_group, snap_name)
+
+    def test_create_group_replica_exception(self):
+        source_group = self.data.test_group_failed
+        snap_name = self.data.group_snapshot_name
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common._create_group_replica,
+                              source_group,
+                              snap_name)
+
+    def test_create_group_snapshot(self):
+        context = None
+        group_snapshot = self.data.test_group_snapshot_1
+        snapshots = []
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True):
+            model_update, snapshots_model_update = (
+                self.common.create_group_snapshot(
+                    context, group_snapshot, snapshots))
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_create_group_snapshot_exception(self):
+        context = None
+        group_snapshot = self.data.test_group_snapshot_failed
+        snapshots = []
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common.create_group_snapshot,
+                              context,
+                              group_snapshot,
+                              snapshots)
+
+    def test_create_group(self):
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        context = None
+        group = self.data.test_group_1
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True):
+            model_update = self.common.create_group(context, group)
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_create_group_exception(self):
+        context = None
+        group = self.data.test_group_snapshot_failed
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common.create_group,
+                              context,
+                              group)
+
+    def test_delete_group_snapshot(self):
+        group_snapshot = self.data.test_group_snapshot_1
+        snapshots = []
+        context = None
+        ref_model_update = {'status': fields.GroupSnapshotStatus.DELETED}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, snapshots_model_update = (
+                self.common.delete_group_snapshot(context,
+                                                  group_snapshot, snapshots))
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_delete_group_snapshot_success(self):
+        group_snapshot = self.data.test_group_snapshot_1
+        snapshots = []
+        ref_model_update = {'status': fields.GroupSnapshotStatus.DELETED}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, snapshots_model_update = (
+                self.common._delete_group_snapshot(group_snapshot,
+                                                   snapshots))
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_delete_group_snapshot_failed(self):
+        group_snapshot = self.data.test_group_snapshot_failed
+        snapshots = []
+        ref_model_update = (
+            {'status': fields.GroupSnapshotStatus.ERROR_DELETING})
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, snapshots_model_update = (
+                self.common._delete_group_snapshot(group_snapshot,
+                                                   snapshots))
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_update_group(self):
+        group = self.data.test_group_1
+        add_vols = [self.data.test_volume]
+        remove_vols = []
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, __, __ = self.common.update_group(group,
+                                                            add_vols,
+                                                            remove_vols)
+            self.assertEqual(ref_model_update, model_update)
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_not_found(self, mock_check):
+        group = self.data.test_group_1
+        add_vols = []
+        remove_vols = []
+        with mock.patch.object(
+                self.common, '_find_volume_group',
+                return_value=None):
+            self.assertRaises(exception.GroupNotFound,
+                              self.common.update_group,
+                              group,
+                              add_vols,
+                              remove_vols)
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_exception(self, mock_check):
+        group = self.data.test_group_1
+        add_vols = []
+        remove_vols = []
+        with mock.patch.object(
+                self.common, '_find_volume_group',
+                side_effect=exception.VolumeBackendAPIException):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.common.update_group,
+                              group, add_vols, remove_vols)
+
+    def test_delete_group(self):
+        group = self.data.test_group_1
+        volumes = [self.data.test_volume]
+        context = None
+        ref_model_update = {'status': fields.GroupStatus.DELETED}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True),\
+                mock.patch.object(self.rest, 'get_volumes_in_storage_group',
+                                  return_value=[]):
+            model_update, __ = self.common.delete_group(
+                context, group, volumes)
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_delete_group_success(self):
+        group = self.data.test_group_1
+        volumes = []
+        ref_model_update = {'status': fields.GroupStatus.DELETED}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True),\
+                mock.patch.object(self.rest, 'get_volumes_in_storage_group',
+                                  return_value=[]):
+            model_update, __ = self.common._delete_group(group, volumes)
+            self.assertEqual(ref_model_update, model_update)
+
+    def test_delete_group_already_deleted(self):
+        group = self.data.test_group_failed
+        ref_model_update = {'status': fields.GroupStatus.DELETED}
+        volumes = []
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, __ = self.common._delete_group(group, volumes)
+            self.assertEqual(ref_model_update, model_update)
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_delete_group_failed(self, mock_check):
+        group = self.data.test_group_1
+        volumes = []
+        ref_model_update = {'status': fields.GroupStatus.ERROR_DELETING}
+        with mock.patch.object(
+                self.rest, 'delete_storage_group',
+                side_effect=exception.VolumeBackendAPIException):
+            model_update, __ = self.common._delete_group(
+                group, volumes)
+        self.assertEqual(ref_model_update, model_update)
+
+    def test_create_group_from_src_success(self):
+        context = None
+        group = self.data.test_group_1
+        group_snapshot = self.data.test_group_snapshot_1
+        snapshots = []
+        volumes = [self.data.test_volume]
+        source_group = None
+        source_vols = []
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                               return_value=True):
+            model_update, volumes_model_update = (
+                self.common.create_group_from_src(
+                    context, group, volumes,
+                    group_snapshot, snapshots,
+                    source_group, source_vols))
+        self.assertEqual(ref_model_update, model_update)
 
 
 class VMAXFCTest(test.TestCase):

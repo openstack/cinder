@@ -612,6 +612,46 @@ class VMAXMasking(object):
         LOG.info("Added volume: %(vol_name)s to storage group %(sg_name)s.",
                  {'vol_name': volume_name, 'sg_name': storagegroup_name})
 
+    def add_volumes_to_storage_group(
+            self, serial_number, list_device_id, storagegroup_name,
+            extra_specs):
+        """Add a volume to a storage group.
+
+        :param serial_number: array serial number
+        :param list_device_id: list of volume device id
+        :param storagegroup_name: storage group name
+        :param extra_specs: extra specifications
+        """
+        if not list_device_id:
+            LOG.info("add_volumes_to_storage_group: No volumes to add")
+            return
+        start_time = time.time()
+        temp_device_id_list = list_device_id
+
+        @coordination.synchronized("emc-sg-{sg_name}")
+        def do_add_volume_to_sg(sg_name):
+            # Check if another process has added any volume to the
+            # sg while this process was waiting for the lock
+            volume_list = self.rest.get_volumes_in_storage_group(
+                serial_number, storagegroup_name)
+            for volume in volume_list:
+                if volume in temp_device_id_list:
+                    LOG.info("Volume: %(volume_name)s is already part "
+                             "of storage group %(sg_name)s.",
+                             {'volume_name': volume,
+                              'sg_name': storagegroup_name})
+                    # Remove this device id from the list
+                    temp_device_id_list.remove(volume)
+            self.rest.add_vol_to_sg(serial_number, storagegroup_name,
+                                    temp_device_id_list, extra_specs)
+        do_add_volume_to_sg(storagegroup_name)
+
+        LOG.debug("Add volumes to storagegroup took: %(delta)s H:MM:SS.",
+                  {'delta': self.utils.get_time_delta(start_time,
+                                                      time.time())})
+        LOG.info("Added volumes to storage group %(sg_name)s.",
+                 {'sg_name': storagegroup_name})
+
     def remove_vol_from_storage_group(
             self, serial_number, device_id, storagegroup_name,
             volume_name, extra_specs):
@@ -642,6 +682,43 @@ class VMAXMasking(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
+
+    def remove_volumes_from_storage_group(
+            self, serial_number, list_of_device_ids,
+            storagegroup_name, extra_specs):
+        """Remove multiple volumes from a storage group.
+
+        :param serial_number: the array serial number
+        :param list_of_device_ids: list of device ids
+        :param storagegroup_name: the name of the storage group
+        :param extra_specs: the extra specifications
+        :raises: VolumeBackendAPIException
+        """
+        start_time = time.time()
+
+        @coordination.synchronized("emc-sg-{sg_name}")
+        def do_remove_volumes_from_storage_group(sg_name):
+            self.rest.remove_vol_from_sg(
+                serial_number, storagegroup_name,
+                list_of_device_ids, extra_specs)
+
+            LOG.debug("Remove volumes from storagegroup "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(start_time,
+                                                          time.time())})
+            volume_list = self.rest.get_volumes_in_storage_group(
+                serial_number, storagegroup_name)
+
+            for device_id in list_of_device_ids:
+                if device_id in volume_list:
+                    exception_message = (_(
+                        "Failed to remove device "
+                        "with id %(dev_id)s from SG: %(sg_name)s.")
+                        % {'dev_id': device_id, 'sg_name': storagegroup_name})
+                    LOG.error(exception_message)
+                    raise exception.VolumeBackendAPIException(
+                        data=exception_message)
+        return do_remove_volumes_from_storage_group(storagegroup_name)
 
     def find_initiator_names(self, connector):
         """Check the connector object for initiators(ISCSI) or wwpns(FC).

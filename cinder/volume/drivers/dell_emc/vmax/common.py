@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
 import six
+import uuid
 
 from cinder import exception
 from cinder.i18n import _
@@ -31,7 +32,7 @@ from cinder.volume.drivers.dell_emc.vmax import masking
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
-
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -195,7 +196,7 @@ class VMAXCommon(object):
         all available SLO & Workload combinations
         :param array_info: the array information
         :returns: finalarrayinfolist
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         try:
             array = array_info['SerialNumber']
@@ -250,6 +251,14 @@ class VMAXCommon(object):
         volume_dict = (self._create_volume(
             volume_name, volume_size, extra_specs))
 
+        if volume.group_id is not None:
+            group_name = self._find_volume_group_name_from_id(
+                extra_specs[utils.ARRAY], volume.group_id)
+            if group_name is not None:
+                self.masking.add_volume_to_storage_group(
+                    extra_specs[utils.ARRAY], volume_dict['device_id'],
+                    group_name, volume_name, extra_specs)
+
         # Set-up volume replication, if enabled
         if self.utils.is_replication_enabled(extra_specs):
             rep_update = self._replicate_volume(volume, volume_name,
@@ -268,7 +277,7 @@ class VMAXCommon(object):
         :param volume: volume object
         :param snapshot: snapshot object
         :returns: model_update
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         LOG.debug("Entering create_volume_from_snapshot.")
         model_update = {}
@@ -597,7 +606,7 @@ class VMAXCommon(object):
         :param volume: the volume Object
         :param new_size: the new size to increase the volume to
         :returns: dict -- modifiedVolumeDict - the extended volume Object
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         original_vol_size = volume.size
         volume_name = volume.name
@@ -708,6 +717,7 @@ class VMAXCommon(object):
                         'location_info': temp_location_info,
                         'thin_provisioning_support': True,
                         'thick_provisioning_support': False,
+                        'consistent_group_snapshot_enabled': True,
                         'max_over_subscription_ratio':
                             max_oversubscription_ratio,
                         'reserved_percentage': reserved_percentage,
@@ -731,7 +741,7 @@ class VMAXCommon(object):
                         'consistencygroup_support': False,
                         'thin_provisioning_support': True,
                         'thick_provisioning_support': False,
-                        'consistent_group_snapshot_enabled': False,
+                        'consistent_group_snapshot_enabled': True,
                         'max_over_subscription_ratio':
                             max_oversubscription_ratio,
                         'reserved_percentage': reserved_percentage,
@@ -854,9 +864,16 @@ class VMAXCommon(object):
                 device_id = name['keybindings']['DeviceID']
             element_name = self.utils.get_volume_element_name(
                 volume_name)
-            founddevice_id = self.rest.find_volume_device_id(
-                array, element_name)
-
+            admin_metadata = {}
+            if 'admin_metadata' in volume:
+                admin_metadata = volume.admin_metadata
+            if 'targetVolumeName' in admin_metadata:
+                target_vol_name = admin_metadata['targetVolumeName']
+                founddevice_id = self.rest.find_volume_device_id(
+                    array, target_vol_name)
+            else:
+                founddevice_id = self.rest.find_volume_device_id(
+                    array, element_name)
             # Allow for an external app to delete the volume.
             if device_id and device_id != founddevice_id:
                 founddevice_id = None
@@ -968,7 +985,7 @@ class VMAXCommon(object):
 
         :param config_group_name: the config group name
         :returns: string -- configurationFile - name of the configuration file
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         if config_group_name is None:
             return CINDER_EMC_CONFIG_FILE
@@ -1012,7 +1029,7 @@ class VMAXCommon(object):
         :param volume: the volume object
         :param volume_type_id: optional override of volume.volume_type_id
         :returns: dict -- extra spec dict
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         try:
             extra_specs, config_file, qos_specs = (
@@ -1134,7 +1151,7 @@ class VMAXCommon(object):
         :param is_snapshot: boolean -- Defaults to False
         :param from_snapvx: bool -- Defaults to False
         :returns: dict -- cloneDict the cloned volume dictionary
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         clone_name = volume.name
         snap_name = None
@@ -1281,7 +1298,7 @@ class VMAXCommon(object):
         :param extra_specs: extra specifications
         :returns: int -- return code
         :returns: dict -- volume_dict
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         array = extra_specs[utils.ARRAY]
         is_valid_slo, is_valid_workload = self.provision.verify_slo_workload(
@@ -1431,7 +1448,7 @@ class VMAXCommon(object):
         :param device_id: the device id
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
-        :raises VolumeBackendAPIException:
+        :raises: VolumeBackendAPIException:
         """
         try:
             LOG.debug("Delete Volume: %(name)s. device_id: %(device_id)s.",
@@ -1706,7 +1723,7 @@ class VMAXCommon(object):
         :param device_id: the device id
         :param volume_id: the cinder volume id
         :param external_ref: the external reference
-        :raises ManageExistingInvalidReference, ManageExistingAlreadyManaged:
+        :raises: ManageExistingInvalidReference, ManageExistingAlreadyManaged:
         """
         # Ensure the volume exists on the array
         volume_details = self.rest.get_volume(array, device_id)
@@ -2630,3 +2647,535 @@ class VMAXCommon(object):
         if is_descendant:
             is_source_nf_sg = True
         return source_nf_sg, source_sg, source_parent_sg, is_source_nf_sg
+
+    def create_group(self, context, group):
+        """Creates a generic volume group.
+
+        :param context: the context
+        :param group: the group object to be created
+        :returns: dict -- modelUpdate = {'status': 'available'}
+        :raises: VolumeBackendAPIException, NotImplementedError
+        """
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+
+        LOG.info("Create generic volume group: %(group)s.",
+                 {'group': group.id})
+
+        vol_grp_name = self.utils.update_volume_group_name(group)
+
+        try:
+            array, __ = self.utils.get_volume_group_utils(
+                group, self.interval, self.retries)
+            interval_retries_dict = self.utils.get_intervals_retries_dict(
+                self.interval, self.retries)
+            self.provision.create_volume_group(
+                array, vol_grp_name, interval_retries_dict)
+        except Exception:
+            exception_message = (_("Failed to create generic volume group:"
+                                   " %(volGrpName)s.")
+                                 % {'volGrpName': vol_grp_name})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        return model_update
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a generic volume group.
+
+        :param context: the context
+        :param group: the group object to be deleted
+        :param volumes: the list of volumes in the generic group to be deleted
+        :returns: dict -- modelUpdate
+        :returns: list -- list of volume model updates
+        :raises: NotImplementedError
+        """
+        LOG.info("Delete generic volume group: %(group)s.",
+                 {'group': group.id})
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        model_update, volumes_model_update = self._delete_group(
+            group, volumes)
+        return model_update, volumes_model_update
+
+    def _delete_group(self, group, volumes):
+        """Helper function to delete a volume group.
+
+        :param group: the group object
+        :param volumes: the member volume objects
+        :returns: model_update, volumes_model_update
+        """
+        volumes_model_update = []
+        array, extraspecs_dict_list = self.utils.get_volume_group_utils(
+            group, self.interval, self.retries)
+        vol_grp_name = None
+
+        volume_group = self._find_volume_group(
+            array, group)
+
+        if volume_group is None:
+            LOG.error("Cannot find generic volume group %(volGrpName)s.",
+                      {'volGrpName': group.id})
+            model_update = {'status': fields.GroupStatus.DELETED}
+
+            volumes_model_update = self.utils.update_volume_model_updates(
+                volumes_model_update, volumes, group.id, status='deleted')
+            return model_update, volumes_model_update
+
+        if 'name' in volume_group:
+            vol_grp_name = volume_group['name']
+        volume_device_ids = self._get_members_of_volume_group(
+            array, vol_grp_name)
+        intervals_retries_dict = self.utils.get_intervals_retries_dict(
+            self.interval, self.retries)
+        deleted_volume_device_ids = []
+        try:
+            # If there are no volumes in sg then delete it
+            if not volume_device_ids:
+                self.rest.delete_storage_group(array, vol_grp_name)
+                model_update = {'status': fields.GroupStatus.DELETED}
+                volumes_model_update = self.utils.update_volume_model_updates(
+                    volumes_model_update, volumes, group.id, status='deleted')
+                return model_update, volumes_model_update
+            # First remove all the volumes from the SG
+            self.masking.remove_volumes_from_storage_group(
+                array, volume_device_ids, vol_grp_name, intervals_retries_dict)
+            for vol in volumes:
+                for extraspecs_dict in extraspecs_dict_list:
+                    if vol.volume_type_id in extraspecs_dict['volumeTypeId']:
+                        extraspecs = extraspecs_dict.get(utils.EXTRA_SPECS)
+                        device_id = self._find_device_on_array(vol,
+                                                               extraspecs)
+                        if device_id in volume_device_ids:
+                            self._remove_vol_and_cleanup_replication(
+                                array, device_id,
+                                vol.name, extraspecs, vol)
+                            self._delete_from_srp(
+                                array, device_id, "group vol", extraspecs)
+                        else:
+                            LOG.debug("Volume not present in storage group.")
+                        # Add the device id to the deleted list
+                        deleted_volume_device_ids.append(device_id)
+            # Once all volumes are deleted then delete the SG
+            self.rest.delete_storage_group(array, vol_grp_name)
+            model_update = {'status': fields.GroupStatus.DELETED}
+            volumes_model_update = self.utils.update_volume_model_updates(
+                volumes_model_update, volumes, group.id, status='deleted')
+        except Exception as e:
+            LOG.error("Error deleting volume group."
+                      "Error received: %(e)s", {'e': e})
+            model_update = {'status': fields.GroupStatus.ERROR_DELETING}
+            # Update the volumes_model_update
+            volumes_not_deleted = []
+            for vol in volume_device_ids:
+                if vol not in deleted_volume_device_ids:
+                    volumes_not_deleted.append(vol)
+            if not deleted_volume_device_ids:
+                volumes_model_update = self.utils.update_volume_model_updates(
+                    volumes_model_update,
+                    deleted_volume_device_ids,
+                    group.id, status='deleted')
+            if not volumes_not_deleted:
+                volumes_model_update = self.utils.update_volume_model_updates(
+                    volumes_model_update,
+                    volumes_not_deleted,
+                    group.id, status='deleted')
+            # As a best effort try to add back the undeleted volumes to sg
+            # Dont throw any exception in case of failure
+            try:
+                if not volumes_not_deleted:
+                    self.masking.add_volumes_to_storage_group(
+                        array, volumes_not_deleted,
+                        vol_grp_name, intervals_retries_dict)
+            except Exception as ex:
+                LOG.error("Error in rollback - %(ex)s. "
+                          "Failed to add back volumes to sg %(sg_name)s",
+                          {'ex': ex, 'sg_name': vol_grp_name})
+
+        return model_update, volumes_model_update
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a generic volume group snapshot.
+
+        :param context: the context
+        :param group_snapshot: the group snapshot to be created
+        :param snapshots: snapshots
+        :returns: dict -- modelUpdate
+        :returns: list -- list of snapshots
+        :raises: VolumeBackendAPIException, NotImplementedError
+        """
+        grp_id = group_snapshot.group_id
+        source_group = group_snapshot.get('group')
+        if not volume_utils.is_group_a_cg_snapshot_type(source_group):
+            raise NotImplementedError()
+        snapshots_model_update = []
+        LOG.info(
+            "Create snapshot for %(grpId)s "
+            "group Snapshot ID: %(group_snapshot)s.",
+            {'group_snapshot': group_snapshot.id,
+             'grpId': grp_id})
+
+        try:
+            snap_name = self.utils.truncate_string(group_snapshot.id, 19)
+            self._create_group_replica(source_group,
+                                       snap_name)
+
+        except Exception as e:
+            exception_message = (_("Failed to create snapshot for group: "
+                                   "%(volGrpName)s. Exception received: %(e)s")
+                                 % {'volGrpName': grp_id,
+                                    'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        for snapshot in snapshots:
+            snapshots_model_update.append(
+                {'id': snapshot.id,
+                 'status': fields.SnapshotStatus.AVAILABLE})
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+
+        return model_update, snapshots_model_update
+
+    def _create_group_replica(
+            self, source_group, snap_name):
+        """Create a group replica.
+
+        This can be a group snapshot or a cloned volume group.
+        :param source_group: the group object
+        :param snap_name: the name of the snapshot
+        """
+        array, __ = (
+            self.utils.get_volume_group_utils(
+                source_group, self.interval, self.retries))
+        vol_grp_name = None
+        volume_group = (
+            self._find_volume_group(array, source_group))
+        if volume_group:
+            if 'name' in volume_group:
+                vol_grp_name = volume_group['name']
+        if vol_grp_name is None:
+            exception_message = (
+                _("Cannot find generic volume group %(group_id)s.") %
+                {'group_id': source_group.id})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        interval_retries_dict = self.utils.get_intervals_retries_dict(
+            self.interval, self.retries)
+        self.provision.create_group_replica(
+            array, vol_grp_name,
+            snap_name, interval_retries_dict)
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Delete a volume group snapshot.
+
+        :param context: the context
+        :param group_snapshot: the volume group snapshot to be deleted
+        :param snapshots: the snapshot objects
+        :returns: model_update, snapshots_model_update
+        """
+        model_update, snapshots_model_update = self._delete_group_snapshot(
+            group_snapshot, snapshots)
+        return model_update, snapshots_model_update
+
+    def _delete_group_snapshot(self, group_snapshot, snapshots):
+        """Helper function to delete a group snapshot.
+
+        :param group_snapshot: the group snapshot object
+        :param snapshots: the snapshot objects
+        :returns: model_update, snapshots_model_update
+        :raises: VolumeBackendApiException, NotImplementedError
+        """
+        snapshots_model_update = []
+        model_update = {}
+        source_group = group_snapshot.get('group')
+        grp_id = group_snapshot.group_id
+        if not volume_utils.is_group_a_cg_snapshot_type(source_group):
+            raise NotImplementedError()
+
+        LOG.info("Delete snapshot grpSnapshotId: %(grpSnapshotId)s"
+                 " for source group %(grpId)s",
+                 {'grpSnapshotId': group_snapshot.id,
+                  'grpId': grp_id})
+
+        snap_name = self.utils.truncate_string(group_snapshot.id, 19)
+        vol_grp_name = None
+        try:
+            # Get the array serial
+            array, __ = (
+                self.utils.get_volume_group_utils(
+                    source_group, self.interval, self.retries))
+            # Get the volume group dict for getting the group name
+            volume_group = (
+                self._find_volume_group(array, source_group))
+            if volume_group:
+                if 'name' in volume_group:
+                    vol_grp_name = volume_group['name']
+            if vol_grp_name is None:
+                exception_message = (
+                    _("Cannot find generic volume group %(grp_id)s.") %
+                    {'group_id': source_group.id})
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+            # Check if the snapshot exists
+            if 'snapVXSnapshots' in volume_group:
+                if snap_name in volume_group['snapVXSnapshots']:
+                    self.provision.delete_group_replica(array,
+                                                        snap_name,
+                                                        vol_grp_name)
+            else:
+                # Snapshot has been already deleted, return successfully
+                LOG.error("Cannot find group snapshot %(snapId)s.",
+                          {'snapId': group_snapshot.id})
+            model_update = {'status': fields.GroupSnapshotStatus.DELETED}
+            for snapshot in snapshots:
+                snapshots_model_update.append(
+                    {'id': snapshot.id,
+                     'status': fields.SnapshotStatus.DELETED})
+        except Exception as e:
+            LOG.error("Error deleting volume group snapshot."
+                      "Error received: %(e)s", {'e': e})
+            model_update = {
+                'status': fields.GroupSnapshotStatus.ERROR_DELETING}
+
+        return model_update, snapshots_model_update
+
+    def _find_volume_group_name_from_id(self, array, group_id):
+        """Finds the volume group name given its id
+
+        :param array: the array serial number
+        :param group_id: the group id
+        :returns: group_name: Name of the group
+        """
+        group_name = None
+        sg_list = self.rest.get_storage_group_list(array)
+        for sg in sg_list:
+            if group_id in sg:
+                group_name = sg
+                return group_name
+        return group_name
+
+    def _find_volume_group(self, array, group):
+        """Finds a volume group given the group.
+
+        :param array: the array serial number
+        :param group: the group object
+        :returns: volume group dictionary
+        """
+        group_name = self.utils.update_volume_group_name(group)
+        volume_group = self.rest.get_storage_group_rep(array, group_name)
+        if not volume_group:
+            LOG.warning("Volume group %(group_id)s cannot be found",
+                        {'group_id': group_name})
+            return None
+        return volume_group
+
+    def _get_members_of_volume_group(self, array, group_name):
+        """Get the members of a volume group.
+
+        :param array: the array serial number
+        :param group_name: the storage group name
+        :returns: list -- member_device_ids
+        """
+        member_device_ids = self.rest.get_volumes_in_storage_group(
+            array, group_name)
+        if not member_device_ids:
+            LOG.info("No member volumes found in %(group_id)s",
+                     {'group_id': group_name})
+        return member_device_ids
+
+    def update_group(self, group, add_volumes, remove_volumes):
+        """Updates LUNs in generic volume group.
+
+        :param group: storage configuration service instance
+        :param add_volumes: the volumes uuids you want to add to the vol grp
+        :param remove_volumes: the volumes uuids you want to remove from
+                               the CG
+        :returns: model_update
+        :raises: VolumeBackendAPIException, NotImplementedError
+        """
+        LOG.info("Update generic volume Group: %(group)s. "
+                 "This adds and/or removes volumes from "
+                 "a generic volume group.",
+                 {'group': group.id})
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+
+        array, __ = self.utils.get_volume_group_utils(
+            group, self.interval, self.retries)
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        add_vols = [vol for vol in add_volumes] if add_volumes else []
+        add_device_ids = self._get_volume_device_ids(add_vols, array)
+        remove_vols = [vol for vol in remove_volumes] if remove_volumes else []
+        remove_device_ids = self._get_volume_device_ids(remove_vols, array)
+        vol_grp_name = None
+        try:
+            volume_group = self._find_volume_group(
+                array, group)
+            if volume_group:
+                if 'name' in volume_group:
+                    vol_grp_name = volume_group['name']
+            if vol_grp_name is None:
+                raise exception.GroupNotFound(
+                    group_id=group.id)
+            interval_retries_dict = self.utils.get_intervals_retries_dict(
+                self.interval, self.retries)
+            # Add volume(s) to the group
+            if add_device_ids:
+                self.masking.add_volumes_to_storage_group(
+                    array, add_device_ids, vol_grp_name, interval_retries_dict)
+            # Remove volume(s) from the group
+            if remove_device_ids:
+                self.masking.remove_volumes_from_storage_group(
+                    array, remove_device_ids,
+                    vol_grp_name, interval_retries_dict)
+        except exception.GroupNotFound:
+            raise
+        except Exception as ex:
+            exception_message = (_("Failed to update volume group:"
+                                   " %(volGrpName)s. Exception: %(ex)s.")
+                                 % {'volGrpName': group.id,
+                                    'ex': ex})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        return model_update, None, None
+
+    def _get_volume_device_ids(self, volumes, array):
+        """Get volume device ids from volume.
+
+        :param volumes: volume objects
+        :returns: device_ids
+        """
+        device_ids = []
+        for volume in volumes:
+            specs = {utils.ARRAY: array}
+            device_id = self._find_device_on_array(volume, specs)
+            if device_id is None:
+                LOG.error("Volume %(name)s not found on the array.",
+                          {'name': volume['name']})
+            else:
+                device_ids.append(device_id)
+        return device_ids
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot, snapshots, source_group,
+                              source_vols):
+        """Creates the volume group from source.
+
+        :param context: the context
+        :param group: the volume group object to be created
+        :param volumes: volumes in the consistency group
+        :param group_snapshot: the source volume group snapshot
+        :param snapshots: snapshots of the source volumes
+        :param source_group: the source volume group
+        :param source_vols: the source vols
+        :returns: model_update, volumes_model_update
+                  model_update is a dictionary of cg status
+                  volumes_model_update is a list of dictionaries of volume
+                  update
+        :raises: VolumeBackendAPIException, NotImplementedError
+        """
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        # Check if we need to create a snapshot
+        create_snapshot = False
+        volumes_model_update = []
+        if group_snapshot:
+            source_vols_or_snapshots = snapshots
+            source_id = group_snapshot.id
+            actual_source_grp = group_snapshot
+        elif source_group:
+            source_vols_or_snapshots = source_vols
+            source_id = source_group.id
+            actual_source_grp = source_group
+            create_snapshot = True
+        else:
+            exception_message = (_("Must supply either group snapshot or "
+                                   "a source group."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        LOG.debug("Enter VMAX create_volume group_from_src. Group to be "
+                  "created: %(grpId)s, Source : %(SourceGrpId)s.",
+                  {'grpId': group.id,
+                   'SourceGrpId': source_id})
+
+        tgt_name = self.utils.update_volume_group_name(group)
+        self.create_group(context, group)
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        snap_name = None
+        try:
+            array, extraspecs_dict_list = (
+                self.utils.get_volume_group_utils(
+                    group, self.interval, self.retries))
+            vol_grp_name = ""
+            # Create the target devices
+            dict_volume_dicts = {}
+            target_volume_names = {}
+            for volume, source_vol_or_snapshot in zip(
+                    volumes, source_vols_or_snapshots):
+                if 'size' in source_vol_or_snapshot:
+                    volume_size = source_vol_or_snapshot['size']
+                else:
+                    volume_size = source_vol_or_snapshot['volume_size']
+                for extraspecs_dict in extraspecs_dict_list:
+                    if volume.volume_type_id in (
+                            extraspecs_dict['volumeTypeId']):
+                        extraspecs = extraspecs_dict.get(utils.EXTRA_SPECS)
+                        # Create a random UUID and use it as volume name
+                        target_volume_name = six.text_type(uuid.uuid4())
+                        volume_dict = self.provision.create_volume_from_sg(
+                            array, target_volume_name,
+                            tgt_name, volume_size, extraspecs)
+                        dict_volume_dicts[volume.id] = volume_dict
+                        target_volume_names[volume.id] = target_volume_name
+
+            if create_snapshot is True:
+                # We have to create a snapshot of the source group
+                snap_name = self.utils.truncate_string(group.id, 19)
+                self._create_group_replica(actual_source_grp, snap_name)
+                vol_grp_name = self.utils.update_volume_group_name(
+                    source_group)
+            else:
+                # We need to check if the snapshot exists
+                snap_name = self.utils.truncate_string(source_id, 19)
+                source_group = actual_source_grp.get('group')
+                volume_group = self._find_volume_group(array, source_group)
+                if volume_group is not None:
+                    if 'snapVXSnapshots' in volume_group:
+                        if snap_name in volume_group['snapVXSnapshots']:
+                            LOG.info("Snapshot is present on the array")
+                    if 'name' in volume_group:
+                        vol_grp_name = volume_group['name']
+            # Link and break the snapshot to the source group
+            interval_retries_dict = self.utils.get_intervals_retries_dict(
+                self.interval, self.retries)
+            self.provision.link_and_break_replica(
+                array, vol_grp_name, tgt_name, snap_name,
+                interval_retries_dict, delete_snapshot=create_snapshot)
+
+        except Exception:
+            exception_message = (_("Failed to create vol grp %(volGrpName)s"
+                                   " from source %(grpSnapshot)s.")
+                                 % {'volGrpName': group.id,
+                                    'grpSnapshot': source_id})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+        volumes_model_update = self.utils.update_volume_model_updates(
+            volumes_model_update, volumes, group.id, model_update['status'])
+
+        # Update the provider_location
+        for volume_model_update in volumes_model_update:
+            if volume_model_update['id'] in dict_volume_dicts:
+                volume_model_update.update(
+                    {'provider_location': six.text_type(
+                        dict_volume_dicts[volume_model_update['id']])})
+
+        # Update the volumes_model_update with admin_metadata
+        self.utils.update_admin_metadata(volumes_model_update,
+                                         key='targetVolumeName',
+                                         values=target_volume_names)
+
+        return model_update, volumes_model_update

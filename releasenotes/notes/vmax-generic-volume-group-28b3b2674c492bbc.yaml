@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add consistent group snapshot support to generic volume groups in
+    VMAX driver version 3.0.
