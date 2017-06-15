@@ -193,6 +193,8 @@ class Group(BASE, CinderBase):
     group_snapshot_id = Column(String(36))
     source_group_id = Column(String(36))
 
+    replication_status = Column(String(255))
+
 
 class Cgsnapshot(BASE, CinderBase):
     """Represents a cgsnapshot."""

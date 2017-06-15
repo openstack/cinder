@@ -71,6 +71,11 @@ class ViewBuilder(common.ViewBuilder):
                 group_ref['group']['volumes'] = [volume.id
                                                  for volume in group.volumes]
 
+        # Add replication_status if min version is greater than or equal
+        # to 3.38.
+        if req_version.matches("3.38", None):
+            group_ref['group']['replication_status'] = group.replication_status
+
         return group_ref
 
     def _list_view(self, func, request, groups):

@@ -130,9 +130,11 @@ class VolumeAPI(rpc.RPCAPI):
         3.12 - Adds set_log_levels and get_log_levels
         3.13 - Add initialize_connection_snapshot,
                terminate_connection_snapshot, and remove_export_snapshot.
+        3.14 - Adds enable_replication, disable_replication,
+               failover_replication, and list_replication_targets.
     """
 
-    RPC_API_VERSION = '3.13'
+    RPC_API_VERSION = '3.14'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -459,3 +461,29 @@ class VolumeAPI(rpc.RPCAPI):
     def get_log_levels(self, context, service, log_request):
         cctxt = self._get_cctxt(host=service.host, version='3.12')
         return cctxt.call(context, 'get_log_levels', log_request=log_request)
+
+    @rpc.assert_min_rpc_version('3.14')
+    def enable_replication(self, ctxt, group):
+        cctxt = self._get_cctxt(group.host, version='3.14')
+        cctxt.cast(ctxt, 'enable_replication',
+                   group=group)
+
+    @rpc.assert_min_rpc_version('3.14')
+    def disable_replication(self, ctxt, group):
+        cctxt = self._get_cctxt(group.host, version='3.14')
+        cctxt.cast(ctxt, 'disable_replication',
+                   group=group)
+
+    @rpc.assert_min_rpc_version('3.14')
+    def failover_replication(self, ctxt, group, allow_attached_volume=False,
+                             secondary_backend_id=None):
+        cctxt = self._get_cctxt(group.host, version='3.14')
+        cctxt.cast(ctxt, 'failover_replication',
+                   group=group, allow_attached_volume=allow_attached_volume,
+                   secondary_backend_id=secondary_backend_id)
+
+    @rpc.assert_min_rpc_version('3.14')
+    def list_replication_targets(self, ctxt, group):
+        cctxt = self._get_cctxt(group.host, version='3.14')
+        return cctxt.call(ctxt, 'list_replication_targets',
+                          group=group)

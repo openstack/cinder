@@ -325,3 +325,8 @@ user documentation.
 3.37
 ----
   Support sort backup by "name".
+
+3.38
+----
+  Added enable_replication/disable_replication/failover_replication/
+  list_replication_targets for replication groups (Tiramisu).

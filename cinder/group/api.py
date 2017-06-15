@@ -151,7 +151,8 @@ class API(base.Base):
                   'name': name,
                   'description': description,
                   'volume_type_ids': [t['id'] for t in req_volume_types],
-                  'group_type_id': req_group_type['id']}
+                  'group_type_id': req_group_type['id'],
+                  'replication_status': c_fields.ReplicationStatus.DISABLED}
         group = None
         try:
             group = objects.Group(context=context, **kwargs)
@@ -212,6 +213,7 @@ class API(base.Base):
             'source_group_id': source_group_id,
             'group_type_id': group_type_id,
             'volume_type_ids': volume_type_ids,
+            'replication_status': c_fields.ReplicationStatus.DISABLED
         }
 
         group = None
@@ -898,3 +900,202 @@ class API(base.Base):
                  'status': status}
         gsnapshot.update(field)
         gsnapshot.save()
+
+    def _check_type(self, group):
+        if not vol_utils.is_group_a_replication_group_type(group):
+            msg = _("Group %s is not a replication group type.") % group.id
+            LOG.error(msg)
+            raise exception.InvalidGroupType(reason=msg)
+
+        for vol_type in group.volume_types:
+            if not vol_utils.is_replicated_spec(vol_type.extra_specs):
+                msg = _("Volume type %s does not have 'replication_enabled' "
+                        "spec key set to '<is> True'.") % vol_type.id
+                LOG.error(msg)
+                raise exception.InvalidVolumeType(reason=msg)
+
+    # Replication group API (Tiramisu)
+    @wrap_check_policy
+    def enable_replication(self, context, group):
+        self._check_type(group)
+
+        valid_status = [c_fields.GroupStatus.AVAILABLE]
+        if group.status not in valid_status:
+            params = {'valid': valid_status,
+                      'current': group.status,
+                      'id': group.id}
+            msg = _("Group %(id)s status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot enable replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        valid_rep_status = [c_fields.ReplicationStatus.DISABLED,
+                            c_fields.ReplicationStatus.ENABLED]
+        if group.replication_status not in valid_rep_status:
+            params = {'valid': valid_rep_status,
+                      'current': group.replication_status,
+                      'id': group.id}
+            msg = _("Group %(id)s replication status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot enable replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = objects.VolumeList.get_all_by_generic_group(
+            context.elevated(), group.id)
+
+        valid_status = ['available', 'in-use']
+        for vol in volumes:
+            if vol.status not in valid_status:
+                params = {'valid': valid_status,
+                          'current': vol.status,
+                          'id': vol.id}
+                msg = _("Volume %(id)s status must be %(valid)s, "
+                        "but current status is: %(current)s. "
+                        "Cannot enable replication.") % params
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+                # replication_status could be set to enabled when volume is
+                # created and the mirror is built.
+            if vol.replication_status not in valid_rep_status:
+                params = {'valid': valid_rep_status,
+                          'current': vol.replication_status,
+                          'id': vol.id}
+                msg = _("Volume %(id)s replication status must be %(valid)s, "
+                        "but current status is: %(current)s. "
+                        "Cannot enable replication.") % params
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+            vol.replication_status = c_fields.ReplicationStatus.ENABLING
+            vol.save()
+
+        group.replication_status = c_fields.ReplicationStatus.ENABLING
+        group.save()
+
+        self.volume_rpcapi.enable_replication(context, group)
+
+    @wrap_check_policy
+    def disable_replication(self, context, group):
+        self._check_type(group)
+
+        valid_status = [c_fields.GroupStatus.AVAILABLE,
+                        c_fields.GroupStatus.ERROR]
+        if group.status not in valid_status:
+            params = {'valid': valid_status,
+                      'current': group.status,
+                      'id': group.id}
+            msg = _("Group %(id)s status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot disable replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        valid_rep_status = [c_fields.ReplicationStatus.ENABLED,
+                            c_fields.ReplicationStatus.ERROR]
+        if group.replication_status not in valid_rep_status:
+            params = {'valid': valid_rep_status,
+                      'current': group.replication_status,
+                      'id': group.id}
+            msg = _("Group %(id)s replication status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot disable replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = objects.VolumeList.get_all_by_generic_group(
+            context.elevated(), group.id)
+
+        for vol in volumes:
+            if vol.replication_status not in valid_rep_status:
+                params = {'valid': valid_rep_status,
+                          'current': vol.replication_status,
+                          'id': vol.id}
+                msg = _("Volume %(id)s replication status must be %(valid)s, "
+                        "but current status is: %(current)s. "
+                        "Cannot disable replication.") % params
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+            vol.replication_status = c_fields.ReplicationStatus.DISABLING
+            vol.save()
+
+        group.replication_status = c_fields.ReplicationStatus.DISABLING
+        group.save()
+
+        self.volume_rpcapi.disable_replication(context, group)
+
+    @wrap_check_policy
+    def failover_replication(self, context, group,
+                             allow_attached_volume=False,
+                             secondary_backend_id=None):
+        self._check_type(group)
+
+        valid_status = [c_fields.GroupStatus.AVAILABLE]
+        if group.status not in valid_status:
+            params = {'valid': valid_status,
+                      'current': group.status,
+                      'id': group.id}
+            msg = _("Group %(id)s status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot failover replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        valid_rep_status = [c_fields.ReplicationStatus.ENABLED,
+                            c_fields.ReplicationStatus.FAILED_OVER]
+        if group.replication_status not in valid_rep_status:
+            params = {'valid': valid_rep_status,
+                      'current': group.replication_status,
+                      'id': group.id}
+            msg = _("Group %(id)s replication status must be %(valid)s, "
+                    "but current status is: %(current)s. "
+                    "Cannot failover replication.") % params
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = objects.VolumeList.get_all_by_generic_group(
+            context.elevated(), group.id)
+
+        valid_status = ['available', 'in-use']
+        for vol in volumes:
+            if vol.status not in valid_status:
+                params = {'valid': valid_status,
+                          'current': vol.status,
+                          'id': vol.id}
+                msg = _("Volume %(id)s status must be %(valid)s, "
+                        "but current status is: %(current)s. "
+                        "Cannot failover replication.") % params
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            if vol.status == 'in-use' and not allow_attached_volume:
+                msg = _("Volume %s is attached but allow_attached_volume flag "
+                        "is False. Cannot failover replication.") % vol.id
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            if vol.replication_status not in valid_rep_status:
+                params = {'valid': valid_rep_status,
+                          'current': vol.replication_status,
+                          'id': vol.id}
+                msg = _("Volume %(id)s replication status must be %(valid)s, "
+                        "but current status is: %(current)s. "
+                        "Cannot failover replication.") % params
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+            vol.replication_status = c_fields.ReplicationStatus.FAILING_OVER
+            vol.save()
+
+        group.replication_status = c_fields.ReplicationStatus.FAILING_OVER
+        group.save()
+
+        self.volume_rpcapi.failover_replication(context, group,
+                                                allow_attached_volume,
+                                                secondary_backend_id)
+
+    @wrap_check_policy
+    def list_replication_targets(self, context, group):
+        self._check_type(group)
+
+        return self.volume_rpcapi.list_replication_targets(context, group)

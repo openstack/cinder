@@ -1238,6 +1238,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             self.assertEqual(data[volume.id], volume.replication_status,
                              'id %s' % volume.id)
 
+    def _check_102(self, engine, data):
+        """Test adding replication_status to groups table."""
+        groups = db_utils.get_table(engine, 'groups')
+        self.assertIsInstance(groups.c.replication_status.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

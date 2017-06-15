@@ -34,6 +34,7 @@ LOG = logging.getLogger(__name__)
 
 GROUP_API_VERSION = '3.13'
 GROUP_CREATE_FROM_SRC_API_VERSION = '3.14'
+GROUP_REPLICATION_API_VERSION = '3.38'
 
 
 class GroupsController(wsgi.Controller):
@@ -371,6 +372,111 @@ class GroupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=error.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
+
+    @wsgi.Controller.api_version(GROUP_REPLICATION_API_VERSION)
+    @wsgi.action("enable_replication")
+    def enable_replication(self, req, id, body):
+        """Enables replications for a group."""
+        context = req.environ['cinder.context']
+        if body:
+            if not self.is_valid_body(body, 'enable_replication'):
+                msg = _("Missing required element 'enable_replication' in "
+                        "request body.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        LOG.info('Enable replication group with id: %s.', id,
+                 context=context)
+
+        try:
+            group = self.group_api.get(context, id)
+            self.group_api.enable_replication(context, group)
+            # Not found exception will be handled at the wsgi level
+        except (exception.InvalidGroup, exception.InvalidGroupType,
+                exception.InvalidVolume, exception.InvalidVolumeType) as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        return webob.Response(status_int=202)
+
+    @wsgi.Controller.api_version(GROUP_REPLICATION_API_VERSION)
+    @wsgi.action("disable_replication")
+    def disable_replication(self, req, id, body):
+        """Disables replications for a group."""
+        context = req.environ['cinder.context']
+        if body:
+            if not self.is_valid_body(body, 'disable_replication'):
+                msg = _("Missing required element 'disable_replication' in "
+                        "request body.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        LOG.info('Disable replication group with id: %s.', id,
+                 context=context)
+
+        try:
+            group = self.group_api.get(context, id)
+            self.group_api.disable_replication(context, group)
+            # Not found exception will be handled at the wsgi level
+        except (exception.InvalidGroup, exception.InvalidGroupType,
+                exception.InvalidVolume, exception.InvalidVolumeType) as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        return webob.Response(status_int=202)
+
+    @wsgi.Controller.api_version(GROUP_REPLICATION_API_VERSION)
+    @wsgi.action("failover_replication")
+    def failover_replication(self, req, id, body):
+        """Fails over replications for a group."""
+        context = req.environ['cinder.context']
+        if body:
+            if not self.is_valid_body(body, 'failover_replication'):
+                msg = _("Missing required element 'failover_replication' in "
+                        "request body.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+            grp_body = body['failover_replication']
+            try:
+                allow_attached = strutils.bool_from_string(
+                    grp_body.get('allow_attached_volume', False),
+                    strict=True)
+            except ValueError:
+                msg = (_("Invalid value '%s' for allow_attached_volume flag.")
+                       % grp_body)
+                raise exc.HTTPBadRequest(explanation=msg)
+            secondary_backend_id = grp_body.get('secondary_backend_id')
+
+        LOG.info('Failover replication group with id: %s.', id,
+                 context=context)
+
+        try:
+            group = self.group_api.get(context, id)
+            self.group_api.failover_replication(context, group, allow_attached,
+                                                secondary_backend_id)
+            # Not found exception will be handled at the wsgi level
+        except (exception.InvalidGroup, exception.InvalidGroupType,
+                exception.InvalidVolume, exception.InvalidVolumeType) as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        return webob.Response(status_int=202)
+
+    @wsgi.Controller.api_version(GROUP_REPLICATION_API_VERSION)
+    @wsgi.action("list_replication_targets")
+    def list_replication_targets(self, req, id, body):
+        """List replication targets for a group."""
+        context = req.environ['cinder.context']
+        if body:
+            if not self.is_valid_body(body, 'list_replication_targets'):
+                msg = _("Missing required element 'list_replication_targets' "
+                        "in request body.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        LOG.info('List replication targets for group with id: %s.', id,
+                 context=context)
+
+        # Not found exception will be handled at the wsgi level
+        group = self.group_api.get(context, id)
+        replication_targets = self.group_api.list_replication_targets(
+            context, group)
+
+        return replication_targets
 
 
 def create_resource():

@@ -105,9 +105,11 @@ class ReplicationStatus(BaseCinderEnum):
     FAILING_OVER = 'failing-over'
     FAILOVER_ERROR = 'failover-error'
     FAILED_OVER = 'failed-over'
+    ENABLING = 'enabling'
+    DISABLING = 'disabling'
 
     ALL = (ERROR, ENABLED, DISABLED, NOT_CAPABLE, FAILOVER_ERROR, FAILING_OVER,
-           FAILED_OVER)
+           FAILED_OVER, ENABLING, DISABLING)
 
 
 class ReplicationStatusField(BaseEnumField):
