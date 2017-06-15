@@ -216,7 +216,7 @@ class AttachmentsController(wsgi.Controller):
                     "mode": None|"rw"|"ro",
                 }
             }
-
+        }
         """
         context = req.environ['cinder.context']
         attachment_ref = (
