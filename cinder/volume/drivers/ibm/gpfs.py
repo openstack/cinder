@@ -39,6 +39,7 @@ from cinder.volume import driver
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.san import san
+from cinder.volume import utils as volume_utils
 
 GPFS_CLONE_MIN_RELEASE = 1200
 GPFS_ENC_MIN_RELEASE = 1404
@@ -771,18 +772,20 @@ class GPFSDriver(driver.CloneableImageVD,
         """Return the local path for the specified volume."""
         # Check if the volume is part of a consistency group and return
         # the local_path accordingly.
-        if volume['group_id'] is not None:
-            cgname = "consisgroup-%s" % volume['group_id']
-            volume_path = os.path.join(
-                self.configuration.gpfs_mount_point_base,
-                cgname,
-                volume['name']
-            )
-        else:
-            volume_path = os.path.join(
-                self.configuration.gpfs_mount_point_base,
-                volume['name']
-            )
+        if volume.group_id is not None:
+            if volume_utils.is_group_a_cg_snapshot_type(volume.group):
+                cgname = "consisgroup-%s" % volume.group_id
+                volume_path = os.path.join(
+                    self.configuration.gpfs_mount_point_base,
+                    cgname,
+                    volume.name
+                )
+                return volume_path
+
+        volume_path = os.path.join(
+            self.configuration.gpfs_mount_point_base,
+            volume.name
+        )
         return volume_path
 
     def _get_gpfs_encryption_status(self):
@@ -858,6 +861,7 @@ class GPFSDriver(driver.CloneableImageVD,
                                   'root_path': gpfs_base})
 
         data['consistencygroup_support'] = 'True'
+        data['consistent_group_snapshot_enabled'] = True
 
         if self._encryption_state.lower() == 'yes':
             data['gpfs_encryption_rest'] = 'True'
@@ -1120,7 +1124,7 @@ class GPFSDriver(driver.CloneableImageVD,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def create_consistencygroup(self, context, group):
+    def _create_consistencygroup(self, context, group):
         """Create consistency group of GPFS volumes."""
         cgname = "consisgroup-%s" % group['id']
         fsdev = self._gpfs_device
@@ -1156,10 +1160,10 @@ class GPFSDriver(driver.CloneableImageVD,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update
 
-    def delete_consistencygroup(self, context, group, volumes):
+    def _delete_consistencygroup(self, context, group, volumes):
         """Delete consistency group of GPFS volumes."""
         cgname = "consisgroup-%s" % group['id']
         fsdev = self._gpfs_device
@@ -1208,9 +1212,9 @@ class GPFSDriver(driver.CloneableImageVD,
 
         return None, None
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def _create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Create snapshot of a consistency group of GPFS volumes."""
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         snapshots_model_update = []
 
         try:
@@ -1218,7 +1222,7 @@ class GPFSDriver(driver.CloneableImageVD,
                 self.create_snapshot(snapshot)
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
-                fields.ConsistencyGroupStatus.ERROR)
+                fields.GroupStatus.ERROR)
             LOG.error("Failed to create the snapshot %(snap)s of "
                       "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot.name, 'exception': err})
@@ -1230,9 +1234,9 @@ class GPFSDriver(driver.CloneableImageVD,
 
         return model_update, snapshots_model_update
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def _delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Delete snapshot of a consistency group of GPFS volumes."""
-        model_update = {'status': fields.ConsistencyGroupStatus.DELETED}
+        model_update = {'status': fields.GroupStatus.DELETED}
         snapshots_model_update = []
 
         try:
@@ -1240,7 +1244,7 @@ class GPFSDriver(driver.CloneableImageVD,
                 self.delete_snapshot(snapshot)
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
-                fields.ConsistencyGroupStatus.ERROR_DELETING)
+                fields.GroupStatus.ERROR_DELETING)
             LOG.error("Failed to delete the snapshot %(snap)s of "
                       "CGSnapshot. Exception: %(exception)s.",
                       {'snap': snapshot.name, 'exception': err})
@@ -1252,19 +1256,126 @@ class GPFSDriver(driver.CloneableImageVD,
 
         return model_update, snapshots_model_update
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes=None, remove_volumes=None):
+    def _update_consistencygroup(self, context, group,
+                                 add_volumes=None, remove_volumes=None):
         msg = _('Updating a consistency group is not supported.')
         LOG.error(msg)
         raise exception.GPFSDriverUnsupportedOperation(msg=msg)
 
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
+    def _create_consistencygroup_from_src(self, context, group, volumes,
+                                          cgsnapshot=None, snapshots=None,
+                                          source_cg=None, source_vols=None):
         msg = _('Creating a consistency group from any source consistency '
                 'group or consistency group snapshot is not supported.')
         LOG.error(msg)
         raise exception.GPFSDriverUnsupportedOperation(msg=msg)
+
+    def create_group(self, ctxt, group):
+        """Creates a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be created.
+        :returns: model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._create_consistencygroup(ctxt, group)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def delete_group(self, ctxt, group, volumes):
+        """Deletes a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be deleted.
+        :param volumes: a list of Volume objects in the group.
+        :returns: model_update, volumes_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._delete_consistencygroup(ctxt, group, volumes)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def update_group(self, ctxt, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object of the group to be updated.
+        :param add_volumes: a list of Volume objects to be added.
+        :param remove_volumes: a list of Volume objects to be removed.
+        :returns: model_update, add_volumes_update, remove_volumes_update
+        """
+
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._update_consistencygroup(ctxt,
+                                                 group,
+                                                 add_volumes,
+                                                 remove_volumes)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
+        """Creates a group_snapshot.
+
+        :param ctxt: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be created.
+        :param snapshots: a list of Snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._create_cgsnapshot(ctxt, group_snapshot, snapshots)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def delete_group_snapshot(self, ctxt, group_snapshot, snapshots):
+        """Deletes a group_snapshot.
+
+        :param ctxt: the context of the caller.
+        :param group_snapshot: the GroupSnapshot object to be deleted.
+        :param snapshots: a list of snapshot objects in the group_snapshot.
+        :returns: model_update, snapshots_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._delete_cgsnapshot(ctxt, group_snapshot, snapshots)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
+
+    def create_group_from_src(self, ctxt, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param ctxt: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of Volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
+        :returns: model_update, volumes_model_update
+        """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._create_consistencygroup_from_src(ctxt,
+                                                          group,
+                                                          volumes,
+                                                          group_snapshot,
+                                                          snapshots,
+                                                          source_group,
+                                                          source_vols)
+
+        # If it wasn't a consistency group request ignore it and we'll rely on
+        # the generic group implementation.
+        raise NotImplementedError()
 
 
 @interface.volumedriver
@@ -1467,18 +1578,18 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
                                   'root_path': gpfs_base})
 
         data['consistencygroup_support'] = 'True'
+        data['consistent_group_snapshot_enabled'] = True
         self._stats = data
         LOG.debug("Exit _update_volume_stats.")
 
     def _get_volume_path(self, volume):
         """Returns remote GPFS path for the given volume."""
         export_path = self.configuration.gpfs_mount_point_base
-        if volume['group_id'] is not None:
-            cgname = "consisgroup-%s" % volume['group_id']
-            volume_path = os.path.join(export_path, cgname, volume['name'])
-        else:
-            volume_path = os.path.join(export_path, volume['name'])
-        return volume_path
+        if volume.group_id is not None:
+            if volume_utils.is_group_a_cg_snapshot_type(volume.group):
+                cgname = "consisgroup-%s" % volume.group_id
+                return os.path.join(export_path, cgname, volume.name)
+        return os.path.join(export_path, volume.name)
 
     def local_path(self, volume):
         """Returns the local path for the specified volume."""
@@ -1487,12 +1598,11 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
 
         # Check if the volume is part of a consistency group and return
         # the local_path accordingly.
-        if volume['group_id'] is not None:
-            cgname = "consisgroup-%s" % volume['group_id']
-            volume_path = os.path.join(base_local_path, cgname, volume['name'])
-        else:
-            volume_path = os.path.join(base_local_path, volume['name'])
-        return volume_path
+        if volume.group_id is not None:
+            if volume_utils.is_group_a_cg_snapshot_type(volume.group):
+                cgname = "consisgroup-%s" % volume.group_id
+                return os.path.join(base_local_path, cgname, volume.name)
+        return os.path.join(base_local_path, volume.name)
 
     def _get_snapshot_path(self, snapshot):
         """Returns remote GPFS path for the given snapshot."""
