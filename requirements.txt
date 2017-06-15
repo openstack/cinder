@@ -6,23 +6,23 @@ pbr!=2.1.0,>=2.0.0 # Apache-2.0
 Babel!=2.4.0,>=2.3.4 # BSD
 decorator>=3.4.0 # BSD
 enum34;python_version=='2.7' or python_version=='2.6' or python_version=='3.3' # BSD
-eventlet!=0.18.3,<0.21.0,>=0.18.2 # MIT
+eventlet!=0.18.3,!=0.20.1,<0.21.0,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
 httplib2>=0.7.5 # MIT
 iso8601>=0.1.11 # MIT
 ipaddress>=1.0.7;python_version<'3.3' # PSF
-keystoneauth1>=2.20.0 # Apache-2.0
+keystoneauth1>=2.21.0 # Apache-2.0
 keystonemiddleware>=4.12.0 # Apache-2.0
 lxml!=3.7.0,>=2.3 # BSD
 oauth2client!=4.0.0,>=1.5.0 # Apache-2.0
-oslo.config>=4.0.0 # Apache-2.0
+oslo.config!=4.3.0,!=4.4.0,>=4.0.0 # Apache-2.0
 oslo.concurrency>=3.8.0 # Apache-2.0
 oslo.context>=2.14.0 # Apache-2.0
 oslo.db>=4.21.1 # Apache-2.0
 oslo.log>=3.22.0 # Apache-2.0
 oslo.messaging!=5.25.0,>=5.24.2 # Apache-2.0
 oslo.middleware>=3.27.0 # Apache-2.0
-oslo.policy>=1.17.0 # Apache-2.0
+oslo.policy>=1.23.0 # Apache-2.0
 oslo.privsep!=1.17.0,>=1.9.0 # Apache-2.0
 oslo.reports>=0.6.0 # Apache-2.0
 oslo.rootwrap>=5.0.0 # Apache-2.0
@@ -42,7 +42,7 @@ python-keystoneclient>=3.8.0 # Apache-2.0
 python-novaclient>=9.0.0 # Apache-2.0
 python-swiftclient>=3.2.0 # Apache-2.0
 pytz>=2013.6 # MIT
-requests!=2.12.2,!=2.13.0,>=2.10.0 # Apache-2.0
+requests>=2.14.2 # Apache-2.0
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
 Routes>=2.3.1 # MIT
 taskflow>=2.7.0 # Apache-2.0
