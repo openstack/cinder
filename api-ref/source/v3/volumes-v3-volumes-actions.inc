@@ -312,6 +312,10 @@ Change type of existing volume. Specify the ``os-retype`` action in the request 
 Change the volume type of existing volume, Cinder may migrate the volume to
 proper volume host according to the new volume type.
 
+Policy defaults enable only users with the administrative role or the owner of
+the volume to perform this operation. Cloud providers can change these
+permissions through the policy.json file.
+
 Normal response codes: 202
 
 

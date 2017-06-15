@@ -1187,8 +1187,13 @@ metadata_items:
   type: integer
 migration_policy:
   description: |
-    Specify if make migration when retyping volume, the value is 'on-demand'
-    or 'never'.
+    Specify if the volume should be migrated when it is re-typed.
+    Possible values are ``on-demand`` or ``never``. If not specified, the
+    default is ``never``.
+
+    .. note:: If the volume is attached to a server instance and will be
+      migrated, then by default policy only users with the administrative role
+      should attempt the retype operation.
   in: body
   required: false
   type: string
