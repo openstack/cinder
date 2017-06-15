@@ -4159,7 +4159,6 @@ class VolumeManager(manager.CleanableManager,
         has_shared_connection = self._connection_terminate(context,
                                                            vref,
                                                            attachment)
-        self.driver.detach_volume(context, vref, attachment)
         try:
             LOG.debug('Deleting attachment %(attachment_id)s.',
                       {'attachment_id': attachment.id},
