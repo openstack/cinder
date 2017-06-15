@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    Modify default lvm_type setting from thick to auto.  This will result in
+    Cinder preferring thin on init, if there are no LV's in the VG it will
+    create a thin-pool and use thin.  If there are LV's and no thin-pool
+    it will continue using thick.

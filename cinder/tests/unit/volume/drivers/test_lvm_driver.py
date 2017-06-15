@@ -98,11 +98,13 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
     @mock.patch.object(volutils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
-    def test_check_for_setup_error(self, vgs):
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lvm_version',
+                return_value=(2, 2, 100))
+    def test_check_for_setup_error(self, _mock_get_version, vgs):
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
                                        False,
                                        None,
-                                       'default')
+                                       'auto')
 
         configuration = conf.Configuration(fake_opt, 'fake_group')
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
