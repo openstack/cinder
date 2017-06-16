@@ -582,6 +582,35 @@ class MStorageISMCLI(object):
                 if force_delete:
                     self.unbind(ldname)
 
+    def lvbind(self, bvname, lvname, lvnumber):
+        """Link Volume create."""
+        cmd = ('iSMcfg lvbind -bvname %(bvname)s '
+               '-lvn %(lvnumber)d -lvname %(lvname)s'
+               % {'bvname': bvname,
+                  'lvnumber': lvnumber,
+                  'lvname': lvname})
+        self._execute(cmd)
+
+    def lvunbind(self, lvname):
+        """Link Volume delete."""
+        cmd = ('iSMcfg lvunbind -ldname %(lvname)s'
+               % {'lvname': lvname})
+        self._execute(cmd)
+
+    def lvlink(self, svname, lvname):
+        """Link to snapshot volume."""
+        cmd = ('iSMsc_link -lv %(lvname)s -lvflg ld '
+               '-sv %(svname)s -svflg ld -lvacc ro'
+               % {'lvname': lvname,
+                  'svname': svname})
+        self._execute(cmd)
+
+    def lvunlink(self, lvname):
+        """Unlink from snapshot volume."""
+        cmd = ('iSMsc_unlink -lv %(lvname)s -lvflg ld'
+               % {'lvname': lvname})
+        self._execute(cmd)
+
 
 class UnpairWait(object):
     error_updates = {'status': 'error',

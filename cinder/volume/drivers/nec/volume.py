@@ -47,6 +47,19 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
     def terminate_connection(self, volume, connector, **kwargs):
         return self.iscsi_terminate_connection(volume, connector)
 
+    def create_export_snapshot(self, context, snapshot, connector):
+        return self.iscsi_do_export_snapshot(context, snapshot, connector)
+
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        return self.iscsi_initialize_connection_snapshot(snapshot,
+                                                         connector,
+                                                         **kwargs)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        return self.iscsi_terminate_connection_snapshot(snapshot,
+                                                        connector,
+                                                        **kwargs)
+
 
 @interface.volumedriver
 class MStorageFCDriver(volume_helper.MStorageDSVDriver,
@@ -74,3 +87,16 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
     @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         return self.fc_terminate_connection(volume, connector)
+
+    def create_export_snapshot(self, context, snapshot, connector):
+        return self.fc_do_export_snapshot(context, snapshot, connector)
+
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        return self.fc_initialize_connection_snapshot(snapshot,
+                                                      connector,
+                                                      **kwargs)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        return self.fc_terminate_connection_snapshot(snapshot,
+                                                     connector,
+                                                     **kwargs)
