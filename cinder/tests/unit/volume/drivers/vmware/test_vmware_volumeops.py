@@ -1201,49 +1201,61 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(mock.sentinel.uuid, reconfig_spec.instanceUuid)
         reconfigure_backing.assert_called_once_with(backing, reconfig_spec)
 
-    def test_change_backing_profile(self):
-        # Test change to empty profile.
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_device')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_reconfigure_backing')
+    def test_change_backing_profile_to_empty_profile(
+            self, reconfigure_backing, get_disk_device):
         reconfig_spec = mock.Mock()
         empty_profile_spec = mock.sentinel.empty_profile_spec
+        disk_spec = mock.Mock()
         self.session.vim.client.factory.create.side_effect = [
-            reconfig_spec, empty_profile_spec]
+            empty_profile_spec, reconfig_spec, disk_spec]
 
-        task = mock.sentinel.task
-        self.session.invoke_api.return_value = task
+        disk_device = mock.sentinel.disk_device
+        get_disk_device.return_value = disk_device
 
         backing = mock.sentinel.backing
-        unique_profile_id = mock.sentinel.unique_profile_id
-        profile_id = mock.Mock(uniqueId=unique_profile_id)
-        self.vops.change_backing_profile(backing, profile_id)
+        self.vops.change_backing_profile(backing, None)
 
+        self.assertEqual('profile', empty_profile_spec.dynamicType)
         self.assertEqual([empty_profile_spec], reconfig_spec.vmProfile)
-        self.session.invoke_api.assert_called_once_with(self.session.vim,
-                                                        "ReconfigVM_Task",
-                                                        backing,
-                                                        spec=reconfig_spec)
-        self.session.wait_for_task.assert_called_once_with(task)
+        get_disk_device.assert_called_once_with(backing)
+        self.assertEqual(disk_device, disk_spec.device)
+        self.assertEqual('edit', disk_spec.operation)
+        self.assertEqual([empty_profile_spec], disk_spec.profile)
+        self.assertEqual([disk_spec], reconfig_spec.deviceChange)
+        reconfigure_backing.assert_called_once_with(backing, reconfig_spec)
 
-        # Test change to non-empty profile.
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_device')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_reconfigure_backing')
+    def test_change_backing_profile(
+            self, reconfigure_backing, get_disk_device):
+        reconfig_spec = mock.Mock()
         profile_spec = mock.Mock()
+        disk_spec = mock.Mock()
         self.session.vim.client.factory.create.side_effect = [
-            reconfig_spec, profile_spec]
+            profile_spec, reconfig_spec, disk_spec]
 
-        self.session.invoke_api.reset_mock()
-        self.session.wait_for_task.reset_mock()
+        disk_device = mock.sentinel.disk_device
+        get_disk_device.return_value = disk_device
 
+        backing = mock.sentinel.backing
+        unique_id = mock.sentinel.unique_id
+        profile_id = mock.Mock(uniqueId=unique_id)
         self.vops.change_backing_profile(backing, profile_id)
 
+        self.assertEqual(unique_id, profile_spec.profileId)
         self.assertEqual([profile_spec], reconfig_spec.vmProfile)
-        self.assertEqual(unique_profile_id,
-                         reconfig_spec.vmProfile[0].profileId)
-        self.session.invoke_api.assert_called_once_with(self.session.vim,
-                                                        "ReconfigVM_Task",
-                                                        backing,
-                                                        spec=reconfig_spec)
-        self.session.wait_for_task.assert_called_once_with(task)
-
-        # Clear side effects.
-        self.session.vim.client.factory.create.side_effect = None
+        get_disk_device.assert_called_once_with(backing)
+        self.assertEqual(disk_device, disk_spec.device)
+        self.assertEqual('edit', disk_spec.operation)
+        self.assertEqual([profile_spec], disk_spec.profile)
+        self.assertEqual([disk_spec], reconfig_spec.deviceChange)
+        reconfigure_backing.assert_called_once_with(backing, reconfig_spec)
 
     def test_delete_file(self):
         file_mgr = mock.sentinel.file_manager
