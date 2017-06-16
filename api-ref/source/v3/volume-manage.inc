@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Volume manage extension (os-volume-manage)
-==========================================
+Volume manage extension (manageable_volumes)
+============================================
 
 Creates or lists volumes by using existing storage instead of allocating new
 storage.
@@ -10,7 +10,7 @@ storage.
 Manage an existing volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v3/{project_id}/os-volume-manage
+.. rest_method::  POST /v3/{project_id}/manageable_volumes
 
 Creates a Block Storage volume by using existing storage rather than allocating new storage.
 
@@ -60,7 +60,7 @@ Request Example
 List summary of volumes available to manage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/os-volume-manage
+.. rest_method::  GET /v3/{project_id}/manageable_volumes
 
 Search a volume backend and list summary of volumes which are available to
 manage.
@@ -104,7 +104,7 @@ Response Example
 List detail of volumes available to manage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v3/{project_id}/os-volume-manage/detail
+.. rest_method::  GET /v3/{project_id}/manageable_volumes/detail
 
 Search a volume backend and list detail of volumes which are available to
 manage.
