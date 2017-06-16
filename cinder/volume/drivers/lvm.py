@@ -51,7 +51,7 @@ volume_opts = [
                help='If >0, create LVs with multiple mirrors. Note that '
                     'this requires lvm_mirrors + 2 PVs with available space'),
     cfg.StrOpt('lvm_type',
-               default='default',
+               default='auto',
                choices=['default', 'thin', 'auto'],
                help='Type of LVM volumes to deploy; (default, thin, or auto). '
                     'Auto defaults to thin if thin is supported.'),
