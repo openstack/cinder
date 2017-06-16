@@ -35,9 +35,9 @@ Below you will find a brief explanation of the different components.
                                      |
                                      |
                     cinderclient     |
-                   /             \   |
- [ Web Dashboard ]-               -[ api ] -- < AMQP > -- [ scheduler ] -- [ volume ] -- ( iSCSI )
-                   \             /   |
+                   /             \   |                   /- [ scheduler ] -- [ volume ] -- ( iSCSI )
+ [ Web Dashboard ]-               -[ api ] -- < AMQP > --
+                   \             /   |                   \- [ backup ]
                     novaclient       |
                                      |
                                      |
@@ -51,3 +51,4 @@ Below you will find a brief explanation of the different components.
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
 * scheduler: decides which host gets each volume.
 * volume: manages dynamically attachable block devices.
+* backup: manages backups of block storage devices.
