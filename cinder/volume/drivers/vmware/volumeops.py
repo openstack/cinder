@@ -1220,7 +1220,6 @@ class VMwareVolumeOps(object):
 
         if profile_id is None:
             vm_profile = cf.create('ns0:VirtualMachineEmptyProfileSpec')
-            vm_profile.dynamicType = 'profile'
         else:
             vm_profile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
             vm_profile.profileId = profile_id.uniqueId
