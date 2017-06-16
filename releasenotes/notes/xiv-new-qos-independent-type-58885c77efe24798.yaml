@@ -1,0 +1,7 @@
+---
+features:
+  - Added independent and shared types for qos classes in XIV & A9000.
+    Shared type enables to share bandwidth and IO rates between volumes
+    of the same class. Independent type gives each volume the same
+    bandwidth and IO rates without being affected by other volumes in
+    the same qos class.
