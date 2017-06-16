@@ -2479,6 +2479,28 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual('deleting', volume.status)
 
+    def test_cascade_delete_volume_with_snapshots_in_other_project(self):
+        """Test volume deletion with dependent snapshots in other project."""
+        volume = tests_utils.create_volume(self.user_context,
+                                           **self.volume_params)
+        snapshot = create_snapshot(volume['id'], size=volume['size'],
+                                   project_id=fake.PROJECT2_ID)
+        self.volume.create_snapshot(self.context, snapshot)
+        self.assertEqual(
+            snapshot.id, objects.Snapshot.get_by_id(self.context,
+                                                    snapshot.id).id)
+
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.delete,
+                          self.user_context,
+                          volume,
+                          cascade=True)
+
     @mock.patch.object(driver.BaseVD, 'get_backup_device')
     @mock.patch.object(driver.BaseVD, 'secure_file_operations_enabled')
     def test_get_backup_device(self, mock_secure, mock_get_backup):

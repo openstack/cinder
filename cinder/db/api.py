@@ -409,6 +409,10 @@ def volume_qos_allows_retype(new_vol_type):
     return IMPL.volume_qos_allows_retype(new_vol_type)
 
 
+def volume_has_other_project_snp_filter():
+    return IMPL.volume_has_other_project_snp_filter()
+
+
 ####################
 
 
