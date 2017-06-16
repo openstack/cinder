@@ -891,6 +891,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_lun_attr', mock.Mock(
             return_value=None))
         self.library.zapi_client = mock.Mock()
+        self.library.lun_table = fake.LUN_TABLE
         self.mock_object(self.library, 'zapi_client')
 
         self.library._delete_lun(fake.LUN_NAME)
@@ -901,6 +902,40 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(0,
                          self.zapi_client.
                          mark_qos_policy_group_for_deletion.call_count)
+
+    @mock.patch.object(block_base, 'LOG', mock.Mock())
+    def test_delete_lun_missing_lun(self):
+        mock_get_lun_attr = self.mock_object(self.library, '_get_lun_attr')
+        mock_get_lun_attr.return_value = fake.LUN_METADATA
+        self.library.zapi_client = mock.Mock()
+        error = netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+        self.mock_object(self.library.zapi_client, 'destroy_lun',
+                         side_effect=error)
+        self.library.lun_table = {fake.LUN_NAME: None}
+
+        self.library._delete_lun(fake.LUN_NAME)
+
+        mock_get_lun_attr.assert_called_once_with(
+            fake.LUN_NAME, 'metadata')
+        self.library.zapi_client.destroy_lun.assert_called_once_with(fake.PATH)
+        block_base.LOG.error.assert_not_called()
+        block_base.LOG.warning.assert_called_once()
+        self.assertFalse(self.library.lun_table)
+
+    @mock.patch.object(block_base, 'LOG', mock.Mock())
+    def test_delete_lun_client_exception(self):
+        mock_get_lun_attr = self.mock_object(self.library, '_get_lun_attr')
+        mock_get_lun_attr.return_value = fake.LUN_METADATA
+        self.library.zapi_client = mock.Mock()
+        self.mock_object(self.library.zapi_client, 'destroy_lun',
+                         side_effect=netapp_api.NaApiError)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library._delete_lun,
+                          fake.LUN_NAME)
+
+        block_base.LOG.error.assert_not_called()
+        block_base.LOG.warning.assert_not_called()
 
     def test_delete_snapshot(self):
         mock_delete_lun = self.mock_object(self.library, '_delete_lun')
