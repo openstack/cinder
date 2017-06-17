@@ -55,8 +55,8 @@ EXTRA_EXMODS = []
 def init(conf):
     global TRANSPORT, NOTIFICATION_TRANSPORT, NOTIFIER
     exmods = get_allowed_exmods()
-    TRANSPORT = messaging.get_transport(conf,
-                                        allowed_remote_exmods=exmods)
+    TRANSPORT = messaging.get_rpc_transport(conf,
+                                            allowed_remote_exmods=exmods)
     NOTIFICATION_TRANSPORT = messaging.get_notification_transport(
         conf,
         allowed_remote_exmods=exmods)
