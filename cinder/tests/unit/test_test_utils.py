@@ -39,5 +39,4 @@ class TestUtilsTestCase(test.TestCase):
         self.assertEqual([], ctxt.service_catalog)
         self.assertEqual('no', ctxt.read_deleted)
 
-        self.assertTrue(ctxt.read_deleted)
         self.assertTrue(ctxt.is_admin)

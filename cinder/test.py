@@ -346,6 +346,13 @@ class TestCase(testtools.TestCase):
             self.assertEqual(call[0], posargs[0])
             self.assertEqual(call[1], posargs[2])
 
+    def assertTrue(self, x, *args, **kwargs):
+        if isinstance(x, six.string_types):
+            raise AssertionError("%s (%s) is a string. Use a more "
+                                 "specific assertion such as assertEqual." %
+                                 (x, type(x)))
+        super(TestCase, self).assertTrue(x, *args, **kwargs)
+
 
 class ModelsObjectComparatorMixin(object):
     def _dict_from_object(self, obj, ignored_keys):

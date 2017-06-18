@@ -536,7 +536,7 @@ class IBMStorageVolumeDriverTest(test.TestCase):
         self.driver.create_volume(volume)
         ret = self.driver.retype(ctxt, volume, new_type, diff, host)
         self.assertTrue(ret)
-        self.assertTrue(volume['easytier'])
+        self.assertEqual('1', volume['easytier'])
 
     def test_retype_fail_on_exception(self):
         """Test that retype fails on exception."""
