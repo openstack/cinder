@@ -216,10 +216,6 @@ class VolumeManager(manager.CleanableManager,
                         "configuration to the new path.", volume_driver)
             volume_driver = MAPPING[volume_driver]
 
-        vol_db_empty = self._set_voldb_empty_at_startup_indicator(
-            context.get_admin_context())
-        LOG.debug("Cinder Volume DB check: vol_db_empty=%s", vol_db_empty)
-
         # We pass the current setting for service.active_backend_id to
         # the driver on init, in case there was a restart or something
         curr_active_backend_id = None
@@ -251,7 +247,6 @@ class VolumeManager(manager.CleanableManager,
             db=self.db,
             host=self.host,
             cluster_name=self.cluster,
-            is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
 
         if self.cluster and not self.driver.SUPPORTS_ACTIVE_ACTIVE:
@@ -340,23 +335,6 @@ class VolumeManager(manager.CleanableManager,
 
         self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
         self.stats['allocated_capacity_gb'] += volume['size']
-
-    def _set_voldb_empty_at_startup_indicator(self, ctxt):
-        """Determine if the Cinder volume DB is empty.
-
-        A check of the volume DB is done to determine whether it is empty or
-        not at this point.
-
-        :param ctxt: our working context
-        """
-        vol_entries = self.db.volume_get_all(ctxt, None, 1, filters=None)
-
-        if len(vol_entries) == 0:
-            LOG.info("Determined volume DB was empty at startup.")
-            return True
-        else:
-            LOG.info("Determined volume DB was not empty at startup.")
-            return False
 
     def _sync_provider_info(self, ctxt, volumes, snapshots):
         # NOTE(jdg): For now this just updates provider_id, we can add more

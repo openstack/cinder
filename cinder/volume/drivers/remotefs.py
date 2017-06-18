@@ -29,6 +29,7 @@ from oslo_utils import units
 import six
 
 from cinder import compute
+from cinder import context
 from cinder import coordination
 from cinder import db
 from cinder import exception
@@ -148,7 +149,7 @@ class RemoteFSDriver(driver.BaseVD):
         self.shares = {}
         self._mounted_shares = []
         self._execute_as_root = True
-        self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
+        self._is_voldb_empty_at_startup = self._check_if_volume_db_is_empty()
         self._supports_encryption = False
 
         # We let the drivers inheriting this specify
@@ -158,6 +159,32 @@ class RemoteFSDriver(driver.BaseVD):
         if self.configuration:
             self.configuration.append_config_values(nas_opts)
             self.configuration.append_config_values(volume_opts)
+
+    def _set_voldb_empty_at_startup_indicator(self, ctxt):
+        """Determine if the Cinder volume DB is empty.
+
+        A check of the volume DB is done to determine whether it is empty or
+        not at this point.
+
+        :param ctxt: our working context
+        """
+        if not self.db:
+            return False
+        vol_entries = self.db.volume_get_all(ctxt, None, 1, filters=None)
+
+        if len(vol_entries) == 0:
+            LOG.info("Determined volume DB was empty at startup.")
+            return True
+        else:
+            LOG.info("Determined volume DB was not empty at startup.")
+            return False
+
+    def _check_if_volume_db_is_empty(self):
+        vol_db_empty = self._set_voldb_empty_at_startup_indicator(
+            context.get_admin_context())
+        LOG.debug("Cinder Volume DB check: vol_db_empty=%s", vol_db_empty)
+
+        return vol_db_empty
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
