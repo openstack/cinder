@@ -186,7 +186,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
 
 
 Response Parameters
@@ -235,7 +235,7 @@ Request
 
    - metadata: metadata
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
 
 Request Example
 ---------------
@@ -269,7 +269,7 @@ Request
 
    - metadata: metadata
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
 
 Request Example
 ---------------
@@ -303,7 +303,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
 
 
 Response Parameters
@@ -351,7 +351,7 @@ Request
    - description: description
    - name: name
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
 
 Request Example
 ---------------
@@ -399,4 +399,103 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_path
+
+
+
+
+Show a snapshot's metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v3/{project_id}/snapshot/{snapshot_id}/metadata/{key}
+
+Shows metadata for a snapshot for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - snapshot_id: snapshot_id_path
+   - key: key_2
+
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - meta: meta_1
+
+
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/snapshot-metadata-show-key-response.json
+   :language: javascript
+
+
+
+Delete a snapshot's metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  DELETE /v3/{project_id}/snapshots/{snapshot_id}/metadata/{key}
+
+Deletes metadata for a snapshot.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - snapshot_id: snapshot_id_path
+   - key: key_1
+
+
+Update a snapshot's metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/snapshots/{snapshot_id}/metadata/{key}
+
+Update metadata for a snapshot for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - snapshot_id: snapshot_id_path
+   - key: key_3
+   - meta: meta_1
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/snapshot-metadata-update-key-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - meta: meta_1
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/snapshot-metadata-update-key-response.json
+   :language: javascript
