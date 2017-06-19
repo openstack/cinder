@@ -266,8 +266,8 @@ class TSMBackupDriver(driver.BackupDriver):
 
     DRIVER_VERSION = '1.0.0'
 
-    def __init__(self, context, db_driver=None):
-        super(TSMBackupDriver, self).__init__(context, db_driver)
+    def __init__(self, context, db=None):
+        super(TSMBackupDriver, self).__init__(context, db)
         self.tsm_password = CONF.backup_tsm_password
         self.volume_prefix = CONF.backup_tsm_volume_prefix
 

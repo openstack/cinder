@@ -119,7 +119,7 @@ def gcs_logger(func):
 class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
 
-    def __init__(self, context, db_driver=None):
+    def __init__(self, context, db=None):
         self.check_gcs_options()
         backup_bucket = CONF.backup_gcs_bucket
         backup_credential = CONF.backup_gcs_credential_file
@@ -131,7 +131,7 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                  sha_block_size_bytes,
                                                  backup_bucket,
                                                  enable_progress_timer,
-                                                 db_driver)
+                                                 db)
         credentials = client.GoogleCredentials.from_stream(backup_credential)
         self.reader_chunk_size = CONF.backup_gcs_reader_chunk_size
         self.writer_chunk_size = CONF.backup_gcs_writer_chunk_size

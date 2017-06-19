@@ -90,8 +90,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
     def __init__(self, context, chunk_size_bytes, sha_block_size_bytes,
                  backup_default_container, enable_progress_timer,
-                 db_driver=None):
-        super(ChunkedBackupDriver, self).__init__(context, db_driver)
+                 db=None):
+        super(ChunkedBackupDriver, self).__init__(context, db)
         self.chunk_size_bytes = chunk_size_bytes
         self.sha_block_size_bytes = sha_block_size_bytes
         self.backup_default_container = backup_default_container

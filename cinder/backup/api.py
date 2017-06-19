@@ -67,10 +67,10 @@ def check_policy(context, action):
 class API(base.Base):
     """API for interacting with the volume backup manager."""
 
-    def __init__(self, db_driver=None):
+    def __init__(self, db=None):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_api = cinder.volume.API()
-        super(API, self).__init__(db_driver)
+        super(API, self).__init__(db)
 
     def get(self, context, backup_id):
         check_policy(context, 'get')
