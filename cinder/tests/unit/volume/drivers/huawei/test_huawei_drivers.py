@@ -1562,7 +1562,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup?range=[0-8191]&TYPE=257/GET'] = (
     FAKE_PORT_GROUP_RESPONSE)
 
 # mock system info map
-MAP_COMMAND_TO_FAKE_RESPONSE['/system/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/system//GET'] = (
     FAKE_SYSTEM_VERSION_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-256]/GET'] = (
@@ -2921,7 +2921,14 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                   "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE,
                   "TIER0CAPACITY": "0",
                   "TIER1CAPACITY": "0",
-                  "TIER2CAPACITY": "48"}]
+                  "TIER2CAPACITY": "48"},
+                 {"NAME": "test004",
+                  "ID": "0",
+                  "USERFREECAPACITY": "36",
+                  "DATASPACE": "35",
+                  "USERTOTALCAPACITY": "48",
+                  "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE,
+                  "TIER0CAPACITY": "40"}]
         pool_name = 'test001'
         test_info = {'CAPACITY': '36', 'ID': '0', 'TOTALCAPACITY': '48',
                      'TIER0CAPACITY': '48', 'TIER1CAPACITY': '0',
@@ -2943,6 +2950,13 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         test_info = {'CAPACITY': '35', 'ID': '0', 'TOTALCAPACITY': '48',
                      'TIER0CAPACITY': '0', 'TIER1CAPACITY': '0',
                      'TIER2CAPACITY': '48'}
+        pool_info = self.driver.client.get_pool_info(pool_name, pools)
+        self.assertEqual(test_info, pool_info)
+
+        pool_name = 'test004'
+        test_info = {'CAPACITY': '35', 'ID': '0', 'TOTALCAPACITY': '48',
+                     'TIER0CAPACITY': '40', 'TIER1CAPACITY': '0',
+                     'TIER2CAPACITY': '0'}
         pool_info = self.driver.client.get_pool_info(pool_name, pools)
         self.assertEqual(test_info, pool_info)
 
@@ -3372,15 +3386,6 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.driver.metro.create_hypermetro('2', param)
         lun_PARENTID = mock_create_lun.call_args[0][0]['PARENTID']
         self.assertEqual(FAKE_FIND_POOL_RESPONSE['ID'], lun_PARENTID)
-
-    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
-                       return_value={'hypermetro_id': '3400a30d844d0007',
-                                     'remote_lun_id': '1'})
-    def test_hypermetro_none_map_info_fail(self, mock_metadata):
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.metro.connect_volume_fc,
-                          self.volume,
-                          FakeConnector)
 
     @ddt.data(FAKE_POOLS_UNSUPPORT_REPORT, FAKE_POOLS_SUPPORT_REPORT)
     @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
@@ -4404,9 +4409,14 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         mock_fc_init.assert_called_with(volume, FakeConnector)
 
     def test_initialize_connection_success(self):
+        do_mapping_mocker = self.mock_object(
+            self.driver.client, 'do_mapping',
+            wraps=self.driver.client.do_mapping)
         iscsi_properties = self.driver.initialize_connection(self.volume,
                                                              FakeConnector)
         self.assertEqual(1, iscsi_properties['data']['target_lun'])
+        do_mapping_mocker.assert_called_once_with(
+            '11', '0', '1', None, '11', False)
 
     def test_initialize_connection_fail_no_online_wwns_in_host(self):
         self.mock_object(rest_client.RestClient, 'get_online_free_wwns',
@@ -5030,6 +5040,8 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         fc_properties = self.driver.metro.connect_volume_fc(self.volume,
                                                             FakeConnector)
         self.assertEqual(1, fc_properties['data']['target_lun'])
+        mock_map.assert_called_once_with('1', '0', '1',
+                                         hypermetro_lun=True)
 
     @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
                        return_value={'hypermetro_id': '3400a30d844d0007',
