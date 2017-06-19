@@ -27,7 +27,17 @@ class UsedLimitsController(wsgi.Controller):
     def index(self, req, resp_obj):
         context = req.environ['cinder.context']
         if authorize(context):
-            quotas = QUOTAS.get_project_quotas(context, context.project_id,
+            params = req.params.copy()
+            req_version = req.api_version_request
+
+            # TODO(wangxiyuan): Support "tenant_id" here to keep the backwards
+            # compatibility. Remove it once we drop all support for "tenant".
+            if req_version.matches(None, "3.38") or not context.is_admin:
+                params.pop('project_id', None)
+                params.pop('tenant_id', None)
+            project_id = params.get(
+                'project_id', params.get('tenant_id', context.project_id))
+            quotas = QUOTAS.get_project_quotas(context, project_id,
                                                usages=True)
 
             quota_map = {
