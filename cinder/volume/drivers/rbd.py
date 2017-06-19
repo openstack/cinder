@@ -371,8 +371,11 @@ class RBDDriver(driver.CloneableImageVD,
                     # Only check for "volume" to allow some flexibility with
                     # non-default volume_name_template settings.  Template
                     # must start with "volume".
-                    with RBDVolumeProxy(self, t, read_only=True) as v:
-                        v.diff_iterate(0, v.size(), None, self._iterate_cb)
+                    try:
+                        with RBDVolumeProxy(self, t, read_only=True) as v:
+                            v.diff_iterate(0, v.size(), None, self._iterate_cb)
+                    except self.rbd.ImageNotFound:
+                        LOG.debug("Image %s is not found.", t)
 
     def _update_volume_stats(self):
         stats = {
