@@ -18,6 +18,8 @@ INFINIDAT InfiniBox Volume Driver
 
 from contextlib import contextmanager
 import functools
+import platform
+import socket
 
 import mock
 from oslo_config import cfg
@@ -30,6 +32,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder import version
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -137,6 +140,20 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def _make_group_snapshot_name(self, cinder_group_snap):
         return 'openstack-group-snap-%s' % cinder_group_snap.id
 
+    def _set_cinder_object_metadata(self, infinidat_object, cinder_object):
+        data = dict(system="openstack",
+                    openstack_version=version.version_info.release_string(),
+                    cinder_id=cinder_object.id,
+                    cinder_name=cinder_object.name)
+        infinidat_object.set_metadata_from_dict(data)
+
+    def _set_host_metadata(self, infinidat_object):
+        data = dict(system="openstack",
+                    openstack_version=version.version_info.release_string(),
+                    hostname=socket.gethostname(),
+                    platform=platform.platform())
+        infinidat_object.set_metadata_from_dict(data)
+
     def _get_infinidat_volume_by_name(self, name):
         volume = self._system.volumes.safe_get(name=name)
         if volume is None:
@@ -185,6 +202,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         if infinidat_host is None:
             infinidat_host = self._system.hosts.create(name=host_name)
             infinidat_host.add_port(port)
+            self._set_host_metadata(infinidat_host)
         return infinidat_host
 
     def _get_mapping(self, host, volume):
@@ -361,10 +379,12 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         volume_name = self._make_volume_name(volume)
         provtype = "THIN" if self.configuration.san_thin_provision else "THICK"
         size = volume.size * capacity.GiB
-        return self._system.volumes.create(name=volume_name,
-                                           pool=pool,
-                                           provtype=provtype,
-                                           size=size)
+        infinidat_volume = self._system.volumes.create(name=volume_name,
+                                                       pool=pool,
+                                                       provtype=provtype,
+                                                       size=size)
+        self._set_cinder_object_metadata(infinidat_volume, volume)
+        return infinidat_volume
 
     @infinisdk_to_cinder_exceptions
     def create_volume(self, volume):
@@ -396,7 +416,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         """Creates a snapshot."""
         volume = self._get_infinidat_volume(snapshot.volume)
         name = self._make_snapshot_name(snapshot)
-        volume.create_snapshot(name=name)
+        infinidat_snapshot = volume.create_snapshot(name=name)
+        self._set_cinder_object_metadata(infinidat_snapshot, snapshot)
 
     @contextmanager
     def _connection_context(self, volume):
@@ -562,8 +583,9 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         # let generic volume group support handle non-cgsnapshots
         if not vol_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
-        self._system.cons_groups.create(name=self._make_cg_name(group),
-                                        pool=self._get_infinidat_pool())
+        obj = self._system.cons_groups.create(name=self._make_cg_name(group),
+                                              pool=self._get_infinidat_pool())
+        self._set_cinder_object_metadata(obj, group)
         return {'status': fields.GroupStatus.AVAILABLE}
 
     @infinisdk_to_cinder_exceptions
