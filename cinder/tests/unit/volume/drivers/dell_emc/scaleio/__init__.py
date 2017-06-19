@@ -65,11 +65,13 @@ class TestScaleIODriver(test.TestCase):
         Valid='0',
         Invalid='1',
         BadStatus='2',
+        ValidVariant='3',
     ))
     __RESPONSE_MODE_NAMES = {
         '0': 'Valid',
         '1': 'Invalid',
         '2': 'BadStatus',
+        '3': 'ValidVariant',
     }
 
     BAD_STATUS_RESPONSE = mocks.MockHTTPSResponse(

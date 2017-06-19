@@ -154,6 +154,55 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver.storage_pools = self.STORAGE_POOLS
         self.driver.get_volume_stats(True)
 
+    def _setup_valid_variant_property(self, property):
+        """Setup valid response that returns a variety of property name
+
+        """
+        self.HTTPS_MOCK_RESPONSES = {
+            self.RESPONSE_MODE.ValidVariant: {
+                'types/Domain/instances/getByName::' +
+                self.domain_name_enc: '"{}"'.format(self.DOMAIN_NAME).encode(
+                    'ascii',
+                    'ignore'
+                ),
+                'types/Pool/instances/getByName::{},{}'.format(
+                    self.DOMAIN_NAME,
+                    self.POOL_NAME
+                ): '"{}"'.format(self.POOL_NAME).encode('ascii', 'ignore'),
+                'types/StoragePool/instances/action/querySelectedStatistics': {
+                    '"{}"'.format(self.POOL_NAME): {
+                        'capacityAvailableForVolumeAllocationInKb': 5000000,
+                        'capacityLimitInKb': 16000000,
+                        'spareCapacityInKb': 6000000,
+                        'thickCapacityInUseInKb': 266,
+                        property: 0,
+                    },
+                },
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.volume['provider_id']):
+                        self.new_volume['provider_id'],
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.new_volume['provider_id']):
+                        self.volume['provider_id'],
+                'version': '"{}"'.format('2.0.1'),
+            }
+        }
+
+    def test_get_volume_stats_with_varying_properties(self):
+        """Test getting volume stats with various property names
+
+        In SIO 3.0, a property was renamed.
+        The change is backwards compatible for now but this tests
+        ensures that the driver is tolerant of that change
+        """
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self._setup_valid_variant_property("thinCapacityAllocatedInKb")
+        self.set_https_response_mode(self.RESPONSE_MODE.ValidVariant)
+        self.driver.get_volume_stats(True)
+        self._setup_valid_variant_property("nonexistentProperty")
+        self.set_https_response_mode(self.RESPONSE_MODE.ValidVariant)
+        self.driver.get_volume_stats(True)
+
     @mock.patch(
         'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
         '_rename_volume',
