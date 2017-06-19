@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 import errno
 import re
 
@@ -20,18 +19,21 @@ import mock
 from oslo_utils import units
 from six.moves import http_client
 
+from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.prophetstor import dpl_iscsi as DPLDRIVER
 from cinder.volume.drivers.prophetstor import dplcommon as DPLCOMMON
+from cinder.volume import group_types
 
 POOLUUID = 'ac33fc6e417440d5a1ef27d7231e1cc4'
 VOLUMEUUID = 'a000000000000000000000000000001'
 INITIATOR = 'iqn.2013-08.org.debian:01:aaaaaaaa'
-DATA_IN_VOLUME = {'id': VOLUMEUUID}
 DATA_IN_CONNECTOR = {'initiator': INITIATOR}
 DATA_SERVER_INFO = 0, {
     'metadata': {'vendor': 'ProphetStor',
@@ -101,17 +103,17 @@ DATA_IN_GROUP = {'id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
                  'description': 'des123',
                  'status': ''}
 
-DATA_IN_VOLUME = {'id': 'abc123',
+DATA_IN_VOLUME = {'id': 'c11e902-87e9-348d-0b48-89695f1ec4be5',
                   'display_name': 'abc123',
                   'display_description': '',
                   'size': 10,
                   'host': "hostname@backend#%s" % POOLUUID}
 
-DATA_IN_VOLUME_VG = {'id': 'abc123',
+DATA_IN_VOLUME_VG = {'id': 'fe2dbc5-1581-0451-dab2-f8c8a48d15bee',
                      'display_name': 'abc123',
                      'display_description': '',
                      'size': 10,
-                     'consistencygroup_id':
+                     'group_id':
                          'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
                      'status': 'available',
                      'host': "hostname@backend#%s" % POOLUUID}
@@ -121,35 +123,35 @@ DATA_IN_REMOVE_VOLUME_VG = {
     'display_name': 'fe2dbc515810451dab2f8c8a48d15bee',
     'display_description': '',
     'size': 10,
-    'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+    'group_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
     'status': 'available',
     'host': "hostname@backend#%s" % POOLUUID}
 
-DATA_IN_VOLUME1 = {'id': 'abc456',
+DATA_IN_VOLUME1 = {'id': 'c11e902-87e9-348d-0b48-89695f1ec4bef',
                    'display_name': 'abc456',
                    'display_description': '',
                    'size': 10,
                    'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_CG_SNAPSHOT = {
-    'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+    'group_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
     'id': 'cgsnapshot1',
     'name': 'cgsnapshot1',
     'description': 'cgsnapshot1',
     'status': ''}
 
-DATA_IN_SNAPSHOT = {'id': 'snapshot1',
-                    'volume_id': 'abc123',
+DATA_IN_SNAPSHOT = {'id': 'fe2dbc5-1581-0451-dab2-f8c8a48d15bee',
+                    'volume_id': 'c11e902-87e9-348d-0b48-89695f1ec4be5',
                     'display_name': 'snapshot1',
                     'display_description': '',
                     'volume_size': 5}
 
 DATA_OUT_SNAPSHOT_CG = {
     'id': 'snapshot1',
-    'volume_id': 'abc123',
+    'volume_id': 'c11e902-87e9-348d-0b48-89695f1ec4be5',
     'display_name': 'snapshot1',
     'display_description': '',
-    'cgsnapshot_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee'}
+    'group_snapshot_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee'}
 
 DATA_OUT_CG = {
     "objectType": "application/cdmi-container",
@@ -183,7 +185,7 @@ DATA_OUT_CG = {
     "childrenrange": "<range>",
     "children":
     [
-        "fe2dbc515810451dab2f8c8a48d15bee",
+        'fe2dbc515810451dab2f8c8a48d15bee',
     ],
 }
 
@@ -491,7 +493,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.configuration.san_thin_provision = True
         self.configuration.driver_ssl_cert_verify = False
         self.configuration.driver_ssl_cert_path = None
-        self.context = ''
+        self.context = context.get_admin_context()
         self.DPL_MOCK = mock.MagicMock()
         self.DB_MOCK = mock.MagicMock()
         self.dpldriver = DPLDRIVER.DPLISCSIDriver(
@@ -513,99 +515,164 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.assertFalse(pool['QoS_support'])
 
     def test_create_volume(self):
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME['id'],
+            display_name=DATA_IN_VOLUME['display_name'],
+            size=DATA_IN_VOLUME['size'],
+            host=DATA_IN_VOLUME['host'])
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
-        self.dpldriver.create_volume(DATA_IN_VOLUME)
+        self.dpldriver.create_volume(volume)
         self.DPL_MOCK.create_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            DATA_IN_VOLUME['display_name'],
-            DATA_IN_VOLUME['display_description'],
+            self._conver_uuid2hex(volume.id),
+            volume.display_name,
+            volume.display_description,
             self.configuration.dpl_pool,
-            int(DATA_IN_VOLUME['size']) * units.Gi,
+            int(volume.size) * units.Gi,
             True)
 
     def test_create_volume_without_pool(self):
-        fake_volume = copy.deepcopy(DATA_IN_VOLUME)
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME['id'],
+            display_name=DATA_IN_VOLUME['display_name'],
+            size=DATA_IN_VOLUME['size'],
+            host=DATA_IN_VOLUME['host'])
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
         self.configuration.dpl_pool = ""
-        fake_volume['host'] = "host@backend"  # missing pool
+        volume.host = "host@backend"  # missing pool
         self.assertRaises(exception.InvalidHost, self.dpldriver.create_volume,
-                          volume=fake_volume)
+                          volume=volume)
 
     def test_create_volume_with_configuration_pool(self):
-        fake_volume = copy.deepcopy(DATA_IN_VOLUME)
-        fake_volume['host'] = "host@backend"  # missing pool
-
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME['id'],
+            display_name=DATA_IN_VOLUME['display_name'],
+            size=DATA_IN_VOLUME['size'],
+            host="host@backend")
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
-        self.dpldriver.create_volume(fake_volume)
+        self.dpldriver.create_volume(volume)
         self.DPL_MOCK.create_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            DATA_IN_VOLUME['display_name'],
-            DATA_IN_VOLUME['display_description'],
-            self.configuration.dpl_pool,
-            int(DATA_IN_VOLUME['size']) * units.Gi,
-            True)
+            self._conver_uuid2hex(volume.id),
+            volume.display_name, volume.display_description,
+            self.configuration.dpl_pool, int(volume.size) * units.Gi, True)
 
     def test_create_volume_of_group(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
         self.DPL_MOCK.join_vg.return_value = DATA_OUTPUT
-        self.dpldriver.create_volume(DATA_IN_VOLUME_VG)
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME_VG['id'],
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            group_id=group.id,
+            host=DATA_IN_VOLUME_VG['host'])
+        self.dpldriver.create_volume(volume)
         self.DPL_MOCK.create_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            DATA_IN_VOLUME['display_name'],
-            DATA_IN_VOLUME['display_description'],
+            self._conver_uuid2hex(volume.id),
+            volume.display_name,
+            volume.display_description,
             self.configuration.dpl_pool,
-            int(DATA_IN_VOLUME['size']) * units.Gi,
+            int(volume.size) * units.Gi,
             True)
         self.DPL_MOCK.join_vg.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME_VG['id']),
-            self._conver_uuid2hex(
-                DATA_IN_VOLUME_VG['consistencygroup_id']))
+            self._conver_uuid2hex(volume.id),
+            self._conver_uuid2hex(volume.group_id))
 
     def test_delete_volume(self):
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME['id'],
+            display_name=DATA_IN_VOLUME['display_name'],
+            size=DATA_IN_VOLUME['size'],
+            host=DATA_IN_VOLUME['host'])
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
-        self.dpldriver.delete_volume(DATA_IN_VOLUME)
+        self.dpldriver.delete_volume(volume)
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']))
+            self._conver_uuid2hex(volume.id))
 
     def test_delete_volume_of_group(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME_VG['id'],
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            group_id=group.id,
+            host=DATA_IN_VOLUME_VG['host'])
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
         self.DPL_MOCK.leave_vg.return_volume = DATA_OUTPUT
-        self.dpldriver.delete_volume(DATA_IN_VOLUME_VG)
+        self.dpldriver.delete_volume(volume)
         self.DPL_MOCK.leave_vg.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME_VG['id']),
-            self._conver_uuid2hex(DATA_IN_GROUP['id'])
+            self._conver_uuid2hex(volume.id),
+            self._conver_uuid2hex(volume.group_id)
         )
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']))
+            self._conver_uuid2hex(volume.id))
 
     def test_create_volume_from_snapshot(self):
         self.DPL_MOCK.create_vdev_from_snapshot.return_value = DATA_OUTPUT
         self.DPL_MOCK.extend_vdev.return_value = DATA_OUTPUT
-        self.dpldriver.create_volume_from_snapshot(DATA_IN_VOLUME,
-                                                   DATA_IN_SNAPSHOT)
+        volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME_VG['id'],
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            host=DATA_IN_VOLUME_VG['host'])
+        self.dpldriver.create_volume_from_snapshot(
+            volume, DATA_IN_SNAPSHOT)
         self.DPL_MOCK.create_vdev_from_snapshot.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            DATA_IN_VOLUME['display_name'],
-            DATA_IN_VOLUME['display_description'],
-            self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
+            self._conver_uuid2hex(volume.id),
+            volume.display_name,
+            volume.display_description,
+            self._conver_uuid2hex(volume.id),
             self.configuration.dpl_pool,
             True)
         self.DPL_MOCK.extend_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            DATA_IN_VOLUME['display_name'],
-            DATA_IN_VOLUME['display_description'],
-            DATA_IN_VOLUME['size'] * units.Gi)
+            self._conver_uuid2hex(volume.id),
+            volume.display_name,
+            volume.display_description,
+            volume.size * units.Gi)
 
     def test_create_cloned_volume(self):
+        new_volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME1['id'],
+            display_name=DATA_IN_VOLUME1['display_name'],
+            size=DATA_IN_VOLUME1['size'],
+            host=DATA_IN_VOLUME1['host'])
+        src_volume = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_VOLUME['id'])
         self.DPL_MOCK.clone_vdev.return_value = DATA_OUTPUT
-        self.dpldriver.create_cloned_volume(DATA_IN_VOLUME1, DATA_IN_VOLUME)
+        self.dpldriver.create_cloned_volume(new_volume, src_volume)
         self.DPL_MOCK.clone_vdev.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-            self._conver_uuid2hex(DATA_IN_VOLUME1['id']),
+            self._conver_uuid2hex(src_volume.id),
+            self._conver_uuid2hex(new_volume.id),
             self.configuration.dpl_pool,
-            DATA_IN_VOLUME1['display_name'],
-            DATA_IN_VOLUME1['display_description'],
-            int(DATA_IN_VOLUME1['size']) *
+            new_volume.display_name,
+            new_volume.display_description,
+            int(new_volume.size) *
             units.Gi,
             True)
 
@@ -686,95 +753,179 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.assertEqual(4294967296, res['metadata']['total_capacity'])
         self.assertEqual('8173612007304181810', res['metadata']['zpool_guid'])
 
-    def test_create_consistency_group(self):
+    def test_create_group(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
         self.DPL_MOCK.create_vg.return_value = DATA_OUTPUT
-        model_update = self.dpldriver.create_consistencygroup(self.context,
-                                                              DATA_IN_GROUP)
+        model_update = self.dpldriver.create_group(self.context, group)
         self.DPL_MOCK.create_vg.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_GROUP['id']), DATA_IN_GROUP['name'],
-            DATA_IN_GROUP['description'])
+            self._conver_uuid2hex(fake_constants.CONSISTENCY_GROUP_ID),
+            'test_group',
+            'this is a test group')
         self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
-    def test_delete_consistency_group(self):
+    def test_delete_group(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
         self.DB_MOCK.volume_get_all_by_group.return_value = (
             [DATA_IN_VOLUME_VG])
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
         self.DPL_MOCK.delete_cg.return_value = DATA_OUTPUT
-        model_update, volumes = self.dpldriver.delete_consistencygroup(
-            self.context, DATA_IN_GROUP, [])
+        model_update, volumes = self.dpldriver.delete_group(
+            self.context, group, [])
         self.DPL_MOCK.delete_vg.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+            self._conver_uuid2hex(fake_constants.CONSISTENCY_GROUP_ID))
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
             self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
         self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.DELETED)}, model_update)
 
-    def test_update_consistencygroup(self):
+    def test_update_group(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
         self.DPL_MOCK.join_vg.return_value = DATA_OUTPUT
         self.DPL_MOCK.leave_vg.return_value = DATA_OUTPUT
-        add_vol = DATA_IN_VOLUME_VG
-        remove_vol = DATA_IN_REMOVE_VOLUME_VG
+        group = test_utils.create_group(
+            self.context,
+            id='fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
+        vol_add = test_utils.create_volume(
+            self.context,
+            id=fake_constants.VOLUME2_ID,
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            group_id='fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+            host=DATA_IN_VOLUME_VG['host'])
+        vol_del = test_utils.create_volume(
+            self.context,
+            id=DATA_IN_REMOVE_VOLUME_VG['id'],
+            display_name=DATA_IN_REMOVE_VOLUME_VG['display_name'],
+            size=DATA_IN_REMOVE_VOLUME_VG['size'],
+            group_id='fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+            host=DATA_IN_REMOVE_VOLUME_VG['host'])
         (model_update, add_vols, remove_vols) = (
-            self.dpldriver.update_consistencygroup(self.context,
-                                                   DATA_IN_GROUP,
-                                                   [add_vol],
-                                                   [remove_vol]))
+            self.dpldriver.update_group(
+                self.context, group, [vol_add], [vol_del]))
         self.DPL_MOCK.join_vg.assert_called_once_with(
-            self._conver_uuid2hex(add_vol['id']),
-            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+            self._conver_uuid2hex(vol_add.id),
+            self._conver_uuid2hex(group.id))
         self.DPL_MOCK.leave_vg.assert_called_once_with(
-            self._conver_uuid2hex(remove_vol['id']),
-            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+            self._conver_uuid2hex(vol_del.id),
+            self._conver_uuid2hex(group.id))
         self.assertDictEqual({'status': (
             fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
-    def test_update_consistencygroup_exception_join(self):
+    def test_update_group_exception_join(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
         self.DPL_MOCK.join_vg.return_value = -1, None
         self.DPL_MOCK.leave_vg.return_value = DATA_OUTPUT
-        add_vol = DATA_IN_VOLUME_VG
+        volume = test_utils.create_volume(
+            self.context,
+            id=fake_constants.VOLUME2_ID,
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            host=DATA_IN_VOLUME_VG['host'])
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.dpldriver.update_consistencygroup,
+                          self.dpldriver.update_group,
                           context=None,
-                          group=DATA_IN_GROUP,
-                          add_volumes=[add_vol],
+                          group=group,
+                          add_volumes=[volume],
                           remove_volumes=None)
 
-    def test_update_consistencygroup_exception_leave(self):
+    def test_update_group_exception_leave(self):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
         self.DPL_MOCK.leave_vg.return_value = -1, None
-        remove_vol = DATA_IN_REMOVE_VOLUME_VG
+        volume = test_utils.create_volume(
+            self.context,
+            id='fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+            display_name=DATA_IN_VOLUME_VG['display_name'],
+            size=DATA_IN_VOLUME_VG['size'],
+            host=DATA_IN_VOLUME_VG['host'])
+        group = test_utils.create_group(
+            self.context,
+            id=fake_constants.CONSISTENCY_GROUP_ID,
+            host='host@backend#unit_test_pool',
+            group_type_id=group_type.id)
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.dpldriver.update_consistencygroup,
+                          self.dpldriver.update_group,
                           context=None,
-                          group=DATA_IN_GROUP,
+                          group=group,
                           add_volumes=None,
-                          remove_volumes=[remove_vol])
+                          remove_volumes=[volume])
 
-    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_create_consistency_group_snapshot(self, get_all_for_cgsnapshot):
+    @mock.patch(
+        'cinder.objects.snapshot.SnapshotList.get_all_for_group_snapshot')
+    def test_create_group_snapshot(self, get_all_for_group_snapshot):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context)
-        snapshot_obj.consistencygroup_id = \
-            DATA_IN_CG_SNAPSHOT['consistencygroup_id']
-        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+        snapshot_obj.group_id = \
+            DATA_IN_CG_SNAPSHOT['group_id']
+        snapshot_obj.group_type_id = group_type.id
+        get_all_for_group_snapshot.return_value = [snapshot_obj]
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
-        model_update, snapshots = self.dpldriver.create_cgsnapshot(
+        model_update, snapshots = self.dpldriver.create_group_snapshot(
             self.context, snapshot_obj, [])
         self.assertDictEqual({'status': 'available'}, model_update)
 
-    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_delete_consistency_group_snapshot(self, get_all_for_cgsnapshot):
+    @mock.patch(
+        'cinder.objects.snapshot.SnapshotList.get_all_for_group_snapshot')
+    def test_delete_group_snapshot(self, get_all_for_group_snapshot):
+        group_type = group_types.create(
+            self.context,
+            'group',
+            {'consistent_group_snapshot_enabled': '<is> True'}
+        )
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context)
-        snapshot_obj.consistencygroup_id = \
-            DATA_IN_CG_SNAPSHOT['consistencygroup_id']
-        get_all_for_cgsnapshot.return_value = [snapshot_obj]
-        self.DPL_MOCK.delete_cgsnapshot.return_value = DATA_OUTPUT
-        model_update, snapshots = self.dpldriver.delete_cgsnapshot(
-            self.context, DATA_IN_CG_SNAPSHOT, [])
+        snapshot_obj.group_id = \
+            DATA_IN_CG_SNAPSHOT['group_id']
+        snapshot_obj.group_type_id = group_type.id
+        get_all_for_group_snapshot.return_value = [snapshot_obj]
+        self.DPL_MOCK.delete_group_snapshot.return_value = DATA_OUTPUT
+        model_update, snapshots = self.dpldriver.delete_group_snapshot(
+            self.context, snapshot_obj, [])
         self.DPL_MOCK.delete_vdev_snapshot.assert_called_once_with(
-            self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['consistencygroup_id']),
-            self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['id']),
+            self._conver_uuid2hex(snapshot_obj.group_id),
+            self._conver_uuid2hex(snapshot_obj.id),
             True)
         self.assertDictEqual({'status': 'deleted'}, model_update)
