@@ -32,7 +32,10 @@ import webob.exc
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.openstack import versioned_method
 from cinder import exception
+
 from cinder import i18n
+i18n.enable_lazy()
+
 from cinder.i18n import _
 from cinder import policy
 from cinder import utils
