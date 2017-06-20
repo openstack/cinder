@@ -1,16 +1,26 @@
 {
     "volume_types": [
         {
+            "name": "SSD",
+            "qos_specs_id": null,
             "extra_specs": {
-                "capabilities": "gpu"
+                "volume_backend_name": "lvmdriver-1"
             },
+            "os-volume-type-access:is_public": true,
+            "is_public": true,
             "id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
-            "name": "SSD"
+            "description": null
         },
         {
-            "extra_specs": {},
+            "name": "SATA",
+            "qos_specs_id": null,
+            "extra_specs": {
+                "volume_backend_name": "lvmdriver-1"
+            },
+            "os-volume-type-access:is_public": true,
+            "is_public": true,
             "id": "8eb69a46-df97-4e41-9586-9a40a7533803",
-            "name": "SATA"
+            "description": null
         }
     ]
 }
