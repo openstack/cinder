@@ -101,6 +101,13 @@ key_2:
   in: path
   required: true
   type: string
+key_3:
+  description: |
+    The metadata key name for the metadata that you
+    want to update.
+  in: path
+  required: true
+  type: string
 project_id_path:
   description: |
     The UUID of the project in a multi-tenancy cloud.
@@ -1122,6 +1129,12 @@ message_level:
   in: body
   required: true
   type: string
+meta:
+  description: |
+    The metadata key and value pair for the volume.
+  in: body
+  required: true
+  type: object
 metadata:
   description: |
     One or more metadata key and value pairs for the

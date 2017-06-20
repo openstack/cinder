@@ -623,14 +623,14 @@ Response Parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - meta: meta
 
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-metadata-show-response.json
+.. literalinclude:: ./samples/volume-metadata-show-key-response.json
    :language: javascript
 
 
@@ -654,6 +654,45 @@ Request
    - volume_id: volume_id_path
    - key: key_1
 
+
+Update a volume's metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v3/{project_id}/volumes/{volume_id}/metadata/{key}
+
+Update metadata for a volume for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - key: key_3
+   - meta: meta
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-metadata-update-key-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - meta: meta
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-metadata-update-key-response.json
+   :language: javascript
 
 
 Get volumes summary
