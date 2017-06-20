@@ -1799,7 +1799,8 @@ class XIVProxyTest(test.TestCase):
 
         p.ibm_storage_cli.cmd.cg_snapshots_create.assert_called_once_with(
             cg=p._cg_name_from_cgsnapshot(cgsnap_group_obj),
-            snap_group=p._group_name_from_cgsnapshot(cgsnap_group_obj))
+            snap_group=p._group_name_from_cgsnapshot_id(
+                cgsnap_group_obj['id']))
 
         self.assertEqual('available', model_update['status'])
 
@@ -1890,7 +1891,8 @@ class XIVProxyTest(test.TestCase):
             {}, cgsnap_group_obj, [])
 
         p.ibm_storage_cli.cmd.snap_group_delete.assert_called_once_with(
-            snap_group=p._group_name_from_cgsnapshot(cgsnap_group_obj))
+            snap_group=p._group_name_from_cgsnapshot_id(
+                cgsnap_group_obj['id']))
 
         self.assertEqual('deleted', model_update['status'])
 
