@@ -191,6 +191,12 @@ Response Parameters
    - id: id
    - name: name
 
+Response Example
+----------------
+
+.. literalinclude:: ./samples/group-snapshots-create-response.json
+   :language: javascript
+
 
 Reset group snapshot status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

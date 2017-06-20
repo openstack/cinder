@@ -74,6 +74,12 @@ Request
    - volume_types: volume_types_2
    - name: name_15
 
+Request Example
+---------------
+
+.. literalinclude:: ./samples/consistency-group-create-request.json
+   :language: javascript
+
 Response
 --------
 
@@ -86,12 +92,6 @@ Response
    - volume_types: volume_types
    - name: name_15
    - id: consistencygroup_id_1
-
-Request Example
----------------
-
-.. literalinclude:: ./samples/consistency-group-create-request.json
-   :language: javascript
 
 Response Example
 ----------------
