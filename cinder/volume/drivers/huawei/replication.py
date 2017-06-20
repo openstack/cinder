@@ -505,7 +505,8 @@ class ReplicaPairManager(object):
 
         model_update = {}
         driver_data = {'pair_id': pair_id,
-                       'rmt_lun_id': rmt_lun_id}
+                       'rmt_lun_id': rmt_lun_id,
+                       'rmt_lun_wwn': rmt_lun_info['WWN']}
         model_update['replication_driver_data'] = to_string(driver_data)
         model_update['replication_status'] = 'available'
         LOG.debug('Create replication, return info: %s.', model_update)
@@ -582,16 +583,18 @@ class ReplicaPairManager(object):
             # Switch replication pair role, and start synchronize.
             self.rmt_driver.enable(pair_id)
 
-            lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            admin_metadata = huawei_utils.get_admin_metadata(v)
-            admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
-            new_drv_data = {'pair_id': pair_id,
-                            'rmt_lun_id': v.provider_location}
-            new_drv_data = to_string(new_drv_data)
-            v_update['updates'] = {'provider_location': rmt_lun_id,
+            local_metadata = huawei_utils.get_lun_metadata(v)
+            new_drv_data = to_string(
+                {'pair_id': pair_id,
+                 'rmt_lun_id': local_metadata.get('huawei_lun_id'),
+                 'rmt_lun_wwn': local_metadata.get('huawei_lun_wwn')})
+            location = huawei_utils.to_string(
+                huawei_lun_id=rmt_lun_id,
+                huawei_lun_wwn=drv_data.get('rmt_lun_wwn'))
+
+            v_update['updates'] = {'provider_location': location,
                                    'replication_status': 'available',
-                                   'replication_driver_data': new_drv_data,
-                                   'admin_metadata': admin_metadata}
+                                   'replication_driver_data': new_drv_data}
             volumes_update.append(v_update)
 
         return volumes_update
@@ -622,17 +625,18 @@ class ReplicaPairManager(object):
 
             self.rmt_driver.failover(pair_id)
 
-            lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            admin_metadata = huawei_utils.get_admin_metadata(v)
-            admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
+            local_metadata = huawei_utils.get_lun_metadata(v)
+            new_drv_data = to_string(
+                {'pair_id': pair_id,
+                 'rmt_lun_id': local_metadata.get('huawei_lun_id'),
+                 'rmt_lun_wwn': local_metadata.get('huawei_lun_wwn')})
+            location = huawei_utils.to_string(
+                huawei_lun_id=rmt_lun_id,
+                huawei_lun_wwn=drv_data.get('rmt_lun_wwn'))
 
-            new_drv_data = {'pair_id': pair_id,
-                            'rmt_lun_id': v.provider_location}
-            new_drv_data = to_string(new_drv_data)
-            v_update['updates'] = {'provider_location': rmt_lun_id,
+            v_update['updates'] = {'provider_location': location,
                                    'replication_status': 'failed-over',
-                                   'replication_driver_data': new_drv_data,
-                                   'admin_metadata': admin_metadata}
+                                   'replication_driver_data': new_drv_data}
             volumes_update.append(v_update)
 
         return volumes_update
