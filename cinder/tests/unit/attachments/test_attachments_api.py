@@ -62,7 +62,8 @@ class AttachmentManagerTestCase(test.TestCase):
                                               mock_policy):
         """Test attachment_create with connector."""
         volume_params = {'status': 'available'}
-        connection_info = {'fake_key': 'fake_value'}
+        connection_info = {'fake_key': 'fake_value',
+                           'fake_key2': ['fake_value1', 'fake_value2']}
         mock_rpc_attachment_update.return_value = connection_info
 
         vref = tests_utils.create_volume(self.context, **volume_params)
@@ -112,7 +113,8 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_policy):
         """Test attachment_delete."""
         volume_params = {'status': 'available'}
-        connection_info = {'fake_key': 'fake_value'}
+        connection_info = {'fake_key': 'fake_value',
+                           'fake_key2': ['fake_value1', 'fake_value2']}
         mock_rpc_attachment_update.return_value = connection_info
 
         vref = tests_utils.create_volume(self.context, **volume_params)
