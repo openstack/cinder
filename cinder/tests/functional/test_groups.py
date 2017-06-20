@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import uuidutils
+
 from cinder.tests.functional import functional_helpers
 
 
@@ -66,7 +68,7 @@ class GroupsTest(functional_helpers._FunctionalTestBase):
         created_group = self.api.post_group(
             {'group': {'group_type': self.group_type['id'],
                        'volume_types': [self.volume_type['id']]}})
-        self.assertTrue(created_group['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group['id']))
         created_group_id = created_group['id']
 
         # Check it's there
@@ -81,7 +83,7 @@ class GroupsTest(functional_helpers._FunctionalTestBase):
             {'volume': {'size': 1,
                         'group_id': created_group_id,
                         'volume_type': self.volume_type['id']}})
-        self.assertTrue(created_volume['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
         created_volume_id = created_volume['id']
 
         # Check it's there
