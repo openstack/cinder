@@ -293,7 +293,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 
 Response Parameters
@@ -363,7 +363,7 @@ Request
    - name: name
    - metadata: metadata_2
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -453,7 +453,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
    - cascade: cascade
 
 
@@ -479,7 +479,7 @@ Request
 
    - metadata: metadata_3
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -523,7 +523,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 
 Response Parameters
@@ -563,7 +563,7 @@ Request
 
    - metadata: metadata_3
    - tenant_id: tenant_id
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------

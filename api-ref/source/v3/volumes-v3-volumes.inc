@@ -301,7 +301,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 
 Response Parameters
@@ -371,7 +371,7 @@ Request
    - name: name
    - metadata: metadata
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -461,7 +461,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
    - cascade: cascade
 
 
@@ -487,7 +487,7 @@ Request
 
    - metadata: metadata_3
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
@@ -532,7 +532,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 
 Response Parameters
@@ -572,7 +572,7 @@ Request
 
    - metadata: metadata_3
    - project_id: project_id_path
-   - volume_id: volume_id
+   - volume_id: volume_id_path
 
 Request Example
 ---------------
