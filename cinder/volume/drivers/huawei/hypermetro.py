@@ -74,7 +74,7 @@ class HuaweiHyperMetro(object):
 
     def delete_hypermetro(self, volume):
         """Delete hypermetro."""
-        metadata = huawei_utils.get_volume_metadata(volume)
+        metadata = huawei_utils.get_lun_metadata(volume)
         metro_id = metadata['hypermetro_id']
         remote_lun_id = metadata['remote_lun_id']
 
@@ -118,7 +118,7 @@ class HuaweiHyperMetro(object):
             {'wwpns': wwns,
              'volume': volume_name})
 
-        metadata = huawei_utils.get_volume_metadata(volume)
+        metadata = huawei_utils.get_lun_metadata(volume)
         lun_id = metadata['remote_lun_id']
 
         if lun_id is None:
@@ -191,8 +191,8 @@ class HuaweiHyperMetro(object):
     def disconnect_volume_fc(self, volume, connector):
         """Delete map between a volume and a host for FC."""
         wwns = connector['wwpns']
-        volume_name = huawei_utils.encode_name(volume['id'])
-        metadata = huawei_utils.get_volume_metadata(volume)
+        volume_name = huawei_utils.encode_name(volume.id)
+        metadata = huawei_utils.get_lun_metadata(volume)
         lun_id = metadata['remote_lun_id']
         host_name = connector['host']
         left_lunnum = -1
