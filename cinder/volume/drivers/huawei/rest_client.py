@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.drivers.huawei import constants
+from cinder.volume.drivers.huawei import huawei_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -322,8 +323,10 @@ class RestClient(object):
         return result['data']
 
     def get_lun_id(self, volume, volume_name):
-        lun_id = (volume.provider_location or
+        metadata = huawei_utils.get_lun_metadata(volume)
+        lun_id = (metadata.get('huawei_lun_id') or
                   self.get_lun_id_by_name(volume_name))
+
         if not lun_id:
             msg = (_("Can't find lun info on the array. "
                      "volume: %(id)s, lun name: %(name)s.") %
