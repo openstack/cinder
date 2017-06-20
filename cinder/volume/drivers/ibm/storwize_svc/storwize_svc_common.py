@@ -823,13 +823,14 @@ class StorwizeHelpers(object):
                 wwpns.add(wwpn)
         return list(wwpns)
 
-    def get_host_from_connector(self, connector, volume_name=None):
+    def get_host_from_connector(self, connector, volume_name=None,
+                                iscsi=False):
         """Return the Storwize host described by the connector."""
         LOG.debug('Enter: get_host_from_connector: %s.', connector)
 
         # If we have FC information, we have a faster lookup option
         host_name = None
-        if 'wwpns' in connector:
+        if 'wwpns' in connector and not iscsi:
             for wwpn in connector['wwpns']:
                 resp = self.ssh.lsfabric(wwpn=wwpn)
                 for wwpn_info in resp:
@@ -894,12 +895,13 @@ class StorwizeHelpers(object):
                 # unexpected error so reraise it
                 with excutils.save_and_reraise_exception():
                     pass
-            if 'initiator' in connector:
-                for iscsi in resp.select('iscsi_name'):
-                    if iscsi == connector['initiator']:
-                        host_name = name
-                        found = True
-                        break
+            if iscsi:
+                if 'initiator' in connector:
+                    for iscsi in resp.select('iscsi_name'):
+                        if iscsi == connector['initiator']:
+                            host_name = name
+                            found = True
+                            break
             elif 'wwpns' in connector and len(connector['wwpns']):
                 connector_wwpns = [str(x).lower() for x in connector['wwpns']]
                 for wwpn in resp.select('WWPN'):
@@ -913,7 +915,7 @@ class StorwizeHelpers(object):
         LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
         return host_name
 
-    def create_host(self, connector):
+    def create_host(self, connector, iscsi=False):
         """Create a new host on the storage system.
 
         We create a host name and associate it with the given connection
@@ -932,13 +934,18 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
         ports = []
-        if 'initiator' in connector:
-            ports.append(['initiator', '%s' % connector['initiator']])
-        if 'wwpns' in connector:
-            for wwpn in connector['wwpns']:
-                ports.append(['wwpn', '%s' % wwpn])
+        if iscsi:
+            if 'initiator' in connector:
+                ports.append(['initiator', '%s' % connector['initiator']])
+            else:
+                msg = _('create_host: No initiators supplied.')
+        else:
+            if 'wwpns' in connector:
+                for wwpn in connector['wwpns']:
+                    ports.append(['wwpn', '%s' % wwpn])
+            else:
+                msg = _('create_host: No wwpns supplied.')
         if not len(ports):
-            msg = _('create_host: No initiators or wwpns supplied.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 

@@ -2412,7 +2412,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector2)
         for conn in [connector, connector2]:
-            host = self.iscsi_driver._helpers.get_host_from_connector(conn)
+            host = self.iscsi_driver._helpers.get_host_from_connector(
+                conn, iscsi=True)
             self.assertIsNotNone(host)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector2)
@@ -2425,11 +2426,11 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector2)
         # Test multiple attachments case
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            connector2)
+            connector2, iscsi=True)
         self.iscsi_driver._helpers.unmap_vol_from_host(
             volume_iSCSI['name'], host_name)
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            connector2)
+            connector2, iscsi=True)
         self.assertIsNotNone(host_name)
         with mock.patch.object(storwize_svc_common.StorwizeSSH,
                                'rmvdiskhostmap') as rmmap:
@@ -2437,7 +2438,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self.iscsi_driver.terminate_connection(volume_iSCSI,
                                                    connector2)
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            connector2)
+            connector2, iscsi=True)
         self.assertIsNone(host_name)
         # Test single attachment case
         self.iscsi_driver._helpers.unmap_vol_from_host(
@@ -2448,7 +2449,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
         # validate that the host entries are deleted
         for conn in [connector, connector2]:
-            host = self.iscsi_driver._helpers.get_host_from_connector(conn)
+            host = self.iscsi_driver._helpers.get_host_from_connector(
+                conn, iscsi=True)
         self.assertIsNone(host)
 
     def test_storwize_initialize_iscsi_connection_single_path(self):
@@ -2478,7 +2480,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Check case where no hosts exist
         ret = self.iscsi_driver._helpers.get_host_from_connector(
-            connector)
+            connector, iscsi=True)
         self.assertIsNone(ret)
 
         # Initialize connection to map volume to a host
@@ -2492,7 +2494,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self.assertEqual(v, ret['data'][k])
 
         ret = self.iscsi_driver._helpers.get_host_from_connector(
-            connector)
+            connector, iscsi=True)
         self.assertIsNotNone(ret)
 
     def test_storwize_initialize_iscsi_connection_multipath(self):
@@ -2530,7 +2532,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Check case where no hosts exist
         ret = self.iscsi_driver._helpers.get_host_from_connector(
-            connector)
+            connector, iscsi=True)
         self.assertIsNone(ret)
 
         # Initialize connection to map volume to a host
@@ -2544,7 +2546,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self.assertEqual(v, ret['data'][k])
 
         ret = self.iscsi_driver._helpers.get_host_from_connector(
-            connector)
+            connector, iscsi=True)
         self.assertIsNotNone(ret)
 
     def test_storwize_svc_iscsi_host_maps(self):
@@ -2684,7 +2686,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Make sure our host still exists
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            self._connector)
+            self._connector, iscsi=True)
         self.assertIsNotNone(host_name)
 
         # Remove the mapping from the 2nd volume. The host should
@@ -2696,11 +2698,11 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         fake_conn = {'ip': '127.0.0.1', 'initiator': 'iqn.fake'}
         self.iscsi_driver.initialize_connection(volume2, self._connector)
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            self._connector)
+            self._connector, iscsi=True)
         self.assertIsNotNone(host_name)
         self.iscsi_driver.terminate_connection(volume2, fake_conn)
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
-            self._connector)
+            self._connector, iscsi=True)
         self.assertIsNone(host_name)
         self.iscsi_driver.delete_volume(volume2)
         self._assert_vol_exists(volume2['name'], False)
@@ -2713,7 +2715,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         if self.USESIM:
             ret = (
                 self.iscsi_driver._helpers.get_host_from_connector(
-                    self._connector))
+                    self._connector, iscsi=True))
             self.assertIsNone(ret)
 
     def test_storwize_svc_iscsi_multi_host_maps(self):
@@ -2878,18 +2880,12 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
-
         self.fc_driver.initialize_connection(volume_fc, connector)
         # Create a FC host
         helper = self.fc_driver._helpers
 
-        if self.USESIM:
-            # tell lsfabric to not return anything
-            self.sim.error_injection('lsfabric', 'no_hosts')
         host_name = helper.get_host_from_connector(
             connector, volume_fc['name'])
-        if self.USESIM:
-            self.sim.error_injection('lsfabric', 'no_hosts')
         self.assertIsNotNone(host_name)
 
     def test_storwize_get_host_from_connector_with_lshost_failure(self):
@@ -4206,19 +4202,20 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         tmpconn1 = {'initiator': u'unicode:initiator1.%s' % rand_id,
                     'ip': '10.10.10.10',
                     'host': u'unicode.foo}.bar{.baz-%s' % rand_id}
-        self.driver._helpers.create_host(tmpconn1)
+        self.driver._helpers.create_host(tmpconn1, iscsi=True)
 
         # Add a host with a different prefix
         tmpconn2 = {'initiator': u'unicode:initiator2.%s' % rand_id,
                     'ip': '10.10.10.11',
                     'host': u'unicode.hello.world-%s' % rand_id}
-        self.driver._helpers.create_host(tmpconn2)
+        self.driver._helpers.create_host(tmpconn2, iscsi=True)
 
         conn = {'initiator': u'unicode:initiator3.%s' % rand_id,
                 'ip': '10.10.10.12',
                 'host': u'unicode.foo}.bar}.baz-%s' % rand_id}
         self.driver.initialize_connection(volume1, conn)
-        host_name = self.driver._helpers.get_host_from_connector(conn)
+        host_name = self.driver._helpers.get_host_from_connector(
+            conn, iscsi=True)
         self.assertIsNotNone(host_name)
         self.driver.terminate_connection(volume1, conn)
         host_name = self.driver._helpers.get_host_from_connector(conn)
@@ -4227,7 +4224,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Clean up temporary hosts
         for tmpconn in [tmpconn1, tmpconn2]:
-            host_name = self.driver._helpers.get_host_from_connector(tmpconn)
+            host_name = self.driver._helpers.get_host_from_connector(
+                tmpconn, iscsi=True)
             self.assertIsNotNone(host_name)
             self.driver._helpers.delete_host(host_name)
 
