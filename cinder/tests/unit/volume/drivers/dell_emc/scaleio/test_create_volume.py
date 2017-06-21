@@ -34,6 +34,10 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.volume = fake_volume.fake_volume_obj(ctx)
+        host = 'host@backend#{}:{}'.format(
+            self.PROT_DOMAIN_NAME,
+            self.STORAGE_POOL_NAME)
+        self.volume.host = host
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
@@ -71,6 +75,7 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
         """No protection domain name or ID provided."""
         self.driver.protection_domain_name = None
         self.driver.protection_domain_id = None
+        self.volume.host = "host@backend"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume)
 
