@@ -72,16 +72,37 @@ class RESTCaller(object):
     @retry(retry_exc_tuple, interval=1, retries=6)
     def __call__(self, *args):
         url = self.get_full_url(args[0])
-        kwargs = {'timeout': TIMEOUT, 'verify': False}
+        kwargs = {'timeout': TIMEOUT, 'verify': self.__proxy.verify}
         data = None
         if len(args) > 1:
-            data = args[1]
-            kwargs['json'] = data
+            kwargs['json'] = args[1]
 
-        LOG.debug('Sending JSON data: %s, method: %s, data: %s',
+        LOG.debug('Issuing call to NS: %s %s, data: %s',
                   url, self.__method, data)
 
-        response = getattr(self.__proxy.session, self.__method)(url, **kwargs)
+        try:
+            response = getattr(
+                self.__proxy.session, self.__method)(url, **kwargs)
+        except requests.exceptions.ConnectionError:
+            self.handle_failover()
+            LOG.debug('ConnectionError call to NS: %s %s, data: %s',
+                      self.__proxy.url, self.__method, data)
+            url = self.get_full_url(args[0])
+            response = getattr(
+                self.__proxy.session, self.__method)(url, **kwargs)
+        try:
+            check_error(response)
+        except exception.NexentaException as exc:
+            if (exc.kwargs['message']['source'] == 'zpool' and
+                    exc.kwargs['message']['code'] == 'ENOENT'):
+                self.handle_failover()
+                url = self.get_full_url(args[0])
+                LOG.debug('NexentaException call to NS: %s %s, data: %s',
+                          url, self.__method, data)
+                response = getattr(
+                    self.__proxy.session, self.__method)(url, **kwargs)
+            else:
+                raise
         check_error(response)
         content = json.loads(response.content) if response.content else None
         LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
@@ -94,7 +115,8 @@ class RESTCaller(object):
             keep_going = True
             while keep_going:
                 time.sleep(1)
-                response = self.__proxy.session.get(url, verify=False)
+                response = self.__proxy.session.get(
+                    url, verify=self.__proxy.verify)
                 check_error(response)
                 LOG.debug("Got response: %(code)s %(reason)s", {
                     'code': response.status_code,
@@ -102,6 +124,17 @@ class RESTCaller(object):
                 content = response.json() if response.content else None
                 keep_going = response.status_code == 202
         return content
+
+    def handle_failover(self):
+        if self.__proxy.backup:
+            LOG.info('Server %s is unavailable, failing over to %s',
+                     self.__proxy.host, self.__proxy.backup)
+            host = '%s,%s' % (self.__proxy.backup, self.__proxy.host)
+            self.__proxy.__init__(
+                host, self.__proxy.port, self.__proxy.user,
+                self.__proxy.password, self.__proxy.use_https)
+        else:
+            raise
 
 
 class HTTPSAuth(requests.auth.AuthBase):
@@ -125,7 +158,7 @@ class HTTPSAuth(requests.auth.AuthBase):
 
     def handle_401(self, r, **kwargs):
         if r.status_code == 401:
-            LOG.debug('Got 401. Trying to reauth...')
+            LOG.debug('Got [401]. Trying to reauth...')
             self.token = self.https_auth()
             # Consume content and release the original connection
             # to allow our new request to reuse the same one.
@@ -151,22 +184,22 @@ class HTTPSAuth(requests.auth.AuthBase):
         return r
 
     def https_auth(self):
-        LOG.debug('Sending auth request...')
+        LOG.debug('Sending auth request to %s.' % self.url)
         url = '/'.join((self.url, 'auth/login'))
         headers = {'Content-Type': 'application/json'}
         data = {'username': self.username, 'password': self.password}
-        response = requests.post(url, json=data, verify=False,
+        response = requests.post(url, json=data, verify=self.__proxy.verify,
                                  headers=headers, timeout=TIMEOUT)
+        content = json.loads(response.content) if response.content else None
+        LOG.debug("NS auth response: %(code)s %(reason)s %(content)s", {
+            'code': response.status_code,
+            'reason': response.reason,
+            'content': content})
         check_error(response)
         response.close()
         if response.content:
-            content = jsonutils.loads(response.content)
             token = content['token']
             del content['token']
-            LOG.debug("Got response: %(code)s %(reason)s %(content)s", {
-                'code': response.status_code,
-                'reason': response.reason,
-                'content': content})
             return token
         raise exception.VolumeBackendAPIException(
             data=_(
@@ -176,10 +209,16 @@ class HTTPSAuth(requests.auth.AuthBase):
 
 class NexentaJSONProxy(object):
 
-    def __init__(self, host, port, user, password, use_https):
+    def __init__(self, host, port, user, password, use_https, verify):
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
-        self.host = host
+        self.user = user
+        self.verify = verify
+        self.password = password
+        self.use_https = use_https
+        parts = host.split(',')
+        self.host = parts[0].strip()
+        self.backup = parts[1].strip() if len(parts) > 1 else None
         if use_https:
             self.scheme = 'https'
             self.port = port if port else 8443

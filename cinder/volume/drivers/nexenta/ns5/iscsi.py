@@ -13,13 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LI, _LE, _LW
+from cinder.i18n import _
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta.ns5 import zfs_garbage_collector
@@ -27,7 +28,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 import uuid
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 TARGET_GROUP_PREFIX = 'cinder-tg-'
 
@@ -37,6 +38,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+        1.2.0 - Failover support.
         1.1.0 - Added HTTPS support.
                 Added use of sessions for REST calls.
                 Added abandoned volumes and snapshots cleanup.
@@ -65,8 +67,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
                 options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.use_https = self.configuration.nexenta_use_https
-        self.nef_host = self.configuration.nexenta_host
+        self.nef_host = self.configuration.nexenta_rest_address
+        self.iscsi_host = self.configuration.nexenta_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
@@ -90,9 +94,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         return backend_name
 
     def do_setup(self, context):
+        host = self.nef_host or self.iscsi_host
         self.nef = jsonrpc.NexentaJSONProxy(
-            self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password, self.use_https)
+            host, self.nef_port, self.nef_user,
+            self.nef_password, self.use_https, self.verify_ssl)
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
             'name': self.volume_group,
@@ -187,7 +192,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         :param volume: volume reference
         :param new_size: volume new size in GB
         """
-        LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
+        LOG.info('Extending volume: %(id)s New size: %(size)s GB',
                  {'id': volume['id'], 'size': new_size})
         url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                'volumes/%(name)s') % {
@@ -203,7 +208,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         :param snapshot: snapshot reference
         """
         snapshot_vol = self._get_snapshot_volume(snapshot)
-        LOG.info(_LI('Creating snapshot %(snap)s of volume %(vol)s'), {
+        LOG.info('Creating snapshot %(snap)s of volume %(vol)s', {
             'snap': snapshot['name'],
             'vol': snapshot_vol['name']
         })
@@ -222,7 +227,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
         :param snapshot: snapshot reference
         """
-        LOG.info(_LI('Deleting snapshot: %s'), snapshot['name'])
+        LOG.info('Deleting snapshot: %s', snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
@@ -247,7 +252,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         :param volume: reference of volume to be created
         :param snapshot: reference of source snapshot
         """
-        LOG.info(_LI('Creating volume from snapshot: %s'), snapshot['name'])
+        LOG.info('Creating volume from snapshot: %s', snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, snapshot_vol = volume_path.split('/')
@@ -281,15 +286,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
             self.mark_as_garbage('@'.join(
                 (self._get_volume_path(src_vref), snapshot['name'])))
         except exception.NexentaException:
-            LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%s'), '@'.join(
-                [snapshot['volume_name'], snapshot['name']]))
+            LOG.error('Volume creation failed, deleting created snapshot '
+                      '%s', '@'.join([snapshot['volume_name'],
+                                     snapshot['name']]))
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
-                LOG.warning(_LW('Failed to delete zfs snapshot '
-                                '%s'), '@'.join(
-                    [snapshot['volume_name'], snapshot['name']]))
+                LOG.warning('Failed to delete zfs snapshot '
+                            '%s', '@'.join([snapshot['volume_name'],
+                                           snapshot['name']]))
             raise
 
     def create_export(self, _ctx, volume, connector):
@@ -311,6 +316,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
     def remove_export(self, _ctx, volume):
         """Destroy all resources created to export zfs volume.
 
+
         :param volume: reference of volume to be unexported
         """
         volume_path = self._get_volume_path(volume)
@@ -322,9 +328,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
         data = self.nef.get(url)['data']
         if data:
             url = 'san/lunMappings/%s' % data[0]['id']
-            self.nef.delete(url)
-        else:
-            LOG.debug('LU already deleted from appliance')
+            try:
+                self.nef.delete(url)
+            except exception.NexentaException as e:
+                if 'No such lun mapping' in e.args[0]:
+                    LOG.debug('LU already deleted from appliance')
+                else:
+                    raise
 
         for tg in self.volumes:
             if volume_path in self.volumes[tg]:
@@ -357,7 +367,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
-            'host': self.nef_host,
+            'host': self.iscsi_host,
             'pool': self.storage_pool,
             'group': self.volume_group,
         }
@@ -422,9 +432,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
                 # Create new target
                 url = 'san/iscsi/targets'
+                portal = self.iscsi_host
                 data = {
                     "portals": [
-                        {"address": self.nef_host}
+                        {"address": portal}
                     ],
                     'alias': tg_name
                 }
@@ -460,10 +471,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver,
 
             # Get LUN of just created volume
             data = self.nef.get(vol_map_url).get('data')
+            counter = 0
+            while not data and counter < 20:
+                greenthread.sleep(1)
+                counter += 1
+                data = self.nef.get(vol_map_url).get('data')
             lun = data[0]['lun']
 
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': self.nef_host,
+                'host': self.iscsi_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
                 'name': target_name,
                 'lun': lun,
