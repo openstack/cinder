@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import uuidutils
+
 from cinder.tests.functional import functional_helpers
 
 
@@ -52,7 +54,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         created_group = self.api.post_group(
             {'group': {'group_type': self.group_type['id'],
                        'volume_types': [self.volume_type['id']]}})
-        self.assertTrue(created_group['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group['id']))
         created_group_id = created_group['id']
 
         # Check it's there
@@ -67,7 +69,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
             {'volume': {'size': 1,
                         'group_id': created_group_id,
                         'volume_type': self.volume_type['id']}})
-        self.assertTrue(created_volume['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
         created_volume_id = created_volume['id']
 
         # Check it's there
@@ -85,7 +87,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         # Create group snapshot
         created_group_snapshot = self.api.post_group_snapshot(
             {'group_snapshot': {'group_id': created_group_id}})
-        self.assertTrue(created_group_snapshot['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group_snapshot['id']))
         created_group_snapshot_id = created_group_snapshot['id']
 
         # Check it's there
@@ -123,7 +125,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         created_group = self.api.post_group(
             {'group': {'group_type': self.group_type['id'],
                        'volume_types': [self.volume_type['id']]}})
-        self.assertTrue(created_group['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group['id']))
         created_group_id = created_group['id']
 
         # Check it's there
@@ -138,7 +140,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
             {'volume': {'size': 1,
                         'group_id': created_group_id,
                         'volume_type': self.volume_type['id']}})
-        self.assertTrue(created_volume['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
         created_volume_id = created_volume['id']
 
         # Check it's there
@@ -156,7 +158,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         # Create group snapshot
         created_group_snapshot = self.api.post_group_snapshot(
             {'group_snapshot': {'group_id': created_group_id}})
-        self.assertTrue(created_group_snapshot['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group_snapshot['id']))
         created_group_snapshot_id = created_group_snapshot['id']
 
         # Check it's there
@@ -171,7 +173,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         created_group_from_snap = self.api.post_group_from_src(
             {'create-from-src': {
                 'group_snapshot_id': created_group_snapshot_id}})
-        self.assertTrue(created_group_from_snap['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group_from_snap['id']))
         created_group_from_snap_id = created_group_from_snap['id']
 
         # Check it's there
@@ -224,7 +226,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         created_group = self.api.post_group(
             {'group': {'group_type': self.group_type['id'],
                        'volume_types': [self.volume_type['id']]}})
-        self.assertTrue(created_group['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group['id']))
         created_group_id = created_group['id']
 
         # Check it's there
@@ -239,7 +241,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
             {'volume': {'size': 1,
                         'group_id': created_group_id,
                         'volume_type': self.volume_type['id']}})
-        self.assertTrue(created_volume['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
         created_volume_id = created_volume['id']
 
         # Check it's there
@@ -258,7 +260,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         created_group_from_group = self.api.post_group_from_src(
             {'create-from-src': {
                 'source_group_id': created_group_id}})
-        self.assertTrue(created_group_from_group['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_group_from_group['id']))
         created_group_from_group_id = created_group_from_group['id']
 
         # Check it's there
@@ -301,7 +303,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         group1 = self.api.post_group(
             {'group': {'group_type': self.group_type['id'],
                        'volume_types': [self.volume_type['id']]}})
-        self.assertTrue(group1['id'])
+        self.assertTrue(uuidutils.is_uuid_like(group1['id']))
         group_id = group1['id']
         self._poll_group_while(group_id, ['creating'])
 
@@ -310,14 +312,14 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
             {'volume': {'size': 1,
                         'group_id': group_id,
                         'volume_type': self.volume_type['id']}})
-        self.assertTrue(created_volume['id'])
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
         created_volume_id = created_volume['id']
         self._poll_volume_while(created_volume_id, ['creating'])
 
         # Create group snapshot
         group_snapshot1 = self.api.post_group_snapshot(
             {'group_snapshot': {'group_id': group_id}})
-        self.assertTrue(group_snapshot1['id'])
+        self.assertTrue(uuidutils.is_uuid_like(group_snapshot1['id']))
         group_snapshot_id = group_snapshot1['id']
 
         self._poll_group_snapshot_while(group_snapshot_id, 'creating')
