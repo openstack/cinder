@@ -334,15 +334,18 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
         return (sched, fake_context)
 
+    @ddt.data(None, {'name': 'LVM_iSCSI'})
     @mock.patch('cinder.db.service_get_all')
-    def test_backend_passes_filters_happy_day(self, _mock_service_get_topic):
+    def test_backend_passes_filters_happy_day(self, volume_type,
+                                              _mock_service_get_topic):
         """Do a successful pass through of with backend_passes_filters()."""
         sched, ctx = self._backend_passes_filters_setup(
             _mock_service_get_topic)
         request_spec = {'volume_id': fake.VOLUME_ID,
-                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_type': volume_type,
                         'volume_properties': {'project_id': 1,
-                                              'size': 1}}
+                                              'size': 1,
+                                              'multiattach': True}}
         request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.backend_passes_filters(ctx, 'host1#lvm1',
                                                 request_spec, {})

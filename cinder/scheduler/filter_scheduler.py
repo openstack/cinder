@@ -278,7 +278,7 @@ class FilterScheduler(driver.Scheduler):
         # takes 'resource_XX' and 'volume_XX' as input respectively, copying
         # 'volume_XX' to 'resource_XX' will make both filters happy.
         volume_type = request_spec.get("volume_type")
-        resource_type = request_spec.get("volume_type", {})
+        resource_type = volume_type if volume_type is not None else {}
 
         config_options = self._get_configuration_options()
 
