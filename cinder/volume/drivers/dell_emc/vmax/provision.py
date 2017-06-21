@@ -18,6 +18,8 @@ import time
 from oslo_log import log as logging
 
 from cinder import coordination
+from cinder import exception
+from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
@@ -368,3 +370,28 @@ class VMAXProvision(object):
                 {'workload': workload, 'valid_workloads': valid_workloads})
 
         return is_valid_slo, is_valid_workload
+
+    def get_slo_workload_settings_from_storage_group(
+            self, array, sg_name):
+        """Get slo and workload settings from a storage group.
+
+        :param array: the array serial number
+        :param sg_name: the storage group name
+        :return: storage group slo settings
+        """
+        slo = 'NONE'
+        workload = 'NONE'
+        storage_group = self.rest.get_storage_group(array, sg_name)
+        if storage_group:
+            try:
+                slo = storage_group['slo']
+                workload = storage_group['workload']
+            except KeyError:
+                pass
+        else:
+            exception_message = (_(
+                "Could not retrieve storage group %(sg_name)%. ") %
+                {'sg_name': sg_name})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+        return '%(slo)s+%(workload)s' % {'slo': slo, 'workload': workload}

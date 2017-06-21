@@ -1527,3 +1527,188 @@ class VMAXCommon(object):
             # Rename the volume to volumeId, thus remove the 'OS-' prefix.
             self.rest.rename_volume(
                 extra_specs[utils.ARRAY], device_id, volume_id)
+
+    def retype(self, volume, host):
+        """Migrate volume to another host using retype.
+
+        :param volume: the volume object including the volume_type_id
+        :param host: The host dict holding the relevant target(destination)
+            information
+        :returns: boolean -- True if retype succeeded, False if error
+        """
+        volume_name = volume.name
+        LOG.info("Migrating Volume %(volume)s via retype.",
+                 {'volume': volume_name})
+
+        extra_specs = self._initial_setup(volume)
+
+        device_id = self._find_device_on_array(volume, extra_specs)
+        if device_id is None:
+            LOG.error("Volume %(name)s not found on the array. "
+                      "No volume to migrate using retype.",
+                      {'name': volume_name})
+            return False
+
+        return self._slo_workload_migration(device_id, volume, host,
+                                            volume_name, extra_specs)
+
+    def _slo_workload_migration(self, device_id, volume, host,
+                                volume_name, extra_specs):
+        """Migrate from SLO/Workload combination to another.
+
+        :param device_id: the volume device id
+        :param volume: the volume object
+        :param host: the host dict
+        :param volume_name: the name of the volume
+        :param extra_specs: extra specifications
+        :returns: boolean -- True if migration succeeded, False if error.
+        """
+        is_valid, target_slo, target_workload = (
+            self._is_valid_for_storage_assisted_migration(
+                device_id, host, extra_specs[utils.ARRAY],
+                extra_specs[utils.SRP], volume_name))
+
+        if not is_valid:
+            LOG.error(
+                "Volume %(name)s is not suitable for storage "
+                "assisted migration using retype.",
+                {'name': volume_name})
+            return False
+        if volume.host != host['host']:
+            LOG.debug(
+                "Retype Volume %(name)s from source host %(sourceHost)s "
+                "to target host %(targetHost)s. ",
+                {'name': volume_name,
+                 'sourceHost': volume.host,
+                 'targetHost': host['host']})
+            return self._migrate_volume(
+                extra_specs[utils.ARRAY], device_id,
+                extra_specs[utils.SRP], target_slo,
+                target_workload, volume_name, extra_specs)
+
+        return False
+
+    def _migrate_volume(
+            self, array, device_id, srp, target_slo,
+            target_workload, volume_name, extra_specs):
+        """Migrate from one slo/workload combination to another.
+
+        This requires moving the volume from its current SG to a
+        new or existing SG that has the target attributes.
+        :param array: the array serial number
+        :param device_id: the device number
+        :param srp: the storage resource pool
+        :param target_slo: the target service level
+        :param target_workload: the target workload
+        :param volume_name: the volume name
+        :param extra_specs: the extra specifications
+        :return: bool
+        """
+        storagegroups = self.rest.get_storage_groups_from_volume(
+            array, device_id)
+        if not storagegroups:
+            LOG.warning(
+                "Volume : %(volume_name)s does not currently "
+                "belong to any storage groups.",
+                {'volume_name': volume_name})
+        else:
+            self.masking.remove_and_reset_members(
+                array, device_id, None, extra_specs, False)
+
+        try:
+            target_sg_name = self.masking.get_or_create_default_storage_group(
+                array, srp, target_slo, target_workload, extra_specs)
+        except Exception as e:
+            LOG.error("Failed to get or create storage group. "
+                      "Exception received was %(e)s.", {'e': e})
+            return False
+
+        self.masking.add_volume_to_storage_group(
+            array, device_id, target_sg_name, volume_name, extra_specs)
+        # Check that it has been added.
+        vol_check = self.rest.is_volume_in_storagegroup(
+            array, device_id, target_sg_name)
+        if not vol_check:
+            LOG.error(
+                "Volume: %(volume_name)s has not been "
+                "added to target storage group %(storageGroup)s.",
+                {'volume_name': volume_name,
+                 'storageGroup': target_sg_name})
+            return False
+
+        return True
+
+    def _is_valid_for_storage_assisted_migration(
+            self, device_id, host, source_array,
+            source_srp, volume_name):
+        """Check if volume is suitable for storage assisted (pool) migration.
+
+        :param device_id: the volume device id
+        :param host: the host dict
+        :param source_array: the volume's current array serial number
+        :param source_srp: the volume's current pool name
+        :param volume_name: the name of the volume to be migrated
+        :returns: boolean -- True/False
+        :returns: string -- targetSlo
+        :returns: string -- targetWorkload
+        """
+        false_ret = (False, None, None)
+        host_info = host['host']
+
+        LOG.debug("Target host is : %(info)s.", {'info': host_info})
+        try:
+            info_detail = host_info.split('#')
+            pool_details = info_detail[1].split('+')
+            target_slo = pool_details[0]
+            target_workload = pool_details[1]
+            target_srp = pool_details[2]
+            target_array_serial = pool_details[3]
+        except IndexError:
+            LOG.error("Error parsing array, pool, SLO and workload.")
+            return false_ret
+
+        if target_array_serial not in source_array:
+            LOG.error(
+                "The source array: %(source_array)s does not "
+                "match the target array: %(target_array)s - "
+                "skipping storage-assisted migration.",
+                {'source_array': source_array,
+                 'target_array': target_array_serial})
+            return false_ret
+
+        if target_srp not in source_srp:
+            LOG.error(
+                "Only SLO/workload migration within the same SRP Pool is "
+                "supported in this version. The source pool: "
+                "%(source_pool_name)s does not match the target array: "
+                "%(target_pool)s. Skipping storage-assisted migration.",
+                {'source_pool_name': source_srp,
+                 'target_pool': target_srp})
+            return false_ret
+
+        found_storage_group_list = self.rest.get_storage_groups_from_volume(
+            source_array, device_id)
+        if not found_storage_group_list:
+            LOG.warning("Volume: %(volume_name)s does not currently "
+                        "belong to any storage groups.",
+                        {'volume_name': volume_name})
+
+        else:
+            for found_storage_group_name in found_storage_group_list:
+                emc_fast_setting = (
+                    self.provision.
+                    get_slo_workload_settings_from_storage_group(
+                        source_array, found_storage_group_name))
+                target_combination = ("%(targetSlo)s+%(targetWorkload)s"
+                                      % {'targetSlo': target_slo,
+                                         'targetWorkload': target_workload})
+                if target_combination in emc_fast_setting:
+                    LOG.warning(
+                        "No action required. Volume: %(volume_name)s is "
+                        "already part of slo/workload combination: "
+                        "%(targetCombination)s.",
+                        {'volume_name': volume_name,
+                         'targetCombination': target_combination})
+                    return false_ret
+
+        return True, target_slo, target_workload
