@@ -25,6 +25,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.group import api as group_api
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -38,6 +39,7 @@ from cinder.volume import api as vol_get
 version_header_name = 'OpenStack-API-Version'
 
 DEFAULT_AZ = "zone1:host1"
+REVERT_TO_SNAPSHOT_VERSION = '3.40'
 
 
 @ddt.ddt
@@ -488,3 +490,90 @@ class VolumeApiTest(test.TestCase):
             self.assertIn('provider_id', res_dict['volume'])
         else:
             self.assertNotIn('provider_id', res_dict['volume'])
+
+    def _fake_create_volume(self):
+        vol = {
+            'display_name': 'fake_volume1',
+            'status': 'available'
+        }
+        volume = objects.Volume(context=self.ctxt, **vol)
+        volume.create()
+        return volume
+
+    def _fake_create_snapshot(self, volume_id):
+        snap = {
+            'display_name': 'fake_snapshot1',
+            'status': 'available',
+            'volume_id': volume_id
+        }
+        snapshot = objects.Snapshot(context=self.ctxt, **snap)
+        snapshot.create()
+        return snapshot
+
+    @mock.patch.object(objects.Volume, 'get_latest_snapshot')
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_volume_revert_with_snapshot_not_found(self, mock_volume,
+                                                   mock_latest):
+        fake_volume = self._fake_create_volume()
+        mock_volume.return_value = fake_volume
+        mock_latest.side_effect = exception.VolumeSnapshotNotFound(volume_id=
+                                                                   'fake_id')
+        req = fakes.HTTPRequest.blank('/v3/volumes/fake_id/revert')
+        req.headers = {'OpenStack-API-Version':
+                       'volume %s' % REVERT_TO_SNAPSHOT_VERSION}
+        req.api_version_request = api_version.APIVersionRequest(
+            REVERT_TO_SNAPSHOT_VERSION)
+
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
+                          req, 'fake_id', {'revert': {'snapshot_id':
+                                                      'fake_snapshot_id'}})
+
+    @mock.patch.object(objects.Volume, 'get_latest_snapshot')
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_volume_revert_with_snapshot_not_match(self, mock_volume,
+                                                   mock_latest):
+        fake_volume = self._fake_create_volume()
+        mock_volume.return_value = fake_volume
+        fake_snapshot = self._fake_create_snapshot(fake.UUID1)
+        mock_latest.return_value = fake_snapshot
+        req = fakes.HTTPRequest.blank('/v3/volumes/fake_id/revert')
+        req.headers = {'OpenStack-API-Version':
+                       'volume %s' % REVERT_TO_SNAPSHOT_VERSION}
+        req.api_version_request = api_version.APIVersionRequest(
+            REVERT_TO_SNAPSHOT_VERSION)
+
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
+                          req, 'fake_id', {'revert': {'snapshot_id':
+                                                      'fake_snapshot_id'}})
+
+    @mock.patch.object(objects.Volume, 'get_latest_snapshot')
+    @mock.patch('cinder.objects.base.'
+                'CinderPersistentObject.update_single_status_where')
+    @mock.patch.object(volume_api.API, 'get_volume')
+    def test_volume_revert_update_status_failed(self,
+                                                mock_volume,
+                                                mock_update,
+                                                mock_latest):
+        fake_volume = self._fake_create_volume()
+        fake_snapshot = self._fake_create_snapshot(fake_volume['id'])
+        mock_volume.return_value = fake_volume
+        mock_latest.return_value = fake_snapshot
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s/revert'
+                                      % fake_volume['id'])
+        req.headers = {'OpenStack-API-Version':
+                       'volume %s' % REVERT_TO_SNAPSHOT_VERSION}
+        req.api_version_request = api_version.APIVersionRequest(
+            REVERT_TO_SNAPSHOT_VERSION)
+        # update volume's status failed
+        mock_update.side_effect = [False, True]
+
+        self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
+                          req, fake_volume['id'], {'revert': {'snapshot_id':
+                                                   fake_snapshot['id']}})
+
+        # update snapshot's status failed
+        mock_update.side_effect = [True, False]
+
+        self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
+                          req, fake_volume['id'], {'revert': {'snapshot_id':
+                                                   fake_snapshot['id']}})

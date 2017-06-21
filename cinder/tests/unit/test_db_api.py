@@ -23,6 +23,7 @@ from mock import call
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+import six
 from sqlalchemy.sql import operators
 
 from cinder.api import common
@@ -1545,6 +1546,41 @@ class DBAPISnapshotTestCase(BaseTest):
                                        'volume_size': 42})
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
         self.assertEqual((1, 42), actual)
+
+    @ddt.data({'time_collection': [1, 2, 3],
+               'latest': 1},
+              {'time_collection': [4, 2, 6],
+               'latest': 2},
+              {'time_collection': [8, 2, 1],
+               'latest': 1})
+    @ddt.unpack
+    def test_snapshot_get_latest_for_volume(self, time_collection, latest):
+        def hours_ago(hour):
+            return timeutils.utcnow() - datetime.timedelta(
+                hours=hour)
+        db.volume_create(self.ctxt, {'id': 1})
+        for snapshot in time_collection:
+            db.snapshot_create(self.ctxt,
+                               {'id': snapshot, 'volume_id': 1,
+                                'display_name': 'one',
+                                'created_at': hours_ago(snapshot),
+                                'status': fields.SnapshotStatus.AVAILABLE})
+
+        snapshot = db.snapshot_get_latest_for_volume(self.ctxt, 1)
+
+        self.assertEqual(six.text_type(latest), snapshot['id'])
+
+    def test_snapshot_get_latest_for_volume_not_found(self):
+
+        db.volume_create(self.ctxt, {'id': 1})
+        for t_id in [2, 3]:
+            db.snapshot_create(self.ctxt,
+                               {'id': t_id, 'volume_id': t_id,
+                                'display_name': 'one',
+                                'status': fields.SnapshotStatus.AVAILABLE})
+
+        self.assertRaises(exception.VolumeSnapshotNotFound,
+                          db.snapshot_get_latest_for_volume, self.ctxt, 1)
 
     def test_snapshot_get_all_by_filter(self):
         db.volume_create(self.ctxt, {'id': 1})

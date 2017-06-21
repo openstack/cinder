@@ -13,6 +13,7 @@
 #    under the License.
 
 import datetime
+import ddt
 import uuid
 
 from iso8601 import iso8601
@@ -181,6 +182,7 @@ class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
         self.assertNotEqual(obj1, None)
 
 
+@ddt.ddt
 class TestCinderObjectConditionalUpdate(test.TestCase):
 
     def setUp(self):
@@ -725,6 +727,24 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
                  objects.Volume.model.size: 12}, reflect_changes=False)
             self.assertTrue(res)
             self.assertTrue(m.called)
+
+    @ddt.data(('available', 'error', None),
+              ('error', 'rolling_back', [{'fake_filter': 'faked'}]))
+    @ddt.unpack
+    @mock.patch('cinder.objects.base.'
+                'CinderPersistentObject.conditional_update')
+    def test_update_status_where(self, value, expected, filters, mock_update):
+        volume = self._create_volume()
+        if filters:
+            volume.update_single_status_where(value, expected, filters)
+            mock_update.assert_called_with({'status': value},
+                                           {'status': expected},
+                                           filters)
+        else:
+            volume.update_single_status_where(value, expected)
+            mock_update.assert_called_with({'status': value},
+                                           {'status': expected},
+                                           ())
 
 
 class TestCinderDictObject(test_objects.BaseObjectsTestCase):

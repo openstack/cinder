@@ -459,6 +459,15 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # it's quite slow.
         self._delete_volume(snapshot, is_snapshot=True)
 
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to a snapshot"""
+
+        self.vg.revert(self._escape_snapshot(snapshot.name))
+        self.vg.deactivate_lv(volume.name)
+        self.vg.activate_lv(volume.name)
+        # Recreate the snapshot that was destroyed by the revert
+        self.create_snapshot(snapshot)
+
     def local_path(self, volume, vg=None):
         if vg is None:
             vg = self.configuration.volume_group
