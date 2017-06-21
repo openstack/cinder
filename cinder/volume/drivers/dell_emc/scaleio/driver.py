@@ -305,8 +305,15 @@ class ScaleIODriver(driver.VolumeDriver):
                                 self.storage_pool_id)
 
     def _find_storage_pool_name_from_storage_type(self, storage_type):
-        return storage_type.get(STORAGE_POOL_NAME,
-                                self.storage_pool_name)
+        pool_name = storage_type.get(STORAGE_POOL_NAME)
+        # using the extra spec of sio:sp_name is deprecated
+        if pool_name is not None:
+            LOG.warning("Using the volume type extra spec of "
+                        "sio:sp_name is deprecated and will be removed "
+                        "in a future version. The supported way to "
+                        "specify this is by specifying an extra spec "
+                        "of 'pool_name=protection_domain:storage_pool'")
+        return pool_name
 
     def _find_protection_domain_id_from_storage_type(self, storage_type):
         # Default to what was configured in configuration file if not defined.
@@ -314,9 +321,15 @@ class ScaleIODriver(driver.VolumeDriver):
                                 self.protection_domain_id)
 
     def _find_protection_domain_name_from_storage_type(self, storage_type):
-        # Default to what was configured in configuration file if not defined.
-        return storage_type.get(PROTECTION_DOMAIN_NAME,
-                                self.protection_domain_name)
+        domain_name = storage_type.get(PROTECTION_DOMAIN_NAME)
+        # using the extra spec of sio:pd_name is deprecated
+        if domain_name is not None:
+            LOG.warning("Using the volume type extra spec of "
+                        "sio:pd_name is deprecated and will be removed "
+                        "in a future version. The supported way to "
+                        "specify this is by specifying an extra spec "
+                        "of 'pool_name=protection_domain:storage_pool'")
+        return domain_name
 
     def _find_provisioning_type(self, storage_type):
         new_provisioning_type = storage_type.get(PROVISIONING_KEY)
@@ -391,16 +404,56 @@ class ScaleIODriver(driver.VolumeDriver):
 
         volname = self._id_to_base64(volume.id)
 
+        # the cinder scheduler will send us the pd:sp for the volume
+        requested_pd = None
+        requested_sp = None
+        try:
+            pd_sp = volume_utils.extract_host(volume.host, 'pool')
+            if pd_sp is not None:
+                requested_pd = pd_sp.split(':')[0]
+                requested_sp = pd_sp.split(':')[1]
+        except (KeyError, ValueError):
+            # we seem to have not gotten it so we'll figure out defaults
+            requested_pd = None
+            requested_sp = None
+
         storage_type = self._get_volumetype_extraspecs(volume)
-        storage_pool_name = self._find_storage_pool_name_from_storage_type(
-            storage_type)
+        type_sp = self._find_storage_pool_name_from_storage_type(storage_type)
         storage_pool_id = self._find_storage_pool_id_from_storage_type(
             storage_type)
         protection_domain_id = (
             self._find_protection_domain_id_from_storage_type(storage_type))
-        protection_domain_name = (
+        type_pd = (
             self._find_protection_domain_name_from_storage_type(storage_type))
         provisioning_type = self._find_provisioning_type(storage_type)
+
+        if type_sp is not None:
+            # prefer the storage pool in the volume type
+            # this was undocumented so will likely not happen
+            storage_pool_name = type_sp
+        else:
+            storage_pool_name = requested_sp
+        if type_pd is not None:
+            # prefer the protection domain in the volume type
+            # this was undocumented so will likely not happen
+            protection_domain_name = type_pd
+        else:
+            protection_domain_name = requested_pd
+
+        # check if the requested pd:sp match the ones that will
+        # be used. If not, spit out a deprecation notice
+        # should never happen
+        if (protection_domain_name != requested_pd
+                or storage_pool_name != requested_sp):
+            LOG.warning(
+                "Creating volume in different protection domain or "
+                "storage pool than scheduler requested. "
+                "Requested: %(req_pd)s:%(req_sp)s, "
+                "Actual %(act_pd)s:%(act_sp)s.",
+                {'req_pd': requested_pd,
+                 'req_sp': requested_sp,
+                 'act_pd': protection_domain_name,
+                 'act_sp': storage_pool_name})
 
         LOG.info("Volume type: %(volume_type)s, "
                  "storage pool name: %(pool_name)s, "
