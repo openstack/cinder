@@ -224,7 +224,7 @@ Request
 
    - project_id: project_id_path
    - attachment_id: attachment_id_1
-   - connector: connector
+   - connector: connector_1
 
 Request Example
 ---------------
