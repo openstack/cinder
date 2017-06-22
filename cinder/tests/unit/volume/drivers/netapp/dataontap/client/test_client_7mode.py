@@ -533,8 +533,8 @@ class NetApp7modeClientTestCase(test.TestCase):
         self.assertEqual(
             fake.CG_SNAPSHOT_ID,
             actual_request.get_child_by_name('snapshot-name').get_content())
-        self.assertEqual(actual_request.get_child_by_name(
-            'destination-exists'), None)
+        self.assertIsNone(actual_request.get_child_by_name(
+            'destination-exists'))
         self.assertTrue(enable_tunneling)
 
     def test_clone_file_when_clone_fails(self):
@@ -589,8 +589,8 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_src_path, actual_src_path)
         self.assertEqual(expected_dest_path, actual_dest_path)
-        self.assertEqual(actual_request.get_child_by_name(
-            'destination-exists'), None)
+        self.assertIsNone(actual_request.get_child_by_name(
+            'destination-exists'))
         self.assertTrue(enable_tunneling)
 
         __, _args, _kwargs = self.connection.invoke_successfully.mock_calls[1]

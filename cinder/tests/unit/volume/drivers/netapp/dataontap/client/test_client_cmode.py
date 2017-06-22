@@ -1146,8 +1146,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         req_snapshot_child = actual_request.get_child_by_name('snapshot-name')
         self.assertEqual(fake.CG_SNAPSHOT_ID, req_snapshot_child.get_content())
 
-        self.assertEqual(actual_request.get_child_by_name(
-            'destination-exists'), None)
+        self.assertIsNone(actual_request.get_child_by_name(
+            'destination-exists'))
 
     def test_clone_file_when_destination_exists(self):
         expected_flex_vol = "fake_flex_vol"
