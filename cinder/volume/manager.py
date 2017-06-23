@@ -986,10 +986,6 @@ class VolumeManager(manager.CleanableManager,
                             "status to %(status)s." % msg_args)
                 LOG.exception(msg, msg_args)
 
-        self._notify_about_volume_usage(context, volume,
-                                        "revert.end")
-        self._notify_about_snapshot_usage(context, snapshot,
-                                          "revert.end")
         v_res = volume.update_single_status_where(
             'available', 'reverting')
         if not v_res:
