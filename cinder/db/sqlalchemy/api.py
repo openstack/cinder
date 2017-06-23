@@ -121,9 +121,8 @@ def get_backend():
 def is_admin_context(context):
     """Indicates if the request context is an administrator."""
     if not context:
-        LOG.warning('Use of empty request context is deprecated',
-                    DeprecationWarning)
-        raise Exception('die')
+        raise exception.CinderException(
+            'Use of empty request context is deprecated')
     return context.is_admin
 
 
