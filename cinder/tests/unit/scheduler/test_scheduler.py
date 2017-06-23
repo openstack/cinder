@@ -25,7 +25,7 @@ from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder.message import defined_messages
+from cinder.message import message_field
 from cinder import objects
 from cinder.scheduler import driver
 from cinder.scheduler import manager
@@ -194,9 +194,9 @@ class SchedulerManagerTestCase(test.TestCase):
                                                    request_spec_obj, {})
 
         _mock_message_create.assert_called_once_with(
-            self.context, defined_messages.EventIds.UNABLE_TO_ALLOCATE,
-            self.context.project_id, resource_type='VOLUME',
-            resource_uuid=volume.id)
+            self.context, message_field.Action.SCHEDULE_ALLOCATE_VOLUME,
+            resource_uuid=volume.id,
+            exception=mock.ANY)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('eventlet.sleep')

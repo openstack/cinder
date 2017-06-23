@@ -21,8 +21,7 @@ import mock
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.message import defined_messages
-from cinder.message import resource_types
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests import fake_driver
@@ -1033,9 +1032,9 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
 
         # Assert a user message was created
         self.volume.message_api.create.assert_called_once_with(
-            self.context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
-            self.context.project_id, resource_type=resource_types.VOLUME,
-            resource_uuid=volume['id'])
+            self.context, message_field.Action.ATTACH_VOLUME,
+            resource_uuid=volume['id'],
+            exception=mock.ANY)
 
         attachment = objects.VolumeAttachmentList.get_all_by_volume_id(
             context.get_admin_context(), volume_id)[0]

@@ -1244,6 +1244,16 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(groups.c.replication_status.type,
                               self.VARCHAR_TYPE)
 
+    def _check_103(self, engine, data):
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "messages"))
+        attachment = db_utils.get_table(engine, 'messages')
+
+        self.assertIsInstance(attachment.c.detail_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(attachment.c.action_id.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
         self.assert_each_foreign_key_is_part_of_an_index()

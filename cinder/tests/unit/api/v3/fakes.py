@@ -13,7 +13,6 @@
 import datetime
 import iso8601
 
-from cinder.message import defined_messages
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -31,7 +30,9 @@ DEFAULT_AZ = "fakeaz"
 def fake_message(id, **kwargs):
     message = {
         'id': id,
-        'event_id': defined_messages.EventIds.UNABLE_TO_ALLOCATE,
+        'action_id': "002",
+        'detail_id': "001",
+        'event_id': "VOLUME_VOLUME_002_001",
         'message_level': "ERROR",
         'request_id': FAKE_UUID,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
