@@ -445,14 +445,14 @@ class XIVProxy(proxy.IBMStorageProxy):
             elif replication_type in (u'async', u'<is> async'):
                 info['mode'] = ASYNC
             else:
-                msg = (_("Unsupported replication mode %(mode)s"),
-                       {'mode': replication_type})
+                msg = (_("Unsupported replication mode %(mode)s")
+                       % {'mode': replication_type})
                 LOG.error(msg)
                 raise self._get_exception()(message=msg)
             info['rpo'] = int(specs.get('rpo', u'<is> 0')[5:])
             if info['rpo'] and info['rpo'] not in self._get_supported_rpo():
-                msg = (_("Unsupported replication RPO %(rpo)s"),
-                       {'rpo': info['rpo']})
+                msg = (_("Unsupported replication RPO %(rpo)s")
+                       % {'rpo': info['rpo']})
                 LOG.error(msg)
                 raise self._get_exception()(message=msg)
             LOG.debug('_get_replication_info: info %(info)s', {'info': info})
@@ -472,8 +472,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             raise self._get_exception()(msg)
         except errors.PoolOutOfSpaceError:
             msg = (_("Unable to create volume: pool '%(pool)s' is "
-                     "out of space."),
-                   {'pool': pool})
+                     "out of space.")
+                   % {'pool': pool})
             LOG.error(msg)
             raise self._get_exception()(msg)
         except errors.XCLIError as e:
@@ -917,9 +917,9 @@ class XIVProxy(proxy.IBMStorageProxy):
         volume_size = float(volume['size'])
         if volume_size < snapshot_size:
             error = (_("Volume size (%(vol_size)sGB) cannot be smaller than "
-                       "the snapshot size (%(snap_size)sGB).."),
-                     {'vol_size': volume_size,
-                      'snap_size': snapshot_size})
+                       "the snapshot size (%(snap_size)sGB)..")
+                     % {'vol_size': volume_size,
+                        'snap_size': snapshot_size})
             LOG.error(error)
             raise self._get_exception()(error)
         self.create_volume(volume)
@@ -927,8 +927,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             self._call_xiv_xcli(
                 "vol_copy", vol_src=snapshot_name, vol_trg=volume['name'])
         except errors.XCLIError as e:
-            error = (_("Fatal error in copying volume: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in copying volume: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             self._silent_delete_volume(volume)
             raise self._get_exception()(error)
@@ -942,8 +942,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             self._call_xiv_xcli(
                 "vol_resize", vol=volume['name'], size_blocks=size)
         except errors.XCLIError as e:
-            error = (_("Fatal error in resize volume: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in resize volume: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             self._silent_delete_volume(volume)
             raise self._get_exception()(error)
@@ -966,8 +966,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                 "snapshot_create", vol=snapshot['volume_name'],
                 name=snapshot['name'])
         except errors.XCLIError as e:
-            error = (_("Fatal error in snapshot_create: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in snapshot_create: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -979,8 +979,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             self._call_xiv_xcli(
                 "snapshot_delete", snapshot=snapshot['name'])
         except errors.XCLIError as e:
-            error = (_("Fatal error in snapshot_delete: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in snapshot_delete: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -998,8 +998,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                 "vol_resize", vol=volume['name'],
                 size_blocks=size, shrink_volume=shrink)
         except errors.XCLIError as e:
-            error = (_("Fatal error in vol_resize: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in vol_resize: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1038,8 +1038,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                 "vol_move", vol=volume.name,
                 pool=dest_pool)
         except errors.XCLIError as e:
-            error = (_("Fatal error in vol_move: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in vol_move: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1081,16 +1081,16 @@ class XIVProxy(proxy.IBMStorageProxy):
             volumes = self._call_xiv_xcli(
                 "vol_list", vol=existing_volume).as_list
         except errors.XCLIError as e:
-            error = (MANAGE_VOLUME_BASE_ERROR,
-                     {'volume': existing_volume,
-                      'error': self._get_code_and_status_or_message(e)})
+            error = (MANAGE_VOLUME_BASE_ERROR
+                     % {'volume': existing_volume,
+                        'error': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
         if len(volumes) != 1:
-            error = (MANAGE_VOLUME_BASE_ERROR,
-                     {'volume': existing_volume,
-                      'error': 'Volume does not exist'})
+            error = (MANAGE_VOLUME_BASE_ERROR
+                     % {'volume': existing_volume,
+                        'error': 'Volume does not exist'})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1104,9 +1104,9 @@ class XIVProxy(proxy.IBMStorageProxy):
                 vol=existing_volume,
                 new_name=volume['name'])
         except errors.XCLIError as e:
-            error = (MANAGE_VOLUME_BASE_ERROR,
-                     {'volume': existing_volume,
-                      'error': self._get_code_and_status_or_message(e)})
+            error = (MANAGE_VOLUME_BASE_ERROR
+                     % {'volume': existing_volume,
+                        'error': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1132,8 +1132,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             volumes = self._call_xiv_xcli(
                 "vol_list", vol=existing_volume).as_list
         except errors.XCLIError as e:
-            error = (_("Fatal error in vol_list: %(details)s"),
-                     {'details': self._get_code_and_status_or_message(e)})
+            error = (_("Fatal error in vol_list: %(details)s")
+                     % {'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1559,8 +1559,8 @@ class XIVProxy(proxy.IBMStorageProxy):
         volume_size = float(volume['size'])
         if volume_size < src_vref_size:
             error = (_("New volume size (%(vol_size)s GB) cannot be less"
-                       "than the source volume size (%(src_size)s GB).."),
-                     {'vol_size': volume_size, 'src_size': src_vref_size})
+                       "than the source volume size (%(src_size)s GB)..")
+                     % {'vol_size': volume_size, 'src_size': src_vref_size})
             LOG.error(error)
             raise self._get_exception()(error)
 
@@ -1572,10 +1572,10 @@ class XIVProxy(proxy.IBMStorageProxy):
                 vol_trg=volume['name'])
         except errors.XCLIError as e:
             error = (_("Failed to copy from '%(src)s' to '%(vol)s': "
-                       "%(details)s"),
-                     {'src': src_vref.get('name', ''),
-                      'vol': volume.get('name', ''),
-                      'details': self._get_code_and_status_or_message(e)})
+                       "%(details)s")
+                     % {'src': src_vref.get('name', ''),
+                        'vol': volume.get('name', ''),
+                        'details': self._get_code_and_status_or_message(e)})
             LOG.error(error)
             self._silent_delete_volume(volume=volume)
             raise self._get_exception()(error)
@@ -1590,8 +1590,9 @@ class XIVProxy(proxy.IBMStorageProxy):
                     vol=volume['name'],
                     size_blocks=size)
             except errors.XCLIError as e:
-                error = (_("Fatal error in vol_resize: %(details)s"),
-                         {'details': self._get_code_and_status_or_message(e)})
+                error = (_("Fatal error in vol_resize: %(details)s")
+                         % {'details':
+                            self._get_code_and_status_or_message(e)})
                 LOG.error(error)
                 self._silent_delete_volume(volume=volume)
                 raise self._get_exception()(error)
@@ -1955,10 +1956,11 @@ class XIVProxy(proxy.IBMStorageProxy):
                         "cg_add_vol", vol=volume['name'], cg=cgname)
                 except errors.XCLIError as e:
                     error = (_("Failed adding volume %(vol)s to "
-                               "consistency group %(cg)s: %(err)s"),
-                             {'vol': volume['name'],
-                              'cg': cgname,
-                              'err': self._get_code_and_status_or_message(e)})
+                               "consistency group %(cg)s: %(err)s")
+                             % {'vol': volume['name'],
+                                'cg': cgname,
+                                'err':
+                                    self._get_code_and_status_or_message(e)})
                     LOG.error(error)
                     self._cleanup_consistencygroup_update(
                         context, group, add_volumes_update, None)
@@ -1979,10 +1981,11 @@ class XIVProxy(proxy.IBMStorageProxy):
                     LOG.debug(details)
                 except errors.XCLIError as e:
                     error = (_("Failed removing volume %(vol)s from "
-                               "consistency group %(cg)s: %(err)s"),
-                             {'vol': volume['name'],
-                              'cg': cgname,
-                              'err': self._get_code_and_status_or_message(e)})
+                               "consistency group %(cg)s: %(err)s")
+                             % {'vol': volume['name'],
+                                'cg': cgname,
+                                'err':
+                                    self._get_code_and_status_or_message(e)})
                     LOG.error(error)
                     self._cleanup_consistencygroup_update(
                         context, group, add_volumes_update,
@@ -2109,7 +2112,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             self._call_xiv_xcli(
                 "snap_group_delete", snap_group=groupname).as_list
         except errors.CgDoesNotExistError:
-            error = (_("consistency group %s not found on backend"), cgname)
+            error = _("consistency group %s not found on backend") % cgname
             LOG.error(error)
             raise self._get_exception()(error)
         except errors.PoolSnapshotLimitReachedError:
@@ -2650,7 +2653,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(err_msg)
             raise self.meta['exception'].HostNotFound(host=err_msg)
         except Exception as er:
-            err_msg = (SETUP_BASE_ERROR,
+            err_msg = (SETUP_BASE_ERROR %
                        {'title': strings.TITLE, 'details': er})
             LOG.error(err_msg)
             raise self._get_exception()(err_msg)
