@@ -629,6 +629,12 @@ description_14:
   in: body
   required: false
   type: string
+description_15:
+  description: |
+    The volume type description.
+  in: body
+  required: false
+  type: string
 description_2:
   description: |
     The description of the consistency group.
@@ -1526,6 +1532,12 @@ os-volume-replication:extended_status_1:
   in: body
   required: false
   type: string
+os-volume-type-access:is_public:
+  description: |
+    Make type accessible to the public.
+  in: body
+  required: false
+  type: boolean
 pool_name:
   description: |
     The name of the storage pool.
