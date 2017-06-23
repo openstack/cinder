@@ -253,9 +253,9 @@ def volume_data_get_for_host(context, host, count_only=False):
                                          count_only)
 
 
-def volume_data_get_for_project(context, project_id):
+def volume_data_get_for_project(context, project_id, host=None):
     """Get (volume_count, gigabytes) for project."""
-    return IMPL.volume_data_get_for_project(context, project_id)
+    return IMPL.volume_data_get_for_project(context, project_id, host=host)
 
 
 def volume_destroy(context, volume_id):
@@ -501,11 +501,13 @@ def snapshot_update(context, snapshot_id, values):
     return IMPL.snapshot_update(context, snapshot_id, values)
 
 
-def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
+def snapshot_data_get_for_project(context, project_id, volume_type_id=None,
+                                  host=None):
     """Get count and gigabytes used for snapshots for specified project."""
     return IMPL.snapshot_data_get_for_project(context,
                                               project_id,
-                                              volume_type_id)
+                                              volume_type_id,
+                                              host=host)
 
 
 def snapshot_get_all_active_by_window(context, begin, end=None,

@@ -1592,13 +1592,15 @@ def volume_data_get_for_host(context, host, count_only=False):
 
 @require_admin_context
 def _volume_data_get_for_project(context, project_id, volume_type_id=None,
-                                 session=None):
+                                 session=None, host=None):
     query = model_query(context,
                         func.count(models.Volume.id),
                         func.sum(models.Volume.size),
                         read_deleted="no",
                         session=session).\
         filter_by(project_id=project_id)
+    if host:
+        query = query.filter(_filter_host(models.Volume.host, host))
 
     if volume_type_id:
         query = query.filter_by(volume_type_id=volume_type_id)
@@ -1629,8 +1631,10 @@ def _backup_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_admin_context
-def volume_data_get_for_project(context, project_id, volume_type_id=None):
-    return _volume_data_get_for_project(context, project_id, volume_type_id)
+def volume_data_get_for_project(context, project_id,
+                                volume_type_id=None, host=None):
+    return _volume_data_get_for_project(context, project_id,
+                                        volume_type_id, host=host)
 
 
 @require_admin_context
@@ -3225,27 +3229,31 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
 
 @require_context
 def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
-                                   session=None):
+                                   session=None, host=None):
     authorize_project_context(context, project_id)
     query = model_query(context,
                         func.count(models.Snapshot.id),
                         func.sum(models.Snapshot.volume_size),
                         read_deleted="no",
-                        session=session).\
-        filter_by(project_id=project_id)
-
-    if volume_type_id:
-        query = query.join('volume').filter_by(volume_type_id=volume_type_id)
-
-    result = query.first()
+                        session=session)
+    if volume_type_id or host:
+        query = query.join('volume')
+        if volume_type_id:
+            query = query.filter(
+                models.Volume.volume_type_id == volume_type_id)
+        if host:
+            query = query.filter(_filter_host(models.Volume.host, host))
+    result = query.filter(models.Snapshot.project_id == project_id).first()
 
     # NOTE(vish): convert None to 0
     return (result[0] or 0, result[1] or 0)
 
 
 @require_context
-def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
-    return _snapshot_data_get_for_project(context, project_id, volume_type_id)
+def snapshot_data_get_for_project(context, project_id,
+                                  volume_type_id=None, host=None):
+    return _snapshot_data_get_for_project(context, project_id, volume_type_id,
+                                          host=host)
 
 
 @require_context

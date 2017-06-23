@@ -273,9 +273,10 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
 
     @classmethod
     def snapshot_data_get_for_project(cls, context, project_id,
-                                      volume_type_id=None):
+                                      volume_type_id=None, host=None):
         return db.snapshot_data_get_for_project(context, project_id,
-                                                volume_type_id)
+                                                volume_type_id,
+                                                host=host)
 
     @staticmethod
     def _is_cleanable(status, obj_version):
