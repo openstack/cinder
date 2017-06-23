@@ -447,7 +447,14 @@ test_validate_cg_type:
         _uuid: GROUP_ID
       volume_type_ids: ['type1']
 
-
+test_require_consistent_group_snapshot_enabled:
+  group:
+    _type: 'group'
+    _properties:
+      id:
+        _uuid: group_id
+      group_type_id:
+        _uuid: group_type_id
 ###########################################################
 # TestClient
 ###########################################################

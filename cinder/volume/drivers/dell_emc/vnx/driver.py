@@ -250,51 +250,13 @@ class VNXDriver(driver.ManageableVD,
         """Return size of volume to be managed by manage_existing."""
         return self.adapter.manage_existing_get_size(volume, existing_ref)
 
-    def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
-        return self.adapter.create_consistencygroup(context, group)
-
-    def delete_consistencygroup(self, context, group, volumes):
-        """Deletes a consistency group."""
-        return self.adapter.delete_consistencygroup(
-            context, group, volumes)
-
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Creates a cgsnapshot."""
-        return self.adapter.create_cgsnapshot(
-            context, cgsnapshot, snapshots)
-
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
-        """Deletes a cgsnapshot."""
-        return self.adapter.delete_cgsnapshot(
-            context, cgsnapshot, snapshots)
-
     def get_pool(self, volume):
         """Returns the pool name of a volume."""
         return self.adapter.get_pool_name(volume)
 
-    def update_consistencygroup(self, context, group,
-                                add_volumes,
-                                remove_volumes):
-        """Updates LUNs in consistency group."""
-        return self.adapter.update_consistencygroup(context, group,
-                                                    add_volumes,
-                                                    remove_volumes)
-
     def unmanage(self, volume):
         """Unmanages a volume."""
         return self.adapter.unmanage(volume)
-
-    def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        """Creates a consistency group from source."""
-        if cgsnapshot:
-            return self.adapter.create_cg_from_cgsnapshot(
-                context, group, volumes, cgsnapshot, snapshots)
-        elif source_cg:
-            return self.adapter.create_cloned_cg(
-                context, group, volumes, source_cg, source_vols)
 
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status=None):
@@ -372,6 +334,3 @@ class VNXDriver(driver.ManageableVD,
         """Deletes a group_snapshot."""
         return self.adapter.delete_group_snapshot(
             context, group_snapshot, snapshots)
-
-    def is_consistent_group_snapshot_enabled(self):
-        return self._stats.get('consistent_group_snapshot_enabled')

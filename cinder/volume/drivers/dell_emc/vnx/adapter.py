@@ -237,7 +237,7 @@ class CommonAdapter(object):
                   'provision': provision,
                   'tier': tier})
 
-        cg_id = volume.group_id or volume.consistencygroup_id
+        cg_id = volume.group_id
         lun = self.client.create_lun(
             pool, volume_name, volume_size,
             provision, tier, cg_id,
@@ -461,7 +461,6 @@ class CommonAdapter(object):
 
     def create_consistencygroup(self, context, group):
         cg_name = group.id
-        utils.validate_cg_type(group)
         model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         self.client.create_consistency_group(cg_name=cg_name)
         return model_update

@@ -21,14 +21,13 @@ from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import importutils
 
-storops = importutils.try_import('storops')
-
-from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as vol_utils
-from cinder.volume import volume_types
+
+storops = importutils.try_import('storops')
+
 
 LOG = logging.getLogger(__name__)
 
@@ -259,21 +258,6 @@ def get_migration_rate(volume):
             return storops.VNXMigrationRate.HIGH
 
 
-def validate_cg_type(group):
-    if not group.get('volume_type_ids'):
-        return
-    for type_id in group.get('volume_type_ids'):
-        if type_id:
-            specs = volume_types.get_volume_type_extra_specs(type_id)
-            extra_specs = common.ExtraSpecs(specs)
-            if extra_specs.provision == storops.VNXProvisionEnum.COMPRESSED:
-                msg = _("Failed to create consistency group %s "
-                        "because VNX consistency group cannot "
-                        "accept compressed LUNs as members."
-                        ) % group['id']
-                raise exception.InvalidInput(reason=msg)
-
-
 def update_res_without_poll(res):
     with res.with_no_poll():
         res.update()
@@ -356,7 +340,7 @@ def is_volume_smp(volume):
 def require_consistent_group_snapshot_enabled(func):
     @six.wraps(func)
     def inner(self, *args, **kwargs):
-        if not self.is_consistent_group_snapshot_enabled():
+        if not vol_utils.is_group_a_cg_snapshot_type(args[1]):
             raise NotImplementedError
         return func(self, *args, **kwargs)
     return inner

@@ -44,6 +44,12 @@ def patch_extra_specs(specs):
         return_value=specs)
 
 
+def patch_group_specs(specs):
+    return _build_patch_decorator(
+        'cinder.volume.group_types.get_group_type_specs',
+        return_value=specs)
+
+
 def patch_extra_specs_validate(return_value=None, side_effect=None):
     return _build_patch_decorator(
         'cinder.volume.drivers.dell_emc.vnx.common.ExtraSpecs.validate',
