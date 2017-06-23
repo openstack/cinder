@@ -65,6 +65,7 @@ class ExecuteTestCase(test.TestCase):
                                                 root_helper=mock_helper)
 
 
+@ddt.ddt
 class GenericUtilsTestCase(test.TestCase):
     def test_as_int(self):
         test_obj_int = '2'
@@ -281,6 +282,21 @@ class GenericUtilsTestCase(test.TestCase):
         mock_conf.rootwrap_config = '/path/to/conf'
         self.assertEqual('sudo cinder-rootwrap /path/to/conf',
                          utils.get_root_helper())
+
+    @ddt.data({'path_a': 'test', 'path_b': 'test', 'exp_eq': True})
+    @ddt.data({'path_a': 'test', 'path_b': 'other', 'exp_eq': False})
+    @ddt.unpack
+    @mock.patch('os.path.normcase')
+    def test_paths_normcase_equal(self, mock_normcase, path_a,
+                                  path_b, exp_eq):
+        # os.path.normcase will lower the path string on Windows
+        # while doing nothing on other platforms.
+        mock_normcase.side_effect = lambda x: x
+
+        result = utils.paths_normcase_equal(path_a, path_b)
+        self.assertEqual(exp_eq, result)
+
+        mock_normcase.assert_has_calls([mock.call(path_a), mock.call(path_b)])
 
 
 class TemporaryChownTestCase(test.TestCase):

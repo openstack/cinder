@@ -1130,3 +1130,7 @@ def get_log_levels(prefix):
     return {k: logging.logging.getLevelName(v.logger.getEffectiveLevel())
             for k, v in logging._loggers.items()
             if k and k.startswith(prefix)}
+
+
+def paths_normcase_equal(path_a, path_b):
+    return os.path.normcase(path_a) == os.path.normcase(path_b)
