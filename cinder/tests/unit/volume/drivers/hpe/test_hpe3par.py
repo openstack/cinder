@@ -2917,6 +2917,23 @@ class HPE3PARBaseDriver(object):
                                'provider_location': None}
             self.assertEqual(expected_update, actual_update)
 
+            expected = [
+                mock.call.modifyVolume(
+                    'osv-0DM4qZEVSKON-DXN-NwVpw',
+                    {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
+                mock.call.modifyVolume(
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
+                mock.call.modifyVolume(
+                    'tsv-0DM4qZEVSKON-DXN-NwVpw',
+                    {'newName': u'osv-0DM4qZEVSKON-AAAAAAAAA'})
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_update_migrated_volume_attached(self):
         mock_client = self.setup_driver()
         fake_old_volume = {'id': self.VOLUME_ID}

@@ -260,10 +260,11 @@ class HPE3PARCommon(object):
         3.0.33 - Added replication feature in retype flow. bug #1680313
         3.0.34 - Add cloned volume to vvset in online copy. bug #1664464
         3.0.35 - Add volume to consistency group if flag enabled. bug #1702317
+        3.0.36 - Swap volume name in migration. bug #1699733
 
     """
 
-    VERSION = "3.0.35"
+    VERSION = "3.0.36"
 
     stats = {}
 
@@ -1096,7 +1097,7 @@ class HPE3PARCommon(object):
                               {'vol': volume_name, 'ex': ex})
         return model_update
 
-    def _get_3par_vol_name(self, volume_id):
+    def _get_3par_vol_name(self, volume_id, temp_vol=False):
         """Get converted 3PAR volume name.
 
         Converts the openstack volume id from
@@ -1112,7 +1113,13 @@ class HPE3PARCommon(object):
         and / with -
         """
         volume_name = self._encode_name(volume_id)
-        return "osv-%s" % volume_name
+        if temp_vol:
+            # is this a temporary volume
+            # this is done during migration
+            prefix = "tsv-%s"
+        else:
+            prefix = "osv-%s"
+        return prefix % volume_name
 
     def _get_3par_snap_name(self, snapshot_id, temp_snap=False):
         snapshot_name = self._encode_name(snapshot_id)
@@ -2523,10 +2530,16 @@ class HPE3PARCommon(object):
         if original_volume_status == 'available':
             # volume isn't attached and can be updated
             original_name = self._get_3par_vol_name(volume['id'])
+            temp_name = self._get_3par_vol_name(volume['id'], temp_vol=True)
             current_name = self._get_3par_vol_name(new_volume['id'])
             try:
                 volumeMods = {'newName': original_name}
+                volumeTempMods = {'newName': temp_name}
+                volumeCurrentMods = {'newName': current_name}
+                # swap volume name in backend
+                self.client.modifyVolume(original_name, volumeTempMods)
                 self.client.modifyVolume(current_name, volumeMods)
+                self.client.modifyVolume(temp_name, volumeCurrentMods)
                 LOG.info("Volume name changed from %(tmp)s to %(orig)s",
                          {'tmp': current_name, 'orig': original_name})
             except Exception as e:
