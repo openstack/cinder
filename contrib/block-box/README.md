@@ -168,28 +168,28 @@ That's ok, you can always just run the commands yourself using docker run:
 # We set passwords and db creation in the docker-entrypoint-initdb.d script
 docker run -d -p 3306:3306 \
   -v ~/block-box/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
-  --name dbhost \
-  --hostname dbhost \
+  --name mariadb \
+  --hostname mariadb \
   -e MYSQL_ROOT_PASSWORD=password \
   mariadb
 
-# Make sure the environment vars match the startup script for your dbhost
+# Make sure the environment vars match the startup script for your database host
 docker run -d -p 5000:5000 \
   -p 35357:35357 \
-  --link dbhost \
+  --link mariadb \
   --name keystone \
   --hostname keystone \
   -e OS_PASSWORD=password \
   -e DEMO_PASSWORD=password \
-  -e DB_HOST=dbhost \
+  -e DB_HOST=mariadb \
   -e DB_PASSWORD=password \
   keystone
 
-docker run -d -p 5672:5672 --name rabbit --hostname rabbit rabbitmq
+docker run -d -p 5672:5672 --name rabbitmq --hostname rabbitmq rabbitmq
 
 docker run -d -p 8776:8776 \
-  --link dbhost \
-  --link rabbit \
+  --link mariadb \
+  --link rabbitmq \
   --name cinder-api \
   --hostname cinder-api \
   -v ~/block-box/etc-cinder:/etc/cinder \
@@ -198,15 +198,15 @@ docker run -d -p 8776:8776 \
 
 docker run -d --name cinder-scheduler \
   --hostname cinder-scheduler \
-  --link dbhost \
-  --link rabbit \
+  --link mariadb \
+  --link rabbitmq \
   -v ~/block-box/etc-cinder:/etc/cinder \
   cinder_debian cinder-scheduler
 
 docker run -d --name cinder-volume \
   --hostname cinder-volume \
-  --link dbhost \
-  --link rabbit \
+  --link mariadb \
+  --link rabbitmq \
   -v ~/block-box/etc-cinder:/etc/cinder \
   cinder-debian cinder-volume
 ```
