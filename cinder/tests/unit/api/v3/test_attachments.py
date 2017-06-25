@@ -42,18 +42,36 @@ class AttachmentsAPITestCase(test.TestCase):
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
                                            is_admin=True)
+        self.volume1 = self._create_volume(display_name='fake_volume_1',
+                                           project_id=fake.PROJECT_ID)
+        self.volume2 = self._create_volume(display_name='fake_volume_2',
+                                           project_id=fake.PROJECT2_ID)
         self.attachment1 = self._create_attachement(
-            volume_uuid=fake.VOLUME_ID, instance_uuid=fake.UUID1)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1)
         self.attachment2 = self._create_attachement(
-            volume_uuid=fake.VOLUME2_ID, instance_uuid=fake.UUID1)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1)
         self.attachment3 = self._create_attachement(
-            volume_uuid=fake.VOLUME3_ID, instance_uuid=fake.UUID2)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID2)
+        self.attachment4 = self._create_attachement(
+            volume_uuid=self.volume2.id, instance_uuid=fake.UUID2)
         self.addCleanup(self._cleanup)
 
     def _cleanup(self):
         self.attachment1.destroy()
         self.attachment2.destroy()
         self.attachment3.destroy()
+        self.attachment4.destroy()
+        self.volume1.destroy()
+        self.volume2.destroy()
+
+    def _create_volume(self, ctxt=None, display_name=None, project_id=None):
+        """Create a volume object."""
+        ctxt = ctxt or self.ctxt
+        volume = objects.Volume(ctxt)
+        volume.display_name = display_name
+        volume.project_id = project_id
+        volume.create()
+        return volume
 
     def _create_attachement(self, ctxt=None, volume_uuid=None,
                             instance_uuid=None, mountpoint=None,
@@ -141,3 +159,19 @@ class AttachmentsAPITestCase(test.TestCase):
         expect_result = order_ids[2] if sort_dir == "desc" else order_ids[0]
         self.assertEqual(expect_result,
                          res_dict['attachments'][0]['id'])
+
+    @ddt.data({'admin': True, 'request_url': '?all_tenants=1', 'count': 4},
+              {'admin': False, 'request_url': '?all_tenants=1', 'count': 3},
+              {'admin': True, 'request_url':
+                  '?all_tenants=1&project_id=%s' % fake.PROJECT2_ID,
+               'count': 1},
+              {'admin': False, 'request_url': '', 'count': 3})
+    @ddt.unpack
+    def test_list_attachment_with_tenants(self, admin, request_url, count):
+        url = '/v3/%s/attachments%s' % (fake.PROJECT_ID, request_url)
+        req = fakes.HTTPRequest.blank(url, version=ATTACHMENTS_MICRO_VERSION,
+                                      use_admin_context=admin)
+        res_dict = self.controller.index(req)
+
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual(count, len(res_dict['attachments']))

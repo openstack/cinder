@@ -1779,9 +1779,9 @@ def _volume_get(context, volume_id, session=None, joined_load=True):
 def _attachment_get_all(context, filters=None, marker=None, limit=None,
                         offset=None, sort_keys=None, sort_dirs=None):
 
-    project_id = filters.pop('project_id', None) if filters else None
     if filters and not is_valid_model_filters(models.VolumeAttachment,
-                                              filters):
+                                              filters,
+                                              exclude_list=['project_id']):
         return []
 
     session = get_session()
@@ -1792,11 +1792,6 @@ def _attachment_get_all(context, filters=None, marker=None, limit=None,
                                          offset, models.VolumeAttachment)
         if query is None:
             return []
-
-        query = query.options(joinedload('volume'))
-        if project_id:
-            query = query.filter(models.Volume.project_id == project_id)
-
         return query.all()
 
 
@@ -1821,9 +1816,16 @@ def _attachment_get_query(context, session=None, project_only=False):
 
 def _process_attachment_filters(query, filters):
     if filters:
+        project_id = filters.pop('project_id', None)
         # Ensure that filters' keys exist on the model
         if not is_valid_model_filters(models.VolumeAttachment, filters):
             return
+        if project_id:
+            volume = models.Volume
+            query = query.filter(volume.id ==
+                                 models.VolumeAttachment.volume_id,
+                                 volume.project_id == project_id)
+
         query = query.filter_by(**filters)
     return query
 
