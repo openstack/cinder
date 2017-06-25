@@ -810,7 +810,11 @@ class VMAXCommon(object):
         volumename = volume['name']
         LOG.info(_LI("Terminate connection: %(volume)s."),
                  {'volume': volumename})
-
+        if not connector:
+            exception_message = (_("The connector object from nova "
+                                   "cannot be None."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
         self._unmap_lun(volume, connector)
 
     def extend_volume(self, volume, newSize):

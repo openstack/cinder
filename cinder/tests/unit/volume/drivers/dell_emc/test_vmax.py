@@ -258,6 +258,7 @@ class VMAXCommonData(object):
                  'wwpns': [wwpn1, wwpn2],
                  'wwnns': ["223456789012345", "223456789054321"],
                  'host': 'fakehost'}
+    short_host_name = 'fakehost'
 
     target_wwns = [wwn[::-1] for wwn in connector['wwpns']]
 
@@ -2823,7 +2824,6 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_last_volume_delete_initiator_group_exception(self):
         extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
         conn = self.fake_ecom_connection()
-        host = self.data.lunmaskctrl_name.split("-")[1]
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
@@ -2844,14 +2844,13 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver.common.masking._last_volume_delete_initiator_group,
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs, host)
+            extraSpecs, self.data.short_host_name)
 
     # Bug 1504192 - if the last volume is being unmapped and the masking view
     # goes away, cleanup the initiators and associated initiator group.
     def test_last_volume_delete_initiator_group(self):
         extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
         conn = self.fake_ecom_connection()
-        host = self.data.lunmaskctrl_name.split("-")[1]
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
@@ -2866,14 +2865,14 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         # initiator group will not be deleted.
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs, host)
+            extraSpecs, self.data.short_host_name)
         # Path 2: initiator group name is not the default name so the
         # initiator group will not be deleted.
         initGroup2 = initiatorGroupInstanceName
         initGroup2['ElementName'] = "different-name-ig"
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initGroup2,
-            extraSpecs, host)
+            extraSpecs, self.data.short_host_name)
         # Path 3: No Masking view and IG is the default IG, so initiators
         # associated with the Initiator group and the initiator group will
         # be deleted.
@@ -2883,7 +2882,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
             mock.Mock(return_value=True))
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs, host)
+            extraSpecs, self.data.short_host_name)
         job = {
             'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
         conn.InvokeMethod = mock.Mock(return_value=(4096, job))
@@ -2893,7 +2892,7 @@ class VMAXISCSIDriverNoFastTestCase(test.TestCase):
         # to complete.
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs, host)
+            extraSpecs, self.data.short_host_name)
 
     # Tests removal of last volume in a storage group V2
     def test_remove_and_reset_members(self):
@@ -6189,9 +6188,10 @@ class EMCV3DriverTestCase(test.TestCase):
             conn, controllerConfigService, storagegroup,
             storagegroup['ElementName'], vol, vol['name'], extraSpecs))
 
-    def test_last_vol_in_SG_no_MV_fail(self):
-        self.driver.common.masking.utils.get_existing_instance = (
-            mock.Mock(return_value='value'))
+    @mock.patch.object(utils.VMAXUtils,
+                       'get_existing_instance',
+                       return_value='value')
+    def test_last_vol_in_SG_no_MV_fail(self, mock_ins):
         conn = self.fake_ecom_connection()
         controllerConfigService = (
             self.driver.common.utils.find_controller_configuration_service(
@@ -6206,7 +6206,7 @@ class EMCV3DriverTestCase(test.TestCase):
                           self.driver.common.masking._last_vol_in_SG,
                           conn, controllerConfigService,
                           storagegroup, storagegroup['ElementName'], vol,
-                          vol['name'], extraSpecs)
+                          vol['name'], extraSpecs, self.data.connector)
 
     @mock.patch.object(
         utils.VMAXUtils,
@@ -7910,12 +7910,12 @@ class VMAXMaskingTest(test.TestCase):
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
-        masking._remove_volume_from_sg = mock.Mock()
-        masking._cleanup_deletion_v3(
-            conn, controllerConfigService, volumeInstance, extraSpecs)
-        masking._remove_volume_from_sg.assert_called_with(
-            conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance, extraSpecs)
+        with mock.patch.object(masking, '_remove_volume_from_sg') as mock_rm:
+            masking._cleanup_deletion_v3(
+                conn, controllerConfigService, volumeInstance, extraSpecs)
+            mock_rm.assert_called_with(
+                conn, controllerConfigService, storageGroupInstanceName,
+                volumeInstance, extraSpecs, None)
 
     # Bug 1552426 - failed rollback on V3 when MV issue
     def test_check_ig_rollback(self):
@@ -7932,7 +7932,6 @@ class VMAXMaskingTest(test.TestCase):
                       'pool': 'SRP_1',
                       }
         igGroupName = self.data.initiatorgroup_name
-        host = igGroupName.split("-")[1]
         igInstance = masking._find_initiator_masking_group(
             conn, controllerConfigService, self.data.initiatorNames)
         # path 1: The masking view creation process created a now stale
@@ -7943,7 +7942,8 @@ class VMAXMaskingTest(test.TestCase):
                                        igGroupName, connector, extraSpecs)
             (masking._last_volume_delete_initiator_group.
                 assert_called_once_with(conn, controllerConfigService,
-                                        igInstance, extraSpecs, host))
+                                        igInstance, extraSpecs,
+                                        self.data.short_host_name))
             # path 2: No initiator group was created before the masking
             # view process failed.
             with mock.patch.object(masking,

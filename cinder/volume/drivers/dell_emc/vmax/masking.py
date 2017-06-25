@@ -1603,13 +1603,15 @@ class VMAXMasking(object):
             initiatorGroupInstance = conn.GetInstance(
                 foundInitiatorGroupInstanceName, LocalOnly=False)
             if initiatorGroupInstance['ElementName'] == igGroupName:
-                host = igGroupName.split("-")[1]
+                short_host_name = self.utils.get_host_short_name(
+                    connector['host'])
                 LOG.debug("Searching for masking views associated with "
                           "%(igGroupName)s",
                           {'igGroupName': igGroupName})
                 self._last_volume_delete_initiator_group(
                     conn, controllerConfigService,
-                    foundInitiatorGroupInstanceName, extraSpecs, host)
+                    foundInitiatorGroupInstanceName, extraSpecs,
+                    short_host_name)
 
     def _get_port_group_from_masking_view(
             self, conn, maskingViewName, storageSystemName):
@@ -1870,7 +1872,8 @@ class VMAXMasking(object):
         storageGroupInstanceName = None
         if extraSpecs[ISV3]:
             self._cleanup_deletion_v3(
-                conn, controllerConfigService, volumeInstance, extraSpecs)
+                conn, controllerConfigService, volumeInstance, extraSpecs,
+                connector)
         else:
             if connector:
                 storageGroupInstanceName = (
@@ -1881,7 +1884,7 @@ class VMAXMasking(object):
                     self._remove_volume_from_sg(
                         conn, controllerConfigService,
                         storageGroupInstanceName,
-                        volumeInstance, extraSpecs)
+                        volumeInstance, extraSpecs, connector)
             else:
                 LOG.warning(_LW("Cannot get storage from connector."))
 
@@ -1893,13 +1896,15 @@ class VMAXMasking(object):
         return storageGroupInstanceName
 
     def _cleanup_deletion_v3(
-            self, conn, controllerConfigService, volumeInstance, extraSpecs):
+            self, conn, controllerConfigService, volumeInstance, extraSpecs,
+            connector=None):
         """Pre cleanup before VMAX3 deletion operation
 
         :param conn: the ecom connection
         :param controllerConfigService: storage system instance name
         :param volumeInstance: the volume instance
         :param extraSpecs: the extra specifications
+        :param connector: the connector object - default None
         """
         storageGroupInstanceNames = (
             self.get_associated_masking_groups_from_device(
@@ -1908,20 +1913,19 @@ class VMAXMasking(object):
         if storageGroupInstanceNames:
             sgNum = len(storageGroupInstanceNames)
             if len(storageGroupInstanceNames) > 1:
-                LOG.warning(_LW("Volume %(volumeName)s is belong to "
-                                "%(sgNum)s storage groups."),
-                            {'volumeName': volumeInstance['ElementName'],
-                             'sgNum': sgNum})
+                LOG.debug("Volume %(volumeName)s belongs to %(sgNum)s "
+                          "storage groups.",
+                          {'volumeName': volumeInstance['ElementName'],
+                           'sgNum': sgNum})
             for storageGroupInstanceName in storageGroupInstanceNames:
                 self._remove_volume_from_sg(
                     conn, controllerConfigService,
-                    storageGroupInstanceName,
-                    volumeInstance,
-                    extraSpecs)
+                    storageGroupInstanceName, volumeInstance, extraSpecs,
+                    connector)
 
     def _remove_volume_from_sg(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance, extraSpecs):
+            volumeInstance, extraSpecs, connector=None):
         """Remove volume from storage group
 
         :param conn: the ecom connection
@@ -1929,6 +1933,7 @@ class VMAXMasking(object):
         :param storageGroupInstanceName: the SG instance name
         :param volumeInstance: the volume instance
         :param extraSpecs: the extra specifications
+        :param connector: the connector object - default None
         """
         instance = conn.GetInstance(storageGroupInstanceName, LocalOnly=False)
         storageGroupName = instance['ElementName']
@@ -1992,7 +1997,8 @@ class VMAXMasking(object):
                             conn, controllerConfigService,
                             storageGroupInstanceName,
                             storageGroupName, volumeInstance,
-                            volumeInstance['ElementName'], extraSpecs)
+                            volumeInstance['ElementName'],
+                            extraSpecs, connector)
                     else:
                         # Not the last volume so remove it from storage group
                         self._multiple_vols_in_SG(
@@ -2005,7 +2011,8 @@ class VMAXMasking(object):
 
     def _last_vol_in_SG(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, volumeInstance, volumeName, extraSpecs):
+            storageGroupName, volumeInstance, volumeName, extraSpecs,
+            connector=None):
         """Steps if the volume is the last in a storage group.
 
         1. Check if the volume is in a masking view.
@@ -2024,6 +2031,7 @@ class VMAXMasking(object):
         :param volumeInstance: the volume instance
         :param volumeName: the volume name
         :param extraSpecs: the extra specifications
+        :param connector: the connector object
         """
         status = False
         LOG.debug("Only one volume remains in storage group "
@@ -2045,14 +2053,11 @@ class VMAXMasking(object):
                 maskingViewInstance = conn.GetInstance(
                     mvInstanceName, LocalOnly=False)
                 maskingViewName = maskingViewInstance['ElementName']
-
-                def do_delete_mv_ig_and_sg():
-                    return self._delete_mv_ig_and_sg(
-                        conn, controllerConfigService, mvInstanceName,
-                        maskingViewName, storageGroupInstanceName,
-                        storageGroupName, volumeInstance, volumeName,
-                        extraSpecs, mv_count)
-                do_delete_mv_ig_and_sg()
+                self._delete_mv_ig_and_sg(
+                    conn, controllerConfigService, mvInstanceName,
+                    maskingViewName, storageGroupInstanceName,
+                    storageGroupName, volumeInstance, volumeName,
+                    extraSpecs, mv_count, connector)
                 status = True
                 mv_count -= 1
         return status
@@ -2092,7 +2097,7 @@ class VMAXMasking(object):
     def _delete_mv_ig_and_sg(
             self, conn, controllerConfigService, mvInstanceName,
             maskingViewName, storageGroupInstanceName, storageGroupName,
-            volumeInstance, volumeName, extraSpecs, mv_count):
+            volumeInstance, volumeName, extraSpecs, mv_count, connector):
         """Delete the Masking view, the storage Group and  the initiator group.
 
         :param conn: connection to the ecom server
@@ -2105,10 +2110,11 @@ class VMAXMasking(object):
         :param volumeName: the volume name
         :param extraSpecs: extra specs
         :param mv_count: number of masking views
+        :param connector: the connector object
         """
         isV3 = extraSpecs[ISV3]
         fastPolicyName = extraSpecs.get(FASTPOLICY, None)
-        host = maskingViewName.split("-")[1]
+        short_host_name = self.utils.get_host_short_name(connector['host'])
 
         storageSystemInstanceName = self.utils.find_storage_system(
             conn, controllerConfigService)
@@ -2117,10 +2123,10 @@ class VMAXMasking(object):
         self._last_volume_delete_masking_view(
             conn, controllerConfigService, mvInstanceName,
             maskingViewName, extraSpecs)
-        self._last_volume_delete_initiator_group(
-            conn, controllerConfigService,
-            initiatorGroupInstanceName, extraSpecs, host)
-
+        if initiatorGroupInstanceName:
+            self._last_volume_delete_initiator_group(
+                conn, controllerConfigService,
+                initiatorGroupInstanceName, extraSpecs, short_host_name)
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
                 self._get_tiering_info(conn, storageSystemInstanceName,
@@ -2731,7 +2737,7 @@ class VMAXMasking(object):
 
     def _last_volume_delete_initiator_group(
             self, conn, controllerConfigService,
-            initiatorGroupInstanceName, extraSpecs, host=None):
+            initiatorGroupInstanceName, extraSpecs, host):
         """Delete the initiator group.
 
         Delete the Initiator group if it has been created by the VMAX driver,
@@ -2739,48 +2745,51 @@ class VMAXMasking(object):
 
         :param conn: the ecom connection
         :param controllerConfigService: controller config service
-        :param igInstanceNames: initiator group instance name
+        :param initiatorGroupInstanceName: initiator group instance name
         :param extraSpecs: extra specifications
         :param host: the short name of the host
         """
-        defaultInitiatorGroupName = None
         initiatorGroupInstance = conn.GetInstance(initiatorGroupInstanceName)
         initiatorGroupName = initiatorGroupInstance['ElementName']
-        protocol = self.utils.get_short_protocol_type(self.protocol)
-        if host:
+
+        @coordination.synchronized('emc-ig-{initiatorGroupName}')
+        def _inner_last_volume_delete_initiator_group(initiatorGroupName):
+            protocol = self.utils.get_short_protocol_type(self.protocol)
             defaultInitiatorGroupName = ((
                 "OS-%(shortHostName)s-%(protocol)s-IG"
                 % {'shortHostName': host,
                    'protocol': protocol}))
 
-        if initiatorGroupName == defaultInitiatorGroupName:
-            maskingViewInstanceNames = (
-                self.get_masking_views_by_initiator_group(
-                    conn, initiatorGroupInstanceName))
-            if len(maskingViewInstanceNames) == 0:
-                LOG.debug(
-                    "Last volume associated with the initiator group - "
-                    "deleting the associated initiator group "
-                    "%(initiatorGroupName)s.",
-                    {'initiatorGroupName': initiatorGroupName})
-                self._delete_initiators_from_initiator_group(
-                    conn, controllerConfigService, initiatorGroupInstanceName,
-                    initiatorGroupName)
-                self._delete_initiator_group(conn, controllerConfigService,
-                                             initiatorGroupInstanceName,
-                                             initiatorGroupName, extraSpecs)
-            else:
-                LOG.warning(_LW("Initiator group %(initiatorGroupName)s is "
-                                "associated with masking views and can't be "
-                                "deleted. Number of associated masking view "
-                                "is: %(nmv)d."),
-                            {'initiatorGroupName': initiatorGroupName,
-                             'nmv': len(maskingViewInstanceNames)})
-        else:
-            LOG.warning(_LW("Initiator group %(initiatorGroupName)s was "
-                            "not created by the VMAX driver so will "
-                            "not be deleted by the VMAX driver."),
+            if initiatorGroupName == defaultInitiatorGroupName:
+                maskingViewInstanceNames = (
+                    self.get_masking_views_by_initiator_group(
+                        conn, initiatorGroupInstanceName))
+                if len(maskingViewInstanceNames) == 0:
+                    LOG.debug(
+                        "Last volume associated with the initiator group - "
+                        "deleting the associated initiator group "
+                        "%(initiatorGroupName)s.",
                         {'initiatorGroupName': initiatorGroupName})
+                    self._delete_initiators_from_initiator_group(
+                        conn, controllerConfigService,
+                        initiatorGroupInstanceName, initiatorGroupName)
+                    self._delete_initiator_group(
+                        conn, controllerConfigService,
+                        initiatorGroupInstanceName,
+                        initiatorGroupName, extraSpecs)
+                else:
+                    LOG.warning(_LW("Initiator group %(initiatorGroupName)s "
+                                    "is associated with masking views and "
+                                    "can't be deleted. Number of associated "
+                                    "masking view is: %(nmv)d."),
+                                {'initiatorGroupName': initiatorGroupName,
+                                 'nmv': len(maskingViewInstanceNames)})
+            else:
+                LOG.warning(_LW("Initiator group %(initiatorGroupName)s was "
+                                "not created by the VMAX driver so will "
+                                "not be deleted by the VMAX driver."),
+                            {'initiatorGroupName': initiatorGroupName})
+        _inner_last_volume_delete_initiator_group(initiatorGroupName)
 
     def _create_hardware_ids(
             self, conn, initiatorNames, storageSystemName):
