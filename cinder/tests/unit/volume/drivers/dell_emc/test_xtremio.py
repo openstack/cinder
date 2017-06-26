@@ -1298,6 +1298,20 @@ class XtremIODriverFCTestCase(BaseXtremIODriverTestCase):
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
 
+    def test_force_terminate_connection(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+        vol1 = xms_data['volumes'][1]
+        # lun mapping list is a list of triplets (IG OID, TG OID, lun number)
+        vol1['lun-mapping-list'] = [[['a91e8c81c2d14ae4865187ce4f866f8a',
+                                      'iqn.1993-08.org.debian:01:222',
+                                      1],
+                                     ['', 'Default', 1],
+                                    1]]
+        self.driver.terminate_connection(self.data.test_volume, None)
+
     def test_initialize_existing_ig_connection(self, req):
         req.side_effect = xms_request
         self.driver.create_volume(self.data.test_volume)

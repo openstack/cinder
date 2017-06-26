@@ -669,10 +669,21 @@ class XtremIOVolumeDriver(san.SanDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         tg_index = '1'
-        vol = self.client.req('volumes', name=volume['id'],
-                              data={'prop': 'index'})['content']
 
-        for ig_idx in self._get_ig_indexes_from_initiators(connector):
+        if not connector:
+            vol = self.client.req('volumes', name=volume.id)['content']
+            # foce detach, unmap all IGs from volume
+            IG_OID = 0
+            ig_indexes = [lun_map[IG_OID][XTREMIO_OID_INDEX] for
+                          lun_map in vol['lun-mapping-list']]
+            LOG.info('Force detach volume %(vol)s from luns %(luns)s.',
+                     {'vol': vol['name'], 'luns': ig_indexes})
+        else:
+            vol = self.client.req('volumes', name=volume.id,
+                                  data={'prop': 'index'})['content']
+            ig_indexes = self._get_ig_indexes_from_initiators(connector)
+
+        for ig_idx in ig_indexes:
             lm_name = '%s_%s_%s' % (six.text_type(vol['index']),
                                     six.text_type(ig_idx),
                                     tg_index)
@@ -1184,9 +1195,11 @@ class XtremIOFCDriver(XtremIOVolumeDriver,
     def terminate_connection(self, volume, connector, **kwargs):
         (super(XtremIOFCDriver, self)
          .terminate_connection(volume, connector, **kwargs))
-        num_vols = (self.client
-                    .num_of_mapped_volumes(self._get_ig_name(connector)))
-        if num_vols > 0:
+        has_volumes = (not connector
+                       or self.client.
+                       num_of_mapped_volumes(self._get_ig_name(connector)) > 0)
+
+        if has_volumes:
             data = {}
         else:
             i_t_map = {}
