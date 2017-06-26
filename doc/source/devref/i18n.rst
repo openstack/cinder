@@ -23,6 +23,16 @@ level of the text:
 - _() - Used for any exception messages, including strings used for both
             logging and exceptions.
 
+.. note::
+
+   Starting with the Pike series, OpenStack no longer supports log
+   translation markers like ``_Lx()``, only ``_()`` should still be used for
+   exceptions that could be user facing. It is not necessary to add ``_Lx()``
+   translation instructions to new code, and the instructions can be removed
+   from old code. Refer to the email thread `understanding log domain change
+   <http://lists.openstack.org/pipermail/openstack-dev/2017-March/thread.html#113365>`_
+   on the openstack-dev mailing list for more details.
+
 Do not use ``locals()`` for formatting messages because:
 
 1. It is not as clear as using explicit dicts.
