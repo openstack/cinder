@@ -34,6 +34,14 @@ be found on the `OpenStack wiki`_. Cloud administrators, refer to `docs.openstac
 .. _`docs.openstack.org`: http://docs.openstack.org
 
 
+Installing Cinder
+=================
+
+.. toctree::
+   :maxdepth: 2
+
+   install/index
+
 Developer Docs
 ==============
 
