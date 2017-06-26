@@ -29,7 +29,7 @@ backup_id:
   description: |
     The UUID for a backup.
   in: path
-  required: false
+  required: true
   type: string
 cascade:
   description: |
@@ -1872,6 +1872,12 @@ status:
 status_1:
   description: |
     The status of the consistency group.
+  in: body
+  required: true
+  type: string
+status_10:
+  description: |
+    The status for the backup.
   in: body
   required: true
   type: string

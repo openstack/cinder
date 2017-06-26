@@ -17,7 +17,7 @@ backup_id:
   description: |
     The UUID for a backup.
   in: path
-  required: false
+  required: true
   type: string
 cascade:
   description: |
@@ -1570,6 +1570,12 @@ status_6:
     The volume status.
   in: body
   required: false
+  type: string
+status_7:
+  description: |
+    The status for the backup.
+  in: body
+  required: true
   type: string
 storage_protocol:
   description: |
