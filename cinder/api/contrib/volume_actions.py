@@ -188,7 +188,7 @@ class VolumeActionsController(wsgi.Controller):
                                                          connector)
         except exception.InvalidInput as err:
             raise webob.exc.HTTPBadRequest(
-                explanation=err)
+                explanation=err.msg)
         except exception.VolumeBackendAPIException:
             msg = _("Unable to fetch connection information from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
