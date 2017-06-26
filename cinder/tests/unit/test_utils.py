@@ -1511,3 +1511,9 @@ class TestCheckMetadataProperties(test.TestCase):
         self.assertRaises(exception.InvalidVolumeMetadata,
                           utils.check_metadata_properties,
                           meta)
+
+    def test_metadata_value_not_dict_raise(self):
+        meta = 123
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_metadata_properties,
+                          meta)
