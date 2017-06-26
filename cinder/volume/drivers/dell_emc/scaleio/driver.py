@@ -509,8 +509,6 @@ class ScaleIODriver(driver.VolumeDriver):
                    "/api/types/Volume/instances") % req_vars
         r, response = self._execute_scaleio_post_request(params, request)
 
-        LOG.info("Add volume response: %s", response)
-
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Error creating volume: %s.") % response['message'])
             LOG.error(msg)
@@ -550,7 +548,6 @@ class ScaleIODriver(driver.VolumeDriver):
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/System/action/snapshotVolumes") % req_vars
         r, response = self._execute_scaleio_post_request(params, request)
-        LOG.info("Snapshot volume response: %s.", response)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for volume %(volname)s: "
                      "%(response)s.") %
@@ -600,18 +597,30 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("Going to perform request again %s with valid token.",
                      request)
             if is_get_request:
-                res = requests.get(request,
-                                   auth=(self.server_username,
-                                         self.server_token),
-                                   verify=verify_cert)
+                response = requests.get(request,
+                                        auth=(self.server_username,
+                                              self.server_token),
+                                        verify=verify_cert)
             else:
-                res = requests.post(request,
-                                    data=json.dumps(params),
-                                    headers=self._get_headers(),
-                                    auth=(self.server_username,
-                                          self.server_token),
-                                    verify=verify_cert)
-            return res
+                response = requests.post(request,
+                                         data=json.dumps(params),
+                                         headers=self._get_headers(),
+                                         auth=(self.server_username,
+                                               self.server_token),
+                                         verify=verify_cert)
+
+        level = logging.DEBUG
+        # for anything other than an OK from the REST API, log an error
+        if response.status_code != http_client.OK:
+            level = logging.ERROR
+
+        LOG.log(level, "REST Request: %s with params %s",
+                request,
+                json.dumps(params))
+        LOG.log(level, "REST Response: %s with data %s",
+                response.status_code,
+                response.text)
+
         return response
 
     def _get_server_api_version(self, fromcache=True):
@@ -760,7 +769,6 @@ class ScaleIODriver(driver.VolumeDriver):
                      " before deletion: %s.",
                      request)
             r, unused = self._execute_scaleio_post_request(params, request)
-            LOG.debug("Unmap volume response: %s.", r.text)
 
         params = {'removeMode': 'ONLY_ME'}
         request = ("https://%(server_ip)s:%(server_port)s"
@@ -990,7 +998,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     ((res['thickCapacityInUseInKb'] +
                       thin_capacity_allocated) / 2) / units.Mi)
 
-                LOG.info("free capacity of pool %(pool)s is: %(free)s, "
+                LOG.info("Free capacity of pool %(pool)s is: %(free)s, "
                          "total capacity: %(total)s, "
                          "provisioned capacity: %(prov)s",
                          {'pool': pool_name,
@@ -1016,14 +1024,13 @@ class ScaleIODriver(driver.VolumeDriver):
 
         stats['total_capacity_gb'] = total_capacity
         stats['free_capacity_gb'] = free_capacity
-        LOG.info("Free capacity for backend is: %(free)s, total capacity: "
-                 "%(total)s.",
-                 {'free': free_capacity,
+        LOG.info("Free capacity for backend '%(backend)s': %(free)s, "
+                 "total capacity: %(total)s.",
+                 {'backend': stats["volume_backend_name"],
+                  'free': free_capacity,
                   'total': total_capacity})
 
         stats['pools'] = pools
-
-        LOG.info("Backend name is %s.", stats["volume_backend_name"])
 
         self._stats = stats
 
@@ -1190,8 +1197,6 @@ class ScaleIODriver(driver.VolumeDriver):
     def _query_scaleio_volume(self, volume, existing_ref):
         request = self._create_scaleio_get_volume_request(volume, existing_ref)
         r, response = self._execute_scaleio_get_request(request)
-        LOG.info("Get Volume response: %(res)s",
-                 {'res': response})
         self._manage_existing_check_legal_response(r, existing_ref)
         return response
 
@@ -1542,7 +1547,6 @@ class ScaleIODriver(driver.VolumeDriver):
             'snapshotName': self._id_to_base64(snapshot['id'])}
         snapshot_defs = list(map(get_scaleio_snapshot_params, snapshots))
         r, response = self._snapshot_volume_group(snapshot_defs)
-        LOG.info("Snapshot volume response: %s.", response)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
                      "%(response)s.") %
@@ -1628,7 +1632,6 @@ class ScaleIODriver(driver.VolumeDriver):
                                 source_vols,
                                 volumes)
         r, response = self._snapshot_volume_group(list(snapshot_defs))
-        LOG.info("Snapshot volume response: %s.", response)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
                      "%(response)s.") %
