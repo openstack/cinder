@@ -151,7 +151,8 @@ class _FunctionalTestBase(test.TestCase):
         return server
 
     def _poll_resource_while(self, res_id, continue_states, res_type=VOLUME,
-                             expected_end_status=None, max_retries=5):
+                             expected_end_status=None, max_retries=5,
+                             status_field='status'):
         """Poll (briefly) while the state is in continue_states.
 
         Continues until the state changes from continue_states or max_retries
@@ -178,7 +179,7 @@ class _FunctionalTestBase(test.TestCase):
                 continue
 
             self.assertEqual(res_id, found_res['id'])
-            res_status = found_res['status']
+            res_status = found_res[status_field]
             if res_status not in continue_states:
                 if expected_end_status:
                     self.assertEqual(expected_end_status, res_status)
@@ -188,16 +189,18 @@ class _FunctionalTestBase(test.TestCase):
             retries += 1
 
     def _poll_volume_while(self, volume_id, continue_states,
-                           expected_end_status=None, max_retries=5):
+                           expected_end_status=None, max_retries=5,
+                           status_field='status'):
         return self._poll_resource_while(volume_id, continue_states,
                                          VOLUME, expected_end_status,
-                                         max_retries)
+                                         max_retries, status_field)
 
     def _poll_group_while(self, group_id, continue_states,
-                          expected_end_status=None, max_retries=30):
+                          expected_end_status=None, max_retries=30,
+                          status_field='status'):
         return self._poll_resource_while(group_id, continue_states,
                                          GROUP, expected_end_status,
-                                         max_retries)
+                                         max_retries, status_field)
 
     def _poll_group_snapshot_while(self, group_snapshot_id, continue_states,
                                    expected_end_status=None, max_retries=30):

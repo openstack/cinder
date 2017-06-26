@@ -233,6 +233,19 @@ class TestOpenStackClient(object):
     def delete_type(self, type_id):
         return self.api_delete('/types/%s' % type_id)
 
+    def get_type(self, type_id):
+        return self.api_get('/types/%s' % type_id)['volume_type']
+
+    def create_volume_type_extra_specs(self, volume_type_id, extra_specs):
+        extra_specs = {"extra_specs": extra_specs}
+        url = "/types/%s/extra_specs" % volume_type_id
+        return self.api_post(url, extra_specs)['extra_specs']
+
+    def create_group_type_specs(self, grp_type_id, group_specs):
+        group_specs = {"group_specs": group_specs}
+        url = "/group_types/%s/group_specs" % grp_type_id
+        return self.api_post(url, group_specs)['group_specs']
+
     def create_group_type(self, type_name, grp_specs=None):
         grp_type = {"group_type": {"name": type_name}}
         if grp_specs:
@@ -242,6 +255,9 @@ class TestOpenStackClient(object):
 
     def delete_group_type(self, group_type_id):
         return self.api_delete('/group_types/%s' % group_type_id)
+
+    def get_group_type(self, grp_type_id):
+        return self.api_get('/group_types/%s' % grp_type_id)['group_type']
 
     def get_group(self, group_id):
         return self.api_get('/groups/%s' % group_id)['group']
@@ -283,3 +299,15 @@ class TestOpenStackClient(object):
     def reset_group_snapshot(self, group_snapshot_id, params):
         return self.api_post('/group_snapshots/%s/action' % group_snapshot_id,
                              params)
+
+    def enable_group_replication(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
+
+    def disable_group_replication(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
+
+    def failover_group_replication(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
+
+    def list_group_replication_targets(self, group_id, params):
+        return self.api_post('/groups/%s/action' % group_id, params)
