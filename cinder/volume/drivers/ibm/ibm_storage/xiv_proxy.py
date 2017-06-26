@@ -14,8 +14,10 @@
 #    under the License.
 #
 import datetime
+import re
 import six
 import socket
+
 
 from oslo_log import log as logging
 from oslo_utils import importutils
@@ -384,13 +386,17 @@ class XIVProxy(proxy.IBMStorageProxy):
             self._create_qos_class(perf_class_name, specs)
         return perf_class_name
 
+    def _get_type_from_perf_class_name(self, perf_class_name):
+        _type = re.findall('type_(independent|shared)', perf_class_name)
+        return _type[0] if _type else None
+
     def _create_qos_class(self, perf_class_name, specs):
         """Create the qos class on the backend."""
         try:
             # check if we have a shared (default) perf class
             # or an independent perf class
-            if 'type_' in perf_class_name:
-                _type = perf_class_name.split('type_')[1]
+            _type = self._get_type_from_perf_class_name(perf_class_name)
+            if _type:
                 self._call_xiv_xcli("perf_class_create",
                                     perf_class=perf_class_name,
                                     type=_type)

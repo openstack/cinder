@@ -700,6 +700,61 @@ class XIVProxyTest(test.TestCase):
         self.assertRaises(ex, p._check_perf_class_on_backend, {'bw': '100'})
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._qos_create_kwargs_for_xcli",
+                mock.MagicMock(return_value={}))
+    def test_regex_from_perf_class_name(self):
+        """Test type extraction from perf_class with Regex"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        perf_class_names_list = [
+            {'class_name': 'cinder-qos_iops_1000_type_independent_bw_1000',
+             'type': 'independent'},
+            {'class_name': 'cinder-qos_iops_1000_bw_1000_type_shared',
+             'type': 'shared'},
+            {'class_name': 'cinder-qos_type_badtype_bw_1000',
+             'type': None}]
+
+        for element in perf_class_names_list:
+            _type = p._get_type_from_perf_class_name(
+                perf_class_name=element['class_name'])
+            self.assertEqual(element['type'], _type)
+
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
+                "xiv_proxy.XIVProxy._qos_create_kwargs_for_xcli",
+                mock.MagicMock(return_value={}))
+    def test_create_qos_class_with_type(self):
+        """Test performance class creation with type"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.perf_class_set_rate.return_value = None
+        p.ibm_storage_cli.cmd.perf_class_create.return_value = None
+
+        perf_class_name = 'cinder-qos_iops_1000_type_independent_bw_1000'
+        p_class_name = p._create_qos_class(perf_class_name=perf_class_name,
+                                           specs=None)
+
+        p.ibm_storage_cli.cmd.perf_class_create.assert_called_once_with(
+            perf_class=perf_class_name,
+            type='independent')
+        self.assertEqual('cinder-qos_iops_1000_type_independent_bw_1000',
+                         p_class_name)
+
+    @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.XIVProxy._check_storage_version_for_qos_support",
                 mock.MagicMock(return_value=True))
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
