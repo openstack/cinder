@@ -1852,6 +1852,7 @@ class VMAXMasking(object):
                      {'volumeName': volumeInstanceName})
             return None
 
+    @coordination.synchronized("emc-vol-{volumeInstance[ElementName]}")
     def remove_and_reset_members(
             self, conn, controllerConfigService, volumeInstance,
             volumeName, extraSpecs, connector=None, reset=True):
@@ -1869,6 +1870,8 @@ class VMAXMasking(object):
         :param reset: reset, return to original SG (optional)
         :returns: storageGroupInstanceName
         """
+        LOG.debug("Remove and reset members for volume %(elementName)s",
+                  {'elementName': volumeInstance['ElementName']})
         storageGroupInstanceName = None
         if extraSpecs[ISV3]:
             self._cleanup_deletion_v3(
@@ -1878,7 +1881,8 @@ class VMAXMasking(object):
             if connector:
                 storageGroupInstanceName = (
                     self._get_sg_associated_with_connector(
-                        conn, controllerConfigService, volumeInstance.path,
+                        conn, controllerConfigService,
+                        volumeInstance.path,
                         volumeName, connector))
                 if storageGroupInstanceName:
                     self._remove_volume_from_sg(
@@ -1892,7 +1896,6 @@ class VMAXMasking(object):
             self._return_back_to_default_sg(
                 conn, controllerConfigService, volumeInstance, volumeName,
                 extraSpecs)
-
         return storageGroupInstanceName
 
     def _cleanup_deletion_v3(
