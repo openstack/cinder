@@ -163,3 +163,7 @@ class VolumeAttachStatus(BaseCinderEnum):
 
 class VolumeAttachStatusField(BaseEnumField):
     AUTO_TYPE = VolumeAttachStatus()
+
+
+class DictOfNullableField(fields.AutoTypedField):
+    AUTO_TYPE = fields.Dict(fields.FieldType(), nullable=True)

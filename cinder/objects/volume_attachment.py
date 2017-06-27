@@ -50,7 +50,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         'attach_mode': fields.StringField(nullable=True),
 
         'volume': fields.ObjectField('Volume', nullable=False),
-        'connection_info': fields.DictOfNullableStringsField(nullable=True)
+        'connection_info': c_fields.DictOfNullableField(nullable=True)
     }
 
     @property
