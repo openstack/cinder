@@ -474,12 +474,12 @@ class RBDDriver(driver.CloneableImageVD,
 
         The user has the option to limit how long a volume's clone chain can be
         by setting rbd_max_clone_depth. If a clone is made of another clone
-        and that clone has rbd_max_clone_depth clones behind it, the source
+        and that clone has rbd_max_clone_depth clones behind it, the dest
         volume will be flattened.
         """
         src_name = utils.convert_str(src_vref.name)
         dest_name = utils.convert_str(volume.name)
-        flatten_parent = False
+        clone_snap = "%s.clone_snap" % dest_name
 
         # Do full copy if requested
         if self.configuration.rbd_max_clone_depth <= 0:
@@ -490,45 +490,13 @@ class RBDDriver(driver.CloneableImageVD,
 
         # Otherwise do COW clone.
         with RADOSClient(self) as client:
-            depth = self._get_clone_depth(client, src_name)
-            # If source volume is a clone and rbd_max_clone_depth reached,
-            # flatten the source before cloning. Zero rbd_max_clone_depth
-            # means infinite is allowed.
-            if depth == self.configuration.rbd_max_clone_depth:
-                LOG.debug("maximum clone depth (%d) has been reached - "
-                          "flattening source volume",
-                          self.configuration.rbd_max_clone_depth)
-                flatten_parent = True
-
             src_volume = self.rbd.Image(client.ioctx, src_name)
+            LOG.debug("creating snapshot='%s'", clone_snap)
             try:
-                # First flatten source volume if required.
-                if flatten_parent:
-                    _pool, parent, snap = self._get_clone_info(src_volume,
-                                                               src_name)
-                    # Flatten source volume
-                    LOG.debug("flattening source volume %s", src_name)
-                    src_volume.flatten()
-                    # Delete parent clone snap
-                    parent_volume = self.rbd.Image(client.ioctx, parent)
-                    try:
-                        parent_volume.unprotect_snap(snap)
-                        parent_volume.remove_snap(snap)
-                    finally:
-                        parent_volume.close()
-
                 # Create new snapshot of source volume
-                clone_snap = "%s.clone_snap" % dest_name
-                LOG.debug("creating snapshot='%s'", clone_snap)
                 src_volume.create_snap(clone_snap)
                 src_volume.protect_snap(clone_snap)
-            except Exception:
-                # Only close if exception since we still need it.
-                src_volume.close()
-                raise
-
-            # Now clone source volume snapshot
-            try:
+                # Now clone source volume snapshot
                 LOG.debug("cloning '%(src_vol)s@%(src_snap)s' to "
                           "'%(dest)s'",
                           {'src_vol': src_name, 'src_snap': clone_snap,
@@ -536,16 +504,64 @@ class RBDDriver(driver.CloneableImageVD,
                 self.RBDProxy().clone(client.ioctx, src_name, clone_snap,
                                       client.ioctx, dest_name,
                                       features=client.features)
-            except Exception:
+            except Exception as e:
                 src_volume.unprotect_snap(clone_snap)
                 src_volume.remove_snap(clone_snap)
+                msg = (_("Failed to clone '%(src_vol)s@%(src_snap)s' to "
+                         "'%(dest)s', error: %(error)s") %
+                       {'src_vol': src_name,
+                        'src_snap': clone_snap,
+                        'dest': dest_name,
+                        'error': e})
+                LOG.exception(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            finally:
                 src_volume.close()
-                raise
+
+            depth = self._get_clone_depth(client, src_name)
+            # If dest volume is a clone and rbd_max_clone_depth reached,
+            # flatten the dest after cloning. Zero rbd_max_clone_depth means
+            # infinite is allowed.
+            if depth >= self.configuration.rbd_max_clone_depth:
+                LOG.info("maximum clone depth (%d) has been reached - "
+                         "flattening dest volume",
+                         self.configuration.rbd_max_clone_depth)
+                dest_volume = self.rbd.Image(client.ioctx, dest_name)
+                try:
+                    # Flatten destination volume
+                    LOG.debug("flattening dest volume %s", dest_name)
+                    dest_volume.flatten()
+                except Exception as e:
+                    msg = (_("Failed to flatten volume %(volume)s with "
+                             "error: %(error)s.") %
+                           {'volume': dest_name,
+                            'error': e})
+                    LOG.exception(msg)
+                    src_volume.close()
+                    raise exception.VolumeBackendAPIException(data=msg)
+                finally:
+                    dest_volume.close()
+
+                try:
+                    # remove temporary snap
+                    LOG.debug("remove temporary snap %s", clone_snap)
+                    src_volume.unprotect_snap(clone_snap)
+                    src_volume.remove_snap(clone_snap)
+                except Exception as e:
+                    msg = (_("Failed to remove temporary snap "
+                             "%(snap_name)s, error: %(error)s") %
+                           {'snap_name': clone_snap,
+                            'error': e})
+                    LOG.exception(msg)
+                    src_volume.close()
+                    raise exception.VolumeBackendAPIException(data=msg)
 
             try:
                 volume_update = self._enable_replication_if_needed(volume)
             except Exception:
                 self.RBDProxy().remove(client.ioctx, dest_name)
+                src_volume.unprotect_snap(clone_snap)
+                src_volume.remove_snap(clone_snap)
                 err_msg = (_('Failed to enable image replication'))
                 raise exception.ReplicationError(reason=err_msg,
                                                  volume_id=volume.id)
