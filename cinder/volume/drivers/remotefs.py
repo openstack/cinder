@@ -747,7 +747,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                     'volname': volume_name,
                     'valid_ext': valid_ext,
                 }
-            if not re.match(backing_file_template, info.backing_file):
+            if not re.match(backing_file_template, info.backing_file,
+                            re.IGNORECASE):
                 msg = _("File %(path)s has invalid backing file "
                         "%(bfile)s, aborting.") % {'path': path,
                                                    'bfile': info.backing_file}
@@ -803,8 +804,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             volume, active_file_path)
         higher_file = next((os.path.basename(f['filename'])
                             for f in backing_chain
-                            if f.get('backing-filename', '') ==
-                            snapshot_file),
+                            if utils.paths_normcase_equal(
+                                f.get('backing-filename', ''),
+                                snapshot_file)),
                            None)
         return higher_file
 
@@ -1008,7 +1010,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         active_file = self.get_active_image_from_info(snapshot.volume)
         snapshot_path = os.path.join(
             self._local_volume_dir(snapshot.volume), snapshot_file)
-        if (snapshot_file == active_file):
+        if utils.paths_normcase_equal(snapshot_file, active_file):
             return
 
         LOG.info('Deleting stale snapshot: %s', snapshot.id)
@@ -1094,7 +1096,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
             base_id = None
             for key, value in snap_info.items():
-                if value == base_file and key != 'active':
+                if utils.paths_normcase_equal(value,
+                                              base_file) and key != 'active':
                     base_id = key
                     break
             if base_id is None:
@@ -1114,7 +1117,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                                                 snapshot,
                                                 online_delete_info)
 
-        if snapshot_file == active_file:
+        if utils.paths_normcase_equal(snapshot_file, active_file):
             # There is no top file
             #      T0       |        T1         |
             #     base      |   snapshot_file   | None
@@ -1140,7 +1143,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                 raise exception.RemoteFSException(msg)
 
             higher_id = next((i for i in snap_info
-                              if snap_info[i] == higher_file
+                              if utils.paths_normcase_equal(snap_info[i],
+                                                            higher_file)
                               and i != 'active'),
                              None)
             if higher_id is None:
@@ -1450,7 +1454,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
 
-        if info['active_file'] == info['snapshot_file']:
+        if utils.paths_normcase_equal(info['active_file'],
+                                      info['snapshot_file']):
             # blockRebase/Pull base into active
             # info['base'] => snapshot_file
 

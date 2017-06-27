@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 VERSION = '1.1.0'
@@ -439,9 +440,9 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         merged_img_path = os.path.join(
             self._local_volume_dir(snapshot.volume),
             file_to_merge)
-        if snap_info['active'] == file_to_merge:
+        if utils.paths_normcase_equal(snap_info['active'], file_to_merge):
             new_active_file_path = self._vhdutils.get_vhd_parent_path(
-                merged_img_path)
+                merged_img_path).lower()
             snap_info['active'] = os.path.basename(new_active_file_path)
 
         self._delete(merged_img_path)
@@ -456,7 +457,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         active_file_path = os.path.join(self._local_volume_dir(volume),
                                         active_file)
 
-        if active_file_path != volume_path:
+        if not utils.paths_normcase_equal(active_file_path, volume_path):
             msg = _('Extend volume is only supported for this '
                     'driver when no snapshots exist.')
             raise exception.InvalidVolume(msg)

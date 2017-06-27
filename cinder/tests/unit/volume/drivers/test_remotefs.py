@@ -435,7 +435,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
     @ddt.data([None, '/fake_basedir'],
               ['/fake_basedir/cb2016/fake_vol_name', '/fake_basedir'],
-              ['/fake_basedir/cb2016/fake_vol_name.vhd', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.VHD', '/fake_basedir'],
               ['/fake_basedir/cb2016/fake_vol_name.404f-404',
                '/fake_basedir'],
               ['/fake_basedir/cb2016/fake_vol_name.tmp-snap-404f-404',
