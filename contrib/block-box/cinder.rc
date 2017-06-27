@@ -1,5 +1,5 @@
-export OS_AUTH_TYPE=noauth
-export CINDER_ENDPOINT=http://10.117.36.106:8776/v3
-export OS_PROJECT_ID=cinderflex
-export OS_USERNAME=kubernetes
+export OS_AUTH_SYSTEM=noauth
+export CINDER_ENDPOINT=http://127.0.0.1:8776/v3
+export OS_PROJECT_ID=myproject
+export OS_USERNAME=bubba
 export OS_VOLUME_API_VERSION=3.27
