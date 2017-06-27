@@ -54,9 +54,7 @@ from cinder import version
 
 CONF = cfg.CONF
 
-deprecated_host_opt = cfg.DeprecatedOpt('host')
-host_opt = cfg.StrOpt('backend_host', help='Backend override of host value.',
-                      deprecated_opts=[deprecated_host_opt])
+host_opt = cfg.StrOpt('backend_host', help='Backend override of host value.')
 CONF.register_cli_opt(host_opt)
 
 # TODO(geguileo): Once we complete the work on A-A update the option's help.
