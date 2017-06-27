@@ -46,4 +46,5 @@ Block Storage API V3 (CURRENT)
 .. include:: qos-specs-v3-qos-specs.inc
 .. quota-sets should arguably live closer to limits, but that would mess up
    our nice alphabetical ordering
+.. include:: quota-classes.inc
 .. include:: quota-sets.inc

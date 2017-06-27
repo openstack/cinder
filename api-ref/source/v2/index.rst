@@ -17,6 +17,7 @@ Block Storage API V2 (DEPRECATED)
 .. include:: os-vol-pool-v2.inc
 .. include:: os-vol-transfer-v2.inc
 .. include:: qos-specs-v2-qos-specs.inc
+.. include:: quota-classes.inc
 .. include:: quota-sets.inc
 .. include:: volume-manage.inc
 .. include:: volume-type-access.inc

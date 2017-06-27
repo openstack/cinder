@@ -90,6 +90,12 @@ qos_id:
   in: path
   required: true
   type: string
+quota_class_name:
+  description:
+    The name of the quota class for which to set quotas.
+  in: path
+  required: true
+  type: string
 quotas_tenant_id:
   description: |
     The UUID of the tenant in a multi-tenancy cloud.
@@ -903,16 +909,33 @@ maxTotalBackups:
   in: body
   required: true
   type: integer
+maxTotalGroups:
+  description: |
+    The maximum number of groups.
+  in: body
+  required: true
+  type: integer
 maxTotalSnapshots:
   description: |
     The maximum number of snapshots.
   in: body
   required: true
   type: integer
+maxTotalSnapshotsOptional:
+  description: |
+    The maximum number of snapshots.
+  in: body
+  required: false
+  type: integer
 maxTotalVolumeGigabytes:
   description: |
-    The maximum total amount of volumes, in gibibytes
-    (GiB).
+    The maximum total amount of volumes, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
+maxTotalVolumeGigabytesOptional:
+  description: |
+    The maximum total amount of volumes, in gibibytes (GiB).
   in: body
   required: true
   type: integer
@@ -921,6 +944,12 @@ maxTotalVolumes:
     The maximum number of volumes.
   in: body
   required: true
+  type: integer
+maxTotalVolumesOptional:
+  description: |
+    The maximum number of volumes.
+  in: body
+  required: false
   type: integer
 meta:
   description: |
@@ -1307,6 +1336,12 @@ os-volume-replication:extended_status_1:
   in: body
   required: false
   type: string
+perVolumeGigabytes:
+  description: |
+    The maximum amount of storage per volume, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
 pool_name:
   description: |
     The name of the storage pool.
@@ -1364,6 +1399,12 @@ QoS_support:
   in: body
   required: true
   type: boolean
+quota_class_id:
+  description:
+    The name of the quota class set.
+  in: body
+  required: true
+  type: string
 quota_set:
   description: |
     A ``quota_set`` object.
@@ -1860,12 +1901,6 @@ volume_types_2:
   in: body
   required: true
   type: string
-volumes:
-  description: |
-    A list of ``volume`` objects.
-  in: body
-  required: true
-  type: array
 volumes:
   description: |
     A list of ``volume`` objects.

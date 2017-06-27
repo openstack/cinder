@@ -126,6 +126,12 @@ qos_id:
   in: path
   required: true
   type: string
+quota_class_name:
+  description:
+    The name of the quota class for which to set quotas.
+  in: path
+  required: true
+  type: string
 quotas_project_id:
   description: |
     The UUID of the tenant in a multi-tenancy cloud.
@@ -1235,11 +1241,23 @@ maxTotalBackups:
   in: body
   required: true
   type: integer
+maxTotalGroups:
+  description: |
+    The maximum number of groups.
+  in: body
+  required: true
+  type: integer
 maxTotalSnapshots:
   description: |
     The maximum number of snapshots.
   in: body
   required: true
+  type: integer
+maxTotalSnapshotsOptional:
+  description: |
+    The maximum number of snapshots.
+  in: body
+  required: false
   type: integer
 maxTotalVolumeGigabytes:
   description: |
@@ -1248,11 +1266,23 @@ maxTotalVolumeGigabytes:
   in: body
   required: true
   type: integer
+maxTotalVolumeGigabytesOptional:
+  description: |
+    The maximum total amount of volumes, in gibibytes (GiB).
+  in: body
+  required: true
+  type: integer
 maxTotalVolumes:
   description: |
     The maximum number of volumes.
   in: body
   required: true
+  type: integer
+maxTotalVolumesOptional:
+  description: |
+    The maximum number of volumes.
+  in: body
+  required: false
   type: integer
 message_level:
   description: |
@@ -1780,6 +1810,12 @@ QoS_support:
   in: body
   required: true
   type: boolean
+quota_class_id:
+  description:
+    The name of the quota class set.
+  in: body
+  required: true
+  type: string
 quota_set:
   description: |
     A ``quota_set`` object.
