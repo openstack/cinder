@@ -245,6 +245,9 @@ Request
 
    - volume_type: volume_type
    - project_id: project_id_path
+   - name: name_7
+   - is_public: is_public
+   - description: description_15
 
 Request Example
 ---------------
@@ -263,12 +266,13 @@ Response Parameters
    - description: description
    - volume_type: volume_type
    - name: name
-
+   - id: id
+   - os-volume-type-access:is_public: os-volume-type-access:is_public
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-type-show-response.json
+.. literalinclude:: ./samples/volume-type-create-response.json
    :language: javascript
 
 Show an encryption type
