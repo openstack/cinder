@@ -36,9 +36,9 @@ You can also build an image to run LVM (**NOTE**: This is dependent on the base 
 ```make lvm```
 
 Finally the last image is a devenv image that will mount the cinder repo you've
-checked out into a container and includes test-requirements.
+checked out into a container and includes test-requirements:
 
-```make base```
+```make devbox```
 
 For more information and options, check out the openstack/loci page
 on [github](https://github.com/openstack/loci).
@@ -64,7 +64,7 @@ packages installed like LVM2 and iSCSI target driver.
 Each Cinder service has an executable entrypoint at /usr/local/bin.
 
 **NOTE** If you choose to build images from something other than the default Debian
-base, you'll need to modify the Dockerfile for this image as well.
+base, you'll need to modify the Makefile for this image as well.
 
 ### cinder-lvm
 This is a special image that is built from the base cinder image and adds the
