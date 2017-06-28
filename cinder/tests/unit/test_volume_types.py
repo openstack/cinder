@@ -414,11 +414,9 @@ class VolumeTypeTestCase(test.TestCase):
 
         # And add encryption for good measure
         enc_keyvals1 = {'cipher': 'c1', 'key_size': 256, 'provider': 'p1',
-                        'control_location': 'front-end',
-                        'encryption_id': 'uuid1'}
+                        'control_location': 'front-end'}
         enc_keyvals2 = {'cipher': 'c1', 'key_size': 128, 'provider': 'p1',
-                        'control_location': 'front-end',
-                        'encryption_id': 'uuid2'}
+                        'control_location': 'front-end'}
         db.volume_type_encryption_create(self.ctxt, type_ref1['id'],
                                          enc_keyvals1)
         db.volume_type_encryption_create(self.ctxt, type_ref2['id'],
@@ -444,8 +442,7 @@ class VolumeTypeTestCase(test.TestCase):
                           'control_location': (None, 'front-end'),
                           'deleted': (None, False),
                           'key_size': (None, 256),
-                          'provider': (None, 'p1'),
-                          'encryption_id': (None, 'uuid1')},
+                          'provider': (None, 'p1')},
                          diff['encryption'])
 
     def test_encryption_create(self):
