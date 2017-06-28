@@ -648,3 +648,45 @@ Request
    - tenant_id: tenant_id
    - volume_id: volume_id_path
    - key: key_1
+
+
+
+
+Update volume metadata for a specific key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v2/{project_id}/volumes/{volume_id}/metadata/{key}
+
+Update metadata for a volume for a specific key.
+
+Normal response codes: 200
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - volume_id: volume_id_path
+   - key: key_3
+   - meta: meta
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-metadata-update-key-request.json
+   :language: javascript
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - meta: meta
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/volume-metadata-update-key-response.json
+   :language: javascript
