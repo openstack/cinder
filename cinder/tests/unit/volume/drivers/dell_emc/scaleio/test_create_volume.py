@@ -73,8 +73,9 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
 
     def test_no_domain(self):
         """No protection domain name or ID provided."""
-        self.driver.protection_domain_name = None
-        self.driver.protection_domain_id = None
+        self.driver.configuration.sio_protection_domain_name = None
+        self.driver.configuration.sio_protection_domain_id = None
+        self.driver.storage_pools = None
         self.volume.host = "host@backend"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume)

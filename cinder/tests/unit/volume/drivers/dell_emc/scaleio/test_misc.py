@@ -75,6 +75,17 @@ class TestMisc(scaleio.TestScaleIODriver):
                     self.new_volume['provider_id']):
                         self.volume['provider_id'],
                 'version': '"{}"'.format('2.0.1'),
+                'instances/StoragePool::{}'.format(
+                    "test_pool"
+                ): {
+                    'name': 'test_pool',
+                    'protectionDomainId': 'test_domain',
+                },
+                'instances/ProtectionDomain::{}'.format(
+                    "test_domain"
+                ): {
+                    'name': 'test_domain',
+                },
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
@@ -104,30 +115,43 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver.check_for_setup_error()
 
     def test_both_storage_pool(self):
-        """Both storage name and ID provided."""
-        self.driver.storage_pool_id = "test_pool_id"
-        self.driver.storage_pool_name = "test_pool_name"
+        """Both storage name and ID provided.
+
+        INVALID
+        """
+        self.driver.configuration.sio_storage_pool_id = "test_pool_id"
+        self.driver.configuration.sio_storage_pool_name = "test_pool_name"
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
 
     def test_no_storage_pool(self):
-        """No storage name or ID provided."""
-        self.driver.storage_pool_name = None
-        self.driver.storage_pool_id = None
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
+        """No storage name or ID provided.
+
+        VALID as storage_pools are defined
+        """
+        self.driver.configuration.sio_storage_pool_name = None
+        self.driver.configuration.sio_storage_pool_id = None
+        self.driver.check_for_setup_error()
 
     def test_both_domain(self):
-        self.driver.protection_domain_name = "test_domain_name"
-        self.driver.protection_domain_id = "test_domain_id"
+        """Both domain and ID are provided
+
+        INVALID
+        """
+        self.driver.configuration.sio_protection_domain_name = (
+            "test_domain_name")
+        self.driver.configuration.sio_protection_domain_id = (
+            "test_domain_id")
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
 
     def test_no_storage_pools(self):
-        """No storage pools."""
+        """No storage pools.
+
+        VALID as domain and storage pool names are provided
+        """
         self.driver.storage_pools = None
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
+        self.driver.check_for_setup_error()
 
     def test_volume_size_round_true(self):
         self.driver._check_volume_size(1)
@@ -185,6 +209,9 @@ class TestMisc(scaleio.TestScaleIODriver):
                     self.new_volume['provider_id']):
                         self.volume['provider_id'],
                 'version': '"{}"'.format('2.0.1'),
+                'instances/StoragePool::{}'.format(
+                    self.STORAGE_POOL_NAME
+                ): '"{}"'.format(self.STORAGE_POOL_ID),
             }
         }
 

@@ -1,0 +1,22 @@
+---
+deprecations:
+  - |
+    The ScaleIO Driver has deprecated several options specified
+    in ``cinder.conf``:
+    * ``sio_protection_domain_id``
+    * ``sio_protection_domain_name``,
+    * ``sio_storage_pool_id``
+    * ``sio_storage_pool_name``.
+    Users of the ScaleIO Driver should now utilize the
+    ``sio_storage_pools`` options to provide a list of
+    protection_domain:storage_pool pairs.
+  - |
+    The ScaleIO Driver has deprecated the ability to specify the
+    protection domain, as ``sio:pd_name``, and storage pool,
+    as ``sio:sp_name``, extra specs in volume types.
+    The supported way to specify a specific protection domain and
+    storage pool in a volume type is to define a ``pool_name``
+    extra spec and set the value to the appropriate
+    ``protection_domain_name:storage_pool_name``.
+
+

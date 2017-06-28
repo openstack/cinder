@@ -118,8 +118,18 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
                 'instances/StoragePool::test_pool/relationships/Volume':
-                    scaleio_objects
+                    scaleio_objects,
+                'types/Pool/instances/getByName::{},{}'.format(
+                    "test_domain",
+                    "test_pool"
+                ): '"{}"'.format("test_pool").encode('ascii', 'ignore'),
+                'types/Domain/instances/getByName::' +
+                "test_domain": '"{}"'.format("test_domain").encode(
+                    'ascii',
+                    'ignore'
+                ),
             },
+
         }
 
         with mock.patch('cinder.volume.utils.paginate_entries_list') as mpage:
