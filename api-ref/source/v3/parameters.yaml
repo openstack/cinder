@@ -132,11 +132,11 @@ resource:
   in: path
   required: false
   type: string
-snapshot_id_1:
+snapshot_id_path:
   description: |
     The UUID of the snapshot.
   in: path
-  required: false
+  required: true
   type: string
 transfer_id:
   description: |
@@ -1132,6 +1132,12 @@ message_level:
 meta:
   description: |
     The metadata key and value pair for the volume.
+  in: body
+  required: true
+  type: object
+meta_1:
+  description: |
+    The metadata key and value pair for the snapshot.
   in: body
   required: true
   type: object
