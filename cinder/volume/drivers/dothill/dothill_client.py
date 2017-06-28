@@ -98,7 +98,7 @@ class DotHillClient(object):
         raise exception.DotHillConnectionError(
             message=_("Failed to log in to management controller"))
 
-    @utils.synchronized(__name__, external = True)
+    @utils.synchronized(__name__, external=True)
     def _get_session_key(self):
         """Retrieve a session key from the array."""
 
