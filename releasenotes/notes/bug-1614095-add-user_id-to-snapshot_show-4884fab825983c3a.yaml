@@ -1,0 +1,3 @@
+---
+features:
+  - Add ``user_id`` field to snapshot list/detail and snapshot show.

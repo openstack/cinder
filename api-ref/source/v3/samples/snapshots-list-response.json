@@ -6,6 +6,7 @@
                 "name": "test"
             },
             "name": "test-volume-snapshot",
+            "user_id": "40c2102f4a554b848d96b14f3eec39ed",
             "volume_id": "173f7b48-c4c1-4e70-9acc-086b39073506",
             "created_at": "2015-11-29T02:25:51.000000",
             "size": 1,

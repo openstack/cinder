@@ -2093,6 +2093,13 @@ user_id:
   in: body
   required: true
   type: string
+user_id_2:
+  description: |
+    The UUID of the user.
+  in: body
+  required: true
+  type: string
+  min_version: 3.41
 user_message:
   description: |
     The translated readable message corresponding to ``event_id``.

@@ -5,6 +5,7 @@
         "description": "Daily backup",
         "created_at": "2013-02-25T04:13:17.000000",
         "metadata": {},
+        "user_id": "40c2102f4a554b848d96b14f3eec39ed",
         "volume_id": "5aa119a8-d25b-45a7-8d1b-88e127885635",
         "os-extended-snapshot-attributes:project_id": "0c2eba2c5af04d3f9e9d0d410b371fde",
         "size": 1,
