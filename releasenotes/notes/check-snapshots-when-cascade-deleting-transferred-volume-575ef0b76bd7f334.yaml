@@ -1,7 +1,7 @@
 ---
 fixes:
   - After transferring a volume without snapshots from one user project
-    to another user project,  if the receiving user uses cascade deleting,
+    to another user project, if the receiving user uses cascade deleting,
     it will cause some exceptions in driver and volume will be error_deleting.
     Adding additional check to ensure there are no snapshots left in other
     project when cascade deleting a tranferred volume.
