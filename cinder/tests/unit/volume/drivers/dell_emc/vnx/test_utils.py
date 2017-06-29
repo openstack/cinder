@@ -178,3 +178,35 @@ class TestUtils(test.TestCase):
         driver = FakeDriver()
         is_called = driver.fake_group_method('context', input['group'])
         self.assertTrue(is_called)
+
+    @res_mock.mock_driver_input
+    def test_is_image_cache_volume_false(self, mocked):
+        volume = mocked['volume']
+        volume.display_name = 'volume-ca86b9a0-d0d5-4267-8cd5-c62274056cc0'
+        self.assertFalse(vnx_utils.is_image_cache_volume(volume))
+        volume.display_name = 'volume-ca86b9a0-d0d5-c62274056cc0'
+        self.assertFalse(vnx_utils.is_image_cache_volume(volume))
+
+    @res_mock.mock_driver_input
+    def test_is_image_cache_volume_true(self, mocked):
+        volume = mocked['volume']
+        volume.display_name = 'image-ca86b9a0-d0d5-4267-8cd5-c62274056cc0'
+        self.assertTrue(vnx_utils.is_image_cache_volume(volume))
+
+    @res_mock.mock_driver_input
+    def test_calc_migrate_and_provision_image_cache(self, mocked):
+        volume = mocked['volume']
+        volume.display_name = 'image-ca86b9a0-d0d5-4267-8cd5-c62274056cc0'
+        self.assertTrue(vnx_utils.is_image_cache_volume(volume))
+        async_migrate, provision = vnx_utils.calc_migrate_and_provision(volume)
+        self.assertFalse(async_migrate)
+        self.assertEqual(provision.name, 'THIN')
+
+    @res_mock.mock_driver_input
+    def test_calc_migrate_and_provision(self, mocked):
+        volume = mocked['volume']
+        volume.display_name = 'volume-ca86b9a0-d0d5-4267-8cd5-c62274056cc0'
+        async_migrate, provision = vnx_utils.calc_migrate_and_provision(volume)
+        self.assertEqual(vnx_utils.is_async_migrate_enabled(volume),
+                         async_migrate)
+        self.assertEqual(provision.name, 'THICK')

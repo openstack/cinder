@@ -70,9 +70,11 @@ class VNXDriver(driver.ManageableVD,
                 Configurable migration rate support
         8.0.0 - New VNX Cinder driver
         9.0.0 - Use asynchronous migration for cloning
+        10.0.1 - Extend SMP size before aync migration when cloning from an
+                image cache volume
     """
 
-    VERSION = '09.00.00'
+    VERSION = '10.00.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"

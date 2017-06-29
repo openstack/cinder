@@ -313,7 +313,6 @@ class CommonAdapter(object):
         pool = utils.get_pool_from_host(volume.host)
 
         specs = common.ExtraSpecs.from_volume(volume)
-        provision = specs.provision
         tier = specs.tier
         base_lun_name = utils.get_base_lun_name(snapshot.volume)
         rep_update = dict()
@@ -333,7 +332,7 @@ class CommonAdapter(object):
             volume_metadata['snapcopy'] = 'True'
             volume_metadata['async_migrate'] = 'False'
         else:
-            async_migrate = utils.is_async_migrate_enabled(volume)
+            async_migrate, provision = utils.calc_migrate_and_provision(volume)
             new_snap_name = (
                 utils.construct_snap_name(volume) if async_migrate else None)
             new_lun_id = emc_taskflow.create_volume_from_snapshot(
@@ -366,7 +365,6 @@ class CommonAdapter(object):
         pool = utils.get_pool_from_host(volume.host)
 
         specs = common.ExtraSpecs.from_volume(volume)
-        provision = specs.provision
         tier = specs.tier
         base_lun_name = utils.get_base_lun_name(src_vref)
 
@@ -389,7 +387,7 @@ class CommonAdapter(object):
             volume_metadata['snapcopy'] = 'True'
             volume_metadata['async_migrate'] = 'False'
         else:
-            async_migrate = utils.is_async_migrate_enabled(volume)
+            async_migrate, provision = utils.calc_migrate_and_provision(volume)
             new_lun_id = emc_taskflow.create_cloned_volume(
                 client=self.client,
                 snap_name=snap_name,

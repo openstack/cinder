@@ -455,6 +455,19 @@ test_require_consistent_group_snapshot_enabled:
         _uuid: group_id
       group_type_id:
         _uuid: group_type_id
+
+test_is_image_cache_volume_false:
+  volume: *volume_base
+
+test_is_image_cache_volume_true:
+  volume: *volume_base
+
+test_calc_migrate_and_provision_image_cache:
+  volume: *volume_base
+
+test_calc_migrate_and_provision:
+  volume: *volume_base
+
 ###########################################################
 # TestClient
 ###########################################################
