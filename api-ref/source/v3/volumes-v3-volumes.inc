@@ -723,6 +723,7 @@ Response Parameters
    - volume-summary: volume-summary
    - total_size: total_size
    - total_count: total_count
+   - metadata: summary_metadata
 
 
 Response Example

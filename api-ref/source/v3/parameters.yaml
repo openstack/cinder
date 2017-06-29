@@ -219,6 +219,28 @@ limit:
   in: query
   required: false
   type: integer
+limit_group_snapshot:
+  description: |
+    Requests a page size of items. Returns a number
+    of items up to a limit value. Use the ``limit`` parameter to make
+    an initial limited request and use the ID of the last-seen item
+    from the response as the ``marker`` parameter value in a
+    subsequent limited request.
+  in: query
+  required: false
+  type: integer
+  min_version: 3.29
+limit_group_snapshot:
+  description: |
+    Requests a page size of items. Returns a number
+    of items up to a limit value. Use the ``limit`` parameter to make
+    an initial limited request and use the ID of the last-seen item
+    from the response as the ``marker`` parameter value in a
+    subsequent limited request.
+  in: query
+  required: false
+  type: integer
+  min_version: 3.29
 marker:
   description: |
     The ID of the last-seen item. Use the ``limit``
@@ -228,6 +250,16 @@ marker:
   in: query
   required: false
   type: string
+marker_group_snapshot:
+  description: |
+    The ID of the last-seen item. Use the ``limit``
+    parameter to make an initial limited request and use the ID of the
+    last-seen item from the response as the ``marker`` parameter value
+    in a subsequent limited request.
+  in: query
+  required: false
+  type: string
+  min_version: 3.29
 message_id:
   description: |
     The UUID of the message.
@@ -261,6 +293,14 @@ offset:
   in: query
   required: false
   type: integer
+offset_group_snapshot:
+  description: |
+    Used in conjunction with ``limit`` to return a slice of items. ``offset``
+    is where to start in the list.
+  in: query
+  required: false
+  type: integer
+  min_version: 3.29
 sort:
   description: |
     Comma-separated list of sort keys and optional
@@ -277,6 +317,15 @@ sort_dir:
   in: query
   required: false
   type: string
+sort_dir_group_snapshot:
+  description: |
+    Sorts by one or more sets of attribute and sort
+    direction combinations. If you omit the sort direction in a set,
+    default is ``desc``.
+  in: query
+  required: false
+  type: string
+  min_version: 3.29
 sort_key:
   description: |
     Sorts by an attribute. A valid value is ``name``,
@@ -297,6 +346,17 @@ sort_key_1:
   in: query
   required: false
   type: string
+sort_key_group_snapshot:
+  description: |
+    Sorts by an attribute. A valid value is ``name``,
+    ``status``, ``group_id``, ``group_type_id``, ``size``,
+    ``id``, ``created_at``, or ``updated_at``. Default is
+    ``created_at``. The API uses the natural sorting direction of the
+    ``sort_key`` attribute value.
+  in: query
+  required: false
+  type: string
+  min_version: 3.29
 status_query:
   description: |
     Filters results by a status. Default=None.
@@ -2002,6 +2062,14 @@ storage_protocol_1:
   in: body
   required: true
   type: string
+summary_metadata:
+  description: |
+    The dictionary of lists contains all the volumes' metadata,
+    classified by metadata key.
+  in: body
+  required: true
+  type: object
+  min_version: 3.36
 total_capacity:
   description: |
     The total capacity for the back-end volume, in
