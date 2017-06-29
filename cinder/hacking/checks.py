@@ -36,7 +36,7 @@ UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py',
                            'cinder/objects/manageableresources.py']
 
 translated_log = re.compile(
-    r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
+    r"(.)*LOG\.(audit|debug|error|info|warn|warning|critical|exception)"
     "\(\s*_\(\s*('|\")")
 string_translation = re.compile(r"(.)*_\(\s*('|\")")
 vi_header_re = re.compile(r"^#\s+vim?:.+")
@@ -123,21 +123,20 @@ def no_vi_headers(physical_line, line_number, lines):
             return 0, "N314: Don't put vi configuration in source files"
 
 
-def no_translate_debug_logs(logical_line, filename):
-    """Check for 'LOG.debug(_('
+def no_translate_logs(logical_line, filename):
+    """Check for 'LOG.*(_('
 
-    As per our translation policy,
-    https://wiki.openstack.org/wiki/LoggingStandards#Log_Translation
-    we shouldn't translate debug level logs.
+    Starting with the Pike series, OpenStack no longer supports log
+    translation. We shouldn't translate logs.
 
     - This check assumes that 'LOG' is a logger.
     - Use filename so we can start enforcing this in specific folders
       instead of needing to do so all at once.
 
-    N319
+    C312
     """
-    if logical_line.startswith("LOG.debug(_("):
-        yield(0, "N319 Don't translate debug level logs")
+    if translated_log.match(logical_line):
+        yield(0, "C312: Log messages should not be translated!")
 
 
 def no_mutable_default_args(logical_line):
@@ -151,7 +150,7 @@ def check_explicit_underscore_import(logical_line, filename):
     """Check for explicit import of the _ function
 
     We need to ensure that any files that are using the _() function
-    to translate logs are explicitly importing the _ function.  We
+    to translate messages are explicitly importing the _ function.  We
     can't trust unit test to catch whether the import has been
     added so we need to check for it here.
     """
@@ -165,8 +164,7 @@ def check_explicit_underscore_import(logical_line, filename):
             underscore_import_check_multi.match(logical_line) or
             custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
-    elif(translated_log.match(logical_line) or
-         string_translation.match(logical_line)):
+    elif string_translation.match(logical_line):
         yield(0, "N323: Found use of _() without explicit import of _ !")
 
 
@@ -457,7 +455,7 @@ def validate_assertTrue(logical_line):
 
 def factory(register):
     register(no_vi_headers)
-    register(no_translate_debug_logs)
+    register(no_translate_logs)
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
     register(CheckForStrUnicodeExc)
