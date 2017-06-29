@@ -85,11 +85,11 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
-   - limit: limit
-   - offset: offset
-   - marker: marker
+   - sort_key: sort_key_group_snapshot
+   - sort_dir: sort_dir_group_snapshot
+   - limit: limit_group_snapshot
+   - offset: offset_group_snapshot
+   - marker: marker_group_snapshot
 
 
 Response Parameters
@@ -129,11 +129,11 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - sort_key: sort_key
-   - sort_dir: sort_dir
-   - limit: limit
-   - offset: offset
-   - marker: marker
+   - sort_key: sort_key_group_snapshot
+   - sort_dir: sort_dir_group_snapshot
+   - limit: limit_group_snapshot
+   - offset: offset_group_snapshot
+   - marker: marker_group_snapshot
 
 
 Response Parameters
