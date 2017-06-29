@@ -121,6 +121,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._vhdutils = utilsfactory.get_vhdutils()
         self._pathutils = utilsfactory.get_pathutils()
         self._smbutils = utilsfactory.get_smbutils()
+        self._diskutils = utilsfactory.get_diskutils()
 
     def do_setup(self, context):
         self._check_os_platform()
@@ -343,8 +344,9 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
 
         :param smbfs_share: example //172.18.194.100/var/smbfs
         """
-        total_size, total_available = self._smbutils.get_share_capacity_info(
-            smbfs_share)
+        mount_point = self._get_mount_point_for_share(smbfs_share)
+        total_size, total_available = self._diskutils.get_disk_capacity(
+            mount_point)
         total_allocated = self._get_total_allocated(smbfs_share)
         return_value = [total_size, total_available, total_allocated]
         LOG.info('Smb share %(share)s Total size %(size)s '
