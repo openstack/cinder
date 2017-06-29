@@ -336,6 +336,7 @@
         size:
           min: 1
           max: 1
+        volume_type: "test"
       runner:
         type: "constant"
         times: 2
@@ -350,6 +351,8 @@
           flavor:
             name: "m1.tiny"
           servers_per_tenant: 1
+        volume_types:
+          - "test"
         api_versions:
           cinder:
             version: 2
