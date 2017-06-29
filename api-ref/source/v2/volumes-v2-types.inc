@@ -273,7 +273,7 @@ Response Example
 Show an encryption type for v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET //v2/{tenant_id}/types/{volume_type_id}/encryption
+.. rest_method::  GET /v2/{tenant_id}/types/{volume_type_id}/encryption
 
 Show an encryption type.
 
@@ -319,7 +319,7 @@ Response Example
 Delete an encryption type for v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET //v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
+.. rest_method::  GET /v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 Delete an encryption type.
 
@@ -341,7 +341,7 @@ Request
 Create an encryption type for v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST //v2/{tenant_id}/types/{volume_type_id}/encryption
+.. rest_method::  POST /v2/{tenant_id}/types/{volume_type_id}/encryption
 
 Creates an encryption type.
 
@@ -394,7 +394,7 @@ Response Example
 Update an encryption type for v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST //v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
+.. rest_method::  POST /v2/{tenant_id}/types/{volume_type_id}/encryption/{encryption_id}
 
 Update an encryption type.
 
