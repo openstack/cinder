@@ -1293,6 +1293,10 @@ class DotHillNotTargetPortal(VolumeDriverException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
 
 
+class DotHillDriverNotSupported(VolumeDriverException):
+    message = _("The Dot Hill driver is no longer supported.")
+
+
 # Sheepdog
 class SheepdogError(VolumeBackendAPIException):
     message = _("An error has occurred in SheepdogDriver. "
