@@ -46,7 +46,7 @@ CONF.register_opts(glusterfsbackup_service_opts)
 class GlusterfsBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using GlusterFS repository."""
 
-    def __init__(self, context, db_driver=None):
+    def __init__(self, context, db=None):
         self._check_configuration()
         self.backup_mount_point_base = CONF.glusterfs_backup_mount_point
         self.backup_share = CONF.glusterfs_backup_share

@@ -69,7 +69,7 @@ CONF.register_opts(posixbackup_service_opts)
 class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete using a Posix file system."""
 
-    def __init__(self, context, db_driver=None, backup_path=None):
+    def __init__(self, context, db=None, backup_path=None):
         chunk_size_bytes = CONF.backup_file_size
         sha_block_size_bytes = CONF.backup_sha_block_size_bytes
         backup_default_container = CONF.backup_container
@@ -78,7 +78,7 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                 sha_block_size_bytes,
                                                 backup_default_container,
                                                 enable_progress_timer,
-                                                db_driver)
+                                                db)
         self.backup_path = backup_path
         if not backup_path:
             self.backup_path = CONF.backup_posix_path

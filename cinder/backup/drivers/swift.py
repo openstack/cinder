@@ -143,7 +143,7 @@ CONF.register_opts(swiftbackup_service_opts)
 class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 
-    def __init__(self, context, db_driver=None):
+    def __init__(self, context, db=None):
         chunk_size_bytes = CONF.backup_swift_object_size
         sha_block_size_bytes = CONF.backup_swift_block_size
         backup_default_container = CONF.backup_swift_container
@@ -152,7 +152,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                                 sha_block_size_bytes,
                                                 backup_default_container,
                                                 enable_progress_timer,
-                                                db_driver)
+                                                db)
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
         self.backup_swift_auth_insecure = CONF.backup_swift_auth_insecure

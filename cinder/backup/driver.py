@@ -54,8 +54,8 @@ class BackupMetadataAPI(base.Base):
     TYPE_TAG_VOL_META = 'volume-metadata'
     TYPE_TAG_VOL_GLANCE_META = 'volume-glance-metadata'
 
-    def __init__(self, context, db_driver=None):
-        super(BackupMetadataAPI, self).__init__(db_driver)
+    def __init__(self, context, db=None):
+        super(BackupMetadataAPI, self).__init__(db)
         self.context = context
 
     @staticmethod
@@ -347,10 +347,10 @@ class BackupMetadataAPI(base.Base):
 @six.add_metaclass(abc.ABCMeta)
 class BackupDriver(base.Base):
 
-    def __init__(self, context, db_driver=None):
-        super(BackupDriver, self).__init__(db_driver)
+    def __init__(self, context, db=None):
+        super(BackupDriver, self).__init__(db)
         self.context = context
-        self.backup_meta_api = BackupMetadataAPI(context, db_driver)
+        self.backup_meta_api = BackupMetadataAPI(context, db)
         # This flag indicates if backup driver supports force
         # deletion. So it should be set to True if the driver that inherits
         # from BackupDriver supports the force deletion function.

@@ -170,8 +170,8 @@ class CephBackupDriver(driver.BackupDriver):
     gain.
     """
 
-    def __init__(self, context, db_driver=None, execute=None):
-        super(CephBackupDriver, self).__init__(context, db_driver)
+    def __init__(self, context, db=None, execute=None):
+        super(CephBackupDriver, self).__init__(context, db)
         self.rbd = rbd
         self.rados = rados
         self.chunk_size = CONF.backup_ceph_chunk_size
