@@ -25,9 +25,9 @@ from oslo_utils import units
 import requests
 import six
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -42,6 +42,8 @@ class DotHillClient(object):
         self.ssl_verify = ssl_verify
         self._set_host(self._mgmt_ip_addrs[0])
         self._fw = ''
+        self._driver_name = self.__class__.__name__.split('.')[0]
+        self._array_name = 'unknown'
         self._luns_in_use_by_host = {}
 
     def _set_host(self, ip_addr):
@@ -75,8 +77,10 @@ class DotHillClient(object):
         try:
             self._get_session_key()
             self.get_firmware_version()
-            LOG.debug("Logged in to array at %s (session %s)",
-                      self._base_url, self._session_key)
+            if not self._array_name or self._array_name == 'unknown':
+                self._array_name = self.get_serial_number()
+            LOG.debug("Logged in to array %s at %s (session %s)",
+                      self._array_name, self._base_url, self._session_key)
             return
         except exception.DotHillConnectionError:
             not_responding = self._curr_ip_addr
@@ -98,7 +102,7 @@ class DotHillClient(object):
         raise exception.DotHillConnectionError(
             message=_("Failed to log in to management controller"))
 
-    @utils.synchronized(__name__, external=True)
+    @coordination.synchronized('{self._driver_name}-{self._array_name}')
     def _get_session_key(self):
         """Retrieve a session key from the array."""
 
@@ -192,7 +196,7 @@ class DotHillClient(object):
             tries_left -= 1
             self.session_login()
 
-    @utils.synchronized(__name__, external=True)
+    @coordination.synchronized('{self._driver_name}-{self._array_name}')
     def _api_request(self, path, *args, **kargs):
         """Performs an HTTP request on the device, with locking.
 
@@ -366,7 +370,7 @@ class DotHillClient(object):
         raise exception.DotHillRequestError(
             message=_("No LUNs available for mapping to host %s.") % host)
 
-    @utils.synchronized(__name__ + '.map_volume', external=True)
+    @coordination.synchronized('{self._driver_name}-{self._array_name}-map')
     def map_volume(self, volume_name, connector, connector_element):
         if connector_element == 'wwpns':
             lun = self._get_first_available_lun_for_host(connector['wwpns'][0])
