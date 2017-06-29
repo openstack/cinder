@@ -438,6 +438,10 @@ class API(base.Base):
             else:
                 # Allow deletion if all snapshots are in an expected state
                 filters = [~db.volume_has_undeletable_snapshots_filter()]
+                # Check if the volume has snapshots which are existing in
+                # other project now.
+                if not context.is_admin:
+                    filters.append(~db.volume_has_other_project_snp_filter())
         else:
             # Don't allow deletion of volume with snapshots
             filters = [~db.volume_has_snapshots_filter()]
@@ -453,7 +457,8 @@ class API(base.Base):
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))
             msg = _('Volume %s must not be migrating, attached, belong to a '
-                    'group or have snapshots.') % status
+                    'group, have snapshots or be disassociated from '
+                    'snapshots after volume transfer.') % status
             LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
 
