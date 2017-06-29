@@ -1,0 +1,4 @@
+{
+    "binary": "cinder-volume",
+    "host": "devstack@lvmdriver-1"
+}

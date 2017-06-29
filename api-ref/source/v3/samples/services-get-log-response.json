@@ -1,0 +1,25 @@
+{
+    "log_levels": [{
+        "binary": "cinder-api",
+        "host": "devstack",
+        "levels": {
+            "cinder.volume.api": "DEBUG"
+        }
+    }, {
+        "binary": "cinder-scheduler",
+        "host": "devstack",
+        "levels": {
+            "cinder.volume.api": "DEBUG"
+        }
+    }, {
+        "binary": "cinder-backup",
+        "host": "devstack",
+        "levels": {}
+    }, {
+        "binary": "cinder-volume",
+        "host": "devstack@lvmdriver-1",
+        "levels": {
+            "cinder.volume.api": "DEBUG"
+        }
+    }]
+}

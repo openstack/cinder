@@ -201,6 +201,12 @@ all-tenants:
   in: query
   required: false
   type: string
+binary_query:
+  description: |
+    Filter the service list result by binary name of the service.
+  in: query
+  required: false
+  type: string
 bootable_query:
   description: |
     Filters results by bootable status. Default=None.
@@ -215,6 +221,12 @@ detail:
   in: query
   required: false
   type: boolean
+host_query:
+  description: |
+    Filter the service list result by host name of the service.
+  in: query
+  required: false
+  type: string
 image-id:
   description: |
     Creates volume from image ID. Default=None.
@@ -396,6 +408,12 @@ absolute:
   in: body
   required: true
   type: object
+active_backend_id:
+  description: |
+    The ID of active storage backend. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: string
 add_volumes:
   description: |
     One or more volume UUIDs, separated by commas, to
@@ -482,6 +500,12 @@ availability_zone_3:
   in: body
   required: true
   type: string
+backend_id:
+  description: |
+    ID of backend to failover to. Default is ``None``.
+  in: body
+  required: false
+  type: string
 backup:
   description: |
     A ``backup`` object.
@@ -524,7 +548,13 @@ backups_number_usage:
   type: object
 binary:
   description: |
-    The service binary.
+    The binary name of the service.
+  in: body
+  required: true
+  type: string
+binary_1:
+  description: |
+    The binary name of the service.
   in: body
   required: false
   type: string
@@ -566,6 +596,19 @@ cipher:
   description: |
     The encryption algorithm or mode. For example, aes-xts-plain64. The default
     value is None.
+  in: body
+  required: false
+  type: string
+cluster:
+  description: |
+    The cluster name. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: string
+  min_version: 3.7
+cluster_1:
+  description: |
+    The cluster name.
   in: body
   required: false
   type: string
@@ -815,6 +858,24 @@ disabled:
   in: body
   required: false
   type: boolean
+disabled_1:
+  description: |
+    The service is disabled or not.
+  in: body
+  required: true
+  type: boolean
+disabled_reason_body:
+  description: |
+    The reason for disabling a service.
+  in: body
+  required: true
+  type: string
+disabled_reason_body_1:
+  description: |
+    The reason for disabling a service.
+  in: body
+  required: false
+  type: string
 disk_format:
   description: |
     Disk format for the new image. Default is raw.
@@ -931,6 +992,12 @@ free_capacity:
   in: body
   required: true
   type: string
+frozen:
+  description: |
+    The host is frozen or not. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: boolean
 gigabytes:
   description: |
     The size (GB) of volumes and snapshots that are allowed for each project.
@@ -1044,6 +1111,18 @@ host_mutex:
 host_name:
   description: |
     The name of the attaching host.
+  in: body
+  required: false
+  type: string
+host_name_body:
+  description: |
+    The name of the host.
+  in: body
+  required: true
+  type: string
+host_name_body_1:
+  description: |
+    The name of the host.
   in: body
   required: false
   type: string
@@ -1193,6 +1272,26 @@ keys:
   in: body
   required: true
   type: array
+levels:
+  description: |
+    The current log level that queried.
+  in: body
+  required: true
+  type: object
+levels_1:
+  description: |
+    The log level to set, case insensitive, accepted values are ``INFO``,
+    ``WARNING``, ``ERROR`` and ``DEBUG``.
+  in: body
+  required: true
+  type: string
+limit_usage:
+  description: |
+    The limit data size. Visible only if you set the
+    ``usage=true`` query parameter.
+  in: body
+  required: false
+  type: integer
 limits:
   description: |
     A list of ``limit`` objects.
@@ -1242,6 +1341,12 @@ location:
   in: body
   required: true
   type: string
+log_levels:
+  description: |
+    The list of log levels.
+  in: body
+  required: true
+  type: array
 manageable-snapshots:
   description: |
     A list of manageable snapshots.
@@ -1779,6 +1884,15 @@ pool_name:
   in: body
   required: true
   type: string
+prefix:
+  description: |
+    The prefix for the log path we are querying,
+    for example ``cinder.`` or ``sqlalchemy.engine``.
+    When not present or the empty string is passed all
+    log levels will be retrieved.
+  in: body
+  required: false
+  type: string
 project:
   description: |
     The ID of the project. Volume Type access to be
@@ -1898,6 +2012,12 @@ replication_status:
   in: body
   required: true
   type: string
+replication_status_1:
+  description: |
+    The volume service replication status. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: string
 replication_targets:
   description: |
     A list of volume backends used to replicate volumes
@@ -1973,15 +2093,42 @@ safe_to_manage:
   in: body
   required: true
   type: boolean
+security_group_rules:
+  description: |
+    The number of rules that are allowed for each
+    security group.
+  in: body
+  required: false
+  type: integer
+security_groups:
+  description: |
+    The number of security groups that are allowed
+    for each project.
+  in: body
+  required: true
+  type: integer
 service_id:
   description: |
     UUID for the cleanup service.
   in: body
   required: false
   type: string
+service_key:
+  description: |
+    The service name. Deprecated. Keeping service key
+    for API compatibility.
+  in: body
+  required: true
+  type: string
 service_state:
   description: |
     The state of the service. One of ``available`` or ``unavailable``.
+  in: body
+  required: true
+  type: string
+service_state_1:
+  description: |
+    The state of the service. One of ``up`` or ``down``.
   in: body
   required: true
   type: string
@@ -1991,6 +2138,12 @@ service_status:
   in: body
   required: true
   type: string
+services:
+  description: |
+    A list of service objects.
+  in: body
+  required: true
+  type: array
 size:
   description: |
     The size of the volume, in gibibytes (GiB).

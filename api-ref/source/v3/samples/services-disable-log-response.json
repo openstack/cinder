@@ -1,0 +1,8 @@
+{
+    "disabled": true,
+    "status": "disabled",
+    "host": "devstack@lvmdriver-1",
+    "service": "",
+    "binary": "cinder-volume",
+    "disabled_reason": "test"
+}
