@@ -245,17 +245,6 @@ class UnityDriverTest(unittest.TestCase):
     def test_backup_use_temp_snapshot(self):
         self.assertTrue(self.driver.backup_use_temp_snapshot())
 
-    def test_create_export_snapshot(self):
-        snapshot = self.driver.create_export_snapshot(self.get_context(),
-                                                      self.get_snapshot(),
-                                                      self.get_connector())
-        self.assertTrue(snapshot.exists)
-
-    def test_remove_export_snapshot(self):
-        snapshot = self.get_snapshot()
-        self.driver.remove_export_snapshot(self.get_context(), snapshot)
-        self.assertFalse(snapshot.exists)
-
     def test_initialize_connection_snapshot(self):
         snapshot = self.get_snapshot()
         conn_info = self.driver.initialize_connection_snapshot(
