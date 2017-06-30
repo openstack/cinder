@@ -20,6 +20,7 @@ import inspect
 import json
 import os
 import re
+import shutil
 import tempfile
 import time
 
@@ -671,6 +672,11 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     """
 
     _VALID_IMAGE_EXTENSIONS = []
+    # The following flag may be overriden by the concrete drivers in order
+    # to avoid using temporary volume snapshots when creating volume clones,
+    # when possible.
+
+    _always_use_temp_snap_when_cloning = True
 
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
@@ -955,6 +961,22 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         return snap_info['active']
 
+    def _local_path_active_image(self, volume):
+        active_fname = self.get_active_image_from_info(volume)
+        vol_dir = self._local_volume_dir(volume)
+
+        active_fpath = os.path.join(vol_dir, active_fname)
+        return active_fpath
+
+    def _snapshots_exist(self, volume):
+        if not volume.provider_location:
+            return False
+
+        active_fpath = self._local_path_active_image(volume)
+        base_vol_path = self.local_path(volume)
+
+        return not utils.paths_normcase_equal(active_fpath, base_vol_path)
+
     def _create_cloned_volume(self, volume, src_vref):
         LOG.info('Cloning volume %(src)s to volume %(dst)s',
                  {'src': src_vref.id,
@@ -972,10 +994,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                      'volume_type', 'metadata']
         Volume = collections.namedtuple('Volume', vol_attrs)
 
-        snap_attrs = ['volume_name', 'volume_size', 'name',
-                      'volume_id', 'id', 'volume']
-        Snapshot = collections.namedtuple('Snapshot', snap_attrs)
-
         volume_info = Volume(provider_location=src_vref.provider_location,
                              size=src_vref.size,
                              id=volume.id,
@@ -984,23 +1002,37 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                              volume_type=src_vref.volume_type,
                              metadata=src_vref.metadata)
 
-        temp_snapshot = Snapshot(volume_name=volume_name,
-                                 volume_size=src_vref.size,
-                                 name='clone-snap-%s' % src_vref.id,
-                                 volume_id=src_vref.id,
-                                 id='tmp-snap-%s' % src_vref.id,
-                                 volume=src_vref)
+        if (self._always_use_temp_snap_when_cloning or
+                self._snapshots_exist(src_vref)):
+            snap_attrs = ['volume_name', 'volume_size', 'name',
+                          'volume_id', 'id', 'volume']
+            Snapshot = collections.namedtuple('Snapshot', snap_attrs)
 
-        self._create_snapshot(temp_snapshot)
-        try:
-            self._copy_volume_from_snapshot(temp_snapshot,
-                                            volume_info,
-                                            volume.size)
+            temp_snapshot = Snapshot(volume_name=volume_name,
+                                     volume_size=src_vref.size,
+                                     name='clone-snap-%s' % src_vref.id,
+                                     volume_id=src_vref.id,
+                                     id='tmp-snap-%s' % src_vref.id,
+                                     volume=src_vref)
 
-        finally:
-            self._delete_snapshot(temp_snapshot)
+            self._create_snapshot(temp_snapshot)
+            try:
+                self._copy_volume_from_snapshot(temp_snapshot,
+                                                volume_info,
+                                                volume.size)
+
+            finally:
+                self._delete_snapshot(temp_snapshot)
+        else:
+            self._copy_volume_image(self.local_path(src_vref),
+                                    self.local_path(volume_info))
+            self._extend_volume(volume_info, volume.size)
 
         return {'provider_location': src_vref.provider_location}
+
+    def _copy_volume_image(self, src_path, dest_path):
+        shutil.copyfile(src_path, dest_path)
+        self._set_rw_permissions(dest_path)
 
     def _delete_stale_snapshot(self, snapshot):
         info_path = self._local_path_volume_info(snapshot.volume)
@@ -1544,6 +1576,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                     {'id': snapshot.id}
                 raise exception.RemoteFSException(msg)
 
+    def _extend_volume(self, volume, size_gb):
+        raise NotImplementedError()
+
 
 class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
     @locked_volume_id_operation
@@ -1575,6 +1610,10 @@ class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
         return self._copy_volume_to_image(context, volume, image_service,
                                           image_meta)
 
+    @locked_volume_id_operation
+    def extend_volume(self, volume, size_gb):
+        return self._extend_volume(volume, size_gb)
+
 
 class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
     @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
@@ -1605,6 +1644,10 @@ class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
 
         return self._copy_volume_to_image(context, volume, image_service,
                                           image_meta)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
+    def extend_volume(self, volume, size_gb):
+        return self._extend_volume(volume, size_gb)
 
 
 class RemoteFSPoolMixin(object):

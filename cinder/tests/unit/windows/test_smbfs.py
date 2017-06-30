@@ -719,6 +719,12 @@ class WindowsSmbFsTestCase(test.TestCase):
         drv._vhdutils.reconnect_parent_vhd.assert_called_once_with(
             self._FAKE_SNAPSHOT_PATH, self._FAKE_VOLUME_PATH)
 
+    def test_copy_volume_image(self):
+        self._smbfs_driver._copy_volume_image(mock.sentinel.src,
+                                              mock.sentinel.dest)
+        self._smbfs_driver._pathutils.copy.assert_called_once_with(
+            mock.sentinel.src, mock.sentinel.dest)
+
     def test_get_pool_name_from_share(self):
         self._smbfs_driver._pool_mappings = {
             mock.sentinel.share: mock.sentinel.pool}

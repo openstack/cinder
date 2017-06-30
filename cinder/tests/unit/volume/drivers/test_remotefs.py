@@ -460,8 +460,65 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                  basedir=basedir,
                                  valid_backing_file=False)
 
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_local_volume_dir')
     @mock.patch.object(remotefs.RemoteFSSnapDriver,
-                       '_validate_state')
+                       'get_active_image_from_info')
+    def test_local_path_active_image(self, mock_get_active_img,
+                                     mock_local_vol_dir):
+        fake_vol_dir = 'fake_vol_dir'
+        fake_active_img = 'fake_active_img_fname'
+
+        mock_get_active_img.return_value = fake_active_img
+        mock_local_vol_dir.return_value = fake_vol_dir
+
+        active_img_path = self._driver._local_path_active_image(
+            mock.sentinel.volume)
+        exp_act_img_path = os.path.join(fake_vol_dir, fake_active_img)
+
+        self.assertEqual(exp_act_img_path, active_img_path)
+        mock_get_active_img.assert_called_once_with(mock.sentinel.volume)
+        mock_local_vol_dir.assert_called_once_with(mock.sentinel.volume)
+
+    @ddt.data({},
+              {'provider_location': None},
+              {'active_fpath': 'last_snap_img',
+               'expect_snaps': True})
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSSnapDriver,
+                       '_local_path_active_image')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver,
+                       'local_path')
+    def test_snapshots_exist(self, mock_local_path,
+                             mock_local_path_active_img,
+                             provider_location='fake_share',
+                             active_fpath='base_img_path',
+                             base_vol_path='base_img_path',
+                             expect_snaps=False):
+        self._fake_volume.provider_location = provider_location
+
+        mock_local_path.return_value = base_vol_path
+        mock_local_path_active_img.return_value = active_fpath
+
+        snaps_exist = self._driver._snapshots_exist(self._fake_volume)
+
+        self.assertEqual(expect_snaps, snaps_exist)
+
+        if provider_location:
+            mock_local_path.assert_called_once_with(self._fake_volume)
+            mock_local_path_active_img.assert_called_once_with(
+                self._fake_volume)
+        else:
+            self.assertFalse(mock_local_path.called)
+
+    @ddt.data({},
+              {'snapshots_exist': True},
+              {'force_temp_snap': True})
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'local_path')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_snapshots_exist')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_copy_volume_image')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_extend_volume')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_validate_state')
     @mock.patch.object(remotefs.RemoteFSSnapDriver, '_create_snapshot')
     @mock.patch.object(remotefs.RemoteFSSnapDriver, '_delete_snapshot')
     @mock.patch.object(remotefs.RemoteFSSnapDriver,
@@ -469,7 +526,13 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     def test_create_cloned_volume(self, mock_copy_volume_from_snapshot,
                                   mock_delete_snapshot,
                                   mock_create_snapshot,
-                                  mock_validate_state):
+                                  mock_validate_state,
+                                  mock_extend_volme,
+                                  mock_copy_volume_image,
+                                  mock_snapshots_exist,
+                                  mock_local_path,
+                                  snapshots_exist=False,
+                                  force_temp_snap=False):
         drv = self._driver
 
         volume = fake_volume.fake_volume_obj(self.context)
@@ -478,6 +541,9 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self.context,
             id=src_vref_id,
             name='volume-%s' % src_vref_id)
+
+        mock_snapshots_exist.return_value = snapshots_exist
+        drv._always_use_temp_snap_when_cloning = force_temp_snap
 
         vol_attrs = ['provider_location', 'size', 'id', 'name', 'status',
                      'volume_type', 'metadata']
@@ -509,10 +575,33 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             src_vref.status,
             exp_acceptable_states,
             obj_description='source volume')
-        mock_create_snapshot.assert_called_once_with(snap_ref)
-        mock_copy_volume_from_snapshot.assert_called_once_with(
-            snap_ref, volume_ref, volume['size'])
-        self.assertTrue(mock_delete_snapshot.called)
+
+        if snapshots_exist or force_temp_snap:
+            mock_create_snapshot.assert_called_once_with(snap_ref)
+            mock_copy_volume_from_snapshot.assert_called_once_with(
+                snap_ref, volume_ref, volume['size'])
+            self.assertTrue(mock_delete_snapshot.called)
+        else:
+            self.assertFalse(mock_create_snapshot.called)
+
+            mock_snapshots_exist.assert_called_once_with(src_vref)
+
+            mock_copy_volume_image.assert_called_once_with(
+                mock_local_path.return_value,
+                mock_local_path.return_value)
+            mock_local_path.assert_has_calls(
+                [mock.call(src_vref), mock.call(volume_ref)])
+            mock_extend_volme.assert_called_once_with(volume_ref,
+                                                      volume.size)
+
+    @mock.patch('shutil.copyfile')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_set_rw_permissions')
+    def test_copy_volume_image(self, mock_set_perm, mock_copyfile):
+        self._driver._copy_volume_image(mock.sentinel.src, mock.sentinel.dest)
+
+        mock_copyfile.assert_called_once_with(mock.sentinel.src,
+                                              mock.sentinel.dest)
+        mock_set_perm.assert_called_once_with(mock.sentinel.dest)
 
     def test_create_regular_file(self):
         self._driver._create_regular_file('/path', 1)
