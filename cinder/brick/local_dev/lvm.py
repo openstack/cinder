@@ -73,6 +73,9 @@ class LVM(executor.Executor):
         self._supports_lvchange_ignoreskipactivation = None
         self.vg_provisioned_capacity = 0.0
 
+        if lvm_type not in ['default', 'thin']:
+            raise exception.Invalid('lvm_type must be "default" or "thin"')
+
         # Ensure LVM_SYSTEM_DIR has been added to LVM.LVM_CMD_PREFIX
         # before the first LVM command is executed, and use the directory
         # where the specified lvm_conf file is located as the value.
