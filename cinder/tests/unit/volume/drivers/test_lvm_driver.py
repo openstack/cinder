@@ -362,6 +362,10 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
 
     @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lv_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.activate_lv')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.'
+                'supports_lvchange_ignoreskipactivation')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
@@ -378,6 +382,10 @@ class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
 
     @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lv_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.activate_lv')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.'
+                'supports_lvchange_ignoreskipactivation')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_volume')
