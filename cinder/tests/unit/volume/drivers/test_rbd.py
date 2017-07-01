@@ -155,6 +155,7 @@ class RBDTestCase(test.TestCase):
         self.cfg.rbd_cluster_name = 'nondefault'
         self.cfg.rbd_pool = 'rbd'
         self.cfg.rbd_ceph_conf = '/etc/ceph/my_ceph.conf'
+        self.cfg.rbd_keyring_conf = '/etc/ceph/my_ceph.client.keyring'
         self.cfg.rbd_secret_uuid = None
         self.cfg.rbd_user = 'cinder'
         self.cfg.volume_backend_name = None
@@ -1164,33 +1165,71 @@ class RBDTestCase(test.TestCase):
             self.assertEqual((hosts, ports), self.driver._get_mon_addrs())
 
     @common_mocks
-    def test_initialize_connection(self):
-        hosts = ['::1', '::1', '::1', '127.0.0.1', 'example.com']
-        ports = ['6789', '6790', '6791', '6792', '6791']
+    def _initialize_connection_helper(self, expected, hosts, ports):
 
         with mock.patch.object(self.driver, '_get_mon_addrs') as \
                 mock_get_mon_addrs:
             mock_get_mon_addrs.return_value = (hosts, ports)
-
-            expected = {
-                'driver_volume_type': 'rbd',
-                'data': {
-                    'name': '%s/%s' % (self.cfg.rbd_pool,
-                                       self.volume_a.name),
-                    'hosts': hosts,
-                    'ports': ports,
-                    'cluster_name': self.cfg.rbd_cluster_name,
-                    'auth_enabled': True,
-                    'auth_username': self.cfg.rbd_user,
-                    'secret_type': 'ceph',
-                    'secret_uuid': None,
-                    'volume_id': self.volume_a.id,
-                    'discard': True,
-                }
-            }
             actual = self.driver.initialize_connection(self.volume_a, None)
             self.assertDictEqual(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
+
+    @mock.patch.object(cinder.volume.drivers.rbd.RBDDriver,
+                       '_get_keyring_contents')
+    def test_initialize_connection(self, mock_keyring):
+        hosts = ['::1', '::1', '::1', '127.0.0.1', 'example.com']
+        ports = ['6789', '6790', '6791', '6792', '6791']
+
+        keyring_data = "[client.cinder]\n  key = test\n"
+        mock_keyring.return_value = keyring_data
+
+        expected = {
+            'driver_volume_type': 'rbd',
+            'data': {
+                'name': '%s/%s' % (self.cfg.rbd_pool,
+                                   self.volume_a.name),
+                'hosts': hosts,
+                'ports': ports,
+                'cluster_name': self.cfg.rbd_cluster_name,
+                'auth_enabled': True,
+                'auth_username': self.cfg.rbd_user,
+                'secret_type': 'ceph',
+                'secret_uuid': None,
+                'volume_id': self.volume_a.id,
+                'discard': True,
+                'keyring': keyring_data,
+            }
+        }
+        self._initialize_connection_helper(expected, hosts, ports)
+
+        # Check how it will work with empty keyring path
+        mock_keyring.return_value = None
+        expected['data']['keyring'] = None
+        self._initialize_connection_helper(expected, hosts, ports)
+
+    def test__get_keyring_contents_no_config_file(self):
+        self.cfg.rbd_keyring_conf = ''
+        self.assertIsNone(self.driver._get_keyring_contents())
+
+    @mock.patch('os.path.isfile')
+    def test__get_keyring_contents_read_file(self, mock_isfile):
+        mock_isfile.return_value = True
+        keyring_data = "[client.cinder]\n  key = test\n"
+        mockopen = mock.mock_open(read_data=keyring_data)
+        mockopen.return_value.__exit__ = mock.Mock()
+        with mock.patch('cinder.volume.drivers.rbd.open', mockopen,
+                        create=True):
+            self.assertEqual(self.driver._get_keyring_contents(), keyring_data)
+
+    @mock.patch('os.path.isfile')
+    def test__get_keyring_contents_raise_error(self, mock_isfile):
+        mock_isfile.return_value = True
+        mockopen = mock.mock_open()
+        mockopen.return_value.__exit__ = mock.Mock()
+        with mock.patch('cinder.volume.drivers.rbd.open', mockopen,
+                        create=True) as mock_keyring_file:
+            mock_keyring_file.side_effect = IOError
+            self.assertIsNone(self.driver._get_keyring_contents())
 
     @ddt.data({'rbd_chunk_size': 1, 'order': 20},
               {'rbd_chunk_size': 8, 'order': 23},
