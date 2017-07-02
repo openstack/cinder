@@ -506,7 +506,7 @@ class GroupsAPITestCase(test.TestCase):
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
         self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
-        self.assertEqual('deleting', group.status)
+        self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
     def test_delete_group_available_no_delete_volumes(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
@@ -556,7 +556,7 @@ class GroupsAPITestCase(test.TestCase):
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
         self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
-        self.assertEqual('deleting', group.status)
+        self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
     def test_delete_group_no_host(self):
         self.group1.host = None
@@ -668,7 +668,7 @@ class GroupsAPITestCase(test.TestCase):
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
         self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
-        self.assertEqual('deleting', group.status)
+        self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
         vol.destroy()
 
@@ -718,7 +718,7 @@ class GroupsAPITestCase(test.TestCase):
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
         self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
-        self.assertEqual('deleting', group.status)
+        self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
         vol.destroy()
 
