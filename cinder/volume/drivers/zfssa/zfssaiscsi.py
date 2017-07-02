@@ -206,7 +206,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             if (lcfg.zfssa_initiator != '' and
                 (lcfg.zfssa_initiator_group == '' or
                  lcfg.zfssa_initiator_group == 'default')):
-                LOG.warning('zfssa_initiator: %(ini)s  wont be used on '
+                LOG.warning('zfssa_initiator: %(ini)s will not be used on '
                             'zfssa_initiator_group= %(inigrp)s.',
                             {'ini': lcfg.zfssa_initiator,
                              'inigrp': lcfg.zfssa_initiator_group})
