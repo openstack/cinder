@@ -133,6 +133,7 @@ class ImageVolumeCache(object):
 
         # Assume the entries are ordered by most recently used to least used.
         entries = self.db.image_volume_cache_get_all(
+            context,
             **self._get_query_filters(volume))
 
         current_count = len(entries)
