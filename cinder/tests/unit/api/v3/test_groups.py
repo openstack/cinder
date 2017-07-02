@@ -706,7 +706,8 @@ class GroupsAPITestCase(test.TestCase):
         self.group1.status = fields.GroupStatus.AVAILABLE
         self.group1.save()
         vol = utils.create_volume(self.ctxt, group_id=self.group1.id)
-        utils.create_snapshot(self.ctxt, vol.id, status='deleted',
+        utils.create_snapshot(self.ctxt, vol.id,
+                              status=fields.SnapshotStatus.DELETED,
                               deleted=True)
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
                                       (fake.PROJECT_ID, self.group1.id),

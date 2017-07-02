@@ -764,7 +764,7 @@ class VolumeManager(manager.CleanableManager,
                 snapshots = objects.SnapshotList.get_all_for_volume(context,
                                                                     volume.id)
                 for s in snapshots:
-                    if s.status != 'deleting':
+                    if s.status != fields.SnapshotStatus.DELETING:
                         self._clear_db(context, is_migrating_dest, volume,
                                        'error_deleting')
 
@@ -3653,9 +3653,11 @@ class VolumeManager(manager.CleanableManager,
                     driver_update.pop('id', None)
                     snapshot_model_update.update(driver_update)
                 if 'status' not in snapshot_model_update:
-                    snapshot_model_update['status'] = 'available'
+                    snapshot_model_update['status'] = (
+                        fields.SnapshotStatus.AVAILABLE)
             except Exception:
-                snapshot_model_update['status'] = 'error'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.ERROR)
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
@@ -3670,11 +3672,14 @@ class VolumeManager(manager.CleanableManager,
             snapshot_model_update = {'id': snapshot.id}
             try:
                 self.driver.delete_snapshot(snapshot)
-                snapshot_model_update['status'] = 'deleted'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.DELETED)
             except exception.SnapshotIsBusy:
-                snapshot_model_update['status'] = 'available'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.AVAILABLE)
             except Exception:
-                snapshot_model_update['status'] = 'error'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.ERROR)
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
@@ -3891,7 +3896,7 @@ class VolumeManager(manager.CleanableManager,
                 volume.save()
 
                 for snapshot in volume.snapshots:
-                    snapshot.status = 'error'
+                    snapshot.status = fields.SnapshotStatus.ERROR
                     snapshot.save()
 
         volume_update_list = None
@@ -3973,7 +3978,7 @@ class VolumeManager(manager.CleanableManager,
                 update.setdefault('status', 'error')
                 # Set all volume snapshots to error
                 for snapshot in volume.snapshots:
-                    snapshot.status = 'error'
+                    snapshot.status = fields.SnapshotStatus.ERROR
                     snapshot.save()
             if 'status' in update:
                 update['previous_status'] = volume.status
