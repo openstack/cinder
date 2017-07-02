@@ -1,4 +1,4 @@
-# Copyright 2016 Datera
+# Copyright 2017 Datera
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -688,7 +688,7 @@ class DateraApi(object):
 
     def _si_poll(self, volume, policies):
         # Initial 4 second sleep required for some Datera versions
-        eventlet.sleep(datc.DEFAULT_SI_SLEEP)
+        eventlet.sleep(datc.DEFAULT_SI_SLEEP_API_2)
         TIMEOUT = 10
         retry = 0
         check_url = datc.URL_TEMPLATES['si_inst'](

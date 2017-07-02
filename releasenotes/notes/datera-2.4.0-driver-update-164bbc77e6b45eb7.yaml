@@ -1,0 +1,7 @@
+---
+features:
+  - Added ``datera_disable_profiler`` boolean config option.
+  - Added Cinder fast-retype support to Datera EDF driver.
+  - Added Volume Placement extra-specs support to Datera EDF driver.
+  - Fixed ACL multi-attach bug in Datera EDF driver.
+  - Fixed a few scalability bugs in the Datera EDF driver.

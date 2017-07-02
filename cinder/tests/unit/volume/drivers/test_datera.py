@@ -1,4 +1,4 @@
-# Copyright 2015 Datera
+# Copyright 2017 Datera
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,12 +20,14 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.datera import datera_common as datc
 from cinder.volume.drivers.datera import datera_iscsi as datera
 from cinder.volume import volume_types
 
 
-datera.datc.DEFAULT_SI_SLEEP = 0
-datera.datc.DEFAULT_SNAP_SLEEP = 0
+datc.DEFAULT_SI_SLEEP = 0
+datc.DEFAULT_SI_SLEEP_API_2 = 0
+datc.DEFAULT_SNAP_SLEEP = 0
 URL_TEMPLATES = datera.datc.URL_TEMPLATES
 OS_PREFIX = datera.datc.OS_PREFIX
 UNMANAGE_PREFIX = datera.datc.UNMANAGE_PREFIX
@@ -51,6 +53,8 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.cfg.datera_tenant_id = 'test-tenant'
         self.cfg.driver_client_cert = None
         self.cfg.driver_client_cert_key = None
+        self.cfg.datera_disable_profiler = False
+        self.cfg.driver_use_ssl = False
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
@@ -60,18 +64,16 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.driver.set_initialized()
         self.driver.configuration.get = _config_getter
         self.volume = _stub_volume()
-        self.api_patcher = mock.patch('cinder.volume.drivers.datera.'
-                                      'datera_iscsi.DateraDriver.'
-                                      '_issue_api_request')
         self.driver._request = mock.Mock()
         m = mock.Mock()
         m.json.return_value = {'api_versions': ['v2']}
         self.driver._request.return_value = m
-        self.mock_api = self.api_patcher.start()
+        self.mock_api = mock.Mock()
+        self.driver._issue_api_request = self.mock_api
         self._apiv = "2"
         self._tenant = None
 
-        self.addCleanup(self.api_patcher.stop)
+        # self.addCleanup(self.api_patcher.stop)
 
     def test_volume_create_success(self):
         self.mock_api.return_value = stub_single_ai
@@ -165,6 +167,31 @@ class DateraVolumeTestCasev2(test.TestCase):
                           source_volume)
 
     def test_delete_volume_success(self):
+        if self._apiv == '2':
+            self.mock_api.side_effect = [
+                {},
+                self._generate_fake_api_request()(
+                    "acl_policy", api_version=self._apiv, tenant=self._tenant),
+                self._generate_fake_api_request()(
+                    "ig_group", api_version=self._apiv, tenant=self._tenant),
+                {},
+                {},
+                {},
+                {},
+                {}]
+        else:
+            self.mock_api.side_effect = [
+                {},
+                {},
+                self._generate_fake_api_request()(
+                    "acl_policy", api_version=self._apiv, tenant=self._tenant),
+                self._generate_fake_api_request()(
+                    "ig_group", api_version=self._apiv, tenant=self._tenant),
+                {},
+                {},
+                {},
+                {},
+                {}]
         self.assertIsNone(self.driver.delete_volume(self.volume))
 
     def test_delete_volume_not_found(self):
@@ -313,6 +340,10 @@ class DateraVolumeTestCasev2(test.TestCase):
                           self.driver.create_snapshot, snapshot)
 
     def test_delete_snapshot_success(self):
+        if self._apiv == '2':
+            self.mock_api.return_value = stub_return_snapshots
+        else:
+            self.mock_api.return_value = stub_return_snapshots_21
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
         self.assertIsNone(self.driver.delete_snapshot(snapshot))
 
@@ -386,6 +417,17 @@ class DateraVolumeTestCasev2(test.TestCase):
 
     def test_extend_volume_success(self):
         volume = _stub_volume(size=1)
+        self.mock_api.side_effect = [
+            stub_get_export,
+            {'data': stub_get_export},
+            self._generate_fake_api_request()(
+                "acl_policy", api_version=self._apiv, tenant=self._tenant),
+            self._generate_fake_api_request()(
+                "ig_group", api_version=self._apiv, tenant=self._tenant),
+            self._generate_fake_api_request()(
+                "acl_policy", api_version=self._apiv, tenant=self._tenant),
+            {}, {}, {}, {}, {}, {}, stub_get_export,
+            {'data': stub_get_export}]
         self.assertIsNone(self.driver.extend_volume(volume, 2))
 
     def test_extend_volume_fails(self):
