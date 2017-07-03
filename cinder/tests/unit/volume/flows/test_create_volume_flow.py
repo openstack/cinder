@@ -1118,13 +1118,17 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertIsNone(model)
         self.assertFalse(result)
 
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_cleanup_cg_in_volume')
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.db.volume_update')
     def test_create_from_image_extend_failure(
             self, mock_volume_update, mock_qemu_info, mock_check_size,
             mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img,
+            mock_cleanup_cg):
         self.mock_driver.clone_image.return_value = (None, False)
         self.mock_cache.get_entry.return_value = None
         self.mock_driver.extend_volume.side_effect = (
@@ -1159,6 +1163,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                           image_meta,
                           self.mock_image_service)
 
+        self.assertTrue(mock_cleanup_cg.called)
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 1})
         self.assertEqual(volume_size, volume.size)
 
@@ -1435,12 +1440,15 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_cleanup_cg_in_volume')
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_cache_miss_error_size_invalid(
             self, mock_qemu_info, mock_check_space, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
-            mock_handle_bootable, mock_fetch_img):
+            mock_handle_bootable, mock_fetch_img, mock_cleanup_cg):
         mock_fetch_img.return_value = mock.MagicMock()
         image_info = imageutils.QemuImgInfo()
         image_info.virtual_size = '2147483648'
@@ -1475,6 +1483,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             self.mock_image_service
         )
 
+        self.assertTrue(mock_cleanup_cg.called)
         # The volume size should NOT be changed when in this case
         self.assertFalse(self.mock_db.volume_update.called)
 
