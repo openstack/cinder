@@ -16,6 +16,7 @@
 from tempest import config
 
 from cinder.tests.tempest.services import consistencygroups_client
+from cinder.tests.tempest.services import volume_revert_client
 
 CONF = config.CONF
 
@@ -35,3 +36,5 @@ class Manager(object):
         self.consistencygroups_adm_client = (
             consistencygroups_client.ConsistencyGroupsClient(auth_provider,
                                                              **params))
+        self.volume_revet_client = (
+            volume_revert_client.VolumeRevertClient(auth_provider, **params))
