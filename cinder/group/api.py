@@ -618,9 +618,9 @@ class API(base.Base):
             fields['description'] = description
         if not add_volumes_new and not remove_volumes_new:
             # Only update name or description. Set status to available.
-            fields['status'] = 'available'
+            fields['status'] = c_fields.GroupStatus.AVAILABLE
         else:
-            fields['status'] = 'updating'
+            fields['status'] = c_fields.GroupStatus.UPDATING
 
         group.update(fields)
         group.save()

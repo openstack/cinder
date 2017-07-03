@@ -2972,7 +2972,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
                 LOG.error("Create group "
                           "from source %(source)s failed.",
@@ -3133,7 +3133,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
             raise
         except exception.VolumeNotFound:
@@ -3143,7 +3143,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
             raise
         except exception.CinderException as ex:
@@ -3155,7 +3155,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
             raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
@@ -3243,7 +3243,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
                 # Update volume status to 'error' if driver returns
                 # None for volumes_model_update.
@@ -3493,7 +3493,7 @@ class VolumeManager(manager.CleanableManager,
                 else:
                     LOG.error("Failed to update group %(group_id)s.",
                               {'group_id': group.id})
-                group.status = 'error'
+                group.status = fields.GroupStatus.ERROR
                 group.save()
                 for add_vol in add_volumes_ref:
                     add_vol.status = 'error'
@@ -3505,7 +3505,7 @@ class VolumeManager(manager.CleanableManager,
                     rem_vol.status = 'error'
                     rem_vol.save()
 
-        group.status = 'available'
+        group.status = fields.GroupStatus.AVAILABLE
         group.save()
         for add_vol in add_volumes_ref:
             add_vol.group_id = group.id
