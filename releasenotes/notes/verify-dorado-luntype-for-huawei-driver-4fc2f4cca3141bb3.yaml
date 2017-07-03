@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Add 'LUNType' configuration verification for Huawei driver when
+    connecting to Dorado array. Because Dorado array only supports
+    'Thin' lun type, so 'LUNType' only can be configured as 'Thin',
+    any other type is invalid and if 'LUNType' not explicitly configured,
+    by default use 'Thin' for Dorado array.
