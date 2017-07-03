@@ -49,9 +49,10 @@ class UnityDriver(driver.ManageableVD,
 
     Version history:
         1.0.0 - Initial version
+        2.0.0 - Add thin clone support
     """
 
-    VERSION = '01.00.00'
+    VERSION = '02.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

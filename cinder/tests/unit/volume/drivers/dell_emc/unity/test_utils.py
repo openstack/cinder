@@ -20,6 +20,7 @@ import mock
 from oslo_utils import units
 
 from cinder import exception
+from cinder.tests.unit.volume.drivers.dell_emc.unity import test_adapter
 from cinder.volume.drivers.dell_emc.unity import utils
 
 
@@ -185,7 +186,7 @@ class UnityUtilsTest(unittest.TestCase):
         self.assertEqual(targets, mapping['200000051e55a121'])
 
     def test_get_pool_name(self):
-        volume = mock.Mock(host='host@backend#pool_name')
+        volume = test_adapter.MockOSResource(host='host@backend#pool_name')
         self.assertEqual('pool_name', utils.get_pool_name(volume))
 
     def test_ignore_exception(self):
@@ -217,38 +218,39 @@ class UnityUtilsTest(unittest.TestCase):
         self.assertEqual(9, data[0])
 
     def test_get_backend_qos_specs_type_none(self):
-        volume = mock.Mock(volume_type_id=None)
+        volume = test_adapter.MockOSResource(volume_type_id=None)
         ret = utils.get_backend_qos_specs(volume)
         self.assertIsNone(ret)
 
     @patch_volume_types
     def test_get_backend_qos_specs_none(self):
-        volume = mock.Mock(volume_type_id='no_qos')
+        volume = test_adapter.MockOSResource(volume_type_id='no_qos')
         ret = utils.get_backend_qos_specs(volume)
         self.assertIsNone(ret)
 
     @patch_volume_types
     def test_get_backend_qos_invalid_consumer(self):
-        volume = mock.Mock(volume_type_id='invalid_backend_qos_consumer')
+        volume = test_adapter.MockOSResource(
+            volume_type_id='invalid_backend_qos_consumer')
         ret = utils.get_backend_qos_specs(volume)
         self.assertIsNone(ret)
 
     @patch_volume_types
     def test_get_backend_qos_both_none(self):
-        volume = mock.Mock(volume_type_id='both_none')
+        volume = test_adapter.MockOSResource(volume_type_id='both_none')
         ret = utils.get_backend_qos_specs(volume)
         self.assertIsNone(ret)
 
     @patch_volume_types
     def test_get_backend_qos_iops(self):
-        volume = mock.Mock(volume_type_id='max_1000_iops')
+        volume = test_adapter.MockOSResource(volume_type_id='max_1000_iops')
         ret = utils.get_backend_qos_specs(volume)
         expected = {'maxBWS': None, 'id': 'max_1000_iops', 'maxIOPS': 1000}
         self.assertEqual(expected, ret)
 
     @patch_volume_types
     def test_get_backend_qos_mbps(self):
-        volume = mock.Mock(volume_type_id='max_2_mbps')
+        volume = test_adapter.MockOSResource(volume_type_id='max_2_mbps')
         ret = utils.get_backend_qos_specs(volume)
         expected = {'maxBWS': 2, 'id': 'max_2_mbps', 'maxIOPS': None}
         self.assertEqual(expected, ret)
