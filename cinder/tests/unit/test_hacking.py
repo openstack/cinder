@@ -78,15 +78,21 @@ class HackingTestCase(test.TestCase):
             "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
             6, lines))
 
-    def test_no_translate_debug_logs(self):
-        self.assertEqual(1, len(list(checks.no_translate_debug_logs(
+    def test_no_translate_logs(self):
+        self.assertEqual(1, len(list(checks.no_translate_logs(
+            "LOG.audit(_('foo'))", "cinder/scheduler/foo.py"))))
+        self.assertEqual(1, len(list(checks.no_translate_logs(
             "LOG.debug(_('foo'))", "cinder/scheduler/foo.py"))))
-
-        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
-            "LOG.debug('foo')", "cinder/scheduler/foo.py"))))
-
-        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
+        self.assertEqual(1, len(list(checks.no_translate_logs(
+            "LOG.error(_('foo'))", "cinder/scheduler/foo.py"))))
+        self.assertEqual(1, len(list(checks.no_translate_logs(
             "LOG.info(_('foo'))", "cinder/scheduler/foo.py"))))
+        self.assertEqual(1, len(list(checks.no_translate_logs(
+            "LOG.warning(_('foo'))", "cinder/scheduler/foo.py"))))
+        self.assertEqual(1, len(list(checks.no_translate_logs(
+            "LOG.exception(_('foo'))", "cinder/scheduler/foo.py"))))
+        self.assertEqual(1, len(list(checks.no_translate_logs(
+            "LOG.critical(_('foo'))", "cinder/scheduler/foo.py"))))
 
     def test_check_explicit_underscore_import(self):
         self.assertEqual(1, len(list(checks.check_explicit_underscore_import(

@@ -8,7 +8,6 @@ Cinder Style Commandments
 Cinder Specific Commandments
 ----------------------------
 - [N314] Check for vi editor configuration in source files.
-- [N319] Validate that debug level logs are not translated.
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
@@ -24,6 +23,7 @@ Cinder Specific Commandments
 - [C309] Unit tests should not perform logging.
 - [C310] Check for improper use of logging format arguments.
 - [C311] Check for proper naming and usage in option registration.
+- [C312] Validate that logs are not translated.
 - [C313] Check that assertTrue(value) is used and not assertEqual(True, value).
 
 General
