@@ -77,13 +77,17 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             self.failed_over_backend_name or self.backend_name)
         self.vserver = self.zapi_client.vserver
 
-        # Performance monitoring library
-        self.perf_library = perf_cmode.PerformanceCmodeLibrary(
-            self.zapi_client)
-
         # Storage service catalog
         self.ssc_library = capabilities.CapabilitiesLibrary(
             'nfs', self.vserver, self.zapi_client, self.configuration)
+
+        self.ssc_library.check_api_permissions()
+        self.using_cluster_credentials = (
+            self.ssc_library.cluster_user_supported())
+
+        # Performance monitoring library
+        self.perf_library = perf_cmode.PerformanceCmodeLibrary(
+            self.zapi_client)
 
     def _update_zapi_client(self, backend_name):
         """Set cDOT API client for the specified config backend stanza name."""
@@ -98,7 +102,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
     @utils.trace_method
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
-        self.ssc_library.check_api_permissions()
         self._add_looping_tasks()
         super(NetAppCmodeNfsDriver, self).check_for_setup_error()
 
@@ -143,11 +146,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
-
-        # Harvest soft-deleted QoS policy groups
-        self.zapi_client.remove_unused_qos_policy_groups()
-
         active_backend = self.failed_over_backend_name or self.backend_name
+
+        # Add the task that harvests soft-deleted QoS policy groups.
+        if self.using_cluster_credentials:
+            self.zapi_client.remove_unused_qos_policy_groups()
 
         LOG.debug("Current service state: Replication enabled: %("
                   "replication)s. Failed-Over: %(failed)s. Active Backend "
@@ -252,12 +255,18 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         if not ssc:
             return pools
 
-        # Get up-to-date node utilization metrics just once
-        self.perf_library.update_performance_cache(ssc)
+        # Utilization and performance metrics require cluster-scoped
+        # credentials
+        if self.using_cluster_credentials:
+            # Get up-to-date node utilization metrics just once
+            self.perf_library.update_performance_cache(ssc)
 
-        # Get up-to-date aggregate capacities just once
-        aggregates = self.ssc_library.get_ssc_aggregates()
-        aggr_capacities = self.zapi_client.get_aggregate_capacities(aggregates)
+            # Get up-to-date aggregate capacities just once
+            aggregates = self.ssc_library.get_ssc_aggregates()
+            aggr_capacities = self.zapi_client.get_aggregate_capacities(
+                aggregates)
+        else:
+            aggr_capacities = {}
 
         for ssc_vol_name, ssc_vol_info in ssc.items():
 
@@ -267,7 +276,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             pool.update(ssc_vol_info)
 
             # Add driver capabilities and config info
-            pool['QoS_support'] = True
+            pool['QoS_support'] = self.using_cluster_credentials
             pool['consistencygroup_support'] = True
             pool['multiattach'] = True
 
@@ -276,8 +285,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
 
-            dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
-                ssc_vol_name)
+            if self.using_cluster_credentials:
+                dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
+                    ssc_vol_name)
+            else:
+                dedupe_used = 0.0
             pool['netapp_dedupe_used_percent'] = na_utils.round_down(
                 dedupe_used)
 

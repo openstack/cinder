@@ -61,6 +61,7 @@ class CapabilitiesLibrary(object):
         self.configuration = configuration
         self.backend_name = self.configuration.safe_get('volume_backend_name')
         self.ssc = {}
+        self.invalid_extra_specs = []
 
     def check_api_permissions(self):
         """Check which APIs that support SSC functionality are available."""
@@ -85,6 +86,11 @@ class CapabilitiesLibrary(object):
                                 'sufficient privileges to use all needed '
                                 'APIs. The following extra specs will fail '
                                 'or be ignored: %s.'), invalid_extra_specs)
+
+        self.invalid_extra_specs = invalid_extra_specs
+
+    def cluster_user_supported(self):
+        return not self.invalid_extra_specs
 
     def get_ssc(self):
         """Get a copy of the Storage Service Catalog."""
@@ -183,10 +189,15 @@ class CapabilitiesLibrary(object):
     def _get_ssc_dedupe_info(self, flexvol_name):
         """Gather dedupe info and recast into SSC-style volume stats."""
 
-        dedupe_info = self.zapi_client.get_flexvol_dedupe_info(flexvol_name)
-
-        dedupe = dedupe_info.get('dedupe')
-        compression = dedupe_info.get('compression')
+        if ('netapp_dedup' in self.invalid_extra_specs or
+                'netapp_compression' in self.invalid_extra_specs):
+            dedupe = False
+            compression = False
+        else:
+            dedupe_info = self.zapi_client.get_flexvol_dedupe_info(
+                flexvol_name)
+            dedupe = dedupe_info.get('dedupe')
+            compression = dedupe_info.get('compression')
 
         return {
             'netapp_dedup': six.text_type(dedupe).lower(),
@@ -211,13 +222,20 @@ class CapabilitiesLibrary(object):
     def _get_ssc_aggregate_info(self, aggregate_name):
         """Gather aggregate info and recast into SSC-style volume stats."""
 
-        aggregate = self.zapi_client.get_aggregate(aggregate_name)
-        hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
-                  if 'is-hybrid' in aggregate else None)
-        disk_types = self.zapi_client.get_aggregate_disk_types(aggregate_name)
+        if 'netapp_raid_type' in self.invalid_extra_specs:
+            raid_type = None
+            hybrid = None
+            disk_types = None
+        else:
+            aggregate = self.zapi_client.get_aggregate(aggregate_name)
+            raid_type = aggregate.get('raid-type')
+            hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
+                      if 'is-hybrid' in aggregate else None)
+            disk_types = self.zapi_client.get_aggregate_disk_types(
+                aggregate_name)
 
         return {
-            'netapp_raid_type': aggregate.get('raid-type'),
+            'netapp_raid_type': raid_type,
             'netapp_hybrid_aggregate': hybrid,
             'netapp_disk_type': disk_types,
         }

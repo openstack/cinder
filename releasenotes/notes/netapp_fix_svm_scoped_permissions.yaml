@@ -1,0 +1,5 @@
+---
+fixes:
+  - NetApp cDOT block and file drivers have improved support for SVM scoped
+    user accounts. Features not supported for SVM scoped users include QoS,
+    aggregate usage reporting, and dedupe usage reporting.

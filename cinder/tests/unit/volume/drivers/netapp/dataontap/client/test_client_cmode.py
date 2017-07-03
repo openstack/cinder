@@ -2246,36 +2246,6 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertListEqual([], result)
 
-    def test_check_for_cluster_credentials(self):
-
-        self.mock_object(self.client,
-                         'list_cluster_nodes',
-                         mock.Mock(return_value=fake_client.NODE_NAMES))
-
-        result = self.client.check_for_cluster_credentials()
-
-        self.assertTrue(result)
-
-    def test_check_for_cluster_credentials_not_found(self):
-
-        api_error = netapp_api.NaApiError(code=netapp_api.EAPINOTFOUND)
-        self.mock_object(self.client,
-                         'list_cluster_nodes',
-                         side_effect=api_error)
-
-        result = self.client.check_for_cluster_credentials()
-
-        self.assertFalse(result)
-
-    def test_check_for_cluster_credentials_api_error(self):
-
-        self.mock_object(self.client,
-                         'list_cluster_nodes',
-                         self._mock_api_error())
-
-        self.assertRaises(netapp_api.NaApiError,
-                          self.client.check_for_cluster_credentials)
-
     @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
               {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
     @ddt.unpack

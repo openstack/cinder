@@ -31,8 +31,8 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
-from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
@@ -80,16 +80,17 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_vserver = 'openstack'
         return config
 
-    @mock.patch.object(client_cmode.Client, 'check_for_cluster_credentials',
-                       mock.MagicMock(return_value=False))
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'cluster_user_supported')
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'check_api_permissions')
     @mock.patch.object(na_utils, 'check_flags')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
-    def test_do_setup(self, super_do_setup, mock_check_flags):
-        self.zapi_client.check_for_cluster_credentials = mock.MagicMock(
-            return_value=True)
+    def test_do_setup(self, super_do_setup, mock_check_flags,
+                      mock_check_api_permissions, mock_cluster_user_supported):
         self.mock_object(client_base.Client, '_init_ssh_client')
         self.mock_object(
             dot_utils, 'get_backend_configuration',
@@ -100,14 +101,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         super_do_setup.assert_called_once_with(context)
         self.assertEqual(1, mock_check_flags.call_count)
+        mock_check_api_permissions.assert_called_once_with()
+        mock_cluster_user_supported.assert_called_once_with()
 
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')
-        mock_check_api_permissions = self.mock_object(
-            self.library.ssc_library, 'check_api_permissions')
-        mock_add_looping_tasks = self.mock_object(
-            self.library, '_add_looping_tasks')
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             return_value={'fake_map': None})
@@ -117,7 +116,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
-        mock_check_api_permissions.assert_called_once_with()
         self.assertEqual(1, mock_add_looping_tasks.call_count)
         mock_get_pool_map.assert_called_once_with()
         mock_add_looping_tasks.assert_called_once_with()
@@ -125,8 +123,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     def test_check_for_setup_error_no_filtered_pools(self):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          'check_for_setup_error')
-        mock_check_api_permissions = self.mock_object(
-            self.library.ssc_library, 'check_api_permissions')
         self.mock_object(self.library, '_add_looping_tasks')
         self.mock_object(
             self.library, '_get_flexvol_to_pool_map', return_value={})
@@ -134,24 +130,32 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
 
-        mock_check_api_permissions.assert_called_once_with()
-
-    @ddt.data({'replication_enabled': True, 'failed_over': False},
-              {'replication_enabled': True, 'failed_over': True},
-              {'replication_enabled': False, 'failed_over': False})
+    @ddt.data({'replication_enabled': True, 'failed_over': False,
+               'cluster_credentials': True},
+              {'replication_enabled': True, 'failed_over': True,
+               'cluster_credentials': True},
+              {'replication_enabled': False, 'failed_over': False,
+               'cluster_credentials': False})
     @ddt.unpack
-    def test_handle_housekeeping_tasks(self, replication_enabled, failed_over):
+    def test_handle_housekeeping_tasks(
+            self, replication_enabled, failed_over, cluster_credentials):
+        self.library.using_cluster_credentials = cluster_credentials
         ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
                                           'ensure_snapmirrors')
         self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
                          return_value=fake_utils.SSC.keys())
+        mock_remove_unused_qos_policy_groups = self.mock_object(
+            self.zapi_client, 'remove_unused_qos_policy_groups')
         self.library.replication_enabled = replication_enabled
         self.library.failed_over = failed_over
 
         self.library._handle_housekeeping_tasks()
 
-        (self.zapi_client.remove_unused_qos_policy_groups.
-         assert_called_once_with())
+        if self.library.using_cluster_credentials:
+            mock_remove_unused_qos_policy_groups.assert_called_once_with()
+        else:
+            mock_remove_unused_qos_policy_groups.assert_not_called()
+
         if replication_enabled and not failed_over:
             ensure_mirrors.assert_called_once_with(
                 self.library.configuration, self.library.backend_name,
@@ -160,7 +164,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.assertFalse(ensure_mirrors.called)
 
     def test_handle_ems_logging(self):
-
         volume_list = ['vol0', 'vol1', 'vol2']
         self.mock_object(
             self.library.ssc_library, 'get_ssc_flexvol_names',
@@ -347,9 +350,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(target_details_list[2], result)
 
-    @ddt.data([], ['target_1', 'target_2'])
-    def test_get_pool_stats(self, replication_backends):
-
+    @ddt.data({'replication_backends': [], 'cluster_credentials': False},
+              {'replication_backends': ['target_1', 'target_2'],
+               'cluster_credentials': True})
+    @ddt.unpack
+    def test_get_pool_stats(self, replication_backends, cluster_credentials):
+        self.library.using_cluster_credentials = cluster_credentials
         ssc = {
             'vola': {
                 'pool_name': 'vola',
@@ -373,7 +379,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(self.library, 'get_replication_backend_names',
                          return_value=replication_backends)
 
-        self.library.using_cluster_credentials = True
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
         self.library.perf_library.get_node_utilization_for_pool = (
@@ -409,7 +414,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'consistencygroup_support': True,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10.0,
-            'multiattach': True,
+            'multiattach': False,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
             'netapp_dedupe_used_percent': 55.0,
@@ -428,6 +433,14 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'netapp_disk_type': 'SSD',
             'replication_enabled': False,
         }]
+
+        expected[0].update({'QoS_support': cluster_credentials})
+        if not cluster_credentials:
+            expected[0].update({
+                'netapp_aggregate_used_percent': 0,
+                'netapp_dedupe_used_percent': 0
+            })
+
         if replication_backends:
             expected[0].update({
                 'replication_enabled': True,
@@ -438,8 +451,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()
-        mock_get_aggrs.assert_called_once_with()
-        mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
+        if cluster_credentials:
+            mock_get_aggrs.assert_called_once_with()
+            mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
 
     @ddt.data({}, None)
     def test_get_pool_stats_no_ssc_vols(self, ssc):
