@@ -1,0 +1,8 @@
+---
+features:
+  - Add global mirror with change volumes(gmcv) support and
+    user can manage gmcv replication volume by SVC driver.
+    An example to set a gmcv replication volume type, set
+    property replication_type as "<in> gmcv", property
+    replication_enabled as "<is> True" and set
+    property drivers:cycle_period_seconds as 500.
