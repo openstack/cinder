@@ -495,10 +495,10 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         :param kwargs: additional parameters
         :returns: data dict
         """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-
-        return self.initialize_connection(snapshot, connector)
+        src_volume = snapshot.volume
+        device_info = self.common.initialize_connection_snapshot(
+            snapshot, src_volume, connector)
+        return self.populate_data(device_info, snapshot, connector)
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Disallows connection to snapshot.
@@ -507,9 +507,17 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         :param connector: the connector object
         :param kwargs: additional parameters
         """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        return self.terminate_connection(snapshot, connector, **kwargs)
+        src_volume = snapshot.volume
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+        zoning_mappings = (
+            self._get_zoning_mappings(snapshot, connector))
+
+        if zoning_mappings:
+            self.common.terminate_connection_snapshot(
+                snapshot, src_volume, connector)
+            data = self._cleanup_zones(zoning_mappings)
+        return data
 
     def backup_use_temp_snapshot(self):
         return True

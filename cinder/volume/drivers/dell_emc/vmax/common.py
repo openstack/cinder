@@ -514,6 +514,27 @@ class VMAXCommon(object):
         if self.utils.is_volume_failed_over(volume):
             extraSpecs = self._get_replication_extraSpecs(
                 extraSpecs, self.rep_config)
+        self._unmap_lun_common(volume, connector, extraSpecs)
+
+    def _unmap_lun_snapshot(self, snapshot, volume, connector):
+        """Unmaps a snapshot from the host.
+
+        :param snapshot: the snapshot Object
+        :param volume: the volume Object
+        :param connector: the connector Object
+        :raises: VolumeBackendAPIException
+        """
+        extraSpecs = self._initial_setup(volume)
+        self._unmap_lun_common(snapshot, connector, extraSpecs)
+
+    def _unmap_lun_common(self, volume, connector, extraSpecs):
+        """Unmaps a volume from the host.
+
+        :param volume: the volume Object
+        :param connector: the connector Object
+        :param extraSpecs: extra specifications
+        :raises: VolumeBackendAPIException
+        """
         volumename = volume['name']
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
@@ -563,6 +584,23 @@ class VMAXCommon(object):
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
 
+        :param volume: volume Object
+        :param connector: the connector Object
+        :returns: dict -- deviceInfoDict - device information dict
+        :raises: VolumeBackendAPIException
+        """
+        extraSpecs = self._initial_setup(volume)
+
+        if self.utils.is_volume_failed_over(volume):
+            extraSpecs = self._get_replication_extraSpecs(
+                extraSpecs, self.rep_config)
+
+        return self.initialize_connection_common(
+            volume, connector, extraSpecs)
+
+    def initialize_connection_common(self, volume, connector, extraSpecs):
+        """Initializes the connection and returns device and connection info.
+
         The volume may be already mapped, if this is so the deviceInfo tuple
         is returned.  If the volume is not already mapped then we need to
         gather information to either 1. Create an new masking view or 2. Add
@@ -586,11 +624,10 @@ class VMAXCommon(object):
 
         :param volume: volume Object
         :param connector: the connector Object
+        :param extraSpecs: extra specifications
         :returns: dict -- deviceInfoDict - device information dict
         :raises: VolumeBackendAPIException
         """
-        portGroupName = None
-        extraSpecs = self._initial_setup(volume)
         is_multipath = connector.get('multipath', False)
 
         volumeName = volume['name']
@@ -598,9 +635,6 @@ class VMAXCommon(object):
                  {'volume': volumeName})
         self.conn = self._get_ecom_connection()
 
-        if self.utils.is_volume_failed_over(volume):
-            extraSpecs = self._get_replication_extraSpecs(
-                extraSpecs, self.rep_config)
         deviceInfoDict, isLiveMigration, sourceInfoDict = (
             self._wrap_find_device_number(
                 volume, connector['host']))
@@ -1829,10 +1863,10 @@ class VMAXCommon(object):
             name = ast.literal_eval(loc)
             keys = name['keybindings']
             systemName = keys['SystemName']
-            admin_metadata = {}
+            admin_metadata = None
             if 'admin_metadata' in volume:
                 admin_metadata = volume.admin_metadata
-            if 'targetVolumeName' in admin_metadata:
+            if admin_metadata and 'targetVolumeName' in admin_metadata:
                 targetVolName = admin_metadata['targetVolumeName']
             prefix1 = 'SYMMETRIX+'
             prefix2 = 'SYMMETRIX-+-'
@@ -6040,3 +6074,32 @@ class VMAXCommon(object):
                 if self.multiPoolSupportEnabled:
                     self.multiPoolSupportEnabled = False
         return secondaryInfo
+
+    def initialize_connection_snapshot(
+            self, snapshot, volume, connector):
+        """Initializes the connection and returns device and connection info.
+
+        :param snapshot: snapshot Object
+        :param volume: volume Object
+        :param connector: the connector Object
+        :returns: dict -- deviceInfoDict - device information dict
+        :raises: VolumeBackendAPIException
+        """
+        extraSpecs = self._initial_setup(volume)
+
+        return self.initialize_connection_common(
+            snapshot, connector, extraSpecs)
+
+    def terminate_connection_snapshot(self, snapshot, volume, connector):
+        """Disallow connection from connector.
+
+        :param snapshot: the snapshot Object
+        :param volume: the volume Object
+        :param connector: the connector Object
+        """
+        if not connector:
+            exception_message = (_("The connector object from nova "
+                                   "cannot be None."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        self._unmap_lun_snapshot(snapshot, volume, connector)

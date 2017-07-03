@@ -418,10 +418,9 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :param kwargs: additional parameters
         :returns: iscsi dict
         """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        device_info = self.common.initialize_connection(
-            snapshot, connector)
+        src_volume = snapshot.volume
+        device_info = self.common.initialize_connection_snapshot(
+            snapshot, src_volume, connector)
         return self.get_iscsi_dict(
             device_info, snapshot, connector)
 
@@ -432,10 +431,9 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :param connector: the connector object
         :param kwargs: additional parameters
         """
-        src_volume = snapshot['volume']
-        snapshot['host'] = src_volume['host']
-        return self.common.terminate_connection(snapshot,
-                                                connector)
+        src_volume = snapshot.volume
+        return self.common.terminate_connection_snapshot(
+            snapshot, src_volume, connector)
 
     def backup_use_temp_snapshot(self):
         return True

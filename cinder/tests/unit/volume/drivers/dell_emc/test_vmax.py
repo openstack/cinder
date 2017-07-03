@@ -32,6 +32,9 @@ from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder.objects import qos_specs
 from cinder import test
+from cinder.tests.unit import fake_constants
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as unit_utils
 from cinder import utils as cinder_utils
 
@@ -751,6 +754,17 @@ class VMAXCommonData(object):
     SYNCHRONIZED = 4
     UNSYNCHRONIZED = 3
     multiPoolSupportEnabled = True
+
+    test_vol_obj = fake_volume.fake_volume_obj(
+        context='context', expected_attrs=[], name='vol1', size=2,
+        provider_auth=None, host=fake_host,
+        volume_type_id=fake_constants.VOLUME_TYPE_ID,
+        provider_location=six.text_type(provider_location))
+
+    test_snap_obj = fake_snapshot.fake_snapshot_obj(
+        context='context', name='ss1', size=2, id=fake_constants.SNAPSHOT_ID,
+        provider_location=six.text_type(provider_location),
+        host=fake_host, volume=test_vol_obj)
 
 
 class FakeLookupService(object):
@@ -8475,7 +8489,7 @@ class VMAXFCTest(test.TestCase):
 
     @mock.patch.object(
         common.VMAXCommon,
-        'initialize_connection',
+        'initialize_connection_snapshot',
         return_value=VMAXCommonData.fc_device_info)
     @mock.patch.object(
         fc.VMAXFCDriver,
@@ -8484,13 +8498,14 @@ class VMAXFCTest(test.TestCase):
                       VMAXCommonData.end_point_map))
     def test_initialize_connection_snapshot(self, mock_map, mock_conn):
         data = self.driver.initialize_connection_snapshot(
-            self.data.test_snapshot_v3, self.data.connector)
+            self.data.test_snap_obj,
+            self.data.connector)
         self.assertEqual('fibre_channel', data['driver_volume_type'])
         self.assertEqual(3, data['data']['target_lun'])
 
     @mock.patch.object(
         common.VMAXCommon,
-        '_unmap_lun')
+        '_unmap_lun_snapshot')
     @mock.patch.object(
         fc.VMAXFCDriver,
         '_get_zoning_mappings',
@@ -8504,7 +8519,7 @@ class VMAXFCTest(test.TestCase):
         common = self.driver.common
         common.conn = FakeEcomConnection()
         data = self.driver.terminate_connection_snapshot(
-            self.data.test_snapshot_v3, self.data.connector)
+            self.data.test_snap_obj, self.data.connector)
         self.assertEqual('fibre_channel', data['driver_volume_type'])
         self.assertEqual(2, len(data['data']['target_wwn']))
 
@@ -10016,24 +10031,25 @@ class VMAXISCSITest(test.TestCase):
                       False, {}))
     @mock.patch.object(
         common.VMAXCommon,
-        'initialize_connection',
+        'initialize_connection_snapshot',
         return_value=VMAXCommonData.iscsi_device_info)
     def test_initialize_connection_snapshot(self, mock_conn, mock_num):
         data = self.driver.initialize_connection_snapshot(
-            self.data.test_snapshot_v3, self.data.connector)
+            self.data.test_snap_obj, self.data.connector)
         self.assertEqual('iscsi', data['driver_volume_type'])
         self.assertEqual(1, data['data']['target_lun'])
 
     @mock.patch.object(
         common.VMAXCommon,
-        '_unmap_lun')
+        '_unmap_lun_snapshot')
     def test_terminate_connection_snapshot(self, mock_unmap):
         common = self.driver.common
         common.conn = FakeEcomConnection()
         self.driver.terminate_connection_snapshot(
-            self.data.test_snapshot_v3, self.data.connector)
-        common._unmap_lun.assert_called_once_with(
-            self.data.test_snapshot_v3, self.data.connector)
+            self.data.test_snap_obj, self.data.connector)
+        common._unmap_lun_snapshot.assert_called_once_with(
+            self.data.test_snap_obj, self.data.test_vol_obj,
+            self.data.connector)
 
 
 class EMCV3ReplicationTest(test.TestCase):
