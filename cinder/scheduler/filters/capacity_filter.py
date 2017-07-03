@@ -89,6 +89,9 @@ class CapacityFilter(filters.BaseBackendFilter):
             # also won't work. So the back-ends cannot serve the request.
             if reserved == 0:
                 return True
+            LOG.debug("Cannot calculate GB of reserved space (%s%%) with "
+                      "backend's reported total capacity '%s'",
+                      backend_state.reserved_percentage, total_space)
             return False
         total = float(total_space)
         if total <= 0:
@@ -146,7 +149,17 @@ class CapacityFilter(filters.BaseBackendFilter):
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
                     free * backend_state.max_over_subscription_ratio)
-                return adjusted_free_virtual >= requested_size
+                res = adjusted_free_virtual >= requested_size
+                if not res:
+                    msg_args = {"available": adjusted_free_virtual,
+                                "size": requested_size,
+                                "grouping": grouping,
+                                "grouping_name": backend_state.backend_id}
+                    LOG.warning("Insufficient free virtual space "
+                                "(%(available)sGB) to accomodate thin "
+                                "provisioned %(size)sGB volume on %(grouping)s"
+                                " %(grouping_name)s.", msg_args)
+                return res
         elif thin and backend_state.thin_provisioning_support:
             LOG.warning("Filtering out %(grouping)s %(grouping_name)s "
                         "with an invalid maximum over subscription ratio "
