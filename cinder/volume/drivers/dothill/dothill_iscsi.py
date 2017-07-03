@@ -29,6 +29,9 @@ DEFAULT_ISCSI_PORT = "3260"
 LOG = logging.getLogger(__name__)
 
 
+# As of Pike, the DotHill driver is no longer considered supported,
+# but the code remains as it is still subclassed by other drivers.
+# The __init__() function prevents any direct instantiation.
 @interface.volumedriver
 class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
     """OpenStack iSCSI cinder drivers for DotHill Arrays.
@@ -48,18 +51,13 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                      - added https support
         1.6    - Add management path redundancy and reduce load placed
                  on management controller.
+        1.7    - Modified so it can't be invoked except as a superclass
     """
 
-    VERSION = "1.6"
-
-    # ThirdPartySystems CI wiki
-    CI_WIKI_NAME = "Vedams_DotHillDriver_CI"
-
-    # TODO(smcginnis) Either remove this if CI requirements are met, or
-    # remove this driver in the Pike release per normal deprecation
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
+        # Make sure we're not invoked directly
+        if type(self) == DotHillISCSIDriver:
+            raise exception.DotHillDriverNotSupported
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(dothillcommon.common_opts)
