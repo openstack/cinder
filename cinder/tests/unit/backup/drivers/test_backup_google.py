@@ -443,13 +443,14 @@ class GoogleBackupDriverTestCase(test.TestCase):
     @gcs_client
     @mock.patch.object(google_dr.GoogleBackupDriver, '_backup_metadata',
                        fake_backup_metadata)
-    @mock.patch.object(google_dr.GoogleBackupDriver, 'delete', fake_delete)
+    @mock.patch.object(google_dr.GoogleBackupDriver, 'delete_backup',
+                       fake_delete)
     def test_backup_backup_metadata_fail2(self):
         """Test of when an exception occurs in an exception handler.
 
         In backup(), after an exception occurs in
         self._backup_metadata(), we want to check the process when the
-        second exception occurs in self.delete().
+        second exception occurs in self.delete_backup().
         """
         volume_id = '2164421d-f181-4db7-b9bd-000000eeb628'
 
@@ -523,7 +524,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         backup = self._create_backup_db_entry(volume_id=volume_id,
                                               service_metadata=object_prefix)
         service = google_dr.GoogleBackupDriver(self.ctxt)
-        service.delete(backup)
+        service.delete_backup(backup)
 
     @gcs_client
     @mock.patch.object(google_dr.GoogleBackupDriver, 'delete_object',
@@ -532,7 +533,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         volume_id = 'ee30d649-72a6-49a5-b78d-000000edb6b1'
         backup = self._create_backup_db_entry(volume_id=volume_id)
         service = google_dr.GoogleBackupDriver(self.ctxt)
-        service.delete(backup)
+        service.delete_backup(backup)
 
     @gcs_client
     def test_get_compressor(self):

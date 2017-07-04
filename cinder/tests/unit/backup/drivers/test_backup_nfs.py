@@ -518,7 +518,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         In backup(), after an exception occurs in
         self._backup_metadata(), we want to check the process when the
-        second exception occurs in self.delete().
+        second exception occurs in self.delete_backup().
         """
         volume_id = fake.VOLUME_ID
 
@@ -539,7 +539,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             raise exception.BackupOperationError()
 
         # Raise a pseudo exception.BackupOperationError.
-        self.mock_object(nfs.NFSBackupDriver, 'delete', fake_delete)
+        self.mock_object(nfs.NFSBackupDriver, 'delete_backup', fake_delete)
 
         # We expect that the second exception is notified.
         self.assertRaises(exception.BackupOperationError,
@@ -654,7 +654,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id)
         service = nfs.NFSBackupDriver(self.ctxt)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
-        service.delete(backup)
+        service.delete_backup(backup)
 
     def test_get_compressor(self):
         service = nfs.NFSBackupDriver(self.ctxt)

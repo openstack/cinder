@@ -26,7 +26,7 @@ class FakeBackupService(driver.BackupDriver):
     def restore(self, backup, volume_id, volume_file):
         pass
 
-    def delete(self, backup):
+    def delete_backup(self, backup):
         # if backup has magic name of 'fail_on_delete'
         # we raise an error - useful for some tests -
         # otherwise we return without error

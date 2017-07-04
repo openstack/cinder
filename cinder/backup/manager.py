@@ -522,7 +522,7 @@ class BackupManager(manager.ThreadPoolManager):
 
             try:
                 backup_service = self.service.get_backup_driver(context)
-                backup_service.delete(backup)
+                backup_service.delete_backup(backup)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     self._update_backup_error(backup, six.text_type(err))

@@ -474,7 +474,7 @@ class TSMBackupDriver(driver.BackupDriver):
                   {'backup_id': backup.id,
                    'volume_id': volume_id})
 
-    def delete(self, backup):
+    def delete_backup(self, backup):
         """Delete the given backup from TSM server.
 
         :param backup: backup information for volume

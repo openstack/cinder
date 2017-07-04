@@ -905,7 +905,7 @@ class CephBackupDriver(driver.BackupDriver):
                 self._full_backup(backup, volume_file, volume.name, length)
             except exception.BackupOperationError:
                 with excutils.save_and_reraise_exception():
-                    self.delete(backup)
+                    self.delete_backup(backup)
 
         if backup_metadata:
             try:
@@ -913,7 +913,7 @@ class CephBackupDriver(driver.BackupDriver):
             except exception.BackupOperationError:
                 with excutils.save_and_reraise_exception():
                     # Cleanup.
-                    self.delete(backup)
+                    self.delete_backup(backup)
 
         LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished.",
                   {'backup_id': backup.id, 'volume_id': volume.id})
@@ -1197,7 +1197,7 @@ class CephBackupDriver(driver.BackupDriver):
                       '%(error)s.', {'error': e, 'volume': volume_id})
             raise
 
-    def delete(self, backup):
+    def delete_backup(self, backup):
         """Delete the given backup from Ceph object store."""
         LOG.debug('Delete started for backup=%s', backup.id)
 

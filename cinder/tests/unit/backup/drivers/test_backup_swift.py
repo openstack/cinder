@@ -654,7 +654,7 @@ class BackupSwiftTestCase(test.TestCase):
 
         In backup(), after an exception occurs in
         self._backup_metadata(), we want to check the process when the
-        second exception occurs in self.delete().
+        second exception occurs in self.delete_backup().
         """
         volume_id = '2164421d-f181-4db7-b9bd-000000eeb628'
 
@@ -675,7 +675,8 @@ class BackupSwiftTestCase(test.TestCase):
             raise exception.BackupOperationError()
 
         # Raise a pseudo exception.BackupOperationError.
-        self.mock_object(swift_dr.SwiftBackupDriver, 'delete', fake_delete)
+        self.mock_object(swift_dr.SwiftBackupDriver, 'delete_backup',
+                         fake_delete)
 
         # We expect that the second exception is notified.
         self.assertRaises(exception.BackupOperationError,
@@ -775,7 +776,7 @@ class BackupSwiftTestCase(test.TestCase):
                                      service_metadata=object_prefix)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
-        service.delete(backup)
+        service.delete_backup(backup)
 
     def test_delete_wraps_socket_error(self):
         volume_id = 'f74cb6fa-2900-40df-87ac-0000000f72ea'
@@ -787,7 +788,7 @@ class BackupSwiftTestCase(test.TestCase):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertRaises(exception.SwiftConnectionFailed,
-                          service.delete,
+                          service.delete_backup,
                           backup)
 
     def test_delete_without_object_prefix(self):
@@ -803,7 +804,7 @@ class BackupSwiftTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
-        service.delete(backup)
+        service.delete_backup(backup)
 
     def test_get_compressor(self):
         service = swift_dr.SwiftBackupDriver(self.ctxt)

@@ -373,7 +373,7 @@ class BackupDriver(base.Base):
         return
 
     @abc.abstractmethod
-    def delete(self, backup):
+    def delete_backup(self, backup):
         """Delete a saved backup."""
         return
 
