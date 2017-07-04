@@ -19,17 +19,15 @@ Also, use exception-to-detail mapping to decrease the workload of
 classifying event in cinder's task code.
 """
 
-from oslo_versionedobjects import fields
-
 from cinder.i18n import _
 
 
-class Resource(fields.Enum):
+class Resource(object):
 
     VOLUME = 'VOLUME'
 
 
-class Action(fields.Enum):
+class Action(object):
 
     SCHEDULE_ALLOCATE_VOLUME = ('001', _('schedule allocate volume'))
     ATTACH_VOLUME = ('002', _('attach volume'))
@@ -42,7 +40,7 @@ class Action(fields.Enum):
            UPDATE_ATTACHMENT)
 
 
-class Detail(fields.Enum):
+class Detail(object):
 
     UNKNOWN_ERROR = ('001', _('An unknown error occurred.'))
     DRIVER_NOT_INITIALIZED = ('002',
