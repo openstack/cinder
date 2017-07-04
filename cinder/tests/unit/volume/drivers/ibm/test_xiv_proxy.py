@@ -320,11 +320,12 @@ class XIVProxyTest(test.TestCase):
 
         p.ibm_storage_cli = mock.MagicMock()
 
-        volume = {'size': 16, 'name': 'WTF32'}
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32')
         p.create_volume(volume)
 
         p.ibm_storage_cli.cmd.vol_create.assert_called_once_with(
-            vol='WTF32',
+            vol=volume.name,
             size_blocks=storage.gigabytes_to_blocks(16),
             pool='WTF32')
 
@@ -348,9 +349,16 @@ class XIVProxyTest(test.TestCase):
             errors.PoolOutOfSpaceError(
                 'bla', 'bla', ElementTree.Element('bla')))
 
-        ex = getattr(p, "_get_exception")()
-        self.assertRaises(ex, p.create_volume, {'size': 16, 'name': 'WTF32'})
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
 
+        ex = getattr(p, "_get_exception")()
+        self.assertRaises(ex, p.create_volume, volume)
+
+    @mock.patch("cinder.volume.utils.group_get_by_id", mock.MagicMock())
+    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+                mock.MagicMock(return_value=True))
     def test_create_volume_with_consistency_group(self):
         """Test Create volume with consistency_group"""
         driver = mock.MagicMock()
@@ -363,17 +371,23 @@ class XIVProxyTest(test.TestCase):
             driver)
 
         p.ibm_storage_cli = mock.MagicMock()
+        p._cg_name_from_volume = mock.MagicMock(return_value="cg")
 
-        volume = {'size': 16, 'name': 'WTF32', 'group_id': 'WTF'}
+        vol_type = testutils.create_volume_type(self.ctxt, name='WTF')
+        volume = testutils.create_volume(
+            self.ctxt, size=16, volume_type_id=vol_type.id)
+        grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1',
+                                     volume_type_ids=[vol_type.id])
+        volume.group = grp
         p.create_volume(volume)
 
         p.ibm_storage_cli.cmd.vol_create.assert_called_once_with(
-            vol='WTF32',
+            vol=volume['name'],
             size_blocks=storage.gigabytes_to_blocks(16),
             pool='WTF32')
         p.ibm_storage_cli.cmd.cg_add_vol.assert_called_once_with(
-            vol='WTF32',
-            cg='cg_WTF')
+            vol=volume['name'],
+            cg='cg')
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.XIVProxy._replication_create",
@@ -396,7 +410,10 @@ class XIVProxyTest(test.TestCase):
 
         p.ibm_storage_cli = mock.MagicMock()
 
-        volume = {'size': 16, 'name': 'WTF32', 'volume_type_id': 'WTF'}
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+        volume.group = None
         p.create_volume(volume)
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
@@ -421,8 +438,11 @@ class XIVProxyTest(test.TestCase):
 
         p.ibm_storage_cli = mock.MagicMock()
 
-        volume = {'size': 16, 'name': 'WTF32',
-                  'group_id': 'WTF', 'volume_type_id': 'WTF'}
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+        grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1')
+        volume.group = grp
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_volume, volume)
 
@@ -448,8 +468,10 @@ class XIVProxyTest(test.TestCase):
             driver)
 
         p.ibm_storage_cli = mock.MagicMock()
-
-        volume = {'size': 16, 'name': 'WTF32', 'volume_type_id': 'WTF'}
+        volume = testutils.create_volume(
+            self.ctxt, size=16, display_name='WTF32',
+            volume_type_id='b3fcacb5-fbd8-4394-8c00-06853bc13929')
+        volume.group = None
         ex = getattr(p, "_get_exception")()
         self.assertRaises(ex, p.create_volume, volume)
 
@@ -1981,6 +2003,9 @@ class XIVProxyTest(test.TestCase):
         # check no assertion occurs
         p._silent_delete_volume(TEST_VOLUME)
 
+    @mock.patch("cinder.volume.utils.group_get_by_id", mock.MagicMock())
+    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+                mock.MagicMock(return_value=False))
     def test_create_cloned_volume_calls_vol_create_and_copy(self):
         """test create_cloned_volume
 
@@ -1996,8 +2021,11 @@ class XIVProxyTest(test.TestCase):
             test_mock.cinder.exception,
             driver)
 
-        vol_src = {'name': 'bla', 'size': 17}
-        vol_trg = {'name': 'bla', 'size': 17}
+        vol_src = testutils.create_volume(self.ctxt, display_name='bla',
+                                          size=17)
+        vol_trg = testutils.create_volume(self.ctxt, display_name='bla',
+                                          size=17)
+
         p.ibm_storage_cli = mock.MagicMock()
         p._cg_name_from_volume = mock.MagicMock(return_value="cg")
 
@@ -2013,6 +2041,9 @@ class XIVProxyTest(test.TestCase):
             vol_src=vol_src['name'],
             vol_trg=vol_trg['name'])
 
+    @mock.patch("cinder.volume.utils.group_get_by_id", mock.MagicMock())
+    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+                mock.MagicMock(return_value=False))
     def test_handle_created_vol_properties_returns_vol_update(self):
         """test handle_created_vol_props
 
@@ -2028,7 +2059,9 @@ class XIVProxyTest(test.TestCase):
             driver)
 
         p._replication_create = test_mock.MagicMock(return_value=None)
-        ret_val = p.handle_created_vol_properties(
-            None, {'enabled': True}, {'name': 'bla'})
+        grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1')
+        volume = testutils.create_volume(self.ctxt, display_name='bla')
+        volume.group = grp
+        ret_val = p.handle_created_vol_properties({'enabled': True}, volume)
 
         self.assertEqual(ret_val, {'replication_status': 'enabled'})

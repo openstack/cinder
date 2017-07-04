@@ -485,13 +485,12 @@ class XIVProxy(proxy.IBMStorageProxy):
     @proxy._trace_time
     def create_volume(self, volume):
         """Creates a volume."""
-        # read CG information
-        cg = self._cg_name_from_volume(volume)
+
         # read replication information
         specs = self._get_extra_specs(volume.get('volume_type_id', None))
         replication_info = self._get_replication_info(specs)
 
-        if cg and replication_info['enabled']:
+        if volume.group and replication_info['enabled']:
             # An unsupported illegal configuration
             msg = _("Unable to create volume: "
                     "Replication of consistency group is not supported")
@@ -499,17 +498,17 @@ class XIVProxy(proxy.IBMStorageProxy):
             raise self.meta['exception'].VolumeBackendAPIException(data=msg)
 
         self._create_volume(volume)
-        return self.handle_created_vol_properties(cg,
-                                                  replication_info,
+        return self.handle_created_vol_properties(replication_info,
                                                   volume)
 
-    def handle_created_vol_properties(self, cg, replication_info, volume):
+    def handle_created_vol_properties(self, replication_info, volume):
         volume_update = {}
+        cg = volume.group and utils.is_group_a_cg_snapshot_type(volume.group)
         if cg:
-            volume_update['group_id'] = (volume.get('group_id', None))
             try:
+                cg_name = self._cg_name_from_volume(volume)
                 self._call_xiv_xcli(
-                    "cg_add_vol", vol=volume['name'], cg=cg)
+                    "cg_add_vol", vol=volume['name'], cg=cg_name)
             except errors.XCLIError as e:
                 details = self._get_code_and_status_or_message(e)
                 self._silent_delete_volume(volume=volume)
@@ -530,7 +529,8 @@ class XIVProxy(proxy.IBMStorageProxy):
             except errors.XCLIError as e:
                 details = self._get_code_and_status_or_message(e)
                 if cg:
-                    self._silent_delete_volume_from_cg(volume, cg)
+                    cg_name = self._cg_name_from_volume(volume)
+                    self._silent_delete_volume_from_cg(volume, cg_name)
                 self._silent_delete_volume(volume=volume)
                 msg = PERF_CLASS_ADD_ERROR % {'details': details}
                 LOG.error(msg)
@@ -550,7 +550,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                        {'vol': volume['name'], 'err': details})
                 LOG.error(msg)
                 if cg:
-                    self._silent_delete_volume_from_cg(volume, cg)
+                    cg_name = self._cg_name_from_volume(volume)
+                    self._silent_delete_volume_from_cg(volume, cg_name)
                 self._silent_delete_volume(volume=volume)
                 raise
             volume_update['replication_status'] = 'enabled'
@@ -1549,7 +1550,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     @proxy._trace_time
     def create_cloned_volume(self, volume, src_vref):
         """Create cloned volume."""
-        cg = self._cg_name_from_volume(volume)
+
         # read replication information
         specs = self._get_extra_specs(volume.get('volume_type_id', None))
         replication_info = self._get_replication_info(specs)
@@ -1596,7 +1597,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                 LOG.error(error)
                 self._silent_delete_volume(volume=volume)
                 raise self._get_exception()(error)
-        self.handle_created_vol_properties(cg, replication_info, volume)
+        self.handle_created_vol_properties(replication_info, volume)
 
     @proxy._trace_time
     def volume_exists(self, volume):
