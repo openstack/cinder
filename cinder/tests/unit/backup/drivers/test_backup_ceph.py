@@ -567,7 +567,7 @@ class BackupCephTestCase(test.TestCase):
 
         In backup(), after an exception.BackupOperationError occurs in
         self._backup_metadata(), we want to check the process when the
-        second exception occurs in self.delete().
+        second exception occurs in self.delete_backup().
         """
         backup_name = self.service._get_backup_base_name(self.backup_id,
                                                          diff_format=True)
@@ -602,7 +602,8 @@ class BackupCephTestCase(test.TestCase):
 
             # Raise a pseudo exception.BackupOperationError.
             mock_backup_metadata.side_effect = mock_backup_metadata_side_effect
-            with mock.patch.object(self.service, 'delete') as mock_delete:
+            with mock.patch.object(self.service, 'delete_backup') as \
+                    mock_delete:
                 def mock_delete_side_effect(backup):
                     raise self.service.rbd.ImageBusy()
 
@@ -773,7 +774,7 @@ class BackupCephTestCase(test.TestCase):
             snap_name = self.service._get_new_snap_name(self.backup_id)
             mock_del_backup_snap.return_value = (snap_name, 0)
 
-            self.service.delete(self.backup)
+            self.service.delete_backup(self.backup)
             self.assertTrue(mock_del_backup_snap.called)
 
         self.assertTrue(self.mock_rbd.RBD.return_value.list.called)
@@ -788,7 +789,7 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
 
         with mock.patch.object(self.service, 'get_backup_snaps'):
-            self.service.delete(self.backup)
+            self.service.delete_backup(self.backup)
             self.assertTrue(self.mock_rbd.RBD.return_value.remove.called)
 
     @common_mocks
@@ -816,7 +817,7 @@ class BackupCephTestCase(test.TestCase):
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
     def test_delete(self, mock_meta_backup):
         with mock.patch.object(self.service, '_try_delete_base_image'):
-            self.service.delete(self.backup)
+            self.service.delete_backup(self.backup)
             self.assertEqual([], RAISED_EXCEPTIONS)
 
     @common_mocks
@@ -826,7 +827,7 @@ class BackupCephTestCase(test.TestCase):
                 mock_del_base:
             mock_del_base.side_effect = self.mock_rbd.ImageNotFound
             # ImageNotFound exception is caught so that db entry can be cleared
-            self.service.delete(self.backup)
+            self.service.delete_backup(self.backup)
             self.assertEqual([MockImageNotFoundException], RAISED_EXCEPTIONS)
 
     @common_mocks
@@ -837,7 +838,7 @@ class BackupCephTestCase(test.TestCase):
             mock_del_base.side_effect = self.mock_rados.ObjectNotFound
             # ObjectNotFound exception is caught so that db entry can be
             # cleared
-            self.service.delete(self.backup)
+            self.service.delete_backup(self.backup)
             self.assertEqual([MockObjectNotFoundException],
                              RAISED_EXCEPTIONS)
             mock_del_base.assert_called_once_with(self.backup)
@@ -1108,7 +1109,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_backup_metadata_error(self):
-        """Ensure that delete() is called if the metadata backup fails.
+        """Ensure that delete_backup() is called if the metadata backup fails.
 
         Also ensure that the exception is propagated to the caller.
         """
@@ -1119,7 +1120,7 @@ class BackupCephTestCase(test.TestCase):
                 with mock.patch.object(self.service, '_file_is_rbd',
                                        return_value=False):
                     with mock.patch.object(self.service, '_full_backup'):
-                        with mock.patch.object(self.service, 'delete') as \
+                        with mock.patch.object(self.service, 'delete_backup') as \
                                 mock_delete:
                             self.assertRaises(exception.BackupOperationError,
                                               self.service.backup, self.backup,

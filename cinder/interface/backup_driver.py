@@ -96,7 +96,7 @@ class BackupDriver(base.CinderInterface):
         :param volume_file: The volume or file to read the data from.
         """
 
-    def delete(self, backup):
+    def delete_backup(self, backup):
         """Delete a backup from the backup store.
 
         :param backup: The backup to be deleted.

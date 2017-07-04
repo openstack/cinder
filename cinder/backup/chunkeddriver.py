@@ -490,7 +490,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 is_backup_canceled = True
                 # To avoid the chunk left when deletion complete, need to
                 # clean up the object of chunk again.
-                self.delete(backup)
+                self.delete_backup(backup)
                 LOG.debug('Cancel the backup process of %s.', backup.id)
                 break
             data_offset = volume_file.tell()
@@ -578,7 +578,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.exception("Backup volume metadata failed.")
-                    self.delete(backup)
+                    self.delete_backup(backup)
 
         self._finalize_backup(backup, container, object_meta, object_sha256)
 
@@ -708,7 +708,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         LOG.debug('restore %(backup_id)s to %(volume_id)s finished.',
                   {'backup_id': backup_id, 'volume_id': volume_id})
 
-    def delete(self, backup):
+    def delete_backup(self, backup):
         """Delete the given backup."""
         container = backup['container']
         object_prefix = backup['service_metadata']

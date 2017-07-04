@@ -295,8 +295,8 @@ class BackupTSMTestCase(test.TestCase):
             self.driver.restore(backup2, volume_id, volume_file)
 
             # Delete both backups
-            self.driver.delete(backup2)
-            self.driver.delete(backup1)
+            self.driver.delete_backup(backup2)
+            self.driver.delete_backup(backup1)
 
     @mock.patch.object(tsm.os, 'stat', fake_stat_file)
     def test_backup_file(self):
@@ -326,8 +326,8 @@ class BackupTSMTestCase(test.TestCase):
             self.driver.restore(backup2, volume_id, volume_file)
 
             # Delete both backups
-            self.driver.delete(backup1)
-            self.driver.delete(backup2)
+            self.driver.delete_backup(backup1)
+            self.driver.delete_backup(backup2)
 
     @mock.patch.object(tsm.os, 'stat', fake_stat_illegal)
     def test_backup_invalid_mode(self):
@@ -350,4 +350,4 @@ class BackupTSMTestCase(test.TestCase):
                               volume_file)
 
             self.assertRaises(exception.InvalidBackup,
-                              self.driver.delete, backup1)
+                              self.driver.delete_backup, backup1)
