@@ -79,6 +79,7 @@ Request
    - tenant_id: tenant_id
    - sort: sort
    - limit: limit
+   - offset: offset
    - marker: marker
 
 
@@ -247,6 +248,7 @@ Request
    - tenant_id: tenant_id
    - sort: sort
    - limit: limit
+   - offset: offset
    - marker: marker
 
 
