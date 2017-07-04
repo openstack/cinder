@@ -5050,7 +5050,7 @@ class HPE3PARBaseDriver(object):
                     optional=group_snap_optional)]
 
             # delete the snapshot of the consistency group
-            group_snapshot.status = 'deleting'
+            group_snapshot.status = fields.GroupSnapshotStatus.DELETING
             self.driver.delete_group_snapshot(context.get_admin_context(),
                                               group_snapshot, [])
 

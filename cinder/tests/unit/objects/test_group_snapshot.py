@@ -19,6 +19,7 @@ import six
 
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import objects as test_objects
 from cinder.tests.unit.objects.test_group import fake_group
@@ -29,7 +30,7 @@ fake_group_snapshot = {
     'project_id': fake.PROJECT_ID,
     'name': 'fake_name',
     'description': 'fake_description',
-    'status': 'creating',
+    'status': fields.GroupSnapshotStatus.CREATING,
     'group_id': fake.GROUP_ID,
 }
 
@@ -90,7 +91,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.sqlalchemy.api.group_snapshot_destroy')
     def test_destroy(self, group_snapshot_destroy, utcnow_mock):
         group_snapshot_destroy.return_value = {
-            'status': 'deleted',
+            'status': fields.GroupSnapshotStatus.DELETED,
             'deleted': True,
             'deleted_at': utcnow_mock.return_value}
         group_snapshot = objects.GroupSnapshot(context=self.context,
@@ -100,7 +101,8 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
         admin_context = group_snapshot_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
         self.assertTrue(group_snapshot.deleted)
-        self.assertEqual('deleted', group_snapshot.status)
+        self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                         group_snapshot.status)
         self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
                          group_snapshot.deleted_at)
 

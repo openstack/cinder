@@ -15,6 +15,7 @@
 
 from oslo_utils import uuidutils
 
+from cinder.objects import fields
 from cinder.tests.functional import functional_helpers
 
 
@@ -92,18 +93,19 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
 
         # Check it's there
         found_group_snapshot = self._poll_group_snapshot_while(
-            created_group_snapshot_id, ['creating'])
+            created_group_snapshot_id, [fields.GroupSnapshotStatus.CREATING])
         self.assertEqual(created_group_snapshot_id, found_group_snapshot['id'])
         self.assertEqual(created_group_id,
                          found_group_snapshot['group_id'])
-        self.assertEqual('available', found_group_snapshot['status'])
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         found_group_snapshot['status'])
 
         # Delete the group snapshot
         self.api.delete_group_snapshot(created_group_snapshot_id)
 
         # Wait (briefly) for deletion. Delay is due to the 'message queue'
         found_group_snapshot = self._poll_group_snapshot_while(
-            created_group_snapshot_id, ['deleting'])
+            created_group_snapshot_id, [fields.GroupSnapshotStatus.DELETING])
 
         # Delete the original group
         self.api.delete_group(created_group_id,
@@ -203,7 +205,7 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
 
         # Wait (briefly) for deletion. Delay is due to the 'message queue'
         found_group_snapshot = self._poll_group_snapshot_while(
-            created_group_snapshot_id, ['deleting'])
+            created_group_snapshot_id, [fields.GroupSnapshotStatus.DELETING])
 
         # Delete the original group
         self.api.delete_group(created_group_id,
@@ -322,22 +324,25 @@ class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
         self.assertTrue(uuidutils.is_uuid_like(group_snapshot1['id']))
         group_snapshot_id = group_snapshot1['id']
 
-        self._poll_group_snapshot_while(group_snapshot_id, 'creating')
+        self._poll_group_snapshot_while(group_snapshot_id,
+                                        fields.GroupSnapshotStatus.CREATING)
 
         group_snapshot1 = self.api.get_group_snapshot(group_snapshot_id)
-        self.assertEqual("available", group_snapshot1['status'])
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         group_snapshot1['status'])
 
         # reset group snapshot status
-        self.api.reset_group_snapshot(group_snapshot_id,
-                                      {"reset_status": {"status": "error"}})
+        self.api.reset_group_snapshot(group_snapshot_id, {"reset_status": {
+            "status": fields.GroupSnapshotStatus.ERROR}})
 
         group_snapshot1 = self.api.get_group_snapshot(group_snapshot_id)
-        self.assertEqual("error", group_snapshot1['status'])
+        self.assertEqual(fields.GroupSnapshotStatus.ERROR,
+                         group_snapshot1['status'])
 
         # Delete group, volume and group snapshot
         self.api.delete_group_snapshot(group_snapshot_id)
         found_group_snapshot = self._poll_group_snapshot_while(
-            group_snapshot_id, ['deleting'])
+            group_snapshot_id, [fields.GroupSnapshotStatus.DELETING])
         self.api.delete_group(group_id,
                               {'delete': {'delete-volumes': True}})
 
