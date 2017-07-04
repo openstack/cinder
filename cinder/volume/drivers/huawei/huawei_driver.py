@@ -2195,9 +2195,14 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
+
+        metadata = huawei_utils.get_volume_metadata(volume)
+        LOG.info("initialize_connection, metadata is: %s.", metadata)
+        hypermetro_lun = 'hypermetro_id' in metadata
+
         map_info = self.client.do_mapping(lun_id, hostgroup_id,
                                           host_id, portg_id,
-                                          lun_type)
+                                          lun_type, hypermetro_lun)
         host_lun_id = self.client.get_host_lun_id(host_id, lun_id,
                                                   lun_type)
 
@@ -2211,9 +2216,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                             'map_info': map_info}, }
 
         # Deal with hypermetro connection.
-        metadata = huawei_utils.get_volume_metadata(volume)
-        LOG.info("initialize_connection, metadata is: %s.", metadata)
-        if 'hypermetro_id' in metadata:
+        if hypermetro_lun:
             loc_tgt_wwn = fc_info['data']['target_wwn']
             local_ini_tgt_map = fc_info['data']['initiator_target_map']
             hyperm = hypermetro.HuaweiHyperMetro(self.client,

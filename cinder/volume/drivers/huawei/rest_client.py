@@ -259,10 +259,10 @@ class RestClient(object):
 
             info['ID'] = pool['ID']
             info['CAPACITY'] = pool.get('DATASPACE', pool['USERFREECAPACITY'])
-            info['TOTALCAPACITY'] = pool['USERTOTALCAPACITY']
-            info['TIER0CAPACITY'] = pool['TIER0CAPACITY']
-            info['TIER1CAPACITY'] = pool['TIER1CAPACITY']
-            info['TIER2CAPACITY'] = pool['TIER2CAPACITY']
+            info['TOTALCAPACITY'] = pool.get('USERTOTALCAPACITY', '0')
+            info['TIER0CAPACITY'] = pool.get('TIER0CAPACITY', '0')
+            info['TIER1CAPACITY'] = pool.get('TIER1CAPACITY', '0')
+            info['TIER2CAPACITY'] = pool.get('TIER2CAPACITY', '0')
 
         return info
 
@@ -441,7 +441,7 @@ class RestClient(object):
         return False
 
     def do_mapping(self, lun_id, hostgroup_id, host_id, portgroup_id=None,
-                   lun_type=constants.LUN_TYPE):
+                   lun_type=constants.LUN_TYPE, hypermetro_lun=False):
         """Add hostgroup and lungroup to mapping view."""
         lungroup_name = constants.LUNGROUP_PREFIX + host_id
         mapping_view_name = constants.MAPPING_VIEW_PREFIX + host_id
@@ -484,8 +484,7 @@ class RestClient(object):
                         self._associate_portgroup_to_view(view_id,
                                                           portgroup_id)
 
-            version = self.find_array_version()
-            if version >= constants.ARRAY_VERSION:
+            if hypermetro_lun:
                 aval_luns = self.find_view_by_id(view_id)
                 map_info["lun_id"] = lun_id
                 map_info["view_id"] = view_id
@@ -1732,7 +1731,7 @@ class RestClient(object):
         self._assert_rest_result(result, _('Add lun to cache error.'))
 
     def get_array_info(self):
-        url = "/system"
+        url = "/system/"
         result = self.call(url, None, "GET", log_filter_flag=True)
         self._assert_rest_result(result, _('Get array info error.'))
         return result.get('data', None)

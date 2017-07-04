@@ -157,9 +157,8 @@ class HuaweiHyperMetro(object):
 
         # Add host into hostgroup.
         hostgroup_id = self.rmt_client.add_host_to_hostgroup(host_id)
-        map_info = self.rmt_client.do_mapping(lun_id,
-                                              hostgroup_id,
-                                              host_id)
+        map_info = self.rmt_client.do_mapping(lun_id, hostgroup_id, host_id,
+                                              hypermetro_lun=True)
         if not map_info:
             msg = _('Map info is None due to array version '
                     'not supporting hypermetro.')
