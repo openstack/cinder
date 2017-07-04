@@ -368,9 +368,10 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
             snapshot_model_update = {'id': snapshot.id}
             try:
                 self.create_snapshot(snapshot)
-                snapshot_model_update['status'] = 'available'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.AVAILABLE)
             except Exception:
-                snapshot_model_update['status'] = 'error'
+                snapshot_model_update['status'] = fields.SnapshotStatus.ERROR
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
@@ -384,11 +385,14 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
             snapshot_model_update = {'id': snapshot.id}
             try:
                 self.delete_snapshot(snapshot)
-                snapshot_model_update['status'] = 'deleted'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.DELETED)
             except exception.SnapshotIsBusy:
-                snapshot_model_update['status'] = 'available'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.AVAILABLE)
             except Exception:
-                snapshot_model_update['status'] = 'error'
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.ERROR)
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
