@@ -471,7 +471,7 @@ class Service(service.Service):
     def periodic_tasks(self, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
         ctxt = context.get_admin_context()
-        self.manager.periodic_tasks(ctxt, raise_on_error=raise_on_error)
+        self.manager.run_periodic_tasks(ctxt, raise_on_error=raise_on_error)
 
     def report_state(self):
         """Update the state of this service in the datastore."""
