@@ -39,6 +39,7 @@ from oslo_vmware import vim_util
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -130,7 +131,7 @@ vmdk_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(vmdk_opts)
+CONF.register_opts(vmdk_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,

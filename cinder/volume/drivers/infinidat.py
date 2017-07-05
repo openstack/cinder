@@ -33,6 +33,7 @@ from cinder import interface
 from cinder.objects import fields
 from cinder import utils
 from cinder import version
+from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -74,7 +75,7 @@ infinidat_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(infinidat_opts)
+CONF.register_opts(infinidat_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def infinisdk_to_cinder_exceptions(func):

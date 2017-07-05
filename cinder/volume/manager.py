@@ -112,9 +112,6 @@ VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
 VA_LIST = objects.VolumeAttachmentList
 
 volume_manager_opts = [
-    cfg.StrOpt('volume_driver',
-               default='cinder.volume.drivers.lvm.LVMVolumeDriver',
-               help='Driver to use for volume creation'),
     cfg.IntOpt('migration_create_volume_timeout_secs',
                default=300,
                help='Timeout for creating the volume to migrate to '
@@ -123,6 +120,12 @@ volume_manager_opts = [
                 default=False,
                 help='Offload pending volume delete during '
                      'volume service startup'),
+]
+
+volume_backend_opts = [
+    cfg.StrOpt('volume_driver',
+               default='cinder.volume.drivers.lvm.LVMVolumeDriver',
+               help='Driver to use for volume creation'),
     cfg.StrOpt('zoning_mode',
                help='FC Zoning mode configured'),
     cfg.StrOpt('extra_capabilities',
@@ -142,6 +145,7 @@ volume_manager_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
+CONF.register_opts(volume_backend_opts, group=config.SHARED_CONF_GROUP)
 
 MAPPING = {
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
@@ -202,7 +206,9 @@ class VolumeManager(manager.CleanableManager,
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
-        self.configuration = config.Configuration(volume_manager_opts,
+        # NOTE(dulek): service_name=None means we're running in unit tests.
+        service_name = service_name or 'backend_defaults'
+        self.configuration = config.Configuration(volume_backend_opts,
                                                   config_group=service_name)
         self.stats = {}
 

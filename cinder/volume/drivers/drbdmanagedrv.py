@@ -39,6 +39,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 
 try:
@@ -108,7 +109,7 @@ drbd_opts = [
 
 
 CONF = cfg.CONF
-CONF.register_opts(drbd_opts)
+CONF.register_opts(drbd_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 AUX_PROP_CINDER_VOL_ID = "cinder-id"

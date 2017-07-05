@@ -30,6 +30,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import utils as volume_utils
 
@@ -63,7 +64,7 @@ blockbridge_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(blockbridge_opts)
+CONF.register_opts(blockbridge_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class BlockbridgeAPIClient(object):

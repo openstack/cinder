@@ -27,6 +27,7 @@ import re
 import time
 
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import units
 import six
@@ -54,6 +55,8 @@ from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 SVC_POOLS = ['openstack', 'openstack1']
+
+CONF = cfg.CONF
 
 
 def _get_test_pool(get_all=False):
@@ -2316,7 +2319,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.USESIM = True
         if self.USESIM:
             self.iscsi_driver = StorwizeSVCISCSIFakeDriver(
-                configuration=conf.Configuration(None))
+                configuration=conf.Configuration([], conf.SHARED_CONF_GROUP))
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
                                'san_password': 'pass',
@@ -2341,7 +2344,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = self.iscsi_driver.configuration.db_driver
+        db_driver = CONF.db_driver
         self.db = importutils.import_module(db_driver)
         self.iscsi_driver.db = self.db
         self.iscsi_driver.do_setup(None)
@@ -2350,10 +2353,10 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
     def _set_flag(self, flag, value):
         group = self.iscsi_driver.configuration.config_group
-        self.iscsi_driver.configuration.set_override(flag, value, group)
+        self.override_config(flag, value, group)
 
     def _reset_flags(self):
-        self.iscsi_driver.configuration.local_conf.reset()
+        CONF.reset()
         for k, v in self._def_flags.items():
             self._set_flag(k, v)
 
@@ -3512,7 +3515,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_allow_tenant_qos': True}
-            config = conf.Configuration(None)
+            config = conf.Configuration(storwize_svc_common.storwize_svc_opts,
+                                        conf.SHARED_CONF_GROUP)
             # Override any configs that may get set in __init__
             self._reset_flags(config)
             self.driver = StorwizeSVCISCSIFakeDriver(
@@ -3536,7 +3540,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         else:
             self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = self.driver.configuration.db_driver
+        db_driver = CONF.db_driver
         self.db = importutils.import_module(db_driver)
         self.driver.db = self.db
         self.driver.do_setup(None)
@@ -3550,12 +3554,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         if not configuration:
             configuration = self.driver.configuration
         group = configuration.config_group
-        configuration.set_override(flag, value, group)
+        self.override_config(flag, value, group)
 
     def _reset_flags(self, configuration=None):
         if not configuration:
             configuration = self.driver.configuration
-        configuration.local_conf.reset()
+        CONF.reset()
         for k, v in self._def_flags.items():
             self._set_flag(k, v, configuration)
 
@@ -6116,7 +6120,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.configuration.set_override(flag, value, group)
 
     def _reset_flags(self):
-        self.driver.configuration.local_conf.reset()
         for k, v in self._def_flags.items():
             self._set_flag(k, v)
         self.driver.configuration.set_override('replication_device',
@@ -6943,7 +6946,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual({'_name_id': None}, model_update)
 
         rename_vdisk.reset_mock()
-        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException(
+            data='foo')
         model_update = self.driver.update_migrated_volume(self.ctxt, volume,
                                                           backend_volume,
                                                           'available')

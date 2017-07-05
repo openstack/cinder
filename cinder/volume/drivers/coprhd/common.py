@@ -30,6 +30,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import configuration
 from cinder.volume.drivers.coprhd.helpers import (
     authentication as coprhd_auth)
 from cinder.volume.drivers.coprhd.helpers import (
@@ -82,7 +83,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 URI_VPOOL_VARRAY_CAPACITY = '/block/vpools/{0}/varrays/{1}/capacity'
 URI_BLOCK_EXPORTS_FOR_INITIATORS = '/block/exports?initiators={0}'

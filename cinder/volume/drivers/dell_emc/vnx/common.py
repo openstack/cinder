@@ -24,6 +24,7 @@ storops = importutils.try_import('storops')
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume import volume_types
 
@@ -105,7 +106,7 @@ VNX_OPTS = [
                 'By default, the value is False.')
 ]
 
-CONF.register_opts(VNX_OPTS)
+CONF.register_opts(VNX_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 PROTOCOL_FC = 'fc'

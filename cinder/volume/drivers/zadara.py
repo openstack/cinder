@@ -27,6 +27,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ zadara_opts = [
                 help="VPSA - Attach snapshot policy for volumes")]
 
 CONF = cfg.CONF
-CONF.register_opts(zadara_opts)
+CONF.register_opts(zadara_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class ZadaraVPSAConnection(object):

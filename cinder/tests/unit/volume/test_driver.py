@@ -155,8 +155,10 @@ class BaseDriverTestCase(test.TestCase):
     def setUp(self):
         super(BaseDriverTestCase, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
-        self.flags(volume_driver=self.driver_name,
-                   volumes_dir=vol_tmpdir)
+        self.override_config('volume_driver', self.driver_name,
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('volumes_dir', vol_tmpdir,
+                             conf.SHARED_CONF_GROUP)
         self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
         self.output = ""

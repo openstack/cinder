@@ -39,6 +39,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import utils as cinder_utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.ibm.storwize_svc import (
     replication as storwize_rep)
@@ -136,7 +137,7 @@ storwize_svc_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(storwize_svc_opts)
+CONF.register_opts(storwize_svc_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class StorwizeSSH(object):

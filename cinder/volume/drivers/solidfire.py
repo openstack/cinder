@@ -39,6 +39,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume.targets import iscsi as iscsi_driver
@@ -101,7 +102,7 @@ sf_opts = [
                 help='Utilize volume access groups on a per-tenant basis.')]
 
 CONF = cfg.CONF
-CONF.register_opts(sf_opts)
+CONF.register_opts(sf_opts, group=configuration.SHARED_CONF_GROUP)
 
 # SolidFire API Error Constants
 xExceededLimit = 'xExceededLimit'

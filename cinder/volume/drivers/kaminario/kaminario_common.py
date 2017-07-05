@@ -34,6 +34,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
 
@@ -52,7 +53,7 @@ kaminario_opts = [
                      "on setting this option as True.")]
 
 CONF = cfg.CONF
-CONF.register_opts(kaminario_opts)
+CONF.register_opts(kaminario_opts, group=configuration.SHARED_CONF_GROUP)
 
 K2HTTPError = requests.exceptions.HTTPError
 K2_RETRY_ERRORS = ("MC_ERR_BUSY", "MC_ERR_BUSY_SPECIFIC",

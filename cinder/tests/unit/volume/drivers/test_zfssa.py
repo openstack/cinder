@@ -924,6 +924,8 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_enable_local_cache = True
         self.configuration.zfssa_cache_directory = zfssa_cache_dir
         self.configuration.nfs_sparsed_volumes = 'true'
+        self.configuration.nfs_mount_point_base = '$state_path/mnt'
+        self.configuration.nfs_mount_options = None
         self.configuration.zfssa_manage_policy = 'strict'
 
     def test_setup_nfs_client(self):

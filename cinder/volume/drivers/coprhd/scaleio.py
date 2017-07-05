@@ -26,6 +26,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.coprhd import common as coprhd_common
 
@@ -55,7 +56,7 @@ scaleio_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(scaleio_opts)
+CONF.register_opts(scaleio_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

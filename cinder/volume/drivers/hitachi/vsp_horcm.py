@@ -32,6 +32,7 @@ from six.moves import range
 from cinder import coordination
 from cinder import exception
 from cinder import utils as cinder_utils
+from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import vsp_common as common
 from cinder.volume.drivers.hitachi import vsp_utils as utils
 
@@ -223,7 +224,7 @@ _REQUIRED_HORCM_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(horcm_opts)
+CONF.register_opts(horcm_opts, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.VSPMsg

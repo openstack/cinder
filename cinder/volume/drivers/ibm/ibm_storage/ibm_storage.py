@@ -25,6 +25,7 @@ from oslo_utils import importutils
 
 from cinder import exception
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
@@ -52,7 +53,7 @@ driver_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(driver_opts)
+CONF.register_opts(driver_opts, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 

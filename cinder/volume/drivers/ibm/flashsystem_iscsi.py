@@ -35,6 +35,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
 from cinder.volume.drivers.san import san
 
@@ -48,7 +49,7 @@ flashsystem_iscsi_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(flashsystem_iscsi_opts)
+CONF.register_opts(flashsystem_iscsi_opts, group=conf.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

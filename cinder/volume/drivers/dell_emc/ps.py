@@ -33,6 +33,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder import ssh_utils
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import san
 
 LOG = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ eqlx_opts = [
 
 
 CONF = cfg.CONF
-CONF.register_opts(eqlx_opts)
+CONF.register_opts(eqlx_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def with_timeout(f):

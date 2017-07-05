@@ -38,6 +38,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder.objects import volume
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -93,7 +94,7 @@ nimble_opts = [
                help='Path to Nimble Array SSL certificate'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(nimble_opts)
+CONF.register_opts(nimble_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class NimbleDriverException(exception.VolumeDriverException):

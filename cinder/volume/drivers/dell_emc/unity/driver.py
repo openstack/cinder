@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.unity import adapter
 from cinder.volume.drivers.san.san import san_opts
@@ -38,7 +39,7 @@ UNITY_OPTS = [
                 help='A comma-separated list of iSCSI or FC ports to be used. '
                      'Each port can be Unix-style glob expressions.')]
 
-CONF.register_opts(UNITY_OPTS)
+CONF.register_opts(UNITY_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver

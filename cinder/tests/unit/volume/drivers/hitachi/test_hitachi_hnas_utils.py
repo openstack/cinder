@@ -151,15 +151,23 @@ class HNASUtilsTest(test.TestCase):
     def setUp(self):
         super(HNASUtilsTest, self).setUp()
 
-        self.fake_conf = conf.Configuration(hnas_utils.CONF)
+        self.fake_conf = conf.Configuration(hnas_utils.drivers_common_opts,
+                                            conf.SHARED_CONF_GROUP)
 
-        self.override_config('hnas_username', 'supervisor')
-        self.override_config('hnas_password', 'supervisor')
-        self.override_config('hnas_mgmt_ip0', '172.24.44.15')
-        self.override_config('hnas_svc0_pool_name', 'default')
-        self.override_config('hnas_svc0_hdp', 'easy-stack')
-        self.override_config('hnas_svc1_pool_name', 'FS-CinderDev1')
-        self.override_config('hnas_svc1_hdp', 'silver')
+        self.override_config('hnas_username', 'supervisor',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_password', 'supervisor',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_mgmt_ip0', '172.24.44.15',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_svc0_pool_name', 'default',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_svc0_hdp', 'easy-stack',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_svc1_pool_name', 'FS-CinderDev1',
+                             conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_svc1_hdp', 'silver',
+                             conf.SHARED_CONF_GROUP)
 
         self.context = context.get_admin_context()
         self.volume = fake_volume.fake_volume_obj(self.context, **_VOLUME)
@@ -281,9 +289,9 @@ class HNASUtilsTest(test.TestCase):
         self.assertEqual(config_from_cinder_conf, out)
 
     def test_read_cinder_conf_break(self):
-        self.override_config('hnas_username', None)
-        self.override_config('hnas_password', None)
-        self.override_config('hnas_mgmt_ip0', None)
+        self.override_config('hnas_username', None, conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_password', None, conf.SHARED_CONF_GROUP)
+        self.override_config('hnas_mgmt_ip0', None, conf.SHARED_CONF_GROUP)
         out = hnas_utils.read_cinder_conf(self.fake_conf)
         self.assertIsNone(out)
 
@@ -291,7 +299,7 @@ class HNASUtilsTest(test.TestCase):
               'hnas_mgmt_ip0', 'hnas_svc0_pool_name',
               'hnas_svc0_hdp', )
     def test_init_invalid_conf_parameters(self, attr_name):
-        self.override_config(attr_name, None)
+        self.override_config(attr_name, None, conf.SHARED_CONF_GROUP)
 
         self.assertRaises(exception.InvalidParameterValue,
                           hnas_utils.read_cinder_conf, self.fake_conf)

@@ -29,6 +29,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -101,7 +102,7 @@ mstorage_opts = [
                help='Number of iSCSI portals.'),
 ]
 
-FLAGS.register_opts(mstorage_opts)
+FLAGS.register_opts(mstorage_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def convert_to_name(uuid):

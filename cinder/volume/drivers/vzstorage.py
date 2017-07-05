@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 VERSION = '1.0'
@@ -66,7 +67,7 @@ vzstorage_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(vzstorage_opts)
+CONF.register_opts(vzstorage_opts, group=configuration.SHARED_CONF_GROUP)
 
 PLOOP_BASE_DELTA_NAME = 'root.hds'
 DISK_FORMAT_RAW = 'raw'
@@ -170,12 +171,8 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self._execute_as_root = False
         root_helper = utils.get_root_helper()
         # base bound to instance is used in RemoteFsConnector.
-        self.base = getattr(self.configuration,
-                            'vzstorage_mount_point_base',
-                            CONF.vzstorage_mount_point_base)
-        opts = getattr(self.configuration,
-                       'vzstorage_mount_options',
-                       CONF.vzstorage_mount_options)
+        self.base = self.configuration.vzstorage_mount_point_base
+        opts = self.configuration.vzstorage_mount_options
 
         self._remotefsclient = remotefs.RemoteFsClient(
             'vzstorage', root_helper, execute=execute,

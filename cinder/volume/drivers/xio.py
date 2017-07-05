@@ -23,6 +23,7 @@ from six.moves import urllib
 from cinder import context
 from cinder import exception
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -46,7 +47,7 @@ XIO_OPTS = [
 
 
 CONF = cfg.CONF
-CONF.register_opts(XIO_OPTS)
+CONF.register_opts(XIO_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 

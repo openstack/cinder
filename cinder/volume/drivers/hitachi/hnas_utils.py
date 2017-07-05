@@ -27,6 +27,7 @@ from xml.etree import ElementTree as ETree
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume import configuration
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -83,7 +84,7 @@ drivers_common_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(drivers_common_opts)
+CONF.register_opts(drivers_common_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 def _check_conf_params(config, pool_name, idx):

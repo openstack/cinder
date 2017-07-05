@@ -31,6 +31,7 @@ from cinder.image import image_utils
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver_utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
@@ -295,6 +296,8 @@ iser_opts = [
 
 
 CONF = cfg.CONF
+CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(iser_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
 CONF.import_opt('backup_use_same_host', 'cinder.backup.api')

@@ -37,7 +37,8 @@ class InfortrendTestCass(test.TestCase):
         super(InfortrendTestCass, self).setUp()
         self.cli_data = test_infortrend_cli.InfortrendCLITestData()
 
-        self.configuration = configuration.Configuration(None)
+        self.configuration = configuration.Configuration(
+            [], config_group=configuration.SHARED_CONF_GROUP)
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.safe_get = self._fake_safe_get
 

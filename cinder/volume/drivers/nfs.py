@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers import remotefs
 
@@ -71,7 +72,7 @@ nfs_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(nfs_opts)
+CONF.register_opts(nfs_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 @interface.volumedriver
@@ -96,12 +97,10 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed, driver.ExtendVD):
         root_helper = utils.get_root_helper()
         # base bound to instance is used in RemoteFsConnector.
         self.base = getattr(self.configuration,
-                            'nfs_mount_point_base',
-                            CONF.nfs_mount_point_base)
+                            'nfs_mount_point_base')
         self.base = os.path.realpath(self.base)
         opts = getattr(self.configuration,
-                       'nfs_mount_options',
-                       CONF.nfs_mount_options)
+                       'nfs_mount_options')
 
         nas_mount_options = getattr(self.configuration,
                                     'nas_mount_options',

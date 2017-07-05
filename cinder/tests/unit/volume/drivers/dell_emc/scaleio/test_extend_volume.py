@@ -20,6 +20,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.tests.unit.volume.drivers.dell_emc import scaleio
 from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.volume import configuration
 
 
 class TestExtendVolume(scaleio.TestScaleIODriver):
@@ -91,14 +92,14 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
                           self.NEW_SIZE)
 
     def test_extend_volume_bad_size_no_round(self):
-        self.driver.configuration.set_override('sio_round_volume_capacity',
-                                               override=False)
+        self.override_config('sio_round_volume_capacity', False,
+                             configuration.SHARED_CONF_GROUP)
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.extend_volume(self.volume, self.BAD_SIZE)
 
     def test_extend_volume_bad_size_round(self):
-        self.driver.configuration.set_override('sio_round_volume_capacity',
-                                               override=True)
+        self.override_config('sio_round_volume_capacity', True,
+                             configuration.SHARED_CONF_GROUP)
         self.driver.extend_volume(self.volume, self.BAD_SIZE)
 
     def test_extend_volume(self):

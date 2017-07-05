@@ -62,6 +62,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import configuration
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -128,7 +129,7 @@ hpe3par_opts = [
 
 
 CONF = cfg.CONF
-CONF.register_opts(hpe3par_opts)
+CONF.register_opts(hpe3par_opts, group=configuration.SHARED_CONF_GROUP)
 
 # Input/output (total read/write) operations per second.
 THROUGHPUT = 'throughput'
