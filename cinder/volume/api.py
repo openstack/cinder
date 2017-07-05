@@ -2003,7 +2003,12 @@ class API(base.Base):
     def attachment_delete(self, ctxt, attachment):
         volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
         if attachment.attach_status == 'reserved':
-            attachment.destroy()
+            self.db.volume_detached(ctxt.elevated(), attachment.volume_id,
+                                    attachment.get('id'))
+            self.db.volume_admin_metadata_delete(ctxt.elevated(),
+                                                 attachment.volume_id,
+                                                 'attached_mode')
+            volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
         else:
             self.volume_rpcapi.attachment_delete(ctxt,
                                                  attachment.id,
