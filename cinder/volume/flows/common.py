@@ -50,7 +50,7 @@ def restore_source_status(context, db, volume_spec):
     source_volid = volume_spec['source_volid']
     source_status = volume_spec['source_volstatus']
     try:
-        LOG.debug('Restoring source %(source_volid)s status to %(status)s' %
+        LOG.debug('Restoring source %(source_volid)s status to %(status)s',
                   {'status': source_status, 'source_volid': source_volid})
         db.volume_update(context, source_volid, {'status': source_status})
     except exception.CinderException:

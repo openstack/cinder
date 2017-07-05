@@ -1944,7 +1944,7 @@ class VolumeManager(manager.CleanableManager,
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     LOG.error('Unable to terminate volume connection: '
-                              '%(err)s.' % {'err': err})
+                              '%(err)s.', {'err': err})
 
     def _copy_volume_data(self, ctxt, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""

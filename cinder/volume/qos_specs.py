@@ -64,7 +64,7 @@ def update(context, qos_specs_id, specs):
                 'total_iops_sec': 500,
                 'total_bytes_sec': 512000,}
     """
-    LOG.debug('qos_specs.update(): specs %s' % specs)
+    LOG.debug('qos_specs.update(): specs %s', specs)
 
     try:
         qos_spec = objects.QualityOfServiceSpecs.get_by_id(context,

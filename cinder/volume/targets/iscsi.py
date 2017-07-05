@@ -95,7 +95,7 @@ class ISCSITarget(driver.Target):
                         (volume['name']))
                 raise exception.InvalidVolume(reason=msg)
 
-            LOG.debug(("ISCSI Discovery: Found %s") % (location))
+            LOG.debug("ISCSI Discovery: Found %s", location)
             properties['target_discovered'] = True
 
         results = location.split(" ")

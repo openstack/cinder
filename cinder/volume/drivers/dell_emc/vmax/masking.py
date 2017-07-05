@@ -916,7 +916,7 @@ class VMAXMasking(object):
             serial_number, storagegroup_name)
         if not masking_list:
             LOG.debug("No masking views associated with storage group "
-                      "%(sg_name)s" % {'sg_name': storagegroup_name})
+                      "%(sg_name)s", {'sg_name': storagegroup_name})
 
             @coordination.synchronized("emc-sg-{sg_name}")
             def do_remove_volume_from_sg(sg_name):
@@ -1141,7 +1141,7 @@ class VMAXMasking(object):
         num_vol_in_sg = self.rest.get_num_vols_in_sg(
             serial_number, storagegroup_name)
         LOG.debug("There are %(num_vol)d volumes remaining in the storage "
-                  "group %(sg_name)s." %
+                  "group %(sg_name)s.",
                   {'num_vol': num_vol_in_sg,
                    'sg_name': storagegroup_name})
 

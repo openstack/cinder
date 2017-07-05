@@ -131,10 +131,10 @@ def pure_driver_debug_trace(f):
         method_name = "%(cls_name)s.%(method)s" % {"cls_name": cls_name,
                                                    "method": f.__name__}
         backend_name = driver._get_current_array()._backend_id
-        LOG.debug("[%(backend_name)s] Enter %(method_name)s" %
+        LOG.debug("[%(backend_name)s] Enter %(method_name)s",
                   {"method_name": method_name, "backend_name": backend_name})
         result = f(*args, **kwargs)
-        LOG.debug("[%(backend_name)s] Leave %(method_name)s" %
+        LOG.debug("[%(backend_name)s] Leave %(method_name)s",
                   {"method_name": method_name, "backend_name": backend_name})
         return result
 
@@ -1345,7 +1345,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         current_array = self._get_current_array()
         LOG.debug("Disabling replication for volume %(id)s residing on "
-                  "array %(backend_id)s." %
+                  "array %(backend_id)s.",
                   {"id": volume["id"],
                    "backend_id": current_array._backend_id})
         try:
@@ -1384,10 +1384,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         current_array = self._get_current_array()
         LOG.debug("Failover replication for array %(primary)s to "
-                  "%(secondary)s." % {
-                      "primary": current_array._backend_id,
-                      "secondary": secondary_id
-                  })
+                  "%(secondary)s.",
+                  {"primary": current_array._backend_id,
+                   "secondary": secondary_id})
 
         if secondary_id == current_array._backend_id:
             raise exception.InvalidReplicationTarget(

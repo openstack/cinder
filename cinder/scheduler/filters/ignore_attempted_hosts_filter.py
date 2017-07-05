@@ -52,7 +52,7 @@ class IgnoreAttemptedHostsFilter(filters.BaseBackendFilter):
         pass_msg = "passes" if passes else "fails"
 
         LOG.debug("Backend %(backend)s %(pass_msg)s.  Previously tried "
-                  "backends: %(backends)s" % {'backend': backend,
-                                              'pass_msg': pass_msg,
-                                              'backends': backends})
+                  "backends: %(backends)s", {'backend': backend,
+                                             'pass_msg': pass_msg,
+                                             'backends': backends})
         return passes

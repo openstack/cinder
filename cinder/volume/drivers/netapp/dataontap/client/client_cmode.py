@@ -644,7 +644,7 @@ class Client(client_base.Client):
         except netapp_api.NaApiError as ex:
             msg = 'Could not delete QOS policy groups. Details: %(ex)s'
             msg_args = {'ex': ex}
-            LOG.debug(msg % msg_args)
+            LOG.debug(msg, msg_args)
 
     def set_lun_qos_policy_group(self, path, qos_policy_group):
         """Sets qos_policy_group on a LUN."""

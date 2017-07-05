@@ -906,7 +906,7 @@ class MStorageVolumeCommon(object):
                 if specs['upperreport'] not in ['on', 'off']:
                     LOG.debug('Illegal arguments. '
                               'upperreport is not on or off.'
-                              'upperreport=%s' % specs['upperreport'])
+                              'upperreport=%s', specs['upperreport'])
                     specs['upperreport'] = None
             else:
                 specs['upperreport'] = None

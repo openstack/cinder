@@ -434,8 +434,9 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         if child_size > parent_size:
             LOG.debug('zfssa.create_volume_from_snapshot:  '
-                      'Parent size [%d], Child size [%d] - '
-                      'resizing' % (parent_size, child_size))
+                      'Parent size [%(parent_size)d], '
+                      'Child size [%(child_size)d] - resizing',
+                      {'parent_size': parent_size, 'child_size': child_size})
             self.zfssa.set_lun_props(lcfg.zfssa_pool,
                                      lcfg.zfssa_project,
                                      volume['name'],
