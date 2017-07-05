@@ -23,6 +23,8 @@ status values are:
 +------------------+--------------------------------------------------------+
 | available        | The volume is ready to attach to an instance.          |
 +------------------+--------------------------------------------------------+
+| reserved         | The volume is reserved for attaching or shelved.       |
++------------------+--------------------------------------------------------+
 | attaching        | The volume is attaching to an instance.                |
 +------------------+--------------------------------------------------------+
 | detaching        | The volume is detaching from an instance.              |
