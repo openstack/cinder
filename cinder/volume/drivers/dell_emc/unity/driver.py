@@ -207,12 +207,18 @@ class UnityDriver(driver.ManageableVD,
         return True
 
     def create_export_snapshot(self, context, snapshot, connector):
-        """Creates the snapshot for backup."""
-        return self.adapter.create_snapshot(snapshot)
+        """Creates the mount point of the snapshot for backup.
+
+        Not necessary to create on Unity.
+        """
+        pass
 
     def remove_export_snapshot(self, context, snapshot):
-        """Deletes the snapshot for backup."""
-        self.adapter.delete_snapshot(snapshot)
+        """Deletes the mount point the snapshot for backup.
+
+        Not necessary to create on Unity.
+        """
+        pass
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         return self.adapter.initialize_connection_snapshot(snapshot, connector)
