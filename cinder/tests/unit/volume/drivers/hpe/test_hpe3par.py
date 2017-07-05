@@ -803,6 +803,42 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_create_volume_in_generic_group(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        volume = {'name': self.VOLUME_NAME,
+                  'id': self.VOLUME_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'group_id': '87101633-13e0-41ee-813b-deabc372267b',
+                  'host': self.FAKE_CINDER_HOST,
+                  'volume_type': None,
+                  'volume_type_id': None}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.create_volume(volume)
+            comment = Comment({
+                "display_name": "Foo Volume",
+                "type": "OpenStack",
+                "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"})
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_create_volume_in_pool(self):
 
         # setup_mock_client drive with default configuration
