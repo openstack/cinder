@@ -672,8 +672,7 @@ class LVM(executor.Executor):
         # and fails.
         cmd = ['lvchange', '-a', 'y', '--yes']
 
-        if (self.supports_lvchange_ignoreskipactivation and
-           self.vg_thin_pool is None):
+        if self.supports_lvchange_ignoreskipactivation:
             cmd.append('-K')
             # If permanent=True is specified, drop the skipactivation flag in
             # order to make this LV automatically activated after next reboot.
