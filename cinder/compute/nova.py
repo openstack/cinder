@@ -171,11 +171,11 @@ class API(base.Base):
             raise exception.APITimeout(service='Nova')
         return extension in [e.name for e in nova_exts]
 
-    def update_server_volume(self, context, server_id, attachment_id,
+    def update_server_volume(self, context, server_id, src_volid,
                              new_volume_id):
         nova = novaclient(context, privileged_user=True)
         nova.volumes.update_server_volume(server_id,
-                                          attachment_id,
+                                          src_volid,
                                           new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
