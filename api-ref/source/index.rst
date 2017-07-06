@@ -9,7 +9,7 @@ Contents:
 
     v3/index
     v2/index
-    Block Storage API v1 (DEPRECATED) <v1/index>
+    v1/index
 
 
 Indices and tables
