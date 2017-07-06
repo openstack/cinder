@@ -34,7 +34,6 @@ import tempfile
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import timeutils
@@ -215,14 +214,15 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
             try:
                 image_service.download(context, image_id, image_file)
             except IOError as e:
-                with excutils.save_and_reraise_exception():
-                    if e.errno == errno.ENOSPC:
-                        # TODO(eharney): Fire an async error message for this
-                        LOG.error("No space left in image_conversion_dir "
-                                  "path (%(path)s) while fetching "
-                                  "image %(image)s.",
-                                  {'path': os.path.dirname(path),
-                                   'image': image_id})
+                if e.errno == errno.ENOSPC:
+                    params = {'path': os.path.dirname(path),
+                              'image': image_id}
+                    reason = _("No space left in image_conversion_dir "
+                               "path (%(path)s) while fetching "
+                               "image %(image)s.") % params
+                    LOG.exception(reason)
+                    raise exception.ImageTooBig(image_id=image_id,
+                                                reason=reason)
 
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
@@ -516,7 +516,7 @@ def check_available_space(dest, image_size, image_id):
         msg = ('There is no space to convert image. '
                'Requested: %(image_size)s, available: %(free_space)s'
                ) % {'image_size': image_size, 'free_space': free_space}
-        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+        raise exception.ImageTooBig(image_id=image_id, reason=msg)
 
 
 def is_xenserver_format(image_meta):

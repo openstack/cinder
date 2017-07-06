@@ -16,6 +16,7 @@ import traceback
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
@@ -28,6 +29,8 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder.image import glance
 from cinder.image import image_utils
+from cinder.message import api as message_api
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import consistencygroup
 from cinder import utils
@@ -91,6 +94,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             exception.SnapshotNotFound,
             exception.VolumeTypeNotFound,
             exception.ImageUnacceptable,
+            exception.ImageTooBig,
         ]
 
     def execute(self, **kwargs):
@@ -372,6 +376,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.db = db
         self.driver = driver
         self.image_volume_cache = image_volume_cache
+        self.message = message_api.API()
 
     def _handle_bootable_volume_glance_meta(self, context, volume,
                                             **kwargs):
@@ -557,6 +562,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             LOG.exception("Failed to copy image to volume: %(volume_id)s",
                           {'volume_id': volume.id})
             raise exception.ImageUnacceptable(ex)
+        except exception.ImageTooBig as ex:
+            LOG.exception("Failed to copy image %(image_id)s to volume: "
+                          "%(volume_id)s",
+                          {'volume_id': volume.id, 'image_id': image_id})
+            excutils.save_and_reraise_exception()
         except Exception as ex:
             LOG.exception("Failed to copy image %(image_id)s to "
                           "volume: %(volume_id)s",
@@ -683,8 +693,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           "%(updates)s",
                           {'volume_id': volume.id,
                            'updates': model_update})
-        self._copy_image_to_volume(context, volume, image_meta, image_location,
-                                   image_service)
+        try:
+            self._copy_image_to_volume(context, volume, image_meta,
+                                       image_location, image_service)
+        except exception.ImageTooBig:
+            with excutils.save_and_reraise_exception():
+                LOG.exception("Failed to copy image to volume "
+                              "%(volume_id)s due to insufficient space",
+                              {'volume_id': volume.id})
         return model_update
 
     def _create_from_image_cache(self, context, internal_context, volume,
@@ -757,28 +773,38 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         backend_name = volume_utils.extract_host(volume.service_topic_queue)
         try:
             if not cloned:
-                with image_utils.TemporaryImages.fetch(
-                        image_service, context, image_id,
-                        backend_name) as tmp_image:
-                    # Try to create the volume as the minimal size, then we can
-                    # extend once the image has been downloaded.
-                    data = image_utils.qemu_img_info(tmp_image)
+                try:
+                    with image_utils.TemporaryImages.fetch(
+                            image_service, context, image_id,
+                            backend_name) as tmp_image:
+                        # Try to create the volume as the minimal size,
+                        # then we can extend once the image has been
+                        # downloaded.
+                        data = image_utils.qemu_img_info(tmp_image)
 
-                    virtual_size = image_utils.check_virtual_size(
-                        data.virtual_size, volume.size, image_id)
+                        virtual_size = image_utils.check_virtual_size(
+                            data.virtual_size, volume.size, image_id)
 
-                    if should_create_cache_entry:
-                        if virtual_size and virtual_size != original_size:
-                            volume.size = virtual_size
-                            volume.save()
-
-                    model_update = self._create_from_image_download(
-                        context,
-                        volume,
-                        image_location,
-                        image_meta,
-                        image_service
-                    )
+                        if should_create_cache_entry:
+                            if virtual_size and virtual_size != original_size:
+                                    volume.size = virtual_size
+                                    volume.save()
+                        model_update = self._create_from_image_download(
+                            context,
+                            volume,
+                            image_location,
+                            image_meta,
+                            image_service
+                        )
+                except exception.ImageTooBig as e:
+                    with excutils.save_and_reraise_exception():
+                        self.message.create(
+                            context,
+                            message_field.Action.COPY_IMAGE_TO_VOLUME,
+                            resource_uuid=volume.id,
+                            detail=
+                            message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE,
+                            exception=e)
 
             if should_create_cache_entry:
                 # Update the newly created volume db entry before we clone it
@@ -817,8 +843,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         if (CONF.image_conversion_dir and not
                 os.path.exists(CONF.image_conversion_dir)):
             os.makedirs(CONF.image_conversion_dir)
-        image_utils.check_available_space(CONF.image_conversion_dir,
-                                          image_meta['size'], image_id)
+        try:
+            image_utils.check_available_space(CONF.image_conversion_dir,
+                                              image_meta['size'], image_id)
+        except exception.ImageTooBig as err:
+            with excutils.save_and_reraise_exception():
+                self.message.create(
+                    context,
+                    message_field.Action.COPY_IMAGE_TO_VOLUME,
+                    resource_uuid=volume.id,
+                    detail=message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE,
+                    exception=err)
 
         virtual_size = image_meta.get('virtual_size')
         if virtual_size:
