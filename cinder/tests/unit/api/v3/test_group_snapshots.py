@@ -84,7 +84,8 @@ class GroupSnapshotsAPITestCase(test.TestCase):
                          res_dict['group_snapshot']['description'])
         self.assertEqual('test_group_snapshot',
                          res_dict['group_snapshot']['name'])
-        self.assertEqual('creating', res_dict['group_snapshot']['status'])
+        self.assertEqual(fields.GroupSnapshotStatus.CREATING,
+                         res_dict['group_snapshot']['status'])
 
         group_snapshot.destroy()
 
@@ -422,7 +423,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         group_snapshot = utils.create_group_snapshot(
             self.context,
             group_id=self.group.id,
-            status='available')
+            status=fields.GroupSnapshotStatus.AVAILABLE)
         req = fakes.HTTPRequest.blank('/v3/%s/group_snapshots/%s' %
                                       (fake.PROJECT_ID, group_snapshot.id),
                                       version=GROUP_MICRO_VERSION)
@@ -431,7 +432,8 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         group_snapshot = objects.GroupSnapshot.get_by_id(self.context,
                                                          group_snapshot.id)
         self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
-        self.assertEqual('deleting', group_snapshot.status)
+        self.assertEqual(fields.GroupSnapshotStatus.DELETING,
+                         group_snapshot.status)
 
         group_snapshot.destroy()
 
@@ -439,7 +441,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
         group_snapshot = utils.create_group_snapshot(
             self.context,
             group_id=self.group.id,
-            status='available')
+            status=fields.GroupSnapshotStatus.AVAILABLE)
 
         group2 = utils.create_group(
             self.context, status='creating',

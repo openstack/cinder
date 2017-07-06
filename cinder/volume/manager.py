@@ -3637,11 +3637,12 @@ class VolumeManager(manager.CleanableManager,
                         fields.SnapshotStatus.ERROR_DELETING,
                         fields.SnapshotStatus.ERROR] and
                             model_update['status'] not in
-                            ['error_deleting', 'error']):
+                            [fields.GroupSnapshotStatus.ERROR_DELETING,
+                             fields.GroupSnapshotStatus.ERROR]):
                         model_update['status'] = snap_model['status']
 
             if model_update:
-                if model_update['status'] == 'error':
+                if model_update['status'] == fields.GroupSnapshotStatus.ERROR:
                     msg = (_('Error occurred when creating group_snapshot '
                              '%s.') % group_snapshot.id)
                     LOG.error(msg)
@@ -3652,7 +3653,7 @@ class VolumeManager(manager.CleanableManager,
 
         except exception.CinderException:
             with excutils.save_and_reraise_exception():
-                group_snapshot.status = 'error'
+                group_snapshot.status = fields.GroupSnapshotStatus.ERROR
                 group_snapshot.save()
                 # Update snapshot status to 'error' if driver returns
                 # None for snapshots_model_update.
@@ -3690,7 +3691,7 @@ class VolumeManager(manager.CleanableManager,
             snapshot.progress = '100%'
             snapshot.save()
 
-        group_snapshot.status = 'available'
+        group_snapshot.status = fields.GroupSnapshotStatus.AVAILABLE
         group_snapshot.save()
 
         LOG.info("group_snapshot %s: created successfully",
@@ -3821,7 +3822,7 @@ class VolumeManager(manager.CleanableManager,
 
         except exception.CinderException:
             with excutils.save_and_reraise_exception():
-                group_snapshot.status = 'error'
+                group_snapshot.status = fields.GroupSnapshotStatus.ERROR
                 group_snapshot.save()
                 # Update snapshot status to 'error' if driver returns
                 # None for snapshots_model_update.
