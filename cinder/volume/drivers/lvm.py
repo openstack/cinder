@@ -292,10 +292,16 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 lvm_conf_file = None
 
             try:
+                lvm_type = self.configuration.lvm_type
+                if lvm_type == 'auto':
+                    if volutils.supports_thin_provisioning():
+                        lvm_type = 'thin'
+                    else:
+                        lvm_type = 'default'
                 self.vg = lvm.LVM(
                     self.configuration.volume_group,
                     root_helper,
-                    lvm_type=self.configuration.lvm_type,
+                    lvm_type=lvm_type,
                     executor=self._execute,
                     lvm_conf=lvm_conf_file,
                     suppress_fd_warn=(
