@@ -21,6 +21,7 @@ import os
 import tempfile
 
 import mock
+from mock import call
 from oslo_utils import imageutils
 from oslo_utils import units
 
@@ -317,43 +318,67 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(expect, res)
         mock_enable.assert_not_called()
 
-    @ddt.data(True, False)
+    @ddt.data([True, False], [False, False], [True, True])
+    @ddt.unpack
     @common_mocks
-    def test_enable_replication(self, journaling_enabled):
+    def test_enable_replication(self, exclusive_lock_enabled,
+                                journaling_enabled):
         """Test _enable_replication method.
 
         We want to confirm that if the Ceph backend has globally enabled
-        journaling we don't try to enable it again and we properly indicate
-        with our return value that it was already enabled.
+        'exclusive_lock' and 'journaling'. we don't try to enable them
+        again and we properly indicate with our return value that they were
+        already enabled.
+        'journaling' depends on 'exclusive_lock', so if 'exclusive-lock'
+        is disabled, 'journaling' can't be enabled so the '[False. True]'
+        case is impossible.
+        In this test case, there are three test scenarios:
+        1. 'exclusive_lock' and 'journaling' both enabled,
+        'image.features()' will not be called.
+        2. 'exclusive_lock' enabled, 'journaling' disabled,
+        'image.features()' will be only called for 'journaling'.
+        3. 'exclusice_lock' and 'journaling' are both disabled,
+        'image.features()'will be both called for 'exclusive-lock' and
+        'journaling' in this order.
         """
         journaling_feat = 1
+        exclusive_lock_feat = 2
         self.driver.rbd.RBD_FEATURE_JOURNALING = journaling_feat
+        self.driver.rbd.RBD_FEATURE_EXCLUSIVE_LOCK = exclusive_lock_feat
         image = self.mock_proxy.return_value.__enter__.return_value
+        image.features.return_value = 0
+        if exclusive_lock_enabled:
+            image.features.return_value += exclusive_lock_feat
         if journaling_enabled:
-            image.features.return_value = journaling_feat
-        else:
-            image.features.return_value = 0
-
-        enabled = str(journaling_enabled).lower()
+            image.features.return_value += journaling_feat
+        journaling_status = str(journaling_enabled).lower()
+        exclusive_lock_status = str(exclusive_lock_enabled).lower()
         expected = {
-            'replication_driver_data': '{"had_journaling":%s}' % enabled,
+            'replication_driver_data': ('{"had_exclusive_lock":%s,'
+                                        '"had_journaling":%s}' %
+                                        (exclusive_lock_status,
+                                         journaling_status)),
             'replication_status': 'enabled',
         }
-
         res = self.driver._enable_replication(self.volume_a)
         self.assertEqual(expected, res)
-
-        if journaling_enabled:
+        if exclusive_lock_enabled and journaling_enabled:
             image.update_features.assert_not_called()
-        else:
+        elif exclusive_lock_enabled and not journaling_enabled:
             image.update_features.assert_called_once_with(journaling_feat,
                                                           True)
+        else:
+            calls = [call(exclusive_lock_feat, True),
+                     call(journaling_feat, True)]
+            image.update_features.assert_has_calls(calls, any_order=False)
         image.mirror_image_enable.assert_called_once_with()
 
-    @ddt.data('true', 'false')
+    @ddt.data(['false', 'true'], ['true', 'true'], ['false', 'false'])
+    @ddt.unpack
     @common_mocks
-    def test_disable_replication(self, had_journaling):
-        driver_data = '{"had_journaling": %s}' % had_journaling
+    def test_disable_replication(self, had_journaling, had_exclusive_lock):
+        driver_data = ('{"had_journaling": %s,"had_exclusive_lock": %s}' %
+                       (had_journaling, had_exclusive_lock))
         self.volume_a.replication_driver_data = driver_data
         image = self.mock_proxy.return_value.__enter__.return_value
 
@@ -363,11 +388,16 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(expected, res)
         image.mirror_image_disable.assert_called_once_with(False)
 
-        if had_journaling == 'true':
+        if had_journaling == 'true' and had_exclusive_lock == 'true':
             image.update_features.assert_not_called()
-        else:
+        elif had_journaling == 'false' and had_exclusive_lock == 'true':
             image.update_features.assert_called_once_with(
                 self.driver.rbd.RBD_FEATURE_JOURNALING, False)
+        else:
+            calls = [call(self.driver.rbd.RBD_FEATURE_JOURNALING, False),
+                     call(self.driver.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
+                          False)]
+            image.update_features.assert_has_calls(calls, any_order=False)
 
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_enable_replication')

@@ -560,12 +560,20 @@ class RBDDriver(driver.CloneableImageVD,
         """
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
+            had_exclusive_lock = (image.features() &
+                                  self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK)
             had_journaling = image.features() & self.rbd.RBD_FEATURE_JOURNALING
+            if not had_exclusive_lock:
+                image.update_features(self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
+                                      True)
             if not had_journaling:
                 image.update_features(self.rbd.RBD_FEATURE_JOURNALING, True)
             image.mirror_image_enable()
 
-        driver_data = self._dumps({'had_journaling': bool(had_journaling)})
+        driver_data = self._dumps({
+            'had_journaling': bool(had_journaling),
+            'had_exclusive_lock': bool(had_exclusive_lock)
+        })
         return {'replication_status': fields.ReplicationStatus.ENABLED,
                 'replication_driver_data': driver_data}
 
@@ -871,11 +879,15 @@ class RBDDriver(driver.CloneableImageVD,
         with RBDVolumeProxy(self, vol_name) as image:
             image.mirror_image_disable(False)
             driver_data = json.loads(volume.replication_driver_data)
-            # If we didn't have journaling enabled when we enabled replication
-            # we must remove journaling since it we added it for the
-            # replication
+            # If 'journaling' and/or 'exclusive-lock' have
+            # been enabled in '_enable_replication',
+            # they will be disabled here. If not, it will keep
+            # what it was before.
             if not driver_data['had_journaling']:
                 image.update_features(self.rbd.RBD_FEATURE_JOURNALING, False)
+            if not driver_data['had_exclusive_lock']:
+                image.update_features(self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
+                                      False)
         return {'replication_status': fields.ReplicationStatus.DISABLED,
                 'replication_driver_data': None}
 
@@ -906,7 +918,7 @@ class RBDDriver(driver.CloneableImageVD,
         return True, update
 
     def _dumps(self, obj):
-        return json.dumps(obj, separators=(',', ':'))
+        return json.dumps(obj, separators=(',', ':'), sort_keys=True)
 
     def _exec_on_volume(self, volume_name, remote, operation, *args, **kwargs):
         @utils.retry(rbd.ImageBusy,
