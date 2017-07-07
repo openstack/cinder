@@ -772,7 +772,7 @@ class NetAppESeriesLibrary(object):
         :param label: the label for the snapshot group
         :param volume: an E-Series volume
         :param percentage_capacity: an optional repository percentage
-        :return a new snapshot group
+        :return: a new snapshot group
         """
 
         # Newer versions of the REST API are capable of automatically finding
@@ -804,7 +804,7 @@ class NetAppESeriesLibrary(object):
         """Find all snapshot groups associated with an E-Series volume
 
         :param vol: An E-Series volume object
-        :return A list of snapshot groups
+        :return: A list of snapshot groups
         :raise NetAppDriverException: if the list of snapshot groups cannot be
         retrieved
         """
@@ -819,7 +819,7 @@ class NetAppESeriesLibrary(object):
         snapshot defined on it.
 
         :param vol: An E-Series volume object
-        :return A valid snapshot group that has available snapshot capacity,
+        :return: A valid snapshot group that has available snapshot capacity,
          or None
         :raise NetAppDriverException: if the list of snapshot groups cannot be
         retrieved
@@ -947,7 +947,7 @@ class NetAppESeriesLibrary(object):
         purged from the backend when no other snapshots are dependent upon it.
 
         :param es_snapshot: an E-Series snapshot image
-        :return None
+        :return: None
         """
         index = self._get_soft_delete_map()
         snapgroup_ref = es_snapshot['pitGroupRef']
@@ -1027,7 +1027,7 @@ class NetAppESeriesLibrary(object):
         :param images: a list of E-Series snapshot images
         :param bitset: a bitset representing the snapshot images that are
         no longer needed on the backend (and may be deleted when possible)
-        :return (dict, list) a tuple containing a dict of updates for the
+        :return (dict, list): a tuple containing a dict of updates for the
         index and a list of keys to remove from the index
         """
         snap_grp_ref = images[0]['pitGroupRef']
@@ -1867,7 +1867,7 @@ class NetAppESeriesLibrary(object):
 
         :param es_cg: E-Series consistency group
         :param snap_seq_num: unique sequence number of the cgsnapshot
-        :return an update to the snapshot index
+        :return: an update to the snapshot index
         """
 
         index = self._get_soft_delete_map()
@@ -1914,7 +1914,7 @@ class NetAppESeriesLibrary(object):
         consistency group
         :param bitset: the bitset representing which sequence numbers are
         marked for deletion
-        :return update for the snapshot index
+        :return: update for the snapshot index
         """
         deleted = 0
         # Order by their sequence number, from oldest to newest
@@ -2003,7 +2003,7 @@ class NetAppESeriesLibrary(object):
         consistency group
         :param remove_volumes: A list of Cinder volumes to remove from the
         consistency group
-        :return None
+        :return: None
         """
         for volume in remove_volumes:
             es_vol = self._get_volume(volume['id'])
