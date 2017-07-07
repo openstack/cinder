@@ -4394,17 +4394,13 @@ class VolumeManager(manager.CleanableManager,
         NOTE if the attachment reference is None, we remove all existing
         attachments for the specified volume object.
         """
-        has_shared_connection = False
         attachment_ref = objects.VolumeAttachment.get_by_id(context,
                                                             attachment_id)
         if not attachment_ref:
             for attachment in VA_LIST.get_all_by_volume_id(context, vref.id):
-                if self._do_attachment_delete(context, vref, attachment):
-                    has_shared_connection = True
+                self._do_attachment_delete(context, vref, attachment)
         else:
-            has_shared_connection = (
-                self._do_attachment_delete(context, vref, attachment_ref))
-        return has_shared_connection
+            self._do_attachment_delete(context, vref, attachment_ref)
 
     def _do_attachment_delete(self, context, vref, attachment):
         utils.require_driver_initialized(self.driver)
@@ -4417,7 +4413,8 @@ class VolumeManager(manager.CleanableManager,
                       {'attachment_id': attachment.id},
                       resource=vref)
             self.driver.detach_volume(context, vref, attachment)
-            self.driver.remove_export(context.elevated(), vref)
+            if not has_shared_connection:
+                self.driver.remove_export(context.elevated(), vref)
         except Exception:
             # FIXME(jdg): Obviously our volume object is going to need some
             # changes to deal with multi-attach and figuring out how to
@@ -4434,7 +4431,6 @@ class VolumeManager(manager.CleanableManager,
                                                  vref.id,
                                                  'attached_mode')
         self._notify_about_volume_usage(context, vref, "detach.end")
-        return has_shared_connection
 
     # Replication group API (Tiramisu)
     def enable_replication(self, ctxt, group):
