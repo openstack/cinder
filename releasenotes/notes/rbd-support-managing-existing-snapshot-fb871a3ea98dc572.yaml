@@ -1,0 +1,3 @@
+---
+features:
+  - Allow rbd driver to manage existing snapshot.
