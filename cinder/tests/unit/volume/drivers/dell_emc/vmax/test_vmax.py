@@ -24,6 +24,7 @@ import mock
 import requests
 import six
 
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_snapshot
@@ -37,7 +38,6 @@ from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
-
 
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 
@@ -113,7 +113,7 @@ class VMAXCommonData(object):
                       'hostlunid': 3}
 
     # cinder volume info
-    ctx = 'context'
+    ctx = context.RequestContext('admin', 'fake', True)
     provider_location = {'array': six.text_type(array),
                          'device_id': '00001'}
 
@@ -123,10 +123,15 @@ class VMAXCommonData(object):
     snap_location = {'snap_name': '12345',
                      'source_id': '00001'}
 
+    test_volume_type = fake_volume.fake_volume_type_obj(
+        context=ctx
+    )
+
     test_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
         provider_location=six.text_type(provider_location),
-        host=fake_host, volume_type_id='1e5177e7-95e5-4a0f-b170-e45f4b469f6a')
+        volume_type=test_volume_type,
+        host=fake_host)
 
     test_clone_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
@@ -685,9 +690,11 @@ class VMAXUtilsTest(test.TestCase):
         with mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                                return_value={'specs'}) as type_mock:
             # path 1: volume_type_id not passed in
+            self.data.test_volume.volume_type_id = (
+                self.data.test_volume_type.id)
             self.utils.get_volumetype_extra_specs(self.data.test_volume)
             volume_types.get_volume_type_extra_specs.assert_called_once_with(
-                self.data.test_volume.volume_type_id)
+                self.data.test_volume_type.id)
             type_mock.reset_mock()
             # path 2: volume_type_id passed in
             self.utils.get_volumetype_extra_specs(self.data.test_volume, '123')
@@ -1925,6 +1932,43 @@ class VMAXRestTest(test.TestCase):
             array, source_id, tgt_only=True)
         self.assertEqual(ref_sessions, sessions)
 
+    def test_update_storagegroup_qos(self):
+        sg_qos = {"srp": self.data.srp, "num_of_vols": 2, "cap_gb": 2,
+                  "storageGroupId": "OS-QOS-SG",
+                  "slo": self.data.slo, "workload": self.data.workload,
+                  "hostIOLimit": {"host_io_limit_io_sec": "4000",
+                                  "dynamicDistribution": "Always",
+                                  "host_io_limit_mb_sec": "4000"}}
+        self.data.sg_details.append(sg_qos)
+        array = self.data.array
+        extra_specs = self.data.extra_specs
+        extra_specs['qos'] = {
+            'maxIOPS': '4000', 'DistributionType': 'Always'}
+        return_value = self.rest.update_storagegroup_qos(
+            array, "OS-QOS-SG", extra_specs)
+        self.assertEqual(False, return_value)
+        extra_specs['qos'] = {
+            'DistributionType': 'onFailure', 'maxMBPS': '4000'}
+        return_value = self.rest.update_storagegroup_qos(
+            array, "OS-QOS-SG", extra_specs)
+        self.assertTrue(return_value)
+
+    def test_update_storagegroup_qos_exception(self):
+        array = self.data.array
+        storage_group = self.data.defaultstoragegroup_name
+        extra_specs = self.data.extra_specs
+        extra_specs['qos'] = {
+            'maxIOPS': '4000', 'DistributionType': 'Wrong', 'maxMBPS': '4000'}
+        with mock.patch.object(self.rest, 'check_status_code_success',
+                               side_effect=[None, None, None, Exception]):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.rest.update_storagegroup_qos, array,
+                              storage_group, extra_specs)
+            extra_specs['qos']['DistributionType'] = 'Always'
+            return_value = self.rest.update_storagegroup_qos(
+                array, "OS-QOS-SG", extra_specs)
+            self.assertFalse(return_value)
+
 
 class VMAXProvisionTest(test.TestCase):
     def setUp(self):
@@ -2477,7 +2521,7 @@ class VMAXCommonTest(test.TestCase):
 
     def test_set_config_file_and_get_extra_specs(self):
         volume = self.data.test_volume
-        extra_specs, config_file = (
+        extra_specs, config_file, qos_specs = (
             self.common._set_config_file_and_get_extra_specs(volume))
         self.assertEqual(self.data.vol_type_extra_specs, extra_specs)
         self.assertEqual(self.fake_xml, config_file)
@@ -2487,7 +2531,7 @@ class VMAXCommonTest(test.TestCase):
         ref_config = '/etc/cinder/cinder_dell_emc_config.xml'
         with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
                                return_value=None):
-            extra_specs, config_file = (
+            extra_specs, config_file, qos_specs = (
                 self.common._set_config_file_and_get_extra_specs(volume))
             self.assertIsNone(extra_specs)
             self.assertEqual(ref_config, config_file)

@@ -709,6 +709,80 @@ class VMAXRest(object):
 
         self.wait_for_job('Remove vol from sg', status_code, job, extra_specs)
 
+    def update_storagegroup_qos(self, array, storage_group_name, extra_specs):
+        """Update the storagegroupinstance with qos details.
+
+        If maxIOPS or maxMBPS is in extra_specs, then DistributionType can be
+        modified in addition to maxIOPS or/and maxMBPS
+        If maxIOPS or maxMBPS is NOT in extra_specs, we check to see if
+        either is set in StorageGroup. If so, then DistributionType can be
+        modified
+        :param array: the array serial number
+        :param storage_group_name: the storagegroup instance name
+        :param extra_specs: extra specifications
+        :returns: bool, True if updated, else False
+        """
+        return_value = False
+        sg_details = self.get_storage_group(array, storage_group_name)
+        sg_qos_details = None
+        sg_maxiops = None
+        sg_maxmbps = None
+        sg_distribution_type = None
+        maxiops = "nolimit"
+        maxmbps = "nolimit"
+        distribution_type = "never"
+        propertylist = []
+        try:
+            sg_qos_details = sg_details['hostIOLimit']
+            sg_maxiops = sg_qos_details['host_io_limit_io_sec']
+            sg_maxmbps = sg_qos_details['host_io_limit_mb_sec']
+            sg_distribution_type = sg_qos_details['dynamicDistribution']
+        except KeyError:
+            LOG.debug("Unable to get storage group QoS details.")
+        if 'maxIOPS' in extra_specs.get('qos'):
+            maxiops = extra_specs['qos']['maxIOPS']
+            if maxiops != sg_maxiops:
+                propertylist.append(maxiops)
+        if 'maxMBPS' in extra_specs.get('qos'):
+            maxmbps = extra_specs['qos']['maxMBPS']
+            if maxmbps != sg_maxmbps:
+                propertylist.append(maxmbps)
+        if 'DistributionType' in extra_specs.get('qos') and (
+                propertylist or sg_qos_details):
+            dynamic_list = ['never', 'onfailure', 'always']
+            if (extra_specs.get('qos').get('DistributionType').lower() not
+                    in dynamic_list):
+                exception_message = (_(
+                    "Wrong Distribution type value %(dt)s entered. "
+                    "Please enter one of: %(dl)s") %
+                    {'dt': extra_specs.get('qos').get('DistributionType'),
+                     'dl': dynamic_list
+                     })
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+            else:
+                distribution_type = extra_specs['qos']['DistributionType']
+                if distribution_type != sg_distribution_type:
+                    propertylist.append(distribution_type)
+        if propertylist:
+            payload = {"editStorageGroupActionParam": {
+                "setHostIOLimitsParam": {
+                    "host_io_limit_io_sec": maxiops,
+                    "host_io_limit_mb_sec": maxmbps,
+                    "dynamicDistribution": distribution_type}}}
+            status_code, message = (
+                self.modify_storage_group(array, storage_group_name, payload))
+            try:
+                self.check_status_code_success('Add qos specs', status_code,
+                                               message)
+                return_value = True
+            except Exception as e:
+                LOG.error("Error setting qos. Exception received was: "
+                          "%(e)s", {'e': e})
+                return_value = False
+        return return_value
+
     def get_vmax_default_storage_group(self, array, srp, slo, workload):
         """Get the default storage group.
 

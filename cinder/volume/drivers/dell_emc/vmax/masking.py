@@ -365,6 +365,12 @@ class VMAXMasking(object):
                    % {'storagegroup_name': storagegroup_name,
                       'volume_name': masking_view_dict[utils.VOL_NAME]})
             LOG.error(msg)
+
+        # If qos exists, update storage group to reflect qos parameters
+        if 'qos' in extra_specs:
+            self.rest.update_storagegroup_qos(
+                serial_number, storagegroup_name, extra_specs)
+
         return msg
 
     def _check_existing_storage_group(
@@ -1244,6 +1250,10 @@ class VMAXMasking(object):
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
+        # If qos exists, update storage group to reflect qos parameters
+        if 'qos' in extra_specs:
+            self.rest.update_storagegroup_qos(
+                serial_number, storagegroup_name, extra_specs)
 
         return storagegroup_name
 

@@ -650,15 +650,19 @@ class VMAXCommon(object):
         :returns: dict -- the extra specs dict
         :returns: string -- configuration file
         """
+        qos_specs = {}
         extra_specs = self.utils.get_volumetype_extra_specs(
             volume, volume_type_id)
+        if hasattr(volume, "volume_type") and (
+                volume.volume_type and volume.volume_type.qos_specs):
+            qos_specs = volume.volume_type.qos_specs
         config_group = None
         # If there are no extra specs then the default case is assumed.
         if extra_specs:
             config_group = self.configuration.config_group
         config_file = self._register_config_file_from_config_group(
             config_group)
-        return extra_specs, config_file
+        return extra_specs, config_file, qos_specs
 
     def _find_device_on_array(self, volume, extra_specs):
         """Given the volume get the VMAX device Id.
@@ -812,7 +816,7 @@ class VMAXCommon(object):
         :raises VolumeBackendAPIException:
         """
         try:
-            extra_specs, config_file = (
+            extra_specs, config_file, qos_specs = (
                 self._set_config_file_and_get_extra_specs(
                     volume, volume_type_id))
             array_info = self.utils.parse_file_to_get_array_map(
@@ -826,6 +830,9 @@ class VMAXCommon(object):
             self.rest.set_rest_credentials(array_info)
 
             extra_specs = self._set_vmax_extra_specs(extra_specs, array_info)
+            if (qos_specs and qos_specs.specs
+                    and qos_specs.consumer != "front-end"):
+                extra_specs['qos'] = qos_specs.specs
         except Exception:
             exception_message = (_(
                 "Unable to get configuration information necessary to "
@@ -1151,7 +1158,7 @@ class VMAXCommon(object):
         LOG.debug("Retries are set at: %(retries)s.",
                   {'retries': self.retries})
 
-        # set pool_name slo and workload
+        # Set pool_name slo and workload
         if 'pool_name' in extra_specs:
             pool_name = extra_specs['pool_name']
         else:
@@ -1173,7 +1180,7 @@ class VMAXCommon(object):
         pool_details = pool_name.split('+')
         slo_from_extra_spec = pool_details[0]
         workload_from_extra_spec = pool_details[1]
-        # standardize slo and workload 'NONE' naming conventions
+        # Standardize slo and workload 'NONE' naming conventions
         if workload_from_extra_spec.lower() == 'none':
             workload_from_extra_spec = 'NONE'
         if slo_from_extra_spec.lower() == 'none':

@@ -77,6 +77,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
               - rename and restructure driver (bp vmax-rename-dell-emc)
         3.0.0 - REST based driver
               - Retype (storage-assisted migration)
+              - QoS support
     """
 
     VERSION = "3.0.0"
