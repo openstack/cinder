@@ -2215,11 +2215,11 @@ class VolumeManager(manager.CleanableManager,
                     self.detach_volume(ctxt, volume.id, attachment.id)
                 except Exception as ex:
                     LOG.error("Detach migration source volume "
-                              "%(volume.id)s from instance "
-                              "%(instance_id)s failed: %(err)s",
+                              "%(volume.id)s from attachment "
+                              "%(attachment.id)s failed: %(err)s",
                               {'err': ex,
                                'volume.id': volume.id,
-                               'instance_id': attachment.id},
+                               'attachment.id': attachment.id},
                               resource=volume)
 
         # Give driver (new_volume) a chance to update things as needed
