@@ -190,7 +190,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             size = snapshot.volume_size
 
         size = utils.as_int(size)
-        LOG.debug("Validating volume size '%(size)s' using %(functors)s" %
+        LOG.debug("Validating volume size '%(size)s' using %(functors)s",
                   {'size': size,
                    'functors': ", ".join([common.make_pretty_name(func)
                                           for func in validator_functors])})
@@ -274,7 +274,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             LOG.debug("Retrieved volume_type from glance image metadata. "
                       "image_id: %(image_id)s, "
                       "image property: %(image_volume_type)s, "
-                      "volume_type: %(volume_type)s." %
+                      "volume_type: %(volume_type)s.",
                       {'image_id': image_id,
                        'image_volume_type': image_volume_type,
                        'volume_type': volume_type})

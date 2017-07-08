@@ -2226,7 +2226,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def _call_host_define(self, host,
                           chap_name=None, chap_secret=None, domain_name=None):
         """Call host_define using XCLI."""
-        LOG.debug("host_define with domain: %s)" % domain_name)
+        LOG.debug("host_define with domain: %s)", domain_name)
         if domain_name:
             if chap_name:
                 return self._call_xiv_xcli(
@@ -2292,7 +2292,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
     def _get_pool_domain(self, connector):
         pool_name = self.storage_info[storage.FLAG_KEYS['storage_pool']]
-        LOG.debug("pool name from configuration: %s" % pool_name)
+        LOG.debug("pool name from configuration: %s", pool_name)
         domain = None
         try:
             domain = self._call_xiv_xcli(
@@ -2520,7 +2520,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         fc_targets = list(set(target_wwpns))
         fc_targets.sort(key=self._sort_last_digit)
-        LOG.debug("fc_targets : %s" % fc_targets)
+        LOG.debug("fc_targets : %s", fc_targets)
         return fc_targets
 
     def _sort_last_digit(self, a):
@@ -2638,7 +2638,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         certs = certificate.CertificateCollector()
         path = certs.collect_certificate()
         try:
-            LOG.debug('connect_multiendpoint_ssl with: %s' % address)
+            LOG.debug('connect_multiendpoint_ssl with: %s', address)
             xcli = client.XCLIClient.connect_multiendpoint_ssl(
                 user,
                 clear_pass,

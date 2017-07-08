@@ -812,8 +812,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             LOG.debug(
                                 'delete remaining the LD from '
                                 'ldset_controller_node. '
-                                'Ldset Name=%s.'
-                                % ldset_controller_node_name)
+                                'Ldset Name=%s.', ldset_controller_node_name)
                             self._cli.delldsetld(ldset_controller_node_name,
                                                  ldname)
                 # assign the LD to LD Set.
@@ -885,7 +884,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                         self._properties['ld_name_format']))
 
             if ldname not in lds:
-                LOG.debug('LD `%s` already unbound?' % ldname)
+                LOG.debug('LD `%s` already unbound?', ldname)
                 return
 
             ld = lds[ldname]

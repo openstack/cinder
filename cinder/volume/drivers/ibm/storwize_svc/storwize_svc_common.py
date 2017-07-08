@@ -919,7 +919,7 @@ class StorwizeHelpers(object):
             try:
                 resp = self.ssh.lshost(host=name)
             except exception.VolumeBackendAPIException as ex:
-                LOG.debug("Exception message: %s" % ex.msg)
+                LOG.debug("Exception message: %s", ex.msg)
                 if 'CMMVC5754E' in ex.msg:
                     LOG.debug("CMMVC5754E found in CLI exception.")
                     # CMMVC5754E: The specified object does not exist

@@ -1439,8 +1439,8 @@ class HPE3PARCommon(object):
             for license in valid_licenses:
                 if license_to_check in license.get('name'):
                     return True
-            LOG.debug(("'%(capability)s' requires a '%(license)s' "
-                       "license which is not installed.") %
+            LOG.debug("'%(capability)s' requires a '%(license)s' "
+                      "license which is not installed.",
                       {'capability': capability,
                        'license': license_to_check})
         return False

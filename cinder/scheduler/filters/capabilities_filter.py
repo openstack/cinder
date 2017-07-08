@@ -55,7 +55,7 @@ class CapabilitiesFilter(filters.BaseBackendFilter):
                 try:
                     cap = cap[scope[index]]
                 except (TypeError, KeyError):
-                    LOG.debug("Backend doesn't provide capability '%(cap)s' " %
+                    LOG.debug("Backend doesn't provide capability '%(cap)s' ",
                               {'cap': scope[index]})
                     return False
 
