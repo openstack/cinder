@@ -141,7 +141,8 @@ class VMAXMasking(object):
         default_sg_name = self.utils.get_default_storage_group_name(
             masking_view_dict[utils.SRP],
             masking_view_dict[utils.SLO],
-            masking_view_dict[utils.WORKLOAD])
+            masking_view_dict[utils.WORKLOAD],
+            masking_view_dict[utils.DISABLECOMPRESSION])
 
         check_vol = self.rest.is_volume_in_storagegroup(
             serial_number, device_id, default_sg_name)
@@ -352,12 +353,14 @@ class VMAXMasking(object):
             slo = None
         else:
             slo = extra_specs[utils.SLO]
+        do_disable_compression = (
+            masking_view_dict[utils.DISABLECOMPRESSION])
         storagegroup = self.rest.get_storage_group(
             serial_number, storagegroup_name)
         if storagegroup is None:
             storagegroup = self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,
-                extra_specs)
+                extra_specs, do_disable_compression)
 
         if storagegroup is None:
             msg = ("Cannot get or create a storage group: "
@@ -1210,16 +1213,19 @@ class VMAXMasking(object):
         :param volume_name: the volume name
         :param extra_specs: the extra specifications
         """
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
         storagegroup_name = self.get_or_create_default_storage_group(
             serial_number, extra_specs[utils.SRP], extra_specs[utils.SLO],
-            extra_specs[utils.WORKLOAD], extra_specs)
+            extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression)
 
         self._check_adding_volume_to_storage_group(
             serial_number, device_id, storagegroup_name, volume_name,
             extra_specs)
 
     def get_or_create_default_storage_group(
-            self, serial_number, srp, slo, workload, extra_specs):
+            self, serial_number, srp, slo, workload, extra_specs,
+            do_disable_compression=False):
         """Get or create a default storage group.
 
         :param serial_number: the array serial number
@@ -1227,12 +1233,13 @@ class VMAXMasking(object):
         :param slo: the SLO
         :param workload: the workload
         :param extra_specs: extra specifications
+        :param do_disable_compression: flag for compression
         :returns: storagegroup_name
         :raises: VolumeBackendAPIException
         """
         storagegroup, storagegroup_name = (
             self.rest.get_vmax_default_storage_group(
-                serial_number, srp, slo, workload))
+                serial_number, srp, slo, workload, do_disable_compression))
         if storagegroup is None:
             self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,

@@ -19,6 +19,7 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 
 from cinder import exception
@@ -854,6 +855,7 @@ class VMAXCommon(object):
         unique_name = self.utils.truncate_string(extra_specs[utils.SRP], 12)
         protocol = self.utils.get_short_protocol_type(self.protocol)
         short_host_name = self.utils.get_host_short_name(host_name)
+        masking_view_dict[utils.DISABLECOMPRESSION] = False
         slo = extra_specs[utils.SLO]
         workload = extra_specs[utils.WORKLOAD]
         short_pg_name = self.utils.get_pg_short_name(
@@ -877,6 +879,12 @@ class VMAXCommon(object):
                    'srpName': unique_name,
                    'combo': slo_wl_combo,
                    'pg': short_pg_name})
+            do_disable_compression = self.utils.is_compression_disabled(
+                extra_specs)
+            if do_disable_compression:
+                child_sg_name = ("%(child_sg_name)s-CD"
+                                 % {'child_sg_name': child_sg_name})
+                masking_view_dict[utils.DISABLECOMPRESSION] = True
         else:
             child_sg_name = (
                 "OS-%(shortHostName)s-No_SLO-%(pg)s"
@@ -1092,9 +1100,13 @@ class VMAXCommon(object):
                    'array': array,
                    'size': volume_size})
 
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+
         storagegroup_name = self.masking.get_or_create_default_storage_group(
             array, extra_specs[utils.SRP], extra_specs[utils.SLO],
-            extra_specs[utils.WORKLOAD], extra_specs)
+            extra_specs[utils.WORKLOAD], extra_specs,
+            do_disable_compression)
         try:
             volume_dict = self.provision.create_volume_from_sg(
                 array, volume_name, storagegroup_name,
@@ -1187,6 +1199,14 @@ class VMAXCommon(object):
             slo_from_extra_spec = None
         extra_specs[utils.SLO] = slo_from_extra_spec
         extra_specs[utils.WORKLOAD] = workload_from_extra_spec
+        if self.rest.is_compression_capable(extra_specs[utils.ARRAY]):
+            if extra_specs.get(utils.DISABLECOMPRESSION):
+                # If not True remove it.
+                if not strutils.bool_from_string(
+                        extra_specs[utils.DISABLECOMPRESSION]):
+                    extra_specs.pop(utils.DISABLECOMPRESSION, None)
+        else:
+            extra_specs.pop(utils.DISABLECOMPRESSION, None)
 
         LOG.debug("SRP is: %(srp)s "
                   "Array is: %(array)s "
@@ -1536,10 +1556,11 @@ class VMAXCommon(object):
             self.rest.rename_volume(
                 extra_specs[utils.ARRAY], device_id, volume_id)
 
-    def retype(self, volume, host):
+    def retype(self, volume, new_type, host):
         """Migrate volume to another host using retype.
 
         :param volume: the volume object including the volume_type_id
+        :param new_type: the new volume type.
         :param host: The host dict holding the relevant target(destination)
             information
         :returns: boolean -- True if retype succeeded, False if error
@@ -1558,23 +1579,30 @@ class VMAXCommon(object):
             return False
 
         return self._slo_workload_migration(device_id, volume, host,
-                                            volume_name, extra_specs)
+                                            volume_name, new_type, extra_specs)
 
     def _slo_workload_migration(self, device_id, volume, host,
-                                volume_name, extra_specs):
+                                volume_name, new_type, extra_specs):
         """Migrate from SLO/Workload combination to another.
 
         :param device_id: the volume device id
         :param volume: the volume object
         :param host: the host dict
         :param volume_name: the name of the volume
+        :param new_type: the type to migrate to
         :param extra_specs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        is_compression_disabled = self.utils.is_compression_disabled(
+            extra_specs)
+        # Check if old type and new type have different compression types
+        do_change_compression = (self.utils.change_compression_type(
+            is_compression_disabled, new_type))
         is_valid, target_slo, target_workload = (
             self._is_valid_for_storage_assisted_migration(
                 device_id, host, extra_specs[utils.ARRAY],
-                extra_specs[utils.SRP], volume_name))
+                extra_specs[utils.SRP], volume_name,
+                do_change_compression))
 
         if not is_valid:
             LOG.error(
@@ -1582,23 +1610,24 @@ class VMAXCommon(object):
                 "assisted migration using retype.",
                 {'name': volume_name})
             return False
-        if volume.host != host['host']:
+        if volume.host != host['host'] or do_change_compression:
             LOG.debug(
                 "Retype Volume %(name)s from source host %(sourceHost)s "
-                "to target host %(targetHost)s. ",
+                "to target host %(targetHost)s. Compression change is %(cc)r.",
                 {'name': volume_name,
                  'sourceHost': volume.host,
-                 'targetHost': host['host']})
+                 'targetHost': host['host'],
+                 'cc': do_change_compression})
             return self._migrate_volume(
                 extra_specs[utils.ARRAY], device_id,
                 extra_specs[utils.SRP], target_slo,
-                target_workload, volume_name, extra_specs)
+                target_workload, volume_name, new_type, extra_specs)
 
         return False
 
     def _migrate_volume(
             self, array, device_id, srp, target_slo,
-            target_workload, volume_name, extra_specs):
+            target_workload, volume_name, new_type, extra_specs):
         """Migrate from one slo/workload combination to another.
 
         This requires moving the volume from its current SG to a
@@ -1609,23 +1638,28 @@ class VMAXCommon(object):
         :param target_slo: the target service level
         :param target_workload: the target workload
         :param volume_name: the volume name
+        :param new_type: the volume type to migrate to
         :param extra_specs: the extra specifications
         :return: bool
         """
         storagegroups = self.rest.get_storage_groups_from_volume(
             array, device_id)
         if not storagegroups:
-            LOG.warning(
-                "Volume : %(volume_name)s does not currently "
-                "belong to any storage groups.",
-                {'volume_name': volume_name})
+            LOG.warning("Volume : %(volume_name)s does not currently "
+                        "belong to any storage groups.",
+                        {'volume_name': volume_name})
         else:
             self.masking.remove_and_reset_members(
                 array, device_id, None, extra_specs, False)
 
+        target_extra_specs = new_type['extra_specs']
+        is_compression_disabled = self.utils.is_compression_disabled(
+            target_extra_specs)
+
         try:
             target_sg_name = self.masking.get_or_create_default_storage_group(
-                array, srp, target_slo, target_workload, extra_specs)
+                array, srp, target_slo, target_workload, extra_specs,
+                is_compression_disabled)
         except Exception as e:
             LOG.error("Failed to get or create storage group. "
                       "Exception received was %(e)s.", {'e': e})
@@ -1648,7 +1682,7 @@ class VMAXCommon(object):
 
     def _is_valid_for_storage_assisted_migration(
             self, device_id, host, source_array,
-            source_srp, volume_name):
+            source_srp, volume_name, do_change_compression):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param device_id: the volume device id
@@ -1656,6 +1690,7 @@ class VMAXCommon(object):
         :param source_array: the volume's current array serial number
         :param source_srp: the volume's current pool name
         :param volume_name: the name of the volume to be migrated
+        :param do_change_compression: do change compression
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -1711,12 +1746,15 @@ class VMAXCommon(object):
                                       % {'targetSlo': target_slo,
                                          'targetWorkload': target_workload})
                 if target_combination in emc_fast_setting:
-                    LOG.warning(
-                        "No action required. Volume: %(volume_name)s is "
-                        "already part of slo/workload combination: "
-                        "%(targetCombination)s.",
-                        {'volume_name': volume_name,
-                         'targetCombination': target_combination})
+                    # Check if migration is from compression to non compression
+                    # or vice versa
+                    if not do_change_compression:
+                        LOG.warning(
+                            "No action required. Volume: %(volume_name)s is "
+                            "already part of slo/workload combination: "
+                            "%(targetCombination)s.",
+                            {'volume_name': volume_name,
+                             'targetCombination': target_combination})
                     return false_ret
 
         return True, target_slo, target_workload

@@ -20,6 +20,7 @@ import re
 from xml.dom import minidom
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 
 from cinder import exception
@@ -52,6 +53,7 @@ PARENT_SG_NAME = 'parent_sg_name'
 CONNECTOR = 'connector'
 VOL_NAME = 'volume_name'
 EXTRA_SPECS = 'extra_specs'
+DISABLECOMPRESSION = 'storagetype:disablecompression'
 
 
 class VMAXUtils(object):
@@ -144,18 +146,24 @@ class VMAXUtils(object):
         return six.text_type(datetime.timedelta(seconds=int(delta)))
 
     @staticmethod
-    def get_default_storage_group_name(srp_name, slo, workload):
+    def get_default_storage_group_name(
+            srp_name, slo, workload, is_compression_disabled=False):
         """Determine default storage group from extra_specs.
 
         :param srp_name: the name of the srp on the array
         :param slo: the service level string e.g Bronze
         :param workload: the workload string e.g DSS
+        :param is_compression_disabled:  flag for disabling compression
         :returns: storage_group_name
         """
         if slo and workload:
             prefix = ("OS-%(srpName)s-%(slo)s-%(workload)s"
                       % {'srpName': srp_name, 'slo': slo,
                          'workload': workload})
+
+            if is_compression_disabled:
+                prefix += "-CD"
+
         else:
             prefix = "OS-no_SLO"
 
@@ -399,3 +407,30 @@ class VMAXUtils(object):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
         return array, device_id
+
+    @staticmethod
+    def is_compression_disabled(extra_specs):
+        """Check is compression is to be disabled.
+
+        :param extra_specs: extra specifications
+        :returns: boolean
+        """
+        do_disable_compression = False
+        if DISABLECOMPRESSION in extra_specs:
+            if strutils.bool_from_string(extra_specs[DISABLECOMPRESSION]):
+                do_disable_compression = True
+        return do_disable_compression
+
+    def change_compression_type(self, is_source_compr_disabled, new_type):
+        """Check if volume type have different compression types
+
+        :param is_source_compr_disabled: from source
+        :param new_type: from target
+        :returns: boolean
+        """
+        extra_specs = new_type['extra_specs']
+        is_target_compr_disabled = self.is_compression_disabled(extra_specs)
+        if is_target_compr_disabled == is_source_compr_disabled:
+            return False
+        else:
+            return True

@@ -463,6 +463,22 @@ class VMAXRest(object):
             remaining_capacity = None
         return remaining_capacity
 
+    def is_compression_capable(self, array):
+        """Check if array is compression capable.
+
+        :param array: array serial number
+        :returns: bool
+        """
+        is_compression_capable = False
+        target_uri = "/84/sloprovisioning/symmetrix?compressionCapable=true"
+        status_code, message = self.request(target_uri, GET)
+        self.check_status_code_success(
+            "Check if compression enabled", status_code, message)
+        if message.get('symmetrixId'):
+            if array in message['symmetrixId']:
+                is_compression_capable = True
+        return is_compression_capable
+
     def get_storage_group(self, array, storage_group_name):
         """Given a name, return storage group details.
 
@@ -565,7 +581,8 @@ class VMAXRest(object):
             array, SLOPROVISIONING, 'storagegroup', payload)
 
     def create_storage_group(self, array, storagegroup_name,
-                             srp, slo, workload, extra_specs):
+                             srp, slo, workload, extra_specs,
+                             do_disable_compression=False):
         """Create the volume in the specified storage group.
 
         :param array: the array serial number
@@ -573,6 +590,7 @@ class VMAXRest(object):
         :param srp: the SRP (String)
         :param slo: the SLO (String)
         :param workload: the workload (String)
+        :param do_disable_compression: flag for disabling compression
         :param extra_specs: additional info
         :returns: storagegroup_name - string
         """
@@ -589,6 +607,11 @@ class VMAXRest(object):
                          "volumeAttribute": {
                              "volume_size": "0",
                              "capacityUnit": "GB"}}
+            if do_disable_compression:
+                slo_param.update({"noCompression": "true"})
+            elif self.is_compression_capable(array):
+                slo_param.update({"noCompression": "false"})
+
             payload.update({"sloBasedStorageGroupParam": [slo_param]})
 
         status_code, job = self._create_storagegroup(array, payload)
@@ -783,13 +806,15 @@ class VMAXRest(object):
                 return_value = False
         return return_value
 
-    def get_vmax_default_storage_group(self, array, srp, slo, workload):
+    def get_vmax_default_storage_group(self, array, srp, slo, workload,
+                                       do_disable_compression=False):
         """Get the default storage group.
 
         :param array: the array serial number
         :param srp: the pool name
         :param slo: the SLO
         :param workload: the workload
+        :param do_disable_compression: flag for disabling compression
         :returns: the storage group dict (or None), the storage group name
         """
         storagegroup_name = self.utils.get_default_storage_group_name(
