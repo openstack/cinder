@@ -67,6 +67,8 @@ Command Line Interface Documentation
    :maxdepth: 2
 
    admin/cli-manage-volumes
+   admin/cli-set-quotas
+   admin/cli-cinder-quotas
 
 Drivers
 =======
