@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Cinder Release Notes documentation build configuration file, created by
-# sphinx-quickstart on Tue Nov  4 17:02:44 2015.
-#
 # This file is execfile()d with the current directory set to its
 # containing dir.
 #
@@ -38,7 +35,7 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'oslosphinx',
+    'openstackdocstheme',
     'reno.sphinxext',
 ]
 
@@ -55,6 +52,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
+repository_name = 'openstack/cinder'
+bug_project = 'cinder'
+bug_tag = 'doc'
 project = u'Cinder Release Notes'
 copyright = u'2015, Cinder Developers'
 
@@ -112,7 +112,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'openstackdocs'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -150,7 +150,7 @@ html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-# html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
