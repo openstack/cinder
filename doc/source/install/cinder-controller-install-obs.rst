@@ -263,7 +263,7 @@ Install and configure components
          transport_url = rabbit://openstack:RABBIT_PASS@controller
 
       Replace ``RABBIT_PASS`` with the password you chose for the
-     ``openstack`` account in ``RabbitMQ``.
+      ``openstack`` account in ``RabbitMQ``.
 
   #. In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections,
      configure Identity service access:

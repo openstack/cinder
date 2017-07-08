@@ -64,7 +64,7 @@ storage node, you must prepare the storage device.
      ``/dev/sdb`` device and rejects all other devices:
 
      .. path /etc/lvm/lvm.conf
-     .. code-block:: none
+     .. code-block:: bash
 
         devices {
         ...
