@@ -60,6 +60,14 @@ Developer Docs
    scheduler-weights
    upgrade
 
+Command Line Interface Documentation
+====================================
+
+.. toctree::
+   :maxdepth: 2
+
+   admin/cli-manage-volumes
+
 Drivers
 =======
 
