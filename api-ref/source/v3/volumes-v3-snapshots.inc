@@ -100,6 +100,7 @@ Request
    - description: description
    - name: name
    - project_id: project_id_path
+   - metadata: metadata_7
 
 Request Example
 ---------------
@@ -122,6 +123,13 @@ Response Parameters
    - metadata: metadata
    - id: id
    - size: size
+   - updated_at: updated_at
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/snapshot-create-response.json
+   :language: javascript
 
 
 List accessible snapshots
