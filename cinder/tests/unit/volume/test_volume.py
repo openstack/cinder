@@ -1929,6 +1929,16 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(fields.SnapshotStatus.DELETING, snapshot.status)
         self.volume.delete_volume(self.context, volume)
 
+    def test_create_snapshot_set_worker(self):
+        volume = tests_utils.create_volume(self.context)
+        snapshot = create_snapshot(volume.id, size=volume['size'],
+                                   ctxt=self.context,
+                                   status=fields.SnapshotStatus.CREATING)
+
+        self.volume.create_snapshot(self.context, snapshot)
+
+        volume.set_worker.assert_called_once_with()
+
     def test_cannot_delete_snapshot_with_bad_status(self):
         volume = tests_utils.create_volume(self.context, CONF.host)
         snapshot = create_snapshot(volume.id, size=volume['size'],

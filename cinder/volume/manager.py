@@ -1020,6 +1020,7 @@ class VolumeManager(manager.CleanableManager,
         msg_args = {'v_id': volume.id, 'snap_id': snapshot.id}
         LOG.info(msg, msg_args)
 
+    @objects.Snapshot.set_workers
     def create_snapshot(self, context, snapshot):
         """Creates and exports the snapshot."""
         context = context.elevated()
