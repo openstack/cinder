@@ -42,6 +42,13 @@ Installing Cinder
 
    install/index
 
+Admin Docs
+==========
+.. toctree::
+   :maxdepth: 2
+
+   admin/blockstorage
+
 Developer Docs
 ==============
 
