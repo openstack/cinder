@@ -48,7 +48,7 @@ attachment-create
 -----------------
 
 ```
-attachment-create <volume-id> <instance-uuid>...
+cinder --os-volume-api-version 3.27 attachment-create <volume-id> <instance-uuid>
 ```
 
 The attachment_create call simply creates an empty Attachment record for the
@@ -64,12 +64,12 @@ connector info and return the connection data needed to make a connection.
 
 The attachment_create call can be used in one of two ways:
 
-1. Create an empty Attachment object (reserve) attachment_create call. In this
-   case the attachment_create call requires an instance_uuid and a volume_uuid,
-   and just creates an empty attachment object and returns the UUID of said
-   attachment to the caller.
+1. Create an empty Attachment object (reserve). In this case the
+   attachment_create call requires an instance_uuid and a volume_uuid,
+   and just creates an empty Attachment object and returns the UUID of
+   Attachment to the caller.
 
-2. Create and Complete the Attachment process in one call.  The Reserve process
+2. Create and complete the Attachment process in one call.  The reserve process
    is only needed in certain cases, in many cases Nova actually has enough
    information to do everything in a single call.  Also, non-nova consumers
    typically don't require the granularity of a separate reserve at all.
@@ -81,21 +81,21 @@ The attachment_create call can be used in one of two ways:
 This full usage of attachment-create would be::
 
   usage: cinder --os-volume-api-version 3.27 attachment-create
-         <volume-id>  <instance-uuid>...
+         <volume>  <instance_uuid> ...
 
   Positional arguments:
-  <volume-id>: The ID of the volume to create attachment for
-  <instance-uuid>:    The ID of the Instance we'll be attaching to
+  <volume>                  Name or ID of volume or volumes to attach.
+  <instance_uuid>           ID of instance attaching to.
 
   Optional arguments:
-  --connect <connect>       Make an active connection using provided connector info (True or False)
-  --initiator <initiator>   iqn of the initiator attaching to
-  --ip <ip>                 ip of the system attaching to
-  --host <host>             Name of the host attaching to
-  --platform <platform>     Platform type
-  --ostype <ostype>         OS type
-  --multipath <multipath>   Use multipath
-  --mountpoint <mountpoint> Mountpoint volume will be attached at
+  --connect <connect>       Make an active connection using provided connector info (True or False).
+  --initiator <initiator>   iqn of the initiator attaching to. Default=None.
+  --ip <ip>                 ip of the system attaching to. Default=None.
+  --host <host>             Name of the host attaching to. Default=None.
+  --platform <platform>     Platform type. Default=x86_64.
+  --ostype <ostype>         OS type. Default=linux2.
+  --multipath <multipath>   Use multipath. Default=False.
+  --mountpoint <mountpoint> Mountpoint volume will be attached at. Default=None.
 
 Returns the connection information for the attachment::
 
@@ -123,7 +123,7 @@ attachment-update
 cinder --os-volume-api-version 3.27 attachment-update <attachment-id>
 ```
 
-Once we have a reserved a volume, this CLI can be used to update an attachment for a cinder volume.
+Once we have a reserved volume, this CLI can be used to update an attachment for a cinder volume.
 This call is designed to be more of an attachment completion than anything else.
 It expects the value of a connector object to notify the driver that the volume is going to be
 connected and where it's being connected to. The usage is the following::
@@ -132,16 +132,16 @@ connected and where it's being connected to. The usage is the following::
          <attachment-id> ...
 
   Positional arguments:
-    <attachment-id>          ID of attachment
+    <attachment-id>           ID of attachment.
 
   Optional arguments:
-    --initiator <initiator>   iqn of the initiator attaching to
-    --ip <ip>                 ip of the system attaching to
-    --host <host>             Name of the host attaching to
-    --platform <platform>     Platform type
-    --ostype <ostype>         OS type
-    --multipath <multipath>   Use multipath
-    --mountpoint <mountpoint> Mountpoint volume will be attached at
+    --initiator <initiator>   iqn of the initiator attaching to. Default=None.
+    --ip <ip>                 ip of the system attaching to. Default=None.
+    --host <host>             Name of the host attaching to. Default=None.
+    --platform <platform>     Platform type. Default=x86_64.
+    --ostype <ostype>         OS type. Default=linux2.
+    --multipath <multipath>   Use multipath. Default=False.
+    --mountpoint <mountpoint> Mountpoint volume will be attached at. Default=None.
 
 attachment-delete
 -----------------
