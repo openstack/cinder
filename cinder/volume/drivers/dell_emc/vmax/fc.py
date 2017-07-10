@@ -266,7 +266,9 @@ class VMAXFCDriver(driver.FibreChannelDriver):
             zone is to be removed, otherwise empty
         """
         data = {'driver_volume_type': 'fibre_channel', 'data': {}}
-        zoning_mappings = self._get_zoning_mappings(volume, connector)
+        zoning_mappings = {}
+        if connector:
+            zoning_mappings = self._get_zoning_mappings(volume, connector)
 
         if zoning_mappings:
             self.common.terminate_connection(volume, connector)
@@ -281,11 +283,6 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         :returns: dict -- the target_wwns and initiator_target_map if the
             zone is to be removed, otherwise empty
         """
-        zoning_mappings = {'port_group': None,
-                           'initiator_group': None,
-                           'target_wwns': None,
-                           'init_targ_map': None,
-                           'array': None}
         loc = volume.provider_location
         name = ast.literal_eval(loc)
         host = connector['host']
@@ -323,6 +320,7 @@ class VMAXFCDriver(driver.FibreChannelDriver):
         else:
             LOG.warning("Volume %(volume)s is not in any masking view.",
                         {'volume': volume.name})
+            zoning_mappings = {}
         return zoning_mappings
 
     def _cleanup_zones(self, zoning_mappings):
