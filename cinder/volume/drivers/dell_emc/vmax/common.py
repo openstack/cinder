@@ -281,11 +281,16 @@ class VMAXCommon(object):
         """
         LOG.debug("Entering create_volume_from_snapshot.")
         model_update = {}
-        extra_specs = self._initial_setup(snapshot)
+        extra_specs = self._initial_setup(volume)
+
+        # Check if legacy snapshot
+        sourcedevice_id = self._find_device_on_array(
+            snapshot, extra_specs)
+        from_snapvx = False if sourcedevice_id else True
 
         clone_dict = self._create_cloned_volume(
             volume, snapshot, extra_specs, is_snapshot=False,
-            from_snapvx=True)
+            from_snapvx=from_snapvx)
 
         # Set-up volume replication, if enabled
         if self.utils.is_replication_enabled(extra_specs):
@@ -305,7 +310,7 @@ class VMAXCommon(object):
         :returns: model_update, dict
         """
         model_update = {}
-        extra_specs = self._initial_setup(source_volume)
+        extra_specs = self._initial_setup(clone_volume)
         clone_dict = self._create_cloned_volume(clone_volume, source_volume,
                                                 extra_specs)
 
@@ -381,7 +386,15 @@ class VMAXCommon(object):
         extra_specs = self._initial_setup(volume)
         sourcedevice_id, snap_name = self._parse_snap_info(
             extra_specs[utils.ARRAY], snapshot)
-        if not sourcedevice_id or not snap_name:
+        if not sourcedevice_id and not snap_name:
+            # Check if legacy snapshot
+            sourcedevice_id = self._find_device_on_array(
+                snapshot, extra_specs)
+            if sourcedevice_id:
+                self._delete_volume(snapshot)
+            else:
+                LOG.info("No snapshot found on the array")
+        elif not sourcedevice_id or not snap_name:
             LOG.info("No snapshot found on the array")
         else:
             self.provision.delete_volume_snap_check_for_links(
@@ -589,7 +602,7 @@ class VMAXCommon(object):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
 
-        return device_info_dict, rollback_dict['port_group_name']
+        return device_info_dict, rollback_dict[utils.PORTGROUPNAME]
 
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector.
@@ -761,7 +774,7 @@ class VMAXCommon(object):
                     self.utils.get_default_oversubscription_ratio(
                         max_oversubscription_ratio))
             pools.append(pool)
-
+        pools = self.utils.add_legacy_pools(pools)
         data = {'vendor_name': "Dell EMC",
                 'driver_version': self.version,
                 'storage_protocol': 'unknown',
@@ -861,10 +874,12 @@ class VMAXCommon(object):
         if isinstance(loc, six.string_types):
             name = ast.literal_eval(loc)
             array = extra_specs[utils.ARRAY]
-            try:
+            if name.get('device_id'):
                 device_id = name['device_id']
-            except KeyError:
+            elif name.get('keybindings'):
                 device_id = name['keybindings']['DeviceID']
+            else:
+                device_id = None
             element_name = self.utils.get_volume_element_name(
                 volume_name)
             admin_metadata = {}
@@ -1212,8 +1227,13 @@ class VMAXCommon(object):
 
         if isinstance(loc, six.string_types):
             name = ast.literal_eval(loc)
-            sourcedevice_id = name['source_id']
-            snap_name = name['snap_name']
+            try:
+                sourcedevice_id = name['source_id']
+                snap_name = name['snap_name']
+            except KeyError:
+                LOG.info("Error retrieving snapshot details. Assuming "
+                         "legacy structure of snapshot...")
+                return None, None
             # Ensure snapvx is on the array.
             try:
                 snap_details = self.rest.get_volume_snap(
@@ -1358,8 +1378,8 @@ class VMAXCommon(object):
 
         The pool_name extra spec must be set, otherwise a default slo/workload
         will be chosen. The portgroup can either be passed as an extra spec
-        on the volume type (e.g. 'port_group_name = os-pg1-pg'), or can
-        be chosen from a list which must be provided in the xml file, e.g.:
+        on the volume type (e.g. 'storagetype:portgroupname = os-pg1-pg'), or
+        can be chosen from a list provided in the xml file, e.g.:
         <PortGroups>
             <PortGroup>OS-PORTGROUP1-PG</PortGroup>
             <PortGroup>OS-PORTGROUP2-PG</PortGroup>
@@ -1376,8 +1396,9 @@ class VMAXCommon(object):
             extra_specs[utils.PORTGROUPNAME] = pool_record['PortGroup']
         if not extra_specs[utils.PORTGROUPNAME]:
             error_message = (_("Port group name has not been provided - "
-                               "please configure the 'port_group_name' extra "
-                               "spec on the volume type, or enter a list of "
+                               "please configure the "
+                               "'storagetype:portgroupname' extra spec on "
+                               "the volume type, or enter a list of "
                                "portgroups to the xml file associated with "
                                "this backend e.g."
                                "<PortGroups>"
@@ -1397,25 +1418,36 @@ class VMAXCommon(object):
         # Set pool_name slo and workload
         if 'pool_name' in extra_specs:
             pool_name = extra_specs['pool_name']
+            pool_details = pool_name.split('+')
+            slo_from_extra_spec = pool_details[0]
+            workload_from_extra_spec = pool_details[1]
+            # Check if legacy pool chosen
+            if workload_from_extra_spec == pool_record['srpName']:
+                workload_from_extra_spec = 'NONE'
+
+        elif pool_record.get('ServiceLevel'):
+            slo_from_extra_spec = pool_record['ServiceLevel']
+            workload_from_extra_spec = pool_record.get('Workload', 'None')
+            LOG.info("Pool_name is not present in the extra_specs "
+                     "- using slo/ workload from xml file: %(slo)s/%(wl)s.",
+                     {'slo': slo_from_extra_spec,
+                      'wl': workload_from_extra_spec})
+
         else:
             slo_list = self.rest.get_slo_list(pool_record['SerialNumber'])
             if 'Optimized' in slo_list:
-                slo = 'Optimized'
+                slo_from_extra_spec = 'Optimized'
             elif 'Diamond' in slo_list:
-                slo = 'Diamond'
+                slo_from_extra_spec = 'Diamond'
             else:
-                slo = 'None'
-            pool_name = ("%(slo)s+%(workload)s+%(srpName)s+%(array)s"
-                         % {'slo': slo,
-                            'workload': 'None',
-                            'srpName': pool_record['srpName'],
-                            'array': pool_record['SerialNumber']})
-            LOG.warning("Pool_name is not present in the extra_specs "
-                        "- using default pool %(pool_name)s.",
-                        {'pool_name': pool_name})
-        pool_details = pool_name.split('+')
-        slo_from_extra_spec = pool_details[0]
-        workload_from_extra_spec = pool_details[1]
+                slo_from_extra_spec = 'None'
+            workload_from_extra_spec = 'NONE'
+            LOG.warning("Pool_name is not present in the extra_specs"
+                        "and no slo/ workload information is present "
+                        "in the xml file - using default slo/ workload "
+                        "combination: %(slo)s/%(wl)s.",
+                        {'slo': slo_from_extra_spec,
+                         'wl': workload_from_extra_spec})
         # Standardize slo and workload 'NONE' naming conventions
         if workload_from_extra_spec.lower() == 'none':
             workload_from_extra_spec = 'NONE'
@@ -1432,10 +1464,8 @@ class VMAXCommon(object):
         else:
             extra_specs.pop(utils.DISABLECOMPRESSION, None)
 
-        LOG.debug("SRP is: %(srp)s "
-                  "Array is: %(array)s "
-                  "SLO is: %(slo)s "
-                  "Workload is: %(workload)s.",
+        LOG.debug("SRP is: %(srp)s, Array is: %(array)s "
+                  "SLO is: %(slo)s, Workload is: %(workload)s.",
                   {'srp': extra_specs[utils.SRP],
                    'array': extra_specs[utils.ARRAY],
                    'slo': extra_specs[utils.SLO],
@@ -2127,7 +2157,11 @@ class VMAXCommon(object):
             if (isinstance(loc, six.string_types)
                     and isinstance(rep_data, six.string_types)):
                 name = ast.literal_eval(loc)
-                array = name['array']
+                try:
+                    array = name['array']
+                except KeyError:
+                    array = (name['keybindings']
+                             ['SystemName'].split('+')[1].strip('-'))
                 rep_extra_specs = self._get_replication_extra_specs(
                     extra_specs, self.rep_config)
                 (target_device, remote_array, rdf_group_no,
@@ -2320,7 +2354,11 @@ class VMAXCommon(object):
         try:
             name = ast.literal_eval(loc)
             replication_keybindings = ast.literal_eval(rep_data)
-            array = name['array']
+            try:
+                array = name['array']
+            except KeyError:
+                array = (name['keybindings']
+                         ['SystemName'].split('+')[1].strip('-'))
             device_id = self._find_device_on_array(vol, {utils.ARRAY: array})
 
             (target_device, remote_array, rdf_group,
