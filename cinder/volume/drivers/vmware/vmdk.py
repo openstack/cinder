@@ -63,6 +63,9 @@ TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
 
 EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 
+EXTENSION_KEY = 'org.openstack.storage'
+EXTENSION_TYPE = 'volume'
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                help='IP address for connecting to VMware vCenter server.'),
@@ -1679,6 +1682,24 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         ' to %(ver)s in a future release.',
                         {'ver': self.NEXT_MIN_SUPPORTED_VC_VERSION})
 
+    def _register_extension(self):
+        ext = vim_util.find_extension(self.session.vim, EXTENSION_KEY)
+        if ext:
+            LOG.debug('Extension %s already exists.', EXTENSION_KEY)
+        else:
+            try:
+                vim_util.register_extension(self.session.vim,
+                                            EXTENSION_KEY,
+                                            EXTENSION_TYPE,
+                                            label='OpenStack Cinder')
+                LOG.info('Registered extension %s.', EXTENSION_KEY)
+            except exceptions.VimFaultException as e:
+                if 'InvalidArgument' in e.fault_list:
+                    LOG.debug('Extension %s is already registered.',
+                              EXTENSION_KEY)
+                else:
+                    raise
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         self._validate_params()
@@ -1701,10 +1722,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # Destroy current session so that it is recreated with pbm enabled
             self._session = None
 
+        self._register_extension()
+
         # recreate session and initialize volumeops and ds_sel
         # TODO(vbala) remove properties: session, volumeops and ds_sel
         max_objects = self.configuration.vmware_max_objects_retrieval
-        self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
+        self._volumeops = volumeops.VMwareVolumeOps(
+            self.session, max_objects, EXTENSION_KEY, EXTENSION_TYPE)
         self._ds_sel = hub.DatastoreSelector(
             self.volumeops, self.session, max_objects)
 

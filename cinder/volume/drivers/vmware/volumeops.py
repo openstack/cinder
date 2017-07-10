@@ -278,9 +278,11 @@ class ControllerType(object):
 class VMwareVolumeOps(object):
     """Manages volume operations."""
 
-    def __init__(self, session, max_objects):
+    def __init__(self, session, max_objects, extension_key, extension_type):
         self._session = session
         self._max_objects = max_objects
+        self._extension_key = extension_key
+        self._extension_type = extension_type
         self._folder_cache = {}
 
     def get_backing(self, name):
@@ -683,6 +685,13 @@ class VMwareVolumeOps(object):
 
         return option_values
 
+    def _create_managed_by_info(self):
+        managed_by = self._session.vim.client.factory.create(
+            'ns0:ManagedByInfo')
+        managed_by.extensionKey = self._extension_key
+        managed_by.type = self._extension_type
+        return managed_by
+
     def _get_create_spec_disk_less(self, name, ds_name, profileId=None,
                                    extra_config=None):
         """Return spec for creating disk-less backing.
@@ -721,6 +730,7 @@ class VMwareVolumeOps(object):
             create_spec.extraConfig = self._get_extra_config_option_values(
                 extra_config)
 
+        create_spec.managedBy = self._create_managed_by_info()
         return create_spec
 
     def get_create_spec(self, name, size_kb, disk_type, ds_name,
@@ -1076,9 +1086,9 @@ class VMwareVolumeOps(object):
         clone_spec.template = False
         clone_spec.snapshot = snapshot
 
-        if extra_config or disks_to_clone:
-            config_spec = cf.create('ns0:VirtualMachineConfigSpec')
-            clone_spec.config = config_spec
+        config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        config_spec.managedBy = self._create_managed_by_info()
+        clone_spec.config = config_spec
 
         if extra_config:
             if BACKING_UUID_KEY in extra_config:

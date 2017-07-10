@@ -37,7 +37,9 @@ class VolumeOpsTestCase(test.TestCase):
     def setUp(self):
         super(VolumeOpsTestCase, self).setUp()
         self.session = mock.MagicMock()
-        self.vops = volumeops.VMwareVolumeOps(self.session, self.MAX_OBJECTS)
+        self.vops = volumeops.VMwareVolumeOps(
+            self.session, self.MAX_OBJECTS, mock.sentinel.extension_key,
+            mock.sentinel.extension_type)
 
     def test_split_datastore_path(self):
         test1 = '[datastore1] myfolder/mysubfolder/myvm.vmx'
@@ -604,10 +606,14 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(1, len(ret.extraConfig))
         self.assertEqual(option_key, ret.extraConfig[0].key)
         self.assertEqual(option_value, ret.extraConfig[0].value)
+        self.assertEqual(mock.sentinel.extension_key,
+                         ret.managedBy.extensionKey)
+        self.assertEqual(mock.sentinel.extension_type, ret.managedBy.type)
         expected = [mock.call.create('ns0:VirtualMachineFileInfo'),
                     mock.call.create('ns0:VirtualMachineConfigSpec'),
                     mock.call.create('ns0:VirtualMachineDefinedProfileSpec'),
-                    mock.call.create('ns0:OptionValue')]
+                    mock.call.create('ns0:OptionValue'),
+                    mock.call.create('ns0:ManagedByInfo')]
         factory.create.assert_has_calls(expected, any_order=True)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
@@ -1004,6 +1010,10 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertFalse(ret.template)
         self.assertEqual(snapshot, ret.snapshot)
         self.assertEqual(mock.sentinel.uuid, ret.config.instanceUuid)
+        self.assertEqual(mock.sentinel.extension_key,
+                         ret.config.managedBy.extensionKey)
+        self.assertEqual(mock.sentinel.extension_type,
+                         ret.config.managedBy.type)
         get_relocate_spec.assert_called_once_with(datastore, rp, host,
                                                   disk_move_type, disk_type,
                                                   disk_device)
