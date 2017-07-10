@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The volumes snapshots V3 api."""
+"""The volumes snapshots V3 API."""
 
 import ast
 

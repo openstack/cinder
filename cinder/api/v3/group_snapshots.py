@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The group_snapshots api."""
+"""The group_snapshots API."""
 
 from oslo_log import log as logging
 import six

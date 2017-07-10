@@ -818,7 +818,7 @@ class Message(BASE, CinderBase):
     message_level = Column(String(255), nullable=False)
     request_id = Column(String(255), nullable=True)
     resource_type = Column(String(255))
-    # The uuid of the related resource.
+    # The UUID of the related resource.
     resource_uuid = Column(String(36), nullable=True)
     # Operation specific event ID.
     event_id = Column(String(255), nullable=False)

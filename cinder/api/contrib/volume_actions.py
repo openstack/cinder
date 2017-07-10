@@ -61,7 +61,7 @@ class VolumeActionsController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
-        # instance uuid is an option now
+        # instance UUID is an option now
         instance_uuid = None
         if 'instance_uuid' in body['os-attach']:
             instance_uuid = body['os-attach']['instance_uuid']

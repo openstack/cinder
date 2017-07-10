@@ -254,7 +254,7 @@ def get_request_url(request):
 
 
 def remove_version_from_href(href):
-    """Removes the first api version from the href.
+    """Removes the first API version from the href.
 
     Given: 'http://cinder.example.com/v1.1/123'
     Returns: 'http://cinder.example.com/123'

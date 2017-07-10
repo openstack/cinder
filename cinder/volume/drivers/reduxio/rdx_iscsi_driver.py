@@ -151,7 +151,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         cli_vol = self.rdxApi.find_volume_by_name(target_vol_name)
         managed_info = self._get_managed_info(cli_vol)
 
-        # Check if volume is already managed by Openstack
+        # Check if volume is already managed by OpenStack
         if managed_info[AGENT_TYPE_KEY] == AGENT_TYPE_OPENSTACK:
             raise exception.ManageExistingAlreadyManaged(
                 volume_ref=volume['id'])
@@ -187,7 +187,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         managed_info = self._get_managed_info(cli_vol)
 
         if managed_info['agent-type'] != AGENT_TYPE_OPENSTACK:
-            msg = _('Only volumes managed by Openstack can be unmanaged.')
+            msg = _('Only volumes managed by OpenStack can be unmanaged.')
             raise exception.InvalidVolume(reason=msg)
 
         # update the agent-type to None
@@ -244,7 +244,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         Reduxio CLI date: mm/dd/yyyy-hh:mm:ss.
         for example: '02/17/2015-11:39:00.
         Note: Different timezones might be configured
-        for Reduxio and Openstack.
+        for Reduxio and OpenStack.
         The specified date must be related to Reduxio time settings.
 
         If meta key 'backdate' was not specified,
@@ -292,7 +292,7 @@ class ReduxioISCSIDriver(san.SanISCSIDriver):
         Reduxio CLI date: mm/dd/yyyy-hh:mm:ss.
         for example: '02/17/2015-11:39:00'.
         Note: Different timezones might be configured
-        for Reduxio and Openstack.
+        for Reduxio and OpenStack.
         The specified date must be related to Reduxio time settings.
 
         If meta key 'backdate' was not specified, then we create a snapshot

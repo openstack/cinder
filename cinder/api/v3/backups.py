@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The backups V3 api."""
+"""The backups V3 API."""
 
 from oslo_log import log as logging
 from webob import exc
@@ -32,7 +32,7 @@ LOG = logging.getLogger(__name__)
 
 
 class BackupsController(backups_v2.BackupsController):
-    """The backups API controller for the Openstack API V3."""
+    """The backups API controller for the OpenStack API V3."""
 
     @wsgi.Controller.api_version(BACKUP_UPDATE_MICRO_VERSION)
     def update(self, req, id, body):
