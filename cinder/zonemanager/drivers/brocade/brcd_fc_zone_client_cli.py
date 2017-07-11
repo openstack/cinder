@@ -43,7 +43,7 @@ class BrcdFCZoneClientCLI(object):
     switch_user = 'admin'
     switch_pwd = 'none'
     switch_key = 'none'
-    patrn = re.compile('[;\s]+')
+    patrn = re.compile(r'[;\s]+')
 
     def __init__(self, ipaddress, username,
                  password, port, key):

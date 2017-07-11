@@ -120,7 +120,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     def _create_project_hierarchy(self):
-        """Sets an environment used for nested quotas tests.
+        r"""Sets an environment used for nested quotas tests.
 
         Create a project hierarchy such as follows:
         +-----------+
@@ -393,7 +393,7 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
     """
 
     def _create_project_hierarchy(self):
-        """Sets an environment used for nested quotas tests.
+        r"""Sets an environment used for nested quotas tests.
 
         Create a project hierarchy such as follows:
         +-----------------+

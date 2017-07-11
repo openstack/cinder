@@ -131,7 +131,7 @@ class PloopDevice(object):
 
         out, err = self.execute(*cmd, run_as_root=True)
 
-        m = re.search('dev=(\S+)', out)
+        m = re.search(r'dev=(\S+)', out)
         if not m:
             raise Exception('Invalid output from ploop mount: %s' % out)
 

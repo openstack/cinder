@@ -248,7 +248,7 @@ def get_request_url(request):
     forwarded = headers.get('X-Forwarded-Host')
     if forwarded:
         url_parts = list(urllib.parse.urlsplit(url))
-        url_parts[1] = re.split(',\s?', forwarded)[-1]
+        url_parts[1] = re.split(r',\s?', forwarded)[-1]
         url = urllib.parse.urlunsplit(url_parts).rstrip('/')
     return url
 

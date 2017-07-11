@@ -1731,7 +1731,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     schedule = ''.join(schedule)
                     # We need to check the status of the schedule to make sure
                     # it is not paused.
-                    result = re.search(".*paused\s+(\w+)", schedule)
+                    result = re.search(r".*paused\s+(\w+)", schedule)
                     is_schedule_active = result.group(1) == 'false'
 
                     volume_info = cl.getVolumeByName(volume['name'])

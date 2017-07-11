@@ -116,7 +116,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def get_comm_version(self):
         ret, stdout, stderr = self.exec_hsnm('auman', '-help')
-        m = re.search('Version (\d+).(\d+)', stdout)
+        m = re.search(r'Version (\d+).(\d+)', stdout)
         if not m:
             msg = basic_lib.output_err(
                 600, cmd='auman', ret=ret, out=stdout, err=stderr)
@@ -958,8 +958,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
         lines = stdout.splitlines()
         for line in lines[2:]:
-            tc_cc = re.search('\s(\d+\.\d) GB\s+(\d+\.\d) GB\s', line)
-            pool_tmp = re.match('\s*\d+', line)
+            tc_cc = re.search(r'\s(\d+\.\d) GB\s+(\d+\.\d) GB\s', line)
+            pool_tmp = re.match(r'\s*\d+', line)
             if (pool_tmp and tc_cc
                     and int(pool_tmp.group(0)) == pool_id):
                 total_gb = int(float(tc_cc.group(1)))
@@ -1047,10 +1047,10 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def trans_status_hsnm2raid(self, str):
         status = None
-        obj = re.search('Split\((.*)%\)', str)
+        obj = re.search(r'Split\((.*)%\)', str)
         if obj:
             status = basic_lib.PSUS
-        obj = re.search('Paired\((.*)%\)', str)
+        obj = re.search(r'Paired\((.*)%\)', str)
         if obj:
             status = basic_lib.PAIR
         return status

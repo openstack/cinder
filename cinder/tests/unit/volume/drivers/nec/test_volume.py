@@ -923,8 +923,8 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
 
         self.vol.status = 'downloading'
         with self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                     'Failed to unregister Logical Disk from'
-                                     ' Logical Disk Set \(iSM31064\)'):
+                                     r'Failed to unregister Logical Disk from'
+                                     r' Logical Disk Set \(iSM31064\)'):
             mock_del = mock.Mock()
             self._cli.delldsetld = mock_del
             self._cli.delldsetld.return_value = False, 'iSM31064'

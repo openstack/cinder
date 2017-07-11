@@ -350,8 +350,8 @@ def sanitize_hostname(hostname):
         if isinstance(hostname, six.text_type):
             hostname = hostname.encode('latin-1', 'ignore')
 
-    hostname = re.sub('[ _]', '-', hostname)
-    hostname = re.sub('[^\w.-]+', '', hostname)
+    hostname = re.sub(r'[ _]', '-', hostname)
+    hostname = re.sub(r'[^\w.-]+', '', hostname)
     hostname = hostname.lower()
     hostname = hostname.strip('.-')
 
@@ -581,7 +581,7 @@ def _get_disk_of_partition(devpath, st=None):
     for '/dev/disk1p1' ('p' is prepended to the partition number if the disk
     name ends with numbers).
     """
-    diskpath = re.sub('(?:(?<=\d)p)?\d+$', '', devpath)
+    diskpath = re.sub(r'(?:(?<=\d)p)?\d+$', '', devpath)
     if diskpath != devpath:
         try:
             st_disk = os.stat(diskpath)

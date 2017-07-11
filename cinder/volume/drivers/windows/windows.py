@@ -38,7 +38,7 @@ LOG = logging.getLogger(__name__)
 
 windows_opts = [
     cfg.StrOpt('windows_iscsi_lun_path',
-               default='C:\iSCSIVirtualDisks',
+               default=r'C:\iSCSIVirtualDisks',
                help='Path to store VHD backed volumes'),
 ]
 

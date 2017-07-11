@@ -592,7 +592,7 @@ class TintriDriver(driver.ManageableVD,
         conn, dr = None, None
         if image_location:
             nfs_loc_pattern = \
-                '^nfs://(([\w\-\.]+:[\d]+|[\w\-\.]+)(/[^/].*)*(/[^/\\\\]+))$'
+                r'^nfs://(([\w\-\.]+:[\d]+|[\w\-\.]+)(/[^/].*)*(/[^/\\\\]+))$'
             matched = re.match(nfs_loc_pattern, image_location)
             if not matched:
                 LOG.debug('Image location not in the expected format %s',

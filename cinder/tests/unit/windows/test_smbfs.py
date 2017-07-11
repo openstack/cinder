@@ -35,7 +35,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
     _FAKE_SHARE = '//1.2.3.4/share1'
     _FAKE_SHARE_HASH = 'db0bf952c1734092b83e8990bd321131'
-    _FAKE_MNT_BASE = 'c:\openstack\mnt'
+    _FAKE_MNT_BASE = r'c:\openstack\mnt'
     _FAKE_MNT_POINT = os.path.join(_FAKE_MNT_BASE, _FAKE_SHARE_HASH)
     _FAKE_VOLUME_ID = '4f711859-4928-4cb7-801a-a50c37ceaccc'
     _FAKE_VOLUME_NAME = 'volume-%s.vhdx' % _FAKE_VOLUME_ID
