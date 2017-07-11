@@ -18,13 +18,15 @@
 Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 """
 
-import mock
 import os
 
+import ddt
+import mock
 from oslo_utils import fileutils
 from oslo_utils import units
 
 from cinder import context
+from cinder import exception
 from cinder.image import image_utils
 from cinder import test
 from cinder.tests.unit import fake_snapshot
@@ -34,16 +36,17 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.windows import windows
 
 
+@ddt.ddt
 class TestWindowsDriver(test.TestCase):
     @mock.patch.object(windows, 'utilsfactory')
     def setUp(self, mock_utilsfactory):
         super(TestWindowsDriver, self).setUp()
-        configuration = conf.Configuration(None)
-        configuration.append_config_values(windows.windows_opts)
+        self.configuration = conf.Configuration(None)
+        self.configuration.append_config_values(windows.windows_opts)
         self.flags(windows_iscsi_lun_path='fake_iscsi_lun_path')
         self.flags(image_conversion_dir='fake_image_conversion_dir')
 
-        self._driver = windows.WindowsDriver(configuration=configuration)
+        self._driver = windows.WindowsDriver(configuration=self.configuration)
 
     @mock.patch.object(fileutils, 'ensure_tree')
     def test_do_setup(self, mock_ensure_tree):
@@ -53,30 +56,66 @@ class TestWindowsDriver(test.TestCase):
             [mock.call('fake_iscsi_lun_path'),
              mock.call('fake_image_conversion_dir')])
 
-    def test_check_for_setup_error(self):
+    @mock.patch.object(windows.WindowsDriver, '_get_portals')
+    def test_check_for_setup_error(self, mock_get_portals):
         self._driver.check_for_setup_error()
 
-        self._driver._tgt_utils.get_portal_locations.assert_called_once_with(
-            available_only=True, fail_if_none_found=True)
+        mock_get_portals.assert_called_once_with()
 
+    @ddt.data(True, False)
+    def test_get_portals(self, portals_available=True):
+        iscsi_port = mock.sentinel.iscsi_port
+        available_ips = ['fake_ip0', 'fake_ip1', 'fake_unrequested_ip']
+        requested_ips = available_ips[:-1] + ['fake_inexistent_ips']
+
+        available_portals = ([":".join([ip_addr, str(iscsi_port)])
+                              for ip_addr in available_ips]
+                             if portals_available else [])
+
+        self._driver.configuration = mock.Mock()
+        self._driver.configuration.iscsi_port = iscsi_port
+        self._driver.configuration.iscsi_ip_address = requested_ips[0]
+        self._driver.configuration.iscsi_secondary_ip_addresses = (
+            requested_ips[1:])
+
+        self._driver._tgt_utils.get_portal_locations.return_value = (
+            available_portals)
+
+        if portals_available:
+            portals = self._driver._get_portals()
+            self.assertEqual(set(available_portals[:-1]), set(portals))
+        else:
+            self.assertRaises(exception.VolumeDriverException,
+                              self._driver._get_portals)
+
+        self._driver._tgt_utils.get_portal_locations.assert_called_once_with(
+            available_only=True,
+            fail_if_none_found=True)
+
+    @ddt.data(True, False)
+    @mock.patch.object(windows.WindowsDriver, '_get_portals')
     @mock.patch.object(windows.WindowsDriver, '_get_target_name')
-    def test_get_host_information(self, mock_get_target_name):
+    def test_get_host_information(self, multipath, mock_get_target_name,
+                                  mock_get_portals):
         tgt_utils = self._driver._tgt_utils
 
         fake_auth_meth = 'CHAP'
         fake_chap_username = 'fake_chap_username'
         fake_chap_password = 'fake_chap_password'
-        fake_host_info = {'fake_prop': 'fake_value'}
+        fake_target_iqn = 'fake_target_iqn'
+        fake_host_info = {'target_iqn': 'fake_target_iqn',
+                          'fake_prop': 'fake_value'}
         fake_provider_auth = "%s %s %s" % (fake_auth_meth,
                                            fake_chap_username,
                                            fake_chap_password)
+        fake_portals = [mock.sentinel.portal_location0,
+                        mock.sentinel.portal_location1]
 
         volume = fake_volume.fake_volume_obj(mock.sentinel.context,
                                              provider_auth=fake_provider_auth)
 
         mock_get_target_name.return_value = mock.sentinel.target_name
-        tgt_utils.get_portal_locations.return_value = [
-            mock.sentinel.portal_location]
+        mock_get_portals.return_value = fake_portals
         tgt_utils.get_target_information.return_value = fake_host_info
 
         expected_host_info = dict(fake_host_info,
@@ -84,16 +123,20 @@ class TestWindowsDriver(test.TestCase):
                                   auth_username=fake_chap_username,
                                   auth_password=fake_chap_password,
                                   target_discovered=False,
-                                  target_portal=mock.sentinel.portal_location,
+                                  target_portal=fake_portals[0],
                                   target_lun=0,
                                   volume_id=volume.id)
+        if multipath:
+            expected_host_info['target_portals'] = fake_portals
+            expected_host_info['target_iqns'] = [fake_target_iqn] * 2
+            expected_host_info['target_luns'] = [0] * 2
 
-        host_info = self._driver._get_host_information(volume)
+        host_info = self._driver._get_host_information(volume, multipath)
 
         self.assertEqual(expected_host_info, host_info)
 
         mock_get_target_name.assert_called_once_with(volume)
-        tgt_utils.get_portal_locations.assert_called_once_with()
+        mock_get_portals.assert_called_once_with()
         tgt_utils.get_target_information.assert_called_once_with(
             mock.sentinel.target_name)
 
@@ -103,6 +146,7 @@ class TestWindowsDriver(test.TestCase):
 
         volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
         fake_initiator = db_fakes.get_fake_connector_info()
+        fake_initiator['multipath'] = mock.sentinel.multipath
         fake_host_info = {'fake_host_prop': 'fake_value'}
 
         mock_get_host_info.return_value = fake_host_info
@@ -113,6 +157,8 @@ class TestWindowsDriver(test.TestCase):
                                                        fake_initiator)
 
         self.assertEqual(expected_conn_info, conn_info)
+        mock_get_host_info.assert_called_once_with(
+            volume, mock.sentinel.multipath)
         mock_associate = tgt_utils.associate_initiator_with_iscsi_target
         mock_associate.assert_called_once_with(
             fake_initiator['initiator'],

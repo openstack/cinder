@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The Windows iSCSI driver now returns multiple portals when available
+    and multipath is requested.
+fixes:
+  - |
+    The Windows iSCSI driver now honors the configured iSCSI addresses,
+    ensuring that only those addresses will be used for iSCSI traffic.
