@@ -403,7 +403,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
     def _extend_volume(self, volume, size_gb):
         self._check_extend_volume_support(volume, size_gb)
 
-        volume_path = self.local_path(volume)
+        volume_path = self._local_path_active_image(volume)
 
         LOG.info('Resizing file %(volume_path)s to %(size_gb)sGB.',
                  dict(volume_path=volume_path, size_gb=size_gb))
@@ -451,14 +451,12 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
         self._write_info_file(info_path, snap_info)
 
     def _check_extend_volume_support(self, volume, size_gb):
-        volume_path = self.local_path(volume)
-        active_file = self.get_active_image_from_info(volume)
-        active_file_path = os.path.join(self._local_volume_dir(volume),
-                                        active_file)
+        snapshots_exist = self._snapshots_exist(volume)
+        fmt = self.get_volume_format(volume)
 
-        if not utils.paths_normcase_equal(active_file_path, volume_path):
-            msg = _('Extend volume is only supported for this '
-                    'driver when no snapshots exist.')
+        if snapshots_exist and fmt == self._DISK_FORMAT_VHD:
+            msg = _('Extending volumes backed by VHD images is not supported '
+                    'when snapshots exist. Please use VHDX images.')
             raise exception.InvalidVolume(msg)
 
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
