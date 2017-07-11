@@ -119,8 +119,8 @@ class HttpClient(object):
             baseurl += 'api/rest/'
         return '%s%s' % (baseurl, url if url[0] != '/' else url[1:])
 
-    def _get_header(self, async):
-        if async:
+    def _get_header(self, header_async):
+        if header_async:
             header = self.header.copy()
             header['async'] = 'True'
             return header
@@ -205,10 +205,10 @@ class HttpClient(object):
         LOG.debug('_wait_for_async_complete: Error asyncTask: %r', asyncTask)
         return None
 
-    def _rest_ret(self, rest_response, async):
+    def _rest_ret(self, rest_response, async_call):
         # If we made an async call and it was accepted
         # we wait for our response.
-        if async:
+        if async_call:
             if rest_response.status_code == http_client.ACCEPTED:
                 asyncTask = rest_response.json()
                 return self._wait_for_async_complete(asyncTask)
@@ -239,7 +239,7 @@ class HttpClient(object):
         return rest_response
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def post(self, url, payload, async=False):
+    def post(self, url, payload, async_call=False):
         LOG.debug('post: %(url)s data: %(payload)s',
                   {'url': url,
                    'payload': payload})
@@ -247,11 +247,11 @@ class HttpClient(object):
             self.__formatUrl(url),
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
-            headers=self._get_header(async),
-            verify=self.verify), async)
+            headers=self._get_header(async_call),
+            verify=self.verify), async_call)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def put(self, url, payload, async=False):
+    def put(self, url, payload, async_call=False):
         LOG.debug('put: %(url)s data: %(payload)s',
                   {'url': url,
                    'payload': payload})
@@ -259,20 +259,21 @@ class HttpClient(object):
             self.__formatUrl(url),
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
-            headers=self._get_header(async),
-            verify=self.verify), async)
+            headers=self._get_header(async_call),
+            verify=self.verify), async_call)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def delete(self, url, payload=None, async=False):
+    def delete(self, url, payload=None, async_call=False):
         LOG.debug('delete: %(url)s data: %(payload)s',
                   {'url': url, 'payload': payload})
-        named = {'headers': self._get_header(async), 'verify': self.verify}
+        named = {'headers': self._get_header(async_call),
+                 'verify': self.verify}
         if payload:
             named['data'] = json.dumps(
                 payload, ensure_ascii=False).encode('utf-8')
 
         return self._rest_ret(
-            self.session.delete(self.__formatUrl(url), **named), async)
+            self.session.delete(self.__formatUrl(url), **named), async_call)
 
 
 class SCApiHelper(object):
@@ -1303,7 +1304,7 @@ class SCApi(object):
         # If we have an id then delete the volume.
         if provider_id:
             r = self.client.delete('StorageCenter/ScVolume/%s' % provider_id,
-                                   async=True)
+                                   async_call=True)
             if not self._check_result(r):
                 msg = _('Error deleting volume %(ssn)s: %(volume)s') % {
                     'ssn': self.ssn,
@@ -1948,7 +1949,7 @@ class SCApi(object):
                 if prosrv is not None and self._get_id(prosrv) == serverid:
                     r = self.client.delete('StorageCenter/ScMappingProfile/%s'
                                            % self._get_id(profile),
-                                           async=True)
+                                           async_call=True)
                     if self._check_result(r):
                         # Check our result in the json.
                         result = self._get_json(r)
@@ -2456,7 +2457,7 @@ class SCApi(object):
         LOG.debug('ScServer delete %s', self._get_id(scserver))
         if scserver.get('deleteAllowed') is True:
             r = self.client.delete('StorageCenter/ScServer/%s'
-                                   % self._get_id(scserver), async=True)
+                                   % self._get_id(scserver), async_call=True)
             if self._check_result(r):
                 LOG.debug('ScServer deleted.')
         else:
@@ -2518,7 +2519,7 @@ class SCApi(object):
         """
         self.cg_except_on_no_support()
         r = self.client.delete('StorageCenter/ScReplayProfile/%s' %
-                               self._get_id(profile), async=True)
+                               self._get_id(profile), async_call=True)
         if self._check_result(r):
             LOG.info('Profile %s has been deleted.',
                      profile.get('name'))
@@ -2995,7 +2996,7 @@ class SCApi(object):
             payload['DeleteRestorePoint'] = True
             r = self.client.delete('StorageCenter/ScReplication/%s' %
                                    self._get_id(replication), payload=payload,
-                                   async=True)
+                                   async_call=True)
             if self._check_result(r):
                 # check that we whacked the dest volume
                 LOG.info('Replication %(vol)s to %(dest)s.',
