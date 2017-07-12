@@ -36,12 +36,12 @@ changed. The user contract covers many kinds of information such as:
 
 - the Request
 
-  - the list of resource urls which exist on the server
+  - the list of resource URLs which exist on the server
 
     Example: adding a new shares/{ID}/foo which didn't exist in a
     previous version of the code
 
-  - the list of query parameters that are valid on urls
+  - the list of query parameters that are valid on URLs
 
     Example: adding a new parameter ``is_yellow`` servers/{ID}?is_yellow=True
 
@@ -95,7 +95,7 @@ we need a microversion".
     new_param[shape="diamond", style="", label="Did we add or remove
     an accepted query string parameter or value?"];
     new_resource[shape="diamond", style="", label="Did we add or remove a
-   resource url?"];
+   resource URL?"];
 
 
    no[shape="box", style=rounded, label="No microversion needed"];

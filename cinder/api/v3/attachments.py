@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The volumes attachments api."""
+"""The volumes attachments API."""
 
 from oslo_log import log as logging
 import webob
@@ -114,8 +114,8 @@ class AttachmentsController(wsgi.Controller):
         information (connector data) at the time of the call.
 
         NOTE: In Nova terms server == instance, the server_id parameter
-        referenced below is the uuid of the Instance, for non-nova consumers
-        this can be a server uuid or some other arbitrary unique identifier.
+        referenced below is the UUID of the Instance, for non-nova consumers
+        this can be a server UUID or some other arbitrary unique identifier.
 
         Expected format of the input parameter 'body':
 

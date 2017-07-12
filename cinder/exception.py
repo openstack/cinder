@@ -266,7 +266,7 @@ class SnapshotUnavailable(VolumeBackendAPIException):
 
 
 class InvalidUUID(Invalid):
-    message = _("Expected a uuid but received %(uuid)s.")
+    message = _("Expected a UUID but received %(uuid)s.")
 
 
 class InvalidAPIVersionString(Invalid):

@@ -442,7 +442,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
             if 'access_control_records' in vol_info and (
                vol_info['access_control_records'] is not None):
                 msg = (_('Volume %s has ACL associated with it. Remove ACL '
-                         'for managing using Openstack') % target_vol_name)
+                         'for managing using OpenStack') % target_vol_name)
                 raise exception.InvalidVolume(reason=msg)
             data['data']['agent_type'] = AGENT_TYPE_OPENSTACK_GST
         else:

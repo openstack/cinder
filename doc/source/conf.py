@@ -97,7 +97,7 @@ master_doc = 'index'
 repository_name = 'openstack/cinder'
 bug_project = 'cinder'
 bug_tag = 'doc'
-project = u'cinder'
+project = u'Cinder'
 copyright = u'2010-present, OpenStack Foundation'
 
 # The version info for the project you're documenting, acts as replacement for

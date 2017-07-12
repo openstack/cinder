@@ -87,11 +87,11 @@ class BackupMetadataAPI(base.Base):
                     LOG.info("Unable to serialize field '%s' - excluding "
                              "from backup", key)
                     continue
-                # Copy the encryption key uuid for backup
+                # Copy the encryption key UUID for backup
                 if key is 'encryption_key_id' and value is not None:
                     km = key_manager.API(CONF)
                     value = km.store(self.context, km.get(self.context, value))
-                    LOG.debug("Copying encryption key uuid for backup.")
+                    LOG.debug("Copying encryption key UUID for backup.")
                 container[type_tag][key] = value
 
             LOG.debug("Completed fetching metadata type '%s'", type_tag)

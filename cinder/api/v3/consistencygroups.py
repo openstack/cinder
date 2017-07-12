@@ -11,7 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The consistencygroups V3 api."""
+"""The consistencygroups V3 API."""
 
 from oslo_log import log as logging
 from six.moves import http_client
