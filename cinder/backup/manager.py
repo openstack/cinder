@@ -284,6 +284,7 @@ class BackupManager(manager.ThreadPoolManager):
         snapshot = objects.Snapshot.get_by_id(
             context, snapshot_id) if snapshot_id else None
         previous_status = volume.get('previous_status', None)
+        updates = {}
         if snapshot_id:
             log_message = ('Create backup started, backup: %(backup_id)s '
                            'volume: %(volume_id)s snapshot: %(snapshot_id)s.'
@@ -343,7 +344,7 @@ class BackupManager(manager.ThreadPoolManager):
                 err = _('Create backup aborted due to backup service is down')
                 self._update_backup_error(backup, err)
                 raise exception.InvalidBackup(reason=err)
-            self._run_backup(context, backup, volume)
+            updates = self._run_backup(context, backup, volume)
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 if snapshot_id:
@@ -366,6 +367,9 @@ class BackupManager(manager.ThreadPoolManager):
                                    'previous_status': 'backing-up'})
         backup.status = fields.BackupStatus.AVAILABLE
         backup.size = volume['size']
+
+        if updates:
+            backup.update(updates)
         backup.save()
 
         # Handle the num_dependent_backups of parent backup when child backup
@@ -396,14 +400,17 @@ class BackupManager(manager.ThreadPoolManager):
                         not os.path.isdir(device_path)):
                     if backup_device.secure_enabled:
                         with open(device_path) as device_file:
-                            backup_service.backup(backup, device_file)
+                            updates = backup_service.backup(
+                                backup, device_file)
                     else:
                         with utils.temporary_chown(device_path):
                             with open(device_path) as device_file:
-                                backup_service.backup(backup, device_file)
+                                updates = backup_service.backup(
+                                    backup, device_file)
                 # device_path is already file-like so no need to open it
                 else:
-                    backup_service.backup(backup, device_path)
+                    updates = backup_service.backup(
+                        backup, device_path)
 
             finally:
                 self._detach_device(context, attach_info,
@@ -414,6 +421,7 @@ class BackupManager(manager.ThreadPoolManager):
             backup = objects.Backup.get_by_id(context, backup.id)
             self._cleanup_temp_volumes_snapshots_when_backup_created(
                 context, backup)
+        return updates
 
     def restore_backup(self, context, backup, volume_id):
         """Restore volume backups from configured backup service."""

@@ -82,7 +82,8 @@ class BaseBackupTest(test.TestCase):
                                 temp_volume_id=None,
                                 temp_snapshot_id=None,
                                 snapshot_id=None,
-                                metadata=None):
+                                metadata=None,
+                                parent_id=None):
         """Create a backup entry in the DB.
 
         Return the entry ID
@@ -101,7 +102,7 @@ class BaseBackupTest(test.TestCase):
         kwargs['fail_reason'] = ''
         kwargs['service'] = service or CONF.backup_driver
         kwargs['snapshot_id'] = snapshot_id
-        kwargs['parent_id'] = None
+        kwargs['parent_id'] = parent_id
         kwargs['size'] = size
         kwargs['object_count'] = object_count
         kwargs['temp_volume_id'] = temp_volume_id
@@ -642,13 +643,122 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=True)
+    def test_create_backup_set_parent_id_to_none(self, mock_isdir, mock_open,
+                                                 mock_chown,
+                                                 mock_backup_device,
+                                                 mock_brick):
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup = self._create_backup_db_entry(volume_id=vol_id,
+                                              parent_id = 'mock')
+
+        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+                mock_get_backup_driver:
+            mock_get_backup_driver.return_value.backup.return_value = (
+                {'parent_id': None})
+            with mock.patch.object(self.backup_mgr, '_detach_device'):
+                device_path = '/fake/disk/path/'
+                attach_info = {'device': {'path': device_path}}
+                mock_attach_device = self.mock_object(self.backup_mgr,
+                                                      '_attach_device')
+                mock_attach_device.return_value = attach_info
+                properties = {}
+                mock_brick.return_value = properties
+                mock_open.return_value = open('/dev/null', 'rb')
+                mock_brick.return_value = properties
+
+                self.backup_mgr.create_backup(self.ctxt, backup)
+
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
+        self.assertEqual(vol_size, backup.size)
+        self.assertIsNone(backup.parent_id)
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os.path, 'isdir', return_value=True)
+    def test_create_backup_set_parent_id(self, mock_isdir, mock_open,
+                                         mock_chown, mock_backup_device,
+                                         mock_brick):
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+        parent_backup = self._create_backup_db_entry(size=vol_size)
+
+        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+                mock_get_backup_driver:
+            mock_get_backup_driver.return_value.backup.return_value = (
+                {'parent_id': parent_backup.id})
+            with mock.patch.object(self.backup_mgr, '_detach_device'):
+                device_path = '/fake/disk/path/'
+                attach_info = {'device': {'path': device_path}}
+                mock_attach_device = self.mock_object(self.backup_mgr,
+                                                      '_attach_device')
+                mock_attach_device.return_value = attach_info
+                properties = {}
+                mock_brick.return_value = properties
+                mock_open.return_value = open('/dev/null', 'rb')
+                mock_brick.return_value = properties
+
+                self.backup_mgr.create_backup(self.ctxt, backup)
+
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
+        self.assertEqual(vol_size, backup.size)
+        self.assertEqual(parent_backup.id, backup.parent_id)
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os.path, 'isdir', return_value=True)
+    def test_create_backup_fail_with_excep(self, mock_isdir, mock_open,
+                                           mock_chown, mock_backup_device,
+                                           mock_brick):
+        vol_id = self._create_volume_db_entry()
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+
+        with mock.patch.object(self.backup_mgr.service, 'get_backup_driver') as \
+                mock_get_backup_driver:
+            mock_get_backup_driver.return_value.backup.side_effect = (
+                FakeBackupException('fake'))
+            with mock.patch.object(self.backup_mgr, '_detach_device'):
+                device_path = '/fake/disk/path/'
+                attach_info = {'device': {'path': device_path}}
+
+                mock_attach_device = self.mock_object(self.backup_mgr,
+                                                      '_attach_device')
+                mock_attach_device.return_value = attach_info
+                properties = {}
+                mock_brick.return_value = properties
+                mock_open.return_value = open('/dev/null', 'rb')
+                mock_brick.return_value = properties
+
+                self.assertRaises(FakeBackupException,
+                                  self.backup_mgr.create_backup,
+                                  self.ctxt, backup)
+
+        vol = db.volume_get(self.ctxt, vol_id)
+        self.assertEqual('available', vol.status)
+        self.assertEqual('error_backing-up', vol.previous_status)
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(fields.BackupStatus.ERROR, backup.status)
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os.path, 'isdir', return_value=True)
     def test_run_backup_with_dir_device_path(self, mock_isdir,
                                              mock_open,
                                              mock_chown,
                                              mock_backup_device,
                                              mock_brick):
         backup_service = lambda: None
-        backup_service.backup = mock.Mock()
+        backup_service.backup = mock.Mock(
+            return_value=mock.sentinel.backup_update)
         self.backup_mgr.service.get_backup_driver = lambda x: backup_service
 
         vol_id = self._create_volume_db_entry()
@@ -661,12 +771,13 @@ class BackupTestCase(BaseBackupTest):
         self.backup_mgr._attach_device = mock.Mock(
             return_value=attach_info)
         self.backup_mgr._detach_device = mock.Mock()
-        self.backup_mgr._run_backup(self.ctxt, backup, volume)
+        output = self.backup_mgr._run_backup(self.ctxt, backup, volume)
 
         mock_chown.assert_not_called()
         mock_open.assert_not_called()
         backup_service.backup.assert_called_once_with(
             backup, device_path)
+        self.assertEqual(mock.sentinel.backup_update, output)
 
     @mock.patch('cinder.backup.manager.BackupManager._run_backup')
     @ddt.data((fields.SnapshotStatus.BACKING_UP, 'available'),
