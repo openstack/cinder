@@ -110,11 +110,9 @@ class TintriDriver(driver.ManageableVD,
         self._hostname = getattr(self.configuration, 'tintri_server_hostname')
         self._username = getattr(self.configuration, 'tintri_server_username')
         self._password = getattr(self.configuration, 'tintri_server_password')
-        self._api_version = getattr(self.configuration, 'tintri_api_version',
-                                    CONF.tintri_api_version)
+        self._api_version = getattr(self.configuration, 'tintri_api_version')
         self._image_cache_expiry = getattr(self.configuration,
-                                           'tintri_image_cache_expiry_days',
-                                           CONF.tintri_image_cache_expiry_days)
+                                           'tintri_image_cache_expiry_days')
 
     def get_pool(self, volume):
         """Returns pool name where volume resides.
