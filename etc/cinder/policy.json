@@ -31,7 +31,11 @@
     "volume:revert_to_snapshot": "rule:admin_or_owner",
 
     "volume_extension:types_manage": "rule:admin_api",
-    "volume_extension:types_extra_specs": "rule:admin_api",
+    "volume_extension:types_extra_specs:create": "rule:admin_api",
+    "volume_extension:types_extra_specs:delete": "rule:admin_api",
+    "volume_extension:types_extra_specs:index": "rule:admin_api",
+    "volume_extension:types_extra_specs:show": "rule:admin_api",
+    "volume_extension:types_extra_specs:update": "rule:admin_api",
     "volume_extension:access_types_qos_specs_id": "rule:admin_api",
     "volume_extension:access_types_extra_specs": "rule:admin_api",
     "volume_extension:volume_type_access": "rule:admin_or_owner",
