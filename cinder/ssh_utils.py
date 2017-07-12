@@ -23,6 +23,7 @@ import os
 from eventlet import pools
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 import paramiko
 import six
 
@@ -166,7 +167,14 @@ class SSHPool(pools.Pool):
                 return conn
             else:
                 conn.close()
-        return self.create()
+        try:
+            new_conn = self.create()
+        except Exception:
+            LOG.error("Create new item in SSHPool failed.")
+            with excutils.save_and_reraise_exception():
+                if conn:
+                    self.current_size -= 1
+        return new_conn
 
     def remove(self, ssh):
         """Close an ssh client and remove it from free_items."""
