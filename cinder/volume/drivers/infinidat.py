@@ -36,6 +36,7 @@ from cinder import version
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
+from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
 try:
@@ -56,6 +57,9 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 VENDOR_NAME = 'INFINIDAT'
+BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
+QOS_MAX_IOPS = 'maxIOPS'
+QOS_MAX_BWS = 'maxBWS'
 
 infinidat_opts = [
     cfg.StrOpt('infinidat_pool_name',
@@ -93,7 +97,7 @@ def infinisdk_to_cinder_exceptions(func):
 
 @interface.volumedriver
 class InfiniboxVolumeDriver(san.SanISCSIDriver):
-    VERSION = '1.3'
+    VERSION = '1.4'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_Cinder_CI"
@@ -218,6 +222,48 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             return mapping
         # volume not mapped. map it
         return host.map_volume(volume)
+
+    def _get_backend_qos_specs(self, cinder_volume):
+        type_id = cinder_volume.volume_type_id
+        if type_id is None:
+            return None
+        qos_specs = volume_types.get_volume_type_qos_specs(type_id)
+        if qos_specs is None:
+            return None
+        qos_specs = qos_specs['qos_specs']
+        if qos_specs is None:
+            return None
+        consumer = qos_specs['consumer']
+        # Front end QoS specs are handled by nova. We ignore them here.
+        if consumer not in BACKEND_QOS_CONSUMERS:
+            return None
+        max_iops = qos_specs['specs'].get(QOS_MAX_IOPS)
+        max_bws = qos_specs['specs'].get(QOS_MAX_BWS)
+        if max_iops is None and max_bws is None:
+            return None
+        return {
+            'id': qos_specs['id'],
+            QOS_MAX_IOPS: max_iops,
+            QOS_MAX_BWS: max_bws,
+        }
+
+    def _get_or_create_qos_policy(self, qos_specs):
+        qos_policy = self._system.qos_policies.safe_get(name=qos_specs['id'])
+        if qos_policy is None:
+            qos_policy = self._system.qos_policies.create(
+                name=qos_specs['id'],
+                type="VOLUME",
+                max_ops=qos_specs[QOS_MAX_IOPS],
+                max_bps=qos_specs[QOS_MAX_BWS])
+        return qos_policy
+
+    def _set_qos(self, cinder_volume, infinidat_volume):
+        if (hasattr(self._system.compat, "has_qos") and
+           self._system.compat.has_qos()):
+            qos_specs = self._get_backend_qos_specs(cinder_volume)
+            if qos_specs:
+                policy = self._get_or_create_qos_policy(qos_specs)
+                policy.assign_entity(infinidat_volume)
 
     def _get_online_fc_ports(self):
         nodes = self._system.components.nodes.get_all()
@@ -365,6 +411,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                        capacity.byte)
             free_capacity_gb = float(free_capacity_bytes) / units.Gi
             total_capacity_gb = float(physical_capacity_bytes) / units.Gi
+            qos_support = (hasattr(self._system.compat, "has_qos") and
+                           self._system.compat.has_qos())
             self._volume_stats = dict(volume_backend_name=self._backend_name,
                                       vendor_name=VENDOR_NAME,
                                       driver_version=self.VERSION,
@@ -372,7 +420,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                       consistencygroup_support=False,
                                       total_capacity_gb=total_capacity_gb,
                                       free_capacity_gb=free_capacity_gb,
-                                      consistent_group_snapshot_enabled=True)
+                                      consistent_group_snapshot_enabled=True,
+                                      QoS_support=qos_support)
         return self._volume_stats
 
     def _create_volume(self, volume):
@@ -384,6 +433,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                                        pool=pool,
                                                        provtype=provtype,
                                                        size=size)
+        self._set_qos(volume, infinidat_volume)
         self._set_cinder_object_metadata(infinidat_volume, volume)
         return infinidat_volume
 

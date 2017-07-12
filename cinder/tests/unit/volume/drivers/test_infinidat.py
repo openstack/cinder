@@ -26,7 +26,7 @@ from cinder.volume.drivers import infinidat
 TEST_WWN_1 = '00:11:22:33:44:55:66:77'
 TEST_WWN_2 = '11:11:22:33:44:55:66:77'
 
-test_volume = mock.Mock(id=1, size=1)
+test_volume = mock.Mock(id=1, size=1, volume_type_id=1)
 test_snapshot = mock.Mock(id=2, volume=test_volume, volume_id='1')
 test_clone = mock.Mock(id=3, size=1)
 test_group = mock.Mock(id=4)
@@ -89,6 +89,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_ns = mock.Mock()
         self._mock_ns.get_ips.return_value = [mock.Mock(ip_address='1.1.1.1')]
         self._mock_group = mock.Mock()
+        self._mock_qos_policy = mock.Mock()
         result.volumes.safe_get.return_value = self._mock_volume
         result.volumes.create.return_value = self._mock_volume
         result.pools.safe_get.return_value = self._mock_pool
@@ -98,6 +99,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         result.hosts.create.return_value = self._mock_host
         result.network_spaces.safe_get.return_value = self._mock_ns
         result.components.nodes.get_all.return_value = []
+        result.qos_policies.create.return_value = self._mock_qos_policy
+        result.qos_policies.safe_get.return_value = None
         return result
 
     def _raise_infinisdk(self, *args, **kwargs):
@@ -186,7 +189,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.get_volume_stats)
 
-    def test_create_volume(self):
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume(self, *mocks):
         self.driver.create_volume(test_volume)
 
     def test_create_volume_pool_not_found(self):
@@ -199,7 +203,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
-    def test_create_volume_metadata(self):
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume_metadata(self, *mocks):
         self.driver.create_volume(test_volume)
         self._mock_volume.set_metadata_from_dict.assert_called_once()
 
@@ -246,6 +251,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     @mock.patch("cinder.utils.brick_get_connector")
     @mock.patch("cinder.utils.brick_get_connector_properties",
                 return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_from_snapshot(self, *mocks):
         self.driver.create_volume_from_snapshot(test_clone, test_snapshot)
 
@@ -263,6 +269,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     @mock.patch("cinder.utils.brick_get_connector_properties",
                 return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_from_snapshot_map_fails(self, *mocks):
         self._mock_host.map_volume.side_effect = self._raise_infinisdk
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -296,6 +303,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     @mock.patch("cinder.utils.brick_get_connector")
     @mock.patch("cinder.utils.brick_get_connector_properties",
                 return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_cloned_volume(self, *mocks):
         self.driver.create_cloned_volume(test_clone, test_volume)
 
@@ -315,6 +323,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     @mock.patch("cinder.utils.brick_get_connector_properties",
                 return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_cloned_volume_map_fails(self, *mocks):
         self._mock_host.map_volume.side_effect = self._raise_infinisdk
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -386,6 +395,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 return_value=test_connector)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_group_from_src_snaps(self, *mocks):
         self.driver.create_group_from_src(None, test_group, [test_volume],
                                           test_snapgroup, [test_snapshot],
@@ -397,6 +407,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 return_value=test_connector)
     @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
                 return_value=True)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_group_from_src_vols(self, *mocks):
         self.driver.create_group_from_src(None, test_group, [test_volume],
                                           None, None,
@@ -509,3 +520,85 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
 
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
+
+
+class InfiniboxDriverTestCaseQoS(InfiniboxDriverTestCaseBase):
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_max_ipos(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': 1000,
+                                                          'maxBWS': None}}}
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_called_once()
+        self._mock_qos_policy.assign_entity.assert_called_once()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_max_bws(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': None,
+                                                          'maxBWS': 10000}}}
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_called_once()
+        self._mock_qos_policy.assign_entity.assert_called_once()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_no_compat(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': 1000,
+                                                          'maxBWS': 10000}}}
+        self._system.compat.has_qos.return_value = False
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_not_called()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_volume_type_id_none(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': 1000,
+                                                          'maxBWS': 10000}}}
+        test_volume = mock.Mock(id=1, size=1, volume_type_id=None)
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_not_called()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_no_specs(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': None}
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_not_called()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_front_end(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'front-end',
+                                                'specs': {'maxIOPS': 1000,
+                                                          'maxBWS': 10000}}}
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_not_called()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_specs_empty(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': None,
+                                                          'maxBWS': None}}}
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_not_called()
+
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_qos_policy_exists(self, qos_specs):
+        qos_specs.return_value = {'qos_specs': {'id': 'qos_name',
+                                                'consumer': 'back-end',
+                                                'specs': {'maxIOPS': 1000,
+                                                          'maxBWS': 10000}}}
+        self._system.qos_policies.safe_get.return_value = self._mock_qos_policy
+        self.driver.create_volume(test_volume)
+        self._system.qos_policies.create.assert_not_called()
+        self._mock_qos_policy.assign_entity.assert_called()
