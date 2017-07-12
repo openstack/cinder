@@ -68,9 +68,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     # reconstructed elsewhere and continued).
     default_provides = set(['availability_zone', 'size', 'snapshot_id',
                             'source_volid', 'volume_type', 'volume_type_id',
-                            'encryption_key_id', 'source_replicaid',
-                            'consistencygroup_id', 'cgsnapshot_id',
-                            'qos_specs', 'group_id', 'refresh_az'])
+                            'encryption_key_id', 'consistencygroup_id',
+                            'cgsnapshot_id', 'qos_specs', 'group_id',
+                            'refresh_az'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -135,13 +135,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     def _extract_source_volume(self, source_volume):
         return self._extract_resource(source_volume, (SRC_VOL_PROCEED_STATUS,),
                                       exception.InvalidVolume, 'source volume')
-
-    def _extract_source_replica(self, source_replica):
-        return self._extract_resource(source_replica, (SRC_VOL_PROCEED_STATUS,
-                                                       REPLICA_PROCEED_STATUS),
-                                      exception.InvalidVolume,
-                                      'replica', ('status',
-                                                  'replication_status'))
 
     @staticmethod
     def _extract_size(size, source_volume, snapshot):
@@ -422,7 +415,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,
-                source_replica, consistencygroup, cgsnapshot, group):
+                consistencygroup, cgsnapshot, group):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -433,7 +426,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # volume will remain available after we do this initial verification??
         snapshot_id = self._extract_snapshot(snapshot)
         source_volid = self._extract_source_volume(source_volume)
-        source_replicaid = self._extract_source_replica(source_replica)
         size = self._extract_size(size, source_volume, snapshot)
         consistencygroup_id = self._extract_consistencygroup(consistencygroup)
         cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
@@ -456,12 +448,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             image_volume_type = self._get_image_volume_type(context, image_id)
             volume_type = (image_volume_type if image_volume_type else
                            def_vol_type)
-
-        # When creating a clone of a replica (replication test), we can't
-        # use the volume type of the replica, therefore, we use the default.
-        # NOTE(ronenkat): this assumes the default type is not replicated.
-        if source_replicaid:
-            volume_type = def_vol_type
 
         volume_type_id = self._get_volume_type_id(volume_type,
                                                   source_volume, snapshot)
@@ -502,7 +488,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'volume_type_id': volume_type_id,
             'encryption_key_id': encryption_key_id,
             'qos_specs': specs,
-            'source_replicaid': source_replicaid,
             'consistencygroup_id': consistencygroup_id,
             'cgsnapshot_id': cgsnapshot_id,
             'group_id': group_id,
@@ -523,9 +508,8 @@ class EntryCreateTask(flow_utils.CinderTask):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
-                    'source_replicaid', 'consistencygroup_id',
-                    'cgsnapshot_id', 'multiattach', 'qos_specs',
-                    'group_id', ]
+                    'consistencygroup_id', 'cgsnapshot_id', 'multiattach',
+                    'qos_specs', 'group_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
 
@@ -735,8 +719,8 @@ class VolumeCastTask(flow_utils.CinderTask):
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume', 'volume_type',
-                    'volume_properties', 'source_replicaid',
-                    'consistencygroup_id', 'cgsnapshot_id', 'group_id', ]
+                    'volume_properties', 'consistencygroup_id',
+                    'cgsnapshot_id', 'group_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -745,8 +729,7 @@ class VolumeCastTask(flow_utils.CinderTask):
 
     def _cast_create_volume(self, context, request_spec, filter_properties):
         source_volume_ref = None
-        source_volid = (request_spec['source_volid'] or
-                        request_spec['source_replicaid'])
+        source_volid = request_spec['source_volid']
         volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']

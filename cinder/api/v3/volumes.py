@@ -228,6 +228,14 @@ class VolumeController(volumes_v2.VolumeController):
         kwargs = {}
         self.validate_name_and_description(volume)
 
+        # Check up front for legacy replication parameters to quick fail
+        source_replica = volume.get('source_replica')
+        if source_replica:
+            msg = _("Creating a volume from a replica source was part of the "
+                    "replication v1 implementation which is no longer "
+                    "available.")
+            raise exception.InvalidInput(reason=msg)
+
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in volume:
             volume['display_name'] = volume.pop('name')
@@ -272,23 +280,6 @@ class VolumeController(volumes_v2.VolumeController):
         else:
             kwargs['source_volume'] = None
 
-        source_replica = volume.get('source_replica')
-        if source_replica is not None:
-            if not uuidutils.is_uuid_like(source_replica):
-                msg = _("Source replica ID '%s' must be a "
-                        "valid UUID") % source_replica
-                raise exc.HTTPBadRequest(explanation=msg)
-            # Not found exception will be handled at the wsgi level
-            src_vol = self.volume_api.get_volume(context,
-                                                 source_replica)
-            if src_vol['replication_status'] == 'disabled':
-                explanation = _('source volume id:%s is not'
-                                ' replicated') % source_replica
-                raise exc.HTTPBadRequest(explanation=explanation)
-            kwargs['source_replica'] = src_vol
-        else:
-            kwargs['source_replica'] = None
-
         kwargs['group'] = None
         kwargs['consistencygroup'] = None
         consistencygroup_id = volume.get('consistencygroup_id')
@@ -311,8 +302,6 @@ class VolumeController(volumes_v2.VolumeController):
             size = kwargs['snapshot']['volume_size']
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
-        elif size is None and kwargs['source_replica'] is not None:
-            size = kwargs['source_replica']['size']
 
         LOG.info("Create volume of %s GB", size)
 

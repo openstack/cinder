@@ -257,7 +257,6 @@ class VolumeApiTest(test.TestCase):
                              availability_zone=DEFAULT_AZ,
                              snapshot_id=None,
                              source_volid=None,
-                             source_replica=None,
                              consistencygroup_id=None,
                              volume_type=None,
                              image_ref=None,
@@ -269,7 +268,6 @@ class VolumeApiTest(test.TestCase):
                "availability_zone": availability_zone,
                "snapshot_id": snapshot_id,
                "source_volid": source_volid,
-               "source_replica": source_replica,
                "consistencygroup_id": consistencygroup_id,
                "volume_type": volume_type,
                "group_id": group_id,
@@ -349,7 +347,6 @@ class VolumeApiTest(test.TestCase):
             'metadata': None,
             'snapshot': snapshot,
             'source_volume': source_volume,
-            'source_replica': None,
             'consistencygroup': None,
             'availability_zone': availability_zone,
             'scheduler_hints': None,
@@ -440,8 +437,6 @@ class VolumeApiTest(test.TestCase):
 
     @ddt.data({'source_volid': 1},
               {'source_volid': []},
-              {'source_replica': 1},
-              {'source_replica': []},
               {'consistencygroup_id': 1},
               {'consistencygroup_id': []})
     def test_volume_creation_fails_with_invalid_uuids(self, updated_uuids):

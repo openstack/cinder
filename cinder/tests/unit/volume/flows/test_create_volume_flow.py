@@ -75,7 +75,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'source_volid': None,
                 'snapshot_id': None,
                 'image_id': None,
-                'source_replicaid': None,
                 'consistencygroup_id': None,
                 'cgsnapshot_id': None,
                 'group_id': None, }
@@ -93,7 +92,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'source_volid': 2,
                 'snapshot_id': 3,
                 'image_id': 4,
-                'source_replicaid': 5,
                 'consistencygroup_id': 5,
                 'cgsnapshot_id': None,
                 'group_id': None, }
@@ -137,7 +135,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                                            'size': 1},
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -183,7 +180,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                      volume_type=None,
                      metadata=None,
                      key_manager=fake_key_manager,
-                     source_replica=None,
                      consistencygroup=None,
                      cgsnapshot=None,
                      group=None)
@@ -228,7 +224,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=volume_type,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -240,7 +235,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -286,7 +280,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           volume_type=volume_type,
                           metadata=None,
                           key_manager=fake_key_manager,
-                          source_replica=None,
                           consistencygroup=None,
                           cgsnapshot=None,
                           group=None)
@@ -330,7 +323,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=volume_type,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -342,7 +334,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -395,7 +386,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                                   volume_type=volume_type,
                                   metadata=None,
                                   key_manager=fake_key_manager,
-                                  source_replica=None,
                                   consistencygroup=None,
                                   cgsnapshot=None,
                                   group=None)
@@ -439,7 +429,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=volume_type,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -452,7 +441,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'encryption_key_id': None,
                            'qos_specs': None,
                            'replication_status': 'disabled',
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'refresh_az': False,
@@ -497,7 +485,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=volume_type,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -509,7 +496,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': {'fake_key': 'fake'},
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -562,7 +548,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=None,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -574,7 +559,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -628,7 +612,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=None,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -640,7 +623,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -693,7 +675,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               volume_type=None,
                               metadata=None,
                               key_manager=fake_key_manager,
-                              source_replica=None,
                               consistencygroup=None,
                               cgsnapshot=None,
                               group=None)
@@ -705,7 +686,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'volume_type_id': 1,
                            'encryption_key_id': None,
                            'qos_specs': None,
-                           'source_replicaid': None,
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None,
                            'group_id': None,
@@ -756,7 +736,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
                           volume_type=None,
                           metadata=None,
                           key_manager=fake_key_manager,
-                          source_replica=None,
                           consistencygroup=None,
                           cgsnapshot=None,
                           group=None)

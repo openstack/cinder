@@ -10,7 +10,6 @@
         "imageRef": null,
         "volume_type": null,
         "metadata": {},
-        "source_replica": null,
         "consistencygroup_id": null
     },
     "OS-SCH-HNT:scheduler_hints": {

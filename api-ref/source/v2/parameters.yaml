@@ -1523,7 +1523,8 @@ source_cgid:
   type: string
 source_replica:
   description: |
-    The UUID of the primary volume to clone.
+    The UUID of the replication volume to clone. This was for legacy
+    replication functionality and is no longer supported.
   in: body
   required: false
   type: string
