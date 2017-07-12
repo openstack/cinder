@@ -2111,10 +2111,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         array2_v1_3.get_volume.return_value = REPLICATED_VOLUME_SNAPS
 
         context = mock.MagicMock()
-        new_active_id, volume_updates = self.driver.failover_host(
+        new_active_id, volume_updates, __ = self.driver.failover_host(
             context,
             REPLICATED_VOLUME_OBJS,
-            None
+            None,
+            []
         )
 
         self.assertEqual(secondary_device_id, new_active_id)

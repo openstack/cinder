@@ -453,7 +453,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
         super(NetAppBlockStorageCmodeLibrary, self).unmanage(volume)
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover a backend to a secondary replication target."""
 
         return self._failover_host(volumes, secondary_id=secondary_id)

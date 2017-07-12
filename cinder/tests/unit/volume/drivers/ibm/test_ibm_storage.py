@@ -268,7 +268,7 @@ class IBMStorageFakeProxyDriver(object):
     def thaw_backend(self, context):
         return True
 
-    def failover_host(self, context, volumes, secondary_id):
+    def failover_host(self, context, volumes, secondary_id, groups=None):
         target_id = 'BLA'
         volume_update_list = []
         for volume in volumes:
@@ -279,7 +279,7 @@ class IBMStorageFakeProxyDriver(object):
                 {'volume_id': volume['id'],
                  'updates': {'replication_status': status}})
 
-        return target_id, volume_update_list
+        return target_id, volume_update_list, []
 
     def enable_replication(self, context, group, volumes):
         vol_status = []
@@ -916,10 +916,11 @@ class IBMStorageVolumeDriverTest(test.TestCase):
             {'volume_id': REPLICATED_VOLUME['id'],
              'updates': {'replication_status': 'failed-over'}}]
 
-        target_id, volume_update_list = self.driver.failover_host(
+        target_id, volume_update_list, __ = self.driver.failover_host(
             CONTEXT,
             [replicated_volume],
-            SECONDARY
+            SECONDARY,
+            []
         )
 
         self.assertEqual(expected_target_id, target_id)
@@ -939,10 +940,11 @@ class IBMStorageVolumeDriverTest(test.TestCase):
             {'volume_id': REPLICATED_VOLUME['id'],
              'updates': {'replication_status': 'error'}}]
 
-        target_id, volume_update_list = self.driver.failover_host(
+        target_id, volume_update_list, __ = self.driver.failover_host(
             CONTEXT,
             [replicated_volume],
-            SECONDARY
+            SECONDARY,
+            []
         )
 
         self.assertEqual(expected_target_id, target_id)

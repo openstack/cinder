@@ -1458,7 +1458,7 @@ class BaseVD(object):
         """
         return True
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover a backend to a secondary replication target.
 
         Instructs a replication capable/configured backend to failover
@@ -1481,8 +1481,9 @@ class BaseVD(object):
         :param volumes: list of volume objects, in case the driver needs
                         to take action on them in some way
         :param secondary_id: Specifies rep target backend to fail over to
-        :returns: ID of the backend that was failed-over to
-                   and model update for volumes
+        :param groups: replication groups
+        :returns: ID of the backend that was failed-over to,
+                  model update for volumes, and model update for groups
         """
 
         # Example volume_updates data structure:
@@ -1490,15 +1491,18 @@ class BaseVD(object):
         #   'updates': {'provider_id': 8,
         #               'replication_status': 'failed-over',
         #               'replication_extended_status': 'whatever',...}},]
+        # Example group_updates data structure:
+        # [{'group_id': <cinder-uuid>,
+        #   'updates': {'replication_status': 'failed-over',...}},]
         raise NotImplementedError()
 
-    def failover(self, context, volumes, secondary_id=None):
+    def failover(self, context, volumes, secondary_id=None, groups=None):
         """Like failover but for a host that is clustered.
 
         Most of the time this will be the exact same behavior as failover_host,
         so if it's not overwritten, it is assumed to be the case.
         """
-        return self.failover_host(context, volumes, secondary_id)
+        return self.failover_host(context, volumes, secondary_id, groups)
 
     def failover_completed(self, context, active_backend_id=None):
         """This method is called after failover for clustered backends."""

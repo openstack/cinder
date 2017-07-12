@@ -6987,7 +6987,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         volumes = [volume, non_replica_vol, gmcv_volume]
         # Delete volume in failover state
         self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'])
+            self.ctxt, volumes, self.rep_target['backend_id'], [])
         # Delete non-replicate volume in a failover state
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.delete_volume,
@@ -7001,7 +7001,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self._validate_replic_vol_deletion(gmcv_volume, True)
 
         self.driver.failover_host(
-            self.ctxt, volumes, 'default')
+            self.ctxt, volumes, 'default', [])
         self.driver.delete_volume(non_replica_vol)
         self._assert_vol_exists(non_replica_vol['name'], False)
 
@@ -7092,11 +7092,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver._replica_enabled = False
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host,
-                          self.ctxt, volumes, self.rep_target['backend_id'])
+                          self.ctxt, volumes, self.rep_target['backend_id'],
+                          [])
         self.driver._replica_enabled = True
         self.assertRaises(exception.InvalidReplicationTarget,
                           self.driver.failover_host,
-                          self.ctxt, volumes, self.fake_target['backend_id'])
+                          self.ctxt, volumes, self.fake_target['backend_id'],
+                          [])
 
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_sys_info:
@@ -7106,12 +7108,12 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertRaises(exception.UnableToFailOver,
                               self.driver.failover_host,
                               self.ctxt, volumes,
-                              self.rep_target['backend_id'])
+                              self.rep_target['backend_id'], [])
 
             self.driver._active_backend_id = self.rep_target['backend_id']
             self.assertRaises(exception.UnableToFailOver,
                               self.driver.failover_host,
-                              self.ctxt, volumes, 'default')
+                              self.ctxt, volumes, 'default', [])
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gmcv_vol)
 
@@ -7189,8 +7191,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 {'replication_status': fields.ReplicationStatus.FAILED_OVER},
              'volume_id': gmcv_vol['id']}]
 
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'])
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(expected_list, volume_list)
 
@@ -7206,8 +7208,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.delete_volume(gm_vol)
         self.driver.delete_volume(gmcv_vol)
 
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, None)
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, None, [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual([], volume_list)
 
@@ -7258,8 +7260,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                           'volume_id': non_replica_vol['id']},
                          ]
 
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'])
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(expected_list, volume_list)
 
@@ -7271,15 +7273,15 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertTrue(update_storwize_state.called)
         self.assertTrue(update_volume_stats.called)
 
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, None)
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, None, [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual([], volume_list)
         # Delete non-replicate volume in a failover state
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.delete_volume,
                           non_replica_vol)
-        self.driver.failover_host(self.ctxt, volumes, 'default')
+        self.driver.failover_host(self.ctxt, volumes, 'default', [])
         self.driver.delete_volume(mm_vol)
         self.driver.delete_volume(gmcv_vol)
         self.driver.delete_volume(non_replica_vol)
@@ -7360,22 +7362,22 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                  'status': 'available'},
              'volume_id': gmcv_vol['id']}]
         # Already failback
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, 'default')
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [])
         self.assertIsNone(target_id)
         self.assertEqual([], volume_list)
 
         # fail over operation
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'])
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(failover_expect, volume_list)
         self.assertTrue(update_storwize_state.called)
         self.assertTrue(update_volume_stats.called)
 
         # fail back operation
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, 'default')
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [])
         self.assertEqual('default', target_id)
         self.assertEqual(failback_expect, volume_list)
         self.assertIsNone(self.driver._active_backend_id)
@@ -7450,14 +7452,14 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
              'volume_id': non_replica_vol2['id']}]
 
         # Already failback
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, 'default')
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [])
         self.assertIsNone(target_id)
         self.assertEqual([], volume_list)
 
         # fail over operation
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, self.rep_target['backend_id'])
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, self.rep_target['backend_id'], [])
         self.assertEqual(self.rep_target['backend_id'], target_id)
         self.assertEqual(failover_expect, volume_list)
         self.assertTrue(update_storwize_state.called)
@@ -7489,8 +7491,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                            {'updates': {'status': 'error',
                                         'replication_driver_data': rep_data4},
                             'volume_id': gm_vol['id']}]
-        target_id, volume_list = self.driver.failover_host(
-            self.ctxt, volumes, 'default')
+        target_id, volume_list, __ = self.driver.failover_host(
+            self.ctxt, volumes, 'default', [])
         self.assertEqual('default', target_id)
         self.assertEqual(failback_expect, volume_list)
         self.assertIsNone(self.driver._active_backend_id)

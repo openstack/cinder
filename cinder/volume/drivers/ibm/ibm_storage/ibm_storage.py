@@ -217,11 +217,11 @@ class IBMStorageDriver(san.SanDriver,
 
         return self.proxy.thaw_backend(context)
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover a backend to a secondary replication target. """
 
         return self.proxy.failover_host(
-            context, volumes, secondary_id)
+            context, volumes, secondary_id, groups)
 
     def get_replication_status(self, context, volume):
         """Return replication status."""

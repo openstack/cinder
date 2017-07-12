@@ -984,7 +984,7 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
             self._logout(common)
 
     @utils.trace
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
         try:
@@ -992,6 +992,6 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
             active_backend_id, volume_updates = common.failover_host(
                 context, volumes, secondary_id)
             self._active_backend_id = active_backend_id
-            return active_backend_id, volume_updates
+            return active_backend_id, volume_updates, []
         finally:
             self._logout(common)

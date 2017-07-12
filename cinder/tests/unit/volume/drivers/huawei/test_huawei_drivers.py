@@ -3962,8 +3962,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [self.volume], 'default')
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [self.volume], 'default', [])
         self.assertIn(driver.active_backend_id, ('', None))
         self.assertEqual(old_client, driver.client)
         self.assertEqual(old_replica_client, driver.replica_client)
@@ -3977,8 +3977,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [self.volume], REPLICA_BACKEND_ID)
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [self.volume], REPLICA_BACKEND_ID, [])
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)
@@ -3999,8 +3999,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [self.volume], REPLICA_BACKEND_ID)
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [self.volume], REPLICA_BACKEND_ID, [])
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
         self.assertEqual(old_client, driver.client)
         self.assertEqual(old_replica_client, driver.replica_client)
@@ -4018,8 +4018,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [self.volume], 'default')
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [self.volume], 'default', [])
         self.assertIn(driver.active_backend_id, ('', None))
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)
@@ -4041,8 +4041,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(replication.ReplicaCommonDriver, 'failover')
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
                          return_value={'replication_enabled': 'true'})
-        secondary_id, volumes_update = driver.failover_host(
-            None, [self.replica_volume], REPLICA_BACKEND_ID)
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [self.replica_volume], REPLICA_BACKEND_ID, [])
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)
@@ -4071,8 +4071,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_replica = driver.replica
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
                          return_value={'replication_enabled': 'true'})
-        secondary_id, volumes_update = driver.failover_host(
-            None, [volume], REPLICA_BACKEND_ID)
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [volume], REPLICA_BACKEND_ID, [])
         self.assertEqual(driver.active_backend_id, REPLICA_BACKEND_ID)
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)
@@ -4099,8 +4099,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [volume], 'default')
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [volume], 'default', [])
         self.assertIn(driver.active_backend_id, ('', None))
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)
@@ -4132,8 +4132,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_client = driver.client
         old_replica_client = driver.replica_client
         old_replica = driver.replica
-        secondary_id, volumes_update = driver.failover_host(
-            None, [volume], 'default')
+        secondary_id, volumes_update, __ = driver.failover_host(
+            None, [volume], 'default', [])
         self.assertIn(driver.active_backend_id, ('', None))
         self.assertEqual(old_client, driver.replica_client)
         self.assertEqual(old_replica_client, driver.client)

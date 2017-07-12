@@ -709,7 +709,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         super(NetAppCmodeNfsDriver, self).unmanage(volume)
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover a backend to a secondary replication target."""
 
         return self._failover_host(volumes, secondary_id=secondary_id)

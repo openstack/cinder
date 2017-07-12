@@ -21,6 +21,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
+from cinder.volume import utils as vol_utils
 
 
 @base.CinderObjectRegistry.register
@@ -177,6 +178,14 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         with self.obj_as_admin():
             db.group_destroy(self._context, self.id)
 
+    @property
+    def is_replicated(self):
+        if (vol_utils.is_group_a_type(self, "group_replication_enabled") or
+                vol_utils.is_group_a_type(
+                    self, "consistent_group_replication_enabled")):
+            return True
+        return False
+
 
 @base.CinderObjectRegistry.register
 class GroupList(base.ObjectListBase, base.CinderObject):
@@ -207,3 +216,18 @@ class GroupList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context),
                                   objects.Group,
                                   groups)
+
+    @classmethod
+    def get_all_replicated(cls, context, filters=None, marker=None, limit=None,
+                           offset=None, sort_keys=None, sort_dirs=None):
+        groups = db.group_get_all(
+            context, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
+        grp_obj_list = base.obj_make_list(context, cls(context),
+                                          objects.Group,
+                                          groups)
+
+        out_groups = [grp for grp in grp_obj_list
+                      if grp.is_replicated]
+
+        return out_groups

@@ -130,5 +130,5 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
             group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
             source_cg=source_cg, source_vols=source_vols)
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         raise NotImplementedError()

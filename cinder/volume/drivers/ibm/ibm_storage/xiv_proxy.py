@@ -1286,7 +1286,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             return False, msg
 
     @proxy._trace_time
-    def failover_host(self, context, volumes, secondary_id):
+    def failover_host(self, context, volumes, secondary_id, groups=None):
         """Failover a full backend.
 
         Fails over the volume back and forth, if secondary_id is 'default',
@@ -1306,7 +1306,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             if self._using_default_backend():
                 LOG.info("Host has been failed back. No need "
                          "to fail back again.")
-                return self.active_backend_id, volume_update_list
+                return self.active_backend_id, volume_update_list, []
             pool_slave = self.storage_info[storage.FLAG_KEYS['storage_pool']]
             pool_master = self._get_target_params(
                 self.active_backend_id)['san_clustername']
@@ -1314,7 +1314,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         else:
             if not self._using_default_backend():
                 LOG.info("Already failed over. No need to failover again.")
-                return self.active_backend_id, volume_update_list
+                return self.active_backend_id, volume_update_list, []
             # case: need to select a target
             if secondary_id is None:
                 secondary_id = self._get_target()
@@ -1399,7 +1399,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         # set active backend id to secondary id
         self.active_backend_id = secondary_id
 
-        return secondary_id, volume_update_list
+        return secondary_id, volume_update_list, []
 
     @proxy._trace_time
     def retype(self, ctxt, volume, new_type, diff, host):

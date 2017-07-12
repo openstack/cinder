@@ -902,7 +902,7 @@ class API(base.Base):
         gsnapshot.save()
 
     def _check_type(self, group):
-        if not vol_utils.is_group_a_replication_group_type(group):
+        if not group.is_replicated:
             msg = _("Group %s is not a replication group type.") % group.id
             LOG.error(msg)
             raise exception.InvalidGroupType(reason=msg)

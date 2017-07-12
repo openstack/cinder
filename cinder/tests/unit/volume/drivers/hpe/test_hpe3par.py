@@ -5116,7 +5116,8 @@ class HPE3PARBaseDriver(object):
             expected_model = (self.REPLICATION_BACKEND_ID,
                               [{'updates': {'replication_status':
                                             'failed-over'},
-                                'volume_id': self.VOLUME_ID}])
+                                'volume_id': self.VOLUME_ID}],
+                              [])
             return_model = self.driver.failover_host(
                 context.get_admin_context(),
                 volumes,
@@ -5173,7 +5174,8 @@ class HPE3PARBaseDriver(object):
             expected_model = (None,
                               [{'updates': {'replication_status':
                                             'available'},
-                                'volume_id': self.VOLUME_ID}])
+                                'volume_id': self.VOLUME_ID}],
+                              [])
             self.assertEqual(expected_model, return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')

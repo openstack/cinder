@@ -3067,7 +3067,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                             'failed-over',
                                             'provider_location':
                                             prov_location},
-                                'volume_id': 1}])
+                                'volume_id': 1}],
+                              [])
             self.assertEqual(expected_model, return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
@@ -3164,7 +3165,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                             'available',
                                             'provider_location':
                                             prov_location},
-                                'volume_id': 1}])
+                                'volume_id': 1}],
+                              [])
             self.assertEqual(expected_model, return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')

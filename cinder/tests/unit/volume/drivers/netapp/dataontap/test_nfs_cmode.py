@@ -1409,8 +1409,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                          return_value=fake_ssc.SSC.keys())
         self.mock_object(self.driver, '_update_zapi_client')
 
-        actual_active, vol_updates = self.driver.failover_host(
-            'fake_context', [], secondary_id='dev1')
+        actual_active, vol_updates, __ = self.driver.failover_host(
+            'fake_context', [], secondary_id='dev1', groups=[])
 
         data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
             'dev0', ['dev1', 'dev2'], fake_ssc.SSC.keys(), [],

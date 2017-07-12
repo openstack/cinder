@@ -1784,7 +1784,7 @@ class SCCommonDriver(driver.ManageableVD,
         # Error and leave.
         return model_update
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover to secondary.
 
         :param context: security context
@@ -1808,7 +1808,7 @@ class SCCommonDriver(driver.ManageableVD,
         if self.failed_over:
             if secondary_id == 'default':
                 LOG.debug('failing back')
-                return 'default', self.failback_volumes(volumes)
+                return 'default', self.failback_volumes(volumes), []
             raise exception.InvalidReplicationTarget(
                 reason=_('Already failed over'))
 
@@ -1851,7 +1851,7 @@ class SCCommonDriver(driver.ManageableVD,
                     LOG.debug(self.failed_over)
                     LOG.debug(self.active_backend_id)
                     LOG.debug(self.replication_enabled)
-                    return destssn, volume_updates
+                    return destssn, volume_updates, []
                 else:
                     raise exception.InvalidReplicationTarget(reason=(
                         _('replication_failover failed. %s not found.') %

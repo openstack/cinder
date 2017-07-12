@@ -935,29 +935,3 @@ def is_group_a_type(group, key):
         )
         return spec == "<is> True"
     return False
-
-
-def is_group_a_non_consistent_replication_group_type(group):
-    return is_group_a_type(group, "group_replication_enabled")
-
-
-def is_group_a_consistent_replication_group_type(group):
-    return is_group_a_type(group, "consistent_group_replication_enabled")
-
-
-def is_group_a_replication_group_type(group):
-    if (is_group_a_non_consistent_replication_group_type(group) or
-            is_group_a_consistent_replication_group_type(group)):
-        return True
-    return False
-
-
-def get_replication_groups_by_host(ctxt, host):
-    groups = []
-    filters = {'host': host, 'backend_match_level': 'backend'}
-    grps = objects.GroupList.get_all(ctxt, filters=filters)
-    for grp in grps:
-        if is_group_a_replication_group_type(grp):
-            groups.append(grp)
-
-    return groups

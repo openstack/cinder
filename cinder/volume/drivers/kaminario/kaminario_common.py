@@ -357,7 +357,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                       "changed to failed_over ", rsession_name)
 
     @kaminario_logger
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover to replication target."""
         volume_updates = []
         back_end_ip = None
@@ -508,7 +508,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     volume_updates.append({'volume_id': v['id'],
                                            'updates': {'status': 'error', }})
             back_end_ip = self.replica.backend_id
-        return back_end_ip, volume_updates
+        return back_end_ip, volume_updates, []
 
     @kaminario_logger
     def _create_volume_replica_user_snap(self, k2, sess):

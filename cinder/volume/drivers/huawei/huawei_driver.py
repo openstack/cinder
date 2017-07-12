@@ -1838,7 +1838,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                       self.configuration)
         return secondary_id, volumes_update
 
-    def failover_host(self, context, volumes, secondary_id=None):
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Failover all volumes to secondary."""
         if secondary_id == 'default':
             secondary_id, volumes_update = self._failback(volumes)
@@ -1850,7 +1850,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        return secondary_id, volumes_update
+        return secondary_id, volumes_update, []
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         """Map a snapshot to a host and return target iSCSI information."""

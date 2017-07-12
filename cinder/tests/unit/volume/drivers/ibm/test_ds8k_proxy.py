@@ -2901,8 +2901,8 @@ class DS8KProxyTest(test.TestCase):
         pprc_pairs = copy.deepcopy(FAKE_GET_PPRCS_RESPONSE['data']['pprcs'])
         pprc_pairs[0]['state'] = 'suspended'
         mock_get_pprc_pairs.side_effect = [pprc_pairs]
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], TEST_TARGET_DS8K_IP)
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
         self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
 
     @mock.patch.object(replication.Replication, 'do_pprc_failover')
@@ -2928,7 +2928,7 @@ class DS8KProxyTest(test.TestCase):
             restclient.APIException('failed to do failover.'))
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host, self.ctxt,
-                          [volume], TEST_TARGET_DS8K_IP)
+                          [volume], TEST_TARGET_DS8K_IP, [])
 
     def test_failover_host_to_invalid_target(self):
         """Failover host to invalid secondary should fail."""
@@ -2947,7 +2947,7 @@ class DS8KProxyTest(test.TestCase):
                                      replication_driver_data=data)
         self.assertRaises(exception.InvalidReplicationTarget,
                           self.driver.failover_host, self.ctxt,
-                          [volume], 'fake_target')
+                          [volume], 'fake_target', [])
 
     def test_failover_host_that_has_been_failed_over(self):
         """Failover host that has been failed over should just return."""
@@ -2964,8 +2964,8 @@ class DS8KProxyTest(test.TestCase):
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data)
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], TEST_TARGET_DS8K_IP)
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
         self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
         self.assertEqual([], volume_update_list)
 
@@ -2984,8 +2984,8 @@ class DS8KProxyTest(test.TestCase):
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
                                      replication_driver_data=data)
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], 'default')
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], 'default', [])
         self.assertIsNone(secondary_id)
         self.assertEqual([], volume_update_list)
 
@@ -3000,8 +3000,8 @@ class DS8KProxyTest(test.TestCase):
         location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], TEST_TARGET_DS8K_IP)
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
         self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
         self.assertEqual('error', volume_update_list[0]['updates']['status'])
 
@@ -3019,8 +3019,8 @@ class DS8KProxyTest(test.TestCase):
         })
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], 'default')
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], 'default', [])
         self.assertEqual('default', secondary_id)
         self.assertEqual('available',
                          volume_update_list[0]['updates']['status'])
@@ -3050,8 +3050,8 @@ class DS8KProxyTest(test.TestCase):
         mock_get_pprc_pairs.side_effect = [pprc_pairs_full_duplex,
                                            pprc_pairs_suspended,
                                            pprc_pairs_full_duplex]
-        secondary_id, volume_update_list = self.driver.failover_host(
-            self.ctxt, [volume], 'default')
+        secondary_id, volume_update_list, __ = self.driver.failover_host(
+            self.ctxt, [volume], 'default', [])
         self.assertEqual('default', secondary_id)
 
     @mock.patch.object(replication.Replication, 'start_pprc_failback')
@@ -3074,4 +3074,4 @@ class DS8KProxyTest(test.TestCase):
             restclient.APIException('failed to do failback.'))
         self.assertRaises(exception.UnableToFailOver,
                           self.driver.failover_host, self.ctxt,
-                          [volume], 'default')
+                          [volume], 'default', [])
