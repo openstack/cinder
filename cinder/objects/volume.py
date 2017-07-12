@@ -342,12 +342,16 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
-            if 'consistencygroup' in updates:
-                # NOTE(xyang): Allow this to pass if 'consistencygroup' is
-                # set to None. This is to support backward compatibility.
-                if updates.get('consistencygroup'):
-                    raise exception.ObjectActionError(
-                        action='save', reason=_('consistencygroup changed'))
+            # NOTE(xyang): Allow this to pass if 'consistencygroup' is
+            # set to None. This is to support backward compatibility.
+            # Also remove 'consistencygroup' from updates because
+            # consistencygroup is the name of a relationship in the ORM
+            # Volume model, so SQLA tries to do some kind of update of
+            # the foreign key based on the provided updates if
+            # 'consistencygroup' is in updates.
+            if updates.pop('consistencygroup', None):
+                raise exception.ObjectActionError(
+                    action='save', reason=_('consistencygroup changed'))
             if 'group' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('group changed'))

@@ -63,14 +63,27 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual(db_volume['id'], volume.id)
 
     @mock.patch('cinder.db.volume_update')
-    def test_save(self, volume_update):
+    @ddt.data(False, True)
+    def test_save(self, test_cg, volume_update):
         db_volume = fake_volume.fake_db_volume()
         volume = objects.Volume._from_db_object(self.context,
                                                 objects.Volume(), db_volume)
         volume.display_name = 'foobar'
+        if test_cg:
+            volume.consistencygroup = None
         volume.save()
         volume_update.assert_called_once_with(self.context, volume.id,
                                               {'display_name': 'foobar'})
+
+    def test_save_error(self):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+        volume.display_name = 'foobar'
+        volume.consistencygroup = (
+            fake_consistencygroup.fake_consistencyobject_obj(self.context))
+        self.assertRaises(exception.ObjectActionError,
+                          volume.save)
 
     @mock.patch('cinder.db.volume_metadata_update',
                 return_value={'key1': 'value1'})
