@@ -1289,18 +1289,22 @@ class API(base.Base):
                  resource=volume)
         return response
 
-    @wrap_check_policy
-    def extend(self, context, volume, new_size):
+    def _extend(self, context, volume, new_size, attached=False):
         value = {'status': 'extending'}
-        expected = {'status': 'available'}
+        if attached:
+            expected = {'status': 'in-use'}
+        else:
+            expected = {'status': 'available'}
+        orig_status = {'status': volume.status}
 
         def _roll_back_status():
-            msg = _('Could not return volume %s to available.')
+            status = orig_status['status']
+            msg = _('Could not return volume %(id)s to %(status)s.')
             try:
-                if not volume.conditional_update(expected, value):
-                    LOG.error(msg, volume.id)
+                if not volume.conditional_update(orig_status, value):
+                    LOG.error(msg, {'id': volume.id, 'status': status})
             except Exception:
-                LOG.exception(msg, volume.id)
+                LOG.exception(msg, {'id': volume.id, 'status': status})
 
         size_increase = (int(new_size)) - volume.size
         if size_increase <= 0:
@@ -1312,8 +1316,11 @@ class API(base.Base):
 
         result = volume.conditional_update(value, expected)
         if not result:
-            msg = _('Volume %(vol_id)s status must be available '
-                    'to extend.') % {'vol_id': volume.id}
+            msg = (_("Volume %(vol_id)s status must be '%(expected)s' "
+                     "to extend, currently %(status)s.")
+                   % {'vol_id': volume.id,
+                      'status': volume.status,
+                      'expected': six.text_type(expected)})
             raise exception.InvalidVolume(reason=msg)
 
         rollback = True
@@ -1378,6 +1385,17 @@ class API(base.Base):
 
         LOG.info("Extend volume request issued successfully.",
                  resource=volume)
+
+    @wrap_check_policy
+    def extend(self, context, volume, new_size):
+        self._extend(context, volume, new_size, attached=False)
+
+    # NOTE(tommylikehu): New method is added here so that administrator
+    # can enable/disable this ability by editing the policy file if the
+    # cloud environment doesn't allow this operation.
+    @wrap_check_policy
+    def extend_attached_volume(self, context, volume, new_size):
+        self._extend(context, volume, new_size, attached=True)
 
     @wrap_check_policy
     def migrate_volume(self, context, volume, host, cluster_name, force_copy,

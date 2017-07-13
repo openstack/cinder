@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Add ability to extend ``in-use`` volume. User should be aware of the
+    whole environment before using this feature because it's dependent
+    on several external factors below:
+
+    * nova-compute version - needs to be the latest for Pike.
+    * only the libvirt compute driver supports this currently.
+    * only iscsi and fibre channel volume types are supported on the nova side currently.
+
+    Administrator can disable this ability by updating the
+    ``volume:extend_attached_volume`` policy rule.

@@ -780,6 +780,7 @@ def fake_upload_volume_to_image_service(self, context, volume, metadata,
     return ret
 
 
+@ddt.ddt
 class VolumeImageActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeImageActionsTest, self).setUp()
@@ -995,6 +996,33 @@ class VolumeImageActionsTest(test.TestCase):
                           req,
                           id,
                           body)
+
+    @ddt.data({'version': '3.41',
+               'status': 'available'},
+              {'version': '3.41',
+               'status': 'in-use'},
+              {'version': '3.42',
+               'status': 'available'},
+              {'version': '3.42',
+               'status': 'in-use'})
+    @ddt.unpack
+    def test_extend_attached_volume(self, version, status):
+        vol = db.volume_create(self.context,
+                               {'size': 1, 'project_id': fake.PROJECT_ID,
+                                'status': status})
+        self.mock_object(volume_api.API, 'get', return_value=vol)
+        mock_extend = self.mock_object(volume_api.API, '_extend')
+        body = {"os-extend": {"new_size": 2}}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, vol['id']))
+        req.api_version_request = api_version.APIVersionRequest(version)
+        self.controller._extend(req, vol['id'], body)
+        if version == '3.42' and status == 'in-use':
+            mock_extend.assert_called_with(req.environ['cinder.context'],
+                                           vol, 2, attached=True)
+        else:
+            mock_extend.assert_called_with(req.environ['cinder.context'],
+                                           vol, 2, attached=False)
 
     def test_copy_volume_to_image_notimagename(self):
         id = fake.VOLUME2_ID

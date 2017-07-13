@@ -95,6 +95,16 @@ REST_API_VERSION_HISTORY = """
     * 3.39 - Add ``project_id`` admin filters support to limits.
     * 3.40 - Add volume revert to its latest snapshot support.
     * 3.41 - Add ``user_id`` field to snapshot list/detail and snapshot show.
+    * 3.42 - Add ability to extend 'in-use' volume. User should be aware of the
+             whole environment before using this feature because it's dependent
+             on several external factors below:
+             1. nova-compute version - needs to be the latest for Pike.
+             2. only the libvirt compute driver supports this currently.
+             3. only iscsi and fibre channel volume types are supported
+                on the nova side currently.
+             Administrator can disable this ability by updating the
+             'volume:extend_attached_volume' policy rule. Extend in reserved
+             state is intentionally NOT allowed.
 """
 
 # The minimum and maximum versions of the API supported
@@ -102,7 +112,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.41"
+_MAX_API_VERSION = "3.42"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

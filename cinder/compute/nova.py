@@ -88,7 +88,8 @@ NOVA_API_VERSION = "2.1"
 nova_extensions = [ext for ext in
                    nova_client.discover_extensions(NOVA_API_VERSION)
                    if ext.name in ("assisted_volume_snapshots",
-                                   "list_extensions")]
+                                   "list_extensions",
+                                   "server_external_events")]
 
 
 def _get_identity_endpoint_from_sc(context):
@@ -103,7 +104,7 @@ def _get_identity_endpoint_from_sc(context):
     raise nova_exceptions.EndpointNotFound()
 
 
-def novaclient(context, privileged_user=False, timeout=None):
+def novaclient(context, privileged_user=False, timeout=None, api_version=None):
     """Returns a Nova client
 
     @param privileged_user: If True, use the account from configuration
@@ -111,6 +112,7 @@ def novaclient(context, privileged_user=False, timeout=None):
         options to be set in the [nova] section)
     @param timeout: Number of seconds to wait for an answer before raising a
         Timeout exception (None to disable)
+    @param api_version: api version of nova
     """
 
     if privileged_user and CONF[NOVA_GROUP].auth_type:
@@ -148,21 +150,54 @@ def novaclient(context, privileged_user=False, timeout=None):
         NOVA_GROUP,
         auth=n_auth)
 
-    c = nova_client.Client(api_versions.APIVersion(NOVA_API_VERSION),
-                           session=keystone_session,
-                           insecure=CONF[NOVA_GROUP].insecure,
-                           timeout=timeout,
-                           region_name=CONF[NOVA_GROUP].region_name,
-                           endpoint_type=CONF[NOVA_GROUP].interface,
-                           cacert=CONF[NOVA_GROUP].cafile,
-                           global_request_id=context.global_id,
-                           extensions=nova_extensions)
+    c = nova_client.Client(
+        api_versions.APIVersion(api_version or NOVA_API_VERSION),
+        session=keystone_session,
+        insecure=CONF[NOVA_GROUP].insecure,
+        timeout=timeout,
+        region_name=CONF[NOVA_GROUP].region_name,
+        endpoint_type=CONF[NOVA_GROUP].interface,
+        cacert=CONF[NOVA_GROUP].cafile,
+        global_request_id=context.global_id,
+        extensions=nova_extensions)
 
     return c
 
 
 class API(base.Base):
     """API for interacting with novaclient."""
+
+    def _get_volume_extended_event(self, server_id, volume_id):
+        return {'name': 'volume-extended',
+                'server_uuid': server_id,
+                'tag': volume_id}
+
+    def _send_events(self, context, events, api_version=None):
+        nova = novaclient(context, privileged_user=True,
+                          api_version=api_version)
+        try:
+            response = nova.server_external_events.create(events)
+        except nova_exceptions.NotFound:
+            LOG.warning('Nova returned NotFound for events: %s.', events)
+        except Exception:
+            LOG.exception('Failed to notify nova on events: %s.', events)
+        else:
+            if not isinstance(response, list):
+                LOG.error('Error response returned from nova: %s.', response)
+                return
+            response_error = False
+            for event in response:
+                code = event.get('code')
+                if code is None:
+                    response_error = True
+                    continue
+                if code != 200:
+                    LOG.warning(
+                        'Nova event: %s returned with failed status.', event)
+                else:
+                    LOG.info('Nova event response: %s.', event)
+            if response_error:
+                LOG.error('Error response returned from nova: %s.', response)
 
     def has_extension(self, context, extension, timeout=None):
         try:
@@ -203,3 +238,9 @@ class API(base.Base):
             raise exception.ServerNotFound(uuid=server_id)
         except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
+
+    def extend_volume(self, context, server_ids, volume_id):
+        api_version = '2.51'
+        events = [self._get_volume_extended_event(server_id, volume_id)
+                  for server_id in server_ids]
+        self._send_events(context, events, api_version=api_version)

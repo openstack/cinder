@@ -25,6 +25,7 @@
     "volume:delete_snapshot_metadata": "rule:admin_or_owner",
     "volume:update_snapshot_metadata": "rule:admin_or_owner",
     "volume:extend": "rule:admin_or_owner",
+    "volume:extend_attached_volume": "rule:admin_or_owner",
     "volume:update_readonly_flag": "rule:admin_or_owner",
     "volume:retype": "rule:admin_or_owner",
     "volume:update": "rule:admin_or_owner",

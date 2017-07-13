@@ -303,10 +303,12 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
         return {'os-volume_upload_image': response}
 
+    @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-extend')
     def _extend(self, req, id, body):
         """Extend size of volume."""
         context = req.environ['cinder.context']
+        req_version = req.api_version_request
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
 
@@ -317,11 +319,12 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
-            self.volume_api.extend(context, volume, size)
+            if req_version.matches("3.42") and volume.status in ['in-use']:
+                self.volume_api.extend_attached_volume(context, volume, size)
+            else:
+                self.volume_api.extend(context, volume, size)
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
-
-        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('os-update_readonly_flag')
     def _volume_readonly_update(self, req, id, body):
