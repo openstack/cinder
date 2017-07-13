@@ -23,7 +23,7 @@ Jenkins performs tasks such as:
     Calculate test coverage metrics.
 
 `cinder-docs`_
-    Build this documentation and push it to https://docs.openstack.org/developer/cinder.
+    Build this documentation and push it to `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`_.
 
 `cinder-merge-release-tags`_
     Merge reviewed code into the git repository.

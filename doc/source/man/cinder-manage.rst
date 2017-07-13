@@ -19,7 +19,10 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-cinder-manage provides control of cinder database migration, and provides an interface to get information about the current state of cinder.  More information about OpenStack Cinder is available at https://docs.openstack.org/developer/cinder.
+:command:`cinder-manage` provides control of cinder database migration,
+and provides an interface to get information about the current state
+of cinder.
+More information about OpenStack Cinder is available at `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`_.
 
 OPTIONS
 =======
@@ -164,7 +167,7 @@ The cinder-manage.log file logs output from cinder-manage.
 SEE ALSO
 ========
 
-* `OpenStack Cinder <https://docs.openstack.org/developer/cinder/>`__
+* `OpenStack Cinder <https://docs.openstack.org/cinder/latest/>`__
 
 BUGS
 ====
