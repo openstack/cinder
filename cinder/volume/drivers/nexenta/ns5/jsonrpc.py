@@ -132,7 +132,8 @@ class RESTCaller(object):
             host = '%s,%s' % (self.__proxy.backup, self.__proxy.host)
             self.__proxy.__init__(
                 host, self.__proxy.port, self.__proxy.user,
-                self.__proxy.password, self.__proxy.use_https)
+                self.__proxy.password, self.__proxy.use_https,
+                self.__proxy.verify)
         else:
             raise
 
