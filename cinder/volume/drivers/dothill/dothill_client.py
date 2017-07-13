@@ -281,9 +281,12 @@ class DotHillClient(object):
                             " %s", e.msg)
                 return None
 
-    def delete_snapshot(self, snap_name):
+    def delete_snapshot(self, snap_name, backend_type):
         try:
-            self._request("/delete/snapshot", "cleanup", snap_name)
+            if backend_type == 'linear':
+                self._request("/delete/snapshot", "cleanup", snap_name)
+            else:
+                self._request("/delete/snapshot", snap_name)
         except exception.DotHillRequestError as e:
             # -10050 => The volume was not found on this system.
             # This can occur during controller failover.
@@ -328,7 +331,10 @@ class DotHillClient(object):
         return stats
 
     def list_luns_for_host(self, host):
-        tree = self._request("/show/host-maps", host)
+        if self.is_titanium():
+            tree = self._request("/show/host-maps", host)
+        else:
+            tree = self._request("/show/maps/initiator", host)
         return [int(prop.text) for prop in tree.xpath(
                 "//PROPERTY[@name='lun']")]
 
