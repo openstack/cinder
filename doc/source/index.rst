@@ -69,6 +69,7 @@ Command Line Interface Documentation
    admin/cli-manage-volumes
    admin/cli-set-quotas
    admin/cli-cinder-quotas
+   admin/cli-cinder-scheduling
 
 Drivers
 =======
