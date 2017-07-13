@@ -101,6 +101,21 @@ def infinisdk_to_cinder_exceptions(func):
 
 @interface.volumedriver
 class InfiniboxVolumeDriver(san.SanISCSIDriver):
+    """INFINIDAT InfiniBox Cinder driver.
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0 - initial release
+        1.1 - switched to use infinisdk package
+        1.2 - added support for iSCSI protocol
+        1.3 - added generic volume groups support
+        1.4 - added support for QoS
+        1.5 - added support for volume compression
+
+    """
+
     VERSION = '1.5'
 
     # ThirdPartySystems wiki page
