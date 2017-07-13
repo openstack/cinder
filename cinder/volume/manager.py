@@ -2285,7 +2285,7 @@ class VolumeManager(manager.CleanableManager,
                       'vol %(vol)s: %(err)s',
                       {'vol': volume.id, 'err': ex})
 
-        # For the new flow this is realy the key part.  We just use the
+        # For the new flow this is really the key part.  We just use the
         # attachments to the worker/destination volumes that we created and
         # used for the libvirt migration and we'll just swap their volume_id
         # entries to coorespond with the volume.id swap we did
