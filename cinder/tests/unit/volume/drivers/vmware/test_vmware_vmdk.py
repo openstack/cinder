@@ -21,7 +21,6 @@ import ddt
 import mock
 from oslo_utils import units
 from oslo_utils import versionutils
-from oslo_vmware import api
 from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
 from oslo_vmware import vim_util
@@ -101,14 +100,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
                                                db=self._db)
 
-        api_retry_count = self._config.vmware_api_retry_count
-        task_poll_interval = self._config.vmware_task_poll_interval,
-        self._session = api.VMwareAPISession(self.IP, self.USERNAME,
-                                             self.PASSWORD, api_retry_count,
-                                             task_poll_interval,
-                                             create_session=False)
-        self._volumeops = volumeops.VMwareVolumeOps(self._session,
-                                                    self.MAX_OBJECTS)
         self._context = context.get_admin_context()
 
     def test_get_volume_stats(self):
@@ -2558,7 +2549,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_vmware.api.VMwareAPISession')
     def test_session(self, apiSession):
-        self._session = None
+        self._driver._session = None
 
         self._driver.session()
 
