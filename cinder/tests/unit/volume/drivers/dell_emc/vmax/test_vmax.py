@@ -170,6 +170,12 @@ class VMAXCommonData(object):
         volume_type=test_volume_type, host=fake_host,
         replication_driver_data=six.text_type(provider_location3))
 
+    test_attached_volume = fake_volume.fake_volume_obj(
+        context=ctx, name='vol1', size=2, provider_auth=None,
+        provider_location=six.text_type(provider_location), host=fake_host,
+        volume_type=test_volume_type, attach_status="attached",
+        replication_driver_data=six.text_type(provider_location3))
+
     test_legacy_vol = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
         provider_location=six.text_type(legacy_provider_location),
@@ -3905,6 +3911,10 @@ class VMAXCommonTest(test.TestCase):
                 self.common, '_find_device_on_array', return_value=None):
             self.common.retype(volume, new_type, host)
             mock_migrate.assert_not_called()
+        mock_migrate.reset_mock()
+        volume2 = self.data.test_attached_volume
+        self.common.retype(volume2, new_type, host)
+        mock_migrate.assert_not_called()
 
     def test_slo_workload_migration_valid(self):
         device_id = self.data.device_id
@@ -3978,8 +3988,13 @@ class VMAXCommonTest(test.TestCase):
                 self.data.array, device_id, self.data.srp, self.data.slo,
                 self.data.workload, volume_name, new_type, extra_specs)
             self.assertTrue(migrate_status)
+            target_extra_specs = {
+                'array': self.data.array, 'interval': 3,
+                'retries': 120, 'slo': self.data.slo,
+                'srp': self.data.srp, 'workload': self.data.workload}
             mock_remove.assert_called_once_with(
-                self.data.array, device_id, None, extra_specs, False)
+                self.data.array, device_id, volume_name,
+                target_extra_specs, reset=True)
             mock_remove.reset_mock()
             with mock.patch.object(
                     self.rest, 'get_storage_groups_from_volume',
