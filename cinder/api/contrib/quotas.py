@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import webob
 
 from oslo_utils import strutils
@@ -26,6 +27,8 @@ from cinder.i18n import _
 from cinder import quota
 from cinder import quota_utils
 from cinder import utils
+
+LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
@@ -215,6 +218,8 @@ class QuotaSetsController(wsgi.Controller):
 
         self.assert_valid_body(body, 'quota_set')
 
+        # TODO(wxy): Change "skip_validation"'s default value to  False in
+        # Queens.
         # Get the optional argument 'skip_validation' from body,
         # if skip_validation is False, then validate existing resource.
         skip_flag = body.get('skip_validation', True)
@@ -222,6 +227,11 @@ class QuotaSetsController(wsgi.Controller):
             msg = _("Invalid value '%s' for skip_validation.") % skip_flag
             raise exception.InvalidParameterValue(err=msg)
         skip_flag = strutils.bool_from_string(skip_flag)
+        if skip_flag:
+            LOG.warning("It's unsafe to skip validating the existing "
+                        "resource's quota when updating it. Cinder will force "
+                        "validate it in Queens, please try to use "
+                        "skip_validation=False for quota updating now.")
 
         target_project_id = id
         bad_keys = []
