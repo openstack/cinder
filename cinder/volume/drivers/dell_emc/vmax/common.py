@@ -1657,23 +1657,34 @@ class VMAXCommon(object):
         :param tgt_only: Flag - return only sessions where device is target
         :param extra_specs: extra specifications
         """
-        snap_vx_sessions = self.rest.find_snap_vx_sessions(
-            array, device_id, tgt_only)
-        if snap_vx_sessions:
-            for session in snap_vx_sessions:
-                source = session['source_vol']
-                snap_name = session['snap_name']
-                targets = session['target_vol_list']
-                for target in targets:
-                    # Break the replication relationship
-                    LOG.debug("Unlinking source from target. Source: "
-                              "%(volume)s, Target: %(target)s.",
-                              {'volume': volume_name, 'target': target})
-                    self.provision.break_replication_relationship(
-                        array, target, source, snap_name, extra_specs)
-                if 'temp' in snap_name:
-                    self.provision.delete_temp_volume_snap(
-                        array, snap_name, source)
+        get_sessions = False
+        snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
+            array, device_id)
+        if snapvx_tgt:
+            get_sessions = True
+        elif snapvx_src and not tgt_only:
+            get_sessions = True
+        if get_sessions:
+            snap_vx_sessions = self.rest.find_snap_vx_sessions(
+                array, device_id, tgt_only)
+            if snap_vx_sessions:
+                for session in snap_vx_sessions:
+                    source = session['source_vol']
+                    snap_name = session['snap_name']
+                    targets = session['target_vol_list']
+                    for target in targets:
+                        # Break the replication relationship
+                        LOG.debug("Unlinking source from target. Source: "
+                                  "%(volume)s, Target: %(target)s.",
+                                  {'volume': volume_name, 'target': target})
+                        self.provision.break_replication_relationship(
+                            array, target, source, snap_name, extra_specs)
+                    # The snapshot name will only have 'temp' (or EMC_SMI for
+                    # legacy volumes) if it is a temporary volume.
+                    # Only then is it a candidate for deletion.
+                    if 'temp' or 'EMC_SMI' in snap_name:
+                        self.provision.delete_temp_volume_snap(
+                            array, snap_name, source)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
