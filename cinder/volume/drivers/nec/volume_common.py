@@ -151,7 +151,7 @@ def convert_to_id(value62):
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
 
-    VERSION = '1.8.2'
+    VERSION = '1.9.1'
     WIKI_NAME = 'NEC_Cinder_CI'
 
     def do_setup(self, context):
@@ -877,7 +877,7 @@ class MStorageVolumeCommon(object):
             specs['upperreport'] = None
             LOG.debug('qos parameter not found.')
         else:
-            if ('upperlimit' in specs) and (specs['upperlimit'] is not None):
+            if 'upperlimit' in specs and specs['upperlimit'] is not None:
                 if self.validates_number(specs['upperlimit']) is True:
                     upper_limit = int(specs['upperlimit'], 10)
                     if ((upper_limit != 0) and
@@ -890,7 +890,7 @@ class MStorageVolumeCommon(object):
             else:
                 specs['upperlimit'] = None
 
-            if ('lowerlimit' in specs) and (specs['lowerlimit'] is not None):
+            if 'lowerlimit' in specs and specs['lowerlimit'] is not None:
                 if self.validates_number(specs['lowerlimit']) is True:
                     lower_limit = int(specs['lowerlimit'], 10)
                     if (lower_limit != 0 and (lower_limit < 10 or

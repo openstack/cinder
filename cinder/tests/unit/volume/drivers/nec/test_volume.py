@@ -94,8 +94,8 @@ xml_out = '''
    <OBJECT name="Logical Disk">
     <SECTION name="LD Detail Information">
      <UNIT name="LDN(h)">0006</UNIT>
-     <UNIT name="OS Type">  </UNIT>
-     <UNIT name="LD Name">20000009910200140006</UNIT>
+     <UNIT name="OS Type">LX</UNIT>
+     <UNIT name="LD Name">287RbQoP7VdwR1WsPC2fZT_l</UNIT>
      <UNIT name="LD Capacity">10737418240</UNIT>
      <UNIT name="Pool No.(h)">0000</UNIT>
      <UNIT name="Purpose">---</UNIT>
@@ -385,7 +385,7 @@ def patch_get_conf_properties(self, conf=None):
         'pool_pools': [0, 1],
         'pool_backup_pools': [2, 3],
         'pool_actual_free_capacity': 50000000000,
-        'ldset_name': 'LX:OpenStack0',
+        'ldset_name': '',
         'ldset_controller_node_name': 'LX:node0',
         'ld_name_format': 'LX:%s',
         'ld_backupname_format': 'LX:%s_back',
@@ -717,7 +717,7 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.vol.status = 'available'
         with self.assertRaisesRegexp(exception.NotFound,
                                      'Logical Disk `LX:37mA82`'
-                                     ' does not exist.'):
+                                     ' could not be found.'):
             self._validate_migrate_volume(self.vol, self.xml)
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
@@ -760,7 +760,7 @@ class BindLDTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
          self.max_ld_count) = self.configs(self.xml)
         mock_bindld = mock.Mock()
         self._bind_ld = mock_bindld
-        self._bind_ld.return_value = (0, 0, 0)
+        self._bind_ld.return_value = 0, 0, 0
 
     def test_bindld_CreateVolume(self):
         self.vol.id = "AAAAAAAA"
@@ -820,7 +820,7 @@ class BindLDTest_Snap(volume_helper.MStorageDSVDriver, unittest.TestCase):
          self.max_ld_count) = self.configs(self.xml)
         mock_bindld = mock.Mock()
         self._bind_ld = mock_bindld
-        self._bind_ld.return_value = (0, 0, 0)
+        self._bind_ld.return_value = 0, 0, 0
         mock_bindsnap = mock.Mock()
         self._create_snapshot = mock_bindsnap
 
@@ -901,7 +901,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.vol.size = 10
         self.vol.status = None
         self.vol.migration_status = None
-        connector = {'wwpns': ["1000-0090-FAA0-723A", "1000-0090-FAA0-723B"]}
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         self.fc_do_export(None, self.vol, connector)
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
@@ -960,7 +960,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
     def test_fc_initialize_connection(self):
         self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
         self.vol.migration_status = None
-        connector = {'wwpns': ["1000-0090-FAA0-723A", "1000-0090-FAA0-723B"]}
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         info = self._fc_initialize_connection(self.vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual('2100000991020012', info['data']['target_wwn'][0])
@@ -969,28 +969,28 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.assertEqual('2A00000991020012', info['data']['target_wwn'][3])
         self.assertEqual(
             '2100000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][0])
+            info['data']['initiator_target_map']['10000090FAA0786A'][0])
         self.assertEqual(
             '2100000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][0])
+            info['data']['initiator_target_map']['10000090FAA0786B'][0])
         self.assertEqual(
             '2200000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][1])
+            info['data']['initiator_target_map']['10000090FAA0786A'][1])
         self.assertEqual(
             '2200000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][1])
+            info['data']['initiator_target_map']['10000090FAA0786B'][1])
         self.assertEqual(
             '2900000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][2])
+            info['data']['initiator_target_map']['10000090FAA0786A'][2])
         self.assertEqual(
             '2900000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][2])
+            info['data']['initiator_target_map']['10000090FAA0786B'][2])
         self.assertEqual(
             '2A00000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][3])
+            info['data']['initiator_target_map']['10000090FAA0786A'][3])
         self.assertEqual(
             '2A00000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][3])
+            info['data']['initiator_target_map']['10000090FAA0786B'][3])
 
     @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
                 patch_execute)
@@ -998,7 +998,7 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
                 patch_view_all)
     def test_fc_terminate_connection(self):
         self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        connector = {'wwpns': ["1000-0090-FAA0-723A", "1000-0090-FAA0-723B"]}
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
         info = self._fc_terminate_connection(self.vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual('2100000991020012', info['data']['target_wwn'][0])
@@ -1007,28 +1007,28 @@ class ExportTest(volume_helper.MStorageDSVDriver, unittest.TestCase):
         self.assertEqual('2A00000991020012', info['data']['target_wwn'][3])
         self.assertEqual(
             '2100000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][0])
+            info['data']['initiator_target_map']['10000090FAA0786A'][0])
         self.assertEqual(
             '2100000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][0])
+            info['data']['initiator_target_map']['10000090FAA0786B'][0])
         self.assertEqual(
             '2200000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][1])
+            info['data']['initiator_target_map']['10000090FAA0786A'][1])
         self.assertEqual(
             '2200000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][1])
+            info['data']['initiator_target_map']['10000090FAA0786B'][1])
         self.assertEqual(
             '2900000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][2])
+            info['data']['initiator_target_map']['10000090FAA0786A'][2])
         self.assertEqual(
             '2900000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][2])
+            info['data']['initiator_target_map']['10000090FAA0786B'][2])
         self.assertEqual(
             '2A00000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723A'][3])
+            info['data']['initiator_target_map']['10000090FAA0786A'][3])
         self.assertEqual(
             '2A00000991020012',
-            info['data']['initiator_target_map']['1000-0090-FAA0-723B'][3])
+            info['data']['initiator_target_map']['10000090FAA0786B'][3])
 
 
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
@@ -1063,3 +1063,115 @@ class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
         self._cli.query_BV_SV_status.return_value = 'snap/active'
         ret = self.delete_snapshot(self.vol)
         self.assertIsNone(ret)
+
+
+class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
+                               unittest.TestCase):
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                'get_conf_properties', patch_get_conf_properties)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    def setUp(self):
+        self.do_setup(None)
+        self.vol = DummyVolume()
+        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        self.volvolume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+        self.volsize = 10
+        self.volstatus = None
+        self.volmigration_status = None
+        self._properties = self.get_conf_properties()
+        self._cli = self._properties['cli']
+        self.xml = self._cli.view_all()
+        (self.pools,
+         self.lds,
+         self.ldsets,
+         self.used_ldns,
+         self.hostports,
+         self.max_ld_count) = self.configs(self.xml)
+
+    def test_validate_ld_exist(self):
+        ldname = self._validate_ld_exist(
+            self.lds, self.vol.id, self._properties['ld_name_format'])
+        self.assertEqual('LX:287RbQoP7VdwR1WsPC2fZT', ldname)
+        self.vol.id = "00000000-0000-0000-0000-6b6d96553b4b"
+        with self.assertRaisesRegexp(exception.NotFound,
+                                     'Logical Disk `LX:XXXXXXXX`'
+                                     ' could not be found.'):
+            self._validate_ld_exist(
+                self.lds, self.vol.id, self._properties['ld_name_format'])
+
+    def test_validate_iscsildset_exist(self):
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
+        ldset = self._validate_iscsildset_exist(self.ldsets, connector)
+        self.assertEqual('LX:OpenStack0', ldset['ldsetname'])
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255XX"}
+        with self.assertRaisesRegexp(exception.NotFound,
+                                     'Appropriate Logical Disk Set'
+                                     ' could not be found.'):
+            self._validate_iscsildset_exist(self.ldsets, connector)
+
+    def test_validate_fcldset_exist(self):
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
+        ldset = self._validate_fcldset_exist(self.ldsets, connector)
+        self.assertEqual('LX:OpenStack1', ldset['ldsetname'])
+        connector = {'wwpns': ["10000090FAA0786X", "10000090FAA0786Y"]}
+        with self.assertRaisesRegexp(exception.NotFound,
+                                     'Appropriate Logical Disk Set'
+                                     ' could not be found.'):
+            self._validate_fcldset_exist(self.ldsets, connector)
+
+    def test_enumerate_iscsi_portals(self):
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
+        ldset = self._validate_iscsildset_exist(self.ldsets, connector)
+        self.assertEqual('LX:OpenStack0', ldset['ldsetname'])
+        portal = self._enumerate_iscsi_portals(self.hostports, ldset)
+        self.assertEqual('192.168.1.90:3260', portal[0])
+        self.assertEqual('192.168.1.91:3260', portal[1])
+        self.assertEqual('192.168.2.92:3260', portal[2])
+        self.assertEqual('192.168.2.93:3260', portal[3])
+
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                'get_conf_properties', patch_get_conf_properties)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    def test_initialize_connection_snapshot(self):
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
+        loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
+        self.vol.provider_location = loc
+        ret = self.iscsi_initialize_connection_snapshot(self.vol, connector)
+        self.assertIsNotNone(ret)
+        self.assertEqual('iscsi', ret['driver_volume_type'])
+
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
+        ret = self.fc_initialize_connection_snapshot(self.vol, connector)
+        self.assertIsNotNone(ret)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                'get_conf_properties', patch_get_conf_properties)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    def test_terminate_connection_snapshot(self):
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
+        self.iscsi_terminate_connection_snapshot(self.vol, connector)
+
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
+        ret = self.fc_terminate_connection_snapshot(self.vol, connector)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+
+    @mock.patch('cinder.volume.drivers.nec.volume_common.MStorageVolumeCommon.'
+                'get_conf_properties', patch_get_conf_properties)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI.'
+                'view_all', patch_view_all)
+    @mock.patch('cinder.volume.drivers.nec.cli.MStorageISMCLI._execute',
+                patch_execute)
+    def test_remove_export_snapshot(self):
+        self.remove_export_snapshot(None, self.vol)
+
+    def test_backup_use_temp_snapshot(self):
+        ret = self.backup_use_temp_snapshot()
+        self.assertTrue(ret)

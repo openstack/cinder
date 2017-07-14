@@ -85,7 +85,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         for pool in nominated_pools:
             nld = len(pool['ld_list'])
             if (nld < self._numofld_per_pool and
-                    ((selected_pool == -1) or (min_ldn > nld))):
+                    (selected_pool == -1 or min_ldn > nld)):
                 selected_pool = pool['pool_num']
                 min_ldn = nld
         if selected_pool < 0:
@@ -135,7 +135,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         size = option * units.Gi
         pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
-                 (pn in self._properties['pool_backup_pools'])]
+                 pn in self._properties['pool_backup_pools']]
         return self._return_poolnumber(pools)
 
     def _select_volddr_poolnumber(self, volume, pools, xml, option):
@@ -143,7 +143,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         size = option * units.Gi
         pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
-                 (pn in self._properties['pool_pools'])]
+                 pn in self._properties['pool_pools']]
         return self._return_poolnumber(pools)
 
     def _bind_ld(self, volume, capacity, validator,
@@ -213,6 +213,78 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                   {'name': ldname, 'size': capacity,
                    'ldn': selected_ldn, 'pool': selected_pool})
         return ldname, selected_ldn, selected_pool
+
+    def _validate_ld_exist(self, lds, vol_id, name_format):
+        ldname = self.get_ldname(vol_id, name_format)
+        if ldname not in lds:
+            msg = _('Logical Disk `%s` could not be found.') % ldname
+            LOG.error(msg)
+            raise exception.NotFound(msg)
+        return ldname
+
+    def _validate_iscsildset_exist(self, ldsets, connector, metadata=None):
+        ldset = self.get_ldset(ldsets, metadata)
+        if ldset is None:
+            for tldset in six.itervalues(ldsets):
+                if 'initiator_list' not in tldset:
+                    continue
+                n = tldset['initiator_list'].count(connector['initiator'])
+                if n > 0:
+                    ldset = tldset
+                    break
+            if ldset is None:
+                msg = _('Appropriate Logical Disk Set could not be found.')
+                raise exception.NotFound(msg)
+        if len(ldset['portal_list']) < 1:
+            msg = (_('Logical Disk Set `%s` has no portal.') %
+                   ldset['ldsetname'])
+            raise exception.NotFound(msg)
+        return ldset
+
+    def _validate_fcldset_exist(self, ldsets, connector, metadata=None):
+        ldset = self.get_ldset(ldsets, metadata)
+        if ldset is None:
+            for conect in connector['wwpns']:
+                length = len(conect)
+                findwwpn = '-'.join([conect[i:i + 4]
+                                     for i in range(0, length, 4)])
+                findwwpn = findwwpn.upper()
+                for tldset in six.itervalues(ldsets):
+                    if 'wwpn' in tldset and findwwpn in tldset['wwpn']:
+                        ldset = tldset
+                        break
+                if ldset is not None:
+                    break
+            if ldset is None:
+                msg = _('Appropriate Logical Disk Set could not be found.')
+                raise exception.NotFound(msg)
+        return ldset
+
+    def _enumerate_iscsi_portals(self, hostports, ldset, prefered_director=0):
+        nominated = []
+        for director in [prefered_director, 1 - prefered_director]:
+            if director not in hostports:
+                continue
+            dirportal = []
+            for port in hostports[director]:
+                if not port['protocol'].lower() == 'iscsi':
+                    continue
+                for portal in ldset['portal_list']:
+                    if portal.startswith(port['ip'] + ':'):
+                        dirportal.append(portal)
+                        break
+            if (self._properties['portal_number'] > 0 and
+                    len(dirportal) > self._properties['portal_number']):
+                nominated.extend(random.sample(
+                    dirportal, self._properties['portal_number']))
+            else:
+                nominated.extend(dirportal)
+
+        if len(nominated) == 0:
+            raise exception.NotFound(
+                _('No portal matches to any host ports.'))
+
+        return nominated
 
     def create_volume(self, volume):
         msgparm = ('Volume ID = %(id)s, Size = %(size)dGB'
@@ -320,16 +392,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
 
-        ldname = self.get_ldname(volume.id,
-                                 self._properties['ld_name_format'])
-
         # get volume.
-        if ldname not in lds:
-            msg = (_('Logical Disk has unbound already '
-                     '(name=%(name)s, id=%(id)s).') %
-                   {'name': ldname, 'id': volume.id})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        ldname = self._validate_ld_exist(
+            lds, volume.id, self._properties['ld_name_format'])
         ld = lds[ldname]
         ldn = ld['ldn']
 
@@ -455,8 +520,10 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         """Validate source volume information."""
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
-        ldname = self.get_ldname(volume.id,
-                                 self._properties['ld_name_format'])
+
+        # get ld object
+        ldname = self._validate_ld_exist(
+            lds, volume.id, self._properties['ld_name_format'])
 
         # check volume status.
         if volume.status != 'available':
@@ -464,11 +531,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        # get ld object and check rpl attribute.
-        if ldname not in lds:
-            msg = _('Logical Disk `%s` does not exist.') % ldname
-            LOG.error(msg)
-            raise exception.NotFound(msg)
+        # check rpl attribute.
         ld = lds[ldname]
         if ld['Purpose'] != '---':
             msg = (_('Specified Logical Disk %(ld)s '
@@ -574,6 +637,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def check_for_export(self, context, volume_id):
         pass
 
+    def backup_use_temp_snapshot(self):
+        return True
+
     def iscsi_do_export(self, _ctx, volume, connector, ensure=False):
         msgparm = ('Volume ID = %(id)s, '
                    'Initiator Name = %(initiator)s'
@@ -590,6 +656,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             {'msgparm': msgparm, 'exception': e})
 
     def _iscsi_do_export(self, _ctx, volume, connector, ensure):
+        LOG.debug('_iscsi_do_export'
+                  '(Volume ID = %(id)s, connector = %(connector)s) Start.',
+                  {'id': volume.id, 'connector': connector})
         while True:
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
@@ -607,32 +676,21 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 LOG.debug('image to volume or volume to image:%s',
                           volume.status)
             # migrate.
-            elif (volume.migration_status is not None and
+            elif (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
                 LOG.debug('migrate:%s', volume.migration_status)
 
-            ldset = self.get_ldset(ldsets, metadata)
-            if ldset is None:
-                for tldset in six.itervalues(ldsets):
-                    n = tldset['initiator_list'].count(connector['initiator'])
-                    if ('initiator_list' in tldset and n > 0):
-                        ldset = tldset
-                        LOG.debug('ldset=%s.', ldset)
-                        break
-                if ldset is None:
-                    msg = _('Appropriate Logical Disk Set could not be found.')
-                    raise exception.NotFound(msg)
+            ldset = self._validate_iscsildset_exist(
+                ldsets, connector, metadata)
 
-            if len(ldset['portal_list']) < 1:
-                msg = (_('Logical Disk Set `%s` has no portal.') %
-                       ldset['ldsetname'])
-                raise exception.NotFound(msg)
-
-            LOG.debug('migration_status:%s', volume.migration_status)
-            migstat = volume.migration_status
-            if migstat is not None and 'target:' in migstat:
+            if (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
+                    'target:' in volume.migration_status):
+                LOG.debug('migration_status:%s', volume.migration_status)
+                migstat = volume.migration_status
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
@@ -675,29 +733,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         # enumerate portals for iscsi multipath.
         prefered_director = ld['pool_num'] % 2
-        nominated = []
-        for director in [prefered_director, 1 - prefered_director]:
-            if director not in hostports:
-                continue
-            dirportal = []
-            for port in hostports[director]:
-                if not port['protocol'] == 'iSCSI':
-                    continue
-                for portal in ldset['portal_list']:
-                    if portal.startswith(port['ip'] + ':'):
-                        dirportal.append(portal)
-                        break
-            if ((self._properties['portal_number'] > 0) and
-                    (len(dirportal) > self._properties['portal_number'])):
-                nominated.extend(random.sample(
-                    dirportal, self._properties['portal_number']))
-            else:
-                nominated.extend(dirportal)
-
-        if len(nominated) == 0:
-            raise exception.NotFound(
-                _('Any portal not match to any host ports.'))
-
+        nominated = self._enumerate_iscsi_portals(hostports, ldset,
+                                                  prefered_director)
         location = ('%(list)s,1 %(iqn)s %(lun)d'
                     % {'list': ';'.join(nominated),
                        'iqn': ldset['lds'][ld['ldn']]['iqn'],
@@ -725,6 +762,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             {'msgparm': msgparm, 'exception': e})
 
     def _fc_do_export(self, _ctx, volume, connector, ensure):
+        LOG.debug('_fc_do_export'
+                  '(Volume ID = %(id)s, connector = %(connector)s) Start.',
+                  {'id': volume.id, 'connector': connector})
         while True:
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
@@ -742,30 +782,15 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 LOG.debug('image to volume or volume to image:%s',
                           volume.status)
             # migrate.
-            elif (volume.migration_status is not None and
+            elif (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''
                   ):
                 metadata['ldset'] = (
                     self._properties['ldset_controller_node_name'])
                 LOG.debug('migrate:%s', volume.migration_status)
 
-            ldset = self.get_ldset(ldsets, metadata)
-            if ldset is None:
-                for conect in connector['wwpns']:
-                    length = len(conect)
-                    findwwpn = '-'.join([conect[i:i + 4]
-                                         for i in range(0, length, 4)])
-                    findwwpn = findwwpn.upper()
-                    for tldset in six.itervalues(ldsets):
-                        if 'wwpn' in tldset and findwwpn in tldset['wwpn']:
-                            ldset = tldset
-                            LOG.debug('ldset=%s.', ldset)
-                            break
-                    if ldset is not None:
-                        break
-                if ldset is None:
-                    msg = _('Logical Disk Set could not be found.')
-                    raise exception.NotFound(msg)
+            ldset = self._validate_fcldset_exist(ldsets, connector, metadata)
 
             # get free lun.
             luns = []
@@ -779,9 +804,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                     break
                 target_lun += 1
 
-            LOG.debug('migration_status:%s', volume.migration_status)
-            migstat = volume.migration_status
-            if migstat is not None and 'target:' in migstat:
+            if (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
+                    'target:' in volume.migration_status):
+                LOG.debug('migration_status:%s', volume.migration_status)
+                migstat = volume.migration_status
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
@@ -827,6 +854,127 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                   {'ensure': 'ensure_' if ensure else '',
                    'ld': ldname})
 
+    def iscsi_do_export_snapshot(self, context, snapshot, connector):
+        """Exports the snapshot."""
+        msgparm = 'Snapshot ID = %s' % snapshot.id
+        try:
+            ret = self._iscsi_do_export_snapshot(
+                context, snapshot, connector,
+                self._properties['diskarray_name'])
+            LOG.info('Create Export Snapshot (%s)', msgparm)
+            return ret
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Create Export Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
+    def _iscsi_do_export_snapshot(self, context, snapshot, connector,
+                                  diskarray_name):
+        LOG.debug('_iscsi_do_export_snapshot(Snapshot ID = %s) Start.',
+                  snapshot.id)
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        LOG.debug('validate data.')
+        svname = self._validate_ld_exist(
+            lds, snapshot.id, self._properties['ld_name_format'])
+        bvname = self._validate_ld_exist(
+            lds, snapshot.volume_id, self._properties['ld_name_format'])
+        lvname = svname + '_l'
+        ldset = self._validate_iscsildset_exist(ldsets, connector)
+        svstatus = self._cli.query_BV_SV_status(bvname[3:], svname[3:])
+        if svstatus != 'snap/active':
+            msg = _('Logical Disk (%s) is invalid snapshot.') % svname
+            raise exception.VolumeBackendAPIException(data=msg)
+        lvldn = self._select_ldnumber(used_ldns, max_ld_count)
+
+        LOG.debug('configure backend.')
+        self._cli.lvbind(bvname, lvname[3:], lvldn)
+        self._cli.lvlink(svname[3:], lvname[3:])
+        self._cli.addldsetld(ldset['ldsetname'], lvname)
+
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+        ld = lds[lvname]
+        ldset = self._validate_iscsildset_exist(ldsets, connector)
+
+        LOG.debug('enumerate portals for iscsi multipath.')
+        prefered_director = ld['pool_num'] % 2
+        nominated = self._enumerate_iscsi_portals(hostports, ldset,
+                                                  prefered_director)
+        location = ('%(list)s,1 %(iqn)s %(lun)d'
+                    % {'list': ';'.join(nominated),
+                       'iqn': ldset['lds'][ld['ldn']]['iqn'],
+                       'lun': ldset['lds'][ld['ldn']]['lun']})
+
+        LOG.debug('create_export_snapshot location:(%s)', location)
+        return {'provider_location': location}
+
+    def fc_do_export_snapshot(self, context, snapshot, connector,
+                              ensure=False):
+        msgparm = ('Volume ID = %(id)s, '
+                   'Initiator WWPNs = %(wwpns)s'
+                   % {'id': snapshot.id,
+                      'wwpns': connector['wwpns']})
+        try:
+            ret = self._fc_do_export_snapshot(
+                context, snapshot, connector, ensure,
+                self._properties['diskarray_name'])
+            LOG.info('Created FC Export snapshot(%s)', msgparm)
+            return ret
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Create FC Export snapshot'
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    @coordination.synchronized('mstorage_bind_execute_{diskarray_name}')
+    def _fc_do_export_snapshot(self, context, snapshot, connector, ensure,
+                               diskarray_name):
+        LOG.debug('_fc_do_export_snapshot(Snapshot ID = %s) Start.',
+                  snapshot.id)
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        LOG.debug('validate data.')
+        svname = self._validate_ld_exist(
+            lds, snapshot.id, self._properties['ld_name_format'])
+        bvname = self._validate_ld_exist(
+            lds, snapshot.volume_id, self._properties['ld_name_format'])
+        lvname = svname + '_l'
+        ldset = self._validate_fcldset_exist(ldsets, connector)
+        svstatus = self._cli.query_BV_SV_status(bvname[3:], svname[3:])
+        if svstatus != 'snap/active':
+            msg = _('Logical Disk (%s) is invalid snapshot.') % svname
+            raise exception.VolumeBackendAPIException(data=msg)
+        lvldn = self._select_ldnumber(used_ldns, max_ld_count)
+
+        LOG.debug('configure backend.')
+        self._cli.lvbind(bvname, lvname[3:], lvldn)
+        self._cli.lvlink(svname[3:], lvname[3:])
+
+        luns = []
+        ldsetlds = ldset['lds']
+        for ld in six.itervalues(ldsetlds):
+            luns.append(ld['lun'])
+        target_lun = 0
+        for lun in sorted(luns):
+            if target_lun < lun:
+                break
+            target_lun += 1
+
+        self._cli.addldsetld(ldset['ldsetname'], lvname, target_lun)
+        LOG.debug('Add LD `%(ld)s` to LD Set `%(ldset)s`.',
+                  {'ld': lvname, 'ldset': ldset['ldsetname']})
+        LOG.debug('%(ensure)sexport LD `%(ld)s`.',
+                  {'ensure': 'ensure_' if ensure else '',
+                   'ld': lvname})
+
     def remove_export(self, context, volume):
         msgparm = 'Volume ID = %s' % volume.id
         try:
@@ -858,7 +1006,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 LOG.debug('image to volume or volume to image:%s',
                           volume.status)
             # migrate.
-            elif (volume.migration_status is not None and
+            elif (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
                     self._properties['ldset_controller_node_name'] != ''
                   ):
                 metadata['ldset'] = (
@@ -867,9 +1016,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
             ldset = self.get_ldset(ldsets, metadata)
 
-            LOG.debug('migration_status:%s', volume.migration_status)
-            migstat = volume.migration_status
-            if migstat is not None and 'target:' in migstat:
+            if (hasattr(volume, 'migration_status') and
+                    volume.migration_status is not None and
+                    'target:' in volume.migration_status):
+                LOG.debug('migration_status:%s', volume.migration_status)
+                migstat = volume.migration_status
                 index = migstat.find('target:')
                 if index != -1:
                     migstat = migstat[len('target:'):]
@@ -926,6 +1077,69 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                           {'ld': ldname, 'ldset': tagetldset['ldsetname']})
 
             LOG.debug('_remove_export(Volume ID = %s) End.', volume.id)
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes an export for a snapshot."""
+        msgparm = 'Snapshot ID = %s' % snapshot.id
+        try:
+            self._remove_export_snapshot(context, snapshot)
+            LOG.info('Removed Export Snapshot(%s)', msgparm)
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Remove Export Snapshot'
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    def _remove_export_snapshot(self, context, snapshot):
+        LOG.debug('_remove_export_snapshot(Snapshot ID = %s) Start.',
+                  snapshot.id)
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        LOG.debug('validate data.')
+        svname = self._validate_ld_exist(
+            lds, snapshot.id, self._properties['ld_name_format'])
+        lvname = svname + '_l'
+        if lvname not in lds:
+            LOG.debug('Logical Disk `%s` is already unexported.', lvname)
+            return
+
+        ld = lds[lvname]
+        ldsetlist = []
+        if ld is None:
+            msg = _('Exported snapshot could not be found.')
+            raise exception.VolumeBackendAPIException(data=msg)
+        for tldset in six.itervalues(ldsets):
+            if ld['ldn'] in tldset['lds']:
+                ldsetlist.append(tldset)
+        if len(ldsetlist) == 0:
+            LOG.debug('Specified Logical Disk is already removed.')
+            return
+
+        LOG.debug('configure backend.')
+        for tagetldset in ldsetlist:
+            retnum, errnum = self._cli.delldsetld(tagetldset['ldsetname'],
+                                                  lvname)
+            if retnum is not True:
+                msg = (_('Failed to remove export Logical Disk from '
+                         'Logical Disk Set (%s)') % errnum)
+                raise exception.VolumeBackendAPIException(data=msg)
+            LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
+                      {'ld': lvname, 'ldset': tagetldset['ldsetname']})
+
+        try:
+            self._cli.lvunlink(lvname[3:])
+        except Exception:
+            LOG.debug('LV unlink error.')
+
+        try:
+            self._cli.lvunbind(lvname)
+        except Exception:
+            LOG.debug('LV unbind error.')
+
+        LOG.debug('_remove_export_snapshot(Snapshot ID = %s) End.',
+                  snapshot.id)
 
     def iscsi_initialize_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
@@ -990,24 +1204,43 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'info': info})
         return info
 
-    def iscsi_terminate_connection(self, volume, connector):
-        msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
-                   % {'id': volume.id, 'connector': connector})
+    def iscsi_initialize_connection_snapshot(self, snapshot, connector,
+                                             **kwargs):
+        """Allow connection to connector and return connection info.
+
+        :param snapshot: The snapshot to be attached
+        :param connector: Dictionary containing information about what
+                          is being connected to.
+        :returns conn_info: A dictionary of connection information. This
+                            can optionally include a "initiator_updates"
+                            field.
+        """
+        msgparm = ('Snapshot ID = %(id)s, Connector = %(connector)s'
+                   % {'id': snapshot.id, 'connector': connector})
 
         try:
-            ret = self._iscsi_terminate_connection(volume, connector)
-            LOG.info('Terminated iSCSI Connection (%s)', msgparm)
+            ret = self._iscsi_initialize_connection(snapshot, connector)
+            LOG.info('Initialized iSCSI Connection snapshot(%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
-                LOG.warning('Failed to Terminate iSCSI Connection '
+                LOG.warning('Failed to Initialize iSCSI Connection snapshot'
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
+        return ret
 
-    def _iscsi_terminate_connection(self, volume, connector):
-        LOG.debug('execute _iscsi_terminate_connection'
-                  '(Volume ID = %(id)s, connector = %(connector)s).',
-                  {'id': volume.id, 'connector': connector})
+    def iscsi_terminate_connection(self, volume, connector):
+        msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
+                   % {'id': volume.id, 'connector': connector})
+        LOG.info('Terminated iSCSI Connection (%s)', msgparm)
+
+    def iscsi_terminate_connection_snapshot(self, snapshot, connector,
+                                            **kwargs):
+        """Disallow connection from connector."""
+        msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
+                   % {'id': snapshot.id, 'connector': connector})
+        self.remove_export_snapshot(None, snapshot)
+        LOG.info('Terminated iSCSI Connection snapshot(%s)', msgparm)
 
     def fc_initialize_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
@@ -1067,14 +1300,16 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         fc_ports = []
         for director, hostport in hostports.items():
             for port in hostport:
-                if port['protocol'] == 'FC':
+                if port['protocol'].lower() == 'fc':
                     fc_ports.append(port)
         target_wwns, init_targ_map = (
             self._build_initiator_target_map(connector, fc_ports))
 
-        LOG.debug('migration_status:%s', volume.migration_status)
-        migstat = volume.migration_status
-        if migstat is not None and 'target:' in migstat:
+        if (hasattr(volume, 'migration_status') and
+                volume.migration_status is not None and
+                'target:' in volume.migration_status):
+            LOG.debug('migration_status:%s', volume.migration_status)
+            migstat = volume.migration_status
             index = migstat.find('target:')
             if index != -1:
                 migstat = migstat[len('target:'):]
@@ -1093,7 +1328,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    {'ld': ldname, 'id': volume.id})
             LOG.error(msg)
             raise exception.NotFound(msg)
-        ldn = lds[ldname]['ldn']
+        lvname = ldname + '_l'
+        if lvname in lds:
+            ldn = lds[lvname]['ldn']
+        else:
+            ldn = lds[ldname]['ldn']
 
         lun = None
         for ldset in six.itervalues(ldsets):
@@ -1114,6 +1353,20 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'connector': connector,
                    'info': info})
         return info
+
+    def fc_initialize_connection_snapshot(self, snapshot, connector):
+        msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
+                   % {'id': snapshot.id, 'connector': connector})
+
+        try:
+            ret = self._fc_initialize_connection(snapshot, connector)
+            LOG.info('Initialized FC Connection snapshot(%s)', msgparm)
+            return ret
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Initialize FC Connection snapshot'
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
 
     def fc_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
@@ -1143,7 +1396,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         fc_ports = []
         for director, hostport in hostports.items():
             for port in hostport:
-                if port['protocol'] == 'FC':
+                if port['protocol'].lower() == 'fc':
                     fc_ports.append(port)
         target_wwns, init_targ_map = (
             self._build_initiator_target_map(connector, fc_ports))
@@ -1158,6 +1411,20 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'connector': connector,
                    'info': info})
         return info
+
+    def fc_terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
+                   % {'id': snapshot.id, 'connector': connector})
+        try:
+            ret = self._fc_terminate_connection(snapshot, connector)
+            LOG.info('Terminated FC Connection snapshot(%s)', msgparm)
+            self.remove_export_snapshot(None, snapshot)
+            return ret
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Terminate FC Connection snapshot'
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
 
     def _build_initiator_target_map(self, connector, fc_ports):
         target_wwns = []
@@ -1343,12 +1610,8 @@ class MStorageDSVDriver(MStorageDriver):
             raise exception.ParameterNotFound(param='backup_pools')
 
         # get BV name.
-        ldname = self.get_ldname(snapshot.volume_id,
-                                 self._properties['ld_name_format'])
-        if ldname not in lds:
-            msg = _('Logical Disk `%s` has unbound already.') % ldname
-            LOG.error(msg)
-            raise exception.NotFound(msg)
+        ldname = self._validate_ld_exist(
+            lds, snapshot.volume_id, self._properties['ld_name_format'])
 
         selected_pool = self._select_dsv_poolnumber(snapshot, pools, None)
         snapshotname = self._convert_id2snapname(snapshot)
