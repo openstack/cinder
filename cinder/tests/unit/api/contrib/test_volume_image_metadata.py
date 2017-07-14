@@ -149,7 +149,7 @@ class VolumeImageMetadataTest(test.TestCase):
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID, 'ramdisk_id',
                                          'someramdisk')
 
-        # create a unbootable volume
+        # create an unbootable volume
         db.volume_create(ctxt, {'id': fake.VOLUME2_ID, 'status': 'available',
                                 'host': 'test', 'provider_location': '',
                                 'size': 1})

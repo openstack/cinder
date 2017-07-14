@@ -468,7 +468,7 @@ class InfortrendCommon(object):
         self._check_tiers_setup()
 
     def create_volume(self, volume):
-        """Create a Infortrend partition."""
+        """Create an Infortrend partition."""
         volume_id = volume['id'].replace('-', '')
 
         self._create_partition_by_default(volume)

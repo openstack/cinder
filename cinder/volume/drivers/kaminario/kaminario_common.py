@@ -619,7 +619,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         src_map = self.client.search("mappings", volume=src_vol)
         src_attach_info = dest_attach_info = None
         if src_map.total != 0:
-            msg = _("K2 driver does not support clone of a attached volume. "
+            msg = _("K2 driver does not support clone of an attached volume. "
                     "To get this done, create a snapshot from the attached "
                     "volume and then create a volume from the snapshot.")
             LOG.error(msg)

@@ -1004,8 +1004,8 @@ def get_flow(context, manager, db, driver, scheduler_rpcapi, host, volume,
     4. Extracts a volume specification from the provided inputs.
     5. Notifies that the volume has started to be created.
     6. Creates a volume from the extracted volume specification.
-    7. Attaches a on-success *only* task that notifies that the volume creation
-       has ended and performs further database status updates.
+    7. Attaches an on-success *only* task that notifies that the volume
+       creation has ended and performs further database status updates.
     """
 
     flow_name = ACTION.replace(":", "_") + "_manager"

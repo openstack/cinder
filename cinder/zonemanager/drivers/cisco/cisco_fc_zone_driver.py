@@ -211,7 +211,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                             self.configuration.cisco_zone_name_prefix,
                             SUPPORTED_CHARS))
 
-                    # If zone exists, then perform a update_zone and add
+                    # If zone exists, then perform an update_zone and add
                     # new members into existing zone.
                     if zone_name and (zone_name in zone_names):
                         zone_members = filter(

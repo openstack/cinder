@@ -403,7 +403,7 @@ class NetAppESeriesLibrary(object):
             raise exception.NotFound(msg % snapshot['pitGroupRef'])
 
     def _get_snapshot_legacy(self, snapshot):
-        """Find a E-Series snapshot by the name of the snapshot group.
+        """Find an E-Series snapshot by the name of the snapshot group.
 
         Snapshots were previously identified by the unique name of the
         snapshot group. A snapshot volume is now utilized to uniquely
@@ -431,7 +431,7 @@ class NetAppESeriesLibrary(object):
                                    'found.') % snapshot['id'])
 
     def _get_snapshot(self, snapshot):
-        """Find a E-Series snapshot by its Cinder identifier
+        """Find an E-Series snapshot by its Cinder identifier
 
         An E-Series snapshot image does not have a configuration name/label,
         so we define a snapshot volume underneath of it that will help us to
