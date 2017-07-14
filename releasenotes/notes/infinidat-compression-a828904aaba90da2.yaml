@@ -1,0 +1,6 @@
+---
+features:
+  - Added support for volume compression in INFINIDAT driver.
+    Compression is available on InfiniBox 3.0 onward.
+    To enable volume compression, set ``infinidat_use_compression`` to
+    True in the backend section in the Cinder configuration file.
