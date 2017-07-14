@@ -1858,7 +1858,7 @@ def conditional_update(context, model, values, expected_values, filters=(),
                             equivalent to read_deleted.
     :param project_only: Should the query be limited to context's project.
     :param order: Specific order of fields in which to update the values
-    :returns number of db rows that were updated.
+    :returns: Number of db rows that were updated.
     """
     return IMPL.conditional_update(context, model, values, expected_values,
                                    filters, include_deleted, project_only,
