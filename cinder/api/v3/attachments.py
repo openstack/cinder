@@ -201,22 +201,22 @@ class AttachmentsController(wsgi.Controller):
         Expected format of the input parameter 'body':
 
         .. code-block:: json
-        {
-            "attachment":
             {
-                "connector":
+                "attachment":
                 {
-                    "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
-                    "ip":"192.168.1.20",
-                    "platform": "x86_64",
-                    "host": "tempest-1",
-                    "os_type": "linux2",
-                    "multipath": False,
-                    "mountpoint": "/dev/vdb",
-                    "mode": None|"rw"|"ro",
+                    "connector":
+                    {
+                        "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
+                        "ip":"192.168.1.20",
+                        "platform": "x86_64",
+                        "host": "tempest-1",
+                        "os_type": "linux2",
+                        "multipath": False,
+                        "mountpoint": "/dev/vdb",
+                        "mode": None|"rw"|"ro",
+                    }
                 }
             }
-        }
         """
         context = req.environ['cinder.context']
         attachment_ref = (
