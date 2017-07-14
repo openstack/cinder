@@ -119,8 +119,10 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             Local cache feature.
         1.0.2:
             Volume manage/unmanage support.
+        1.0.3:
+            Fix multi-connect to enable live-migration (LP#1565051).
     """
-    VERSION = '1.0.2'
+    VERSION = '1.0.3'
     protocol = 'iSCSI'
 
     # ThirdPartySystems wiki page
@@ -280,27 +282,14 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
             self.zfssa.verify_target(self._get_target_alias())
 
-    def _get_provider_info(self, volume, lun=None):
+    def _get_provider_info(self):
         """Return provider information."""
         lcfg = self.configuration
-        project = lcfg.zfssa_project
-        if ((lcfg.zfssa_enable_local_cache is True) and
-                (volume['name'].startswith('os-cache-vol-'))):
-            project = lcfg.zfssa_cache_project
-
-        if lun is None:
-            lun = self.zfssa.get_lun(lcfg.zfssa_pool,
-                                     project,
-                                     volume['name'])
-
-        if isinstance(lun['number'], list):
-            lun['number'] = lun['number'][0]
 
         if self.tgtiqn is None:
             self.tgtiqn = self.zfssa.get_target(self._get_target_alias())
 
-        loc = "%s %s %s" % (self.zfssa_target_portal, self.tgtiqn,
-                            lun['number'])
+        loc = "%s %s" % (self.zfssa_target_portal, self.tgtiqn)
         LOG.debug('_get_provider_info: provider_location: %s', loc)
         provider = {'provider_location': loc}
         if lcfg.zfssa_target_user != '' and lcfg.zfssa_target_password != '':
@@ -748,7 +737,9 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         """Not implemented."""
         pass
 
+    @utils.trace
     def initialize_connection(self, volume, connector):
+        """Driver entry point to setup a connection for a volume."""
         lcfg = self.configuration
         init_groups = self.zfssa.get_initiator_initiatorgroup(
             connector['initiator'])
@@ -767,19 +758,37 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         else:
             project = lcfg.zfssa_project
 
-        for initiator_group in init_groups:
-            self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
-                                              project,
-                                              volume['name'],
-                                              initiator_group)
-        iscsi_properties = {}
-        provider = self._get_provider_info(volume)
+        lun = self.zfssa.get_lun(lcfg.zfssa_pool, project, volume['name'])
 
-        (target_portal, iqn, lun) = provider['provider_location'].split()
+        # Construct a set (to avoid duplicates) of initiator groups by
+        # combining the list to which the LUN is already presented with
+        # the list for the new connector.
+        new_init_groups = set(lun['initiatorgroup'] + init_groups)
+        self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
+                                          project,
+                                          volume['name'],
+                                          sorted(list(new_init_groups)))
+
+        iscsi_properties = {}
+        provider = self._get_provider_info()
+
+        (target_portal, target_iqn) = provider['provider_location'].split()
         iscsi_properties['target_discovered'] = False
         iscsi_properties['target_portal'] = target_portal
-        iscsi_properties['target_iqn'] = iqn
-        iscsi_properties['target_lun'] = int(lun)
+        iscsi_properties['target_iqn'] = target_iqn
+
+        # Get LUN again to discover new initiator group mapping
+        lun = self.zfssa.get_lun(lcfg.zfssa_pool, project, volume['name'])
+
+        # Construct a mapping of LU number to initiator group.
+        lu_map = dict(zip(lun['initiatorgroup'], lun['number']))
+
+        # When an initiator is a member of multiple groups, and a LUN is
+        # presented to all of them, the same LU number is assigned to all of
+        # them, so we can use the first initator group containing the
+        # initiator to lookup the right LU number in our mapping
+        iscsi_properties['target_lun'] = int(lu_map[init_groups[0]])
+
         iscsi_properties['volume_id'] = volume['id']
 
         if 'provider_auth' in provider:
@@ -794,18 +803,34 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             'data': iscsi_properties
         }
 
+    @utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to terminate a connection for a volume."""
-        LOG.debug('terminate_connection: volume name: %s.', volume['name'])
         lcfg = self.configuration
         project = lcfg.zfssa_project
-        if ((lcfg.zfssa_enable_local_cache is True) and
-                (volume['name'].startswith('os-cache-vol-'))):
-            project = lcfg.zfssa_cache_project
-        self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
+        pool = lcfg.zfssa_pool
+
+        # If connector is None, assume that we're expected to disconnect
+        # the volume from all initiators
+        if connector is None:
+            new_init_groups = []
+        else:
+            connector_init_groups = self.zfssa.get_initiator_initiatorgroup(
+                connector['initiator'])
+            if ((lcfg.zfssa_enable_local_cache is True) and
+                    (volume['name'].startswith('os-cache-vol-'))):
+                project = lcfg.zfssa_cache_project
+            lun = self.zfssa.get_lun(pool, project, volume['name'])
+            # Construct the new set of initiator groups, starting with the list
+            # that the volume is currently connected to, then removing those
+            # associated with the connector that we're detaching from
+            new_init_groups = set(lun['initiatorgroup'])
+            new_init_groups -= set(connector_init_groups)
+
+        self.zfssa.set_lun_initiatorgroup(pool,
                                           project,
                                           volume['name'],
-                                          '')
+                                          sorted(list(new_init_groups)))
 
     def _get_voltype_specs(self, volume):
         """Get specs suitable for volume creation."""

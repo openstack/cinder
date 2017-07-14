@@ -465,27 +465,117 @@ class TestZFSSAISCSIDriver(test.TestCase):
     def test_volume_attach_detach(self, _get_provider_info):
         lcfg = self.configuration
         test_target_iqn = 'iqn.1986-03.com.sun:02:00000-aaaa-bbbb-cccc-ddddd'
-        stub_val = {'provider_location':
-                    '%s %s 0' % (lcfg.zfssa_target_portal, test_target_iqn)}
-        self.drv._get_provider_info.return_value = stub_val
+        self.drv._get_provider_info.return_value = {
+            'provider_location': '%s %s' % (lcfg.zfssa_target_portal,
+                                            test_target_iqn)
+        }
 
-        connector = dict(initiator='iqn.1-0.org.deb:01:d7')
+        def side_effect_get_initiator_initiatorgroup(arg):
+            return [{
+                'iqn.1-0.org.deb:01:d7': 'test-init-grp1',
+                'iqn.1-0.org.deb:01:d9': 'test-init-grp2',
+            }[arg]]
+
+        self.drv.zfssa.get_initiator_initiatorgroup.side_effect = (
+            side_effect_get_initiator_initiatorgroup)
+
+        initiator = 'iqn.1-0.org.deb:01:d7'
+        initiator_group = 'test-init-grp1'
+        lu_number = '246'
+
+        self.drv.zfssa.get_lun.side_effect = iter([
+            {'initiatorgroup': [], 'number': []},
+            {'initiatorgroup': [initiator_group], 'number': [lu_number]},
+            {'initiatorgroup': [initiator_group], 'number': [lu_number]},
+        ])
+
+        connector = dict(initiator=initiator)
         props = self.drv.initialize_connection(self.test_vol, connector)
-        self.drv._get_provider_info.assert_called_once_with(self.test_vol)
+        self.drv._get_provider_info.assert_called_once_with()
         self.assertEqual('iscsi', props['driver_volume_type'])
         self.assertEqual(self.test_vol['id'], props['data']['volume_id'])
         self.assertEqual(lcfg.zfssa_target_portal,
                          props['data']['target_portal'])
         self.assertEqual(test_target_iqn, props['data']['target_iqn'])
-        self.assertEqual(0, props['data']['target_lun'])
+        self.assertEqual(int(lu_number), props['data']['target_lun'])
         self.assertFalse(props['data']['target_discovered'])
-
-        self.drv.terminate_connection(self.test_vol, '')
-        self.drv.zfssa.set_lun_initiatorgroup.assert_called_once_with(
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
             lcfg.zfssa_pool,
             lcfg.zfssa_project,
             self.test_vol['name'],
-            '')
+            [initiator_group])
+
+        self.drv.terminate_connection(self.test_vol, connector)
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_vol['name'],
+            [])
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
+    def test_volume_attach_detach_live_migration(self, _get_provider_info):
+        lcfg = self.configuration
+        test_target_iqn = 'iqn.1986-03.com.sun:02:00000-aaaa-bbbb-cccc-ddddd'
+        self.drv._get_provider_info.return_value = {
+            'provider_location': '%s %s' % (lcfg.zfssa_target_portal,
+                                            test_target_iqn)
+        }
+
+        def side_effect_get_initiator_initiatorgroup(arg):
+            return [{
+                'iqn.1-0.org.deb:01:d7': 'test-init-grp1',
+                'iqn.1-0.org.deb:01:d9': 'test-init-grp2',
+            }[arg]]
+
+        self.drv.zfssa.get_initiator_initiatorgroup.side_effect = (
+            side_effect_get_initiator_initiatorgroup)
+
+        src_initiator = 'iqn.1-0.org.deb:01:d7'
+        src_initiator_group = 'test-init-grp1'
+        src_connector = dict(initiator=src_initiator)
+        src_lu_number = '123'
+
+        dst_initiator = 'iqn.1-0.org.deb:01:d9'
+        dst_initiator_group = 'test-init-grp2'
+        dst_connector = dict(initiator=dst_initiator)
+        dst_lu_number = '456'
+
+        # In the beginning, the LUN is already presented to the source
+        # node. During initialize_connection(), and at the beginning of
+        # terminate_connection(), it's presented to both nodes.
+        self.drv.zfssa.get_lun.side_effect = iter([
+            {'initiatorgroup': [src_initiator_group],
+             'number': [src_lu_number]},
+            {'initiatorgroup': [dst_initiator_group, src_initiator_group],
+             'number': [dst_lu_number, src_lu_number]},
+            {'initiatorgroup': [dst_initiator_group, src_initiator_group],
+             'number': [dst_lu_number, src_lu_number]},
+        ])
+
+        # Before migration, the volume gets connected to the destination
+        # node (whilst still connected to the source node), so it should
+        # be presented to the initiator groups for both
+        props = self.drv.initialize_connection(self.test_vol, dst_connector)
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_vol['name'],
+            [src_initiator_group, dst_initiator_group])
+
+        # LU number must be an int -
+        # https://bugs.launchpad.net/cinder/+bug/1538582
+        # and must be the LU number for the destination node's
+        # initiatorgroup (where the connection was just initialized)
+        self.assertEqual(int(dst_lu_number), props['data']['target_lun'])
+
+        # After migration, the volume gets detached from the source node
+        # so it should be present to only the destination node
+        self.drv.terminate_connection(self.test_vol, src_connector)
+        self.drv.zfssa.set_lun_initiatorgroup.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_vol['name'],
+            [dst_initiator_group])
 
     def test_volume_attach_detach_negative(self):
         self.drv.zfssa.get_initiator_initiatorgroup.return_value = []
