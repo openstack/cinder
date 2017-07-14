@@ -1387,27 +1387,24 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_terminate_secondary.called)
 
     @mock.patch.object(storagecenter_api.SCApi,
-                       'find_server',
-                       return_value=None)
-    @mock.patch.object(storagecenter_api.SCApi,
                        'find_volume',
                        return_value=VOLUME)
     @mock.patch.object(storagecenter_api.SCApi,
-                       'unmap_volume',
+                       'unmap_all',
                        return_value=True)
     def test_terminate_connection_no_server(self,
-                                            mock_unmap_volume,
+                                            mock_unmap_all,
                                             mock_find_volume,
-                                            mock_find_server,
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
-        volume = {'id': fake.VOLUME_ID}
+        volume = {'id': fake.VOLUME_ID, 'provider_id': '101.101'}
         connector = {'initiator': ''}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.terminate_connection,
-                          volume,
-                          connector)
+        res = self.driver.terminate_connection(volume, connector)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, '101.101',
+                                                 False)
+        mock_unmap_all.assert_called_once_with(self.VOLUME)
+        self.assertIsNone(res)
 
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_server',

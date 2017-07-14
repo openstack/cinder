@@ -220,25 +220,24 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
         return data
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
-        # Grab some initial info.
-        initiator_name = connector.get('initiator')
+        # Grab some quick info.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
-        islivevol = self._is_live_vol(volume)
+        initiator_name = None if not connector else connector.get('initiator')
         LOG.debug('Terminate connection: %(vol)s:%(initiator)s',
                   {'vol': volume_name,
                    'initiator': initiator_name})
+
         with self._client.open_connection() as api:
             try:
                 # Find the volume on the storage center. Note that if this
                 # is live volume and we are swapped this will be the back
                 # half of the live volume.
+                islivevol = self._is_live_vol(volume)
                 scvolume = api.find_volume(volume_name, provider_id, islivevol)
                 if scvolume:
                     # Get the SSN it is on.
                     ssn = scvolume['instanceId'].split('.')[0]
-                    # Find our server.
-                    scserver = api.find_server(initiator_name, ssn)
 
                     # Unmap our secondary if not failed over..
                     if islivevol:
@@ -249,10 +248,14 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
                             self.terminate_secondary(api, sclivevolume,
                                                      initiator_name)
 
+                    # Find our server.
+                    scserver = (None if not initiator_name else
+                                api.find_server(initiator_name, ssn))
+
                     # If we have a server and a volume lets pull them apart.
-                    if (scserver is not None and
-                            scvolume is not None and
-                            api.unmap_volume(scvolume, scserver) is True):
+                    if ((scserver and
+                         api.unmap_volume(scvolume, scserver) is True) or
+                       (not scserver and api.unmap_all(scvolume))):
                         LOG.debug('Connection terminated')
                         return
             except Exception:
@@ -265,9 +268,15 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
             _('Terminate connection failed'))
 
     def terminate_secondary(self, api, sclivevolume, initiatorname):
-        # Find our server.
-        secondary = api.find_server(initiatorname,
-                                    sclivevolume['secondaryScSerialNumber'])
         secondaryvol = api.get_volume(
             sclivevolume['secondaryVolume']['instanceId'])
-        return api.unmap_volume(secondaryvol, secondary)
+        if secondaryvol:
+            if initiatorname:
+                # Find our server.
+                secondary = api.find_server(
+                    initiatorname, sclivevolume['secondaryScSerialNumber'])
+                return api.unmap_volume(secondaryvol, secondary)
+            else:
+                return api.unmap_all(secondaryvol)
+        else:
+            LOG.debug('terminate_secondary: secondary volume not found.')
