@@ -889,7 +889,8 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-    def clone_snapshot(self, pool, project, lun, snapshot, clone_proj, clone):
+    def clone_snapshot(self, pool, project, lun, snapshot, clone_proj, clone,
+                       specs):
         """clone 'snapshot' to a lun named 'clone' in project 'clone_proj'."""
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
             project + '/luns/' + lun + '/snapshots/' + snapshot + '/clone'
@@ -898,6 +899,10 @@ class ZFSSAApi(object):
             'share': clone,
             'nodestroy': True
         }
+        if specs:
+            arg.update(specs)
+        # API fails if volblocksize is specified when cloning
+        arg.pop('volblocksize', '')
 
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.CREATED:
