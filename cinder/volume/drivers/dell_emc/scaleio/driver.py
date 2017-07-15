@@ -292,8 +292,8 @@ class ScaleIODriver(driver.VolumeDriver):
         if (self.configuration.sio_storage_pool_name is not None and
                 self.configuration.sio_protection_domain_name is not None):
             extra_pool = "{}:{}".format(
-                self.configuration.sio_storage_pool_name,
-                self.configuration.sio_protection_domain_name)
+                self.configuration.sio_protection_domain_name,
+                self.configuration.sio_storage_pool_name)
             LOG.info("Ensuring %s is in the list of configured pools.",
                      extra_pool)
             if pools is None:
