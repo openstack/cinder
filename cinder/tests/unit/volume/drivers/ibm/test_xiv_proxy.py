@@ -101,6 +101,11 @@ HOST_CONNECTIVITY_LIST = [
      'local_fc_port': '1:FC_Port:4:1', 'local_iscsi_port': '',
      'module': '1:Module:4', 'type': 'FC'}]
 
+HOST_CONNECTIVITY_LIST_UNKNOWN_HOST = [
+    {'host': 'nova-compute-c5507606d5680f115', 'host_port': '10000000C97D26DE',
+     'local_fc_port': '1:FC_Port:3:1', 'local_iscsi_port': '',
+     'module': '1:Module:3', 'type': 'FC'}]
+
 REPLICA_ID = 'WTF32'
 REPLICA_IP = '1.2.3.4'
 REPLICA_USER = 'WTF64'
@@ -1061,6 +1066,26 @@ class XIVProxyTest(test.TestCase):
             HOST_CONNECTIVITY_LIST)
         fc_targets = p._get_fc_targets(host)
         self.assertEqual(FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
+                         "FC targets are different from the expected")
+
+    def test_get_fc_targets_returns_host_all_wwpns_list(self):
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
+
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
+
+        hostname = storage.get_host_or_create_from_iqn(TEST_CONNECTOR)
+        host = {'name': hostname}
+        p.ibm_storage_cli = mock.MagicMock()
+        p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
+        p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
+            HOST_CONNECTIVITY_LIST_UNKNOWN_HOST)
+        fc_targets = p._get_fc_targets(host)
+        self.assertEqual(FC_TARGETS_OPTIMIZED, fc_targets,
                          "FC targets are different from the expected")
 
     def test_define_ports_returns_sorted_wwpns_list(self):
