@@ -66,7 +66,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def index(self, req, type_id):
         """Returns the list of extra specs for a given volume type."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action="index")
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
@@ -89,7 +89,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
 
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='create')
         self._allow_update(context, type_id)
 
         self.assert_valid_body(body, 'extra_specs')
@@ -114,7 +114,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
 
     def update(self, req, type_id, id, body=None):
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='update')
         self._allow_update(context, type_id)
 
         if not body:
@@ -147,7 +147,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def show(self, req, type_id, id):
         """Return a single extra spec item."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='show')
         self._check_type(context, type_id)
         specs = self._get_extra_specs(context, type_id)
         if id in specs['extra_specs']:
@@ -160,7 +160,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         """Deletes an existing extra spec."""
         context = req.environ['cinder.context']
         self._check_type(context, type_id)
-        authorize(context)
+        authorize(context, action='delete')
         self._allow_update(context, type_id)
 
         # Not found exception will be handled at the wsgi level
