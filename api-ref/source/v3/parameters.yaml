@@ -80,6 +80,12 @@ group_type_id:
   in: path
   required: false
   type: string
+group_type_id_1:
+  description: |
+    The UUID for an existing group type.
+  in: path
+  required: true
+  type: string
 hostname:
   description: |
     The name of the host that hosts the storage back
@@ -357,6 +363,12 @@ sort_key_group_snapshot:
   required: false
   type: string
   min_version: 3.29
+spec_id:
+  description: |
+    The id (key) of the group specification.
+  in: query
+  required: true
+  type: string
 status_query:
   description: |
     Filters results by a status. Default=None.
@@ -897,6 +909,13 @@ group_specs:
     specifications for a group type.
   in: body
   required: false
+  type: object
+group_specs_2:
+  description: |
+    A set of key and value pairs that contains the
+    specifications for a group type.
+  in: body
+  required: true
   type: object
 group_type:
   description: |
@@ -1964,6 +1983,12 @@ source_volid:
 source_volid_1:
   description: |
     The UUID of the source volume.
+  in: body
+  required: true
+  type: string
+spec_value:
+  description: |
+    The value of the group specification corresponding to the specified key.
   in: body
   required: true
   type: string

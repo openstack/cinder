@@ -39,6 +39,7 @@ Block Storage API V3 (CURRENT)
 .. include:: groups.inc
 .. include:: group-snapshots.inc
 .. include:: group-types.inc
+.. include:: group-type-specs.inc
 .. include:: hosts.inc
 .. include:: limits.inc
 .. include:: messages.inc
