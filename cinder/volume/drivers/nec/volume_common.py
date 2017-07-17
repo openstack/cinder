@@ -269,12 +269,10 @@ class MStorageVolumeCommon(object):
             'thread_timeout': conf.nec_unpairthread_timeout,
             'ismview_dir': conf.nec_ismview_dir,
             'ismview_alloptimize': conf.nec_ismview_alloptimize,
-            'ssh_conn_timeout': conf.ssh_conn_timeout,
             'ssh_pool_port_number': conf.nec_ssh_pool_port_number,
             'diskarray_name': conf.nec_diskarray_name,
             'queryconfig_view': conf.nec_queryconfig_view,
-            'portal_number': conf.nec_iscsi_portals_per_cont,
-            'reserved_percentage': conf.reserved_percentage
+            'portal_number': conf.nec_iscsi_portals_per_cont
         }
 
     def _set_properties(self):
@@ -289,7 +287,11 @@ class MStorageVolumeCommon(object):
         vendor_name, _product_dict = self.get_oem_parameter()
 
         backend_name = self._configuration.safe_get('volume_backend_name')
+        ssh_timeout = self._configuration.safe_get('ssh_conn_timeout')
+        reserved_per = self._configuration.safe_get('reserved_percentage')
 
+        conf_properties['ssh_conn_timeout'] = ssh_timeout
+        conf_properties['reserved_percentage'] = reserved_per
         conf_properties['ismview_path'] = ismview_path
         conf_properties['driver_name'] = self._driver_name
         conf_properties['config_group'] = self._config_group
