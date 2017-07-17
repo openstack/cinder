@@ -1519,7 +1519,7 @@ class NestedDbQuotaDriverTestCase(NestedDbQuotaDriverBaseTestCase):
 class NestedQuotaValidation(NestedDbQuotaDriverBaseTestCase):
     def setUp(self):
         super(NestedQuotaValidation, self).setUp()
-        """
+        r"""
         Quota hierarchy setup like so
         +-----------+
         |           |

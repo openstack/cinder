@@ -451,7 +451,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertListEqual([], pools)
         mock_get_ssc.assert_called_once_with()
 
-    @ddt.data('open+|demix+', 'open.+', '.+\d', '^((?!mix+).)*$',
+    @ddt.data(r'open+|demix+', 'open.+', r'.+\d', '^((?!mix+).)*$',
               'open123, open321')
     def test_get_pool_map_match_selected_pools(self, patterns):
 

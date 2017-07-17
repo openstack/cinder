@@ -75,7 +75,7 @@ class IBMStorageDriver(san.SanDriver,
 
         2.0 - First open source driver version
         2.1.0 - Support Consistency groups through Generic volume groups
-              - Support XIV\A9000 Volume independent QoS
+              - Support XIV/A9000 Volume independent QoS
               - Support Consistency groups replication
     """
 

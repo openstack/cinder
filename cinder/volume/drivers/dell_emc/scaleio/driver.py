@@ -670,7 +670,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(data=msg)
 
             # make sure the response was valid
-            pattern = re.compile("^\d+(\.\d+)*$")
+            pattern = re.compile(r"^\d+(\.\d+)*$")
             if not pattern.match(self.server_api_version):
                 msg = (_("Error calling version api "
                          "response: %s") % r.text)

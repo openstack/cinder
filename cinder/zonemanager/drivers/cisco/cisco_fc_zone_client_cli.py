@@ -95,7 +95,7 @@ class CiscoFCZoneClientCLI(object):
         try:
             for line in switch_data:
                 # Split on non-word characters,
-                line_split = re.split('[\s\[\]]+', line)
+                line_split = re.split(r'[\s\[\]]+', line)
                 if ZoneConstant.CFG_ZONESET in line_split:
                     # zoneset name [name] vsan [vsan]
                     zone_set_name = \
@@ -291,7 +291,7 @@ class CiscoFCZoneClientCLI(object):
         try:
             for line in switch_data:
                 # Split on non-word characters,
-                line_split = re.split('[\s\[\]]+', line)
+                line_split = re.split(r'[\s\[\]]+', line)
                 if 'mode:' in line_split:
                     # mode: <enhanced|basic>
                     zone_status['mode'] = line_split[line_split.index('mode:')

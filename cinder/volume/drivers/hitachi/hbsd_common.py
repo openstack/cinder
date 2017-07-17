@@ -228,7 +228,7 @@ class HBSDCommon(object):
                 first_type = 'dig'
             else:
                 if (first_type == 'dig'
-                        or not re.match('\w\w:\w\w:\w\w', lists[i])):
+                        or not re.match(r'\w\w:\w\w:\w\w', lists[i])):
                     msg = basic_lib.output_err(601, param=param)
                     raise exception.HBSDError(message=msg)
                 try:

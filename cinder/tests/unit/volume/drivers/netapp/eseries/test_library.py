@@ -260,7 +260,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertEqual(eseries_fake.STORAGE_POOLS, filtered_pools)
 
-    @ddt.data(('[\d]+,a', ['1', '2', 'a', 'b'], ['1', '2', 'a']),
+    @ddt.data((r'[\d]+,a', ['1', '2', 'a', 'b'], ['1', '2', 'a']),
               ('1   ,    3', ['1', '2', '3'], ['1', '3']),
               ('$,3', ['1', '2', '3'], ['3']),
               ('[a-zA-Z]+', ['1', 'a', 'B'], ['a', 'B']),

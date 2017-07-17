@@ -55,7 +55,7 @@ class IetAdm(iscsi.ISCSITarget):
 
         session_list = re.split('^tid:(?m)', sessions)[1:]
         for ses in session_list:
-            m = re.match('(\d+) name:(\S+)\s+', ses)
+            m = re.match(r'(\d+) name:(\S+)\s+', ses)
             if m and iqn in m.group(2):
                 return m.group(1)
 
@@ -206,7 +206,7 @@ class IetAdm(iscsi.ISCSITarget):
 
         session_list = re.split('^tid:(?m)', sessions)[1:]
         for ses in session_list:
-            m = re.match('(\d+) name:(\S+)\s+sid:(\d+).+\s+cid:(\d+)', ses)
+            m = re.match(r'(\d+) name:(\S+)\s+sid:(\d+).+\s+cid:(\d+)', ses)
             if m and tid in m.group(1) and name in m.group(2):
                 return m.group(3), m.group(4)
 

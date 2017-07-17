@@ -439,7 +439,7 @@ Return: 0x0000
             }])
 
     def get_fake_show_snapshot(self):
-        msg = """
+        msg = r"""
 CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
 Return: 0x0000
 \/\/\/-

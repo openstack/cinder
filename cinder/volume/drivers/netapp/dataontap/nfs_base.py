@@ -704,8 +704,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         conn, dr = None, None
         if image_location:
             nfs_loc_pattern = \
-                ('^nfs://(([\w\-\.]+:{1}[\d]+|[\w\-\.]+)(/[^\/].*)'
-                 '*(/[^\/\\\\]+)$)')
+                (r'^nfs://(([\w\-\.]+:{1}[\d]+|[\w\-\.]+)(/[^\/].*)'
+                 r'*(/[^\/\\\\]+)$)')
             matched = re.match(nfs_loc_pattern, image_location, flags=0)
             if not matched:
                 LOG.debug('Image location not in the'

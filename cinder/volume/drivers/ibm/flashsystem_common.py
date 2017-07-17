@@ -304,7 +304,7 @@ class FlashSystemDriver(san.SanDriver,
 
         # Ensure that the output is as expected
         match_obj = re.search(
-            'Virtual Disk, id \[([0-9]+)\], successfully created', out)
+            r'Virtual Disk, id \[([0-9]+)\], successfully created', out)
 
         self._driver_assert(
             match_obj is not None,

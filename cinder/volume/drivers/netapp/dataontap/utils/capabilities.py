@@ -279,9 +279,9 @@ class CapabilitiesLibrary(object):
         for key, value in extra_specs.items():
 
             if isinstance(value, six.string_types):
-                if re.match('<is>\s+True', value, re.I):
+                if re.match(r'<is>\s+True', value, re.I):
                     modified_extra_specs[key] = True
-                elif re.match('<is>\s+False', value, re.I):
+                elif re.match(r'<is>\s+False', value, re.I):
                     modified_extra_specs[key] = False
 
         return modified_extra_specs
