@@ -920,7 +920,9 @@ class GroupsAPITestCase(test.TestCase):
 
         add_volume.destroy()
 
-    def test_update_group_invalid_state(self):
+    @ddt.data(fields.GroupStatus.CREATING, fields.GroupStatus.UPDATING)
+    def test_update_group_invalid_state(self, status):
+        self.group1.status = status
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/update' %
                                       (fake.PROJECT_ID, self.group1.id),
                                       version=GROUP_MICRO_VERSION)

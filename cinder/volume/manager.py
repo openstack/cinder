@@ -3654,14 +3654,14 @@ class VolumeManager(manager.CleanableManager,
                     rem_vol.status = 'error'
                     rem_vol.save()
 
-        group.status = 'available'
-        group.save()
         for add_vol in add_volumes_ref:
             add_vol.group_id = group.id
             add_vol.save()
         for rem_vol in remove_volumes_ref:
             rem_vol.group_id = None
             rem_vol.save()
+        group.status = fields.GroupStatus.AVAILABLE
+        group.save()
 
         self._notify_about_group_usage(
             context, group, "update.end")
