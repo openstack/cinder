@@ -35,6 +35,7 @@ from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import taskflows as emc_taskflow
 from cinder.volume.drivers.dell_emc.vnx import utils
+from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as zm_utils
 
 
@@ -238,7 +239,11 @@ class CommonAdapter(object):
                   'tier': tier})
 
         qos_specs = utils.get_backend_qos_specs(volume)
-        cg_id = volume.group_id
+        if (volume.group and
+                vol_utils.is_group_a_cg_snapshot_type(volume.group)):
+            cg_id = volume.group_id
+        else:
+            cg_id = None
         lun = self.client.create_lun(
             pool, volume_name, volume_size,
             provision, tier, cg_id,

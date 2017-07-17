@@ -100,6 +100,8 @@ class DriverResourceMock(dict):
 def _fake_volume_wrapper(*args, **kwargs):
     expected_attrs_key = {'volume_attachment': 'volume_attachment',
                           'volume_metadata': 'metadata'}
+    if 'group' in kwargs:
+        expected_attrs_key['group'] = kwargs['group']
     return fake_volume.fake_volume_obj(
         context.get_admin_context(),
         expected_attrs=[
@@ -108,7 +110,8 @@ def _fake_volume_wrapper(*args, **kwargs):
 
 
 def _fake_cg_wrapper(*args, **kwargs):
-    return fake_consistencygroup.fake_consistencyobject_obj(None, **kwargs)
+    return fake_consistencygroup.fake_consistencyobject_obj(
+        'fake_context', **kwargs)
 
 
 def _fake_snapshot_wrapper(*args, **kwargs):
