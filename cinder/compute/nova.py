@@ -107,12 +107,15 @@ def _get_identity_endpoint_from_sc(context):
 def novaclient(context, privileged_user=False, timeout=None, api_version=None):
     """Returns a Nova client
 
-    @param privileged_user: If True, use the account from configuration
+    @param privileged_user:
+        If True, use the account from configuration
         (requires 'auth_type' and the other usual Keystone authentication
         options to be set in the [nova] section)
-    @param timeout: Number of seconds to wait for an answer before raising a
+    @param timeout:
+        Number of seconds to wait for an answer before raising a
         Timeout exception (None to disable)
-    @param api_version: api version of nova
+    @param api_version:
+        api version of nova
     """
 
     if privileged_user and CONF[NOVA_GROUP].auth_type:
