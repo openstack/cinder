@@ -14,6 +14,7 @@
 #    under the License.
 
 import ast
+from copy import deepcopy
 import os.path
 import sys
 
@@ -24,6 +25,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.vmax import masking
 from cinder.volume.drivers.dell_emc.vmax import provision
@@ -39,6 +41,14 @@ CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_dell_emc_config.xml'
 CINDER_EMC_CONFIG_FILE_PREFIX = '/etc/cinder/cinder_dell_emc_config_'
 CINDER_EMC_CONFIG_FILE_POSTFIX = '.xml'
 BACKENDNAME = 'volume_backend_name'
+PREFIXBACKENDNAME = 'capabilities:volume_backend_name'
+
+# Replication
+REPLICATION_DISABLED = fields.ReplicationStatus.DISABLED
+REPLICATION_ENABLED = fields.ReplicationStatus.ENABLED
+REPLICATION_FAILOVER = fields.ReplicationStatus.FAILED_OVER
+FAILOVER_ERROR = fields.ReplicationStatus.FAILOVER_ERROR
+REPLICATION_ERROR = fields.ReplicationStatus.ERROR
 
 
 vmax_opts = [
@@ -46,10 +56,10 @@ vmax_opts = [
                default=CINDER_EMC_CONFIG_FILE,
                help='Use this file for cinder emc plugin '
                     'config data.'),
-    cfg.StrOpt('intervals',
+    cfg.StrOpt('interval',
                default=3,
                help='Use this value to specify '
-                    'length of intervals in seconds.'),
+                    'length of the interval in seconds.'),
     cfg.StrOpt('retries',
                default=200,
                help='Use this value to specify '
@@ -78,15 +88,19 @@ class VMAXCommon(object):
              'storage_protocol': None,
              'total_capacity_gb': 0,
              'vendor_name': 'Dell EMC',
-             'volume_backend_name': None}
+             'volume_backend_name': None,
+             'replication_enabled': False,
+             'replication_targets': None}
 
     pool_info = {'backend_name': None,
                  'config_file': None,
                  'arrays_info': {},
                  'max_over_subscription_ratio': None,
-                 'reserved_percentage': 0}
+                 'reserved_percentage': 0,
+                 'replication_enabled': False}
 
-    def __init__(self, prtcl, version, configuration=None):
+    def __init__(self, prtcl, version, configuration=None,
+                 active_backend_id=None):
 
         self.protocol = prtcl
         self.configuration = configuration
@@ -96,6 +110,13 @@ class VMAXCommon(object):
         self.masking = masking.VMAXMasking(prtcl, self.rest)
         self.provision = provision.VMAXProvision(self.rest)
         self.version = version
+        # replication
+        self.replication_enabled = False
+        self.extend_replicated_vol = False
+        self.rep_devices = None
+        self.active_backend_id = active_backend_id
+        self.failover = False
+        self._get_replication_info()
         self._gather_info()
 
     def _gather_info(self):
@@ -116,7 +137,7 @@ class VMAXCommon(object):
         else:
             self.pool_info['config_file'] = (
                 self.configuration.safe_get('cinder_dell_emc_config_file'))
-        self.intervals = self.configuration.safe_get('intervals')
+        self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
@@ -143,6 +164,30 @@ class VMAXCommon(object):
                 ret_val = True
         return ret_val
 
+    def _get_replication_info(self):
+        """Gather replication information, if provided."""
+        self.rep_config = None
+        self.replication_targets = None
+        if hasattr(self.configuration, 'replication_device'):
+            self.rep_devices = self.configuration.safe_get(
+                'replication_device')
+        if self.rep_devices and len(self.rep_devices) == 1:
+            self.rep_config = self.utils.get_replication_config(
+                self.rep_devices)
+            if self.rep_config:
+                self.replication_targets = [self.rep_config['array']]
+                if self.active_backend_id == self.rep_config['array']:
+                    self.failover = True
+                self.extend_replicated_vol = self.rep_config['allow_extend']
+                # use self.replication_enabled for update_volume_stats
+                self.replication_enabled = True
+                LOG.debug("The replication configuration is %(rep_config)s.",
+                          {'rep_config': self.rep_config})
+        elif self.rep_devices and len(self.rep_devices) > 1:
+            LOG.error("More than one replication target is configured. "
+                      "Dell EMC VMAX only suppports a single replication "
+                      "target. Replication will not be enabled.")
+
     def _get_slo_workload_combinations(self, array_info):
         """Method to query the array for SLO and Workloads.
 
@@ -154,6 +199,8 @@ class VMAXCommon(object):
         """
         try:
             array = array_info['SerialNumber']
+            if self.failover:
+                array = self.active_backend_id
             # Get the srp slo & workload settings
             slo_settings = self.rest.get_slo_list(array)
             # Remove 'None' from the list (so a 'None' slo is not combined
@@ -203,6 +250,12 @@ class VMAXCommon(object):
         volume_dict = (self._create_volume(
             volume_name, volume_size, extra_specs))
 
+        # Set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extra_specs):
+            rep_update = self._replicate_volume(volume, volume_name,
+                                                volume_dict, extra_specs)
+            model_update.update(rep_update)
+
         LOG.info("Leaving create_volume: %(name)s. Volume dict: %(dict)s.",
                  {'name': volume_name, 'dict': volume_dict})
         model_update.update(
@@ -225,6 +278,12 @@ class VMAXCommon(object):
             volume, snapshot, extra_specs, is_snapshot=False,
             from_snapvx=True)
 
+        # Set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extra_specs):
+            rep_update = self._replicate_volume(volume, snapshot['name'],
+                                                clone_dict, extra_specs)
+            model_update.update(rep_update)
+
         model_update.update(
             {'provider_location': six.text_type(clone_dict)})
         return model_update
@@ -241,9 +300,42 @@ class VMAXCommon(object):
         clone_dict = self._create_cloned_volume(clone_volume, source_volume,
                                                 extra_specs)
 
+        # Set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extra_specs):
+            rep_update = self._replicate_volume(
+                clone_volume, clone_volume.name, clone_dict, extra_specs)
+            model_update.update(rep_update)
+
         model_update.update(
             {'provider_location': six.text_type(clone_dict)})
         return model_update
+
+    def _replicate_volume(self, volume, volume_name, volume_dict, extra_specs,
+                          delete_src=True):
+        """Setup up remote replication for a volume.
+
+        :param volume: the volume object
+        :param volume_name: the volume name
+        :param volume_dict: the volume dict
+        :param extra_specs: the extra specifications
+        :param delete_src: flag to indicate if source should be deleted on
+                           if replication fails
+        :returns: replication model_update
+        """
+        array = volume_dict['array']
+        try:
+            device_id = volume_dict['device_id']
+            replication_status, replication_driver_data = (
+                self.setup_volume_replication(
+                    array, volume, device_id, extra_specs))
+        except Exception:
+            if delete_src:
+                self._cleanup_replication_source(
+                    array, volume, volume_name, volume_dict, extra_specs)
+            raise
+        return ({'replication_status': replication_status,
+                 'replication_driver_data': six.text_type(
+                     replication_driver_data)})
 
     def delete_volume(self, volume):
         """Deletes a EMC(VMAX) volume.
@@ -308,16 +400,23 @@ class VMAXCommon(object):
 
         :param volume: the volume Object
         :param connector: the connector Object
-        :raises VolumeBackendAPIException:
         """
-        device_info = {}
         extra_specs = self._initial_setup(volume)
+        if self.utils.is_volume_failed_over(volume):
+            extra_specs = self._get_replication_extra_specs(
+                extra_specs, self.rep_config)
         volume_name = volume.name
         LOG.info("Unmap volume: %(volume)s.",
                  {'volume': volume_name})
-        if connector is not None:
-            device_info = self.find_host_lun_id(
-                volume, connector['host'], extra_specs)
+        if connector is None:
+            exception_message = (
+                _("Connector must not be None - Cannot get the required "
+                  "information needed to unmap the volume"))
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        device_info = self.find_host_lun_id(
+            volume, connector['host'], extra_specs)
         if 'hostlunid' not in device_info:
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
@@ -354,7 +453,6 @@ class VMAXCommon(object):
         :param volume: volume Object
         :param connector: the connector Object
         :returns: dict -- device_info_dict - device information dict
-        :raises VolumeBackendAPIException:
         """
         extra_specs = self._initial_setup(volume)
         is_multipath = connector.get('multipath', False)
@@ -362,6 +460,9 @@ class VMAXCommon(object):
         volume_name = volume.name
         LOG.info("Initialize connection: %(volume)s.",
                  {'volume': volume_name})
+        if self.utils.is_volume_failed_over(volume):
+            extra_specs = self._get_replication_extra_specs(
+                extra_specs, self.rep_config)
         device_info_dict = self.find_host_lun_id(
             volume, connector['host'], extra_specs)
         masking_view_dict = self._populate_masking_dict(
@@ -452,7 +553,7 @@ class VMAXCommon(object):
         extra_specs = self._initial_setup(volume)
         device_id = self._find_device_on_array(volume, extra_specs)
         array = extra_specs[utils.ARRAY]
-        # check if volume is part of an on-going clone operation
+        # Check if volume is part of an on-going clone operation
         self._sync_check(array, device_id, volume_name, extra_specs)
         if device_id is None:
             exception_message = (_("Cannot find Volume: %(volume_name)s. "
@@ -480,7 +581,13 @@ class VMAXCommon(object):
         LOG.info("Extending volume %(volume)s to %(new_size)d GBs",
                  {'volume': volume_name,
                   'new_size': int(new_size)})
-        self.provision.extend_volume(array, device_id, new_size, extra_specs)
+        if self.utils.is_replication_enabled(extra_specs):
+            # Extra logic required if volume is replicated
+            self.extend_volume_is_replicated(
+                array, volume, device_id, volume_name, new_size, extra_specs)
+        else:
+            self.provision.extend_volume(
+                array, device_id, new_size, extra_specs)
 
         LOG.debug("Leaving extend_volume: %(volume_name)s. ",
                   {'volume_name': volume_name})
@@ -506,6 +613,9 @@ class VMAXCommon(object):
         array_info_list = self.pool_info['arrays_info']
         already_queried = False
         for array_info in array_info_list:
+            if self.failover:
+                array_info = self.get_secondary_stats_info(
+                    self.rep_config, array_info)
             # Add both SLO & Workload name in the pool name
             # Query the SRP only once if WLP is not enabled
             # Only insert the array details in the dict once
@@ -549,7 +659,8 @@ class VMAXCommon(object):
                         'thick_provisioning_support': False,
                         'max_over_subscription_ratio':
                             max_oversubscription_ratio,
-                        'reserved_percentage': reserved_percentage}
+                        'reserved_percentage': reserved_percentage,
+                        'replication_enabled': self.replication_enabled}
                 if arrays[array_info['SerialNumber']][3]:
                     if reserved_percentage:
                         if (arrays[array_info['SerialNumber']][3] >
@@ -572,7 +683,9 @@ class VMAXCommon(object):
                         'consistent_group_snapshot_enabled': False,
                         'max_over_subscription_ratio':
                             max_oversubscription_ratio,
-                        'reserved_percentage': reserved_percentage}
+                        'reserved_percentage': reserved_percentage,
+                        'replication_enabled': self.replication_enabled
+                        }
                 if array_reserve_percent:
                     if isinstance(reserved_percentage, int):
                         if array_reserve_percent > reserved_percentage:
@@ -597,6 +710,8 @@ class VMAXCommon(object):
                 'free_capacity_gb': 0,
                 'provisioned_capacity_gb': 0,
                 'reserved_percentage': 0,
+                'replication_enabled': self.replication_enabled,
+                'replication_targets': self.replication_targets,
                 'pools': pools}
 
         return data
@@ -661,6 +776,8 @@ class VMAXCommon(object):
         # If there are no extra specs then the default case is assumed.
         if extra_specs:
             config_group = self.configuration.config_group
+            if extra_specs.get('replication_enabled') == '<is> True':
+                extra_specs[utils.IS_RE] = True
         config_file = self._register_config_file_from_config_group(
             config_group)
         return extra_specs, config_file, qos_specs
@@ -680,7 +797,10 @@ class VMAXCommon(object):
         if isinstance(loc, six.string_types):
             name = ast.literal_eval(loc)
             array = extra_specs[utils.ARRAY]
-            device_id = name['device_id']
+            try:
+                device_id = name['device_id']
+            except KeyError:
+                device_id = name['keybindings']['DeviceID']
             element_name = self.utils.get_volume_element_name(
                 volume_name)
             founddevice_id = self.rest.find_volume_device_id(
@@ -750,7 +870,7 @@ class VMAXCommon(object):
         :param array: array serial number
         :param device_id: the volume device id
         :param host: the host
-        :return: masking view list
+        :returns: masking view list
         """
         LOG.debug("Getting masking views from volume")
         maskingview_list = []
@@ -856,8 +976,10 @@ class VMAXCommon(object):
         protocol = self.utils.get_short_protocol_type(self.protocol)
         short_host_name = self.utils.get_host_short_name(host_name)
         masking_view_dict[utils.DISABLECOMPRESSION] = False
+        masking_view_dict['replication_enabled'] = False
         slo = extra_specs[utils.SLO]
         workload = extra_specs[utils.WORKLOAD]
+        rep_enabled = self.utils.is_replication_enabled(extra_specs)
         short_pg_name = self.utils.get_pg_short_name(
             extra_specs[utils.PORTGROUPNAME])
         masking_view_dict[utils.SLO] = slo
@@ -890,7 +1012,9 @@ class VMAXCommon(object):
                 "OS-%(shortHostName)s-No_SLO-%(pg)s"
                 % {'shortHostName': short_host_name,
                    'pg': short_pg_name})
-
+        if rep_enabled:
+            child_sg_name += "-RE"
+            masking_view_dict['replication_enabled'] = True
         mv_prefix = (
             "OS-%(shortHostName)s-%(protocol)s-%(pg)s"
             % {'shortHostName': short_host_name,
@@ -981,7 +1105,7 @@ class VMAXCommon(object):
 
         :param array: the array serial number
         :param snapshot: the snapshot object
-        :return: sourcedevice_id, foundsnap_name
+        :returns: sourcedevice_id, foundsnap_name
         """
         foundsnap_name = None
         sourcedevice_id = None
@@ -1026,7 +1150,7 @@ class VMAXCommon(object):
         :param snapshot: the snapshot object
         :param source_device_id: the source device id
         :param extra_specs: the extra specifications
-        :return: snap_dict
+        :returns: snap_dict
         """
         clone_name = self.utils.get_volume_element_name(snapshot.id)
         snap_name = self.utils.truncate_string(clone_name, 19)
@@ -1061,8 +1185,11 @@ class VMAXCommon(object):
             return volume_name
 
         array = extra_specs[utils.ARRAY]
-        # check if volume is snap source
+        # Check if volume is snap source
         self._sync_check(array, device_id, volume_name, extra_specs)
+        # Remove from any storage groups and cleanup replication
+        self._remove_vol_and_cleanup_replication(
+            array, device_id, volume_name, extra_specs, volume)
         self._delete_from_srp(
             array, device_id, volume_name, extra_specs)
         return volume_name
@@ -1163,9 +1290,9 @@ class VMAXCommon(object):
             LOG.exception(error_message)
             raise exception.VolumeBackendAPIException(data=error_message)
 
-        extra_specs[utils.INTERVAL] = self.intervals
+        extra_specs[utils.INTERVAL] = self.interval
         LOG.debug("The interval is set at: %(intervalInSecs)s.",
-                  {'intervalInSecs': self.intervals})
+                  {'intervalInSecs': self.interval})
         extra_specs[utils.RETRIES] = self.retries
         LOG.debug("Retries are set at: %(retries)s.",
                   {'retries': self.retries})
@@ -1228,22 +1355,16 @@ class VMAXCommon(object):
         :param extra_specs: the extra specifications
         :raises VolumeBackendAPIException:
         """
-        # Check if it is part of a storage group and delete it
-        # extra logic for case when volume is the last member.
-        self.masking.remove_and_reset_members(
-            array, device_id, volume_name, extra_specs, False)
-
         try:
             LOG.debug("Delete Volume: %(name)s. device_id: %(device_id)s.",
                       {'name': volume_name, 'device_id': device_id})
             self.provision.delete_volume_from_srp(
                 array, device_id, volume_name)
-
         except Exception as e:
             # If we cannot successfully delete the volume, then we want to
             # return the volume to the default storage group,
             # which should be the SG it previously belonged to.
-            self.masking.return_volume_to_default_storage_group(
+            self.masking.add_volume_to_default_storage_group(
                 array, device_id, volume_name, extra_specs)
 
             error_message = (_("Failed to delete volume %(volume_name)s. "
@@ -1252,6 +1373,24 @@ class VMAXCommon(object):
                               'e': six.text_type(e)})
             LOG.exception(error_message)
             raise exception.VolumeBackendAPIException(data=error_message)
+
+    def _remove_vol_and_cleanup_replication(
+            self, array, device_id, volume_name, extra_specs, volume=None):
+        """Remove a volume from its storage groups and cleanup replication.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param extra_specs: the extra specifications
+        :param volume: the volume object
+        """
+        # Remove from any storage groups
+        self.masking.remove_and_reset_members(
+            array, device_id, volume_name, extra_specs, False)
+        # Cleanup remote replication
+        if self.utils.is_replication_enabled(extra_specs):
+            self.cleanup_lun_replication(volume, volume_name,
+                                         device_id, extra_specs)
 
     def get_target_wwns_from_masking_view(
             self, volume, connector):
@@ -1306,7 +1445,7 @@ class VMAXCommon(object):
         :param array: the array serial number
         :param portgroup_name: port group name
         :param initiator_group_name: ig name
-        :return: list of masking views
+        :returns: list of masking views
         """
         LOG.debug("Finding Masking Views for port group %(pg)s and %(ig)s.",
                   {'pg': portgroup_name, 'ig': initiator_group_name})
@@ -1336,7 +1475,7 @@ class VMAXCommon(object):
         :returns: ip_and_iqn - list of dicts
         """
         ips_and_iqns = []
-        LOG.debug("The portgroup name for iscsiadm is %(pg)s.",
+        LOG.debug("The portgroup name for iscsiadm is %(pg)s",
                   {'pg': port_group_name})
         ports = self.rest.get_port_ids(array, port_group_name)
         for port in ports:
@@ -1391,8 +1530,9 @@ class VMAXCommon(object):
             raise
         return clone_dict
 
-    def _cleanup_target(self, array, target_device_id, source_device_id,
-                        clone_name, snap_name, extra_specs):
+    def _cleanup_target(
+            self, array, target_device_id, source_device_id,
+            clone_name, snap_name, extra_specs):
         """Cleanup target volume on failed clone/ snapshot creation.
 
         :param array: the array serial number
@@ -1401,7 +1541,7 @@ class VMAXCommon(object):
         :param clone_name: the name of the clone volume
         :param extra_specs: the extra specifications
         """
-        snap_session = self.rest._get_sync_session(
+        snap_session = self.rest.get_sync_session(
             array, source_device_id, snap_name, target_device_id)
         if snap_session:
             self.provision.break_replication_relationship(
@@ -1455,17 +1595,29 @@ class VMAXCommon(object):
         # Check if the existing volume is valid for cinder management
         self._check_lun_valid_for_cinder_management(
             array, device_id, volume_id, external_ref)
-        # Rename the volume
+        extra_specs = self._initial_setup(volume)
+
         volume_name = self.utils.get_volume_element_name(volume_id)
-        LOG.debug("Rename volume %(vol)s to %(elementName)s.",
+        # Rename the volume
+        LOG.debug("Rename volume %(vol)s to %(element_name)s.",
                   {'vol': volume_id,
-                   'elementName': volume_name})
+                   'element_name': volume_name})
         self.rest.rename_volume(array, device_id, volume_name)
-
         provider_location = {'device_id': device_id, 'array': array}
+        model_update = {'provider_location': six.text_type(provider_location)}
 
-        model_update = {'provider_location': six.text_type(provider_location),
-                        'display_name': volume_name}
+        # Set-up volume replication, if enabled
+        if self.utils.is_replication_enabled(extra_specs):
+            rep_update = self._replicate_volume(volume, volume_name,
+                                                provider_location,
+                                                extra_specs, delete_src=False)
+            model_update.update(rep_update)
+
+        else:
+            # Add volume to default storage group
+            self.masking.add_volume_to_default_storage_group(
+                array, device_id, volume_name, extra_specs)
+
         return model_update
 
     def _check_lun_valid_for_cinder_management(
@@ -1529,9 +1681,28 @@ class VMAXCommon(object):
                   {'volume': volume})
         array, device_id = self.utils.get_array_and_device_id(
             volume, external_ref)
+        # Ensure the volume exists on the array
+        volume_details = self.rest.get_volume(array, device_id)
+        if not volume_details:
+            msg = (_('Unable to retrieve volume details from array for '
+                     'device %(device_id)s') % {'device_id': device_id})
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
         size = float(self.rest.get_size_of_device_on_array(array, device_id))
-        LOG.debug("Size of volume %(device_id)s is %(volumeSize)s GB.",
-                  {'device_id': device_id, 'volumeSize': int(size)})
+        if not size.is_integer():
+            exception_message = (
+                _("Cannot manage existing VMAX volume %(device_id)s "
+                  "- it has a size of %(vol_size)s but only whole GB "
+                  "sizes are supported. Please extend the "
+                  "volume to the nearest GB value before importing.")
+                % {'device_id': device_id, 'vol_size': size, })
+            LOG.exception(exception_message)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=exception_message)
+
+        LOG.debug("Size of volume %(device_id)s is %(vol_size)s GB.",
+                  {'device_id': device_id, 'vol_size': int(size)})
         return int(size)
 
     def unmanage(self, volume):
@@ -1539,7 +1710,6 @@ class VMAXCommon(object):
 
         Leave the volume intact on the backend array.
         :param volume: the volume object
-        :raises VolumeBackendAPIException:
         """
         volume_name = volume.name
         volume_id = volume.id
@@ -1552,6 +1722,14 @@ class VMAXCommon(object):
                       "unmanage operation. Exiting...",
                       {'id': volume_id})
         else:
+            # Check if volume is snap source
+            self._sync_check(extra_specs['array'], device_id,
+                             volume_name, extra_specs)
+            # Remove volume from any openstack storage groups
+            # and remove any replication
+            self._remove_vol_and_cleanup_replication(
+                extra_specs['array'], device_id,
+                volume_name, extra_specs, volume)
             # Rename the volume to volumeId, thus remove the 'OS-' prefix.
             self.rest.rename_volume(
                 extra_specs[utils.ARRAY], device_id, volume_id)
@@ -1575,6 +1753,14 @@ class VMAXCommon(object):
         if device_id is None:
             LOG.error("Volume %(name)s not found on the array. "
                       "No volume to migrate using retype.",
+                      {'name': volume_name})
+            return False
+
+        if self.utils.is_replication_enabled(extra_specs):
+            LOG.error("Volume %(name)s is replicated - "
+                      "Replicated volumes are not eligible for "
+                      "storage assisted retype. Host assisted "
+                      "retype is supported.",
                       {'name': volume_name})
             return False
 
@@ -1640,7 +1826,7 @@ class VMAXCommon(object):
         :param volume_name: the volume name
         :param new_type: the volume type to migrate to
         :param extra_specs: the extra specifications
-        :return: bool
+        :returns: bool
         """
         storagegroups = self.rest.get_storage_groups_from_volume(
             array, device_id)
@@ -1758,3 +1944,582 @@ class VMAXCommon(object):
                     return false_ret
 
         return True, target_slo, target_workload
+
+    def setup_volume_replication(self, array, volume, device_id,
+                                 extra_specs, target_device_id=None):
+        """Setup replication for volume, if enabled.
+
+        Called on create volume, create cloned volume, create volume from
+        snapshot, manage_existing, and re-establishing a replication
+        relationship after extending.
+        :param array: the array serial number
+        :param volume: the volume object
+        :param device_id: the device id
+        :param extra_specs: the extra specifications
+        :param target_device_id: the target device id
+        :returns: replication_status -- str, replication_driver_data -- dict
+        """
+        source_name = volume.name
+        LOG.debug('Starting replication setup '
+                  'for volume: %s.', source_name)
+        # Get rdf details
+        rdf_group_no, remote_array = self.get_rdf_details(array)
+        rdf_vol_size = volume.size
+        if rdf_vol_size == 0:
+            rdf_vol_size = self.rest.get_size_of_device_on_array(
+                array, device_id)
+
+        # Give the target volume the same Volume Element Name as the
+        # source volume
+        target_name = self.utils.get_volume_element_name(volume.id)
+
+        if not target_device_id:
+            # Create a target volume on the target array
+            rep_extra_specs = self._get_replication_extra_specs(
+                extra_specs, self.rep_config)
+            volume_dict = self._create_volume(
+                target_name, rdf_vol_size, rep_extra_specs)
+            target_device_id = volume_dict['device_id']
+
+        LOG.debug("Create volume replica: Target device: %(target)s "
+                  "Source Device: %(source)s "
+                  "Volume identifier: %(name)s.",
+                  {'target': target_device_id,
+                   'source': device_id,
+                   'name': target_name})
+
+        # Enable rdf replication and establish the link
+        rdf_dict = self.enable_rdf(
+            array, device_id, rdf_group_no, self.rep_config,
+            target_name, remote_array, target_device_id, extra_specs)
+
+        LOG.info('Successfully setup replication for %s.',
+                 target_name)
+        replication_status = REPLICATION_ENABLED
+        replication_driver_data = rdf_dict
+
+        return replication_status, replication_driver_data
+
+    def cleanup_lun_replication(self, volume, volume_name,
+                                device_id, extra_specs):
+        """Cleanup target volume on delete.
+
+        Extra logic if target is last in group.
+        :param volume: the volume object
+        :param volume_name: the volume name
+        :param device_id: the device id
+        :param extra_specs: extra specifications
+        :raises: VolumeBackendAPIException
+        """
+        LOG.debug('Starting cleanup replication from volume: '
+                  '%s.', volume_name)
+        try:
+            loc = volume.provider_location
+            rep_data = volume.replication_driver_data
+
+            if (isinstance(loc, six.string_types)
+                    and isinstance(rep_data, six.string_types)):
+                name = ast.literal_eval(loc)
+                array = name['array']
+                rep_extra_specs = self._get_replication_extra_specs(
+                    extra_specs, self.rep_config)
+                (target_device, remote_array, rdf_group_no,
+                 local_vol_state, pair_state) = (
+                    self.get_remote_target_device(array, volume, device_id))
+
+                if target_device is not None:
+                    # Clean-up target
+                    self.masking.remove_and_reset_members(
+                        remote_array, target_device, volume_name,
+                        rep_extra_specs, False)
+                    self._cleanup_remote_target(
+                        array, remote_array, device_id, target_device,
+                        rdf_group_no, volume_name, rep_extra_specs)
+                    LOG.info('Successfully destroyed replication for '
+                             'volume: %(volume)s',
+                             {'volume': volume_name})
+                else:
+                    LOG.warning('Replication target not found for '
+                                'replication-enabled volume: %(volume)s',
+                                {'volume': volume_name})
+        except Exception as e:
+            exception_message = (
+                _('Cannot get necessary information to cleanup '
+                  'replication target for volume: %(volume)s. '
+                  'The exception received was: %(e)s. Manual '
+                  'clean-up may be required. Please contact '
+                  'your administrator.')
+                % {'volume': volume_name, 'e': six.text_type(e)})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+    def _cleanup_remote_target(
+            self, array, remote_array, device_id, target_device,
+            rdf_group, volume_name, rep_extra_specs):
+        """Clean-up remote replication target after exception or on deletion.
+
+        :param array: the array serial number
+        :param remote_array: the remote array serial number
+        :param device_id: the source device id
+        :param target_device: the target device id
+        :param rdf_group: the RDF group
+        :param volume_name: the volume name
+        :param rep_extra_specs: replication extra specifications
+        """
+        are_vols_paired, local_vol_state, pair_state = (
+            self.rest.are_vols_rdf_paired(
+                array, remote_array, device_id, target_device, rdf_group))
+        if are_vols_paired:
+            # Break the sync relationship.
+            self.provision.break_rdf_relationship(
+                array, device_id, target_device, rdf_group,
+                rep_extra_specs, pair_state)
+        self._delete_from_srp(
+            remote_array, target_device, volume_name, rep_extra_specs)
+
+    def _cleanup_replication_source(
+            self, array, volume, volume_name, volume_dict, extra_specs):
+        """Cleanup a remote replication source volume on failure.
+
+        If replication setup fails at any stage on a new volume create,
+        we must clean-up the source instance as the cinder database won't
+        be updated with the provider_location. This means the volume cannot
+        be properly deleted from the array by cinder.
+        :param array: the array serial number
+        :param volume: the volume object
+        :param volume_name: the name of the volume
+        :param volume_dict: the source volume dictionary
+        :param extra_specs: the extra specifications
+        """
+        LOG.warning(
+            "Replication failed. Cleaning up the source volume. "
+            "Volume name: %(sourceName)s ",
+            {'sourceName': volume_name})
+        device_id = volume_dict['device_id']
+        # Remove from any storage groups and cleanup replication
+        self._remove_vol_and_cleanup_replication(
+            array, device_id, volume_name, extra_specs, volume)
+        self._delete_from_srp(
+            array, device_id, volume_name, extra_specs)
+
+    def get_rdf_details(self, array):
+        """Retrieves an SRDF group instance.
+
+        :param array: the array serial number
+        :returns: rdf_group_no, remote_array
+        """
+        if not self.rep_config:
+            exception_message = (_("Replication is not configured on "
+                                   "backend: %(backend)s.") %
+                                 {'backend': self.configuration.safe_get(
+                                     'volume_backend_name')})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        remote_array = self.rep_config['array']
+        rdf_group_label = self.rep_config['rdf_group_label']
+        LOG.info("Replication group: %(RDFGroup)s.",
+                 {'RDFGroup': rdf_group_label})
+        rdf_group_no = self.rest.get_rdf_group_number(array, rdf_group_label)
+        if rdf_group_no is None:
+            exception_message = (_("Cannot find replication group: "
+                                   "%(RDFGroup)s. Please check the name "
+                                   "and the array") %
+                                 {'RDFGroup': rdf_group_label})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        LOG.info("Found RDF group number: %(RDFGroup)s.",
+                 {'RDFGroup': rdf_group_no})
+
+        return rdf_group_no, remote_array
+
+    def failover_host(self, volumes, secondary_id=None, groups=None):
+        """Fails over the volumes on a host back and forth.
+
+        Driver needs to update following info for failed-over volume:
+        1. provider_location: update array details
+        2. replication_status: new status for replication-enabled volume
+        :param volumes: the list of volumes to be failed over
+        :param secondary_id: the target backend
+        :param groups: replication groups
+        :returns: secondary_id, volume_update_list, group_update_list
+        """
+        volume_update_list = []
+        if secondary_id != 'default':
+            if not self.failover:
+                self.failover = True
+                if self.rep_config:
+                    secondary_id = self.rep_config['array']
+            else:
+                exception_message = (_(
+                    "Backend %(backend)s is already failed over. "
+                    "If you wish to failback, please append "
+                    "'--backend_id default' to your command.")
+                    % {'backend': self.configuration.safe_get(
+                       'volume_backend_name')})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+        else:
+            if self.failover:
+                self.failover = False
+                secondary_id = None
+            else:
+                exception_message = (_(
+                    "Cannot failback backend %(backend)s- backend not "
+                    "in failed over state. If you meant to failover, please "
+                    "omit the '--backend_id default' from the command")
+                    % {'backend': self.configuration.safe_get(
+                       'volume_backend_name')})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+        for volume in volumes:
+            extra_specs = self._initial_setup(volume)
+            if self.utils.is_replication_enabled(extra_specs):
+                model_update = self._failover_volume(
+                    volume, self.failover, extra_specs)
+                volume_update_list.append(model_update)
+            else:
+                if self.failover:
+                    # Since the array has been failed-over,
+                    # volumes without replication should be in error.
+                    volume_update_list.append({
+                        'volume_id': volume.id,
+                        'updates': {'status': 'error'}})
+                else:
+                    # This is a failback, so we will attempt
+                    # to recover non-failed over volumes
+                    recovery = self.recover_volumes_on_failback(
+                        volume, extra_specs)
+                    volume_update_list.append(recovery)
+
+        LOG.info("Failover host complete.")
+        return secondary_id, volume_update_list, []
+
+    def _failover_volume(self, vol, failover, extra_specs):
+        """Failover a volume.
+
+        :param vol: the volume object
+        :param failover: flag to indicate failover or failback -- bool
+        :param extra_specs: the extra specifications
+        :returns: model_update -- dict
+        """
+        loc = vol.provider_location
+        rep_data = vol.replication_driver_data
+        try:
+            name = ast.literal_eval(loc)
+            replication_keybindings = ast.literal_eval(rep_data)
+            array = name['array']
+            device_id = self._find_device_on_array(vol, {utils.ARRAY: array})
+
+            (target_device, remote_array, rdf_group,
+             local_vol_state, pair_state) = (
+                self.get_remote_target_device(array, vol, device_id))
+
+            self._sync_check(array, device_id, vol.name, extra_specs)
+            self.provision.failover_volume(
+                array, device_id, rdf_group, extra_specs,
+                local_vol_state, failover)
+
+            if failover:
+                new_status = REPLICATION_FAILOVER
+            else:
+                new_status = REPLICATION_ENABLED
+
+            # Transfer ownership to secondary_backend_id and
+            # update provider_location field
+            loc = six.text_type(replication_keybindings)
+            rep_data = six.text_type(name)
+
+        except Exception as ex:
+            msg = ('Failed to failover volume %(volume_id)s. '
+                   'Error: %(error)s.')
+            LOG.error(msg, {'volume_id': vol.id,
+                            'error': ex}, )
+            new_status = FAILOVER_ERROR
+
+        model_update = {'volume_id': vol.id,
+                        'updates':
+                            {'replication_status': new_status,
+                             'replication_driver_data': rep_data,
+                             'provider_location': loc}}
+        return model_update
+
+    def recover_volumes_on_failback(self, volume, extra_specs):
+        """Recover volumes on failback.
+
+        On failback, attempt to recover non RE(replication enabled)
+        volumes from primary array.
+        :param volume: the volume object
+        :param extra_specs: the extra specifications
+        :returns: volume_update
+        """
+        # Check if volume still exists on the primary
+        volume_update = {'volume_id': volume.id}
+        device_id = self._find_device_on_array(volume, extra_specs)
+        if not device_id:
+            volume_update['updates'] = {'status': 'error'}
+        else:
+            try:
+                maskingview = self.get_masking_views_from_volume(
+                    extra_specs[utils.ARRAY], device_id, '')
+            except Exception:
+                maskingview = None
+                LOG.debug("Unable to determine if volume is in masking view.")
+            if not maskingview:
+                volume_update['updates'] = {'status': 'available'}
+            else:
+                volume_update['updates'] = {'status': 'in-use'}
+        return volume_update
+
+    def get_remote_target_device(self, array, volume, device_id):
+        """Get the remote target for a given volume.
+
+        :param array: the array serial number
+        :param volume: the volume object
+        :param device_id: the device id
+        :returns: target_device, target_array, rdf_group, state
+        """
+        target_device, local_vol_state, pair_state = None, '', ''
+        rdf_group, remote_array = self.get_rdf_details(array)
+        try:
+            rep_target_data = volume.replication_driver_data
+            replication_keybindings = ast.literal_eval(rep_target_data)
+            remote_array = replication_keybindings['array']
+            remote_device = replication_keybindings['device_id']
+            target_device_info = self.rest.get_volume(
+                remote_array, remote_device)
+            if target_device_info is not None:
+                target_device = remote_device
+                are_vols_paired, local_vol_state, pair_state = (
+                    self.rest.are_vols_rdf_paired(
+                        array, remote_array, device_id,
+                        target_device, rdf_group))
+                if not are_vols_paired:
+                    target_device = None
+        except (KeyError, ValueError):
+            target_device = None
+        return (target_device, remote_array, rdf_group,
+                local_vol_state, pair_state)
+
+    def extend_volume_is_replicated(
+            self, array, volume, device_id, volume_name,
+            new_size, extra_specs):
+        """Extend a replication-enabled volume.
+
+        Cannot extend volumes in a synchronization pair. Must first break the
+        relationship, extend them separately, then recreate the pair
+        :param array: the array serial number
+        :param volume: the volume objcet
+        :param device_id: the volume device id
+        :param volume_name: the volume name
+        :param new_size: the new size the volume should be
+        :param extra_specs: extra specifications
+        """
+        if self.extend_replicated_vol is True:
+            try:
+                (target_device, remote_array, rdf_group,
+                 local_vol_state, pair_state) = (
+                    self.get_remote_target_device(array, volume, device_id))
+
+                # Volume must be removed from replication (storage) group
+                # before the replication relationship can be ended (cannot
+                # have a mix of replicated and non-replicated volumes as
+                # the SRDF groups become unmanageable).
+                self.masking.remove_and_reset_members(
+                    array, device_id, volume_name, extra_specs, False)
+
+                # Repeat on target side
+                rep_extra_specs = self._get_replication_extra_specs(
+                    extra_specs, self.rep_config)
+                self.masking.remove_and_reset_members(
+                    remote_array, target_device, volume_name,
+                    rep_extra_specs, False)
+
+                LOG.info("Breaking replication relationship...")
+                self.provision.break_rdf_relationship(
+                    array, device_id, target_device,
+                    rdf_group, rep_extra_specs, pair_state)
+
+                # Extend the source volume
+                LOG.info("Extending source volume...")
+                self.provision.extend_volume(
+                    array, device_id, new_size, extra_specs)
+
+                # Extend the target volume
+                LOG.info("Extending target volume...")
+                self.provision.extend_volume(
+                    remote_array, target_device, new_size, rep_extra_specs)
+
+                # Re-create replication relationship
+                LOG.info("Recreating replication relationship...")
+                self.setup_volume_replication(
+                    array, volume, device_id, extra_specs, target_device)
+
+            except Exception as e:
+                exception_message = (_("Error extending volume. "
+                                       "Error received was %(e)s") %
+                                     {'e': e})
+                LOG.exception(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+        else:
+            exception_message = (_(
+                "Extending a replicated volume is not "
+                "permitted on this backend. Please contact "
+                "your administrator."))
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+    def enable_rdf(self, array, device_id, rdf_group_no, rep_config,
+                   target_name, remote_array, target_device, extra_specs):
+        """Create a replication relationship with a target volume.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param rdf_group_no: the rdf group number
+        :param rep_config: the replication config
+        :param target_name: the target volume name
+        :param remote_array: the remote array serial number
+        :param target_device: the target device id
+        :param extra_specs: the extra specifications
+        :returns: rdf_dict
+        """
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, rep_config)
+        try:
+            # Remove source and target instances from their
+            # default storage groups
+            self.masking.remove_and_reset_members(
+                array, device_id, target_name, extra_specs, False)
+
+            self.masking.remove_and_reset_members(
+                remote_array, target_device, target_name,
+                rep_extra_specs, False)
+
+            # Establish replication relationship
+            rdf_dict = self.rest.create_rdf_device_pair(
+                array, device_id, rdf_group_no, target_device, remote_array,
+                target_name, extra_specs)
+
+            # Add source and target instances to their replication groups
+            LOG.debug("Adding source device to default replication group.")
+            self.add_volume_to_replication_group(
+                array, device_id, target_name, extra_specs)
+            LOG.debug("Adding target device to default replication group.")
+            self.add_volume_to_replication_group(
+                remote_array, target_device, target_name, rep_extra_specs)
+
+        except Exception as e:
+            LOG.warning(
+                ("Remote replication failed. Cleaning up the target "
+                 "volume and returning source volume to default storage "
+                 "group. Volume name: %(name)s "),
+                {'name': target_name})
+            self.masking.remove_and_reset_members(
+                remote_array, target_device, target_name,
+                rep_extra_specs, False)
+            self._cleanup_remote_target(
+                array, remote_array, device_id, target_device,
+                rdf_group_no, target_name, rep_extra_specs)
+            # Re-throw the exception.
+            exception_message = (_("Remote replication failed with exception:"
+                                   " %(e)s")
+                                 % {'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        return rdf_dict
+
+    def add_volume_to_replication_group(
+            self, array, device_id, volume_name, extra_specs):
+        """Add a volume to the default replication group.
+
+        Replication groups are VMAX storage groups that contain only
+        RDF-paired volumes. We can use our normal storage group operations.
+        :param array: array serial number
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param extra_specs: the extra specifications
+        :returns: storagegroup_name
+        """
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        try:
+            storagegroup_name = (
+                self.masking.get_or_create_default_storage_group(
+                    array, extra_specs[utils.SRP], extra_specs[utils.SLO],
+                    extra_specs[utils.WORKLOAD], extra_specs,
+                    do_disable_compression, is_re=True))
+        except Exception as e:
+            exception_message = (_("Failed to get or create replication"
+                                   "group. Exception received: %(e)s")
+                                 % {'e': six.text_type(e)})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        self.masking.add_volume_to_storage_group(
+            array, device_id, storagegroup_name, volume_name, extra_specs)
+
+        return storagegroup_name
+
+    def _get_replication_extra_specs(self, extra_specs, rep_config):
+        """Get replication extra specifications.
+
+        Called when target array operations are necessary -
+        on create, extend, etc and when volume is failed over.
+        :param extra_specs: the extra specifications
+        :param rep_config: the replication configuration
+        :returns: repExtraSpecs - dict
+        """
+        rep_extra_specs = deepcopy(extra_specs)
+        rep_extra_specs[utils.ARRAY] = rep_config['array']
+        rep_extra_specs[utils.SRP] = rep_config['srp']
+        rep_extra_specs[utils.PORTGROUPNAME] = rep_config['portgroup']
+
+        # If disable compression is set, check if target array is all flash
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        if do_disable_compression:
+            if not self.rest.is_compression_capable(
+                    rep_extra_specs[utils.ARRAY]):
+                rep_extra_specs.pop(utils.DISABLECOMPRESSION, None)
+
+        # Check to see if SLO and Workload are configured on the target array.
+        if extra_specs[utils.SLO]:
+            is_valid_slo, is_valid_workload = (
+                self.provision.verify_slo_workload(
+                    rep_extra_specs[utils.ARRAY],
+                    extra_specs[utils.SLO],
+                    rep_extra_specs[utils.WORKLOAD],
+                    rep_extra_specs[utils.SRP]))
+            if not is_valid_slo or not is_valid_workload:
+                LOG.warning("The target array does not support the storage "
+                            "pool setting for SLO %(slo)s or workload "
+                            "%(workload)s. Not assigning any SLO or "
+                            "workload.",
+                            {'slo': extra_specs[utils.SLO],
+                             'workload': extra_specs[utils.WORKLOAD]})
+                rep_extra_specs[utils.SLO] = None
+                if extra_specs[utils.WORKLOAD]:
+                    rep_extra_specs[utils.WORKLOAD] = None
+
+        return rep_extra_specs
+
+    def get_secondary_stats_info(self, rep_config, array_info):
+        """On failover, report on secondary array statistics.
+
+        :param rep_config: the replication configuration
+        :param array_info: the array info
+        :returns: secondary_info - dict
+        """
+        secondary_info = array_info.copy()
+        secondary_info['SerialNumber'] = six.text_type(rep_config['array'])
+        secondary_info['srpName'] = rep_config['srp']
+        return secondary_info

@@ -24,6 +24,8 @@ from cinder.volume.drivers.dell_emc.vmax import utils
 
 LOG = logging.getLogger(__name__)
 
+WRITE_DISABLED = "Write Disabled"
+
 
 class VMAXProvision(object):
     """Provisioning Class for Dell EMC VMAX volume drivers.
@@ -238,7 +240,7 @@ class VMAXProvision(object):
         :param device_id: the volume device id
         :param new_size: the new size (GB)
         :param extra_specs: the extra specifications
-        :return: status_code
+        :returns: status_code
         """
         start_time = time.time()
         self.rest.extend_volume(array, device_id, new_size, extra_specs)
@@ -310,7 +312,7 @@ class VMAXProvision(object):
         :param array: the array serial number
         :param srp: the srp name
         :param array_info: array info dict
-        :return: remaining_capacity
+        :returns: remaining_capacity
         """
         remaining_capacity = -1
         if array_info['SLO']:
@@ -336,12 +338,14 @@ class VMAXProvision(object):
         """
         is_valid_slo, is_valid_workload = False, False
 
-        if workload:
-            if workload.lower() == 'none':
-                workload = None
+        if workload and workload.lower() == 'none':
+            workload = None
 
         if not workload:
             is_valid_workload = True
+
+        if slo and slo.lower() == 'none':
+            slo = None
 
         valid_slos = self.rest.get_slo_list(array)
         valid_workloads = self.rest.get_workload_settings(array)
@@ -380,7 +384,7 @@ class VMAXProvision(object):
 
         :param array: the array serial number
         :param sg_name: the storage group name
-        :return: storage group slo settings
+        :returns: storage group slo settings
         """
         slo = 'NONE'
         workload = 'NONE'
@@ -398,3 +402,49 @@ class VMAXProvision(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
         return '%(slo)s+%(workload)s' % {'slo': slo, 'workload': workload}
+
+    def break_rdf_relationship(self, array, device_id, target_device,
+                               rdf_group, rep_extra_specs, state):
+        """Break the rdf relationship between a pair of devices.
+
+        :param array: the array serial number
+        :param device_id: the source device id
+        :param target_device: target device id
+        :param rdf_group: the rdf group number
+        :param rep_extra_specs: replication extra specs
+        :param state: the state of the rdf pair
+        """
+        LOG.info("Splitting rdf pair: source device: %(src)s "
+                 "target device: %(tgt)s.",
+                 {'src': device_id, 'tgt': target_device})
+        if state == 'Synchronized':
+            self.rest.modify_rdf_device_pair(
+                array, device_id, rdf_group, rep_extra_specs, split=True)
+        LOG.info("Deleting rdf pair: source device: %(src)s "
+                 "target device: %(tgt)s.",
+                 {'src': device_id, 'tgt': target_device})
+        self.rest.delete_rdf_pair(array, device_id, rdf_group)
+
+    def failover_volume(self, array, device_id, rdf_group,
+                        extra_specs, local_vol_state, failover):
+        """Failover or back a volume pair.
+
+        :param array: the array serial number
+        :param device_id: the source device id
+        :param rdf_group: the rdf group number
+        :param extra_specs: extra specs
+        :param local_vol_state: the local volume state
+        :param failover: flag to indicate failover or failback -- bool
+        """
+        if local_vol_state == WRITE_DISABLED:
+            LOG.info("Volume %(dev)s is already failed over.",
+                     {'dev': device_id})
+            return
+        if failover:
+            action = "Failing over"
+        else:
+            action = "Failing back"
+        LOG.info("%(action)s rdf pair: source device: %(src)s ",
+                 {'action': action, 'src': device_id})
+        self.rest.modify_rdf_device_pair(
+            array, device_id, rdf_group, extra_specs, split=False)

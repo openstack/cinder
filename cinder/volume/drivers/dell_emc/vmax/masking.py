@@ -142,14 +142,15 @@ class VMAXMasking(object):
             masking_view_dict[utils.SRP],
             masking_view_dict[utils.SLO],
             masking_view_dict[utils.WORKLOAD],
-            masking_view_dict[utils.DISABLECOMPRESSION])
+            masking_view_dict[utils.DISABLECOMPRESSION],
+            masking_view_dict[utils.IS_RE])
 
         check_vol = self.rest.is_volume_in_storagegroup(
             serial_number, device_id, default_sg_name)
         if check_vol:
-            self.remove_volume_from_sg(
-                serial_number, device_id, volume_name, default_sg_name,
-                extra_specs)
+            self.remove_vol_from_storage_group(
+                serial_number, device_id, default_sg_name,
+                volume_name, extra_specs)
         else:
             LOG.warning(
                 "Volume: %(volume_name)s does not belong "
@@ -587,7 +588,7 @@ class VMAXMasking(object):
         LOG.info("Added volume: %(vol_name)s to storage group %(sg_name)s.",
                  {'vol_name': volume_name, 'sg_name': storagegroup_name})
 
-    def _remove_vol_from_storage_group(
+    def remove_vol_from_storage_group(
             self, serial_number, device_id, storagegroup_name,
             volume_name, extra_specs):
         """Remove a volume from a storage group.
@@ -890,7 +891,7 @@ class VMAXMasking(object):
         self._cleanup_deletion(
             serial_number, device_id, volume_name, extra_specs)
         if reset:
-            self.return_volume_to_default_storage_group(
+            self.add_volume_to_default_storage_group(
                 serial_number, device_id, volume_name, extra_specs)
 
     def _cleanup_deletion(
@@ -1139,7 +1140,7 @@ class VMAXMasking(object):
         :param storagegroup_name: storage group name
         :param extra_specs: extra specifications
         """
-        self._remove_vol_from_storage_group(
+        self.remove_vol_from_storage_group(
             serial_number, device_id, storagegroup_name,
             volume_name, extra_specs)
 
@@ -1204,7 +1205,7 @@ class VMAXMasking(object):
         LOG.info("Masking view %(maskingview)s successfully deleted.",
                  {'maskingview': masking_view})
 
-    def return_volume_to_default_storage_group(
+    def add_volume_to_default_storage_group(
             self, serial_number, device_id, volume_name, extra_specs):
         """Return volume to its default storage group.
 
@@ -1215,9 +1216,11 @@ class VMAXMasking(object):
         """
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
+        rep_enabled = self.utils.is_replication_enabled(extra_specs)
         storagegroup_name = self.get_or_create_default_storage_group(
             serial_number, extra_specs[utils.SRP], extra_specs[utils.SLO],
-            extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression)
+            extra_specs[utils.WORKLOAD], extra_specs, do_disable_compression,
+            rep_enabled)
 
         self._check_adding_volume_to_storage_group(
             serial_number, device_id, storagegroup_name, volume_name,
@@ -1225,7 +1228,7 @@ class VMAXMasking(object):
 
     def get_or_create_default_storage_group(
             self, serial_number, srp, slo, workload, extra_specs,
-            do_disable_compression=False):
+            do_disable_compression=False, is_re=False):
         """Get or create a default storage group.
 
         :param serial_number: the array serial number
@@ -1234,12 +1237,14 @@ class VMAXMasking(object):
         :param workload: the workload
         :param extra_specs: extra specifications
         :param do_disable_compression: flag for compression
+        :param is_re: is replication enabled
         :returns: storagegroup_name
         :raises: VolumeBackendAPIException
         """
         storagegroup, storagegroup_name = (
             self.rest.get_vmax_default_storage_group(
-                serial_number, srp, slo, workload, do_disable_compression))
+                serial_number, srp, slo, workload, do_disable_compression,
+                is_re))
         if storagegroup is None:
             self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,
@@ -1278,7 +1283,7 @@ class VMAXMasking(object):
         :param extra_specs: extra specifications
         :param parent_sg_name: the parent sg name
         """
-        self._remove_vol_from_storage_group(
+        self.remove_vol_from_storage_group(
             serial_number, device_id, storagegroup_name, volume_name,
             extra_specs)
 
