@@ -415,16 +415,31 @@ class VMAXCommon(object):
             LOG.exception(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        device_info = self.find_host_lun_id(
-            volume, connector['host'], extra_specs)
+        device_info, is_live_migration, source_storage_group_list = (
+            self.find_host_lun_id(volume, connector['host'], extra_specs))
         if 'hostlunid' not in device_info:
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
             return
-
-        device_id = self._find_device_on_array(volume, extra_specs)
+        if is_live_migration and len(source_storage_group_list) == 1:
+            LOG.info("Volume %s is mapped. Failed live migration case",
+                     volume_name)
+            return
+        source_nf_sg = None
         array = extra_specs[utils.ARRAY]
-        self._remove_members(array, volume, device_id, extra_specs)
+        if len(source_storage_group_list) > 1:
+            for storage_group in source_storage_group_list:
+                if 'NONFAST' in storage_group:
+                    source_nf_sg = storage_group
+                    break
+        if source_nf_sg:
+            # Remove volume from non fast storage group
+            self.masking.remove_volume_from_sg(
+                array, device_info['device_id'], volume_name, storage_group,
+                extra_specs)
+        else:
+            self._remove_members(array, volume, device_info['device_id'],
+                                 extra_specs)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -463,13 +478,15 @@ class VMAXCommon(object):
         if self.utils.is_volume_failed_over(volume):
             extra_specs = self._get_replication_extra_specs(
                 extra_specs, self.rep_config)
-        device_info_dict = self.find_host_lun_id(
-            volume, connector['host'], extra_specs)
+        device_info_dict, is_live_migration, source_storage_group_list = (
+            self.find_host_lun_id(volume, connector['host'], extra_specs))
         masking_view_dict = self._populate_masking_dict(
             volume, connector, extra_specs)
 
         if ('hostlunid' in device_info_dict and
-                device_info_dict['hostlunid'] is not None):
+                device_info_dict['hostlunid'] is not None and
+                is_live_migration is False) or (
+                    is_live_migration and len(source_storage_group_list) > 1):
             hostlunid = device_info_dict['hostlunid']
             LOG.info("Volume %(volume)s is already mapped. "
                      "The hostlunid is  %(hostlunid)s.",
@@ -481,9 +498,39 @@ class VMAXCommon(object):
                     device_info_dict['maskingview']))
 
         else:
+            if is_live_migration:
+                source_nf_sg, source_sg, source_parent_sg, is_source_nf_sg = (
+                    self._setup_for_live_migration(
+                        device_info_dict, source_storage_group_list))
+                masking_view_dict['source_nf_sg'] = source_nf_sg
+                masking_view_dict['source_sg'] = source_sg
+                masking_view_dict['source_parent_sg'] = source_parent_sg
+                try:
+                    self.masking.pre_live_migration(
+                        source_nf_sg, source_sg, source_parent_sg,
+                        is_source_nf_sg, device_info_dict, extra_specs)
+                except Exception:
+                    # Move it back to original storage group
+                    source_storage_group_list = (
+                        self.rest.get_storage_groups_from_volume(
+                            device_info_dict['array'],
+                            device_info_dict['device_id']))
+                    self.masking.failed_live_migration(
+                        masking_view_dict, source_storage_group_list,
+                        extra_specs)
+                    exception_message = (_(
+                        "Unable to setup live migration because of the "
+                        "following error: %(errorMessage)s.")
+                        % {'errorMessage': sys.exc_info()[1]})
+                    raise exception.VolumeBackendAPIException(
+                        data=exception_message)
             device_info_dict, port_group_name = (
                 self._attach_volume(
-                    volume, connector, extra_specs, masking_view_dict))
+                    volume, connector, extra_specs, masking_view_dict,
+                    is_live_migration))
+            if is_live_migration:
+                self.masking.post_live_migration(
+                    masking_view_dict, extra_specs)
         if self.protocol.lower() == 'iscsi':
             device_info_dict['ip_and_iqn'] = (
                 self._find_ip_and_iqns(
@@ -492,7 +539,7 @@ class VMAXCommon(object):
         return device_info_dict
 
     def _attach_volume(self, volume, connector, extra_specs,
-                       masking_view_dict):
+                       masking_view_dict, is_live_migration=False):
         """Attach a volume to a host.
 
         :param volume: the volume object
@@ -504,14 +551,18 @@ class VMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         volume_name = volume.name
-
+        if is_live_migration:
+            masking_view_dict['isLiveMigration'] = True
+        else:
+            masking_view_dict['isLiveMigration'] = False
         rollback_dict = self.masking.setup_masking_view(
             masking_view_dict[utils.ARRAY],
             masking_view_dict, extra_specs)
 
         # Find host lun id again after the volume is exported to the host.
-        device_info_dict = self.find_host_lun_id(volume, connector['host'],
-                                                 extra_specs)
+
+        device_info_dict, __, __ = self.find_host_lun_id(
+            volume, connector['host'], extra_specs)
         if 'hostlunid' not in device_info_dict:
             # Did not successfully attach to host,
             # so a rollback for FAST is required.
@@ -830,14 +881,17 @@ class VMAXCommon(object):
         :returns: dict -- the data dict
         """
         maskedvols = {}
+        is_live_migration = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
         if device_id:
             array = extra_specs[utils.ARRAY]
             host = self.utils.get_host_short_name(host)
+            source_storage_group_list = (
+                self.rest.get_storage_groups_from_volume(array, device_id))
             # return only masking views for this host
             maskingviews = self.get_masking_views_from_volume(
-                array, device_id, host)
+                array, device_id, host, source_storage_group_list)
 
             for maskingview in maskingviews:
                 host_lun_id = self.rest.find_mv_connections_for_vol(
@@ -845,7 +899,8 @@ class VMAXCommon(object):
                 if host_lun_id is not None:
                     devicedict = {'hostlunid': host_lun_id,
                                   'maskingview': maskingview,
-                                  'array': array}
+                                  'array': array,
+                                  'device_id': device_id}
                     maskedvols = devicedict
             if not maskedvols:
                 LOG.debug(
@@ -856,32 +911,55 @@ class VMAXCommon(object):
             else:
                 LOG.debug("Device info: %(maskedvols)s.",
                           {'maskedvols': maskedvols})
+                host = self.utils.get_host_short_name(host)
+                hoststr = ("-%(host)s-"
+                           % {'host': host})
+
+                if hoststr.lower() not in maskedvols['maskingview'].lower():
+                    LOG.debug(
+                        "Volume is masked but not to host %(host)s as is "
+                        "expected. Assuming live migration.",
+                        {'host': host})
+                    is_live_migration = True
+                else:
+                    for storage_group in source_storage_group_list:
+                        if 'NONFAST' in storage_group:
+                            is_live_migration = True
+                            break
         else:
             exception_message = (_("Cannot retrieve volume %(vol)s "
                                    "from the array.") % {'vol': volume_name})
             LOG.exception(exception_message)
             raise exception.VolumeBackendAPIException(exception_message)
 
-        return maskedvols
+        return maskedvols, is_live_migration, source_storage_group_list
 
-    def get_masking_views_from_volume(self, array, device_id, host):
+    def get_masking_views_from_volume(self, array, device_id, host,
+                                      storage_group_list=None):
         """Retrieve masking view list for a volume.
 
         :param array: array serial number
         :param device_id: the volume device id
         :param host: the host
+        :param storage_group_list: the storage group list to use
         :returns: masking view list
         """
         LOG.debug("Getting masking views from volume")
         maskingview_list = []
         short_host = self.utils.get_host_short_name(host)
-        storagegrouplist = self.rest.get_storage_groups_from_volume(
-            array, device_id)
-        for sg in storagegrouplist:
+        host_compare = False
+        if not storage_group_list:
+            storage_group_list = self.rest.get_storage_groups_from_volume(
+                array, device_id)
+            host_compare = True
+        for sg in storage_group_list:
             mvs = self.rest.get_masking_views_from_storage_group(
                 array, sg)
             for mv in mvs:
-                if short_host.lower() in mv.lower():
+                if host_compare:
+                    if short_host.lower() in mv.lower():
+                        maskingview_list.append(mv)
+                else:
                     maskingview_list.append(mv)
         return maskingview_list
 
@@ -2523,3 +2601,32 @@ class VMAXCommon(object):
         secondary_info['SerialNumber'] = six.text_type(rep_config['array'])
         secondary_info['srpName'] = rep_config['srp']
         return secondary_info
+
+    def _setup_for_live_migration(self, device_info_dict,
+                                  source_storage_group_list):
+        """Function to set attributes for live migration.
+
+        :param device_info_dict: the data dict
+        :param source_storage_group_list:
+        :returns: source_nf_sg: The non fast storage group
+        :returns: source_sg: The source storage group
+        :returns: source_parent_sg: The parent storage group
+        :returns: is_source_nf_sg:if the non fast storage group already exists
+        """
+        array = device_info_dict['array']
+        source_sg = None
+        is_source_nf_sg = False
+        # Get parent storage group
+        source_parent_sg = self.rest.get_element_from_masking_view(
+            array, device_info_dict['maskingview'], storagegroup=True)
+        source_nf_sg = source_parent_sg[:-2] + 'NONFAST'
+        for sg in source_storage_group_list:
+            is_descendant = self.rest.is_child_sg_in_parent_sg(
+                array, sg, source_parent_sg)
+            if is_descendant:
+                source_sg = sg
+        is_descendant = self.rest.is_child_sg_in_parent_sg(
+            array, source_nf_sg, source_parent_sg)
+        if is_descendant:
+            is_source_nf_sg = True
+        return source_nf_sg, source_sg, source_parent_sg, is_source_nf_sg
