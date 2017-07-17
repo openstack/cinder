@@ -27,9 +27,7 @@ import itertools
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
-import six
 from tooz import coordination
-from tooz import locking
 
 from cinder import exception
 from cinder.i18n import _
@@ -180,65 +178,7 @@ class Coordinator(object):
 COORDINATOR = Coordinator(prefix='cinder-')
 
 
-class Lock(locking.Lock):
-    """Lock with dynamic name.
-
-    :param str lock_name: Lock name.
-    :param dict lock_data: Data for lock name formatting.
-    :param coordinator: Coordinator class to use when creating lock.
-        Defaults to the global coordinator.
-
-    Using it like so::
-
-        with Lock('mylock'):
-           ...
-
-    ensures that only one process at a time will execute code in context.
-    Lock name can be formatted using Python format string syntax::
-
-        Lock('foo-{volume.id}, {'volume': ...,})
-
-    Available field names are keys of lock_data.
-    """
-    def __init__(self, lock_name, lock_data=None, coordinator=None):
-        super(Lock, self).__init__(str(id(self)))
-        lock_data = lock_data or {}
-        self.coordinator = coordinator or COORDINATOR
-        self.blocking = True
-        self.lock = self._prepare_lock(lock_name, lock_data)
-
-    def _prepare_lock(self, lock_name, lock_data):
-        if not isinstance(lock_name, six.string_types):
-            raise ValueError(_('Not a valid string: %s') % lock_name)
-        self._name = lock_name.format(**lock_data)
-        return self.coordinator.get_lock(self._name)
-
-    @property
-    def name(self):
-        return self._name
-
-    def acquire(self, blocking=None):
-        """Attempts to acquire lock.
-
-        :param blocking: If True, blocks until the lock is acquired. If False,
-            returns right away. Otherwise, the value is used as a timeout
-            value and the call returns maximum after this number of seconds.
-        :return: returns true if acquired (false if not)
-        :rtype: bool
-        """
-        blocking = self.blocking if blocking is None else blocking
-        return self.lock.acquire(blocking=blocking)
-
-    def release(self):
-        """Attempts to release lock.
-
-        The behavior of releasing a lock which was not acquired in the first
-        place is undefined.
-        """
-        self.lock.release()
-
-
-def synchronized(lock_name, blocking=True, coordinator=None):
+def synchronized(lock_name, blocking=True, coordinator=COORDINATOR):
     """Synchronization decorator.
 
     :param str lock_name: Lock name.
@@ -284,7 +224,7 @@ def synchronized(lock_name, blocking=True, coordinator=None):
     def _synchronized(f, *a, **k):
         call_args = inspect.getcallargs(f, *a, **k)
         call_args['f_name'] = f.__name__
-        lock = Lock(lock_name, call_args, coordinator)
+        lock = coordinator.get_lock(lock_name.format(**call_args))
         t1 = timeutils.now()
         t2 = None
         try:

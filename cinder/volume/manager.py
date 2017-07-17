@@ -669,7 +669,7 @@ class VolumeManager(manager.CleanableManager,
             if locked_action is None:
                 _run_flow()
             else:
-                with coordination.Lock(locked_action):
+                with coordination.COORDINATOR.get_lock(locked_action):
                     _run_flow()
         finally:
             try:
