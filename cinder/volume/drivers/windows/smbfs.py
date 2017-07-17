@@ -59,15 +59,17 @@ volume_opts = [
                       'rather than regular files when using raw format, '
                       'in which case volume creation takes lot of time.')),
     cfg.FloatOpt('smbfs_used_ratio',
-                 default=0.95,
+                 default=None,
                  help=('Percent of ACTUAL usage of the underlying volume '
                        'before no new volumes can be allocated to the volume '
-                       'destination.')),
+                       'destination.'),
+                 deprecated_for_removal=True),
     cfg.FloatOpt('smbfs_oversub_ratio',
-                 default=1.0,
+                 default=None,
                  help=('This will compare the allocated to available space on '
                        'the volume destination.  If the ratio exceeds this '
-                       'number, the destination will no longer be valid.')),
+                       'number, the destination will no longer be valid.'),
+                 deprecated_for_removal=True),
     cfg.StrOpt('smbfs_mount_point_base',
                default=r'C:\OpenStack\_mnt',
                help=('Base dir containing mount points for smbfs shares.')),
@@ -81,6 +83,12 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
+
+# TODO(lpetrut): drop the following default values. The according
+# smbfs driver opts are getting deprecated but we want to preserve
+# their defaults until we completely remove them.
+CONF.set_default('max_over_subscription_ratio', 1)
+CONF.set_default('reserved_percentage', 5)
 
 
 @interface.volumedriver
@@ -127,6 +135,14 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
 
     def do_setup(self, context):
         self._check_os_platform()
+
+        if self.configuration.smbfs_oversub_ratio is not None:
+            self.configuration.max_over_subscription_ratio = (
+                self.configuration.smbfs_oversub_ratio)
+        if self.configuration.smbfs_used_ratio is not None:
+            self.configuration.reserved_percentage = (
+                1 - self.configuration.smbfs_used_ratio) * 100
+
         super(WindowsSmbfsDriver, self).do_setup(context)
 
         image_utils.check_qemu_img_version(self._MINIMUM_QEMU_IMG_VERSION)
@@ -145,17 +161,20 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
             msg = _("Invalid mount point base: %s") % self.base
             LOG.error(msg)
             raise exception.SmbfsException(msg)
-        if not self.configuration.smbfs_oversub_ratio > 0:
+        if not self.configuration.max_over_subscription_ratio > 0:
             msg = _(
-                "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: "
-                "%s") % self.configuration.smbfs_oversub_ratio
+                "SMBFS config 'max_over_subscription_ratio' invalid. "
+                "Must be > 0: %s"
+            ) % self.configuration.max_over_subscription_ratio
 
             LOG.error(msg)
             raise exception.SmbfsException(msg)
 
-        if not 0 < self.configuration.smbfs_used_ratio <= 1:
-            msg = _("SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 "
-                    "and <= 1.0: %s") % self.configuration.smbfs_used_ratio
+        if not 0 <= self.configuration.reserved_percentage <= 100:
+            msg = _(
+                "SMBFS config 'reserved_percentage' invalid. "
+                "Must be > 0 and <= 100: %s"
+            ) % self.configuration.reserved_percentage
             LOG.error(msg)
             raise exception.SmbfsException(msg)
 
