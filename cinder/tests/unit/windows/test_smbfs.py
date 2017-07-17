@@ -131,6 +131,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             fake_ensure_mounted.assert_called_once_with()
             self._smbfs_driver._setup_pool_mappings.assert_called_once_with()
 
+        self.assertTrue(self._smbfs_driver._thin_provisioning_support)
         mock_check_os_platform.assert_called_once_with()
 
     def test_setup_pools(self):

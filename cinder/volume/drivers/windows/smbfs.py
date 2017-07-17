@@ -115,6 +115,7 @@ class WindowsSmbfsDriver(remotefs_drv.RemoteFSPoolMixin,
     _VALID_IMAGE_EXTENSIONS = _SUPPORTED_IMAGE_FORMATS
 
     _always_use_temp_snap_when_cloning = False
+    _thin_provisioning_support = True
 
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
