@@ -52,55 +52,6 @@ Response Example
    :language: javascript
 
 
-Create group specs for a group type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. rest_method::  POST /v3/{project_id}/group_types/{group_type_id}/group_specs
-
-Create group specs for a group type.
-
-
-Normal response codes: 202
-Error response codes: badRequest(400), forbidden(403), itemNotFound(404)
-
-
-Request
--------
-
-.. rest_parameters:: parameters.yaml
-
-   - group_specs: group_specs
-   - group_type: group_type
-   - group_type_id: group_type_id
-   - project_id: project_id_path
-
-Request Example
----------------
-
-.. literalinclude:: ./samples/group-type-specs-create-request.json
-   :language: javascript
-
-
-
-Response Parameters
--------------------
-
-.. rest_parameters:: parameters.yaml
-
-   - is_public: is_public
-   - group_specs: group_specs
-   - description: description
-   - group_type: group_type
-   - name: name
-
-
-Response Example
-----------------
-
-.. literalinclude:: ./samples/group-type-show-response.json
-   :language: javascript
-
-
 Show group type details
 ~~~~~~~~~~~~~~~~~~~~~~~
 
