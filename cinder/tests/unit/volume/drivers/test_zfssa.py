@@ -390,6 +390,19 @@ class TestZFSSAISCSIDriver(test.TestCase):
             project=lcfg.zfssa_project,
             lun=self.test_vol['name'])
 
+    def test_delete_volume_with_missing_lun(self):
+        self.drv.zfssa.get_lun.side_effect = exception.VolumeNotFound(
+            volume_id=self.test_vol['name'])
+        self.drv.delete_volume(self.test_vol)
+        self.drv.zfssa.delete_lun.assert_not_called()
+
+    def test_delete_volume_backend_fail(self):
+        self.drv.zfssa.get_lun.side_effect = \
+            exception.VolumeBackendAPIException(data='fakemsg')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.delete_volume,
+                          self.test_vol)
+
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_check_origin')
     def test_delete_cache_volume(self, _check_origin):
         lcfg = self.configuration

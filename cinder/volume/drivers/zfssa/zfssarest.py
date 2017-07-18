@@ -730,7 +730,18 @@ class ZFSSAApi(object):
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
             project + "/luns/" + lun
         ret = self.rclient.get(svc)
-        if ret.status != restclient.Status.OK:
+        if ret.status == restclient.Status.NOT_FOUND:
+            # Sometimes a volume exists in cinder for which there is no
+            # corresponding LUN (e.g. LUN create failed). In this case,
+            # allow deletion to complete (without doing anything on the
+            # ZFSSA). Any other exception should be passed up.
+            LOG.warning('LUN with name %(lun)s not found in project '
+                        '%(project)s, pool %(pool)s.',
+                        {'lun': lun,
+                         'project': project,
+                         'pool': pool})
+            raise exception.VolumeNotFound(volume_id=lun)
+        elif ret.status != restclient.Status.OK:
             exception_msg = (_('Error Getting '
                                'Volume: %(lun)s on '
                                'Pool: %(pool)s '
@@ -743,7 +754,7 @@ class ZFSSAApi(object):
                                 'ret.status': ret.status,
                                 'ret.data': ret.data})
             LOG.error(exception_msg)
-            raise exception.VolumeNotFound(volume_id=lun)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
 
         val = json.loads(ret.data)
         ret = {
