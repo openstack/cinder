@@ -94,7 +94,7 @@ Configuration Reference
 .. toctree::
     :maxdepth: 1
 
-    config-reference/block-storage
+    configuration/block-storage
     sample_config
 
 Indices and tables
