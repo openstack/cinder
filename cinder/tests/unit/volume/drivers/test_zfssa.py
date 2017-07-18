@@ -459,13 +459,16 @@ class TestZFSSAISCSIDriver(test.TestCase):
             self.test_snap['name'])
         self.drv.create_volume_from_snapshot(self.test_vol_snap,
                                              self.test_snap)
+        specs = self.drv._get_voltype_specs(self.test_vol)
+        specs.update({'custom:cinder_managed': True})
         self.drv.zfssa.clone_snapshot.assert_called_once_with(
             lcfg.zfssa_pool,
             lcfg.zfssa_project,
             self.test_snap['volume_name'],
             self.test_snap['name'],
             lcfg.zfssa_project,
-            self.test_vol_snap['name'])
+            self.test_vol_snap['name'],
+            specs)
 
     def test_create_larger_volume_from_snapshot(self):
         lcfg = self.configuration
@@ -480,13 +483,16 @@ class TestZFSSAISCSIDriver(test.TestCase):
         # use the larger test volume
         self.drv.create_volume_from_snapshot(self.test_vol2,
                                              self.test_snap)
+        specs = self.drv._get_voltype_specs(self.test_vol)
+        specs.update({'custom:cinder_managed': True})
         self.drv.zfssa.clone_snapshot.assert_called_once_with(
             lcfg.zfssa_pool,
             lcfg.zfssa_project,
             self.test_snap['volume_name'],
             self.test_snap['name'],
             lcfg.zfssa_project,
-            self.test_vol2['name'])
+            self.test_vol2['name'],
+            specs)
 
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
     def test_volume_attach_detach(self, _get_provider_info):
@@ -637,6 +643,8 @@ class TestZFSSAISCSIDriver(test.TestCase):
                                              img_location,
                                              small_img,
                                              img_service)
+        specs = fakespecs
+        specs.update({'custom:cinder_managed': True})
         self.drv._verify_cache_volume.assert_called_once_with(fakecontext,
                                                               small_img,
                                                               img_service,
@@ -648,7 +656,8 @@ class TestZFSSAISCSIDriver(test.TestCase):
             cache_vol,
             cache_snap,
             lcfg.zfssa_project,
-            self.test_vol2['name'])
+            self.test_vol2['name'],
+            specs)
 
         self.drv.extend_volume.assert_called_once_with(self.test_vol2,
                                                        self.test_vol2['size'])
@@ -1556,7 +1565,8 @@ class TestZFSSAApi(test.TestCase):
                                   self.vol,
                                   self.snap,
                                   self.project,
-                                  self.clone)
+                                  self.clone,
+                                  None)
         expected_svc = '/api/storage/v1/pools/' + self.pool + '/projects/' + \
             self.project + '/luns/' + self.vol + '/snapshots/' + self.snap + \
             '/clone'

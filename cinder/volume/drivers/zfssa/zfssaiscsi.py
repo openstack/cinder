@@ -429,12 +429,16 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             LOG.error(exception_msg)
             raise exception.InvalidInput(reason=exception_msg)
 
+        specs = self._get_voltype_specs(volume)
+        specs.update({'custom:cinder_managed': True})
+
         self.zfssa.clone_snapshot(lcfg.zfssa_pool,
                                   lcfg.zfssa_project,
                                   snapshot['volume_name'],
                                   snapshot['name'],
                                   lcfg.zfssa_project,
-                                  volume['name'])
+                                  volume['name'],
+                                  specs)
 
         if child_size > parent_size:
             LOG.debug('zfssa.create_volume_from_snapshot:  '
@@ -583,6 +587,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             return None, False
 
         specs = self._get_voltype_specs(volume)
+        specs.update({'custom:cinder_managed': True})
         cachevol_props = {'size': cachevol_size_gb}
 
         try:
@@ -598,7 +603,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                       cache_vol,
                                       cache_snap,
                                       lcfg.zfssa_project,
-                                      volume['name'])
+                                      volume['name'],
+                                      specs)
             if cachevol_size_gb < volume['size']:
                 self.extend_volume(volume, volume['size'])
         except exception.VolumeBackendAPIException as exc:
