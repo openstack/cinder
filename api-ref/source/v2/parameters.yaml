@@ -416,7 +416,7 @@ container:
   description: |
     The container name or null.
   in: body
-  required: true
+  required: false
   type: string
 control_location:
   description: |
@@ -496,7 +496,7 @@ description:
   description: |
     The backup description or null.
   in: body
-  required: true
+  required: false
   type: string
 description_1:
   description: |
