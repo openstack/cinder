@@ -87,6 +87,7 @@ Response Parameters
    - is_incremental: is_incremental
    - data_timestamp: data_timestamp
    - snapshot_id: snapshot_id_2
+   - os-backup-project-attr:project_id: os-backup-project-attr:project_id
 
 Response Example
 ----------------
@@ -139,6 +140,7 @@ Response Parameters
    - is_incremental: is_incremental
    - data_timestamp: data_timestamp
    - snapshot_id: snapshot_id_2
+   - os-backup-project-attr:project_id: os-backup-project-attr:project_id
 
 Response Example
 ----------------
