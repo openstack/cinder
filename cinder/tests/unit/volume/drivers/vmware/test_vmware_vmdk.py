@@ -273,28 +273,32 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.delete_snapshot.assert_not_called()
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_delete_snapshot_with_backing(self, vops):
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    def test_delete_snapshot_with_backing(self, in_use, vops):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        volume = self._create_volume_dict()
+        volume = self._create_volume_dict(status='deleting')
         snapshot = fake_snapshot.fake_snapshot_obj(self._context,
                                                    volume=volume)
         self._driver.delete_snapshot(snapshot)
 
         vops.get_backing.assert_called_once_with(snapshot.volume_name)
         vops.get_snapshot.assert_called_once_with(backing, snapshot.name)
+        in_use.assert_called_once_with(snapshot.volume)
         vops.delete_snapshot.assert_called_once_with(
             backing, snapshot.name)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_delete_snapshot_when_attached(self, vops):
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
+    def test_delete_snapshot_when_attached(self, in_use, vops):
         volume = self._create_volume_dict(status='in-use')
         snapshot = fake_snapshot.fake_snapshot_obj(self._context,
                                                    volume=volume)
 
         self.assertRaises(cinder_exceptions.InvalidSnapshot,
                           self._driver.delete_snapshot, snapshot)
+        in_use.assert_called_once_with(snapshot.volume)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_delete_snapshot_without_backend_snapshot(self, vops):

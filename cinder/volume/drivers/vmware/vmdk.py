@@ -679,7 +679,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                       resource=snapshot.volume)
         elif not self.volumeops.get_snapshot(backing, snapshot.name):
             LOG.debug("Snapshot does not exist in backend.", resource=snapshot)
-        elif snapshot.volume.status != 'available':
+        elif self._in_use(snapshot.volume):
             msg = _("Delete snapshot of volume not supported in "
                     "state: %s.") % snapshot.volume.status
             LOG.error(msg)
