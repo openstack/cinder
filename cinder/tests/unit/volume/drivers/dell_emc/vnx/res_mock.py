@@ -16,6 +16,7 @@
 import mock
 import six
 
+from cinder import context
 from cinder.tests.unit.consistencygroup import fake_cgsnapshot
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants
@@ -100,7 +101,7 @@ def _fake_volume_wrapper(*args, **kwargs):
     expected_attrs_key = {'volume_attachment': 'volume_attachment',
                           'volume_metadata': 'metadata'}
     return fake_volume.fake_volume_obj(
-        None,
+        context.get_admin_context(),
         expected_attrs=[
             v for (k, v) in expected_attrs_key.items() if k in kwargs],
         **kwargs)
@@ -111,7 +112,7 @@ def _fake_cg_wrapper(*args, **kwargs):
 
 
 def _fake_snapshot_wrapper(*args, **kwargs):
-    return fake_snapshot.fake_snapshot_obj(None,
+    return fake_snapshot.fake_snapshot_obj('fake_context',
                                            expected_attrs=(
                                                ['volume'] if 'volume' in kwargs
                                                else None),

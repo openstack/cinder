@@ -56,15 +56,19 @@ class TestCommonAdapter(test.TestCase):
     def test_create_volume(self, vnx_common, _ignore, mocked_input):
         volume = mocked_input['volume']
         volume.host.split('#')[1]
-        model_update = vnx_common.create_volume(volume)
-        self.assertEqual('False', model_update.get('metadata')['snapcopy'])
+        with mock.patch.object(vnx_utils, 'get_backend_qos_specs',
+                               return_value=None):
+            model_update = vnx_common.create_volume(volume)
+            self.assertEqual('False', model_update.get('metadata')['snapcopy'])
 
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
     def test_create_volume_error(self, vnx_common, _ignore, mocked_input):
-        self.assertRaises(storops_ex.VNXCreateLunError,
-                          vnx_common.create_volume,
-                          mocked_input['volume'])
+        def inner():
+            with mock.patch.object(vnx_utils, 'get_backend_qos_specs',
+                                   return_value=None):
+                vnx_common.create_volume(mocked_input['volume'])
+        self.assertRaises(storops_ex.VNXCreateLunError, inner)
 
     @utils.patch_extra_specs({'provisioning:type': 'thick'})
     @res_mock.mock_driver_input
@@ -72,9 +76,23 @@ class TestCommonAdapter(test.TestCase):
     def test_create_thick_volume(self, vnx_common, _ignore, mocked_input):
         volume = mocked_input['volume']
         expected_pool = volume.host.split('#')[1]
-        vnx_common.create_volume(volume)
+        with mock.patch.object(vnx_utils, 'get_backend_qos_specs',
+                               return_value=None):
+            vnx_common.create_volume(volume)
         vnx_common.client.vnx.get_pool.assert_called_with(
             name=expected_pool)
+
+    @utils.patch_extra_specs({'provisioning:type': 'thin'})
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_create_volume_with_qos(self, vnx_common, _ignore, mocked_input):
+        volume = mocked_input['volume']
+        with mock.patch.object(vnx_utils, 'get_backend_qos_specs',
+                               return_value={'id': 'test',
+                                             'maxBWS': 100,
+                                             'maxIOPS': 123}):
+            model_update = vnx_common.create_volume(volume)
+        self.assertEqual('False', model_update.get('metadata')['snapcopy'])
 
     @res_mock.mock_driver_input
     @res_mock.patch_common_adapter
@@ -317,6 +335,7 @@ class TestCommonAdapter(test.TestCase):
         self.assertEqual(2, len(pool_stats))
         for stat in pool_stats:
             self.assertTrue(stat['fast_cache_enabled'])
+            self.assertTrue(stat['QoS_support'])
             self.assertIn(stat['pool_name'], [pools[0].name,
                                               pools[1].name])
             self.assertFalse(stat['replication_enabled'])

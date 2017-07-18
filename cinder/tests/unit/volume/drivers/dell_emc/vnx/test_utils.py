@@ -21,7 +21,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception \
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops \
     as storops
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import res_mock
-from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils
+from cinder.tests.unit.volume.drivers.dell_emc.vnx import utils as ut_utils
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import utils as vnx_utils
 
@@ -172,7 +172,7 @@ class TestUtils(test.TestCase):
                           'wwn2_2': ['wwnt_1', 'wwnt_3']},
                          itor_tgt_map)
 
-    @utils.patch_group_specs('<is> True')
+    @ut_utils.patch_group_specs('<is> True')
     @res_mock.mock_driver_input
     def test_require_consistent_group_snapshot_enabled(self, input):
         driver = FakeDriver()
@@ -210,3 +210,26 @@ class TestUtils(test.TestCase):
         self.assertEqual(vnx_utils.is_async_migrate_enabled(volume),
                          async_migrate)
         self.assertEqual(provision.name, 'THICK')
+
+    @ut_utils.patch_extra_specs({})
+    @res_mock.mock_driver_input
+    def test_get_backend_qos_specs(self, cinder_input):
+        volume = mock.Mock()
+        volume.volume_type.qos_specs = mock.Mock()
+        volume.volume_type.qos_specs.__getitem__ = mock.Mock(return_value=None)
+        r = vnx_utils.get_backend_qos_specs(volume)
+        self.assertIsNone(r)
+
+        volume.volume_type.qos_specs.__getitem__ = mock.Mock(
+            return_value={'consumer': 'frontend'})
+        r = vnx_utils.get_backend_qos_specs(volume)
+        self.assertIsNone(r)
+
+        volume.volume_type.qos_specs.__getitem__ = mock.Mock(
+            return_value={'id': 'test', 'consumer': 'back-end',
+                          'specs': {common.QOS_MAX_BWS: 100,
+                                    common.QOS_MAX_IOPS: 10}})
+        r = vnx_utils.get_backend_qos_specs(volume)
+        self.assertIsNotNone(r)
+        self.assertEqual(100, r[common.QOS_MAX_BWS])
+        self.assertEqual(10, r[common.QOS_MAX_IOPS])

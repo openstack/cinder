@@ -42,6 +42,11 @@ INTERVAL_60_SEC = 60
 SNAP_EXPIRATION_HOUR = '1h'
 
 
+BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
+QOS_MAX_IOPS = 'maxIOPS'
+QOS_MAX_BWS = 'maxBWS'
+
+
 VNX_OPTS = [
     cfg.StrOpt('storage_vnx_authentication_type',
                default='global',

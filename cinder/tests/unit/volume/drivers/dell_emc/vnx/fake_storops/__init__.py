@@ -74,3 +74,6 @@ class VNXMirrorImageState(VNXEnum):
     INCOMPLETE = 'Incomplete'
     LOCAL_ONLY = 'Local Only'
     EMPTY = 'Empty'
+
+
+VNXCtrlMethod = fake_enum.VNXCtrlMethod

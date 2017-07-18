@@ -1011,6 +1011,53 @@ test_get_lun_id_without_provider_location:
     _methods:
       get_lun: *test_get_lun_id_without_provider_location
 
+test_get_ioclass:
+  ioclass_false: &ioclass_false
+    _properties:
+      existed: False
+  ioclass_true: &ioclass_true
+    _properties:
+      existed: True
+    _methods:
+      add_lun:
+  vnx:
+    _methods:
+      get_ioclass: *ioclass_false
+      create_ioclass: *ioclass_true
+
+test_create_ioclass_iops:
+  vnx:
+    _methods:
+      create_ioclass: *ioclass_true
+
+test_create_ioclass_bws:
+  vnx:
+    _methods:
+      create_ioclass: *ioclass_true
+
+test_create_policy:
+  policy: &policy
+    _properties:
+      state: "Running"
+      existed: False
+    _methods:
+      add_class:
+      run_policy:
+  vnx:
+    _methods:
+      get_policy: *policy
+      create_policy: *policy
+
+test_get_running_policy:
+  vnx:
+    _methods:
+      get_policy: [*policy, *policy]
+
+test_add_lun_to_ioclass:
+  vnx:
+    _methods:
+      get_ioclass: *ioclass_true
+
 ###########################################################
 # TestCommonAdapter
 ###########################################################
@@ -1019,6 +1066,15 @@ test_create_volume: *test_create_lun
 test_create_volume_error: *test_create_lun_error
 
 test_create_thick_volume: *test_create_lun
+
+test_create_volume_with_qos:
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: *pool_test_create_lun
+      get_ioclass: *ioclass_true
+      get_policy: [*policy]
 
 test_migrate_volume:
   lun: &src_lun_1
