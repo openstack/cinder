@@ -196,26 +196,30 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         the format of the driver data is defined in smis_get_iscsi_properties.
         Example return value:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'iscsi',
                 'data': {
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': '12345678-1234-4321-1234-123456789012',
+                    'volume_id': '12345678-1234-4321-1234-123456789012'
                 }
             }
-        Example return value (multipath is enabled)::
+
+        Example return value (multipath is enabled):
+
+        .. code-block:: default
+
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'iscsi',
                 'data': {
                     'target_discovered': True,
                     'target_iqns': ['iqn.2010-10.org.openstack:volume-00001',
                                     'iqn.2010-10.org.openstack:volume-00002'],
                     'target_portals': ['127.0.0.1:3260', '127.0.1.1:3260'],
-                    'target_luns': [1, 1],
+                    'target_luns': [1, 1]
                 }
             }
         :param volume: the cinder volume object

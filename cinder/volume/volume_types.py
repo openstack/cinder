@@ -275,7 +275,7 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     whether there is any difference, and 'diff' is a dictionary with the
     following format:
 
-    .. code-block:: json
+    .. code-block:: default
 
         {
             'extra_specs': {'key1': (value_in_1st_vol_type,

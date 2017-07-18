@@ -891,10 +891,10 @@ class NetAppBlockStorageLibrary(object):
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'fibre_channel',
                 'data': {
                     'target_discovered': True,
                     'target_lun': 1,
@@ -906,10 +906,12 @@ class NetAppBlockStorageLibrary(object):
                 }
             }
 
-            or
+        Or
+
+        .. code-block:: default
 
              {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'fibre_channel',
                 'data': {
                     'target_discovered': True,
                     'target_lun': 1,

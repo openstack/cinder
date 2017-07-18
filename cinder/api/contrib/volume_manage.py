@@ -62,11 +62,10 @@ class VolumeManageController(wsgi.Controller):
         .. code-block:: json
 
          {
-           'volume':
-           {
-             'host': <Cinder host on which the existing storage resides>,
-             'cluster': <Cinder cluster on which the storage resides>,
-             'ref':  <Driver-specific reference to existing storage object>,
+           "volume": {
+             "host": "<Cinder host on which the existing storage resides>",
+             "cluster": "<Cinder cluster on which the storage resides>",
+             "ref": "<Driver-specific reference to existing storage object>"
            }
          }
 

@@ -24,8 +24,8 @@ class ViewBuilder(object):
 
             {
                "resource_filters": [{
-                   "resource": 'resource_1',
-                   "filters": ['filter1', 'filter2', 'filter3']
+                   "resource": "resource_1",
+                   "filters": ["filter1", "filter2", "filter3"]
                 }]
             }
         """

@@ -126,7 +126,7 @@ class AttachmentsController(wsgi.Controller):
                 {
                     "volume_uuid": "volume-uuid",
                     "instance_uuid": "nova-server-uuid",
-                    "connector": None|<connector-object>,
+                    "connector": "null|<connector-object>"
                 }
             }
 
@@ -142,9 +142,9 @@ class AttachmentsController(wsgi.Controller):
                     "platform": "x86_64",
                     "host": "tempest-1",
                     "os_type": "linux2",
-                    "multipath": False,
+                    "multipath": false,
                     "mountpoint": "/dev/vdb",
-                    "mode": None|"rw"|"ro",
+                    "mode": "null|rw|ro"
                 }
             }
 

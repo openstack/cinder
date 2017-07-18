@@ -433,7 +433,7 @@ def get_enabled_resource_filters(resource=None):
     .. code-block:: json
 
             {
-                "resource": ['filter1', 'filter2', 'filter3']
+                "resource": ["filter1", "filter2", "filter3"]
             }
 
     if resource is not specified, all of the configuration will be returned,

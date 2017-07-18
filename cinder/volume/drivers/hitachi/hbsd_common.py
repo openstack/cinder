@@ -750,7 +750,7 @@ class HBSDCommon(object):
 
         For HUS 100 Family:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
                 'ldev': <logical device number on storage>,
@@ -759,7 +759,7 @@ class HBSDCommon(object):
 
         For VSP G1000/VSP/HUS VM:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
                 'ldev': <logical device number on storage>,
