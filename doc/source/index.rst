@@ -88,12 +88,13 @@ API Extensions
 
 Go to http://api.openstack.org for information about Cinder API extensions.
 
-Sample Configuration File
-=========================
+Configuration Reference
+=======================
 
 .. toctree::
     :maxdepth: 1
 
+    config-reference/block-storage
     sample_config
 
 Indices and tables
