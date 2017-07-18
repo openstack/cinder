@@ -24,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder import utils
 from cinder.volume import volume_types
 
 
@@ -40,6 +41,9 @@ def create(context, name, specs=None):
                 'total_iops_sec': 1000,
                 'total_bytes_sec': 1024000}
     """
+    # Validate the key-value pairs in the qos spec.
+    utils.validate_dictionary_string_length(specs)
+
     consumer = specs.get('consumer')
     if consumer:
         # If we need to modify specs, copy so we don't cause unintended
@@ -67,6 +71,7 @@ def update(context, qos_specs_id, specs):
     LOG.debug('qos_specs.update(): specs %s', specs)
 
     try:
+        utils.validate_dictionary_string_length(specs)
         qos_spec = objects.QualityOfServiceSpecs.get_by_id(context,
                                                            qos_specs_id)
 
@@ -81,6 +86,8 @@ def update(context, qos_specs_id, specs):
         qos_spec.specs.update(specs)
 
         qos_spec.save()
+    except exception.InvalidInput as e:
+        raise exception.InvalidQoSSpecs(reason=e)
     except db_exc.DBError:
         LOG.exception('DB error:')
         raise exception.QoSSpecsUpdateFailed(specs_id=qos_specs_id,

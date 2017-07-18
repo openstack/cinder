@@ -4536,7 +4536,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_get_vdisk_params(self):
         self.driver.do_setup(None)
-        fake_qos = {'qos:IOThrottling': 5000}
+        fake_qos = {'qos:IOThrottling': '5000'}
         expected_qos = {'IOThrottling': 5000}
         fake_opts = self._get_default_opts()
         # The parameters retured should be the same to the default options,
@@ -4622,7 +4622,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # If the QoS is set both via the qos association and the
         # extra specs, the one from the qos association will take effect.
-        fake_qos_associate = {'qos:IOThrottling': 6000}
+        fake_qos_associate = {'qos:IOThrottling': '6000'}
         expected_qos_associate = {'IOThrottling': 6000}
         vol_type_qos = self._create_volume_type_qos_both(fake_qos,
                                                          fake_qos_associate)
