@@ -2289,12 +2289,12 @@ class VMAXRestTest(test.TestCase):
         array = self.data.array
         extra_specs = self.data.extra_specs
         extra_specs['qos'] = {
-            'maxIOPS': '4000', 'DistributionType': 'Always'}
+            'total_iops_sec': '4000', 'DistributionType': 'Always'}
         return_value = self.rest.update_storagegroup_qos(
             array, "OS-QOS-SG", extra_specs)
         self.assertEqual(False, return_value)
         extra_specs['qos'] = {
-            'DistributionType': 'onFailure', 'maxMBPS': '4000'}
+            'DistributionType': 'onFailure', 'total_bytes_sec': '419430400'}
         return_value = self.rest.update_storagegroup_qos(
             array, "OS-QOS-SG", extra_specs)
         self.assertTrue(return_value)
@@ -2304,7 +2304,8 @@ class VMAXRestTest(test.TestCase):
         storage_group = self.data.defaultstoragegroup_name
         extra_specs = self.data.extra_specs
         extra_specs['qos'] = {
-            'maxIOPS': '4000', 'DistributionType': 'Wrong', 'maxMBPS': '4000'}
+            'total_iops_sec': '4000', 'DistributionType': 'Wrong',
+            'total_bytes_sec': '4194304000'}
         with mock.patch.object(self.rest, 'check_status_code_success',
                                side_effect=[None, None, None, Exception]):
             self.assertRaises(exception.VolumeBackendAPIException,
@@ -2314,6 +2315,31 @@ class VMAXRestTest(test.TestCase):
             return_value = self.rest.update_storagegroup_qos(
                 array, "OS-QOS-SG", extra_specs)
             self.assertFalse(return_value)
+
+    def test_validate_qos_input_exception(self):
+        qos_extra_spec = {
+            'total_iops_sec': 90, 'DistributionType': 'Wrong',
+            'total_bytes_sec': 100}
+        input_key = 'total_iops_sec'
+        sg_value = 4000
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest.validate_qos_input, input_key, sg_value,
+                          qos_extra_spec, {})
+        input_key = 'total_bytes_sec'
+        sg_value = 4000
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest.validate_qos_input, input_key, sg_value,
+                          qos_extra_spec, {})
+
+    def test_validate_qos_distribution_type(self):
+        qos_extra_spec = {
+            'total_iops_sec': 4000, 'DistributionType': 'Always',
+            'total_bytes_sec': 4194304000}
+        input_prop_dict = {'total_iops_sec': 4000}
+        sg_value = 'Always'
+        ret_prop_dict = self.rest.validate_qos_distribution_type(
+            sg_value, qos_extra_spec, input_prop_dict)
+        self.assertEqual(input_prop_dict, ret_prop_dict)
 
     def test_get_rdf_group(self):
         with mock.patch.object(self.rest, 'get_resource') as mock_get:

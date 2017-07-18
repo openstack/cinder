@@ -17,6 +17,7 @@ import json
 
 from oslo_log import log as logging
 from oslo_service import loopingcall
+from oslo_utils import units
 import requests
 import requests.auth
 import requests.packages.urllib3.exceptions as urllib_exp
@@ -773,10 +774,7 @@ class VMAXRest(object):
         sg_maxiops = None
         sg_maxmbps = None
         sg_distribution_type = None
-        maxiops = "nolimit"
-        maxmbps = "nolimit"
-        distribution_type = "never"
-        propertylist = []
+        property_dict = {}
         try:
             sg_qos_details = sg_details['hostIOLimit']
             sg_maxiops = sg_qos_details['host_io_limit_io_sec']
@@ -784,38 +782,21 @@ class VMAXRest(object):
             sg_distribution_type = sg_qos_details['dynamicDistribution']
         except KeyError:
             LOG.debug("Unable to get storage group QoS details.")
-        if 'maxIOPS' in extra_specs.get('qos'):
-            maxiops = extra_specs['qos']['maxIOPS']
-            if maxiops != sg_maxiops:
-                propertylist.append(maxiops)
-        if 'maxMBPS' in extra_specs.get('qos'):
-            maxmbps = extra_specs['qos']['maxMBPS']
-            if maxmbps != sg_maxmbps:
-                propertylist.append(maxmbps)
-        if 'DistributionType' in extra_specs.get('qos') and (
-                propertylist or sg_qos_details):
-            dynamic_list = ['never', 'onfailure', 'always']
-            if (extra_specs.get('qos').get('DistributionType').lower() not
-                    in dynamic_list):
-                exception_message = (_(
-                    "Wrong Distribution type value %(dt)s entered. "
-                    "Please enter one of: %(dl)s") %
-                    {'dt': extra_specs.get('qos').get('DistributionType'),
-                     'dl': dynamic_list
-                     })
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-            else:
-                distribution_type = extra_specs['qos']['DistributionType']
-                if distribution_type != sg_distribution_type:
-                    propertylist.append(distribution_type)
-        if propertylist:
+        if 'total_iops_sec' in extra_specs.get('qos'):
+            property_dict = self.validate_qos_input(
+                'total_iops_sec', sg_maxiops, extra_specs.get('qos'),
+                property_dict)
+        if 'total_bytes_sec' in extra_specs.get('qos'):
+            property_dict = self.validate_qos_input(
+                'total_bytes_sec', sg_maxmbps, extra_specs.get('qos'),
+                property_dict)
+        if 'DistributionType' in extra_specs.get('qos') and property_dict:
+            property_dict = self.validate_qos_distribution_type(
+                sg_distribution_type, extra_specs.get('qos'), property_dict)
+
+        if property_dict:
             payload = {"editStorageGroupActionParam": {
-                "setHostIOLimitsParam": {
-                    "host_io_limit_io_sec": maxiops,
-                    "host_io_limit_mb_sec": maxmbps,
-                    "dynamicDistribution": distribution_type}}}
+                "setHostIOLimitsParam": property_dict}}
             status_code, message = (
                 self.modify_storage_group(array, storage_group_name, payload))
             try:
@@ -827,6 +808,54 @@ class VMAXRest(object):
                           "%(e)s", {'e': e})
                 return_value = False
         return return_value
+
+    @staticmethod
+    def validate_qos_input(input_key, sg_value, qos_extra_spec, property_dict):
+        max_value = 100000
+        qos_unit = "IO/Sec"
+        if input_key == 'total_iops_sec':
+            min_value = 100
+            input_value = int(qos_extra_spec['total_iops_sec'])
+            sg_key = 'host_io_limit_io_sec'
+        else:
+            qos_unit = "MB/sec"
+            min_value = 1
+            input_value = int(qos_extra_spec['total_bytes_sec']) / units.Mi
+            sg_key = 'host_io_limit_mb_sec'
+        if min_value <= input_value <= max_value:
+            if sg_value is None or input_value != int(sg_value):
+                property_dict[sg_key] = input_value
+        else:
+            exception_message = (_(
+                "Invalid %(ds)s with value %(dt)s entered. "
+                "Valid values range from %(du)s %(dv)s to 100,000 %(dv)s") %
+                {'ds': input_key, 'dt': input_value, 'du': min_value,
+                 'dv': qos_unit
+                 })
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return property_dict
+
+    @staticmethod
+    def validate_qos_distribution_type(
+            sg_value, qos_extra_spec, property_dict):
+        dynamic_list = ['never', 'onfailure', 'always']
+        if qos_extra_spec.get('DistributionType').lower() in dynamic_list:
+            distribution_type = qos_extra_spec['DistributionType']
+            if distribution_type != sg_value:
+                property_dict["dynamicDistribution"] = distribution_type
+        else:
+            exception_message = (_(
+                "Wrong Distribution type value %(dt)s entered. "
+                "Please enter one of: %(dl)s") %
+                {'dt': qos_extra_spec.get('DistributionType'),
+                 'dl': dynamic_list
+                 })
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return property_dict
 
     def get_vmax_default_storage_group(
             self, array, srp, slo, workload,
