@@ -35,10 +35,18 @@ CONTROL_LOCATION = ['front-end', 'back-end', 'both']
 def create(context, name, specs=None):
     """Creates qos_specs.
 
-    :param specs dictionary that contains specifications for QoS
-          e.g. {'consumer': 'front-end',
+    :param specs: Dictionary that contains specifications for QoS
+
+    Expected format of the input parameter:
+
+        .. code-block:: json
+
+            {
+                'consumer': 'front-end',
                 'total_iops_sec': 1000,
-                'total_bytes_sec': 1024000}
+                'total_bytes_sec': 1024000
+            }
+
     """
     consumer = specs.get('consumer')
     if consumer:
