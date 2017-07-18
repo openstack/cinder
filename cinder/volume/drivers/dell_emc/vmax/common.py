@@ -517,9 +517,10 @@ class VMAXCommon(object):
         volumename = volume['name']
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
+        host = connector and connector.get('host')
 
         device_info, __, __ = self.find_device_number(
-            volume, connector['host'])
+            volume, host)
         if 'hostlunid' not in device_info:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
                      volumename)
@@ -820,11 +821,6 @@ class VMAXCommon(object):
         volumename = volume['name']
         LOG.info(_LI("Terminate connection: %(volume)s."),
                  {'volume': volumename})
-        if not connector:
-            exception_message = (_("The connector object from nova "
-                                   "cannot be None."))
-            raise exception.VolumeBackendAPIException(
-                data=exception_message)
         self._unmap_lun(volume, connector)
 
     def extend_volume(self, volume, newSize):
@@ -2015,20 +2011,23 @@ class VMAXCommon(object):
                 {'volumeName': volumeName,
                  'volumeInstance': volumeInstance.path})
         else:
-            host = self.utils.get_host_short_name(host)
-            hoststr = ("-%(host)s-"
-                       % {'host': host})
-            for maskedvol in maskedvols:
-                if hoststr.lower() in maskedvol['maskingview'].lower():
-                    data = maskedvol
-            if not data:
-                if len(maskedvols) > 0:
-                    source_data = maskedvols[0]
-                    LOG.warning(_LW(
-                        "Volume is masked but not to host %(host)s as is "
-                        "expected. Assuming live migration."),
-                        {'host': hoststr})
-                    isLiveMigration = True
+            if host:
+                host = self.utils.get_host_short_name(host)
+                hoststr = ("-%(host)s-"
+                           % {'host': host})
+                for maskedvol in maskedvols:
+                    if hoststr.lower() in maskedvol['maskingview'].lower():
+                        data = maskedvol
+                if not data:
+                    if len(maskedvols) > 0:
+                        source_data = maskedvols[0]
+                        LOG.warning(_LW(
+                            "Volume is masked but not to host %(host)s as is "
+                            "expected. Assuming live migration."),
+                            {'host': hoststr})
+                        isLiveMigration = True
+            else:
+                data = maskedvols[0]
 
         LOG.debug("Device info: %(data)s.", {'data': data})
         return data, isLiveMigration, source_data
