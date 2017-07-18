@@ -35,6 +35,7 @@ Guidelines for writing new hacking checks
 UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py',
                            'cinder/objects/manageableresources.py']
 
+mutable_default_args = re.compile(r"^\s*def .+\((.+=\{\}|.+=\[\])")
 translated_log = re.compile(
     r"(.)*LOG\.(audit|debug|error|info|warn|warning|critical|exception)"
     "\(\s*_\(\s*('|\")")
@@ -141,7 +142,6 @@ def no_translate_logs(logical_line, filename):
 
 def no_mutable_default_args(logical_line):
     msg = "N322: Method's default argument shouldn't be mutable!"
-    mutable_default_args = re.compile(r"^\s*def .+\((.+=\{\}|.+=\[\])")
     if mutable_default_args.match(logical_line):
         yield (0, msg)
 
