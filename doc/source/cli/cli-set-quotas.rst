@@ -56,6 +56,4 @@ values.
 .. toctree::
    :maxdepth: 2
 
-   cli-set-compute-quotas.rst
    cli-cinder-quotas.rst
-   cli-networking-advanced-quotas.rst

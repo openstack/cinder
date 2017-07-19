@@ -15,8 +15,8 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Developer Guide
-===============
+Contributor Guide
+=================
 
 In this section you will find information on Cinder's lower level programming
 APIs.
@@ -69,7 +69,7 @@ API Reference
 .. toctree::
    :maxdepth: 3
 
-   ../api/autoindex
+   ./api/autoindex
 
 Module Reference
 ----------------

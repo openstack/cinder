@@ -49,13 +49,13 @@ Admin Docs
 
    admin/blockstorage
 
-Developer Docs
-==============
+Contributor/Developer Docs
+==========================
 
 .. toctree::
    :maxdepth: 1
 
-   devref/index
+   contributor/index
    scheduler-filters
    scheduler-weights
    upgrade
@@ -66,10 +66,10 @@ Command Line Interface Documentation
 .. toctree::
    :maxdepth: 2
 
-   admin/cli-manage-volumes
-   admin/cli-set-quotas
-   admin/cli-cinder-quotas
-   admin/cli-cinder-scheduling
+   cli/cli-manage-volumes
+   cli/cli-set-quotas
+   cli/cli-cinder-quotas
+   cli/cli-cinder-scheduling
 
 Drivers
 =======
