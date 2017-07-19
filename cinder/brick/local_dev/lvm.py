@@ -676,11 +676,12 @@ class LVM(executor.Executor):
         cmd = ['lvchange', '-a', 'y', '--yes']
 
         if self.supports_lvchange_ignoreskipactivation:
-            cmd.append('-K')
             # If permanent=True is specified, drop the skipactivation flag in
             # order to make this LV automatically activated after next reboot.
             if permanent:
                 cmd += ['-k', 'n']
+            else:
+                cmd.append('-K')
 
         cmd.append(lv_path)
 
