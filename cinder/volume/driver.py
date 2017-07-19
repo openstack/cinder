@@ -804,6 +804,13 @@ class BaseVD(object):
                     attach_info['device']['path'],
                     self.configuration.volume_dd_blocksize,
                     size=volume['size'])
+            except exception.ImageTooBig:
+                with excutils.save_and_reraise_exception():
+                    LOG.exception("Copying image %(image_id)s "
+                                  "to volume failed due to "
+                                  "insufficient available space.",
+                                  {'image_id': image_id})
+
             finally:
                 if encrypted:
                     utils.brick_detach_volume_encryptor(attach_info,

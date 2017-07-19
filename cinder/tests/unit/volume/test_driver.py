@@ -444,8 +444,12 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
     @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
     @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    @ddt.data(exception.ImageUnacceptable(
+              reason='fake', image_id=fake.IMAGE_ID),
+              exception.ImageTooBig(
+              reason='fake image size exceeded', image_id=fake.IMAGE_ID))
     def test_copy_image_to_encrypted_volume_failed_fetch(
-            self,
+            self, excep,
             mock_detach_encryptor, mock_attach_encryptor,
             mock_detach_volume, mock_attach_volume, mock_fetch_to_raw,
             mock_get_connector_properties):
@@ -464,12 +468,10 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
 
         mock_get_connector_properties.return_value = properties
         mock_attach_volume.return_value = [attach_info, volume]
-        raised_exception = exception.ImageUnacceptable(reason='fake',
-                                                       image_id=fake.IMAGE_ID)
-        mock_fetch_to_raw.side_effect = raised_exception
+        mock_fetch_to_raw.side_effect = excep
 
         encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
-        self.assertRaises(exception.ImageUnacceptable,
+        self.assertRaises(type(excep),
                           self.volume.driver.copy_image_to_encrypted_volume,
                           self.context, volume, image_service, fake.IMAGE_ID)
 

@@ -24,6 +24,7 @@ from oslo_utils import imageutils
 
 from cinder import context
 from cinder import exception
+from cinder.message import message_field
 from cinder import test
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fakes
@@ -984,9 +985,11 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.internal_context.user_id = 'abc123'
         self.internal_context.project_id = 'def456'
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_clone_image_and_skip_cache(
-            self, mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            self, mock_check_space, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, True)
         volume = fake_volume.fake_volume_obj(self.ctxt,
                                              host='host@backend#pool')
@@ -1009,6 +1012,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_meta,
                                    self.mock_image_service)
 
+        # Make sure check_available_space is always called
+        self.assertTrue(mock_check_space.called)
+
         # Make sure clone_image is always called even if the cache is enabled
         self.assertTrue(self.mock_driver.clone_image.called)
 
@@ -1026,8 +1032,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         )
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_cannot_use_cache(
-            self, mock_qemu_info, mock_get_internal_context,
+            self, mock_qemu_info, mock_check_space, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = None
@@ -1057,6 +1064,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_id,
                                    image_meta,
                                    self.mock_image_service)
+
+        # Make sure check_available_space is always called
+        self.assertTrue(mock_check_space.called)
 
         # Make sure clone_image is always called
         self.assertTrue(self.mock_driver.clone_image.called)
@@ -1162,8 +1172,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 1})
         self.assertEqual(volume_size, volume.size)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_bigger_size(
-            self, mock_get_internal_context,
+            self, mock_check_space, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         volume = fake_volume.fake_volume_obj(self.ctxt)
@@ -1375,8 +1386,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertFalse(self.mock_cache.create_cache_entry.called)
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.check_available_space')
     def test_create_from_image_no_internal_context(
-            self, mock_qemu_info, mock_get_internal_context,
+            self, mock_chk_space, mock_qemu_info, mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, False)
@@ -1404,6 +1416,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                                    image_id,
                                    image_meta,
                                    self.mock_image_service)
+
+        # Make sure check_available_space is always called
+        self.assertTrue(mock_chk_space.called)
 
         # Make sure clone_image is always called
         self.assertTrue(self.mock_driver.clone_image.called)
@@ -1474,6 +1489,117 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta,
             self.mock_image_service
         )
+
+        # The volume size should NOT be changed when in this case
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.message.api.API.create')
+    def test_create_from_image_insufficient_space(
+            self, mock_message_create, mock_qemu_info, mock_check_space,
+            mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '2147483648'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+
+        image_location = 'someImageLocationStr'
+        image_id = fakes.IMAGE_ID
+        image_meta = mock.MagicMock()
+        mock_check_space.side_effect = exception.ImageTooBig(
+            image_id=image_id, reason="fake")
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.ImageTooBig,
+            manager._create_from_image,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service
+        )
+
+        mock_message_create.assert_called_once_with(
+            self.ctxt, message_field.Action.COPY_IMAGE_TO_VOLUME,
+            resource_uuid=volume.id,
+            detail=message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE,
+            exception=mock.ANY)
+
+        # The volume size should NOT be changed when in this case
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.message.api.API.create')
+    def test_create_from_image_cache_insufficient_size(
+            self, mock_message_create, mock_qemu_info, mock_check_space,
+            mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+        image_id = fakes.IMAGE_ID
+        mock_create_from_img_dl.side_effect = exception.ImageTooBig(
+            image_id=image_id, reason="fake")
+
+        image_location = 'someImageLocationStr'
+        image_meta = mock.MagicMock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.ImageTooBig,
+            manager._create_from_image_cache_or_download,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service
+        )
+
+        mock_message_create.assert_called_once_with(
+            self.ctxt, message_field.Action.COPY_IMAGE_TO_VOLUME,
+            resource_uuid=volume.id,
+            detail=message_field.Detail.NOT_ENOUGH_SPACE_FOR_IMAGE,
+            exception=mock.ANY)
 
         # The volume size should NOT be changed when in this case
         self.assertFalse(self.mock_db.volume_update.called)

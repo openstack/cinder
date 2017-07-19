@@ -33,11 +33,13 @@ class Action(object):
     ATTACH_VOLUME = ('002', _('attach volume'))
     COPY_VOLUME_TO_IMAGE = ('003', _('copy volume to image'))
     UPDATE_ATTACHMENT = ('004', _('update attachment'))
+    COPY_IMAGE_TO_VOLUME = ('005', _('copy image to volume'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
            COPY_VOLUME_TO_IMAGE,
-           UPDATE_ATTACHMENT)
+           UPDATE_ATTACHMENT,
+           COPY_IMAGE_TO_VOLUME)
 
 
 class Detail(object):
@@ -55,13 +57,17 @@ class Detail(object):
                                   _("Volume's attach mode is invalid."))
     QUOTA_EXCEED = ('006',
                     _("Not enough quota resource for operation."))
+    NOT_ENOUGH_SPACE_FOR_IMAGE = ('007',
+                                  _("Image used for creating volume exceeds "
+                                    "available space."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
            NO_BACKEND_AVAILABLE,
            FAILED_TO_UPLOAD_VOLUME,
            VOLUME_ATTACH_MODE_INVALID,
-           QUOTA_EXCEED)
+           QUOTA_EXCEED,
+           NOT_ENOUGH_SPACE_FOR_IMAGE)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
@@ -70,7 +76,8 @@ class Detail(object):
         VOLUME_ATTACH_MODE_INVALID: ['InvalidVolumeAttachMode'],
         QUOTA_EXCEED: ['ImageLimitExceeded',
                        'BackupLimitExceeded',
-                       'SnapshotLimitExceeded']
+                       'SnapshotLimitExceeded'],
+        NOT_ENOUGH_SPACE_FOR_IMAGE: ['ImageTooBig']
     }
 
 

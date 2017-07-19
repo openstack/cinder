@@ -25,7 +25,6 @@ from oslo_utils import units
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
-from cinder.tests import fixtures
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import throttling
 
@@ -298,28 +297,22 @@ class TestFetch(test.TestCase):
             .assert_called_once_with(None, None, None))
 
     def test_fetch_enospc(self):
-        stdlog = self.useFixture(fixtures.StandardLogging())
-
         context = mock.sentinel.context
         image_service = mock.Mock()
-        e = IOError()
+        image_id = mock.sentinel.image_id
+        e = exception.ImageTooBig(image_id=image_id, reason = "fake")
         e.errno = errno.ENOSPC
         image_service.download.side_effect = e
-        image_id = mock.sentinel.image_id
         path = '/test_path'
         _user_id = mock.sentinel._user_id
         _project_id = mock.sentinel._project_id
 
         with mock.patch('cinder.image.image_utils.open',
                         new=mock.mock_open(), create=True):
-            self.assertRaises(IOError,
+            self.assertRaises(exception.ImageTooBig,
                               image_utils.fetch,
                               context, image_service, image_id, path,
                               _user_id, _project_id)
-        error_message = ('No space left in image_conversion_dir path '
-                         '(/) while fetching image %s.' % image_id)
-
-        self.assertTrue(error_message in stdlog.logger.output)
 
 
 class TestVerifyImage(test.TestCase):
@@ -1104,11 +1097,11 @@ class TestFetchToVolumeFormat(test.TestCase):
         data.backing_file = None
         data.virtual_size = units.Gi
 
-        mock_check_space.side_effect = exception.ImageUnacceptable(
+        mock_check_space.side_effect = exception.ImageTooBig(
             image_id='fake_image_id', reason='test')
 
         self.assertRaises(
-            exception.ImageUnacceptable,
+            exception.ImageTooBig,
             image_utils.fetch_to_volume_format,
             ctxt, image_service, image_id, dest, volume_format, blocksize,
             user_id=user_id, project_id=project_id, size=size,
