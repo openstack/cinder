@@ -259,10 +259,11 @@ class HPE3PARCommon(object):
                  in HPE-3APR
         3.0.33 - Added replication feature in retype flow. bug #1680313
         3.0.34 - Add cloned volume to vvset in online copy. bug #1664464
+        3.0.35 - Add volume to consistency group if flag enabled. bug #1702317
 
     """
 
-    VERSION = "3.0.34"
+    VERSION = "3.0.35"
 
     stats = {}
 
@@ -1942,8 +1943,17 @@ class HPE3PARCommon(object):
             compression = self.get_compression_policy(
                 type_info['hpe3par_keys'])
 
+            consis_group_snap_type = False
+            if volume_type is not None:
+                extra_specs = volume_type.get('extra_specs', None)
+                if extra_specs:
+                    gsnap_val = extra_specs.get(
+                        'consistent_group_snapshot_enabled', None)
+                    if gsnap_val is not None and gsnap_val == "<is> True":
+                        consis_group_snap_type = True
+
             cg_id = volume.get('group_id', None)
-            if cg_id:
+            if cg_id and consis_group_snap_type:
                 vvs_name = self._get_3par_vvs_name(cg_id)
 
             type_id = volume.get('volume_type_id', None)
