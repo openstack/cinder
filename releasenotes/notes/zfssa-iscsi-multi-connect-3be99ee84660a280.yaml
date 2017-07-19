@@ -1,0 +1,5 @@
+---
+fixes:
+  - Oracle ZFSSA iSCSI - allows a volume to be connected to more than one
+    connector at the same time, which is required for live-migration to work.
+    ZFSSA software release 2013.1.3.x (or newer) is required for this to work.

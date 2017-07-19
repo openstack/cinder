@@ -746,11 +746,26 @@ class ZFSSAApi(object):
             raise exception.VolumeNotFound(volume_id=lun)
 
         val = json.loads(ret.data)
+
+        # For backward-compatibility with 2013.1.2.x, convert initiatorgroup
+        # and number to lists if they're not already
+        def _listify(item):
+            return item if isinstance(item, list) else [item]
+
+        initiatorgroup = _listify(val['lun']['initiatorgroup'])
+        number = _listify(val['lun']['assignednumber'])
+
+        # Hide special maskAll value when LUN is not currently presented to
+        # any initiatorgroups:
+        if 'com.sun.ms.vss.hg.maskAll' in initiatorgroup:
+            initiatorgroup = []
+            number = []
+
         ret = {
             'name': val['lun']['name'],
             'guid': val['lun']['lunguid'],
-            'number': val['lun']['assignednumber'],
-            'initiatorgroup': val['lun']['initiatorgroup'],
+            'number': number,
+            'initiatorgroup': initiatorgroup,
             'size': val['lun']['volsize'],
             'nodestroy': val['lun']['nodestroy'],
             'targetgroup': val['lun']['targetgroup']
@@ -797,14 +812,29 @@ class ZFSSAApi(object):
 
     def set_lun_initiatorgroup(self, pool, project, lun, initiatorgroup):
         """Set the initiatorgroup property of a LUN."""
-        if initiatorgroup == '':
+
+        # For backward-compatibility with 2013.1.2.x, set initiatorgroup
+        # to a single string if there's only one item in the list.
+        # Live-migration won't work, but existing functionality should still
+        # work. If the list is empty, substitute the special "maskAll" value.
+        if len(initiatorgroup) == 0:
             initiatorgroup = 'com.sun.ms.vss.hg.maskAll'
+        elif len(initiatorgroup) == 1:
+            initiatorgroup = initiatorgroup[0]
 
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
             project + '/luns/' + lun
         arg = {
             'initiatorgroup': initiatorgroup
         }
+
+        LOG.debug('Setting LUN initiatorgroup. pool=%(pool)s, '
+                  'project=%(project)s, lun=%(lun)s, '
+                  'initiatorgroup=%(initiatorgroup)s',
+                  {'project': project,
+                   'pool': pool,
+                   'lun': lun,
+                   'initiatorgroup': initiatorgroup})
 
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.ACCEPTED:
