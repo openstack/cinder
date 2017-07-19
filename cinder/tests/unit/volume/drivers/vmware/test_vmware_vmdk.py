@@ -1929,12 +1929,27 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('cinder.image.image_utils.TemporaryImages.for_image_service')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.open', create=True)
+    @mock.patch('oslo_vmware.image_transfer.download_file')
     @mock.patch('oslo_vmware.image_transfer.download_flat_image')
-    def _test_copy_image(self, download_flat_image, session, vops,
-                         expected_cacerts=False):
+    def _test_copy_image(self, download_flat_image, download_file, mock_open,
+                         temp_images_img_service, session, vops,
+                         expected_cacerts=False, use_temp_image=False):
 
         dc_name = mock.sentinel.dc_name
         vops.get_entity_name.return_value = dc_name
+
+        mock_get = mock.Mock(return_value=None)
+        tmp_images = mock.Mock(get=mock_get)
+        temp_images_img_service.return_value = tmp_images
+        if use_temp_image:
+            mock_get.return_value = '/tmp/foo'
+            mock_open_ret = mock.Mock()
+            mock_open_ret.__enter__ = mock.Mock(
+                return_value=mock.sentinel.read_handle)
+            mock_open_ret.__exit__ = mock.Mock()
+            mock_open.return_value = mock_open_ret
 
         context = mock.sentinel.context
         dc_ref = mock.sentinel.dc_ref
@@ -1949,19 +1964,32 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         vops.get_entity_name.assert_called_once_with(dc_ref)
         cookies = session.vim.client.options.transport.cookiejar
-        download_flat_image.assert_called_once_with(
-            context,
-            self._config.vmware_image_transfer_timeout_secs,
-            image_service,
-            image_id,
-            image_size=image_size_in_bytes,
-            host=self._config.vmware_host_ip,
-            port=self._config.vmware_host_port,
-            data_center_name=dc_name,
-            datastore_name=ds_name,
-            cookies=cookies,
-            file_path=upload_file_path,
-            cacerts=expected_cacerts)
+        if use_temp_image:
+            download_file.assert_called_once_with(
+                mock.sentinel.read_handle,
+                self._config.vmware_host_ip,
+                self._config.vmware_host_port,
+                dc_name,
+                ds_name,
+                cookies,
+                upload_file_path,
+                image_size_in_bytes,
+                expected_cacerts,
+                self._config.vmware_image_transfer_timeout_secs)
+        else:
+            download_flat_image.assert_called_once_with(
+                context,
+                self._config.vmware_image_transfer_timeout_secs,
+                image_service,
+                image_id,
+                image_size=image_size_in_bytes,
+                host=self._config.vmware_host_ip,
+                port=self._config.vmware_host_port,
+                data_center_name=dc_name,
+                datastore_name=ds_name,
+                cookies=cookies,
+                file_path=upload_file_path,
+                cacerts=expected_cacerts)
 
     def test_copy_image(self):
         # Default value of vmware_ca_file is not None; it should be passed
@@ -1975,6 +2003,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         # Since vmware_ca_file is unset and vmware_insecure is True,
         # dowload_flat_image should be called with cacerts=False.
         self._test_copy_image()
+
+    def test_copy_temp_image(self):
+        self._test_copy_image(expected_cacerts=self._config.vmware_ca_file,
+                              use_temp_image=True)
 
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
