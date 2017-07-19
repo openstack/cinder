@@ -103,20 +103,22 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                   pn in self._properties['pool_pools'])]
         return self._return_poolnumber(pools)
 
-    def _select_migrate_poolnumber(self, volume, pools, xml, option):
+    def _select_migrate_poolnumber(self, volume, pools, xml, host):
         """Pick up migration target pool."""
         tmpPools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
         ldname = self.get_ldname(volume.id,
                                  self._properties['ld_name_format'])
         ld = lds[ldname]
-        temp_conf_properties = self.get_conf_properties(option)
+
+        capabilities = host['capabilities']
+        pools_string = capabilities.get('location_info').split(':')[1]
+        destination_pools = list(map(int, pools_string.split(',')))
 
         size = volume.size * units.Gi
         pools = [pool for (pn, pool) in pools.items()
                  if pool['free'] >= size and
-                 (len(temp_conf_properties['pool_pools']) == 0 or
-                  pn in temp_conf_properties['pool_pools'])]
+                 (len(destination_pools) == 0 or pn in destination_pools)]
 
         selected_pool = self._return_poolnumber(pools)
         if selected_pool == ld['pool_num']:
@@ -583,14 +585,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                        'capabilities': capabilities})
             return false_ret
 
-        # get another host group configurations.
-        temp_conf = self.get_conf(host)
-        temp_conf_properties = self.get_conf_properties(temp_conf)
-
         # another storage configuration is not supported.
-        if temp_conf_properties['cli_fip'] != self._properties['cli_fip']:
-            LOG.debug('FIP is mismatch. FIP = %(tempfip)s != %(fip)s',
-                      {'tempfip': temp_conf_properties['cli_fip'],
+        destination_fip = capabilities.get('location_info').split(':')[0]
+        if destination_fip != self._properties['cli_fip']:
+            LOG.debug('FIP is mismatch. FIP = %(destination)s != %(fip)s',
+                      {'destination': destination_fip,
                        'fip': self._properties['cli_fip']})
             return false_ret
 
@@ -602,7 +601,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                                         self._validate_migrate_volume,
                                         self._convert_id2migratename,
                                         self._select_migrate_poolnumber,
-                                        temp_conf)
+                                        host)
 
         if selected_pool >= 0:
             # check io limit.
@@ -1450,6 +1449,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         data['driver_version'] = self.VERSION
         data['reserved_percentage'] = self._properties['reserved_percentage']
         data['QoS_support'] = True
+        data['location_info'] = (self._properties['cli_fip'] + ":"
+                                 + (','.join(map(str,
+                                             self._properties['pool_pools']))))
 
         # Get xml data from file and parse.
         try:
@@ -1478,8 +1480,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             self._stats = self._update_volume_status()
             self._stats['storage_protocol'] = 'iSCSI'
         LOG.debug('data=%(data)s, config_group=%(group)s',
-                  {'data': self._stats,
-                   'group': self._properties['config_group']})
+                  {'data': self._stats, 'group': self._config_group})
 
         return self._stats
 
@@ -1493,8 +1494,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             self._stats = self._update_volume_status()
             self._stats['storage_protocol'] = 'FC'
         LOG.debug('data=%(data)s, config_group=%(group)s',
-                  {'data': self._stats,
-                   'group': self._properties['config_group']})
+                  {'data': self._stats, 'group': self._config_group})
 
         return self._stats
 
