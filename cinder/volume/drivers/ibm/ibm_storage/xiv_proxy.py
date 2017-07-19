@@ -960,7 +960,13 @@ class XIVProxy(proxy.IBMStorageProxy):
         """create volume from snapshot."""
 
         snapshot_size = float(snapshot['volume_size'])
-        snapshot_name = snapshot['name']
+        if not snapshot['group_snapshot_id']:
+            snapshot_name = snapshot['name']
+        else:
+            groupname = self._group_name_from_cgsnapshot_id(
+                snapshot['group_snapshot_id'])
+            snapshot_name = self._volume_name_from_cg_snapshot(
+                groupname, snapshot.volume_name)
         self._create_volume_from_snapshot(
             volume, snapshot_name, snapshot_size)
 
@@ -1663,13 +1669,13 @@ class XIVProxy(proxy.IBMStorageProxy):
         '''
         return self._cg_name_from_id(cgsnapshot['group_id'])
 
-    def _group_name_from_cgsnapshot(self, cgsnapshot):
+    def _group_name_from_cgsnapshot_id(self, cgsnapshot_id):
         '''Get storage Snaphost Group name from snapshot.
 
         A utility method to translate from openstack cgsnapshot
         to Snapshot Group name on the storage
         '''
-        return self._group_name_from_id(cgsnapshot['id'])
+        return self._group_name_from_id(cgsnapshot_id)
 
     def _volume_name_from_cg_snapshot(self, cgs, vol):
         # Note: The string is limited by the storage to 63 characters
@@ -1783,7 +1789,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                 raise
             created_volumes = []
             try:
-                groupname = self._group_name_from_cgsnapshot(cgsnapshot)
+                groupname = self._group_name_from_cgsnapshot_id(
+                    cgsnapshot['id'])
                 for volume, source in zip(volumes, snapshots):
                     vol_name = source.volume_name
                     LOG.debug("Original volume: %(vol_name)s",
@@ -2037,7 +2044,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
 
         cgname = self._cg_name_from_cgsnapshot(cgsnapshot)
-        groupname = self._group_name_from_cgsnapshot(cgsnapshot)
+        groupname = self._group_name_from_cgsnapshot_id(cgsnapshot['id'])
         LOG.info("Creating snapshot %(group)s for CG %(cg)s.",
                  {'group': groupname, 'cg': cgname})
 
@@ -2110,7 +2117,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         """Deletes a CG snapshot."""
 
         cgname = self._cg_name_from_cgsnapshot(cgsnapshot)
-        groupname = self._group_name_from_cgsnapshot(cgsnapshot)
+        groupname = self._group_name_from_cgsnapshot_id(cgsnapshot['id'])
         LOG.info("Deleting snapshot %(group)s for CG %(cg)s.",
                  {'group': groupname, 'cg': cgname})
 
