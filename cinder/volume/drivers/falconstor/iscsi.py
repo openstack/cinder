@@ -57,6 +57,10 @@ class FSSISCSIDriver(fss_common.FalconstorBaseDriver,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "FalconStor_CI"
 
+    # TODO(smcginnis) Remove driver in Queens if CI issues are not
+    # addressed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(FSSISCSIDriver, self).__init__(*args, **kwargs)
         self._storage_protocol = "iSCSI"

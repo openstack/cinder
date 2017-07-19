@@ -47,6 +47,10 @@ class FSSFCDriver(fss_common.FalconstorBaseDriver,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "FalconStor_CI"
 
+    # TODO(smcginnis) Remove driver in the Queens release if CI issues
+    # are not addressed
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(FSSFCDriver, self).__init__(*args, **kwargs)
         self.gateway_fc_wwns = []
