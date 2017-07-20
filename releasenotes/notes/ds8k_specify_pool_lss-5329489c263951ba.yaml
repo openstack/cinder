@@ -1,0 +1,5 @@
+---
+features:
+  - DS8K driver adds two new properties into extra-specs so that
+    user can specify pool or lss or both of them to allocate volume
+    in their expected area.
