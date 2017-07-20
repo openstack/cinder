@@ -654,6 +654,29 @@ class GroupsAPITestCase(test.TestCase):
                           self.controller.delete_group,
                           req, self.group1.id, body)
 
+    def test_delete_group_with_group_snapshot(self):
+        self.group1.status = fields.GroupStatus.AVAILABLE
+        self.group1.save()
+        g_snapshot = utils.create_group_snapshot(self.ctxt, self.group1.id)
+
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group1.id),
+                                      version=GROUP_MICRO_VERSION)
+        body = {"delete": {"delete-volumes": True}}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete_group,
+                          req, self.group1.id, body)
+
+        g_snapshot.destroy()
+
+        res_dict = self.controller.delete_group(
+            req, self.group1.id, body)
+
+        group = objects.Group.get_by_id(
+            self.ctxt, self.group1.id)
+        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(fields.GroupStatus.DELETING, group.status)
+
     def test_delete_group_delete_volumes(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
         self.group1.save()

@@ -517,6 +517,12 @@ class API(base.Base):
                     "but current status is: %s") % group.status
             raise exception.InvalidGroup(reason=msg)
 
+        # NOTE(tommylikehu): Admin context is required to load group snapshots.
+        with group.obj_as_admin():
+            if group.group_snapshots:
+                raise exception.InvalidGroup(
+                    reason=_("Group has existing snapshots."))
+
         volumes = self.db.volume_get_all_by_generic_group(context.elevated(),
                                                           group.id)
         if volumes and not delete_volumes:
