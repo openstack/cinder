@@ -25,6 +25,7 @@ pyxcli_client.errors = fake_pyxcli_exceptions
 pyxcli_client.events = mock.Mock()
 pyxcli_client.mirroring = mock.Mock()
 pyxcli_client.transports = fake_pyxcli_exceptions
+pyxcli_client.mirroring.cg_recovery_manager = mock.Mock()
 
 sys.modules['pyxcli'] = pyxcli_client
 sys.modules['pyxcli.events'] = pyxcli_client.events
