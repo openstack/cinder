@@ -114,6 +114,7 @@ class GroupAPITestCase(test.TestCase):
         ret_group.host = "test_host@fakedrv#fakepool"
         ret_group.status = fields.GroupStatus.AVAILABLE
         ret_group.assert_not_frozen = mock.Mock(return_value=True)
+        ret_group.group_snapshots = []
         self.group_api.delete(self.ctxt, ret_group, delete_volumes = True)
         mock_volume_get_all.assert_called_once_with(mock.ANY, ret_group.id)
         mock_volumes_update.assert_called_once_with(self.ctxt, [])
