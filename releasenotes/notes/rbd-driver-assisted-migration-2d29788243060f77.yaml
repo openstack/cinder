@@ -1,0 +1,5 @@
+---
+features:
+  - Added driver-assisted volume migration to RBD driver. This allows a
+    volume to be efficiently copied by Ceph from one pool to another
+    within the same cluster.
