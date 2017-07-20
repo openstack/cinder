@@ -18,7 +18,6 @@ import errno
 from lxml import etree
 import os
 import re
-import six
 import traceback
 
 from oslo_config import cfg
@@ -341,7 +340,7 @@ class MStorageVolumeCommon(object):
         if metadata is not None and 'ldset' in metadata:
             ldset_meta = metadata['ldset']
             LOG.debug('ldset(metadata)=%s.', ldset_meta)
-            for tldset in six.itervalues(ldsets):
+            for tldset in ldsets.values():
                 if tldset['ldsetname'] == ldset_meta:
                     ldset = ldsets[ldset_meta]
                     LOG.debug('ldset information(metadata specified)=%s.',
