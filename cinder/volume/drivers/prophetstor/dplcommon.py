@@ -844,44 +844,44 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
     def remove_export(self, context, volume):
         pass
 
-    def create_consistencygroup(self, context, group):
+    def _create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
         LOG.info('Start to create consistency group: %(group_name)s '
                  'id: %(id)s',
-                 {'group_name': group['name'], 'id': group['id']})
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+                 {'group_name': group.name, 'id': group.id})
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
         try:
             ret, output = self.dpl.create_vg(
-                self._conver_uuid2hex(group['id']),
-                group['name'],
-                group['description'])
+                self._conver_uuid2hex(group.id),
+                group.name,
+                group.description)
             if ret:
                 msg = _('Failed to create consistency group '
-                        '%(id)s:%(ret)s.') % {'id': group['id'],
+                        '%(id)s:%(ret)s.') % {'id': group.id,
                                               'ret': ret}
                 raise exception.VolumeBackendAPIException(data=msg)
             else:
                 return model_update
         except Exception as e:
             msg = _('Failed to create consistency group '
-                    '%(id)s due to %(reason)s.') % {'id': group['id'],
+                    '%(id)s due to %(reason)s.') % {'id': group.id,
                                                     'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def delete_consistencygroup(self, context, group, volumes):
+    def _delete_consistencygroup(self, context, group, volumes):
         """Delete a consistency group."""
         ret = 0
         volumes = self.db.volume_get_all_by_group(
-            context, group['id'])
+            context, group.id)
         model_update = {}
-        model_update['status'] = group['status']
+        model_update['status'] = group.status
         LOG.info('Start to delete consistency group: %(cg_name)s',
-                 {'cg_name': group['id']})
+                 {'cg_name': group.id})
         try:
-            self.dpl.delete_vg(self._conver_uuid2hex(group['id']))
+            self.dpl.delete_vg(self._conver_uuid2hex(group.id))
         except Exception as e:
             msg = _('Failed to delete consistency group %(id)s '
-                    'due to %(reason)s.') % {'id': group['id'],
+                    'due to %(reason)s.') % {'id': group.id,
                                              'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -893,31 +893,31 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                 ret = errno.EFAULT
                 volume_ref['status'] = 'error_deleting'
                 model_update['status'] = (
-                    fields.ConsistencyGroupStatus.ERROR_DELETING)
+                    fields.GroupStatus.ERROR_DELETING)
         if ret == 0:
-            model_update['status'] = fields.ConsistencyGroupStatus.DELETED
+            model_update['status'] = fields.GroupStatus.DELETED
         return model_update, volumes
 
-    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def _create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
+        snapshots = objects.SnapshotList().get_all_for_group_snapshot(
+            context, cgsnapshot.id)
         model_update = {}
         LOG.info('Start to create cgsnapshot for consistency group'
                  ': %(group_name)s',
-                 {'group_name': cgsnapshot['consistencygroup_id']})
+                 {'group_name': cgsnapshot.group_id})
         try:
             self.dpl.create_vdev_snapshot(
-                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
-                self._conver_uuid2hex(cgsnapshot['id']),
-                cgsnapshot['name'],
-                cgsnapshot.get('description', ''),
+                self._conver_uuid2hex(cgsnapshot.group_id),
+                self._conver_uuid2hex(cgsnapshot.id),
+                cgsnapshot.name,
+                '',
                 True)
             for snapshot in snapshots:
                 snapshot.status = fields.SnapshotStatus.AVAILABLE
         except Exception as e:
             msg = _('Failed to create cg snapshot %(id)s '
-                    'due to %(reason)s.') % {'id': cgsnapshot['id'],
+                    'due to %(reason)s.') % {'id': cgsnapshot.id,
                                              'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -925,38 +925,40 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
 
         return model_update, snapshots
 
-    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+    def _delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
+        snapshots = objects.SnapshotList().get_all_for_group_snapshot(
+            context, cgsnapshot.id)
         model_update = {}
-        model_update['status'] = cgsnapshot['status']
+        model_update['status'] = cgsnapshot.status
         LOG.info('Delete cgsnapshot %(snap_name)s for consistency group: '
                  '%(group_name)s',
-                 {'snap_name': cgsnapshot['id'],
-                  'group_name': cgsnapshot['consistencygroup_id']})
+                 {'snap_name': cgsnapshot.id,
+                  'group_name': cgsnapshot.group_id})
         try:
             self.dpl.delete_vdev_snapshot(
-                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
-                self._conver_uuid2hex(cgsnapshot['id']), True)
+                self._conver_uuid2hex(cgsnapshot.group_id),
+                self._conver_uuid2hex(cgsnapshot.id), True)
             for snapshot in snapshots:
                 snapshot.status = fields.SnapshotStatus.DELETED
         except Exception as e:
             msg = _('Failed to delete cgsnapshot %(id)s due to '
-                    '%(reason)s.') % {'id': cgsnapshot['id'],
+                    '%(reason)s.') % {'id': cgsnapshot.id,
                                       'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
         model_update['status'] = 'deleted'
         return model_update, snapshots
 
-    def update_consistencygroup(self, context, group, add_volumes=None,
-                                remove_volumes=None):
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
         addvollist = []
         removevollist = []
-        cgid = group['id']
+        cgid = group.id
         vid = ''
-        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
         # Get current group info in backend storage.
         ret, output = self.dpl.get_vg(self._conver_uuid2hex(cgid))
         if ret == 0:
@@ -994,6 +996,33 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                                    "ret": six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
         return model_update, None, None
+
+    def create_group(self, context, group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._create_consistencygroup(context, group)
+        raise NotImplementedError()
+
+    def delete_group(self, context, group, volumes):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            return self._delete_consistencygroup(context, group, volumes)
+        raise NotImplementedError()
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._create_cgsnapshot(context, group_snapshot, snapshots)
+        raise NotImplementedError()
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._delete_cgsnapshot(context, group_snapshot, snapshots)
+        raise NotImplementedError()
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        err_msg = _("Prophet Storage doesn't support create_group_from_src.")
+        LOG.error(err_msg)
+        raise exception.VolumeBackendAPIException(data=err_msg)
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -1039,17 +1068,19 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
             LOG.info('Flexvisor succeeded to create volume %(id)s.',
                      {'id': volume['id']})
 
-        if volume.get('consistencygroup_id', None):
-            try:
-                self._join_volume_group(volume, volume['consistencygroup_id'])
-            except Exception:
-                # Delete volume if volume failed to join group.
-                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
-                msg = _('Flexvisor failed to create volume %(id)s in the '
-                        'group %(vgid)s.') % {
-                    'id': volume['id'],
-                    'vgid': volume['consistencygroup_id']}
-                raise exception.VolumeBackendAPIException(data=msg)
+        if volume.group_id:
+            group = volume_utils.group_get_by_id(volume.group_id)
+            if volume_utils.is_group_a_cg_snapshot_type(group):
+                try:
+                    self._join_volume_group(volume, volume.group_id)
+                except Exception:
+                    # Delete volume if volume failed to join group.
+                    self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                    msg = _('Flexvisor failed to create volume %(id)s in the '
+                            'group %(vgid)s.') % {
+                        'id': volume['id'],
+                        'vgid': volume.group_id}
+                    raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -1059,7 +1090,7 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
         snapshotID = snapshot['id']
         # Try to get cgid if volume belong in the group.
         src_volumeID = snapshot['volume_id']
-        cgsnapshotID = snapshot.get('cgsnapshot_id', None)
+        cgsnapshotID = snapshot.get('group_snapshot_id', None)
         if cgsnapshotID:
             try:
                 src_volume = self.db.volume_get(src_volumeID)
@@ -1068,7 +1099,7 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                         "%(id)s info.") % {'id': src_volumeID}
                 raise exception.VolumeBackendAPIException(data=msg)
         if src_volume:
-            vgID = src_volume.get('consistencygroup_id', None)
+            vgID = src_volume.group_id
 
         # Get the volume origin snapshot id if the source snapshot is group
         # snapshot.
@@ -1125,13 +1156,15 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
         if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
 
-        if volume.get('consistencygroup_id', None):
-            try:
-                self._join_volume_group(volume, volume['consistencygroup_id'])
-            except Exception:
-                # Delete volume if volume failed to join group.
-                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
-                raise
+        if volume.group_id:
+            group = volume_utils.group_get_by_id(volume.group_id)
+            if volume_utils.is_group_a_cg_snapshot_type(group):
+                try:
+                    self._join_volume_group(volume, volume.group_id)
+                except Exception:
+                    # Delete volume if volume failed to join group.
+                    self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                    raise
 
     def spawn_volume_from_snapshot(self, volume, snapshot):
         """Spawn a REFERENCED volume from a snapshot."""
@@ -1213,37 +1246,41 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
             LOG.info('Flexvisor succeeded to clone volume %(id)s.',
                      {'id': volume['id']})
 
-        if volume.get('consistencygroup_id', None):
-            try:
-                self._join_volume_group(volume, volume['consistencygroup_id'])
-            except Exception:
-                # Delete volume if volume failed to join group.
-                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
-                msg = _('Flexvisor volume %(id)s failed to join group '
-                        '%(vgid)s.') % {'id': volume['id'],
-                                        'vgid': volume['consistencygroup_id']}
-                raise exception.VolumeBackendAPIException(data=msg)
+        if volume.group_id:
+            group = volume_utils.group_get_by_id(volume.group_id)
+            if volume_utils.is_group_a_cg_snapshot_type(group):
+                try:
+                    self._join_volume_group(volume, volume.group_id)
+                except Exception:
+                    # Delete volume if volume failed to join group.
+                    self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                    msg = _('Flexvisor volume %(id)s failed to join group '
+                            '%(vgid)s.') % {'id': volume['id'],
+                                            'vgid': volume.group_id}
+                    raise exception.VolumeBackendAPIException(data=msg)
 
     def delete_volume(self, volume):
         """Deletes a volume."""
         ret = 0
-        if volume.get('consistencygroup_id', None):
-            msg = ''
-            try:
-                ret, out = self.dpl.leave_vg(
-                    self._conver_uuid2hex(volume['id']),
-                    self._conver_uuid2hex(volume['consistencygroup_id']))
-                if ret:
-                    LOG.warning('Flexvisor failed to delete volume '
-                                '%(id)s from the group %(vgid)s.',
+        if volume.group_id:
+            group = volume_utils.group_get_by_id(volume.group_id)
+            if group and volume_utils.is_group_a_cg_snapshot_type(group):
+                msg = ''
+                try:
+                    ret, out = self.dpl.leave_vg(
+                        self._conver_uuid2hex(volume['id']),
+                        self._conver_uuid2hex(volume.group_id))
+                    if ret:
+                        LOG.warning('Flexvisor failed to delete volume '
+                                    '%(id)s from the group %(vgid)s.',
+                                    {'id': volume['id'],
+                                     'vgid': volume.group_id})
+                except Exception as e:
+                    LOG.warning('Flexvisor failed to delete volume %(id)s '
+                                'from group %(vgid)s due to %(status)s.',
                                 {'id': volume['id'],
-                                 'vgid': volume['consistencygroup_id']})
-            except Exception as e:
-                LOG.warning('Flexvisor failed to delete volume %(id)s '
-                            'from group %(vgid)s due to %(status)s.',
-                            {'id': volume['id'],
-                             'vgid': volume['consistencygroup_id'],
-                             'status': e})
+                                 'vgid': volume.group_id,
+                                 'status': e})
 
             if ret:
                 ret = 0
@@ -1435,6 +1472,7 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
                 data['storage_protocol'] = 'iSCSI'
                 data['location_info'] = location_info
                 data['consistencygroup_support'] = True
+                data['consistent_group_snapshot_enabled'] = True
                 data['pools'] = pools
                 self._stats = data
         except Exception as e:
