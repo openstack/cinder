@@ -808,6 +808,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return (dc_ref, ds_name, folder_path)
 
+    def _get_vsphere_url(self, context, image_service, image_id):
+        (direct_url, _locations) = image_service.get_location(context,
+                                                              image_id)
+        if direct_url and direct_url.startswith('vsphere://'):
+            return direct_url
+
     def _create_virtual_disk_from_sparse_image(
             self, context, image_service, image_id, image_size_in_bytes,
             dc_ref, ds_name, folder_path, disk_name):
@@ -823,9 +829,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                   "image: %(image_id)s.",
                   {'path': src_path.get_descriptor_ds_file_path(),
                    'image_id': image_id})
-        self._copy_image(context, dc_ref, image_service, image_id,
-                         image_size_in_bytes, ds_name,
-                         src_path.get_descriptor_file_path())
+
+        vsphere_url = self._get_vsphere_url(context, image_service,
+                                            image_id)
+        if vsphere_url:
+            self.volumeops.copy_datastore_file(
+                vsphere_url, dc_ref, src_path.get_descriptor_ds_file_path())
+        else:
+            self._copy_image(context, dc_ref, image_service, image_id,
+                             image_size_in_bytes, ds_name,
+                             src_path.get_descriptor_file_path())
 
         # Copy sparse disk to create a flat extent virtual disk.
         dest_path = volumeops.FlatExtentVirtualDiskPath(ds_name,
@@ -878,9 +891,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             EAGER_ZEROED_THICK_VMDK_TYPE)
         # Upload the image and use it as the flat extent.
         try:
-            self._copy_image(context, dc_ref, image_service, image_id,
-                             image_size_in_bytes, ds_name,
-                             path.get_flat_extent_file_path())
+            vsphere_url = self._get_vsphere_url(context, image_service,
+                                                image_id)
+            if vsphere_url:
+                self.volumeops.copy_datastore_file(
+                    vsphere_url, dc_ref, path.get_flat_extent_ds_file_path())
+            else:
+                self._copy_image(context, dc_ref, image_service, image_id,
+                                 image_size_in_bytes, ds_name,
+                                 path.get_flat_extent_file_path())
         except Exception:
             # Delete the descriptor.
             with excutils.save_and_reraise_exception():
