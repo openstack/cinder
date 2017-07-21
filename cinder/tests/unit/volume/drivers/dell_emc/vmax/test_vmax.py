@@ -1006,15 +1006,16 @@ class VMAXUtilsTest(test.TestCase):
         response = self.utils.truncate_string(str_to_truncate, 10)
         self.assertEqual(str_to_truncate, response)
 
-    def test_override_ratio(self):
-        max_over_sub_ratio = 30
-        max_sub_ratio_from_per = 40
-        ratio = self.utils.override_ratio(
-            max_over_sub_ratio, max_sub_ratio_from_per)
-        self.assertEqual(max_sub_ratio_from_per, ratio)
-        ratio2 = self.utils.override_ratio(
-            None, max_sub_ratio_from_per)
-        self.assertEqual(max_sub_ratio_from_per, ratio2)
+    def test_get_default_oversubscription_ratio(self):
+        default_ratio = 20.0
+        max_over_sub_ratio1 = 30.0
+        returned_max = self.utils.get_default_oversubscription_ratio(
+            max_over_sub_ratio1)
+        self.assertEqual(max_over_sub_ratio1, returned_max)
+        max_over_sub_ratio2 = 0.5
+        returned_max = self.utils.get_default_oversubscription_ratio(
+            max_over_sub_ratio2)
+        self.assertEqual(default_ratio, returned_max)
 
     def test_get_default_storage_group_name_slo_workload(self):
         srp_name = self.data.srp
@@ -1519,7 +1520,6 @@ class VMAXRestTest(test.TestCase):
             payload = {"srpId": self.data.srp,
                        "storageGroupId": self.data.default_sg_compr_disabled,
                        "emulation": "FBA",
-                       "create_empty_storage_group": "true",
                        "sloBasedStorageGroupParam": [
                            {"num_of_vols": 0,
                             "sloId": self.data.slo,
@@ -2243,33 +2243,6 @@ class VMAXRestTest(test.TestCase):
             snap = self.rest.get_volume_snap(array, device_id, snap_name)
             self.assertIsNone(snap)
 
-    def test_is_sync_complete(self):
-        array = self.data.array
-        source_id = self.data.device_id
-        target_id = (self.data.volume_snap_vx
-                     ['snapshotSrcs'][0]['linkedDevices'][0]['targetDevice'])
-        snap_name = (self.data.volume_snap_vx
-                     ['snapshotSrcs'][0]['snapshotName'])
-        extra_specs = self.data.extra_specs
-        rc = self.rest.is_sync_complete(
-            array, source_id, target_id, snap_name, extra_specs)
-        self.assertTrue(rc)
-
-    def test_is_sync_complete_exception(self):
-        array = self.data.array
-        source_id = self.data.device_id
-        target_id = (self.data.volume_snap_vx
-                     ['snapshotSrcs'][0]['linkedDevices'][0]['targetDevice'])
-        snap_name = (self.data.volume_snap_vx
-                     ['snapshotSrcs'][0]['snapshotName'])
-        extra_specs = self.data.extra_specs
-        with mock.patch.object(
-                self.rest, '_is_sync_complete',
-                side_effect=exception.VolumeBackendAPIException):
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.rest.is_sync_complete, array, source_id,
-                              target_id, snap_name, extra_specs)
-
     def test_get_sync_session(self):
         array = self.data.array
         source_id = self.data.device_id
@@ -2482,6 +2455,7 @@ class VMAXProvisionTest(test.TestCase):
         configuration = FakeConfiguration(self.fake_xml, config_group)
         rest.VMAXRest._establish_rest_session = mock.Mock(
             return_value=FakeRequestsSession())
+        provision.UNLINK_INTERVAL = 0
         driver = iscsi.VMAXISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
@@ -2566,44 +2540,40 @@ class VMAXProvisionTest(test.TestCase):
                     extra_specs, link=True)
                 self.provision.create_volume_snapvx.assert_not_called()
 
-    def test_break_replication_relationship_sync_wait_true(self):
+    def test_break_replication_relationship(self):
         array = self.data.array
         source_device_id = self.data.device_id
         target_device_id = self.data.device_id2
         snap_name = self.data.snap_location['snap_name']
         extra_specs = self.data.extra_specs
         with mock.patch.object(self.provision.rest, 'modify_volume_snap'):
-            with mock.patch.object(self.provision.rest,
-                                   'is_sync_complete'):
-                self.provision.break_replication_relationship(
-                    array, target_device_id, source_device_id, snap_name,
-                    extra_specs, wait_for_sync=True)
-                (self.provision.rest.modify_volume_snap.
-                    assert_called_once_with(
-                        array, source_device_id, target_device_id,
-                        snap_name, extra_specs, unlink=True))
-                (self.provision.rest.is_sync_complete.
-                    assert_called_once_with(
-                        array, source_device_id, target_device_id,
-                        snap_name, extra_specs))
+            self.provision.break_replication_relationship(
+                array, target_device_id, source_device_id, snap_name,
+                extra_specs)
+            (self.provision.rest.modify_volume_snap.
+                assert_called_once_with(
+                    array, source_device_id, target_device_id,
+                    snap_name, extra_specs, unlink=True))
 
-    def test_break_replication_relationship_sync_wait_false(self):
-        array = self.data.array
-        source_device_id = self.data.device_id
-        target_device_id = self.data.device_id2
-        snap_name = self.data.snap_location['snap_name']
-        extra_specs = self.data.extra_specs
-        with mock.patch.object(self.provision.rest, 'modify_volume_snap'):
-            with mock.patch.object(self.provision.rest,
-                                   'is_sync_complete'):
-                self.provision.break_replication_relationship(
-                    array, target_device_id, source_device_id, snap_name,
-                    extra_specs, wait_for_sync=False)
-                (self.provision.rest.modify_volume_snap.
-                    assert_called_once_with(
-                        array, source_device_id, target_device_id,
-                        snap_name, extra_specs, unlink=True))
-                self.provision.rest.is_sync_complete.assert_not_called()
+    def test_unlink_volume(self):
+        with mock.patch.object(self.rest, 'modify_volume_snap') as mock_mod:
+            self.provision._unlink_volume(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.snap_location['snap_name'], self.data.extra_specs)
+            mock_mod.assert_called_once_with(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.snap_location['snap_name'], self.data.extra_specs,
+                unlink=True)
+
+    def test_unlink_volume_exception(self):
+        with mock.patch.object(
+                self.rest, 'modify_volume_snap', side_effect=[
+                    exception.VolumeBackendAPIException(data=''), '']
+        ) as mock_mod:
+            self.provision._unlink_volume(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.snap_location['snap_name'], self.data.extra_specs)
+            self.assertEqual(2, mock_mod.call_count)
 
     def test_delete_volume_snap(self):
         array = self.data.array
@@ -2969,10 +2939,13 @@ class VMAXCommonTest(test.TestCase):
         volume = self.data.test_volume
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
-        with mock.patch.object(self.masking, 'remove_and_reset_members'):
-            self.common._remove_members(array, volume, device_id, extra_specs)
-            self.masking.remove_and_reset_members.assert_called_once_with(
-                array, device_id, volume_name, extra_specs, True)
+        with mock.patch.object(self.masking,
+                               'remove_and_reset_members') as mock_rm:
+            self.common._remove_members(array, volume, device_id,
+                                        extra_specs, self.data.connector)
+            mock_rm.assert_called_once_with(
+                array, device_id, volume_name,
+                extra_specs, True, self.data.connector)
 
     def test_unmap_lun(self):
         array = self.data.array
@@ -2984,7 +2957,7 @@ class VMAXCommonTest(test.TestCase):
         with mock.patch.object(self.common, '_remove_members'):
             self.common._unmap_lun(volume, connector)
             self.common._remove_members.assert_called_once_with(
-                array, volume, device_id, extra_specs)
+                array, volume, device_id, extra_specs, connector)
 
     def test_unmap_lun_not_mapped(self):
         volume = self.data.test_volume
@@ -3696,8 +3669,7 @@ class VMAXCommonTest(test.TestCase):
             self.common._sync_check(array, device_id, volume_name,
                                     extra_specs)
             mock_break.assert_called_with(
-                array, target, device_id, snap_name,
-                extra_specs, wait_for_sync=True)
+                array, target, device_id, snap_name, extra_specs)
             mock_delete.assert_called_with(
                 array, snap_name, device_id)
 
@@ -3722,8 +3694,7 @@ class VMAXCommonTest(test.TestCase):
             self.common._sync_check(array, device_id, volume_name,
                                     extra_specs)
             mock_break.assert_called_with(
-                array, target, device_id, snap_name,
-                extra_specs, wait_for_sync=True)
+                array, target, device_id, snap_name, extra_specs)
             mock_delete.assert_not_called()
 
     @mock.patch.object(
@@ -5248,7 +5219,7 @@ class VMAXMaskingTest(test.TestCase):
     @mock.patch.object(masking.VMAXMasking, 'remove_volume_from_sg')
     def test_cleanup_deletion(self, mock_remove_vol, mock_get_sg):
         self.mask._cleanup_deletion(self.data.array, self.device_id,
-                                    self.volume_name, self.extra_specs)
+                                    self.volume_name, self.extra_specs, None)
         mock_get_sg.assert_called_once()
 
     @mock.patch.object(masking.VMAXMasking, '_last_vol_in_sg')
@@ -5303,7 +5274,8 @@ class VMAXMaskingTest(test.TestCase):
             for x in range(0, 2):
                 self.mask._last_vol_in_sg(
                     self.data.array, self.device_id, self.volume_name,
-                    self.data.storagegroup_name_i, self.extra_specs)
+                    self.data.storagegroup_name_i, self.extra_specs,
+                    self.data.connector)
             self.assertEqual(1, mock_mv.call_count)
             self.assertEqual(1, mock_no_mv.call_count)
 
@@ -5335,7 +5307,7 @@ class VMAXMaskingTest(test.TestCase):
             self.mask._last_vol_masking_views(
                 self.data.array, self.data.storagegroup_name_i,
                 [self.data.masking_view_name_i], self.device_id,
-                self.volume_name, self.extra_specs)
+                self.volume_name, self.extra_specs, self.data.connector)
         self.assertEqual(1, mock_delete_all.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
@@ -5356,7 +5328,8 @@ class VMAXMaskingTest(test.TestCase):
                                  mock_delete_mv, mock_get_element):
         self.mask._delete_mv_ig_and_sg(
             self.data.array, self.data.masking_view_name_i,
-            self.data.storagegroup_name_i, self.data.parent_sg_i)
+            self.data.storagegroup_name_i, self.data.parent_sg_i,
+            self.data.connector)
         mock_delete_sg.assert_called_once()
 
     @mock.patch.object(rest.VMAXRest, 'delete_masking_view')

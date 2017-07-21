@@ -618,8 +618,7 @@ class VMAXRest(object):
         srp_id = srp if slo else "None"
         payload = ({"srpId": srp_id,
                     "storageGroupId": storagegroup_name,
-                    "emulation": "FBA",
-                    "create_empty_storage_group": "true"})
+                    "emulation": "FBA"})
 
         if slo:
             slo_param = {"num_of_vols": 0,
