@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 import six
 import time
 
@@ -124,3 +125,37 @@ def check_whether_operate_consistency_group(func):
             raise NotImplementedError(msg)
         return func(self, context, group, *args, **kwargs)
     return wrapper
+
+
+def to_string(**kwargs):
+    return json.dumps(kwargs) if kwargs else ''
+
+
+def get_lun_metadata(volume):
+    if not volume.provider_location:
+        return {}
+
+    info = json.loads(volume.provider_location)
+    if isinstance(info, dict):
+        return info
+
+    # To keep compatible with old driver version
+    admin_metadata = get_admin_metadata(volume)
+    metadata = get_volume_metadata(volume)
+    return {'huawei_lun_id': six.text_type(info),
+            'huawei_lun_wwn': admin_metadata.get('huawei_lun_wwn'),
+            'hypermetro_id': metadata.get('hypermetro_id'),
+            'remote_lun_id': metadata.get('remote_lun_id')
+            }
+
+
+def get_snapshot_metadata(snapshot):
+    if not snapshot.provider_location:
+        return {}
+
+    info = json.loads(snapshot.provider_location)
+    if isinstance(info, dict):
+        return info
+
+    # To keep compatible with old driver version
+    return {'huawei_snapshot_id': six.text_type(info)}
