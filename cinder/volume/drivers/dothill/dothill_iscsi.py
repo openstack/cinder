@@ -151,7 +151,8 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
             self.common.client_logout()
 
     def terminate_connection(self, volume, connector, **kwargs):
-        self.common.unmap_volume(volume, connector, 'initiator')
+        if type(connector) == dict and 'initiator' in connector:
+            self.common.unmap_volume(volume, connector, 'initiator')
 
     def get_volume_stats(self, refresh=False):
         stats = self.common.get_volume_stats(refresh)
