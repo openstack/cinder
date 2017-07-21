@@ -86,6 +86,7 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
               - Support for compression on All Flash
               - Support for volume replication
               - Support for live migration
+              - Support for Generic Volume Group
     """
 
     VERSION = "3.0.0"
@@ -400,3 +401,70 @@ class VMAXISCSIDriver(driver.ISCSIDriver):
         :returns: secondary_id, volume_update_list, group_update_list
         """
         return self.common.failover_host(volumes, secondary_id, groups)
+
+    def create_group(self, context, group):
+        """Creates a generic volume group.
+
+        :param context: the context
+        :param group: the group object
+        """
+        self.common.create_group(context, group)
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a generic volume group.
+
+        :param context: the context
+        :param group: the group object
+        :param volumes: the member volumes
+        """
+        return self.common.delete_group(
+            context, group, volumes)
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group snapshot.
+
+        :param context: the context
+        :param group_snapshot: the group snapshot
+        :param snapshots: snapshots list
+        """
+        return self.common.create_group_snapshot(context,
+                                                 group_snapshot, snapshots)
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group snapshot.
+
+        :param context: the context
+        :param group_snapshot: the grouop snapshot
+        :param snapshots: snapshots list
+        """
+        return self.common.delete_group_snapshot(context,
+                                                 group_snapshot, snapshots)
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates LUNs in group.
+
+        :param context: the context
+        :param group: the group object
+        :param add_volumes: flag for adding volumes
+        :param remove_volumes: flag for removing volumes
+        """
+        return self.common.update_group(group, add_volumes,
+                                        remove_volumes)
+
+    def create_group_from_src(
+            self, context, group, volumes, group_snapshot=None,
+            snapshots=None, source_group=None, source_vols=None):
+        """Creates the volume group from source.
+
+        :param context: the context
+        :param group: the consistency group object to be created
+        :param volumes: volumes in the group
+        :param group_snapshot: the source volume group snapshot
+        :param snapshots: snapshots of the source volumes
+        :param source_group: the dictionary of a volume group as source.
+        :param source_vols: a list of volume dictionaries in the source_group.
+        """
+        return self.common.create_group_from_src(
+            context, group, volumes, group_snapshot, snapshots, source_group,
+            source_vols)

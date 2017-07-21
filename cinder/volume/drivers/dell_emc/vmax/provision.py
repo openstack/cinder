@@ -16,6 +16,7 @@
 import time
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 
 from cinder import coordination
 from cinder import exception
@@ -25,6 +26,8 @@ from cinder.volume.drivers.dell_emc.vmax import utils
 LOG = logging.getLogger(__name__)
 
 WRITE_DISABLED = "Write Disabled"
+UNLINK_INTERVAL = 15
+UNLINK_RETRIES = 30
 
 
 class VMAXProvision(object):
@@ -448,3 +451,125 @@ class VMAXProvision(object):
                  {'action': action, 'src': device_id})
         self.rest.modify_rdf_device_pair(
             array, device_id, rdf_group, extra_specs, split=False)
+
+    def create_volume_group(self, array, group_name, extra_specs):
+        """Create a generic volume group.
+
+        :param array: the array serial number
+        :param group_name: the name of the group
+        :param extra_specs: the extra specifications
+        :returns: volume_group
+        """
+        return self.create_storage_group(array, group_name,
+                                         None, None, None, extra_specs)
+
+    def create_group_replica(
+            self, array, source_group, snap_name, extra_specs):
+        """Create a replica (snapVx) of a volume group.
+
+        :param array: the array serial number
+        :param source_group: the source group name
+        :param snap_name: the name for the snap shot
+        :param extra_specs: extra specifications
+        """
+        LOG.debug("Creating Snap Vx snapshot of storage group: %(srcGroup)s.",
+                  {'srcGroup': source_group})
+
+        # Create snapshot
+        self.rest.create_storagegroup_snap(
+            array, source_group, snap_name, extra_specs)
+
+    def delete_group_replica(self, array, snap_name,
+                             source_group_name):
+        """Delete the snapshot.
+
+        :param array: the array serial number
+        :param snap_name: the name for the snap shot
+        :param source_group_name: the source group name
+        """
+        # Delete snapvx snapshot
+        LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
+                  "snapshot: %(snap_name)s.",
+                  {'srcGroup': source_group_name,
+                   'snap_name': snap_name})
+        # The check for existence of snapshot has already happened
+        # So we just need to delete the snapshot
+        self.rest.delete_storagegroup_snap(array, snap_name, source_group_name)
+
+    def link_and_break_replica(self, array, source_group_name,
+                               target_group_name, snap_name, extra_specs,
+                               delete_snapshot=False):
+        """Links a group snap and breaks the relationship.
+
+        :param array: the array serial
+        :param source_group_name: the source group name
+        :param target_group_name: the target group name
+        :param snap_name: the snapshot name
+        :param extra_specs: extra specifications
+        :param delete_snapshot: delete snapshot flag
+        """
+        LOG.debug("Linking Snap Vx snapshot: source group: %(srcGroup)s "
+                  "targetGroup: %(tgtGroup)s.",
+                  {'srcGroup': source_group_name,
+                   'tgtGroup': target_group_name})
+        # Link the snapshot
+        self.rest.modify_storagegroup_snap(
+            array, source_group_name, target_group_name, snap_name,
+            extra_specs, link=True)
+        # Unlink the snapshot
+        LOG.debug("Unlinking Snap Vx snapshot: source group: %(srcGroup)s "
+                  "targetGroup: %(tgtGroup)s.",
+                  {'srcGroup': source_group_name,
+                   'tgtGroup': target_group_name})
+        self._unlink_group(array, source_group_name,
+                           target_group_name, snap_name, extra_specs)
+        # Delete the snapshot if necessary
+        if delete_snapshot:
+            LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
+                      "snapshot: %(snap_name)s.",
+                      {'srcGroup': source_group_name,
+                       'snap_name': snap_name})
+            self.rest.delete_storagegroup_snap(array, snap_name,
+                                               source_group_name)
+
+    def _unlink_group(
+            self, array, source_group_name, target_group_name, snap_name,
+            extra_specs):
+        """Unlink a target group from it's source group.
+
+        :param array: the array serial number
+        :param source_group_name: the source group name
+        :param target_group_name: the target device name
+        :param snap_name: the snap name
+        :param extra_specs: extra specifications
+        :returns: return code
+        """
+
+        def _unlink_grp():
+            """Called at an interval until the synchronization is finished.
+
+            :raises: loopingcall.LoopingCallDone
+            """
+            retries = kwargs['retries']
+            try:
+                kwargs['retries'] = retries + 1
+                if not kwargs['modify_grp_snap_success']:
+                    self.rest.modify_storagegroup_snap(
+                        array, source_group_name, target_group_name,
+                        snap_name, extra_specs, unlink=True)
+                    kwargs['modify_grp_snap_success'] = True
+            except exception.VolumeBackendAPIException:
+                pass
+
+            if kwargs['retries'] > UNLINK_RETRIES:
+                LOG.error("_unlink_grp failed after %(retries)d "
+                          "tries.", {'retries': retries})
+                raise loopingcall.LoopingCallDone(retvalue=30)
+            if kwargs['modify_grp_snap_success']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': 0,
+                  'modify_grp_snap_success': False}
+        timer = loopingcall.FixedIntervalLoopingCall(_unlink_grp)
+        rc = timer.start(interval=UNLINK_INTERVAL).wait()
+        return rc
