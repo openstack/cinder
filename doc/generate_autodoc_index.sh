@@ -1,6 +1,6 @@
 #!/bin/sh
 
-SOURCEDIR=doc/source/api
+SOURCEDIR=doc/source/contributor/api
 
 if [ ! -d ${SOURCEDIR} ] ; then
     mkdir -p ${SOURCEDIR}

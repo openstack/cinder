@@ -11,9 +11,9 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-=============================
-Volume Attach/Detach workflow
-=============================
+==================================
+Volume Attach/Detach workflow - V2
+==================================
 
 Previously there were six API calls associated with attach/detach of volumes in
 Cinder (3 calls for each operation).  As the projects grew and the
