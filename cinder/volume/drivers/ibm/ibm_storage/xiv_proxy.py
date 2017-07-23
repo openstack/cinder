@@ -57,6 +57,7 @@ SYNC = 'sync'
 ASYNC = 'async'
 SYNC_TIMEOUT = 300
 SYNCHED_STATES = ['synchronized', 'rpo ok']
+PYXCLI_VERSION = '1.1.5'
 
 LOG = logging.getLogger(__name__)
 
@@ -95,6 +96,9 @@ DELETE_VOLUME_BASE_ERROR = ("Unable to delete volume '%(volume)s': "
 MANAGE_VOLUME_BASE_ERROR = _("Unable to manage the volume '%(volume)s': "
                              "%(error)s.")
 
+INCOMPATIBLE_PYXCLI = _('Incompatible pyxcli found. Required: %(required)s '
+                        'Found: %(found)s')
+
 
 class XIVProxy(proxy.IBMStorageProxy):
     """Proxy between the Cinder Volume and Spectrum Accelerate Storage.
@@ -132,6 +136,22 @@ class XIVProxy(proxy.IBMStorageProxy):
 
     @proxy._trace_time
     def setup(self, context):
+        msg = ''
+        if pyxcli:
+            if pyxcli.version != PYXCLI_VERSION:
+                msg = (INCOMPATIBLE_PYXCLI %
+                       {'required': PYXCLI_VERSION,
+                        'found': pyxcli.version
+                        })
+        else:
+            msg = (SETUP_BASE_ERROR %
+                   {'title': strings.TITLE,
+                    'details': "IBM Python XCLI Client (pyxcli) not found"
+                    })
+        if msg != '':
+            LOG.error(msg)
+            raise self._get_exception()(msg)
+
         """Connect ssl client."""
         LOG.info("Setting up connection to %(title)s...\n"
                  "Active backend_id: '%(id)s'.",
