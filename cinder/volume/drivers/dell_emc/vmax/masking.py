@@ -1498,7 +1498,7 @@ class VMAXMasking(object):
 
         :param device_info_dict: the data dict
         :param source_storage_group_list: list of storage groups associated
-        with the device
+                                          with the device
         :param extra_specs: extra specifications
         """
         array = device_info_dict['array']

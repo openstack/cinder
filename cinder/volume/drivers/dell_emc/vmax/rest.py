@@ -1418,9 +1418,13 @@ class VMAXRest(object):
         """Check what replication features are licensed and enabled.
 
         Example return value for this method:
-        {"symmetrixId": "000197800128",
-         "snapVxCapable": true,
-         "rdfCapable": true}
+
+        .. code:: python
+
+          {"symmetrixId": "000197800128",
+           "snapVxCapable": true,
+           "rdfCapable": true}
+
         :param: array
         :returns: capabilities dict for the given array
         """
