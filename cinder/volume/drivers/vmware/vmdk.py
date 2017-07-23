@@ -605,11 +605,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         The implementation returns the following information:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'vmdk'
-                'data': {'volume': $VOLUME_MOREF_VALUE
+                'driver_volume_type': 'vmdk',
+                'data': {'volume': $VOLUME_MOREF_VALUE,
                          'volume_id': $VOLUME_ID
                         }
             }

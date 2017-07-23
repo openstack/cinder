@@ -69,7 +69,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
         :param target_wwn_list: List of target port WWN
         :returns: List -- device wwn map in following format
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
                 <San name>: {

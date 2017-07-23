@@ -81,16 +81,18 @@ user documentation.
 
   .. code-block:: json
 
-     "cluster": {
-         "created_at": ...,
-         "disabled_reason": null,
-         "last_heartbeat": ...,
-         "name": "cluster_name",
-         "num_down_hosts": 4,
-         "num_hosts": 2,
-         "state": "up",
-         "status": "enabled",
-         "updated_at": ...
+     {
+         "cluster": {
+             "created_at": "",
+             "disabled_reason": null,
+             "last_heartbeat": "",
+             "name": "cluster_name",
+             "num_down_hosts": 4,
+             "num_hosts": 2,
+             "state": "up",
+             "status": "enabled",
+             "updated_at": ""
+         }
      }
 
   Update endpoint allows enabling and disabling a cluster in a similar way to
@@ -100,11 +102,13 @@ user documentation.
 
   .. code-block:: json
 
-     "cluster": {
-         "name": "cluster_name",
-         "state": "up",
-         "status": "enabled"
-         "disabled_reason": null
+     {
+         "cluster": {
+             "name": "cluster_name",
+             "state": "up",
+             "status": "enabled",
+             "disabled_reason": null
+         }
      }
 
   Index and detail accept filtering by `name`, `binary`, `disabled`,
@@ -115,37 +119,35 @@ user documentation.
 
   .. code-block:: json
 
-     "clusters": [
-         {
-             "name": "cluster_name",
-             "state": "up",
-             "status": "enabled"
-         },
-         {
-             ...
-         }
-     ]
+     {
+         "clusters": [
+             {
+                 "name": "cluster_name",
+                 "state": "up",
+                 "status": "enabled"
+             }
+         ]
+      }
 
   Detail endpoint returns:
 
   .. code-block:: json
 
-     "clusters": [
-         {
-             "created_at": ...,
-             "disabled_reason": null,
-             "last_heartbeat": ...,
-             "name": "cluster_name",
-             "num_down_hosts": 4,
-             "num_hosts": 2,
-             "state": "up",
-             "status": "enabled",
-             "updated_at": ...
-         },
-         {
-             ...
-         }
-     ]
+     {
+         "clusters": [
+             {
+                 "created_at": "",
+                 "disabled_reason": null,
+                 "last_heartbeat": "",
+                 "name": "cluster_name",
+                 "num_down_hosts": 4,
+                 "num_hosts": 2,
+                 "state": "up",
+                 "status": "enabled",
+                 "updated_at": ""
+             }
+         ]
+     }
 
 3.8
 ---
@@ -160,10 +162,12 @@ user documentation.
 
   .. code-block:: json
 
-     "backup": {
-         "id": "backup_id",
-         "name": "backup_name",
-         "links": "backup_link",
+     {
+         "backup": {
+             "id": "backup_id",
+             "name": "backup_name",
+             "links": "backup_link"
+         }
      }
 
 3.10

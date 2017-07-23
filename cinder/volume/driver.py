@@ -2727,16 +2727,16 @@ class ISERDriver(ISCSIDriver):
         The format of the driver data is defined in _get_iser_properties.
         Example return value:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'iser'
+                'driver_volume_type': 'iser',
                 'data': {
                     'target_discovered': True,
                     'target_iqn':
                     'iqn.2010-10.org.iser.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
+                    'volume_id': 1
                 }
             }
 
@@ -2775,27 +2775,29 @@ class FibreChannelDriver(VolumeDriver):
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'fibre_channel',
                 'data': {
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'discard': False,
+                    'discard': False
                 }
             }
 
-            or
+        or
+
+        .. code-block:: default
 
              {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'fibre_channel',
                 'data': {
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'discard': False,
+                    'discard': False
                 }
             }
 

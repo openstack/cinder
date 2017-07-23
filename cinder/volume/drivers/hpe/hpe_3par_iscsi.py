@@ -331,10 +331,10 @@ class HPE3PARISCSIDriver(driver.ManageableVD,
         The format of the driver data is defined in _get_iscsi_properties.
         Example return value:
 
-        .. code-block:: json
+        .. code-block:: default
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'iscsi',
                 'data': {
                     'encrypted': False,
                     'target_discovered': True,

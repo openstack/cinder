@@ -60,8 +60,9 @@ class SnapshotManageController(wsgi.Controller):
          {
            "snapshot":
            {
-             "volume_id": <Cinder volume already exists in volume backend>,
-             "ref":  <Driver-specific reference to the existing storage object>
+             "volume_id": "<Cinder volume already exists in volume backend>",
+             "ref":
+                "<Driver-specific reference to the existing storage object>"
            }
          }
 
