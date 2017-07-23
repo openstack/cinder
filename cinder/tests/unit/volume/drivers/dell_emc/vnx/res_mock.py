@@ -102,6 +102,7 @@ def _fake_volume_wrapper(*args, **kwargs):
                           'volume_metadata': 'metadata'}
     if 'group' in kwargs:
         expected_attrs_key['group'] = kwargs['group']
+
     return fake_volume.fake_volume_obj(
         context.get_admin_context(),
         expected_attrs=[
@@ -337,6 +338,7 @@ cinder_res = CinderResourceMock('mocked_cinder.yaml')
 DRIVER_RES_MAPPING = {
     'TestResMock': cinder_res,
     'TestCommonAdapter': cinder_res,
+    'TestReplicationAdapter': cinder_res,
     'TestISCSIAdapter': cinder_res,
     'TestFCAdapter': cinder_res,
     'TestUtils': cinder_res,
@@ -359,6 +361,7 @@ STORAGE_RES_MAPPING = {
     'TestCondition': vnx_res,
     'TestClient': vnx_res,
     'TestCommonAdapter': vnx_res,
+    'TestReplicationAdapter': vnx_res,
     'TestISCSIAdapter': vnx_res,
     'TestFCAdapter': vnx_res,
     'TestTaskflow': vnx_res,

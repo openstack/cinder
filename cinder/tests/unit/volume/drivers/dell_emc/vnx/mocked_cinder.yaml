@@ -24,9 +24,13 @@ volume: &volume_base
     display_description: 'test volume'
     volume_type_id:
     consistencygroup_id:
+    group_id:
     volume_attachment:
       _properties: {}
     volume_metadata:
+      _properties: {}
+    group:
+      _type: 'group'
       _properties: {}
 
 host: &host_base
@@ -68,6 +72,16 @@ cg_snapshot: &cg_snapshot_base
     id:
       _uuid: cgsnapshot_id
     status: 'creating'
+
+group: &group_base
+  _type: 'group'
+  _properties: &group_base_properties
+    id:
+      _uuid: group_id
+    name: 'test_group'
+    status: 'creating'
+    replication_status: 'enabled'
+
 
 
 ###########################################################
@@ -358,7 +372,7 @@ test_terminate_connection_snapshot:
   snapshot: *snapshot_base
 
 test_setup_lun_replication:
-  vol1:
+  vol1: &volume_for_replication
     _type: 'volume'
     _properties:
       <<: *volume_base_properties
@@ -366,6 +380,15 @@ test_setup_lun_replication:
         _uuid: volume_id
       volume_type_id:
         _uuid: volume_type_id
+
+test_setup_lun_replication_in_group:
+  group1:
+    _type: 'group'
+    _properties:
+      <<: *group_base_properties
+      group_type_id:
+        _uuid: group_type_id
+  vol1: *volume_for_replication
 
 test_cleanup_replication:
   vol1:
@@ -406,6 +429,39 @@ test_failover_host_failback:
         _uuid: volume5_id
       volume_type_id:
         _uuid: volume_type_id
+      replication_status: enabled
+
+test_failover_host_groups:
+  group1:
+    _type: 'group'
+    _properties:
+      <<: *group_base_properties
+      id:
+        _uuid: group_id
+      group_type_id:
+        _uuid: group_type_id
+      replication_status: failed-over
+      volumes: [*volume_base, *volume_base]
+
+  vol1:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume4_id
+      volume_type_id:
+        _uuid: volume_type_id
+      replication_status: failed-over
+
+  vol2:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      id:
+        _uuid: volume4_id
+      volume_type_id:
+        _uuid: volume_type_id
+      replication_status: failed-over
 
 test_get_pool_name:
   volume: *volume_base
@@ -446,6 +502,25 @@ test_delete_group_snapshot:
 test_delete_cgsnapshot:
 
 ###########################################################
+# TestReplicationAdaper
+###########################################################
+
+test_enable_replication:
+  volume1: *volume_base
+  volume2: *volume_base
+  group: *group_base
+
+test_disable_replication:
+  volume1: *volume_base
+  volume2: *volume_base
+  group: *group_base
+
+test_failover_replication:
+  volume1: *volume_base
+  volume2: *volume_base
+  group: *group_base
+
+###########################################################
 # TestUtils
 ###########################################################
 
@@ -484,6 +559,31 @@ test_get_backend_qos_specs:
       <<: *volume_base_properties
       volume_type_id:
         _uuid: volume_type_id
+
+test_check_type_matched_invalid:
+  volume:
+    _type: 'volume'
+    _properties:
+      <<: *volume_base_properties
+      volume_type_id:
+        _uuid: volume_type_id
+  group:
+    _type: 'group'
+    _properties:
+      id:
+        _uuid: group_id
+      group_type_id:
+        _uuid: group_type_id
+
+test_check_rep_status_matched_disabled:
+  group:
+    _type: 'group'
+    _properties:
+      id:
+        _uuid: group_id
+      group_type_id:
+        _uuid: group_type_id
+      replication_status: 'disabled'
 
 ###########################################################
 # TestClient

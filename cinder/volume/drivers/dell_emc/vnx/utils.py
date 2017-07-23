@@ -22,7 +22,9 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import uuidutils
 
+from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import utils as vol_utils
@@ -30,6 +32,7 @@ from cinder.volume import utils as vol_utils
 storops = importutils.try_import('storops')
 
 
+storops = importutils.try_import('storops')
 LOG = logging.getLogger(__name__)
 
 
@@ -101,6 +104,18 @@ def update_provider_location(provider_location, items):
     for key, value in items.items():
         location_dict[key] = value
     return dump_provider_location(location_dict)
+
+
+def update_remote_provider_location(volume, client):
+    """Update volume provider_location after volume failed-over."""
+    provider_location = volume.provider_location
+    updated = {}
+    updated['system'] = client.get_serial()
+    updated['id'] = six.text_type(
+        client.get_lun(name=volume.name).lun_id)
+    provider_location = update_provider_location(
+        provider_location, updated)
+    return provider_location
 
 
 def get_pool_from_host(host):
@@ -212,6 +227,15 @@ def construct_mirror_name(volume):
     return 'mirror_' + six.text_type(volume.id)
 
 
+def construct_group_name(group):
+    """Constructs MirrorGroup name for volumes.
+
+    VNX only allows for 32-character group name, so
+    trim the dash(-) from group id.
+    """
+    return group.id.replace('-', '')
+
+
 def construct_tmp_cg_snap_name(cg_name):
     """Return CG snapshot name."""
     return 'tmp-snap-' + six.text_type(cg_name)
@@ -257,6 +281,49 @@ def get_migration_rate(volume):
                         'using [high] as migration rate.')
 
             return storops.VNXMigrationRate.HIGH
+
+
+def check_type_matched(volume):
+    """Check volume type and group type
+
+    This will make sure they do not conflict with each other.
+
+    :param volume: volume to be checked
+    :returns: None
+    :raises: InvalidInput
+
+    """
+
+    # If volume is not a member of group, skip this check anyway.
+    if not volume.group:
+        return
+    extra_specs = common.ExtraSpecs.from_volume(volume)
+    group_specs = common.ExtraSpecs.from_group(volume.group)
+
+    if not (group_specs.is_group_replication_enabled ==
+            extra_specs.is_replication_enabled):
+        msg = _('Replication should be enabled or disabled for both '
+                'volume or group. volume replication status: %(vol_status)s, '
+                'group replication status: %(group_status)s') % {
+                    'vol_status': extra_specs.is_replication_enabled,
+                    'group_status': group_specs.is_group_replication_enabled}
+        raise exception.InvalidInput(reason=msg)
+
+
+def check_rep_status_matched(group):
+    """Check replication status for group.
+
+    Group status must be enabled before proceeding.
+    """
+    group_specs = common.ExtraSpecs.from_group(group)
+    if group_specs.is_group_replication_enabled:
+        if group.replication_status != fields.ReplicationStatus.ENABLED:
+            msg = _('Replication status should be %s for replication-enabled '
+                    'group.') % fields.ReplicationStatus.ENABLED
+            raise exception.InvalidInput(reason=msg)
+    else:
+        LOG.info('Replication is not enabled on group %s, skip status check.',
+                 group.id)
 
 
 def update_res_without_poll(res):

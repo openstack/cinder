@@ -150,6 +150,13 @@ mirror_base: &mirror_base
       _type: VNXMirrorImageState
       value: 'SYNCHRONIZED'
 
+mirror_group_base: &mirror_group_base
+  _properties: &mirror_group_base_prop
+    condition: 'Active'
+    existed: true
+    name: 'base_group'
+    role: 'Primary'
+    state: 'Synchronized'
 
 ###########################################################
 # TestClient
@@ -998,6 +1005,113 @@ test_promote_image:
     _methods:
       get_mirror_view: *mirror_promote_image
 
+# Mirror group tests start
+test_create_mirror_group:
+  vnx:
+    _methods:
+      create_mirror_group: *mirror_group_base
+
+test_create_mirror_group_name_in_use:
+  vnx:
+    _methods:
+      create_mirror_group:
+        _raise:
+          VNXMirrorGroupNameInUseError: Mirror Group name already in use
+      get_mirror_group: *mirror_group_base
+
+test_delete_mirror_group:
+  group: &group_to_delete
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_delete
+
+test_delete_mirror_group_not_found:
+  group: &group_to_delete_not_found
+    _methods:
+      delete:
+        _raise:
+          VNXMirrorGroupNotFoundError: Unable to locate
+
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_delete_not_found
+
+test_add_mirror:
+  group: &group_to_add
+    _methods:
+      add_mirror:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_add
+      get_mirror_view: *mirror_base
+
+test_add_mirror_already_added:
+  group: &group_to_add_added
+    _methods:
+      add_mirror:
+        _raise:
+          VNXMirrorGroupAlreadyMemberError: already a member of a group
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_add_added
+      get_mirror_view: *mirror_base
+
+test_remove_mirror:
+  group: &group_to_remove
+    _methods:
+      remove_mirror:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_remove
+      get_mirror_view: *mirror_base
+
+test_remove_mirror_not_member:
+  group: &group_to_remove_not_member
+    _methods:
+      remove_mirror:
+        _raise:
+          VNXMirrorGroupMirrorNotMemberError: not a member of the group
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_remove_not_member
+      get_mirror_view: *mirror_base
+
+test_promote_mirror_group:
+  group: &group_to_promote
+    _methods:
+      promote_group:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_promote
+
+test_promote_mirror_group_already_promoted:
+  group: &group_to_promote_already_promoted
+    _methods:
+      promote_group:
+        _raise:
+          VNXMirrorGroupAlreadyPromotedError: no secondary images to promote
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_promote_already_promoted
+
+test_sync_mirror_group:
+  group: &group_to_sync
+    _methods:
+      sync_group:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_sync
+
+test_fracture_mirror_group:
+  group: &group_to_fracture
+    _methods:
+      fracture_group:
+  vnx:
+    _methods:
+      get_mirror_group: *group_to_fracture
+
 test_get_lun_id:
 
 test_get_lun_id_without_provider_location:
@@ -1774,6 +1888,22 @@ test_setup_lun_replication:
       lun_id: 222
       wwn: fake_wwn
 
+test_setup_lun_replication_in_group:
+  group: &group_for_enable
+    _methods:
+      add_mirror:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      get_mirror_view: *mirror_base
+      get_mirror_group: *group_for_enable
+
+  lun:
+    _properties:
+      lun_id: 222
+      wwn: fake_wwn
+
 test_cleanup_replication:
   vnx:
     _properties:
@@ -1822,6 +1952,11 @@ test_failover_host:
 test_failover_host_invalid_backend_id:
 
 test_failover_host_failback:
+  lun1:
+    _properties:
+      lun_id: 22
+
+test_failover_host_groups:
   lun1:
     _properties:
       lun_id: 22
@@ -2016,6 +2151,32 @@ test_get_tgt_list_and_initiator_tgt_map_allow_port_only:
     _methods:
       get_fc_port: *all_fc_ports
 
+
+##########################################################
+# TestReplicationAdapter
+##########################################################
+
+test_enable_replication:
+  vnx:
+    _methods:
+      create_mirror_group: *mirror_group_base
+      get_mirror_view: *mirror_base
+      get_mirror_group: *group_for_enable
+
+test_disable_replication:
+  group: &group_for_disable
+    _methods:
+      remove_mirror:
+      delete:
+
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_base
+      get_mirror_group: *group_for_disable
+
+test_failover_replication:
+
+  lun1: *lun_base
 
 ##########################################################
 # TestTaskflow

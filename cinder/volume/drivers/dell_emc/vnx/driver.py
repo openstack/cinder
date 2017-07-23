@@ -73,9 +73,10 @@ class VNXDriver(driver.ManageableVD,
         10.0.0 - Extend SMP size before aync migration when cloning from an
                  image cache volume
         10.1.0 - Add QoS support
+        10.2.0 - Add replication group support
     """
 
-    VERSION = '10.01.00'
+    VERSION = '10.02.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_VNX_CI"
@@ -338,3 +339,20 @@ class VNXDriver(driver.ManageableVD,
         """Deletes a group_snapshot."""
         return self.adapter.delete_group_snapshot(
             context, group_snapshot, snapshots)
+
+    def is_consistent_group_snapshot_enabled(self):
+        return self._stats.get('consistent_group_snapshot_enabled')
+
+    def enable_replication(self, context, group, volumes):
+        return self.adapter.enable_replication(context, group, volumes)
+
+    def disable_replication(self, context, group, volumes):
+        return self.adapter.disable_replication(context, group, volumes)
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id):
+        return self.adapter.failover_replication(
+            context, group, volumes, secondary_backend_id)
+
+    def get_replication_error_status(self, context, groups):
+        return self.adapter.get_replication_error_status(context, groups)
