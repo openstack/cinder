@@ -80,18 +80,18 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
     """The OpenStack Datera Driver
 
     Version history:
-        1.0 - Initial driver
-        1.1 - Look for lun-0 instead of lun-1.
-        2.0 - Update For Datera API v2
-        2.1 - Multipath, ACL and reorg
-        2.2 - Capabilites List, Extended Volume-Type Support
-              Naming convention change,
-              Volume Manage/Unmanage support
-        2.3 - Templates, Tenants, Snapshot Polling,
-              2.1 Api Version Support, Restructure
-        2.3.1 - Scalability bugfixes
-        2.3.2 - Volume Placement, ACL multi-attach bugfix
-        2.4.0 - Fast Retype Support
+        * 1.0 - Initial driver
+        * 1.1 - Look for lun-0 instead of lun-1.
+        * 2.0 - Update For Datera API v2
+        * 2.1 - Multipath, ACL and reorg
+        * 2.2 - Capabilites List, Extended Volume-Type Support
+                Naming convention change,
+                Volume Manage/Unmanage support
+        * 2.3 - Templates, Tenants, Snapshot Polling,
+                2.1 Api Version Support, Restructure
+        * 2.3.1 - Scalability bugfixes
+        * 2.3.2 - Volume Placement, ACL multi-attach bugfix
+        * 2.4.0 - Fast Retype Support
     """
     VERSION = '2.4.0'
 
@@ -245,6 +245,7 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
         """Convert the volume to be of the new type.
 
         Returns a boolean indicating whether the retype occurred.
+
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
@@ -273,6 +274,7 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
 
         (existing_ref['source-name'] ==
              tenant:app_inst_name:storage_inst_name:vol_name)
+
         if using Datera 2.1 API
 
         or
@@ -323,8 +325,9 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
 
         Returns a list of dictionaries, each specifying a volume in the host,
         with the following keys:
+
         - reference (dictionary): The reference for a volume, which can be
-          passed to "manage_existing".
+          passed to 'manage_existing'.
         - size (int): The size of the volume according to the storage
           backend, rounded up to the nearest GB.
         - safe_to_manage (boolean): Whether or not this volume is safe to
