@@ -108,10 +108,12 @@ CONF.register_opts(disco_opts, group=configuration.SHARED_CONF_GROUP)
 class DiscoDriver(driver.VolumeDriver):
     """Execute commands related to DISCO Volumes.
 
-    Version history:
-        1.0 - disco volume driver using SOAP
-        1.1 - disco volume driver using REST and only compatible
-              with version greater than disco-1.6.4
+    .. code:: text
+
+      Version history:
+          1.0 - disco volume driver using SOAP
+          1.1 - disco volume driver using REST and only compatible
+                with version greater than disco-1.6.4
 
     """
 
