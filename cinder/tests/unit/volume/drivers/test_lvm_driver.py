@@ -722,6 +722,22 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                 self.volume.driver._escape_snapshot(fake_snapshot.name),
                 fake_volume.name, self.configuration.lvm_type)
 
+    def test_revert_thin_snapshot(self):
+
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
+                                         db=db)
+        fake_volume = tests_utils.create_volume(self.context,
+                                                display_name='fake_volume')
+        fake_snapshot = tests_utils.create_snapshot(
+            self.context, fake_volume.id)
+
+        self.assertRaises(NotImplementedError,
+                          lvm_driver.revert_to_snapshot,
+                          self.context, fake_volume,
+                          fake_snapshot)
+
     def test_lvm_manage_existing_snapshot_bad_size(self):
         """Make sure correct exception on bad size returned from LVM.
 

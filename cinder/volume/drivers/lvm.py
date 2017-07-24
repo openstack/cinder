@@ -469,11 +469,18 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def revert_to_snapshot(self, context, volume, snapshot):
         """Revert a volume to a snapshot"""
 
-        self.vg.revert(self._escape_snapshot(snapshot.name))
-        self.vg.deactivate_lv(volume.name)
-        self.vg.activate_lv(volume.name)
-        # Recreate the snapshot that was destroyed by the revert
-        self.create_snapshot(snapshot)
+        # NOTE(tommylikehu): We still can revert the volume because Cinder
+        # will try the alternative approach if 'NotImplementedError'
+        # is raised here.
+        if self.configuration.lvm_type == 'thin':
+            msg = _("Revert volume to snapshot not implemented for thin LVM.")
+            raise NotImplementedError(msg)
+        else:
+            self.vg.revert(self._escape_snapshot(snapshot.name))
+            self.vg.deactivate_lv(volume.name)
+            self.vg.activate_lv(volume.name)
+            # Recreate the snapshot that was destroyed by the revert
+            self.create_snapshot(snapshot)
 
     def local_path(self, volume, vg=None):
         if vg is None:
