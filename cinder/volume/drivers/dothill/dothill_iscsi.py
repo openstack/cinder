@@ -36,22 +36,25 @@ LOG = logging.getLogger(__name__)
 class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
     """OpenStack iSCSI cinder drivers for DotHill Arrays.
 
-    Version history:
-        0.1    - Base structure for DotHill iSCSI drivers based on HPMSA FC
-                 drivers:
-                     "https://github.com/openstack/cinder/tree/stable/juno/
-                      cinder/volume/drivers/san/hp"
-        1.0    - Version developed for DotHill arrays with the following
-                 modifications:
-                     - added iSCSI support
-                     - added CHAP support in iSCSI
-                     - added support for v3 API(virtual pool feature)
-                     - added support for retype volume
-                     - added support for manage/unmanage volume
-                     - added https support
-        1.6    - Add management path redundancy and reduce load placed
-                 on management controller.
-        1.7    - Modified so it can't be invoked except as a superclass
+    .. code:: text
+
+      Version history:
+          0.1    - Base structure for DotHill iSCSI drivers based on HPMSA FC
+                   drivers:
+                       "https://github.com/openstack/cinder/tree/stable/juno/
+                        cinder/volume/drivers/san/hp"
+          1.0    - Version developed for DotHill arrays with the following
+                   modifications:
+                       - added iSCSI support
+                       - added CHAP support in iSCSI
+                       - added support for v3 API(virtual pool feature)
+                       - added support for retype volume
+                       - added support for manage/unmanage volume
+                       - added https support
+          1.6    - Add management path redundancy and reduce load placed
+                   on management controller.
+          1.7    - Modified so it can't be invoked except as a superclass
+
     """
 
     def __init__(self, *args, **kwargs):
