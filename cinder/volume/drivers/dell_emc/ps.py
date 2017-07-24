@@ -657,7 +657,7 @@ class PSSeriesISCSIDriver(san.SanISCSIDriver):
 
         :param volume:       Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
-        volume
+                             volume
         """
         existing_volume_name = self._get_existing_volume_ref_name(existing_ref)
         data = self._get_volume_info(existing_volume_name)
