@@ -96,12 +96,17 @@ class HNASSSHBackend(object):
         """Gets version information from the storage unit.
 
         :returns: dictionary with HNAS information
-        storage_version={
-            'mac': HNAS MAC ID,
-            'model': HNAS model,
-            'version': the software version,
-            'hardware': the hardware version,
-            'serial': HNAS serial number}
+
+        .. code:: python
+
+          storage_version={
+              'mac': HNAS MAC ID,
+              'model': HNAS model,
+              'version': the software version,
+              'hardware': the hardware version,
+              'serial': HNAS serial number
+          }
+
         """
         if not self.storage_version:
             version_info = {}
@@ -131,11 +136,15 @@ class HNASSSHBackend(object):
         """Gets the IP addresses of all EVSs in HNAS.
 
         :returns: dictionary with EVS information
-        evs_info={
-            <IP1>: {evs_number: number identifying the EVS1 on HNAS},
-            <IP2>: {evs_number: number identifying the EVS2 on HNAS},
-            ...
-        }
+
+        .. code:: python
+
+          evs_info={
+              <IP1>: {evs_number: number identifying the EVS1 on HNAS},
+              <IP2>: {evs_number: number identifying the EVS2 on HNAS},
+              ...
+          }
+
         """
         evs_info = {}
         out, err = self._run_cmd("evsipaddr", "-l")
@@ -154,15 +163,19 @@ class HNASSSHBackend(object):
 
         :param fs_label: Label of the filesystem
         :returns: dictionary with FS information
-        fs_info={
-            'id': a Logical Unit ID,
-            'label': a Logical Unit name,
-            'evs_id': the ID of the EVS in which the filesystem is created
-            (not present if there is a single EVS),
-            'total_size': the total size of the FS (in GB),
-            'used_size': the size that is already used (in GB),
-            'available_size': the free space (in GB)
+
+        .. code:: python
+
+          fs_info={
+              'id': a Logical Unit ID,
+              'label': a Logical Unit name,
+              'evs_id': the ID of the EVS in which the filesystem is created
+              (not present if there is a single EVS),
+              'total_size': the total size of the FS (in GB),
+              'used_size': the size that is already used (in GB),
+              'available_size': the free space (in GB)
             }
+
         """
         def _convert_size(param):
             size = float(param) * units.Mi
@@ -401,7 +414,8 @@ class HNASSSHBackend(object):
         :param file_path: path of the cloned file
         :param fs_label: filesystem of the cloned file
         :param raise_except: If True exception will be raised for files that
-        aren't clones. If False, only an error message is logged.
+                             aren't clones. If False, only an error message
+                             is logged.
         :returns: list with names of the related files
         """
         relatives = []
