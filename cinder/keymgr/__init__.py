@@ -25,10 +25,6 @@ CONF = cfg.CONF
 
 castellan_opts.set_defaults(CONF)
 
-# NOTE(kfarr): This line can be removed when a value is assigned in DevStack
-CONF.set_default('api_class', 'cinder.keymgr.conf_key_mgr.ConfKeyManager',
-                 group='key_manager')
-
 
 def log_deprecated_warning(deprecated_value, castellan):
     versionutils.deprecation_warning(deprecated_value,
