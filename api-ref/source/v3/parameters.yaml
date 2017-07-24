@@ -29,7 +29,7 @@ backup_id:
   description: |
     The UUID for a backup.
   in: path
-  required: false
+  required: true
   type: string
 cascade:
   description: |
