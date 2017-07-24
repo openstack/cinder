@@ -175,9 +175,17 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
 
     :param xml_config_file: string filename containing XML configuration
     :param svc_params: parameters to configure the services
-    ['volume_type', 'hdp']
+
+    .. code:: python
+
+      ['volume_type', 'hdp']
+
     :param optional_params: parameters to configure that are not mandatory
-    ['ssc_cmd', 'cluster_admin_ip0', 'chap_enabled']
+
+    .. code:: python
+
+      ['ssc_cmd', 'cluster_admin_ip0', 'chap_enabled']
+
     """
 
     if not os.access(xml_config_file, os.R_OK):
@@ -278,7 +286,7 @@ def read_cinder_conf(config_opts):
     file.
 
     :param config_opts: Configuration object that contains the information
-    needed by HNAS driver
+                        needed by HNAS driver
     :param dv_type: The type of the driver (NFS or iSCSI)
     :returns: Dictionary with the driver configuration
     """
