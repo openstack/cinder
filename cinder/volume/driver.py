@@ -1559,13 +1559,23 @@ class BaseVD(object):
         """Returns error info for replicated groups and its volumes.
 
         :returns: group_model_updates - list of dicts of group updates
+
         if error happens. For example, a dict of a group can be as follows:
-        {'group_id': xxxx,
-         'replication_status': fields.ReplicationStatus.ERROR}
+
+        .. code:: python
+
+          {'group_id': xxxx,
+           'replication_status': fields.ReplicationStatus.ERROR}
+
         :returns: volume_model_updates - list of dicts of volume updates
+
         if error happens. For example, a dict of a volume can be as follows:
-        {'volume_id': xxxx,
-         'replication_status': fields.ReplicationStatus.ERROR}
+
+        .. code:: python
+
+          {'volume_id': xxxx,
+           'replication_status': fields.ReplicationStatus.ERROR}
+
         """
         return [], []
 
@@ -1934,12 +1944,12 @@ class ManageableVD(object):
         Returns a list of dictionaries, each specifying a volume in the host,
         with the following keys:
         - reference (dictionary): The reference for a volume, which can be
-          passed to "manage_existing".
+        passed to "manage_existing".
         - size (int): The size of the volume according to the storage
-          backend, rounded up to the nearest GB.
+        backend, rounded up to the nearest GB.
         - safe_to_manage (boolean): Whether or not this volume is safe to
-          manage according to the storage backend. For example, is the volume
-          in use or invalid for any reason.
+        manage according to the storage backend. For example, is the volume
+        in use or invalid for any reason.
         - reason_not_safe (string): If safe_to_manage is False, the reason why.
         - cinder_id (string): If already managed, provide the Cinder ID.
         - extra_info (string): Any extra information to return to the user
@@ -2026,17 +2036,17 @@ class ManageableSnapshotsVD(object):
         Returns a list of dictionaries, each specifying a snapshot in the host,
         with the following keys:
         - reference (dictionary): The reference for a snapshot, which can be
-          passed to "manage_existing_snapshot".
+        passed to "manage_existing_snapshot".
         - size (int): The size of the snapshot according to the storage
-          backend, rounded up to the nearest GB.
+        backend, rounded up to the nearest GB.
         - safe_to_manage (boolean): Whether or not this snapshot is safe to
-          manage according to the storage backend. For example, is the snapshot
-          in use or invalid for any reason.
+        manage according to the storage backend. For example, is the snapshot
+        in use or invalid for any reason.
         - reason_not_safe (string): If safe_to_manage is False, the reason why.
         - cinder_id (string): If already managed, provide the Cinder ID.
         - extra_info (string): Any extra information to return to the user
         - source_reference (string): Similar to "reference", but for the
-          snapshot's source volume.
+        snapshot's source volume.
 
         :param cinder_snapshots: A list of snapshots in this host that Cinder
                                  currently manages, used to determine if
