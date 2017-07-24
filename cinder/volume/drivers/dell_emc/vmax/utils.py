@@ -305,19 +305,22 @@ class VMAXUtils(object):
 
         Given a file, parse it to get array and pool(srp).
 
-        <EMC>
-        <RestServerIp>10.108.246.202</RestServerIp>
-        <RestServerPort>8443</RestServerPort>
-        <RestUserName>smc</RestUserName>
-        <RestPassword>smc</RestPassword>
-        <SSLCert>/path/client.cert</SSLCert>
-        <SSLVerify>/path/to/certfile.pem</SSLVerify>
-        <PortGroups>
-            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
-        </PortGroups>
-        <Array>000198700439</Array>
-        <SRP>SRP_1</SRP>
-        </EMC>
+        .. code:: ini
+
+          <EMC>
+          <RestServerIp>10.108.246.202</RestServerIp>
+          <RestServerPort>8443</RestServerPort>
+          <RestUserName>smc</RestUserName>
+          <RestPassword>smc</RestPassword>
+          <SSLCert>/path/client.cert</SSLCert>
+          <SSLVerify>/path/to/certfile.pem</SSLVerify>
+          <PortGroups>
+              <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+          </PortGroups>
+          <Array>000198700439</Array>
+          <SRP>SRP_1</SRP>
+          </EMC>
+
         :param file_name: the configuration file
         :returns: list
         """
