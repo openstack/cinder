@@ -14,7 +14,9 @@
 
 Use Resource, Action and Detail's combination to indicate the Event
 in the format of:
-    EVENT: VOLUME_RESOURCE_ACTION_DETAIL
+
+EVENT: VOLUME_RESOURCE_ACTION_DETAIL
+
 Also, use exception-to-detail mapping to decrease the workload of
 classifying event in cinder's task code.
 """
