@@ -548,6 +548,14 @@ connector:
   in: body
   required: false
   type: object
+connector_1:
+  description: |
+    The ``connector`` object. The internal structure of connector depends on
+    the volume driver implementation. For details about the required elements
+    in the structure, see the documentation for the volume driver.
+  in: body
+  required: true
+  type: object
 consistencygroup_id:
   description: |
     The UUID of the consistency group.
