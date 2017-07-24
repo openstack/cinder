@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    When managing volume types an OpenStack provider is now given more control to grant
+    access to for different storage type operations. The provider can now customize access
+    to type create, delete, update, list, and show using new entries in the cinder policy file.
+
+    As an example one provider may have roles called viewer, admin, type_viewer, and say
+    type_admin. Admin and type_admin can create, delete, update types. Everyone can list
+    the storage types. Admin, type_viewer, and type_admin can view the extra_specs.
+
+    "volume_extension:types_extra_specs:create": "rule:admin or rule:type_admin",
+    "volume_extension:types_extra_specs:delete": "rule:admin or rule:type_admin",
+    "volume_extension:types_extra_specs:index": "",
+    "volume_extension:types_extra_specs:show": "rule:admin or rule:type_admin or rule:type_viewer",
+    "volume_extension:types_extra_specs:update": "rule:admin or rule:type_admin"
