@@ -259,13 +259,17 @@ class BackupCephTestCase(test.TestCase):
         last = 'backup.%s.snap.9824923.1212' % (uuid.uuid4())
 
         image = self.mock_rbd.Image.return_value
-        image.list_snaps.return_value = \
-            [{'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
-             {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
-             {'name': last},
-             {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
-
-        snap = self.service._get_most_recent_snap(image)
+        with mock.patch.object(self.service, '_snap_exists') as \
+                mock_snap_exists:
+            mock_snap_exists.return_value = True
+            image.list_snaps.return_value = \
+                [{'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
+                 {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
+                 {'name': last},
+                 {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
+            base_name = "mock_base"
+            client = mock.Mock()
+            snap = self.service._get_most_recent_snap(image, base_name, client)
         self.assertEqual(last, snap)
 
     @common_mocks
@@ -470,8 +474,14 @@ class BackupCephTestCase(test.TestCase):
                                                              'user_foo',
                                                              'conf_foo')
                             rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                            mock_get_backup_snaps.return_value = (
+                                [{'name': 'backup.mock.snap.153464362.12'},
+                                 {'name': 'backup.mock.snap.15341241.90'},
+                                 {'name': 'backup.mock.snap.199994362.10'}])
+
                             output = self.service.backup(self.backup, rbdio)
                             self.assertDictEqual({}, output)
+
                             self.assertEqual(['popen_init',
                                               'read',
                                               'popen_init',
@@ -527,14 +537,19 @@ class BackupCephTestCase(test.TestCase):
                     mock.patch.object(self.service,
                                       '_try_delete_base_image'):
                 with mock.patch.object(self.service, '_backup_metadata'):
-                    image = self.service.rbd.Image()
-                    meta = linuxrbd.RBDImageMetadata(image,
-                                                     'pool_foo',
-                                                     'user_foo',
-                                                     'conf_foo')
-                    rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
-                    output = self.service.backup(self.backup, rbdio)
-                    self.assertIsNone(output['parent_id'])
+                    with mock.patch.object(self.service, 'get_backup_snaps') as \
+                            mock_get_backup_snaps:
+                        image = self.service.rbd.Image()
+                        meta = linuxrbd.RBDImageMetadata(image,
+                                                         'pool_foo',
+                                                         'user_foo',
+                                                         'conf_foo')
+                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                        mock_get_backup_snaps.return_value = (
+                            [{'name': 'backup.mock.snap.153464362.12'},
+                             {'name': 'backup.mock.snap.199994362.10'}])
+                        output = self.service.backup(self.backup, rbdio)
+                        self.assertIsNone(output['parent_id'])
 
     @common_mocks
     def test_backup_rbd_set_parent_id(self):
@@ -597,47 +612,50 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.RBD.list = mock.Mock()
         self.mock_rbd.RBD.list.return_value = [backup_name]
 
-        with mock.patch.object(self.service, 'get_backup_snaps'), \
-                mock.patch.object(self.service, '_rbd_diff_transfer') as \
-                mock_rbd_diff_transfer:
-            def mock_rbd_diff_transfer_side_effect(src_name, src_pool,
-                                                   dest_name, dest_pool,
-                                                   src_user, src_conf,
-                                                   dest_user, dest_conf,
-                                                   src_snap, from_snap):
-                raise exception.BackupRBDOperationFailed(_('mock'))
+        with mock.patch.object(self.service, 'get_backup_snaps') as \
+                mock_get_backup_snaps:
+            mock_get_backup_snaps.return_value = (
+                [{'name': 'backup.mock.snap.153464362.12'},
+                 {'name': 'backup.mock.snap.199994362.10'}])
+            with mock.patch.object(self.service, '_rbd_diff_transfer') as \
+                    mock_rbd_diff_transfer:
+                def mock_rbd_diff_transfer_side_effect(src_name, src_pool,
+                                                       dest_name, dest_pool,
+                                                       src_user, src_conf,
+                                                       dest_user, dest_conf,
+                                                       src_snap, from_snap):
+                    raise exception.BackupRBDOperationFailed(_('mock'))
 
-            # Raise a pseudo exception.BackupRBDOperationFailed.
-            mock_rbd_diff_transfer.side_effect \
-                = mock_rbd_diff_transfer_side_effect
+                # Raise a pseudo exception.BackupRBDOperationFailed.
+                mock_rbd_diff_transfer.side_effect \
+                    = mock_rbd_diff_transfer_side_effect
 
-            with mock.patch.object(self.service, '_full_backup'), \
-                    mock.patch.object(self.service,
-                                      '_try_delete_base_image') as \
-                    mock_try_delete_base_image:
-                def mock_try_delete_base_image_side_effect(backup_id,
-                                                           base_name):
-                    raise self.service.rbd.ImageNotFound(_('mock'))
+                with mock.patch.object(self.service, '_full_backup'), \
+                    mock.patch.object(self.service, '_try_delete_base_image') as \
+                        mock_try_delete_base_image:
+                    def mock_try_delete_base_image_side_effect(backup_id,
+                                                               base_name):
+                        raise self.service.rbd.ImageNotFound(_('mock'))
 
-                # Raise a pesudo exception rbd.ImageNotFound.
-                mock_try_delete_base_image.side_effect \
-                    = mock_try_delete_base_image_side_effect
-                with mock.patch.object(self.service, '_backup_metadata'):
-                    with tempfile.NamedTemporaryFile() as test_file:
-                        checksum = hashlib.sha256()
-                        image = self.service.rbd.Image()
-                        meta = linuxrbd.RBDImageMetadata(image,
-                                                         'pool_foo',
-                                                         'user_foo',
-                                                         'conf_foo')
-                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                    # Raise a pesudo exception rbd.ImageNotFound.
+                    mock_try_delete_base_image.side_effect \
+                        = mock_try_delete_base_image_side_effect
+                    with mock.patch.object(self.service, '_backup_metadata'):
+                        with tempfile.NamedTemporaryFile() as test_file:
+                            checksum = hashlib.sha256()
+                            image = self.service.rbd.Image()
+                            meta = linuxrbd.RBDImageMetadata(image,
+                                                             'pool_foo',
+                                                             'user_foo',
+                                                             'conf_foo')
+                            rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
 
-                        # We expect that the second exception is
-                        # notified.
-                        self.assertRaises(
-                            self.service.rbd.ImageNotFound,
-                            self.service.backup,
-                            self.backup, rbdio)
+                            # We expect that the second exception is
+                            # notified.
+                            self.assertRaises(
+                                self.service.rbd.ImageNotFound,
+                                self.service.backup,
+                                self.backup, rbdio)
 
     @common_mocks
     @mock.patch('fcntl.fcntl', spec=True)
@@ -671,39 +689,126 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.RBD.list = mock.Mock()
         self.mock_rbd.RBD.list.return_value = [backup_name]
 
-        with mock.patch.object(self.service, 'get_backup_snaps'), \
-                mock.patch.object(self.service, '_rbd_diff_transfer'), \
+        with mock.patch.object(self.service, 'get_backup_snaps') as \
+                mock_get_backup_snaps:
+            mock_get_backup_snaps.return_value = (
+                [{'name': 'backup.mock.snap.153464362.12'},
+                 {'name': 'backup.mock.snap.199994362.10'}])
+            with mock.patch.object(self.service, '_rbd_diff_transfer'), \
                 mock.patch.object(self.service, '_full_backup'), \
                 mock.patch.object(self.service, '_backup_metadata') as \
-                mock_backup_metadata:
+                    mock_backup_metadata:
 
-            def mock_backup_metadata_side_effect(backup):
-                raise exception.BackupOperationError(_('mock'))
+                def mock_backup_metadata_side_effect(backup):
+                    raise exception.BackupOperationError(_('mock'))
 
-            # Raise a pseudo exception.BackupOperationError.
-            mock_backup_metadata.side_effect = mock_backup_metadata_side_effect
-            with mock.patch.object(self.service, 'delete_backup') as \
-                    mock_delete:
-                def mock_delete_side_effect(backup):
-                    raise self.service.rbd.ImageBusy()
+                # Raise a pseudo exception.BackupOperationError.
+                mock_backup_metadata.side_effect = (
+                    mock_backup_metadata_side_effect)
+                with mock.patch.object(self.service, 'delete_backup') as \
+                        mock_delete:
+                    def mock_delete_side_effect(backup):
+                        raise self.service.rbd.ImageBusy()
 
-                # Raise a pseudo exception rbd.ImageBusy.
-                mock_delete.side_effect = mock_delete_side_effect
-                with tempfile.NamedTemporaryFile() as test_file:
-                    checksum = hashlib.sha256()
-                    image = self.service.rbd.Image()
-                    meta = linuxrbd.RBDImageMetadata(image,
-                                                     'pool_foo',
-                                                     'user_foo',
-                                                     'conf_foo')
-                    rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                    # Raise a pseudo exception rbd.ImageBusy.
+                    mock_delete.side_effect = mock_delete_side_effect
+                    with tempfile.NamedTemporaryFile() as test_file:
+                        checksum = hashlib.sha256()
+                        image = self.service.rbd.Image()
+                        meta = linuxrbd.RBDImageMetadata(image,
+                                                         'pool_foo',
+                                                         'user_foo',
+                                                         'conf_foo')
+                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
 
-                    # We expect that the second exception is
-                    # notified.
-                    self.assertRaises(
-                        self.service.rbd.ImageBusy,
-                        self.service.backup,
-                        self.backup, rbdio)
+                        # We expect that the second exception is
+                        # notified.
+                        self.assertRaises(
+                            self.service.rbd.ImageBusy,
+                            self.service.backup,
+                            self.backup, rbdio)
+
+    @common_mocks
+    def test_backup_rbd_from_snap(self):
+        backup_name = self.service._get_backup_base_name(self.backup_id,
+                                                         diff_format=True)
+        vol_name = self.volume['name']
+        vol_length = self.service._get_volume_size_gb(self.volume)
+
+        self.mock_rbd.RBD().list = mock.Mock()
+        self.mock_rbd.RBD().list.return_value = ['mock']
+
+        with mock.patch.object(self.service, '_get_new_snap_name') as \
+                mock_get_new_snap_name:
+            with mock.patch.object(self.service, 'get_backup_snaps') as \
+                    mock_get_backup_snaps:
+                with mock.patch.object(self.service, '_rbd_diff_transfer') as \
+                        mock_rbd_diff_transfer:
+                    with mock.patch.object(self.service, '_get_backup_base_name') as \
+                            mock_get_backup_base_name:
+                        mock_get_backup_base_name.return_value = (
+                            backup_name)
+                        mock_get_backup_snaps.return_value = (
+                            [{'name': 'backup.mock.snap.153464362.12'},
+                             {'name': 'backup.mock.snap.15341241.90'},
+                             {'name': 'backup.mock.snap.199994362.10'}])
+                        mock_get_new_snap_name.return_value = 'new_snap'
+                        image = self.service.rbd.Image()
+                        meta = linuxrbd.RBDImageMetadata(image,
+                                                         'pool_foo',
+                                                         'user_foo',
+                                                         'conf_foo')
+                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                        rbdio.seek(0)
+                        self.service._backup_rbd(self.backup, rbdio,
+                                                 vol_name, vol_length)
+                        mock_rbd_diff_transfer.assert_called_with(
+                            vol_name, 'pool_foo', backup_name,
+                            self.backup.container, src_user='user_foo',
+                            src_conf='conf_foo',
+                            dest_conf='/etc/ceph/ceph.conf',
+                            dest_user='cinder', src_snap='new_snap',
+                            from_snap=None)
+
+    @common_mocks
+    def test_backup_rbd_from_snap2(self):
+        backup_name = self.service._get_backup_base_name(self.backup_id,
+                                                         diff_format=True)
+        vol_name = self.volume['name']
+        vol_length = self.service._get_volume_size_gb(self.volume)
+
+        self.mock_rbd.RBD().list = mock.Mock()
+        self.mock_rbd.RBD().list.return_value = [backup_name]
+
+        with mock.patch.object(self.service, '_get_most_recent_snap') as \
+                mock_get_most_recent_snap:
+            with mock.patch.object(self.service, '_get_backup_base_name') as \
+                    mock_get_backup_base_name:
+                with mock.patch.object(self.service, '_rbd_diff_transfer') as \
+                        mock_rbd_diff_transfer:
+                    with mock.patch.object(self.service, '_get_new_snap_name') as \
+                            mock_get_new_snap_name:
+                        mock_get_backup_base_name.return_value = (
+                            backup_name)
+                        mock_get_most_recent_snap.return_value = (
+                            'backup.mock.snap.153464362.12')
+                        mock_get_new_snap_name.return_value = 'new_snap'
+                        image = self.service.rbd.Image()
+                        meta = linuxrbd.RBDImageMetadata(image,
+                                                         'pool_foo',
+                                                         'user_foo',
+                                                         'conf_foo')
+                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+                        rbdio.seek(0)
+                        self.service._backup_rbd(self.backup, rbdio,
+                                                 vol_name, vol_length)
+                        mock_rbd_diff_transfer.assert_called_with(
+                            vol_name, 'pool_foo', backup_name,
+                            self.backup.container, src_user='user_foo',
+                            src_conf='conf_foo',
+                            dest_conf='/etc/ceph/ceph.conf',
+                            dest_user='cinder', src_snap='new_snap',
+                            from_snap='backup.mock.snap.153464362.12')
 
     @common_mocks
     def test_backup_vol_length_0(self):
