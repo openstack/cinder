@@ -309,13 +309,14 @@ class CommonAdapter(replication.ReplicationAdapter):
 
         :param volume: new volume
         :param snapshot: base snapshot
+
         This flow will do the following:
 
-        1. Create a snap mount point (SMP) for the snapshot.
-        2. Attach the snapshot to the SMP created in the first step.
-        3. Create a temporary lun prepare for migration.
+        #. Create a snap mount point (SMP) for the snapshot.
+        #. Attach the snapshot to the SMP created in the first step.
+        #. Create a temporary lun prepare for migration.
            (Skipped if snapcopy='true')
-        4. Start a migration between the SMP and the temp lun.
+        #. Start a migration between the SMP and the temp lun.
            (Skipped if snapcopy='true')
         """
         volume_metadata = utils.get_metadata(volume)
@@ -838,13 +839,19 @@ class CommonAdapter(replication.ReplicationAdapter):
     def manage_existing(self, volume, existing_ref):
         """Imports the existing backend storage object as a volume.
 
-        manage_existing_ref:{
-            'source-id':<lun id in VNX>
-        }
+        .. code-block:: python
+
+          manage_existing_ref:{
+              'source-id':<lun id in VNX>
+          }
+
         or
-        manage_existing_ref:{
-            'source-name':<lun name in VNX>
-        }
+
+        .. code-block:: python
+
+          manage_existing_ref:{
+              'source-name':<lun name in VNX>
+          }
 
         When the volume has a volume_type, the driver inspects that and
         compare against the properties of the referenced backend storage
@@ -932,10 +939,11 @@ class CommonAdapter(replication.ReplicationAdapter):
         initiators of SG and the configured white list of the ports (that is
         `self.config.io_port_list`).
 
-        1. Register all non-registered initiators to `self.allowed_ports`.
-        2. For registered initiators, if the white list is configured, register
-        them to `self.allowed_ports` except the ones which are already
-        registered.
+        #. Register all non-registered initiators to `self.allowed_ports`.
+        #. For registered initiators, if the white list is configured, register
+            them to `self.allowed_ports` except the ones which are already
+            registered.
+
         Note that `self.allowed_ports` comprises of all iSCSI/FC ports on array
         or the valid ports of the white list if `self.config.io_port_list` is
         configured.

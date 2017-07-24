@@ -145,7 +145,7 @@ class ReplicationAdapter(object):
 
         :param configuration: driver configuration
         :param failover: True if from primary to configured array,
-        False if from configured array to primary.
+                         False if from configured array to primary.
         """
         rep_devices = configuration.replication_device
         if not rep_devices:

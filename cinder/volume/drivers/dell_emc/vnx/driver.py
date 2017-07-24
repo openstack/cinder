@@ -34,46 +34,49 @@ class VNXDriver(driver.ManageableVD,
                 driver.BaseVD):
     """Dell EMC Cinder Driver for VNX using CLI.
 
-    Version history:
-        1.0.0 - Initial driver
-        2.0.0 - Thick/thin provisioning, robust enhancement
-        3.0.0 - Array-based Backend Support, FC Basic Support,
-                Target Port Selection for MPIO,
-                Initiator Auto Registration,
-                Storage Group Auto Deletion,
-                Multiple Authentication Type Support,
-                Storage-Assisted Volume Migration,
-                SP Toggle for HA
-        3.0.1 - Security File Support
-        4.0.0 - Advance LUN Features (Compression Support,
-                Deduplication Support, FAST VP Support,
-                FAST Cache Support), Storage-assisted Retype,
-                External Volume Management, Read-only Volume,
-                FC Auto Zoning
-        4.1.0 - Consistency group support
-        5.0.0 - Performance enhancement, LUN Number Threshold Support,
-                Initiator Auto Deregistration,
-                Force Deleting LUN in Storage Groups,
-                robust enhancement
-        5.1.0 - iSCSI multipath enhancement
-        5.2.0 - Pool-aware scheduler support
-        5.3.0 - Consistency group modification support
-        6.0.0 - Over subscription support
-                Create consistency group from cgsnapshot support
-                Multiple pools support enhancement
-                Manage/unmanage volume revise
-                White list target ports support
-                Snap copy support
-                Support efficient non-disruptive backup
-        7.0.0 - Clone consistency group support
-                Replication v2 support(managed)
-                Configurable migration rate support
-        8.0.0 - New VNX Cinder driver
-        9.0.0 - Use asynchronous migration for cloning
-        10.0.0 - Extend SMP size before aync migration when cloning from an
-                 image cache volume
-        10.1.0 - Add QoS support
-        10.2.0 - Add replication group support
+    .. code-block:: default
+
+      Version history:
+          1.0.0 - Initial driver
+          2.0.0 - Thick/thin provisioning, robust enhancement
+          3.0.0 - Array-based Backend Support, FC Basic Support,
+                  Target Port Selection for MPIO,
+                  Initiator Auto Registration,
+                  Storage Group Auto Deletion,
+                  Multiple Authentication Type Support,
+                  Storage-Assisted Volume Migration,
+                  SP Toggle for HA
+          3.0.1 - Security File Support
+          4.0.0 - Advance LUN Features (Compression Support,
+                  Deduplication Support, FAST VP Support,
+                  FAST Cache Support), Storage-assisted Retype,
+                  External Volume Management, Read-only Volume,
+                  FC Auto Zoning
+          4.1.0 - Consistency group support
+          5.0.0 - Performance enhancement, LUN Number Threshold Support,
+                  Initiator Auto Deregistration,
+                  Force Deleting LUN in Storage Groups,
+                  robust enhancement
+          5.1.0 - iSCSI multipath enhancement
+          5.2.0 - Pool-aware scheduler support
+          5.3.0 - Consistency group modification support
+          6.0.0 - Over subscription support
+                  Create consistency group from cgsnapshot support
+                  Multiple pools support enhancement
+                  Manage/unmanage volume revise
+                  White list target ports support
+                  Snap copy support
+                  Support efficient non-disruptive backup
+          7.0.0 - Clone consistency group support
+                  Replication v2 support(managed)
+                  Configurable migration rate support
+          8.0.0 - New VNX Cinder driver
+          9.0.0 - Use asynchronous migration for cloning
+          10.0.0 - Extend SMP size before aync migration when cloning from an
+                   image cache volume
+          10.1.0 - Add QoS support
+          10.2.0 - Add replication group support
+
     """
 
     VERSION = '10.02.00'
@@ -240,13 +243,20 @@ class VNXDriver(driver.ManageableVD,
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        manage_existing_ref:{
-            'source-id':<lun id in VNX>
-        }
+        .. code-block:: python
+
+          manage_existing_ref:{
+              'source-id':<lun id in VNX>
+          }
+
         or
-        manage_existing_ref:{
-            'source-name':<lun name in VNX>
-        }
+
+        .. code-block:: python
+
+          manage_existing_ref:{
+              'source-name':<lun name in VNX>
+          }
+
         """
         return self.adapter.manage_existing(volume, existing_ref)
 
