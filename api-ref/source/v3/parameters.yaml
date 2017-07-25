@@ -2050,6 +2050,12 @@ status_1:
   in: body
   required: true
   type: string
+status_10:
+  description: |
+    The status for the backup.
+  in: body
+  required: true
+  type: string
 status_2:
   description: |
     The status for the snapshot.

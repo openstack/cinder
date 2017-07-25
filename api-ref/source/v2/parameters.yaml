@@ -1578,6 +1578,12 @@ status_6:
   in: body
   required: false
   type: string
+status_7:
+  description: |
+    The status for the backup.
+  in: body
+  required: true
+  type: string
 storage_protocol:
   description: |
     The storage back end for the back-end volume. For
