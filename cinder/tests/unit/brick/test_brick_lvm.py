@@ -347,18 +347,23 @@ class BrickLvmTestCase(test.TestCase):
 
         See bug #1220286 for more info.
         """
-
         vg_name = "vg-name"
         pool_name = vg_name + "-pool"
-        pool_path = "%s/%s" % (vg_name, pool_name)
-
-        def executor(obj, *cmd, **kwargs):
-            self.assertEqual(pool_path, cmd[-1])
-
-        self.vg._executor = executor
         self.vg.create_thin_pool(pool_name, "1G")
-        self.vg.create_volume("test", "1G", lv_type='thin')
 
+        with mock.patch.object(self.vg, '_execute'):
+            self.vg.create_volume("test", "1G", lv_type='thin')
+            if self.configuration.lvm_suppress_fd_warnings is False:
+                self.vg._execute.assert_called_once_with(
+                    'env', 'LC_ALL=C', 'lvcreate', '-T', '-V',
+                    '1G', '-n', 'test', 'fake-vg/vg-name-pool',
+                    root_helper='sudo', run_as_root=True)
+            else:
+                self.vg._execute.assert_called_once_with(
+                    'env', 'LC_ALL=C', 'LVM_SUPPRESS_FD_WARNINGS=1',
+                    'lvcreate', '-T', '-V', '1G', '-n', 'test',
+                    'fake-vg/vg-name-pool', root_helper='sudo',
+                    run_as_root=True)
         self.assertEqual(pool_name, self.vg.vg_thin_pool)
 
     def test_volume_create_when_executor_failed(self):
