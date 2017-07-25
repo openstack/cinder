@@ -437,7 +437,9 @@ class CommonAdapter(object):
         .. code-block:: none
 
         existing_ref:{
+
             'source-id':<LUN id in Unity>
+
         }
 
         or
@@ -445,7 +447,9 @@ class CommonAdapter(object):
         .. code-block:: none
 
         existing_ref:{
+
             'source-name':<LUN name in Unity>
+
         }
         """
         lun = self._get_referenced_lun(existing_ref)

@@ -144,13 +144,16 @@ def convert_to_itor_tgt_map(zone_mapping):
 
     :param zone_mapping: mapping is the data from the zone lookup service
          with below format
+
         {
              <San name>: {
                  'initiator_port_wwn_list':
                  ('200000051e55a100', '200000051e55a121'..)
                  'target_port_wwn_list':
                  ('100000051e55a100', '100000051e55a121'..)
+
              }
+
         }
     """
     target_wwns = []
