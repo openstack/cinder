@@ -420,16 +420,6 @@ def fetch_to_volume_format(context, image_service,
                       src_format=disk_format,
                       run_as_root=run_as_root)
 
-        data = qemu_img_info(dest, run_as_root=run_as_root)
-
-        if not _validate_file_format(data, volume_format):
-            raise exception.ImageUnacceptable(
-                image_id=image_id,
-                reason=_("Converted to %(vol_format)s, but format is "
-                         "now %(file_format)s") % {'vol_format': volume_format,
-                                                   'file_format': data.
-                                                   file_format})
-
 
 def _validate_file_format(image_data, expected_format):
     if image_data.file_format == expected_format:
