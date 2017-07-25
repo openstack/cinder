@@ -254,6 +254,8 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.assertEqual(2, mock_delete.call_count)
         mock_delete.assert_any_call(self.context, entry2)
         mock_delete.assert_any_call(self.context, entry3)
+        self.mock_db.image_volume_cache_get_all.assert_called_with(
+            self.context, cluster_name=self.volume_ovo.cluster_name)
 
     def test_ensure_space_need_count(self):
         cache = self._build_cache(max_gb=30, max_count=2)
