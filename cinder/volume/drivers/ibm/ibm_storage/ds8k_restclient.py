@@ -111,17 +111,27 @@ class AbstractRESTConnector(object):
 
         Input: see above
         Output:
+
             if we reached the server and read an HTTP response:
-            (INTEGER__HTTP_RESPONSE_STATUS_CODE,
-            STRING__BODY_OF_RESPONSE_EVEN_IF_STATUS_NOT_200)
+
+            .. code:: text
+
+              (INTEGER__HTTP_RESPONSE_STATUS_CODE,
+               STRING__BODY_OF_RESPONSE_EVEN_IF_STATUS_NOT_200)
+
             if we were not able to reach the server or response
             was invalid HTTP(like certificate error, or could not
             resolve domain etc):
-            (False, STRING__SHORT_EXPLANATION_OF_REASON_FOR_NOT_
-             REACHING_SERVER_OR_GETTING_INVALID_RESPONSE)
+
+            .. code:: text
+
+              (False, STRING__SHORT_EXPLANATION_OF_REASON_FOR_NOT_
+               REACHING_SERVER_OR_GETTING_INVALID_RESPONSE)
+
         Exception: should not raise any exceptions itself as all
             the expected scenarios are covered above. Unexpected
             exceptions are permitted.
+
         """
         pass
 

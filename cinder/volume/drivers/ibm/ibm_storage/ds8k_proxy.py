@@ -18,42 +18,46 @@ This is the driver that allows openstack to talk to DS8K.
 
 All volumes are thin provisioned by default, if the machine is licensed for it.
 This can be overridden by creating a volume type and specifying a key like so:
-#> cinder type-create my_type
-#> cinder type-key my_type set drivers:thin_provision=False
-#> cinder create --volume-type my_type 123
+
+.. code:: console
+
+  #> cinder type-create my_type
+  #> cinder type-key my_type set drivers:thin_provision=False
+  #> cinder create --volume-type my_type 123
 
 
 Sample settings for cinder.conf:
---->
-enabled_backends = ibm_ds8k_1, ibm_ds8k_2
-[ibm_ds8k_1]
-proxy = cinder.volume.drivers.ibm.ibm_storage.ds8k_proxy.DS8KProxy
-volume_backend_name = ibm_ds8k_1
-san_clustername = P2,P3
-san_password = actual_password
-san_login = actual_username
-san_ip = foo.com
-volume_driver =
-    cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver
-chap = disabled
-connection_type = fibre_channel
-replication_device = connection_type: fibre_channel, backend_id: bar,
-                     san_ip: bar.com, san_login: actual_username,
-                     san_password: actual_password, san_clustername: P4,
-                     port_pairs: I0236-I0306; I0237-I0307
 
-[ibm_ds8k_2]
-proxy = cinder.volume.drivers.ibm.ibm_storage.ds8k_proxy.DS8KProxy
-volume_backend_name = ibm_ds8k_2
-san_clustername = P4,P5
-san_password = actual_password
-san_login = actual_username
-san_ip = bar.com
-volume_driver =
-    cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver
-chap = disabled
-connection_type = fibre_channel
-<---
+.. code:: ini
+
+  enabled_backends = ibm_ds8k_1, ibm_ds8k_2
+  [ibm_ds8k_1]
+  proxy = cinder.volume.drivers.ibm.ibm_storage.ds8k_proxy.DS8KProxy
+  volume_backend_name = ibm_ds8k_1
+  san_clustername = P2,P3
+  san_password = actual_password
+  san_login = actual_username
+  san_ip = foo.com
+  volume_driver =
+      cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver
+  chap = disabled
+  connection_type = fibre_channel
+  replication_device = connection_type: fibre_channel, backend_id: bar,
+                       san_ip: bar.com, san_login: actual_username,
+                       san_password: actual_password, san_clustername: P4,
+                       port_pairs: I0236-I0306; I0237-I0307
+
+  [ibm_ds8k_2]
+  proxy = cinder.volume.drivers.ibm.ibm_storage.ds8k_proxy.DS8KProxy
+  volume_backend_name = ibm_ds8k_2
+  san_clustername = P4,P5
+  san_password = actual_password
+  san_login = actual_username
+  san_ip = bar.com
+  volume_driver =
+      cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver
+  chap = disabled
+  connection_type = fibre_channel
 
 """
 import ast

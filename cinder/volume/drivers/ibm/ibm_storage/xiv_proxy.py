@@ -103,10 +103,12 @@ class XIVProxy(proxy.IBMStorageProxy):
     Version: 2.1.0
     Required pyxcli version: 1.1.4
 
-    2.0 - First open source driver version
-    2.1.0 - Support Consistency groups through Generic volume groups
-          - Support XIV/A9000 Volume independent QoS
-          - Support groups replication
+    .. code:: text
+
+      2.0 - First open source driver version
+      2.1.0 - Support Consistency groups through Generic volume groups
+            - Support XIV/A9000 Volume independent QoS
+            - Support groups replication
 
     """
 
